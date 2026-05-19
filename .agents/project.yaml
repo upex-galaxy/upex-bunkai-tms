@@ -55,10 +55,10 @@ environments:
   local:
     web_url: 'http://localhost:3000' # fill per project — Frontend URL for local env (e.g. http://localhost:3000)
     api_url: 'http://localhost:3000/api' # fill per project — API base URL for local env (e.g. http://localhost:3000/api)
-    db_mcp: myproject-local-db # fill per project — MCP server name for local DB (e.g. myproject-local-db)
+    db_mcp: fmbpikzpkafptqximhxn.supabase.co # fill per project — MCP server name for local DB (e.g. myproject-local-db)
     api_mcp: myproject-local-api # fill per project — MCP server name for local API (e.g. myproject-local-api)
   staging:
     web_url: staging-bunkai.vercel.app # fill per project — Frontend URL for staging env (e.g. https://staging.myproject.com)
     api_url: staging-bunkai.vercel.app/api # fill per project — API base URL for staging env (e.g. https://api-staging.myproject.com)
-    db_mcp: myproject-staging-db # fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
+    db_mcp: fmbpikzpkafptqximhxn.supabase.co # fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
     api_mcp: myproject-staging-api # fill per project — MCP server name for staging API (e.g. myproject-staging-api)
