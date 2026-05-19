@@ -1,0 +1,1200 @@
+openapi: 3.1.0
+info:
+  title: Bunkai API
+  version: 1.0.0
+  description: |
+    REST API for Bunkai — open-core Test Management System.
+    Designed to be operated by humans, scripts, CI/CD pipelines, and autonomous AI agents.
+
+    - Versioning: URL-prefixed (`/api/v1`). Breaking changes ship as `/api/v2`.
+    - Authentication: Bearer tokens (Personal Access Tokens, prefix `bk_pat_`).
+    - Response envelope: `{ success: boolean, data?: T, error?: { code, message, details? } }`.
+    - Idempotency: write endpoints honor an `Idempotency-Key` header (max 64 chars, 24h TTL).
+    - Rate limits: 100 req/min/token for writes, 600 req/min for reads. `Retry-After` returned on 429.
+    - Cursor pagination: list endpoints accept `?limit` (max 100) and `?before=<cursor>`.
+
+  contact:
+    name: Bunkai
+    url: https://bunkai.io
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://staging-bunkai.vercel.app/api/v1
+    description: Staging
+  - url: https://bunkai.io/api/v1
+    description: Production (Bunkai Cloud)
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+  - name: Workspaces
+  - name: Projects
+  - name: Modules
+  - name: User Stories
+  - name: Acceptance Criteria
+  - name: ATCs
+  - name: Tests
+  - name: Runs
+  - name: Bugs
+  - name: Integrations
+  - name: Imports
+  - name: Search
+
+paths:
+  /openapi.json:
+    get:
+      tags: [Auth]
+      summary: Self-describing OpenAPI spec
+      security: []
+      responses:
+        '200':
+          description: OpenAPI 3.1 spec
+          content:
+            application/json: {}
+
+  /auth/tokens:
+    post:
+      tags: [Auth]
+      summary: Issue Personal Access Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenIssueRequest' }
+      responses:
+        '201':
+          description: Token issued (plain token shown ONCE)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenIssueResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    get:
+      tags: [Auth]
+      summary: List my tokens
+      responses:
+        '200':
+          description: Tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Token' } }
+
+  /auth/tokens/{token_id}:
+    delete:
+      tags: [Auth]
+      summary: Revoke a token
+      parameters: [{ $ref: '#/components/parameters/TokenIdPath' }]
+      responses:
+        '204': { description: Revoked }
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: Current authenticated user + active workspace
+      responses:
+        '200':
+          description: Caller identity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+
+  /workspaces:
+    post:
+      tags: [Workspaces]
+      summary: Create a workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkspaceCreate' }
+      responses:
+        '201':
+          description: Workspace created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workspace' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+    get:
+      tags: [Workspaces]
+      summary: List workspaces I belong to
+      responses:
+        '200':
+          description: Workspaces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Workspace' } }
+
+  /workspaces/{workspace_id}/invites:
+    post:
+      tags: [Workspaces]
+      summary: Invite a teammate
+      parameters: [{ $ref: '#/components/parameters/WorkspaceIdPath' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InviteRequest' }
+      responses:
+        '201':
+          description: Invite sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invite' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /projects:
+    post:
+      tags: [Projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectCreate' }
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+
+    get:
+      tags: [Projects]
+      summary: List projects in the active workspace
+      parameters:
+        - in: query
+          name: workspace_id
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Project' } }
+
+  /projects/{project_id}/tree:
+    get:
+      tags: [Projects]
+      summary: Project tree view (modules + counts + status dots)
+      parameters: [{ $ref: '#/components/parameters/ProjectIdPath' }]
+      responses:
+        '200':
+          description: Tree
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tree' }
+
+  /modules:
+    post:
+      tags: [Modules]
+      summary: Create a module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModuleCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Module' }
+
+  /modules/{module_id}:
+    parameters: [{ $ref: '#/components/parameters/ModuleIdPath' }]
+    get:
+      tags: [Modules]
+      summary: Get a module
+      responses:
+        '200':
+          description: Module
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Module' }
+    patch:
+      tags: [Modules]
+      summary: Update a module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModuleUpdate' }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Module' } } } }
+    delete:
+      tags: [Modules]
+      summary: Soft-delete a module
+      responses:
+        '204': { description: Archived }
+
+  /user-stories:
+    post:
+      tags: [User Stories]
+      summary: Create a user story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserStoryCreate' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/UserStory' } } } }
+
+  /acceptance-criteria:
+    post:
+      tags: [Acceptance Criteria]
+      summary: Create an acceptance criterion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcceptanceCriterionCreate' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AcceptanceCriterion' } } } }
+
+  /atcs:
+    post:
+      tags: [ATCs]
+      summary: Create an ATC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ATCCreate' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
+    get:
+      tags: [ATCs]
+      summary: List / search ATCs
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: module_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: layer
+          schema: { type: string, enum: [UI, API, Unit] }
+        - in: query
+          name: q
+          description: Full-text query on title + tags
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+        - in: query
+          name: before
+          schema: { type: string }
+      responses:
+        '200':
+          description: ATCs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ATC' } }
+                  next_cursor: { type: string, nullable: true }
+
+  /atcs/{atc_id}:
+    parameters: [{ $ref: '#/components/parameters/ATCIdPath' }]
+    get:
+      tags: [ATCs]
+      summary: Get an ATC (expandable)
+      parameters:
+        - in: query
+          name: expand
+          description: Comma-separated, e.g. `steps,assertions,acceptance_criteria,used_in`
+          schema: { type: string }
+      responses:
+        '200': { description: ATC, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
+    patch:
+      tags: [ATCs]
+      summary: Update an ATC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ATCUpdate' }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
+    delete:
+      tags: [ATCs]
+      summary: Soft-delete an ATC
+      responses:
+        '204': { description: Archived }
+
+  /atcs/{atc_id}/duplicate:
+    post:
+      tags: [ATCs]
+      summary: Duplicate an ATC
+      parameters: [{ $ref: '#/components/parameters/ATCIdPath' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
+
+  /tests:
+    post:
+      tags: [Tests]
+      summary: Create a test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TestCreate' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Test' } } } }
+    get:
+      tags: [Tests]
+      summary: List tests
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: tag
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        '200':
+          description: Tests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Test' } }
+
+  /tests/{test_id}:
+    parameters: [{ $ref: '#/components/parameters/TestIdPath' }]
+    get:
+      tags: [Tests]
+      summary: Get a test (expandable to ATCs + steps)
+      parameters:
+        - in: query
+          name: expand
+          schema: { type: string, example: 'atcs.steps,atcs.assertions' }
+      responses:
+        '200': { description: Test, content: { application/json: { schema: { $ref: '#/components/schemas/Test' } } } }
+    patch:
+      tags: [Tests]
+      summary: Reorder / update test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TestUpdate' }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Test' } } } }
+    delete:
+      tags: [Tests]
+      summary: Soft-delete a test
+      responses:
+        '204': { description: Archived }
+
+  /runs:
+    post:
+      tags: [Runs]
+      summary: Start a run
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RunStart' }
+      responses:
+        '201': { description: Started, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
+    get:
+      tags: [Runs]
+      summary: List runs (project-wide)
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: test_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: module_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [running, passed, failed, aborted] }
+        - in: query
+          name: date_from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 100 }
+      responses:
+        '200':
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Run' } }
+                  aggregates:
+                    type: object
+                    properties:
+                      pass_count: { type: integer }
+                      fail_count: { type: integer }
+                      aborted_count: { type: integer }
+
+  /runs/{run_id}:
+    parameters: [{ $ref: '#/components/parameters/RunIdPath' }]
+    get:
+      tags: [Runs]
+      summary: Get a run (expandable)
+      parameters:
+        - in: query
+          name: expand
+          schema: { type: string, example: 'atcs.steps' }
+      responses:
+        '200': { description: Run, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
+
+  /runs/{run_id}/steps/{run_step_id}/result:
+    post:
+      tags: [Runs]
+      summary: Report a step result
+      parameters:
+        - { $ref: '#/components/parameters/RunIdPath' }
+        - in: path
+          name: run_step_id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StepResult' }
+      responses:
+        '200':
+          description: Step updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RunStep' }
+                  derived:
+                    type: object
+                    properties:
+                      run_atc_status: { type: string }
+                      run_progress_pct: { type: number }
+
+  /runs/{run_id}/abort:
+    post:
+      tags: [Runs]
+      summary: Abort a run
+      parameters: [{ $ref: '#/components/parameters/RunIdPath' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3 }
+      responses:
+        '200': { description: Aborted, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
+
+  /runs/{run_id}/finish:
+    post:
+      tags: [Runs]
+      summary: Finish a run (agentic / automated)
+      parameters: [{ $ref: '#/components/parameters/RunIdPath' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [passed, failed, aborted] }
+                finished_at: { type: string, format: date-time }
+      responses:
+        '200': { description: Finished, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
+
+  /bugs:
+    post:
+      tags: [Bugs]
+      summary: File a bug
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BugCreate' }
+      responses:
+        '201': { description: Filed, content: { application/json: { schema: { $ref: '#/components/schemas/Bug' } } } }
+    get:
+      tags: [Bugs]
+      summary: List bugs
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: module_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: severity
+          schema: { type: string, enum: [P1, P2, P3, P4] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [open, in_progress, resolved, closed] }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 100 }
+      responses:
+        '200':
+          description: Bugs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Bug' } }
+
+  /projects/{project_id}/defect-heatmap:
+    get:
+      tags: [Bugs]
+      summary: Defect heatmap by module
+      parameters:
+        - { $ref: '#/components/parameters/ProjectIdPath' }
+        - in: query
+          name: window
+          schema: { type: string, default: '30d' }
+      responses:
+        '200':
+          description: Heatmap
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        module_id: { type: string, format: uuid }
+                        path: { type: string }
+                        defect_count: { type: integer }
+                        trend_pct: { type: number }
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Command palette / cross-entity search
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: project_id
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Search hits grouped by entity type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResult' }
+
+  /imports/jira:
+    post:
+      tags: [Imports]
+      summary: Trigger Jira import (async)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, jql]
+              properties:
+                project_id: { type: string, format: uuid }
+                jql: { type: string }
+      responses:
+        '202':
+          description: Import enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  import_job_id: { type: string }
+
+  /imports/{import_job_id}:
+    get:
+      tags: [Imports]
+      summary: Poll import status
+      parameters:
+        - in: path
+          name: import_job_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [pending, running, succeeded, failed] }
+                  imported_count: { type: integer }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        external_id: { type: string }
+                        message: { type: string }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 'bk_pat_<random>'
+
+  parameters:
+    WorkspaceIdPath:
+      in: path
+      name: workspace_id
+      required: true
+      schema: { type: string, format: uuid }
+    ProjectIdPath:
+      in: path
+      name: project_id
+      required: true
+      schema: { type: string, format: uuid }
+    ModuleIdPath:
+      in: path
+      name: module_id
+      required: true
+      schema: { type: string, format: uuid }
+    ATCIdPath:
+      in: path
+      name: atc_id
+      required: true
+      schema: { type: string, format: uuid }
+    TestIdPath:
+      in: path
+      name: test_id
+      required: true
+      schema: { type: string, format: uuid }
+    RunIdPath:
+      in: path
+      name: run_id
+      required: true
+      schema: { type: string, format: uuid }
+    TokenIdPath:
+      in: path
+      name: token_id
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid auth
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Caller lacks permission
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    BadRequest:
+      description: Validation failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Conflict (e.g. unique constraint)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    Me:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        active_workspace: { $ref: '#/components/schemas/Workspace' }
+        memberships:
+          type: array
+          items: { $ref: '#/components/schemas/Workspace' }
+
+    Workspace:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [owner, admin, member, viewer] }
+        plan: { type: string, enum: [community, cloud, enterprise] }
+        created_at: { type: string, format: date-time }
+
+    WorkspaceCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 60 }
+
+    InviteRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, member, viewer] }
+
+    Invite:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    Token:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        prefix: { type: string }
+        scopes:
+          type: array
+          items: { type: string, enum: [read, write] }
+        workspace_id: { type: string, format: uuid, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        last_used_at: { type: string, format: date-time, nullable: true }
+
+    TokenIssueRequest:
+      type: object
+      required: [scopes]
+      properties:
+        name: { type: string }
+        scopes:
+          type: array
+          items: { type: string, enum: [read, write] }
+        workspace_id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
+
+    TokenIssueResponse:
+      allOf:
+        - $ref: '#/components/schemas/Token'
+        - type: object
+          properties:
+            token:
+              type: string
+              description: Plain token. Shown ONCE — store securely.
+
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    ProjectCreate:
+      type: object
+      required: [workspace_id, name]
+      properties:
+        workspace_id: { type: string, format: uuid }
+        name: { type: string, minLength: 3, maxLength: 80 }
+        description: { type: string }
+
+    Module:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        parent_module_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        path: { type: string }
+        description: { type: string, nullable: true }
+        archived_at: { type: string, format: date-time, nullable: true }
+
+    ModuleCreate:
+      type: object
+      required: [project_id, name]
+      properties:
+        project_id: { type: string, format: uuid }
+        parent_module_id: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        description: { type: string }
+
+    ModuleUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        parent_module_id: { type: string, format: uuid }
+
+    UserStory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        external_id: { type: string, nullable: true }
+        external_url: { type: string, format: uri, nullable: true }
+
+    UserStoryCreate:
+      type: object
+      required: [module_id, title]
+      properties:
+        module_id: { type: string, format: uuid }
+        title: { type: string, minLength: 3, maxLength: 200 }
+        description: { type: string }
+        external_id: { type: string }
+        external_url: { type: string, format: uri }
+
+    AcceptanceCriterion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_story_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        position: { type: integer }
+
+    AcceptanceCriterionCreate:
+      type: object
+      required: [user_story_id, title]
+      properties:
+        user_story_id: { type: string, format: uuid }
+        title: { type: string, minLength: 3, maxLength: 200 }
+        description: { type: string }
+        position: { type: integer }
+
+    ATCStep:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer }
+        content: { type: string }
+        input_data: {}
+        expected: { type: string, nullable: true }
+
+    ATCAssertion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer }
+        content: { type: string }
+
+    ATC:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid }
+        user_story_id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        layer: { type: string, enum: [UI, API, Unit] }
+        version: { type: integer }
+        tags:
+          type: array
+          items: { type: string }
+        acceptance_criterion_ids:
+          type: array
+          items: { type: string, format: uuid }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/ATCStep' }
+        assertions:
+          type: array
+          items: { $ref: '#/components/schemas/ATCAssertion' }
+        used_in:
+          type: array
+          items:
+            type: object
+            properties:
+              test_id: { type: string, format: uuid }
+              position_in_test: { type: integer }
+
+    ATCCreate:
+      type: object
+      required: [title, module_id, user_story_id, acceptance_criterion_ids, layer, steps]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 200 }
+        module_id: { type: string, format: uuid }
+        user_story_id: { type: string, format: uuid }
+        acceptance_criterion_ids:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+        layer: { type: string, enum: [UI, API, Unit] }
+        steps:
+          type: array
+          items:
+            type: object
+            required: [position, content]
+            properties:
+              position: { type: integer }
+              content: { type: string, maxLength: 2048 }
+              input_data: {}
+              expected: { type: string }
+          minItems: 1
+        assertions:
+          type: array
+          items:
+            type: object
+            properties:
+              position: { type: integer }
+              content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+          maxItems: 10
+
+    ATCUpdate:
+      allOf:
+        - $ref: '#/components/schemas/ATCCreate'
+        - description: Same shape as create; partial updates by omitting fields
+
+    Test:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        atc_chain:
+          type: array
+          items:
+            type: object
+            properties:
+              atc_id: { type: string, format: uuid }
+              position: { type: integer }
+
+    TestCreate:
+      type: object
+      required: [project_id, title, atc_chain]
+      properties:
+        project_id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid }
+        title: { type: string, minLength: 3, maxLength: 200 }
+        tags:
+          type: array
+          items: { type: string }
+        description: { type: string }
+        atc_chain:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+
+    TestUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        description: { type: string }
+        atc_chain:
+          type: array
+          items: { type: string, format: uuid }
+
+    RunStart:
+      type: object
+      required: [test_id, environment, executor]
+      properties:
+        test_id: { type: string, format: uuid }
+        environment: { type: string }
+        executor:
+          type: object
+          required: [type, identity]
+          properties:
+            type: { type: string, enum: [human, agent, ci] }
+            identity: { type: string }
+
+    Run:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        test_id: { type: string, format: uuid }
+        environment: { type: string }
+        executor_type: { type: string }
+        executor_identity: { type: string }
+        status: { type: string, enum: [running, passed, failed, aborted] }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+        progress_pct: { type: number }
+        abort_reason: { type: string, nullable: true }
+
+    RunStep:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        run_atc_id: { type: string, format: uuid }
+        atc_step_id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, pass, fail, block, skipped] }
+        duration_ms: { type: integer, nullable: true }
+        notes: { type: string, nullable: true }
+        evidence_url: { type: string, format: uri, nullable: true }
+        error_message: { type: string, nullable: true }
+
+    StepResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pass, fail, block] }
+        duration_ms: { type: integer }
+        notes: { type: string }
+        evidence_url: { type: string, format: uri }
+        error_message: { type: string }
+
+    Bug:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        module_id: { type: string, format: uuid }
+        atc_id: { type: string, format: uuid, nullable: true }
+        run_id: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        severity: { type: string, enum: [P1, P2, P3, P4] }
+        status: { type: string, enum: [open, in_progress, resolved, closed] }
+        description: { type: string }
+        steps_to_reproduce: { type: string }
+        evidence_urls:
+          type: array
+          items: { type: string, format: uri }
+        external_id: { type: string, nullable: true }
+        external_url: { type: string, format: uri, nullable: true }
+        jira_sync_status:
+          type: string
+          enum: [not_synced, syncing, synced, failed]
+
+    BugCreate:
+      type: object
+      required: [title, module_id, severity, description]
+      properties:
+        title: { type: string, minLength: 5, maxLength: 200 }
+        module_id: { type: string, format: uuid }
+        severity: { type: string, enum: [P1, P2, P3, P4] }
+        description: { type: string }
+        steps_to_reproduce: { type: string }
+        atc_id: { type: string, format: uuid }
+        run_id: { type: string, format: uuid }
+        evidence_urls:
+          type: array
+          items: { type: string, format: uri }
+          maxItems: 10
+
+    Tree:
+      type: object
+      properties:
+        tree:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: [module, user_story, atc, test] }
+              id: { type: string, format: uuid }
+              name: { type: string }
+              path: { type: string }
+              status_dot: { type: string, enum: [pass, fail, blocked, skipped, running] }
+              children:
+                type: array
+                items: { type: object }
+
+    SearchResult:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_type:
+                type: string
+                enum: [module, user_story, acceptance_criterion, atc, test, run, bug]
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+                    path: { type: string }
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              label: { type: string }
+              hotkey: { type: string, nullable: true }
+              route: { type: string }
+
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code: { type: string, example: VALIDATION_ERROR }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }

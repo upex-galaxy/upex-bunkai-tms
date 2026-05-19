@@ -8,29 +8,29 @@
 # Each downstream project that uses this starter must fill in the real values.
 
 project:
-  project_name: upex-bunkai-tms # fill per project — Project name (e.g. MyProject)
-  project_key: BK # fill per project — Project key in issue tracker (e.g. PROJ, OB, UPEX)
-  webapp_domain: bunkai.vercel.app # fill per project — Domain of the web application under test (e.g. myproject.com)
+  project_name: Bunkai # Brand name for the product (kanji 分解 — "the art of breaking down a kata into its applications").
+  project_key: BK # Issue tracker key (Jira project key prefix).
+  webapp_domain: bunkai.io # Primary production domain. Defensive domain bankai.io redirects here.
 
 backend:
-  backend_repo: . # fill per project — Relative path to backend repository (e.g. ../my-backend)
-  backend_stack: Next.js + Supabase # fill per project — Backend technology stack (e.g. Node.js + Express)
-  backend_entry: . # fill per project — Backend source entry point (e.g. src/)
+  backend_repo: . # Monorepo — backend lives in `app/api/` of the Next.js project for MVP. Spin out to a NestJS service when self-hosted Docker Compose lands (see SRS/architecture-specs.md).
+  backend_stack: Next.js 15 (App Router, API routes) + Supabase # MVP cloud-validation stack. Self-hosted edition target: NestJS + Postgres + Redis + MinIO + Better Auth (Phase 2).
+  backend_entry: app/api # Next.js API route handlers.
 
 frontend:
-  frontend_repo: . # fill per project — Relative path to frontend repository (e.g. ../my-frontend)
-  frontend_stack: Next.js # fill per project — Frontend technology stack (e.g. React + TypeScript)
-  frontend_entry: . # fill per project — Frontend source entry point (e.g. src/)
-  design_md_path: null # OPTIONAL — path to DESIGN.md produced by /design-system. Defaults to ./DESIGN.md when null. Override only for atypical layouts (e.g. .context/DESIGN.md).
+  frontend_repo: . # Monorepo — same Next.js app.
+  frontend_stack: Next.js 15 + React 19 + TypeScript + Tailwind + shadcn/ui + Monaco Editor + TanStack Table + React Flow # Editor for ATCs (Monaco). Table view (TanStack). Mind-map view (React Flow). Mind-map 3D (react-force-graph) is Phase 3.
+  frontend_entry: app
+  design_md_path: null # Defaults to ./DESIGN.md. Source mockups live in `.context/designs/bunkai-test-management-tool/`.
 
 database:
-  db_type: Supabase # fill per project — Database engine (e.g. PostgreSQL)
+  db_type: Supabase (PostgreSQL 16) # MVP. pgvector planned for semantic ATC search (Phase 2). Self-hosted edition uses plain Postgres in Docker.
 
 issue_tracker:
-  issue_tracker: Jira # fill per project — Issue tracking tool (e.g. Jira)
-  issue_tracker_cli: acli # fill per project — CLI command to query tickets (e.g. acli (Jira) / gh issue (GitHub))
-  atlassian_url: upexgalaxy67.atlassian.net # fill per project — Atlassian instance base URL (e.g. https://company.atlassian.net)
-  atlassian_site: null # TODO: fill per project — Atlassian site slug used by `acli` (the subdomain before .atlassian.net, e.g. `mycompany`)
+  issue_tracker: Jira
+  issue_tracker_cli: acli
+  atlassian_url: upexgalaxy67.atlassian.net
+  atlassian_site: upexgalaxy67 # subdomain used by acli
 
 testing:
   default_env: local # fill per project — Default working environment — must match a key under `environments:` (e.g. staging)

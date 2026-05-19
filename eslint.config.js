@@ -22,6 +22,11 @@ export default antfu({
     '*.min.js',
     // Documentation files (contain code examples that shouldn't be linted)
     '**/*.md',
+    // Foundation / discovery artifacts and design handoff mockups. Treated as
+    // reference material (Prettier already ignores .context/ for the same
+    // reason). ESLint must not touch the .jsx mockups under
+    // .context/designs/ — they're a vendor-style handoff, not source code.
+    '.context/**',
     // GitHub workflows (YAML files)
     '.github/**',
     // Generated files (auto-generated, not manually edited)
