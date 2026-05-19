@@ -8,32 +8,32 @@
 # Each downstream project that uses this starter must fill in the real values.
 
 project:
-  project_name: null # TODO: fill per project — Project name (e.g. MyProject)
-  project_key: null # TODO: fill per project — Project key in issue tracker (e.g. PROJ, OB, UPEX)
-  webapp_domain: null # TODO: fill per project — Domain of the web application under test (e.g. myproject.com)
+  project_name: upex-bunkai-tms # fill per project — Project name (e.g. MyProject)
+  project_key: BK # fill per project — Project key in issue tracker (e.g. PROJ, OB, UPEX)
+  webapp_domain: bunkai.vercel.app # fill per project — Domain of the web application under test (e.g. myproject.com)
 
 backend:
-  backend_repo: null # TODO: fill per project — Relative path to backend repository (e.g. ../my-backend)
-  backend_stack: null # TODO: fill per project — Backend technology stack (e.g. Node.js + Express)
-  backend_entry: null # TODO: fill per project — Backend source entry point (e.g. src/)
+  backend_repo: . # fill per project — Relative path to backend repository (e.g. ../my-backend)
+  backend_stack: Next.js + Supabase # fill per project — Backend technology stack (e.g. Node.js + Express)
+  backend_entry: . # fill per project — Backend source entry point (e.g. src/)
 
 frontend:
-  frontend_repo: null # TODO: fill per project — Relative path to frontend repository (e.g. ../my-frontend)
-  frontend_stack: null # TODO: fill per project — Frontend technology stack (e.g. React + TypeScript)
-  frontend_entry: null # TODO: fill per project — Frontend source entry point (e.g. src/)
+  frontend_repo: . # fill per project — Relative path to frontend repository (e.g. ../my-frontend)
+  frontend_stack: Next.js # fill per project — Frontend technology stack (e.g. React + TypeScript)
+  frontend_entry: . # fill per project — Frontend source entry point (e.g. src/)
   design_md_path: null # OPTIONAL — path to DESIGN.md produced by /design-system. Defaults to ./DESIGN.md when null. Override only for atypical layouts (e.g. .context/DESIGN.md).
 
 database:
-  db_type: null # TODO: fill per project — Database engine (e.g. PostgreSQL)
+  db_type: Supabase # fill per project — Database engine (e.g. PostgreSQL)
 
 issue_tracker:
-  issue_tracker: null # TODO: fill per project — Issue tracking tool (e.g. Jira)
-  issue_tracker_cli: null # TODO: fill per project — CLI command to query tickets (e.g. acli (Jira) / gh issue (GitHub))
-  atlassian_url: null # TODO: fill per project — Atlassian instance base URL (e.g. https://company.atlassian.net)
+  issue_tracker: Jira # fill per project — Issue tracking tool (e.g. Jira)
+  issue_tracker_cli: acli # fill per project — CLI command to query tickets (e.g. acli (Jira) / gh issue (GitHub))
+  atlassian_url: upexgalaxy67.atlassian.net # fill per project — Atlassian instance base URL (e.g. https://company.atlassian.net)
   atlassian_site: null # TODO: fill per project — Atlassian site slug used by `acli` (the subdomain before .atlassian.net, e.g. `mycompany`)
 
 testing:
-  default_env: null # TODO: fill per project — Default working environment — must match a key under `environments:` (e.g. staging)
+  default_env: local # fill per project — Default working environment — must match a key under `environments:` (e.g. staging)
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
@@ -53,12 +53,12 @@ external_consumers:
 # For explicit cross-env references use {{environments.<env>.<var>}} (e.g. {{environments.local.web_url}}).
 environments:
   local:
-    web_url: null # TODO: fill per project — Frontend URL for local env (e.g. http://localhost:3000)
-    api_url: null # TODO: fill per project — API base URL for local env (e.g. http://localhost:3000/api)
-    db_mcp: null # TODO: fill per project — MCP server name for local DB (e.g. myproject-local-db)
-    api_mcp: null # TODO: fill per project — MCP server name for local API (e.g. myproject-local-api)
+    web_url: 'http://localhost:3000' # fill per project — Frontend URL for local env (e.g. http://localhost:3000)
+    api_url: 'http://localhost:3000/api' # fill per project — API base URL for local env (e.g. http://localhost:3000/api)
+    db_mcp: myproject-local-db # fill per project — MCP server name for local DB (e.g. myproject-local-db)
+    api_mcp: myproject-local-api # fill per project — MCP server name for local API (e.g. myproject-local-api)
   staging:
-    web_url: null # TODO: fill per project — Frontend URL for staging env (e.g. https://staging.myproject.com)
-    api_url: null # TODO: fill per project — API base URL for staging env (e.g. https://api-staging.myproject.com)
-    db_mcp: null # TODO: fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
-    api_mcp: null # TODO: fill per project — MCP server name for staging API (e.g. myproject-staging-api)
+    web_url: staging-bunkai.vercel.app # fill per project — Frontend URL for staging env (e.g. https://staging.myproject.com)
+    api_url: staging-bunkai.vercel.app/api # fill per project — API base URL for staging env (e.g. https://api-staging.myproject.com)
+    db_mcp: myproject-staging-db # fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
+    api_mcp: myproject-staging-api # fill per project — MCP server name for staging API (e.g. myproject-staging-api)
