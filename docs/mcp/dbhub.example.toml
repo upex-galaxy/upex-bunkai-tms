@@ -1,0 +1,74 @@
+# ============================================
+# DBHUB CONFIGURATION - EJEMPLO
+# ============================================
+# Archivo: dbhub.toml (en root del proyecto)
+# Documentación: https://dbhub.ai/config/toml
+#
+# Este archivo configura las conexiones de base de datos para el MCP de DBHub.
+# IMPORTANTE: No commitear este archivo si contiene credenciales reales.
+# Agregarlo a .gitignore: dbhub.toml
+#
+# ⚠️  AUDIT 2026-05-11: una versión anterior de este template tenía un user/password
+# con apariencia real (qa_team.czuusjchqpgvanvbdrnz / QA_SoloQ_2024_Secure!).
+# Si esas credenciales eran reales y existen en la historia de git, rotalas en el
+# proveedor (Supabase) — borrar del template no las borra de la historia.
+
+# ============================================
+# FUENTE DE DATOS: PostgreSQL (Supabase)
+# ============================================
+
+[[sources]]
+id = "soloq"
+type = "postgres"
+host = "aws-1-us-east-2.pooler.supabase.com"
+port = 5432
+database = "postgres"
+user = "{{DB_USER}}"
+password = "{{DB_PASSWORD}}"
+sslmode = "require"
+
+# ============================================
+# OPCIONES AVANZADAS
+# ============================================
+# Puedes agregar opciones adicionales por fuente:
+# lazy = true              # Defer connection until first query
+# connection_timeout = 60  # Timeout de conexión en segundos
+# query_timeout = 30       # Timeout de consulta en segundos
+
+# ============================================
+# EJEMPLO: MÚLTIPLES BASES DE DATOS
+# ============================================
+
+# [[sources]]
+# id = "production"
+# type = "postgres"
+# dsn = "postgres://user:pass@prod-host:5432/mydb"
+# lazy = true
+# connection_timeout = 60
+# query_timeout = 30
+# sslmode = "require"
+
+# [[sources]]
+# id = "staging"
+# type = "postgres"
+# dsn = "postgres://user:pass@staging-host:5432/mydb"
+# connection_timeout = 30
+# query_timeout = 15
+
+# [[sources]]
+# id = "local_sqlite"
+# type = "sqlite"
+# dsn = "sqlite:///./data/local.db"
+
+# ============================================
+# HERRAMIENTAS PERSONALIZADAS (OPCIONAL)
+# ============================================
+# Puedes definir herramientas SQL personalizadas:
+
+# [[tools]]
+# name = "search_employees"
+# description = "Search employees by name"
+# source = "production"
+# statement = "SELECT emp_no, first_name, last_name FROM employee WHERE first_name ILIKE '%' || $1 || '%' LIMIT $2"
+# readonly = true
+# max_rows = 100

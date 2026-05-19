@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-constitution-ideation",
+      "prompt": "Estoy ideando un nuevo producto, ayúdame a construir la constitución del proyecto desde cero.",
+      "expected_behavior": "Activates project-foundation in Constitution mode. Reads phase-1-constitution references (business-model.md, market-context.md, problem-statement.md), walks the user through value proposition, target market, competitive landscape, and success metrics. Produces business/* artifacts (constitution + maps) and explicitly stops before architecture (handed to next stage of the same skill).",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-prd-architecture",
+      "prompt": "Define the PRD: executive summary, personas, user journeys and MVP scope. Then map the system architecture and API contracts.",
+      "expected_behavior": "Activates project-foundation in Architecture mode. Reads phase-2-prd references (executive-summary, user-personas, user-journeys, mvp-scope) and phase-3-srs references (system-architecture, api-contracts, data-model). Produces PRD/* and SRS/* artifacts. Coordinates the two phases sequentially and waits for user OK between PRD and SRS.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-discovery-on-existing-codebase",
+      "prompt": "Generate the business data map and api architecture for this codebase — I want the discovery context files.",
+      "expected_behavior": "Activates project-foundation in Discovery mode (Phase 4). Phase 4 is now an orchestrator that delegates to standalone commands: invokes /business-data-map (produces .context/business/business-data-map.md), /business-feature-map (produces .context/business/business-feature-map.md), /business-api-map (produces .context/business/business-api-map.md — note: replaces the legacy api-architecture.md filename), then executes references/project-dev-guide.md in-skill (produces .context/business/project-dev-guide.md), and optionally invokes /master-implementation-plan (produces .context/master-implementation-plan.md). Uses [DB_TOOL] and [API_TOOL] per CLAUDE.md tool resolution. Final report lists artifacts created.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-srs-mapping",
+      "prompt": "Mapear arquitectura del sistema y definir el SRS con data model y API contracts.",
+      "expected_behavior": "Activates project-foundation in Architecture mode (SRS phase). Reads phase-3-srs references (system-architecture.md, data-model.md, api-contracts.md, infrastructure.md). Produces SRS/* artifacts and asks the user whether to continue with discovery or hand off to /project-bootstrap for infrastructure scaffolding.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-openapi-setup",
+      "prompt": "Setup OpenAPI in the backend and configure the Scalar UI.",
+      "expected_behavior": "Does NOT activate project-foundation. Should route to /project-bootstrap (openapi-setup.md reference) because the request is infrastructure scaffolding (code/config), not architectural definition. project-foundation produces SRS docs; project-bootstrap implements them.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-backlog-add",
+      "prompt": "Add a feature to the backlog: real-time notifications for the dashboard.",
+      "expected_behavior": "Does NOT activate project-foundation. Should route to /product-management (add-feature.md reference) because the request is backlog management, not foundational product definition. project-foundation runs once at project birth; product-management runs continuously.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-story-implementation",
+      "prompt": "Implement this story UPEX-277, it's about empty states in the dashboard.",
+      "expected_behavior": "Does NOT activate project-foundation. Should route to /sprint-development because the request is per-story implementation. project-foundation defines the product/architecture once; sprint-development runs every sprint per ticket.",
+      "category": "negative"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-backend-skeleton",
+      "prompt": "Setup the backend skeleton with DB schemas, types, error handling and API base.",
+      "expected_behavior": "Activates project-bootstrap in backend mode. Reads backend-setup.md reference. Scaffolds the DB schema layer, generates types (typically via supabase-types-generation.md when applicable), wires API base + error handling middleware, and produces a small smoke endpoint. Reports files created and next-step options (frontend, OpenAPI, auth).",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-frontend-init",
+      "prompt": "Inicializar el frontend con el design system y el skeleton de routing.",
+      "expected_behavior": "Activates project-bootstrap in frontend mode. Reads frontend-setup.md reference, scaffolds the project structure (routes/pages, layouts, base components, design tokens), wires the design system, and verifies the dev server boots. Stops at scaffolding — does NOT implement features (that is /sprint-development).",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-openapi-scalar",
+      "prompt": "Configure OpenAPI/Scalar UI for the backend so contracts are documented and explorable.",
+      "expected_behavior": "Activates project-bootstrap in incremental-feature mode. Reads openapi-setup.md reference, wires the OpenAPI generator into the API, mounts the Scalar UI route, and runs bun run api:sync to verify the spec generates. Final report includes the Scalar URL and a sample endpoint visible in the UI.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-bearer-auth",
+      "prompt": "Add bearer token authentication middleware to the API — protect /api/* routes.",
+      "expected_behavior": "Activates project-bootstrap in incremental-feature mode. Reads bearer-token-support.md reference. Adds the auth middleware, wires it into the API base, exposes a token verification hook, and updates the OpenAPI security scheme. Adds a smoke check for protected vs public endpoints.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-prd-definition",
+      "prompt": "Define the PRD for this product — personas, user journeys, MVP scope.",
+      "expected_behavior": "Does NOT activate project-bootstrap. Should route to /project-foundation (phase-2-prd references) because the request is product definition, not infrastructure scaffolding. project-bootstrap implements infra after the PRD/SRS exist.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-story-implementation",
+      "prompt": "Implement this user story UPEX-200 — add a 'forgot password' link to the login page.",
+      "expected_behavior": "Does NOT activate project-bootstrap. Should route to /sprint-development because the request is per-story feature implementation, not infrastructure scaffolding. project-bootstrap stops once the skeleton is in place; sprint-development builds features on top of it.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-test-framework-setup",
+      "prompt": "Setup the test framework — Playwright + KATA + Allure for E2E tests.",
+      "expected_behavior": "Does NOT activate project-bootstrap. Test framework setup is out of scope for this repo (the boilerplate covers product/dev infrastructure, not QA infra). Should direct the user to the sister repo agentic-qa-boilerplate which has its own setup skills.",
+      "category": "negative"
+    }
+  ]
+}

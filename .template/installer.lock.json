@@ -1,0 +1,6 @@
+{
+  "template": "upex-galaxy/agentic-dev-boilerplate",
+  "templateBranch": "main",
+  "minCliVersion": "0.1.0",
+  "description": "Sentinel file. Presence + matching `template` field means this repo was bootstrapped from the agentic-dev-boilerplate template via `create-agentic-dev`. Used by the installer (cli/install.ts) to relax the repo-identity check, and by the CLI to detect in-repo invocations (--here mode). Tracked in git. Runtime install state lives in `.template/installer.state.json` (gitignored)."
+}

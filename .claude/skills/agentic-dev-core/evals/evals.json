@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-fresh-bootstrap",
+      "prompt": "Initialize a new project repo with the boilerplate. I just cloned this and want the foundation files in place.",
+      "expected_behavior": "Activates agentic-dev-core. Runs the 7-step bootstrap: confirms target repo, writes .agents/project.yaml from the template, copies scripts/ (lint-vars, jira-sync-fields, jira-check), writes CLAUDE.md and CLAUDE.md from boilerplate templates, seeds .agents/jira-required.yaml and .agents/jira-fields.json placeholder, updates package.json scripts, runs bun run vars:check to verify, and reports the file list. Does not touch product or infra concerns.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-foundation-only",
+      "prompt": "Bootstrap framework foundation in this empty repo — no product or infra yet, just the AI-driven workflow files.",
+      "expected_behavior": "Activates agentic-dev-core. Walks the 7-step bootstrap and explicitly stays scoped to foundation files (.agents/, CLAUDE.md, CLAUDE.md, scripts/, package.json wiring). Does NOT scaffold backend/frontend (that is /project-bootstrap) and does NOT define the PRD (that is /project-foundation). Hands off to those skills at the end if the user asks.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-regenerate-agents-md",
+      "prompt": "Regenerate CLAUDE.md from the latest template. The upstream changed and I want my copy refreshed.",
+      "expected_behavior": "Activates agentic-dev-core in idempotent re-run mode. Detects that .agents/project.yaml already exists, skips the placeholder seeding, and only re-renders CLAUDE.md (and CLAUDE.md if user confirms) from the current boilerplate template, preserving project-specific values from .agents/project.yaml. Reports diff summary.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-clone-orientation",
+      "prompt": "Acabo de clonar este repo, qué corro primero para dejarlo listo?",
+      "expected_behavior": "Activates agentic-dev-core as the entry point. Explains the bootstrap flow briefly, then runs the 7-step pathway: project.yaml, scripts/, CLAUDE.md, jira-required.yaml manifest, jira-fields.json placeholder, package.json scripts, vars:check validation. Suggests /project-foundation and /project-bootstrap as next steps once the foundation is green.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-memory-refresh",
+      "prompt": "Refresh memory facts for this session — I changed my email and want it picked up.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /sync-ai-memory because the request is about memory facts (not the foundation bootstrap). agentic-dev-core never touches user memory; it only writes repo-level scaffolding files.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-backend-scaffold",
+      "prompt": "Setup the backend with DB schemas, types, error handling and API base.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-bootstrap (backend-setup.md reference) because the request is infrastructure scaffolding, not foundation files. agentic-dev-core only seeds CLAUDE.md/.agents/, never application code.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-prd-definition",
+      "prompt": "Define the PRD for this product — executive summary, personas, MVP scope.",
+      "expected_behavior": "Does NOT activate agentic-dev-core. Should route to /project-foundation (phase-2-prd references) because the request is foundational product definition. agentic-dev-core's scope is mechanical bootstrap of framework files, not product strategy.",
+      "category": "negative"
+    }
+  ]
+}

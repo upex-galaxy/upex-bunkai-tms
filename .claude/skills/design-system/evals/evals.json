@@ -1,0 +1,23 @@
+{
+  "skill_name": "design-system",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Acabo de terminar el PRD para un B2B fintech bastante serio orientado a CFOs. Tiene que verse premium, data-dense, oscuro tipo Linear o Vercel. ¿Podés bajarme un design system?",
+      "expected_output": "DESIGN.md en root, generado vía default flow (getdesign-matcher), brand elegido del cluster 'dark/serious/dashboard' (probable: linear-app, vercel, o similar). Lint pasa con WCAG AA OK. Reporte menciona el brand elegido y la razón del match.",
+      "files": [".context/business/business-model.md", ".context/PRD/personas.md"]
+    },
+    {
+      "id": 2,
+      "prompt": "Tengo un proyecto wellness B2C, super amigable, warm tones, ilustraciones suaves. Quiero rebrandar — el DESIGN.md actual es muy corporate. Volver a generar.",
+      "expected_output": "DESIGN.md sobreescrito (con confirmación previa via AskUserQuestion: skip/overwrite/variant), brand del cluster 'warm/friendly/consumer' (probable: notion-warm, calm, headspace). Lint pasa. Reporte menciona que era un rebrand y el brand viejo vs nuevo.",
+      "files": ["DESIGN.md"]
+    },
+    {
+      "id": 3,
+      "prompt": "Necesito un design system completamente custom — el negocio es muy específico (plataforma de educación STEM para niños 8-12 años), ninguno de los off-the-shelf va a matchear. Generámelo desde cero.",
+      "expected_output": "DESIGN.md generado vía llm-authored path (Path E), con las 8 secciones del spec, paleta y typography adaptadas al contexto kids/STEM (alegre + accesible + alto contraste + tipografía rounded). Lint pasa. Reporte menciona que se usó Path E y enumera las decisiones de diseño tomadas.",
+      "files": [".context/business/business-model.md", ".context/PRD/personas.md"]
+    }
+  ]
+}

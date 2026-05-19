@@ -1,0 +1,53 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-first-time-orientation",
+      "prompt": "I just cloned this repo. First time using it — where do I start?",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard. Explains the stack (Next.js + Supabase), points at `bun run setup` for installation, walks through the primary `/sprint-development` workflow and the `/sdd-*` hand-off matrix, lists the 4 canonical MCPs, lists critical env vars, and ends with a checklist of next steps. Does NOT start implementing anything.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-onboard-me",
+      "prompt": "Onboard me to this repo. I've never used an AI-driven workflow before.",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard as a guided tour. Explains the boilerplate, the locked stack, the workflow split between `/sprint-development` (ticket-driven) and `/sdd-*` (spec-driven), the MCP decision rule (Context7 vs Tavily), and the env vars required. Hands off to `/sprint-development` for the user's first ticket.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-explain-this-repo",
+      "prompt": "Explain what this repo does and how the dev flow works.",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard. Describes the boilerplate purpose (dev-only Next.js + Supabase scaffold), the 12-step `/sprint-development` loop, the Jira state machine (Ready For Dev → In Progress → In Review → Ready For QA), the 5 stages inside the loop, the local skills vs gentle-ai skills, and the MCPs. No implementation work.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-spanish-first-time",
+      "prompt": "Es la primer vez que uso este repo, qué tengo que correr primero?",
+      "expected_skill": "agentic-dev-onboard",
+      "expected_behavior": "Activates agentic-dev-onboard. Points at `bun run setup` first, then walks through the workflow split, MCPs, env vars, and the next-steps checklist. Hands off to `/sprint-development` once foundation is green. May respond in Spanish to mirror the user.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-implement-story",
+      "prompt": "Implement story UPEX-123 — add empty state to user list.",
+      "expected_skill": "sprint-development",
+      "expected_behavior": "Does NOT activate agentic-dev-onboard. Routes to `/sprint-development UPEX-123` because the request is a concrete ticket implementation, not orientation. agentic-dev-onboard never executes implementation work.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-write-unit-tests",
+      "prompt": "Write unit tests for the formatPrice utility — TDD style.",
+      "expected_skill": "unit-testing",
+      "expected_behavior": "Does NOT activate agentic-dev-onboard. Routes to `/unit-testing` because the request is for TDD red-green-refactor on a specific unit. agentic-dev-onboard does not write tests.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-create-epic",
+      "prompt": "Create the epic for the new payments module — seed the stories from the PRD.",
+      "expected_skill": "product-management",
+      "expected_behavior": "Does NOT activate agentic-dev-onboard. Routes to `/product-management` because the request is backlog seeding / epic creation / story refinement. agentic-dev-onboard does not touch the backlog.",
+      "category": "negative"
+    }
+  ]
+}

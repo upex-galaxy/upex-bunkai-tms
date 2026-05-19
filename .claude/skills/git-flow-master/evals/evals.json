@@ -1,0 +1,61 @@
+{
+  "skill_name": "git-flow-master",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished work on UPEX-277 (empty states for the reservations module). Need to commit the 4 changed files and push the branch — there's no PR yet. Repo uses main + staging.",
+      "expected_output": "Skill detects main-integration strategy from layout (main+staging), persists marker to CLAUDE.md if missing, groups the 4 files into atomic conventional commits with scope UPEX-277, asks before pushing to current feature branch, and offers to open PR against staging next. No AI attribution. No git add -A.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "abrime un PR para esta branch contra staging, label feature, ya está todo pusheado",
+      "expected_output": "Skill detects branch already pushed, renders inline PR body with Summary/Changes/Test Plan/Traceability/Risk, picks staging as base (matches main-integration strategy), proposes feature + ready-for-review labels, runs gh pr create --body-file with tempfile, returns PR URL. Does not auto-merge.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "git status shows 'both modified' on src/api/users.ts and 'deleted by them' on src/api/legacy-users.ts after I tried to merge staging into my feature branch. Help me fix this.",
+      "expected_output": "Skill identifies a content conflict + a rename/delete conflict, follows the merge-conflict playbook from references/conflict-resolution.md (diagnose first, present options ranked by safety, never silently force/abort), guides resolution per file, verifies clean state with git status before exiting.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We're starting a brand new repo for a side project. Just me, no team. What's the simplest git setup? I'll mostly push directly to main.",
+      "expected_output": "Skill recognises the strategy-selection intent, presents the 7 supported strategies with one-line descriptions, recommends solo-main given the context (single contributor, simplicity), and writes the marker <!-- git-flow-master:strategy:solo-main --> to CLAUDE.md so future invocations skip the question.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Implement the bulk-assign action for the users table. It needs a domain model with validation, a thin API endpoint, and a UI hook. About 600 lines total.",
+      "expected_output": "Skill should NOT trigger as the primary handler — this is a feature-implementation request, owned by /sprint-development. git-flow-master only enters the picture later when /sprint-development needs branch/commit/PR operations. If git-flow-master responds at all, it should redirect to /sprint-development.",
+      "should_trigger": false,
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write a unit test for the calculateDiscount function that covers the edge case when the input is zero.",
+      "expected_output": "Skill should NOT trigger — this is a unit-test design request, owned by /unit-testing. git-flow-master is purely a version-control-layer skill.",
+      "should_trigger": false,
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "the push got rejected with '! [rejected] feat/UPEX-200 -> feat/UPEX-200 (fetch first)'. what now?",
+      "expected_output": "Skill recognises push-rejected diagnostic, follows the push-rejected playbook (fetch + diff to show what's missing both ways, present pull-merge vs pull-rebase vs force-push-with-lease ranked by safety), warns that force-push is destructive and only acceptable on unshared branches with explicit opt-in, never executes force silently.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Este cambio va a tocar 800 líneas entre el schema, el backend y el frontend. Cómo lo trozeo en PRs más chicos?",
+      "expected_output": "Skill recognises chained-PR planning intent. Either hands off to /chained-pr (the strategic-decision skill, which is installed in this repo) or walks the inline decision tree from references/branching-strategies.md (Q1 mechanical? Q2 linearly decomposable? Q3 shared scaffolding?). Returns a strategy (stacked-to-main, feature-branch-chain, or size-exception) plus a concrete branch plan.",
+      "should_trigger": true,
+      "files": []
+    }
+  ]
+}

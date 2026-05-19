@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-backlog-seed",
+      "prompt": "Seed the product backlog from the PRD — create the initial epics and stories in Jira.",
+      "expected_behavior": "Activates product-management in initial-seed mode. Reads product-backlog-seed.md reference, parses PRD/* artifacts (mvp-scope, user-journeys), groups into epics, drafts INVEST-compliant stories, validates with the user, then creates them in Jira via [ISSUE_TRACKER_TOOL]. Reports epic + story IDs created.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-add-feature",
+      "prompt": "Add a new feature to the backlog: real-time notifications when a teammate comments on my ticket.",
+      "expected_behavior": "Activates product-management in incremental-add mode. Reads add-feature.md reference. Sizes the feature; if epic-sized, additionally reads epic-creation.md and proposes the epic + child stories. If story-sized, drafts a single INVEST story with AC. Confirms with the user before creating in Jira.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-ac-refinement",
+      "prompt": "Refine UPEX-123: clarify acceptance criteria and identify edge cases. Use Gherkin and enumerate the boundaries.",
+      "expected_behavior": "Activates product-management in refinement mode. Reads acceptance-criteria.md and edge-cases-enumeration.md references. Fetches UPEX-123 via [ISSUE_TRACKER_TOOL], rewrites AC as Gherkin (Given-When-Then), enumerates equivalence classes + boundary values, posts the refined AC back to Jira after user OK.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-three-amigos",
+      "prompt": "Run a 3-amigos session on UPEX-456 — I want PM, Dev, QA perspectives before we commit it to the sprint.",
+      "expected_behavior": "Activates product-management in story-refinement mode. Reads story-refinement.md reference (3-amigos protocol). Walks the three lenses (PM intent, Dev feasibility, QA testability), surfaces gaps and risks, validates INVEST compliance, produces a Ready-for-Development checklist. Updates Jira with refined description after user OK.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-implementation",
+      "prompt": "Implement UPEX-123. The story is refined and ready to code.",
+      "expected_behavior": "Does NOT activate product-management. Should route to /sprint-development because the request is per-story implementation. product-management refines stories BEFORE coding; sprint-development takes refined stories and codes them.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-prd-definition",
+      "prompt": "Define the PRD — executive summary, personas, MVP scope. We're starting from scratch.",
+      "expected_behavior": "Does NOT activate product-management. Should route to /project-foundation (phase-2-prd references) because the request is foundational product definition (one-time, at project birth). product-management runs continuously on top of an existing PRD.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-tms-test-cases",
+      "prompt": "Document these test cases in Xray with full traceability and link them to UPEX-456.",
+      "expected_behavior": "Does NOT activate product-management. TMS test case documentation is out of scope for this repo (it's a QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns the test-documentation skill and Xray integration.",
+      "category": "negative"
+    }
+  ]
+}

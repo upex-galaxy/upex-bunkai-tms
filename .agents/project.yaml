@@ -1,0 +1,64 @@
+# Project configuration consumed by AI agents (Claude, Cursor, Gemini, Codex, etc.)
+# when they encounter {{VAR_NAME}} references in prompts and docs.
+# Variable names are snake_case; the AI maps {{PROJECT_NAME}} -> project.project_name lexically.
+# Edit values manually.
+# Every unfilled field is `null` plus a TODO comment with a concrete example.
+#
+# NOTE: This is the project-starter TEMPLATE. All values are intentionally `null`.
+# Each downstream project that uses this starter must fill in the real values.
+
+project:
+  project_name: null # TODO: fill per project — Project name (e.g. MyProject)
+  project_key: null # TODO: fill per project — Project key in issue tracker (e.g. PROJ, OB, UPEX)
+  webapp_domain: null # TODO: fill per project — Domain of the web application under test (e.g. myproject.com)
+
+backend:
+  backend_repo: null # TODO: fill per project — Relative path to backend repository (e.g. ../my-backend)
+  backend_stack: null # TODO: fill per project — Backend technology stack (e.g. Node.js + Express)
+  backend_entry: null # TODO: fill per project — Backend source entry point (e.g. src/)
+
+frontend:
+  frontend_repo: null # TODO: fill per project — Relative path to frontend repository (e.g. ../my-frontend)
+  frontend_stack: null # TODO: fill per project — Frontend technology stack (e.g. React + TypeScript)
+  frontend_entry: null # TODO: fill per project — Frontend source entry point (e.g. src/)
+  design_md_path: null # OPTIONAL — path to DESIGN.md produced by /design-system. Defaults to ./DESIGN.md when null. Override only for atypical layouts (e.g. .context/DESIGN.md).
+
+database:
+  db_type: null # TODO: fill per project — Database engine (e.g. PostgreSQL)
+
+issue_tracker:
+  issue_tracker: null # TODO: fill per project — Issue tracking tool (e.g. Jira)
+  issue_tracker_cli: null # TODO: fill per project — CLI command to query tickets (e.g. acli (Jira) / gh issue (GitHub))
+  atlassian_url: null # TODO: fill per project — Atlassian instance base URL (e.g. https://company.atlassian.net)
+  atlassian_site: null # TODO: fill per project — Atlassian site slug used by `acli` (the subdomain before .atlassian.net, e.g. `mycompany`)
+
+testing:
+  default_env: null # TODO: fill per project — Default working environment — must match a key under `environments:` (e.g. staging)
+
+# Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
+# (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
+# `bun run vars:check` skips DECLARED_BUT_UNUSED warnings for these.
+# Each entry MUST include an inline `#` comment explaining WHERE the variable
+# is consumed — if the comment is missing, the linter fails with
+# EXTERNAL_CONSUMER_UNDOCUMENTED so the allowlist cannot rot silently.
+external_consumers:
+  - default_env # consumed implicitly by the AI variable resolver (sets active env for {{WEB_URL}} / {{API_URL}} / ...) AND by scripts/agents-setup.ts via process.env.DEFAULT_ENV in --non-interactive mode
+  - design_md_path # read by `yq '.design_md_path'` inside bash code fences of .claude/skills/{design-system/references/getdesign-matcher.md, project-bootstrap/references/frontend-setup.md}
+  - api_mcp # reserved env-scoped slot — placeholder for an MCP server that exposes the project's REST API (sister to db_mcp). Currently no skill/prompt resolves {{API_MCP}}; the slot is kept so projects that DO expose an API MCP can plug it in without a schema migration. Provisioned per-env by scripts/agents-setup.ts (API_MCP_LOCAL, API_MCP_STAGING, ...).
+
+# Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).
+# Each environment must define ALL four keys: web_url, api_url, db_mcp, api_mcp.
+# Prompts referencing {{WEB_URL}} / {{API_URL}} / {{DB_MCP}} / {{API_MCP}} resolve to the
+# active environment (`testing.default_env` above, or a session override).
+# For explicit cross-env references use {{environments.<env>.<var>}} (e.g. {{environments.local.web_url}}).
+environments:
+  local:
+    web_url: null # TODO: fill per project — Frontend URL for local env (e.g. http://localhost:3000)
+    api_url: null # TODO: fill per project — API base URL for local env (e.g. http://localhost:3000/api)
+    db_mcp: null # TODO: fill per project — MCP server name for local DB (e.g. myproject-local-db)
+    api_mcp: null # TODO: fill per project — MCP server name for local API (e.g. myproject-local-api)
+  staging:
+    web_url: null # TODO: fill per project — Frontend URL for staging env (e.g. https://staging.myproject.com)
+    api_url: null # TODO: fill per project — API base URL for staging env (e.g. https://api-staging.myproject.com)
+    db_mcp: null # TODO: fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
+    api_mcp: null # TODO: fill per project — MCP server name for staging API (e.g. myproject-staging-api)

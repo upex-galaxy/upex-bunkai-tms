@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Test artifacts
+test-results/
+playwright-report/
+allure-results/
+allure-report/
+reports/
+
+# Generated files
+api/types.ts
+kata-manifest.json
+bun.lock
+package-lock.json
+yarn.lock
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# ===========================================
+# TypeScript/JavaScript - ESLint handles these
+# ===========================================
+*.ts
+*.tsx
+*.js
+*.jsx
+
+# ===========================================
+# Documentation - Preserve manual formatting
+# ===========================================
+.context/
+.prompts/
+.books/
+
+# ===========================================
+# Skill directories - never format
+# ===========================================
+# Skills (T1 in .claude/skills/, T3/T4 community in .agents/skills/) ship as-is.
+# Prettier must NOT touch their .md / .json / .yaml — frontmatter, fenced code,
+# and example blocks rely on exact whitespace that Prettier would normalize.
+.claude/skills/
+.agents/skills/
+
+# ===========================================
+# MCP reference templates - never format
+# ===========================================
+# docs/mcp/*.template.* are syntax-sensitive opt-in configs (claude / opencode /
+# gemini / codex) that users copy verbatim into their active MCP config. Prettier
+# normalizes whitespace and trailing commas that would break the copy-paste path.
+docs/mcp/

@@ -1,0 +1,133 @@
+{
+  // OpenCode shared team config — committed to git.
+  // Secrets are NEVER stored here: every {env:VAR} placeholder is resolved
+  // from the developer's local environment (loaded from .env via `bun run opencode`,
+  // direnv, or a manually-sourced shell). See .env.example for required vars.
+  //
+  // Syntax notes (OpenCode-specific, different from Claude Code's .mcp.json):
+  //   - Env var expansion uses {env:VAR_NAME}  (NOT ${VAR})
+  //   - MCP root key is "mcp"                  (NOT "mcpServers")
+  //   - MCP env field is "environment"         (NOT "env")
+  //   - Missing env vars resolve to empty string (no hard failure) — see CLAUDE.md
+  //     Critical Reminder about stopping immediately when MCP credentials fail.
+  "$schema": "https://opencode.ai/config.json",
+
+  // Plugins:
+  //   - `@warp-dot-dev/opencode-warp`: Warp terminal integration — surfaces
+  //     OpenCode agent activity as native Warp notifications. Auto-installed
+  //     when OpenCode runs inside Warp.
+  //     Docs: https://docs.warp.dev/agent-platform/cli-agents/opencode/
+  //   - `opencode-subagent-statusline`: renders an active-subagent statusline
+  //     in the OpenCode TUI so multi-agent dispatch is visible at a glance.
+  "plugin": ["@warp-dot-dev/opencode-warp", "opencode-subagent-statusline"],
+
+  "mcp": {
+    "context7": {
+      "type": "local",
+      "command": ["bunx", "-y", "@upstash/context7-mcp"],
+      "enabled": true,
+    },
+    "tavily": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.tavily.com/mcp/?tavilyApiKey={env:TAVILY_API_KEY}",
+      ],
+      "enabled": true,
+    },
+    "supabase": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "{env:SUPABASE_ACCESS_TOKEN}",
+      ],
+      "enabled": true,
+      "environment": {
+        "SUPABASE_URL": "{env:SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "{env:SUPABASE_ANON_KEY}",
+        "SUPABASE_SERVICE_ROLE_KEY": "{env:SUPABASE_SERVICE_ROLE_KEY}",
+      },
+    },
+    "n8n": {
+      "type": "local",
+      "command": ["npx", "-y", "n8n-mcp"],
+      "enabled": true,
+      "environment": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "{env:N8N_API_URL}",
+        "N8N_API_KEY": "{env:N8N_API_KEY}",
+      },
+    },
+  },
+
+  // Permissions — mirrors .claude/settings.json 1:1.
+  // Rule precedence: last matching pattern wins, so deny entries are placed
+  // AFTER the broad allows they override (e.g. `git *` allow, then
+  // `git push --force *` deny — the deny wins for force-pushes).
+  "permission": {
+    "edit": "allow",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "bash": {
+      "*": "ask",
+
+      "bun *": "allow",
+      "bunx *": "allow",
+      "npm *": "allow",
+      "npx *": "allow",
+      "pnpm *": "allow",
+      "yarn *": "allow",
+      "node *": "allow",
+
+      "git *": "allow",
+      "gh *": "allow",
+
+      "ls *": "allow",
+      "cat *": "allow",
+      "echo *": "allow",
+      "tree *": "allow",
+      "test *": "allow",
+      "mkdir *": "allow",
+      "touch *": "allow",
+      "cp *": "allow",
+      "mv *": "allow",
+      "find *": "allow",
+      "grep *": "allow",
+      "rg *": "allow",
+      "sed *": "allow",
+      "awk *": "allow",
+      "head *": "allow",
+      "tail *": "allow",
+      "wc *": "allow",
+      "diff *": "allow",
+      "jq *": "allow",
+      "curl *": "allow",
+
+      "acli *": "allow",
+      "resend *": "allow",
+      "supabase *": "allow",
+
+      "rm -rf *": "deny",
+      "sudo rm *": "deny",
+      "sudo *": "deny",
+      "wget *": "deny",
+      "git push --force *": "deny",
+      "git push -f *": "deny",
+      "git reset --hard *": "deny",
+      "git clean -fd *": "deny",
+      "git branch -D *": "deny",
+      "chmod 777 *": "deny",
+      "truncate *": "deny",
+      "shred *": "deny",
+      "dd if=*": "deny",
+      "mkfs*": "deny",
+    },
+  },
+}

@@ -1,0 +1,19 @@
+{
+  "skill_name": "testability-guide",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fresh-scaffold-next-supabase-jira-epic",
+      "prompt": "I'm working on a Next.js 15 (App Router) + Supabase Postgres project called UpexGalaxy. We use Auth.js v5 with credentials provider, shadcn/ui for components, lucide-react for icons, Drizzle ORM. Our Jira project key is UPEX and /acli is already authenticated. The team needs a /qa page in the app that explains how QA testers and AI agents can hit the DB (via DBHub MCP), the API (via OpenAPI MCP that reads our spec at /api/openapi.json), and the UI (via Playwright code examples + agentic Playwright CLI). The real credentials should NOT be inline on the page — publish them as a Jira Epic in the UPEX project, then the page links out to that Epic. We have demo users qa+1@example.com, qa+2@example.com, qa+3@example.com (passwords are in our secrets store, do not write them anywhere). Visible copy in Spanish. Generate the page + the Epic body now.",
+      "expected_output": "An app/qa/page.tsx file in idiomatic Next.js App Router + shadcn + Tailwind, with the section structure from references/page-structure.md (header, credentials CTA above the fold, architecture, DB section, API section, Playwright code, Playwright CLI, quick reference collapsed). A snapshot comment at the top with stack=next-15, ui-kit=shadcn, auth=authjs-5, db=supabase-postgres, language=es, publisher=jira-epic, credentials-source=<Jira URL>, generated=<today>. A Jira Epic created in UPEX with the credentials artifact body (in wiki markup, one {noformat} block per credential, footer linking back to /qa). All data-testids in English. No real passwords anywhere. No new dependencies added. The credentials CTA href points at the new Epic URL.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "idempotent-no-op-on-identical-stack",
+      "prompt": "The /qa page already exists in our Next.js + Supabase project from a previous run last week. Its snapshot comment reads: stack=next-15.0.3, ui-kit=shadcn, icons=lucide-react, auth=authjs-5.0.0, db=supabase-postgres, orm=drizzle, language=es, publisher=jira-epic, credentials-source=https://upex.atlassian.net/browse/UPEX-321, openapi-spec=/api/openapi.json, default-branch=staging, generated=2026-05-08, content-hash=sha256:abc123. The stack has not changed since then. Re-run the skill — verify it detects no drift and reports a no-op instead of regenerating anything.",
+      "expected_output": "The skill reads the existing snapshot, re-runs pre-flight discovery, builds a fresh field map, diffs against the snapshot, finds only `generated` would differ, and reports: '/qa is up to date with the current stack snapshot. Nothing to do.' No files are modified. No external publish call is made. The audit trail records the no-op outcome.",
+      "files": []
+    }
+  ]
+}

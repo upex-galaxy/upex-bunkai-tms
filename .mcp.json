@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "bunx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "tavily": {
+      "command": "bunx",
+      "args": ["-y", "mcp-remote", "https://mcp.tavily.com/mcp/?tavilyApiKey=${TAVILY_API_KEY}"]
+    },
+    "supabase": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "${SUPABASE_ACCESS_TOKEN}"
+      ],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
+      }
+    },
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "${N8N_API_URL}",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      }
+    }
+  }
+}

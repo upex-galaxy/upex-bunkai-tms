@@ -1,0 +1,52 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-single-user-story",
+      "prompt": "Implement the user story UPEX-277. It's the empty-states story for the dashboard.",
+      "expected_behavior": "Activates sprint-development in single-story mode. Runs the 12-step workflow: epic precheck, Jira transition Ready-For-Dev -> In Progress, Stage 1 Planning (story-implementation-plan.md), Stage 2 Implementation (code + unit tests, may invoke /unit-testing for TDD slices), Stage 3 Code Review (review-pr.md, transitions to In Review), Stage 4 Staging Deploy. Pauses for user OK before each stage transition.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-bug-fix",
+      "prompt": "Fix bug PROJ-445: checkout button broken on mobile. Root-cause it first, then fix.",
+      "expected_behavior": "Activates sprint-development in bug-fix mode. Reads bug-fix-workflow.md reference. Runs root-cause analysis BEFORE proposing a fix (reproduce, isolate, identify the offending commit/component), drafts the minimal fix plan, then implements, opens PR, and transitions Jira. Adds a regression test to prevent reintroduction.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-resume-work",
+      "prompt": "Continue from where I left off on UPEX-100 — I think I had the API done but the UI wasn't wired yet.",
+      "expected_behavior": "Activates sprint-development in continue-implementation mode. Reads continue-implementation.md reference. Loads the .context/PBI/{module}/{UPEX-100}/ folder to recover state (implementation-plan, session notes), inspects git status + recent commits to detect actual progress, summarizes what's done vs pending, asks user OK before resuming the next stage.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-code-review",
+      "prompt": "Code review for PR #123 — please go through it before I merge.",
+      "expected_behavior": "Activates sprint-development in Stage 3 Code Review mode. Reads review-pr.md reference. Fetches the PR via gh, walks the diff, checks adherence to project-dev-guide and code-standards, flags issues with severity, posts inline review comments, produces a final verdict (approve / request-changes / comment). Does not merge automatically.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-staging-deploy",
+      "prompt": "Deploy to staging once the tests are green on the PR for UPEX-200.",
+      "expected_behavior": "Activates sprint-development in Stage 4 Staging Deploy mode. Verifies CI is green via gh, merges the PR (after user OK), triggers the staging deploy workflow, monitors until completion, posts the staging URL + version to Jira, transitions the ticket to Ready-For-QA. Does NOT auto-deploy to production (gated separate step).",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-ac-refinement",
+      "prompt": "Refine the AC for UPEX-277 — the criteria are vague and I want them as Gherkin before we code.",
+      "expected_behavior": "Does NOT activate sprint-development. Should route to /product-management (acceptance-criteria.md reference) because AC refinement happens BEFORE implementation. sprint-development assumes the story is Ready-For-Development; refining AC mid-flight is a sign the story shouldn't have been pulled into the sprint yet.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-standalone-unit-tests",
+      "prompt": "Write unit tests for this calculate-discount function — TDD style, red-green-refactor.",
+      "expected_behavior": "Does NOT activate sprint-development. Should route to /unit-testing because the request is standalone unit-test design, not full-story implementation. sprint-development MAY invoke /unit-testing internally for TDD slices, but a direct unit-test request bypasses the orchestrator.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-regression-suite",
+      "prompt": "Run the regression test suite on staging and tell me if we can release.",
+      "expected_behavior": "Does NOT activate sprint-development. Regression testing is out of scope for this repo (QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns regression-testing. sprint-development's Stage 4 deploys to staging but does not run formal regression.",
+      "category": "negative"
+    }
+  ]
+}

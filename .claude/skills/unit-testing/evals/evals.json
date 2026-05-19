@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "name": "should-trigger-write-unit-tests",
+      "prompt": "Write unit tests for this calculate-discount function — it has a few branches and I want them all covered.",
+      "expected_behavior": "Activates unit-testing in standalone mode. Reads unit-testing.md and test-naming.md references. Inspects the function, enumerates input partitions and branches, drafts test names per AAA / Given-When-Then convention, writes the test file with arranged inputs, acted call, asserted outputs, and runs it to confirm green. Reports coverage delta.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-tdd-workflow",
+      "prompt": "TDD this validator: I want the red-green-refactor cycle, write the failing test first.",
+      "expected_behavior": "Activates unit-testing in TDD mode. Reads tdd-workflow.md reference. Walks the explicit cycle: write failing test (red), confirm it fails for the right reason, write minimum code to pass (green), refactor while keeping green, repeat for each AC. Pauses between cycles to confirm direction with the user.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-mocking-question",
+      "prompt": "Qué debo mockear acá? La función llama a la base de datos y a una API externa, no estoy seguro qué dejar real.",
+      "expected_behavior": "Activates unit-testing in advisory mode. Reads mocking-patterns.md reference. Explains the mock/spy/stub/fake distinction, applies dependency-injection rule (mock at the boundary, not internals), recommends mocking the DB client and HTTP client (boundaries), keeping pure logic real. Provides a concrete refactor for testability if seams are missing.",
+      "category": "positive"
+    },
+    {
+      "name": "should-trigger-coverage-target",
+      "prompt": "What's a good coverage target for this business logic module? Line vs branch — what should I aim for?",
+      "expected_behavior": "Activates unit-testing in advisory mode. Reads test-coverage.md reference. Explains line vs branch coverage trade-offs, recommends branch coverage as the more meaningful target for business logic (typically 80-90% branch, 100% on critical paths), mentions mutation testing as the next step to validate the tests actually catch bugs.",
+      "category": "positive"
+    },
+    {
+      "name": "should-not-trigger-e2e-tests",
+      "prompt": "Write E2E tests for the login flow — Playwright, end-to-end against staging.",
+      "expected_behavior": "Does NOT activate unit-testing. E2E testing is out of scope; should route to the playwright-cli skill or to the sister repo agentic-qa-boilerplate which owns E2E test design. unit-testing is strictly unit-level (single function/module, mocked boundaries).",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-story-implementation",
+      "prompt": "Implement this story UPEX-277 about empty states — code + tests + PR.",
+      "expected_behavior": "Does NOT activate unit-testing directly. Should route to /sprint-development because the request is full-story orchestration (planning, code, review, deploy). sprint-development MAY invoke /unit-testing internally for TDD slices, but the entry point is the orchestrator, not the focused skill.",
+      "category": "negative"
+    },
+    {
+      "name": "should-not-trigger-regression-run",
+      "prompt": "Run the regression test suite — I want to know if anything broke before the release.",
+      "expected_behavior": "Does NOT activate unit-testing. Regression suite execution is out of scope for this repo (QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns regression-testing. unit-testing only writes/advises on unit-level tests, never runs the regression suite.",
+      "category": "negative"
+    }
+  ]
+}
