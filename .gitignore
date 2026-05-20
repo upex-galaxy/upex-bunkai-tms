@@ -89,6 +89,14 @@ dbhub.toml
 # reports, session handoffs). Kept on local disk only — never pushed.
 .scratch/
 
+# ===== Session cache =====
+# Per-skill working state during long, multi-phase workflows
+# (e.g. `/project-bootstrap` Phase A → E). Atomised into
+# .session/<skill-slug>/<scope>/{plan.md, progress.md} so an AI assistant
+# can recover context mid-flight. Never pushed — committed knowledge
+# lives in `.context/` instead.
+.session/
+
 # ===== Installer lock + state =====
 # `.template/installer.lock.json` is TRACKED (small, immutable sentinel that
 # pins the bootstrapped template — written once by the scaffolder / installer).
