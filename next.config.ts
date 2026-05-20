@@ -4,9 +4,7 @@ import path from 'node:path';
 const config: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.resolve(import.meta.dirname),
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   images: {
     remotePatterns: [],
   },
