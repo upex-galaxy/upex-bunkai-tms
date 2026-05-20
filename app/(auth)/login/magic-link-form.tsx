@@ -2,13 +2,14 @@
 
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { createClient } from '@lib/supabase/client';
 import { ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
+
+interface MagicLinkApiError { error?: { message?: string } }
 
 // Lives in its own file so the parent page can wrap it in `<Suspense>` —
 // `useSearchParams()` triggers a static-render bailout otherwise, and Next 15
@@ -26,14 +27,14 @@ export function MagicLinkForm() {
     if (!isValid || submitting) { return; }
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: redirect },
+      const response = await fetch('/api/v1/auth/magic-link', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, next }),
       });
-      if (error) {
-        toast.error(error.message);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as MagicLinkApiError | null;
+        toast.error(body?.error?.message ?? `Magic-link request failed (${response.status})`);
         return;
       }
       setSent(true);
