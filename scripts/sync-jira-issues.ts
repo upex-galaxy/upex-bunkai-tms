@@ -611,8 +611,13 @@ function cleanMarkdown(text: string): string {
     .replace(/^h6\.\s*/gm, '###### ')
     .replace(/\{noformat\}/g, '```')
     .replace(/\{code(?::.*?)?\}/g, '```')
-    .replace(/\*([^*\n]+)\*/g, '**$1**') // Wiki bold *text* to Markdown **text**
-    .replace(/_([^_\n]+)_/g, '*$1*'); // Wiki italic _text_ to Markdown *text*
+    // Wiki bold *text* → Markdown **text**. Word-boundary guards prevent
+    // re-wrapping already-MD bold (`**text**`) and mangling stray asterisks
+    // adjacent to identifiers.
+    .replace(/(?<![\w*])\*([^*\n]+)\*(?![\w*])/g, '**$1**')
+    // Wiki italic _text_ → Markdown *text*. Word-boundary guards prevent
+    // mangling snake_case identifiers (active_workspace_id, NOT_A_MEMBER, …).
+    .replace(/\b_([^_\n]+)_\b/g, '*$1*');
 }
 
 /**
