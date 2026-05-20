@@ -1,0 +1,529 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bunkai TMS API",
+    "version": "0.1.0",
+    "description": "Bunkai TMS public API. Wraps Supabase auth, ATC authoring, and run execution behind a versioned `/api/v1` surface. Designed to be operated by humans, scripts, CI/CD, and AI agents.",
+    "contact": {
+      "name": "Bunkai",
+      "url": "https://bunkai.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local dev"
+    },
+    {
+      "url": "https://staging-upexbunkai.vercel.app",
+      "description": "Staging"
+    },
+    {
+      "url": "https://upexbunkai.vercel.app",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Service liveness probes."
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication and session bootstrap."
+    },
+    {
+      "name": "Tokens",
+      "description": "Personal access token issuance and revocation."
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Personal access token. Format: `bk_pat_<12-char-prefix>.<base64url-secret>`. Issue via `POST /api/v1/tokens`."
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sb-fmbpikzpkafptqximhxn-auth-token",
+        "description": "Supabase session cookie. Set automatically after the magic-link callback in the web app. Used for browser-driven calls."
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "validation_failed",
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "method_not_allowed",
+                  "conflict",
+                  "idempotency_key_required",
+                  "idempotency_key_invalid",
+                  "rate_limited",
+                  "internal_error",
+                  "upstream_error"
+                ],
+                "description": "Machine-readable error code. Branch on this value, not on `message`."
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable error description."
+              },
+              "details": {
+                "description": "Optional structured details. For validation errors this is the ZodError issues array."
+              },
+              "request_id": {
+                "type": "string",
+                "description": "Echoed `x-request-id`. Quote this in bug reports."
+              }
+            },
+            "required": ["code", "message"]
+          }
+        },
+        "required": ["error"],
+        "description": "Canonical error envelope returned by every `/api/v1` route on failure."
+      },
+      "MagicLinkResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          }
+        },
+        "required": ["ok"]
+      },
+      "MagicLinkBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "tester@bunkai.io"
+          },
+          "next": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Root-relative path to land on after the OTP exchange. Defaults to `/projects`.",
+            "example": "/projects"
+          }
+        },
+        "required": ["email"]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "service": {
+            "type": "string",
+            "example": "bunkai-tms"
+          },
+          "env": {
+            "type": "string",
+            "enum": ["local", "staging", "production"]
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the probe."
+          }
+        },
+        "required": ["ok", "service", "env", "ts"]
+      },
+      "CreateTokenResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "description": "Raw PAT in the form `bk_pat_<prefix>.<secret>`. Shown ONCE in this response. The server only stores SHA-256(secret).",
+            "example": "bk_pat_AbCdEfGhIjKl.MnOpQrStUv..."
+          },
+          "name": {
+            "type": ["string", "null"]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"],
+              "description": "PAT scope vocabulary. Mirrors `.context/SRS/api-contracts.yaml` tags."
+            }
+          },
+          "workspace_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "warning": {
+            "type": "string",
+            "example": "Store this token now — it cannot be retrieved later."
+          }
+        },
+        "required": [
+          "id",
+          "token",
+          "name",
+          "scopes",
+          "workspace_id",
+          "expires_at",
+          "created_at",
+          "warning"
+        ]
+      },
+      "CreateTokenBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Human-readable label shown in the token-management UI.",
+            "example": "ci-pipeline"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"],
+              "description": "PAT scope vocabulary. Mirrors `.context/SRS/api-contracts.yaml` tags."
+            },
+            "minItems": 1,
+            "description": "Scopes granted to this token. At least one required."
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Restrict the token to a single workspace. Omit for cross-workspace tokens."
+          },
+          "expires_in_days": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 365,
+            "description": "TTL in days. Omit for non-expiring tokens. Max 365."
+          }
+        },
+        "required": ["scopes"]
+      },
+      "ListTokensResponse": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TokenSummary"
+            }
+          }
+        },
+        "required": ["tokens"]
+      },
+      "TokenSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": ["string", "null"]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"],
+              "description": "PAT scope vocabulary. Mirrors `.context/SRS/api-contracts.yaml` tags."
+            }
+          },
+          "workspace_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "token_prefix": {
+            "type": "string",
+            "description": "First 12 chars of the secret. Safe to display."
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "workspace_id",
+          "token_prefix",
+          "expires_at",
+          "revoked_at",
+          "last_used_at",
+          "created_at"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/auth/magic-link": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Send a Supabase magic-link email",
+        "description": "Server-side wrapper around `supabase.auth.signInWithOtp`. Sends a one-time link to the supplied email. Public — no auth required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MagicLinkBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Magic-link email enqueued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MagicLinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Supabase OTP rate limit hit (free tier: 4/hour/email).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream Supabase error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness probe",
+        "description": "Returns service identity, current environment, and a server timestamp. Always public.",
+        "responses": {
+          "200": {
+            "description": "Service is up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens": {
+      "post": {
+        "tags": ["Tokens"],
+        "summary": "Issue a personal access token",
+        "description": "Issuance is session-authenticated — a logged-in user mints PATs via the web app. PATs cannot mint other PATs (chicken-and-egg). The raw secret is returned exactly once.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created. Capture the `token` field — it is unrecoverable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Tokens"],
+        "summary": "List the caller's tokens",
+        "description": "Returns every PAT the calling user owns, without the secret hash. RLS enforces ownership.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTokensResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens/{id}": {
+      "delete": {
+        "tags": ["Tokens"],
+        "summary": "Revoke a personal access token",
+        "description": "Soft-delete: sets `revoked_at = now()` so the row stays in the audit trail. The bearer middleware rejects revoked rows.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Token id from `GET /api/v1/tokens`."
+            },
+            "required": true,
+            "description": "Token id from `GET /api/v1/tokens`.",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Token revoked."
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found or already revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}
