@@ -21,6 +21,10 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
+# Supabase CLI scratch directory — `supabase gen types`, `supabase link`,
+# etc. drop project metadata here. Local-only; never commit.
+supabase/.temp/
+
 # ===== Playwright Test Artifacts =====
 /test-results/
 /playwright-report/

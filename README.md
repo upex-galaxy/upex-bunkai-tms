@@ -397,6 +397,7 @@ bun up --auto             # Non-interactive / CI mode (safe changes only, exit 0
 bun up --dry-run          # Preview what would change without writing anything
 bun up --rollback         # Restore from most recent backup
 bun run api:sync          # Sync OpenAPI spec + generate types
+bun run types:gen         # Regenerate lib/types/supabase.ts from the live Supabase schema
 bun run vars:check         # Validate {{VAR}} and {{jira.*}} references
 bun run jira:sync-fields  # Sync Jira custom fields -> .agents/jira-fields.json
 bun run jira:check        # Validate Jira manifest vs catalog

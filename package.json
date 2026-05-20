@@ -30,6 +30,7 @@
     "lint:check": "eslint .",
     "lint:fix": "eslint --fix .",
     "types:check": "tsc --noEmit",
+    "types:gen": "bun scripts/gen-supabase-types.ts",
     "repo:check": "bun run format:check && bun run lint:check && bun run types:check && bun run vars:check && bun run skills:check && bun run skills:registry:check",
     "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run skills:check && bun run skills:registry:check",
     "clean": "rm -rf node_modules dist .next",

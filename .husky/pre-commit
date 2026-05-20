@@ -15,3 +15,15 @@ if echo "$STAGED" | grep -qE '^(\.claude/skills/.+/SKILL\.md$|scripts/build-skil
     exit 1
   }
 fi
+
+# Supabase migrations: regenerate types if any migration was staged.
+if echo "$STAGED" | grep -qE '^supabase/migrations/'; then
+  echo "▸ Detected staged supabase/migrations/* — regenerating lib/types/supabase.ts"
+  if bun run types:gen; then
+    git add lib/types/supabase.ts
+  else
+    echo ""
+    echo "❌ types:gen failed. Either fix the issue or run with --no-verify (Critical Rule #6 — prefer fixing)."
+    exit 1
+  fi
+fi
