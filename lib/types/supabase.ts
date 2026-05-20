@@ -12,6 +12,8 @@ export type Json
     | Json[];
 
 export interface Database {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: '14.5'
   }
@@ -48,6 +50,56 @@ export interface Database {
             columns: ['user_story_id']
             isOneToOne: false
             referencedRelation: 'user_stories'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      access_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          hash: string
+          id: string
+          last_used_at: string | null
+          name: string | null
+          revoked_at: string | null
+          scopes: string[]
+          token_prefix: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          hash: string
+          id?: string
+          last_used_at?: string | null
+          name?: string | null
+          revoked_at?: string | null
+          scopes: string[]
+          token_prefix: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          hash?: string
+          id?: string
+          last_used_at?: string | null
+          name?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+          token_prefix?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'access_tokens_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
         ]
