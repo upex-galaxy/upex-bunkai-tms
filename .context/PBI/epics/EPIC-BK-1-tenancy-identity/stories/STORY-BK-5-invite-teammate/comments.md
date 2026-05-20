@@ -50,4 +50,4 @@
 
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:06:02.569Z_
+_Last sync: 2026-05-20T00:58:00.428Z_

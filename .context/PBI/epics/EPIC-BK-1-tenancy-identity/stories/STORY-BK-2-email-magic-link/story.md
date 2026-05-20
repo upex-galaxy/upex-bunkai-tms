@@ -136,4 +136,4 @@ OUT OF SCOPE:
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:06:01.425Z_
+_Last sync: 2026-05-20T00:57:58.337Z_

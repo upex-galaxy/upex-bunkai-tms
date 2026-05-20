@@ -124,4 +124,4 @@ See `.context/PBI/epics/EPIC-BK-{N}-tenancy-identity/stories/*/story.md` for per
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:06:01.421Z_
+_Last sync: 2026-05-20T00:57:58.334Z_
