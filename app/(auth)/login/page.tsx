@@ -1,14 +1,7 @@
-'use client';
-
 import { Button } from '@components/ui/button';
-import { Input } from '@components/ui/input';
-import { createClient } from '@lib/supabase/client';
 import { ArrowRight, Terminal } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
-import { toast } from 'sonner';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
+import { Suspense } from 'react';
+import { MagicLinkForm } from './magic-link-form';
 
 const FEATURE_TICKS: Array<[string, string]> = [
   ['IQL', 'Integrated Quality Lifecycle — methodology that spans story → case → run → bug.'],
@@ -19,38 +12,6 @@ const FEATURE_TICKS: Array<[string, string]> = [
 ];
 
 export default function LoginPage() {
-  const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? '/projects';
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const isValid = EMAIL_REGEX.test(email);
-
-  const sendMagicLink = async () => {
-    if (!isValid || submitting) { return; }
-    setSubmitting(true);
-    try {
-      const supabase = createClient();
-      const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: redirect },
-      });
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      setSent(true);
-    }
-    catch (err) {
-      const message = err instanceof Error ? err.message : 'Unexpected error sending magic link';
-      toast.error(message);
-    }
-    finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="grid h-screen grid-cols-1 bg-surface-0 lg:grid-cols-[1fr_460px]">
       {/* LEFT — brand / etymology panel */}
@@ -161,58 +122,9 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {sent
-            ? (
-                <div className="rounded-3 border border-signal-pass/30 bg-signal-pass-bg p-3 text-sm text-fg-1">
-                  <div className="font-semibold text-signal-pass">Check your inbox</div>
-                  <div className="mt-1 text-fg-2">
-                    A sign-in link was sent to
-                    {' '}
-                    <span className="font-mono text-fg-0">{email}</span>
-                    .
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSent(false)}
-                    className="mt-3 text-xs text-fg-3 underline-offset-2 hover:text-fg-1 hover:underline"
-                  >
-                    Use a different email
-                  </button>
-                </div>
-              )
-            : (
-                <form
-                  className="flex flex-col gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void sendMagicLink();
-                  }}
-                >
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-fg-2">
-                      Email
-                    </span>
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="qa@your-org.dev"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="h-10 text-md"
-                    />
-                  </label>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    disabled={!isValid || submitting}
-                    className="w-full justify-center"
-                  >
-                    {submitting ? 'Sending…' : 'Send magic link'}
-                    <ArrowRight size={14} />
-                  </Button>
-                </form>
-              )}
+          <Suspense fallback={<div className="h-[120px]" aria-hidden />}>
+            <MagicLinkForm />
+          </Suspense>
 
           <div className="my-4 flex items-center gap-2.5 text-xs text-fg-4">
             <div className="h-px flex-1 bg-stroke-1" />
