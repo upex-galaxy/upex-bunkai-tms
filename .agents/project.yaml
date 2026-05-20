@@ -58,7 +58,12 @@ environments:
     db_mcp: fmbpikzpkafptqximhxn.supabase.co # fill per project — MCP server name for local DB (e.g. myproject-local-db)
     api_mcp: myproject-local-api # fill per project — MCP server name for local API (e.g. myproject-local-api)
   staging:
-    web_url: staging-bunkai.vercel.app # fill per project — Frontend URL for staging env (e.g. https://staging.myproject.com)
-    api_url: staging-bunkai.vercel.app/api # fill per project — API base URL for staging env (e.g. https://api-staging.myproject.com)
-    db_mcp: fmbpikzpkafptqximhxn.supabase.co # fill per project — MCP server name for staging DB (e.g. myproject-staging-db)
-    api_mcp: myproject-staging-api # fill per project — MCP server name for staging API (e.g. myproject-staging-api)
+    web_url: https://staging-upexbunkai.vercel.app # Vercel preview alias for the staging branch
+    api_url: https://staging-upexbunkai.vercel.app/api # Same host as staging web; API mounted under /api
+    db_mcp: fmbpikzpkafptqximhxn.supabase.co # Same Supabase project as local/prod for MVP (single-project tenancy)
+    api_mcp: bunkai-staging-api # Reserved MCP slot — not yet wired
+  production:
+    web_url: https://upexbunkai.vercel.app # Vercel production alias (defensive bunkai.io to be wired post-MVP)
+    api_url: https://upexbunkai.vercel.app/api # Same host as production web; API mounted under /api
+    db_mcp: fmbpikzpkafptqximhxn.supabase.co # Same Supabase project as local/staging for MVP
+    api_mcp: bunkai-production-api # Reserved MCP slot — not yet wired

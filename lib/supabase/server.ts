@@ -1,6 +1,6 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { env } from '@lib/config';
+import { env } from '@lib/env';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
