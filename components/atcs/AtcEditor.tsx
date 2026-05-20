@@ -4,11 +4,14 @@ import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcStep, Module,
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState, useTransition } from 'react';
+import { toast } from 'sonner';
 
 const StepEditor = dynamic(
   async () => import('@components/atcs/StepEditor').then(m => m.StepEditor),
@@ -22,6 +25,22 @@ const StepEditor = dynamic(
   },
 );
 
+export interface AtcSaveInput {
+  atcId: string
+  projectSlug: string
+  title: string
+  layer: string
+  tags: string[]
+  userStoryId: string
+  stepsMarkdown: string
+  assertionsYaml: string
+  acIds: string[]
+}
+
+export type AtcSaveResult
+  = | { ok: true }
+    | { ok: false, error: string };
+
 interface AtcEditorProps {
   atc: Atc
   module: Module | null
@@ -32,6 +51,7 @@ interface AtcEditorProps {
   stories: UserStory[]
   storyAcs: Record<string, AcceptanceCriterion[]>
   projectSlug: string
+  onSave: (input: AtcSaveInput) => Promise<AtcSaveResult>
 }
 
 const LAYERS: AtcLayer[] = ['UI', 'API', 'Unit'];
@@ -46,7 +66,10 @@ export function AtcEditor({
   stories,
   storyAcs,
   projectSlug,
+  onSave,
 }: AtcEditorProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(atc.title);
   const [layer, setLayer] = useState<AtcLayer>(atc.layer);
   const [tags, setTags] = useState<string[]>(atc.tags);
@@ -54,25 +77,11 @@ export function AtcEditor({
   const [storyId, setStoryId] = useState<string | null>(atc.user_story_id);
   const [acIds, setAcIds] = useState<string[]>(initialAcIds);
 
-  const [stepsMd, setStepsMd] = useState(() =>
-    initialSteps
-      .map(
-        (s, i) =>
-          `${String(i + 1).padStart(2, '0')}. ${s.content}${
-            s.input_data ? `\n    input: ${s.input_data}` : ''
-          }${s.expected ? `\n    expected: ${s.expected}` : ''}`,
-      )
-      .join('\n\n') || '01. ',
-  );
-
-  const [assertionsYaml, setAssertionsYaml] = useState(() =>
-    initialAssertions.length > 0
-      ? initialAssertions.map(a => `- ${a.content}`).join('\n')
-      : '- ',
-  );
+  const [stepsMd, setStepsMd] = useState(() => stepsToMarkdown(initialSteps));
+  const [assertionsYaml, setAssertionsYaml] = useState(() => assertionsToYaml(initialAssertions));
 
   const isAnchored = !!storyId && acIds.length >= 1;
-  const canSave = isAnchored && title.trim().length > 0;
+  const canSave = isAnchored && title.trim().length > 0 && !isPending;
 
   const addTag = () => {
     const t = tagInput.trim().toLowerCase();
@@ -84,17 +93,25 @@ export function AtcEditor({
   const removeTag = (t: string) => setTags(tags.filter(x => x !== t));
 
   const handleSave = () => {
-    if (!canSave) { return; }
-    // Phase D: transactional upsert via Supabase
-    console.warn('[bunkai] save stub →', {
-      atc_id: atc.id,
-      title,
-      layer,
-      tags,
-      user_story_id: storyId,
-      acceptance_criterion_ids: acIds,
-      steps_markdown: stepsMd,
-      assertions_yaml: assertionsYaml,
+    if (!canSave || !storyId) { return; }
+    startTransition(async () => {
+      const result = await onSave({
+        atcId: atc.id,
+        projectSlug,
+        title: title.trim(),
+        layer,
+        tags,
+        userStoryId: storyId,
+        stepsMarkdown: stepsMd,
+        assertionsYaml,
+        acIds,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success('ATC saved');
+      router.refresh();
     });
   };
 
@@ -146,7 +163,7 @@ export function AtcEditor({
             )}
           >
             <Save size={11} />
-            Save ATC
+            {isPending ? 'Saving…' : 'Save ATC'}
             <span className="kbd">⌘</span>
             <span className="kbd">S</span>
           </Button>

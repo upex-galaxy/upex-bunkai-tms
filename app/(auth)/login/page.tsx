@@ -2,8 +2,11 @@
 
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { createClient } from '@lib/supabase/client';
 import { ArrowRight, Terminal } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
@@ -16,15 +19,36 @@ const FEATURE_TICKS: Array<[string, string]> = [
 ];
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next') ?? '/projects';
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const isValid = EMAIL_REGEX.test(email);
 
-  const sendMagicLink = () => {
-    if (!isValid) { return; }
-    // Phase D: swap for supabase.auth.signInWithOtp({ email })
-    console.warn('[bunkai] magic-link stub →', email);
-    setSent(true);
+  const sendMagicLink = async () => {
+    if (!isValid || submitting) { return; }
+    setSubmitting(true);
+    try {
+      const supabase = createClient();
+      const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirect },
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setSent(true);
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error sending magic link';
+      toast.error(message);
+    }
+    finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -161,7 +185,7 @@ export default function LoginPage() {
                   className="flex flex-col gap-2"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    sendMagicLink();
+                    void sendMagicLink();
                   }}
                 >
                   <label className="block">
@@ -181,10 +205,10 @@ export default function LoginPage() {
                     type="submit"
                     variant="primary"
                     size="lg"
-                    disabled={!isValid}
+                    disabled={!isValid || submitting}
                     className="w-full justify-center"
                   >
-                    Send magic link
+                    {submitting ? 'Sending…' : 'Send magic link'}
                     <ArrowRight size={14} />
                   </Button>
                 </form>

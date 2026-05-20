@@ -1,15 +1,15 @@
+import type {
+  AcceptanceCriterion,
+  Atc,
+  AtcAssertion,
+  AtcStep,
+  Module,
+  UserStory,
+} from '@lib/types';
 import { AtcEditor } from '@components/atcs/AtcEditor';
-import {
-  getAcceptanceCriteriaForStory,
-  getAssertionsForAtc,
-  getAtc,
-  getBoundAcIdsForAtc,
-  getProjectBySlug,
-  getStepsForAtc,
-  modules,
-  userStories,
-} from '@lib/mock';
+import { createClient } from '@lib/supabase/server';
 import { notFound } from 'next/navigation';
+import { saveAtcAction } from './actions';
 
 interface PageProps {
   params: Promise<{ projectSlug: string, atcId: string }>
@@ -17,40 +17,69 @@ interface PageProps {
 
 export default async function AtcEditorPage({ params }: PageProps) {
   const { projectSlug, atcId } = await params;
+  const supabase = await createClient();
 
-  const project = getProjectBySlug(projectSlug);
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id, slug')
+    .eq('slug', projectSlug)
+    .limit(1)
+    .maybeSingle();
+
   if (!project) { notFound(); }
 
-  const atc = getAtc(atcId);
-  if (!atc || atc.project_id !== project.id) { notFound(); }
+  const { data: atc } = await supabase
+    .from('atcs')
+    .select('*')
+    .eq('id', atcId)
+    .eq('project_id', project.id)
+    .maybeSingle();
 
-  const module_ = modules.find(m => m.id === atc.module_id) ?? null;
-  const steps = getStepsForAtc(atc.id);
-  const assertions = getAssertionsForAtc(atc.id);
-  const boundAcIds = getBoundAcIdsForAtc(atc.id);
+  if (!atc) { notFound(); }
 
-  // All stories in the project's modules (for the picker)
-  const projectModuleIds = new Set(
-    modules.filter(m => m.project_id === project.id).map(m => m.id),
-  );
-  const projectStories = userStories.filter(s => projectModuleIds.has(s.module_id));
+  const [{ data: stepsData }, { data: assertionsData }, { data: boundData }, { data: moduleData }] = await Promise.all([
+    supabase.from('atc_steps').select('*').eq('atc_id', atc.id).order('position', { ascending: true }),
+    supabase.from('atc_assertions').select('*').eq('atc_id', atc.id).order('position', { ascending: true }),
+    supabase.from('atc_acceptance_criteria').select('acceptance_criterion_id').eq('atc_id', atc.id),
+    supabase.from('modules').select('*').eq('id', atc.module_id).maybeSingle(),
+  ]);
 
-  const storyAcs: Record<string, ReturnType<typeof getAcceptanceCriteriaForStory>> = {};
-  for (const s of projectStories) {
-    storyAcs[s.id] = getAcceptanceCriteriaForStory(s.id);
+  // For the anchoring picker we need every story in the project + their ACs.
+  const { data: projectModules } = await supabase
+    .from('modules')
+    .select('id')
+    .eq('project_id', project.id);
+
+  const moduleIds = (projectModules ?? []).map(m => m.id);
+
+  const { data: storiesData } = moduleIds.length > 0
+    ? await supabase.from('user_stories').select('*').in('module_id', moduleIds)
+    : { data: [] };
+
+  const storyIds = (storiesData ?? []).map(s => s.id);
+  const { data: acsData } = storyIds.length > 0
+    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds).order('position', { ascending: true })
+    : { data: [] };
+
+  const stories = (storiesData ?? []) as UserStory[];
+  const acceptanceCriteria = (acsData ?? []) as AcceptanceCriterion[];
+  const storyAcs: Record<string, AcceptanceCriterion[]> = {};
+  for (const s of stories) {
+    storyAcs[s.id] = acceptanceCriteria.filter(ac => ac.user_story_id === s.id);
   }
 
   return (
     <AtcEditor
-      atc={atc}
-      module={module_}
-      modulePath={module_?.path ?? '—'}
-      initialSteps={steps}
-      initialAssertions={assertions}
-      initialAcIds={boundAcIds}
-      stories={projectStories}
+      atc={atc as Atc}
+      module={(moduleData ?? null) as Module | null}
+      modulePath={moduleData?.path ?? '—'}
+      initialSteps={(stepsData ?? []) as AtcStep[]}
+      initialAssertions={(assertionsData ?? []) as AtcAssertion[]}
+      initialAcIds={(boundData ?? []).map(b => b.acceptance_criterion_id)}
+      stories={stories}
       storyAcs={storyAcs}
       projectSlug={project.slug}
+      onSave={saveAtcAction}
     />
   );
 }
