@@ -2,54 +2,62 @@
 
 **Jira Key:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12)
 **Priority:** Medium
-**Status:** Backlog
-**Total Story Points:** 4
+**Status:** Planning
+**Total Story Points:** 0
 
 ---
 
 ## Description
 
-# EPIC-BK-3 — User Stories & Acceptance Criteria
+# EPIC BK-12 — User Stories & Acceptance Criteria
 
 Maps PRD EPIC-BK-003 (US 3.1..3.4) and SRS FR-007..FR-009.
 
-Capability: Authoring layer above the Project/Module hierarchy. Members can capture business intent as User Stories (US), break each US into discrete Acceptance Criteria (AC), and one-way-import existing Stories from Jira. US/AC bodies are Markdown so the content stays rich and AI-readable.
+Authoring layer above the Project/Module hierarchy. Members capture business intent as ***User Stories (US)****, break each US into discrete ****Acceptance Criteria (AC)***, and one-way-import existing Stories from Jira. US and AC bodies are Markdown so content stays rich for humans and readable for AI agents.
+
+## Wave
+
+***Wave 2.5*** — User Stories + Acceptance Criteria. Bridges Wave 2 (Module hierarchy) and Wave 3 (ATC Library). Adds the US → AC chain that ATCs and Tests will later anchor to, plus the Markdown editor and the one-way Jira import path. See `.context/master-implementation-plan.md` §5.
 
 ## Scope
 
 - US 3.1 — Create/edit/delete User Story anchored to a Module (`FR-007`).
 - US 3.2 — Attach one or more Acceptance Criteria to a US with ordered position (`FR-008`).
 - US 3.3 — One-way Jira import: pull US + heuristic AC extraction by JQL (`FR-009`).
-- US 3.4 — Markdown editor + render path for US.description and AC.description.
+- US 3.4 — Markdown editor + sanitized render path for US.description and AC.description.
 
-## Out of Scope (MVP)
+## Out of scope (MVP)
 
-- Bidirectional Jira sync (status pushes / field sync) — Phase 3.
-- AC ordering via drag-handle UI (covered as basic input/integer position in MVP — fancier UX deferred).
+- Bidirectional Jira sync (status push / field sync) — Phase 3.
+- AC ordering via drag-handle UI — MVP uses integer `position` field, drag UX deferred.
 - GitHub Issues / Linear import — Phase 3.
 
-## Business Rules
+## Business rules
 
-- A User Story MUST belong to one Module; Module MUST belong to caller's Workspace.
+- A User Story MUST belong to one Module; the Module MUST belong to the caller's Workspace.
 - An Acceptance Criterion MUST belong to one User Story (no orphans).
-- `external_id` (Jira issue key) MUST match `[A-Z]+-\d+` and is unique within Project.
-- A User Story can be marked `ready_to_test` ONLY when it has ≥1 AC.
-- Jira import is idempotent on `external_id` — re-running JQL never duplicates.
+- `external_id` (Jira issue key) MUST match `^[A-Z]+-\d+$` and is unique within Project.
+- A User Story can be marked `ready*to*test` ONLY when it has at least 1 AC.
+- Jira import is idempotent on `external_id` — re-running the same JQL never duplicates rows.
 
 ## Stories
 
-- BK-13 — User Story CRUD (FR-007)
-- BK-14 — Acceptance Criterion CRUD with position rebalance (FR-008)
-- BK-15 — Markdown editor + render for US/AC bodies (US 3.4)
-- BK-16 — Jira import (one-way pull, async job) (FR-009)
+- ***BK-14*** — User Story CRUD anchored to Module (FR-007).
+- ***BK-15*** — Acceptance Criterion CRUD with position rebalance and `ready*to*test` gating (FR-008).
+- ***BK-16*** — Markdown editor + sanitized render path for US/AC bodies (US 3.4, supports FR-007 and FR-008).
+- ***BK-17*** — Async one-way Jira import by JQL with ADF → Markdown conversion and idempotency on `external_id` (FR-009).
 
-## Related Documentation
+## Stack notes
 
-- PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003
-- SRS: `.context/SRS/functional-specs.md` § FR-007, FR-008, FR-009
-- Business map: `.context/business/business-data-map.md` (entity: user_stories, acceptance_criteria)
-- API contract: `.context/SRS/api-contracts.yaml` (paths: /user-stories, /acceptance-criteria, /imports)
+MVP runs on the built stack: ***Next.js 15 App Router**** (API routes under `app/api/`) plus ****Supabase*** (Postgres 16, RLS, Auth, Realtime, Storage). The Jira import worker runs as a Supabase Edge Function on a cron schedule — no separate queue infrastructure for MVP. Markdown editor uses `react-markdown` + `remark-gfm` + `rehype-sanitize`; server-side sanitization through `sanitize-html`.
 
+## Related documentation
+
+- PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003.
+- SRS: `.context/SRS/functional-specs.md` § FR-007, FR-008, FR-009.
+- Business data map: `.context/business/business-data-map.md` (entities `user*stories`, `acceptance*criteria`).
+- API contract: `.context/SRS/api-contracts.yaml` (paths `/user-stories`, `/acceptance-criteria`, `/imports`).
+- Master plan: `.context/master-implementation-plan.md` §5 Wave 3 (this epic is the bridging Wave 2.5).
 
 ---
 
@@ -57,17 +65,17 @@ Capability: Authoring layer above the Project/Module hierarchy. Members can capt
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) | FR-007 User Story CRUD anchored to Module with Markdown body and optional Jira external_id | 1 | Medium | Backlog |
-| [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) | FR-008 Acceptance Criterion CRUD with position rebalance and ready_to_test gating | 1 | Medium | Backlog |
-| [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) | Markdown editor and sanitized render path for User Story and Acceptance Criterion bodies | 1 | Medium | Backlog |
-| [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) | FR-009 async one-way Jira import by JQL with ADF to Markdown conversion and idempotency on external_id | 1 | Medium | Backlog |
+| [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) | User Story CRUD anchored to Module (Markdown body, optional Jira external_id) | - | Medium | Shift-Left QA |
+| [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) | Acceptance Criterion CRUD with position rebalance and ready_to_test gating | - | Medium | Shift-Left QA |
+| [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) | Markdown editor and sanitized render path for User Story and Acceptance Criterion bodies | - | Medium | Shift-Left QA |
+| [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) | Async one-way Jira import by JQL (ADF → Markdown, idempotency on external_id) | - | Medium | Shift-Left QA |
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/19/2026
+- **Updated:** 5/21/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, wave-2
@@ -75,4 +83,4 @@ Capability: Authoring layer above the Project/Module hierarchy. Members can capt
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:58:04.767Z_
+_Last sync: 2026-05-21T05:14:29.134Z_

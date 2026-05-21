@@ -10,33 +10,33 @@
 
 ## 1. Inventory summary
 
-| Category                | Features | Status                    |
-| ----------------------- | -------- | ------------------------- |
-| Tenancy & Identity      | 4        | Planned (MVP)             |
-| Project & Module        | 4        | Planned (MVP)             |
-| User Stories & AC       | 5        | Planned (MVP)             |
-| ATC Library             | 7        | Planned (MVP)             |
-| Tests (ATC chains)      | 4        | Planned (MVP)             |
-| Manual Execution + Runs | 6        | Planned (MVP)             |
-| Bugs                    | 4        | Planned (MVP)             |
-| Views & Search          | 5        | Planned (MVP)             |
-| API + CLI Foundation    | 4        | Planned (MVP)             |
-| Cross-cutting           | 4        | Planned (MVP)             |
-| **MVP total**           | **47**   | **Planned**               |
-| Phase 2 (Out-of-MVP)    | 14       | Not started               |
-| Phase 3 (post-PMF)      | 8        | Not started               |
-| Enterprise gates        | 5        | Not started (license-gate)|
+| Category                | Features | Status                     |
+| ----------------------- | -------- | -------------------------- |
+| Tenancy & Identity      | 4        | Planned (MVP)              |
+| Project & Module        | 4        | Planned (MVP)              |
+| User Stories & AC       | 5        | Planned (MVP)              |
+| ATC Library             | 7        | Planned (MVP)              |
+| Tests (ATC chains)      | 4        | Planned (MVP)              |
+| Manual Execution + Runs | 6        | Planned (MVP)              |
+| Bugs                    | 4        | Planned (MVP)              |
+| Views & Search          | 5        | Planned (MVP)              |
+| API + CLI Foundation    | 4        | Planned (MVP)              |
+| Cross-cutting           | 4        | Planned (MVP)              |
+| **MVP total**           | **47**   | **Planned**                |
+| Phase 2 (Out-of-MVP)    | 14       | Not started                |
+| Phase 3 (post-PMF)      | 8        | Not started                |
+| Enterprise gates        | 5        | Not started (license-gate) |
 
 **Maturity legend** for this greenfield project:
 
-| Status      | Meaning                                                            |
-| ----------- | ------------------------------------------------------------------ |
-| Planned     | In MVP scope, has FR + endpoint contract, no implementation yet.   |
-| Beta        | (Reserved) — first cut implemented, not yet stable.                |
-| Stable      | (Reserved) — implemented + validated by design-partner cohort.     |
-| WIP         | (Reserved) — branch open, partial code, not in main.               |
-| Out-of-MVP  | Documented in scope, ships Phase 2/3, license-gated, or post-PMF.  |
-| Deprecated  | (Reserved) — formerly present, scheduled removal.                  |
+| Status     | Meaning                                                           |
+| ---------- | ----------------------------------------------------------------- |
+| Planned    | In MVP scope, has FR + endpoint contract, no implementation yet.  |
+| Beta       | (Reserved) — first cut implemented, not yet stable.               |
+| Stable     | (Reserved) — implemented + validated by design-partner cohort.    |
+| WIP        | (Reserved) — branch open, partial code, not in main.              |
+| Out-of-MVP | Documented in scope, ships Phase 2/3, license-gated, or post-PMF. |
+| Deprecated | (Reserved) — formerly present, scheduled removal.                 |
 
 > Until code lands, every MVP feature is `Planned`. Once `/project-bootstrap` runs and the first PRs merge, statuses move to `WIP` / `Beta` / `Stable` per the regeneration pass.
 
@@ -54,12 +54,12 @@ Each feature row maps to:
 
 ### 2.1 Domain: Tenancy & Identity (EPIC-BK-001)
 
-| #     | Feature                          | US   | FR     | MVP | Editions               | Primary persona     |
-| ----- | -------------------------------- | ---- | ------ | --- | ---------------------- | ------------------- |
-| FEAT-001 | Email + OAuth sign-up (GitHub / Google magic-link) | 1.1 | FR-001 | yes | Community / Cloud / Enterprise | Elena, Sara         |
-| FEAT-002 | Workspace creation (multi-tenant root)            | 1.2 | FR-002 | yes | Community / Cloud / Enterprise | Elena, Mateo        |
-| FEAT-003 | Invite teammate with role (owner / admin / member / viewer) | 1.3 | FR-003 | yes | Community / Cloud / Enterprise | Mateo               |
-| FEAT-004 | Switch active Workspace                            | 1.4 | FR-004 | yes | Community / Cloud / Enterprise | Elena               |
+| #        | Feature                                                     | US  | FR                  | MVP | Editions                       | Primary persona |
+| -------- | ----------------------------------------------------------- | --- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-001 | Email + OAuth sign-up (GitHub / Google magic-link)          | 1.1 | {{PROJECT_KEY}}-001 | yes | Community / Cloud / Enterprise | Elena, Sara     |
+| FEAT-002 | Workspace creation (multi-tenant root)                      | 1.2 | {{PROJECT_KEY}}-002 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
+| FEAT-003 | Invite teammate with role (owner / admin / member / viewer) | 1.3 | {{PROJECT_KEY}}-003 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-004 | Switch active Workspace                                     | 1.4 | {{PROJECT_KEY}}-004 | yes | Community / Cloud / Enterprise | Elena           |
 
 **Capabilities:**
 - [x] Magic-link email auth (Supabase Auth in Cloud; Better Auth in Community Phase 2)
@@ -72,12 +72,12 @@ Each feature row maps to:
 
 ### 2.2 Domain: Project & Module Hierarchy (EPIC-BK-002)
 
-| #     | Feature                                  | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ---------------------------------------- | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-005 | Project creation (inside Workspace)     | 2.1  | FR-005 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
-| FEAT-006 | Module create / rename / move / soft-delete with nesting (depth ≤ 6) | 2.2, 2.3 | FR-006 | yes | Community / Cloud / Enterprise | Elena    |
-| FEAT-007 | Materialized `path` column for tree queries | 2.2  | FR-006 | yes | Community / Cloud / Enterprise | (internal — feeds Tree view)|
-| FEAT-008 | Cascade soft-delete to descendant Modules + child entities | 2.3 | FR-006 + FR-039 | yes | Community / Cloud / Enterprise | Elena |
+| #        | Feature                                                              | US       | FR                                        | MVP | Editions                       | Primary persona              |
+| -------- | -------------------------------------------------------------------- | -------- | ----------------------------------------- | --- | ------------------------------ | ---------------------------- |
+| FEAT-005 | Project creation (inside Workspace)                                  | 2.1      | {{PROJECT_KEY}}-005                       | yes | Community / Cloud / Enterprise | Elena, Mateo                 |
+| FEAT-006 | Module create / rename / move / soft-delete with nesting (depth ≤ 6) | 2.2, 2.3 | {{PROJECT_KEY}}-006                       | yes | Community / Cloud / Enterprise | Elena                        |
+| FEAT-007 | Materialized `path` column for tree queries                          | 2.2      | {{PROJECT_KEY}}-006                       | yes | Community / Cloud / Enterprise | (internal — feeds Tree view) |
+| FEAT-008 | Cascade soft-delete to descendant Modules + child entities           | 2.3      | {{PROJECT_KEY}}-006 + {{PROJECT_KEY}}-039 | yes | Community / Cloud / Enterprise | Elena                        |
 
 **Capabilities:**
 - [x] Project slug unique within Workspace
@@ -87,13 +87,13 @@ Each feature row maps to:
 
 ### 2.3 Domain: User Stories & Acceptance Criteria (EPIC-BK-003)
 
-| #     | Feature                                                  | US   | FR     | MVP | Editions             | Primary persona  |
-| ----- | -------------------------------------------------------- | ---- | ------ | --- | -------------------- | ---------------- |
-| FEAT-009 | User Story CRUD (Markdown body up to 50KB)              | 3.1, 3.4 | FR-007 | yes | Community / Cloud / Enterprise | Elena, Sara      |
-| FEAT-010 | Acceptance Criterion CRUD with sortable `position`      | 3.2  | FR-008 | yes | Community / Cloud / Enterprise | Elena, Sara      |
-| FEAT-011 | One-way Jira import (JQL → US + auto-extracted AC bullets) | 3.3  | FR-009 | yes | Cloud / Enterprise (Jira integration enabled in Workspace) | Mateo            |
-| FEAT-012 | "Ready to test" guard — US requires ≥1 AC                | 3.2  | FR-008 (validation rule) | yes | Community / Cloud / Enterprise | Mateo            |
-| FEAT-013 | External-id dedupe within Project (`[A-Z]+-\d+`)         | 3.3  | FR-007 + FR-009 | yes | Cloud / Enterprise   | (internal)       |
+| #        | Feature                                                    | US       | FR                                        | MVP | Editions                                                   | Primary persona |
+| -------- | ---------------------------------------------------------- | -------- | ----------------------------------------- | --- | ---------------------------------------------------------- | --------------- |
+| FEAT-009 | User Story CRUD (Markdown body up to 50KB)                 | 3.1, 3.4 | {{PROJECT_KEY}}-007                       | yes | Community / Cloud / Enterprise                             | Elena, Sara     |
+| FEAT-010 | Acceptance Criterion CRUD with sortable `position`         | 3.2      | {{PROJECT_KEY}}-008                       | yes | Community / Cloud / Enterprise                             | Elena, Sara     |
+| FEAT-011 | One-way Jira import (JQL → US + auto-extracted AC bullets) | 3.3      | {{PROJECT_KEY}}-009                       | yes | Cloud / Enterprise (Jira integration enabled in Workspace) | Mateo           |
+| FEAT-012 | "Ready to test" guard — US requires ≥1 AC                  | 3.2      | {{PROJECT_KEY}}-008 (validation rule)     | yes | Community / Cloud / Enterprise                             | Mateo           |
+| FEAT-013 | External-id dedupe within Project (`[A-Z]+-\d+`)           | 3.3      | {{PROJECT_KEY}}-007 + {{PROJECT_KEY}}-009 | yes | Cloud / Enterprise                                         | (internal)      |
 
 **Capabilities:**
 - [x] Async Jira import job (`/imports/jira`, polled via `/imports/{id}`)
@@ -104,15 +104,15 @@ Each feature row maps to:
 
 ### 2.4 Domain: ATC Library (EPIC-BK-004) — Bunkai's differentiator
 
-| #     | Feature                                                          | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ---------------------------------------------------------------- | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-014 | ATC creation (title, module, layer, steps, assertions, tags)   | 4.1, 4.2 | FR-010 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-015 | Mandatory provenance: ATC → US → ≥1 AC                          | 4.1  | FR-010 (validation) | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-016 | ATC textual search (Postgres `tsvector` on title + tags) + module subtree filter + layer filter + autocomplete | 4.3 | FR-011 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-017 | ATC edit propagation — one-edit, many-tests (Tests reference ATC, never copy) | 4.4 | FR-012 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-018 | "Used in N tests" usage report                                    | 4.5  | FR-013 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-019 | ATC duplicate ("(copy)" suffix or custom title)                   | 4.6  | FR-014 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-020 | ATC version counter (incremented on edit)                          | 4.4  | FR-012 | yes | Community / Cloud / Enterprise | Mateo           |
+| #        | Feature                                                                                                        | US       | FR                               | MVP | Editions                       | Primary persona |
+| -------- | -------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------- | --- | ------------------------------ | --------------- |
+| FEAT-014 | ATC creation (title, module, layer, steps, assertions, tags)                                                   | 4.1, 4.2 | {{PROJECT_KEY}}-010              | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-015 | Mandatory provenance: ATC → US → ≥1 AC                                                                         | 4.1      | {{PROJECT_KEY}}-010 (validation) | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-016 | ATC textual search (Postgres `tsvector` on title + tags) + module subtree filter + layer filter + autocomplete | 4.3      | {{PROJECT_KEY}}-011              | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-017 | ATC edit propagation — one-edit, many-tests (Tests reference ATC, never copy)                                  | 4.4      | {{PROJECT_KEY}}-012              | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-018 | "Used in N tests" usage report                                                                                 | 4.5      | {{PROJECT_KEY}}-013              | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-019 | ATC duplicate ("(copy)" suffix or custom title)                                                                | 4.6      | {{PROJECT_KEY}}-014              | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-020 | ATC version counter (incremented on edit)                                                                      | 4.4      | {{PROJECT_KEY}}-012              | yes | Community / Cloud / Enterprise | Mateo           |
 
 **Capabilities:**
 - [x] Layer enum: UI / API / Unit
@@ -125,12 +125,12 @@ Each feature row maps to:
 
 ### 2.5 Domain: Tests as ATC Chains (EPIC-BK-005)
 
-| #     | Feature                                                | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ------------------------------------------------------ | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-021 | Test creation as ordered chain of ATC ids             | 5.1  | FR-015 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-022 | Drag-reorder ATCs inside a Test (`atc_chain[]` patch) | 5.2  | FR-016 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-023 | Expanded view — render Test as single inline script (`?expand=atcs.steps,atcs.assertions`) | 5.3 | FR-017 | yes | Community / Cloud / Enterprise | Elena, Sara     |
-| FEAT-024 | Test tagging (reserved: smoke / sanity / regression)  | 5.4  | FR-018 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
+| #        | Feature                                                                                    | US  | FR                  | MVP | Editions                       | Primary persona |
+| -------- | ------------------------------------------------------------------------------------------ | --- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-021 | Test creation as ordered chain of ATC ids                                                  | 5.1 | {{PROJECT_KEY}}-015 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-022 | Drag-reorder ATCs inside a Test (`atc_chain[]` patch)                                      | 5.2 | {{PROJECT_KEY}}-016 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-023 | Expanded view — render Test as single inline script (`?expand=atcs.steps,atcs.assertions`) | 5.3 | {{PROJECT_KEY}}-017 | yes | Community / Cloud / Enterprise | Elena, Sara     |
+| FEAT-024 | Test tagging (reserved: smoke / sanity / regression)                                       | 5.4 | {{PROJECT_KEY}}-018 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
 
 **Capabilities:**
 - [x] Validation: every ATC in chain must belong to the same Project
@@ -140,33 +140,33 @@ Each feature row maps to:
 
 ### 2.6 Domain: Manual Execution + Runs (EPIC-BK-006)
 
-| #     | Feature                                                          | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ---------------------------------------------------------------- | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-025 | Start Run (test_id + env + executor identity + optional Idempotency-Key) | 6.1 | FR-019 | yes | Community / Cloud / Enterprise | Elena, Karim    |
-| FEAT-026 | Report step result (pass / fail / block + notes + evidence URL) | 6.2  | FR-020 | yes | Community / Cloud / Enterprise | Elena, Karim    |
-| FEAT-027 | Abort Run with reason (≥3 chars)                                 | 6.3  | FR-021 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-028 | Run history per Test (cursor pagination, status filter)         | 6.4  | FR-022 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
-| FEAT-029 | Project-wide Run filter (date range / module / status / executor_type) | 6.5 | FR-023 | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-030 | Finish Run endpoint (agentic / automated mode terminal call)    | (cross) | FR-024 | yes | Community / Cloud / Enterprise | Karim           |
+| #        | Feature                                                                  | US      | FR                  | MVP | Editions                       | Primary persona |
+| -------- | ------------------------------------------------------------------------ | ------- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-025 | Start Run (test_id + env + executor identity + optional Idempotency-Key) | 6.1     | {{PROJECT_KEY}}-019 | yes | Community / Cloud / Enterprise | Elena, Karim    |
+| FEAT-026 | Report step result (pass / fail / block + notes + evidence URL)          | 6.2     | {{PROJECT_KEY}}-020 | yes | Community / Cloud / Enterprise | Elena, Karim    |
+| FEAT-027 | Abort Run with reason (≥3 chars)                                         | 6.3     | {{PROJECT_KEY}}-021 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-028 | Run history per Test (cursor pagination, status filter)                  | 6.4     | {{PROJECT_KEY}}-022 | yes | Community / Cloud / Enterprise | Elena, Mateo    |
+| FEAT-029 | Project-wide Run filter (date range / module / status / executor_type)   | 6.5     | {{PROJECT_KEY}}-023 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-030 | Finish Run endpoint (agentic / automated mode terminal call)             | (cross) | {{PROJECT_KEY}}-024 | yes | Community / Cloud / Enterprise | Karim           |
 
 **Capabilities:**
 - [x] Executor type enum: human / agent / ci
 - [x] Auto-derive `run_atcs.status` from child step statuses; recompute `runs.progress_pct`
 - [x] Idempotent run-start (24h TTL on `idempotency_key`)
 - [x] Evidence URL accepts pasted screenshot upload (Supabase Storage / R2)
-- [x] Real-time row subscription on `runs`, `run_atcs`, `run_steps` (FR-040)
+- [x] Real-time row subscription on `runs`, `run_atcs`, `run_steps` ({{PROJECT_KEY}}-040)
 - [ ] Agentic protocol — WebSocket / SSE bidirectional channel — Phase 2 flag `phase2.agentic_protocol`
 - [ ] CI/CD import adapters (Playwright/Cypress/Jest/JUnit JSON) — Phase 2 flag `phase2.ci_adapters`
 - [ ] Sweeper cron timing out abandoned `running` runs (default 4h) — referenced in user-journeys.md §3 — see Discovery Gap #5
 
 ### 2.7 Domain: Bugs (EPIC-BK-007)
 
-| #     | Feature                                                | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ------------------------------------------------------ | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-031 | File Bug from inside a Run (auto-link module/atc/run) | 7.1  | FR-025 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-032 | Bug listing filtered by Module + status + severity    | 7.2  | FR-026 | yes | Community / Cloud / Enterprise | Mateo, Sara     |
-| FEAT-033 | Defect heatmap by Module (count + week-over-week trend) | 7.3 | FR-027 | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-034 | Optional outbound Jira sync (Bunkai → Jira issue create with backlinks) | 7.4 | FR-028 | yes | Cloud / Enterprise   | Mateo           |
+| #        | Feature                                                                 | US  | FR                  | MVP | Editions                       | Primary persona |
+| -------- | ----------------------------------------------------------------------- | --- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-031 | File Bug from inside a Run (auto-link module/atc/run)                   | 7.1 | {{PROJECT_KEY}}-025 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-032 | Bug listing filtered by Module + status + severity                      | 7.2 | {{PROJECT_KEY}}-026 | yes | Community / Cloud / Enterprise | Mateo, Sara     |
+| FEAT-033 | Defect heatmap by Module (count + week-over-week trend)                 | 7.3 | {{PROJECT_KEY}}-027 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-034 | Optional outbound Jira sync (Bunkai → Jira issue create with backlinks) | 7.4 | {{PROJECT_KEY}}-028 | yes | Cloud / Enterprise             | Mateo           |
 
 **Capabilities:**
 - [x] Severity enum P1–P4
@@ -179,13 +179,13 @@ Each feature row maps to:
 
 ### 2.8 Domain: Views (Tree + Table) & Search (EPIC-BK-008)
 
-| #     | Feature                                                       | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ------------------------------------------------------------- | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-035 | Tree view (recursive CTE — Modules / US / ATCs / Tests with status dots) | 8.1 | FR-029 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-036 | Table view (per-entity: ATC / Test / Run / Bug — filter / sort / bulk-edit) | 8.2 | FR-030 | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-037 | Bulk-edit endpoint `PATCH /api/v1/{entity}/bulk`              | 8.2  | FR-030 | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-038 | Command palette (Cmd/Ctrl+K) — cross-entity search + actions  | 8.3  | FR-031 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-039 | Persist view state per user / project / view-kind             | 8.4  | FR-032 | yes | Community / Cloud / Enterprise | Elena           |
+| #        | Feature                                                                     | US  | FR                  | MVP | Editions                       | Primary persona |
+| -------- | --------------------------------------------------------------------------- | --- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-035 | Tree view (recursive CTE — Modules / US / ATCs / Tests with status dots)    | 8.1 | {{PROJECT_KEY}}-029 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-036 | Table view (per-entity: ATC / Test / Run / Bug — filter / sort / bulk-edit) | 8.2 | {{PROJECT_KEY}}-030 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-037 | Bulk-edit endpoint `PATCH /api/v1/{entity}/bulk`                            | 8.2 | {{PROJECT_KEY}}-030 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-038 | Command palette (Cmd/Ctrl+K) — cross-entity search + actions                | 8.3 | {{PROJECT_KEY}}-031 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-039 | Persist view state per user / project / view-kind                           | 8.4 | {{PROJECT_KEY}}-032 | yes | Community / Cloud / Enterprise | Elena           |
 
 **Capabilities:**
 - [x] Multi-source tsvector index union across Modules / US / AC / ATCs / Tests / Runs / Bugs
@@ -196,12 +196,12 @@ Each feature row maps to:
 
 ### 2.9 Domain: API + CLI Foundation (EPIC-BK-009)
 
-| #     | Feature                                              | US   | FR     | MVP | Editions             | Primary persona |
-| ----- | ---------------------------------------------------- | ---- | ------ | --- | -------------------- | --------------- |
-| FEAT-040 | OpenAPI 3.1 spec served at `/api/openapi.json`     | 9.1  | FR-033 | yes | Community / Cloud / Enterprise | Karim           |
-| FEAT-041 | Bearer-token auth — Personal Access Tokens (prefix `bk_pat_`) with scopes + revocation | 9.2 | FR-034 | yes | Community / Cloud / Enterprise | Karim           |
-| FEAT-042 | CRUD endpoints exposed under `/api/v1/...`           | 9.3  | FR-035 | yes | Community / Cloud / Enterprise | Karim           |
-| FEAT-043 | Bunkai CLI binary (Bun-compiled + `npx bunkai`)     | 9.4  | FR-036 | yes | Community / Cloud / Enterprise | Karim, Elena    |
+| #        | Feature                                                                                | US  | FR                  | MVP | Editions                       | Primary persona |
+| -------- | -------------------------------------------------------------------------------------- | --- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-040 | OpenAPI 3.1 spec served at `/api/openapi.json`                                         | 9.1 | {{PROJECT_KEY}}-033 | yes | Community / Cloud / Enterprise | Karim           |
+| FEAT-041 | Bearer-token auth — Personal Access Tokens (prefix `bk_pat_`) with scopes + revocation | 9.2 | {{PROJECT_KEY}}-034 | yes | Community / Cloud / Enterprise | Karim           |
+| FEAT-042 | CRUD endpoints exposed under `/api/v1/...`                                             | 9.3 | {{PROJECT_KEY}}-035 | yes | Community / Cloud / Enterprise | Karim           |
+| FEAT-043 | Bunkai CLI binary (Bun-compiled + `npx bunkai`)                                        | 9.4 | {{PROJECT_KEY}}-036 | yes | Community / Cloud / Enterprise | Karim, Elena    |
 
 **Capabilities:**
 - [x] Token issuance via `POST /api/v1/auth/tokens` — plain token shown ONCE, SHA-256 hash stored
@@ -216,12 +216,12 @@ Each feature row maps to:
 
 ### 2.10 Domain: Cross-cutting
 
-| #     | Feature                                            | US        | FR     | MVP | Editions             | Primary persona |
-| ----- | -------------------------------------------------- | --------- | ------ | --- | -------------------- | --------------- |
-| FEAT-044 | Idempotency-Key header (24h LRU on POSTs)         | (infra)   | FR-037 | yes | Community / Cloud / Enterprise | Karim           |
-| FEAT-045 | Audit-light activity log (state-changing endpoints) | (infra) | FR-038 | yes | Community / Cloud / Enterprise | Mateo           |
-| FEAT-046 | Soft-delete (Modules / US / AC / ATC / Tests with `archived_at`) | (infra) | FR-039 | yes | Community / Cloud / Enterprise | Elena           |
-| FEAT-047 | Realtime row subscriptions on `runs`, `run_atcs`, `run_steps`, `bugs` (Supabase Realtime) | (infra) | FR-040 | yes | Community / Cloud / Enterprise | Elena, Karim    |
+| #        | Feature                                                                                   | US      | FR                  | MVP | Editions                       | Primary persona |
+| -------- | ----------------------------------------------------------------------------------------- | ------- | ------------------- | --- | ------------------------------ | --------------- |
+| FEAT-044 | Idempotency-Key header (24h LRU on POSTs)                                                 | (infra) | {{PROJECT_KEY}}-037 | yes | Community / Cloud / Enterprise | Karim           |
+| FEAT-045 | Audit-light activity log (state-changing endpoints)                                       | (infra) | {{PROJECT_KEY}}-038 | yes | Community / Cloud / Enterprise | Mateo           |
+| FEAT-046 | Soft-delete (Modules / US / AC / ATC / Tests with `archived_at`)                          | (infra) | {{PROJECT_KEY}}-039 | yes | Community / Cloud / Enterprise | Elena           |
+| FEAT-047 | Realtime row subscriptions on `runs`, `run_atcs`, `run_steps`, `bugs` (Supabase Realtime) | (infra) | {{PROJECT_KEY}}-040 | yes | Community / Cloud / Enterprise | Elena, Karim    |
 
 **Capabilities:**
 - [x] Activity log row schema: `{ actor_id, action, entity_type, entity_id, payload_summary, at }`
@@ -236,30 +236,30 @@ Each feature row maps to:
 
 Legend: ✅ Full, ⚠️ Partial / conditional, ❌ Not available. `~` = soft-delete-only (no hard-delete in MVP). `List/Search` is a separate column for entities with explicit search endpoints.
 
-| Entity                | Create | Read | List/Search   | Update | Delete         | FR backing         | Notes                              |
-| --------------------- | ------ | ---- | ------------- | ------ | -------------- | ------------------ | ---------------------------------- |
-| workspace             | ✅     | ✅   | ✅            | ⚠️     | ❌             | FR-002             | No deletion in MVP                 |
-| workspace_member      | ⚠️     | ✅   | ✅            | ⚠️     | ❌             | FR-003 / FR-004    | Invite-only create; role edit Phase 2 |
-| workspace_invite      | ✅     | ⚠️   | ⚠️            | ❌     | ❌             | FR-003             | No revoke / resend in MVP — see Gap #2 |
-| project               | ✅     | ✅   | ✅            | ⚠️     | ❌             | FR-005             | Update + delete Phase 2            |
-| module                | ✅     | ✅   | ✅ (subtree)  | ✅     | ~ (soft)       | FR-006 + FR-039    | Hard-delete admin-only             |
-| user_story            | ✅     | ✅   | ✅            | ✅     | ~ (soft)       | FR-007 + FR-009    | Jira import populates              |
-| acceptance_criterion  | ✅     | ✅   | ✅            | ✅     | ~ (soft)       | FR-008             | Sortable `position`                |
-| atc                   | ✅     | ✅   | ✅ (tsvector) | ✅     | ~ (soft)       | FR-010..014 + FR-039 | Duplicate endpoint adds Create variant |
-| atc_step              | ✅     | ✅   | (via parent)  | ✅     | ✅ (cascade)   | FR-010 + FR-012    | Replace-all on parent update       |
-| atc_assertion         | ✅     | ✅   | (via parent)  | ✅     | ✅ (cascade)   | FR-010 + FR-012    | Same                               |
-| test                  | ✅     | ✅   | ✅            | ✅     | ~ (soft)       | FR-015..018 + FR-039 | Chain stored in `test_steps`       |
-| test_step             | ⚠️     | ⚠️   | (via parent)  | ⚠️     | ✅ (cascade)   | FR-015..016        | Diff-replace on chain reorder      |
-| run                   | ✅     | ✅   | ✅            | ⚠️     | ❌             | FR-019..024        | Update only via report-result / abort / finish endpoints |
-| run_atc               | ⚠️     | ✅   | (via parent)  | ⚠️     | ❌             | FR-019 + FR-020    | Created on run-start, auto-status  |
-| run_step              | ⚠️     | ✅   | (via parent)  | ✅     | ❌             | FR-019 + FR-020    | Report-result endpoint             |
-| bug                   | ✅     | ✅   | ✅            | ⚠️     | ❌             | FR-025..028        | Status transitions — no delete     |
-| environment           | ⚠️     | ✅   | ✅            | ⚠️     | ❌             | (referenced by FR-019) | Settings UI only — see Gap #3   |
-| integration           | ⚠️     | ✅   | ✅            | ⚠️     | ⚠️             | (referenced by FR-009 + FR-028) | Settings UI only — see Gap #3 |
-| access_token          | ✅     | ✅   | ✅            | ❌     | ✅ (revoke)    | FR-034             | Plain token shown once on create   |
-| activity_log          | ⚠️ (system) | ✅ | ✅            | ❌     | ❌             | FR-038             | System-owned; user reads timeline  |
-| feature_flag          | ❌ (system) | ✅ | ✅            | ⚠️     | ❌             | (architecture-specs §1) | Toggled by admin (Phase 2 mechanism) |
-| idempotency_key       | ⚠️ (system) | ❌ | ❌            | ❌     | ⚠️ (TTL 24h)   | FR-037             | System-owned                       |
+| Entity               | Create     | Read | List/Search  | Update | Delete      | FR backing                                                | Notes                                                    |
+| -------------------- | ---------- | ---- | ------------ | ------ | ----------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| workspace            | ✅          | ✅    | ✅            | ⚠️      | ❌           | {{PROJECT_KEY}}-002                                       | No deletion in MVP                                       |
+| workspace_member     | ⚠️          | ✅    | ✅            | ⚠️      | ❌           | {{PROJECT_KEY}}-003 / {{PROJECT_KEY}}-004                 | Invite-only create; role edit Phase 2                    |
+| workspace_invite     | ✅          | ⚠️    | ⚠️            | ❌      | ❌           | {{PROJECT_KEY}}-003                                       | No revoke / resend in MVP — see Gap #2                   |
+| project              | ✅          | ✅    | ✅            | ⚠️      | ❌           | {{PROJECT_KEY}}-005                                       | Update + delete Phase 2                                  |
+| module               | ✅          | ✅    | ✅ (subtree)  | ✅      | ~ (soft)    | {{PROJECT_KEY}}-006 + {{PROJECT_KEY}}-039                 | Hard-delete admin-only                                   |
+| user_story           | ✅          | ✅    | ✅            | ✅      | ~ (soft)    | {{PROJECT_KEY}}-007 + {{PROJECT_KEY}}-009                 | Jira import populates                                    |
+| acceptance_criterion | ✅          | ✅    | ✅            | ✅      | ~ (soft)    | {{PROJECT_KEY}}-008                                       | Sortable `position`                                      |
+| atc                  | ✅          | ✅    | ✅ (tsvector) | ✅      | ~ (soft)    | {{PROJECT_KEY}}-010..014 + {{PROJECT_KEY}}-039            | Duplicate endpoint adds Create variant                   |
+| atc_step             | ✅          | ✅    | (via parent) | ✅      | ✅ (cascade) | {{PROJECT_KEY}}-010 + {{PROJECT_KEY}}-012                 | Replace-all on parent update                             |
+| atc_assertion        | ✅          | ✅    | (via parent) | ✅      | ✅ (cascade) | {{PROJECT_KEY}}-010 + {{PROJECT_KEY}}-012                 | Same                                                     |
+| test                 | ✅          | ✅    | ✅            | ✅      | ~ (soft)    | {{PROJECT_KEY}}-015..018 + {{PROJECT_KEY}}-039            | Chain stored in `test_steps`                             |
+| test_step            | ⚠️          | ⚠️    | (via parent) | ⚠️      | ✅ (cascade) | {{PROJECT_KEY}}-015..016                                  | Diff-replace on chain reorder                            |
+| run                  | ✅          | ✅    | ✅            | ⚠️      | ❌           | {{PROJECT_KEY}}-019..024                                  | Update only via report-result / abort / finish endpoints |
+| run_atc              | ⚠️          | ✅    | (via parent) | ⚠️      | ❌           | {{PROJECT_KEY}}-019 + {{PROJECT_KEY}}-020                 | Created on run-start, auto-status                        |
+| run_step             | ⚠️          | ✅    | (via parent) | ✅      | ❌           | {{PROJECT_KEY}}-019 + {{PROJECT_KEY}}-020                 | Report-result endpoint                                   |
+| bug                  | ✅          | ✅    | ✅            | ⚠️      | ❌           | {{PROJECT_KEY}}-025..028                                  | Status transitions — no delete                           |
+| environment          | ⚠️          | ✅    | ✅            | ⚠️      | ❌           | (referenced by {{PROJECT_KEY}}-019)                       | Settings UI only — see Gap #3                            |
+| integration          | ⚠️          | ✅    | ✅            | ⚠️      | ⚠️           | (referenced by {{PROJECT_KEY}}-009 + {{PROJECT_KEY}}-028) | Settings UI only — see Gap #3                            |
+| access_token         | ✅          | ✅    | ✅            | ❌      | ✅ (revoke)  | {{PROJECT_KEY}}-034                                       | Plain token shown once on create                         |
+| activity_log         | ⚠️ (system) | ✅    | ✅            | ❌      | ❌           | {{PROJECT_KEY}}-038                                       | System-owned; user reads timeline                        |
+| feature_flag         | ❌ (system) | ✅    | ✅            | ⚠️      | ❌           | (architecture-specs §1)                                   | Toggled by admin (Phase 2 mechanism)                     |
+| idempotency_key      | ⚠️ (system) | ❌    | ❌            | ❌      | ⚠️ (TTL 24h) | {{PROJECT_KEY}}-037                                       | System-owned                                             |
 
 ---
 
@@ -269,113 +269,113 @@ Auth: all endpoints require `Authorization: Bearer bk_pat_<token>` EXCEPT `/open
 
 ### 4.1 Auth (tag)
 
-| Method | Endpoint                       | Purpose                                      | Auth   | FR     |
-| ------ | ------------------------------ | -------------------------------------------- | ------ | ------ |
-| GET    | `/openapi.json`                | Self-describing OpenAPI 3.1 spec             | none   | FR-033 |
-| POST   | `/auth/tokens`                 | Issue Personal Access Token (plain token shown ONCE) | Bearer | FR-034 |
-| GET    | `/auth/tokens`                 | List my tokens                               | Bearer | FR-034 |
-| DELETE | `/auth/tokens/{token_id}`      | Revoke a token                               | Bearer | FR-034 |
-| GET    | `/me`                          | Current authenticated user + active workspace | Bearer | (cross-cut auth flow) |
+| Method | Endpoint                  | Purpose                                              | Auth   | FR                    |
+| ------ | ------------------------- | ---------------------------------------------------- | ------ | --------------------- |
+| GET    | `/openapi.json`           | Self-describing OpenAPI 3.1 spec                     | none   | {{PROJECT_KEY}}-033   |
+| POST   | `/auth/tokens`            | Issue Personal Access Token (plain token shown ONCE) | Bearer | {{PROJECT_KEY}}-034   |
+| GET    | `/auth/tokens`            | List my tokens                                       | Bearer | {{PROJECT_KEY}}-034   |
+| DELETE | `/auth/tokens/{token_id}` | Revoke a token                                       | Bearer | {{PROJECT_KEY}}-034   |
+| GET    | `/me`                     | Current authenticated user + active workspace        | Bearer | (cross-cut auth flow) |
 
 ### 4.2 Workspaces
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/workspaces`                           | Create a workspace                     | Bearer | FR-002 |
-| GET    | `/workspaces`                           | List workspaces I belong to            | Bearer | FR-004 |
-| POST   | `/workspaces/{workspace_id}/invites`    | Invite a teammate                      | Bearer | FR-003 |
+| Method | Endpoint                             | Purpose                     | Auth   | FR                  |
+| ------ | ------------------------------------ | --------------------------- | ------ | ------------------- |
+| POST   | `/workspaces`                        | Create a workspace          | Bearer | {{PROJECT_KEY}}-002 |
+| GET    | `/workspaces`                        | List workspaces I belong to | Bearer | {{PROJECT_KEY}}-004 |
+| POST   | `/workspaces/{workspace_id}/invites` | Invite a teammate           | Bearer | {{PROJECT_KEY}}-003 |
 
 ### 4.3 Projects
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/projects`                             | Create a project                       | Bearer | FR-005 |
-| GET    | `/projects`                             | List projects in active workspace      | Bearer | FR-005 |
-| GET    | `/projects/{project_id}/tree`           | Project tree (modules + counts + status dots) | Bearer | FR-029 |
-| GET    | `/projects/{project_id}/defect-heatmap` | Defect heatmap by module               | Bearer | FR-027 |
+| Method | Endpoint                                | Purpose                                       | Auth   | FR                  |
+| ------ | --------------------------------------- | --------------------------------------------- | ------ | ------------------- |
+| POST   | `/projects`                             | Create a project                              | Bearer | {{PROJECT_KEY}}-005 |
+| GET    | `/projects`                             | List projects in active workspace             | Bearer | {{PROJECT_KEY}}-005 |
+| GET    | `/projects/{project_id}/tree`           | Project tree (modules + counts + status dots) | Bearer | {{PROJECT_KEY}}-029 |
+| GET    | `/projects/{project_id}/defect-heatmap` | Defect heatmap by module                      | Bearer | {{PROJECT_KEY}}-027 |
 
 ### 4.4 Modules
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/modules`                              | Create a module                        | Bearer | FR-006 |
-| GET    | `/modules/{module_id}`                  | Get a module                           | Bearer | FR-006 |
-| PATCH  | `/modules/{module_id}`                  | Update a module                        | Bearer | FR-006 |
-| DELETE | `/modules/{module_id}`                  | Soft-delete a module                   | Bearer | FR-006 + FR-039 |
+| Method | Endpoint               | Purpose              | Auth   | FR                                        |
+| ------ | ---------------------- | -------------------- | ------ | ----------------------------------------- |
+| POST   | `/modules`             | Create a module      | Bearer | {{PROJECT_KEY}}-006                       |
+| GET    | `/modules/{module_id}` | Get a module         | Bearer | {{PROJECT_KEY}}-006                       |
+| PATCH  | `/modules/{module_id}` | Update a module      | Bearer | {{PROJECT_KEY}}-006                       |
+| DELETE | `/modules/{module_id}` | Soft-delete a module | Bearer | {{PROJECT_KEY}}-006 + {{PROJECT_KEY}}-039 |
 
 ### 4.5 User Stories
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/user-stories`                         | Create a user story                    | Bearer | FR-007 |
+| Method | Endpoint        | Purpose             | Auth   | FR                  |
+| ------ | --------------- | ------------------- | ------ | ------------------- |
+| POST   | `/user-stories` | Create a user story | Bearer | {{PROJECT_KEY}}-007 |
 
-> Note: Read / Update / Delete / List endpoints for `user_stories` are implied by FR-035 ("All FRs 001–032 exposed under `/api/v1/...`") but only the POST appears in api-contracts.yaml v1.0. See Gap #4.
+> Note: Read / Update / Delete / List endpoints for `user_stories` are implied by {{PROJECT_KEY}}-035 ("All FRs 001–032 exposed under `/api/v1/...`") but only the POST appears in api-contracts.yaml v1.0. See Gap #4.
 
 ### 4.6 Acceptance Criteria
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/acceptance-criteria`                  | Create an acceptance criterion         | Bearer | FR-008 |
+| Method | Endpoint               | Purpose                        | Auth   | FR                  |
+| ------ | ---------------------- | ------------------------------ | ------ | ------------------- |
+| POST   | `/acceptance-criteria` | Create an acceptance criterion | Bearer | {{PROJECT_KEY}}-008 |
 
 > Same gap as 4.5 — only POST documented in api-contracts.yaml.
 
 ### 4.7 ATCs
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/atcs`                                 | Create an ATC                          | Bearer | FR-010 |
-| GET    | `/atcs`                                 | List / search ATCs (project, module subtree, layer, full-text `q`) | Bearer | FR-011 |
-| GET    | `/atcs/{atc_id}`                        | Get ATC (expand=steps,assertions,acceptance_criteria,used_in) | Bearer | FR-010 + FR-013 |
-| PATCH  | `/atcs/{atc_id}`                        | Update ATC (cascade replace of steps + assertions) | Bearer | FR-012 |
-| DELETE | `/atcs/{atc_id}`                        | Soft-delete an ATC                     | Bearer | FR-039 |
-| POST   | `/atcs/{atc_id}/duplicate`              | Duplicate ATC                          | Bearer | FR-014 |
+| Method | Endpoint                   | Purpose                                                            | Auth   | FR                                        |
+| ------ | -------------------------- | ------------------------------------------------------------------ | ------ | ----------------------------------------- |
+| POST   | `/atcs`                    | Create an ATC                                                      | Bearer | {{PROJECT_KEY}}-010                       |
+| GET    | `/atcs`                    | List / search ATCs (project, module subtree, layer, full-text `q`) | Bearer | {{PROJECT_KEY}}-011                       |
+| GET    | `/atcs/{atc_id}`           | Get ATC (expand=steps,assertions,acceptance_criteria,used_in)      | Bearer | {{PROJECT_KEY}}-010 + {{PROJECT_KEY}}-013 |
+| PATCH  | `/atcs/{atc_id}`           | Update ATC (cascade replace of steps + assertions)                 | Bearer | {{PROJECT_KEY}}-012                       |
+| DELETE | `/atcs/{atc_id}`           | Soft-delete an ATC                                                 | Bearer | {{PROJECT_KEY}}-039                       |
+| POST   | `/atcs/{atc_id}/duplicate` | Duplicate ATC                                                      | Bearer | {{PROJECT_KEY}}-014                       |
 
 ### 4.8 Tests
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/tests`                                | Create a test                          | Bearer | FR-015 |
-| GET    | `/tests`                                | List tests (project_id, tag filter)    | Bearer | FR-022 |
-| GET    | `/tests/{test_id}`                      | Get test (expand=atcs.steps,atcs.assertions) | Bearer | FR-017 |
-| PATCH  | `/tests/{test_id}`                      | Reorder / update test                  | Bearer | FR-016 + FR-018 |
-| DELETE | `/tests/{test_id}`                      | Soft-delete a test                     | Bearer | FR-039 |
+| Method | Endpoint           | Purpose                                      | Auth   | FR                                        |
+| ------ | ------------------ | -------------------------------------------- | ------ | ----------------------------------------- |
+| POST   | `/tests`           | Create a test                                | Bearer | {{PROJECT_KEY}}-015                       |
+| GET    | `/tests`           | List tests (project_id, tag filter)          | Bearer | {{PROJECT_KEY}}-022                       |
+| GET    | `/tests/{test_id}` | Get test (expand=atcs.steps,atcs.assertions) | Bearer | {{PROJECT_KEY}}-017                       |
+| PATCH  | `/tests/{test_id}` | Reorder / update test                        | Bearer | {{PROJECT_KEY}}-016 + {{PROJECT_KEY}}-018 |
+| DELETE | `/tests/{test_id}` | Soft-delete a test                           | Bearer | {{PROJECT_KEY}}-039                       |
 
 ### 4.9 Runs
 
-| Method | Endpoint                                              | Purpose                                | Auth   | FR     |
-| ------ | ----------------------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/runs`                                               | Start a run (Idempotency-Key supported) | Bearer | FR-019 + FR-037 |
-| GET    | `/runs`                                               | List runs (project-wide, filters: test, module, status, date range) | Bearer | FR-022 + FR-023 |
-| GET    | `/runs/{run_id}`                                      | Get a run (expand=atcs.steps)          | Bearer | FR-019 |
-| POST   | `/runs/{run_id}/steps/{run_step_id}/result`           | Report a step result                   | Bearer | FR-020 |
-| POST   | `/runs/{run_id}/abort`                                | Abort a run with reason                | Bearer | FR-021 |
-| POST   | `/runs/{run_id}/finish`                               | Finish a run (agentic / automated)     | Bearer | FR-024 |
+| Method | Endpoint                                    | Purpose                                                             | Auth   | FR                                        |
+| ------ | ------------------------------------------- | ------------------------------------------------------------------- | ------ | ----------------------------------------- |
+| POST   | `/runs`                                     | Start a run (Idempotency-Key supported)                             | Bearer | {{PROJECT_KEY}}-019 + {{PROJECT_KEY}}-037 |
+| GET    | `/runs`                                     | List runs (project-wide, filters: test, module, status, date range) | Bearer | {{PROJECT_KEY}}-022 + {{PROJECT_KEY}}-023 |
+| GET    | `/runs/{run_id}`                            | Get a run (expand=atcs.steps)                                       | Bearer | {{PROJECT_KEY}}-019                       |
+| POST   | `/runs/{run_id}/steps/{run_step_id}/result` | Report a step result                                                | Bearer | {{PROJECT_KEY}}-020                       |
+| POST   | `/runs/{run_id}/abort`                      | Abort a run with reason                                             | Bearer | {{PROJECT_KEY}}-021                       |
+| POST   | `/runs/{run_id}/finish`                     | Finish a run (agentic / automated)                                  | Bearer | {{PROJECT_KEY}}-024                       |
 
 ### 4.10 Bugs
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/bugs`                                 | File a bug (Idempotency-Key supported) | Bearer | FR-025 + FR-037 |
-| GET    | `/bugs`                                 | List bugs (project, module, severity, status) | Bearer | FR-026 |
+| Method | Endpoint | Purpose                                       | Auth   | FR                                        |
+| ------ | -------- | --------------------------------------------- | ------ | ----------------------------------------- |
+| POST   | `/bugs`  | File a bug (Idempotency-Key supported)        | Bearer | {{PROJECT_KEY}}-025 + {{PROJECT_KEY}}-037 |
+| GET    | `/bugs`  | List bugs (project, module, severity, status) | Bearer | {{PROJECT_KEY}}-026                       |
 
 ### 4.11 Imports
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| POST   | `/imports/jira`                         | Trigger Jira import (async, 202)       | Bearer | FR-009 |
-| GET    | `/imports/{import_job_id}`              | Poll import status                     | Bearer | FR-009 |
+| Method | Endpoint                   | Purpose                          | Auth   | FR                  |
+| ------ | -------------------------- | -------------------------------- | ------ | ------------------- |
+| POST   | `/imports/jira`            | Trigger Jira import (async, 202) | Bearer | {{PROJECT_KEY}}-009 |
+| GET    | `/imports/{import_job_id}` | Poll import status               | Bearer | {{PROJECT_KEY}}-009 |
 
 ### 4.12 Search
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| GET    | `/search`                               | Command palette / cross-entity search  | Bearer | FR-031 |
+| Method | Endpoint  | Purpose                               | Auth   | FR                  |
+| ------ | --------- | ------------------------------------- | ------ | ------------------- |
+| GET    | `/search` | Command palette / cross-entity search | Bearer | {{PROJECT_KEY}}-031 |
 
 ### 4.13 Integrations (tag declared but no endpoints in v1.0)
 
-| Method | Endpoint                                | Purpose                                | Auth   | FR     |
-| ------ | --------------------------------------- | -------------------------------------- | ------ | ------ |
-| (none) | (none)                                  | Integration config (Jira / GitHub) handled via Settings UI; no public API in MVP — see Gap #3 | — | — |
+| Method | Endpoint | Purpose                                                                                       | Auth | FR  |
+| ------ | -------- | --------------------------------------------------------------------------------------------- | ---- | --- |
+| (none) | (none)   | Integration config (Jira / GitHub) handled via Settings UI; no public API in MVP — see Gap #3 | —    | —   |
 
 **Endpoint totals**: 30 endpoints (29 Bearer-protected + 1 public). All under `/api/v1/...` except `/openapi.json` which is root.
 
@@ -387,87 +387,87 @@ Components vocabulary sourced from `DESIGN.md §6` (Button, Chip, Dot, Kbd, Tag,
 
 ### 5.1 Screens
 
-| Screen                                | Route (proposed)                              | Components                                                                              | Endpoints called                                                                                  | FR(s)                  | Primary persona  |
-| ------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------- | ---------------- |
-| Sign-in                                | `/auth/sign-in`                               | Button (primary), Input (email), Caret (terminal hint), kanji wordmark                  | (Supabase Auth — OAuth + magic-link), `/me`                                                       | FR-001                 | Elena, Sara      |
-| Workspace Home                         | `/{workspace_slug}`                           | Card (4 stat cards: Total ATCs, Active Runs, Open Bugs, Coverage %), Button (CTA "Create Project"), Tree (recent projects empty-state) | `/workspaces`, `/projects`, `/runs?status=running`, `/bugs?status=open`, `/projects/{id}/defect-heatmap` | FR-002, FR-004, FR-005, FR-023, FR-026, FR-027 | Elena, Mateo |
-| Project View                           | `/{workspace_slug}/{project_slug}`            | Tree pane (left), Table pane (middle), Right detail panel, Tabs (VS-Code-style for open entities), Dot (status), Chip (layer / status) | `/projects/{id}/tree`, `/atcs?project_id=`, `/tests?project_id=`, `/runs?project_id=`, `/bugs?project_id=` | FR-029, FR-030, FR-032 | Elena            |
-| Module editor (right panel)            | (drawer inside Project View)                  | Input, Textarea (Markdown), Select (parent module)                                      | `POST/PATCH /modules`                                                                              | FR-006                 | Elena            |
-| User Story editor                      | (drawer inside Project View)                  | Input (title), Markdown editor (description), Card list (linked ACs), Button ("Import from Jira") | `POST /user-stories`, `POST /imports/jira`                                                          | FR-007, FR-009         | Elena, Sara      |
-| Acceptance Criterion cards             | (in US editor)                                | Card (per AC), Input (title), Markdown editor, Button (add/sort)                        | `POST /acceptance-criteria`                                                                        | FR-008                 | Elena, Sara      |
-| ATC editor (Monaco)                    | (drawer / fullscreen inside Project View)     | Monaco editor, Segmented control (layer: UI / API / Unit), Tag (steps + assertions + tags), Chip (layer), Card (live preview pane), Button ("Used in N tests") | `POST/PATCH /atcs`, `GET /atcs/{id}?expand=used_in`, `POST /atcs/{id}/duplicate`                  | FR-010, FR-012, FR-013, FR-014 | Elena            |
-| Test composer (drag-reorder chain)     | (drawer inside Project View)                  | Tree / List with drag handles, Chip (layer per ATC), Button (primary), Tag (test tags) | `POST/PATCH /tests`                                                                                | FR-015, FR-016, FR-018 | Elena            |
-| Test expanded view                     | (read-only mode of Test composer)             | Card list (one per ATC, steps + assertions inline)                                      | `GET /tests/{id}?expand=atcs.steps,atcs.assertions`                                                | FR-017                 | Elena, Sara      |
-| Run runner (focused mode)              | `/{workspace_slug}/{project_slug}/runs/{run_id}` | Progress bar (multi-segment), Card (current ATC), Button (Pass/Fail/Block + Kbd `P`/`F`/`B`), Textarea (notes), Input (evidence URL / paste screenshot), Button (danger "Abort Run") | `POST /runs/{id}/steps/{step_id}/result`, `POST /runs/{id}/abort`, `POST /runs/{id}/finish`        | FR-020, FR-021, FR-024 | Elena, Karim     |
-| Bug drawer (filed in-context from Run) | (side drawer in Run runner)                   | Input (title), Select (severity P1–P4 + Kbd 1–4), Select (module), Textarea (description, steps-to-reproduce auto-populated), Input (evidence URLs) | `POST /bugs`                                                                                       | FR-025                 | Elena            |
-| Defect heatmap dashboard               | `/{workspace_slug}/{project_slug}/dashboard`  | Card grid (one per Module — count + trend %), Chip (status), Progress bar (trend)       | `GET /projects/{id}/defect-heatmap`                                                                | FR-027                 | Mateo            |
-| Run history list per Test              | (tab inside Test detail)                      | Table (TanStack), Chip (status), Dot (running pulse), Cursor pagination                | `GET /runs?test_id=`                                                                               | FR-022                 | Elena, Mateo     |
-| Project-wide Run filter                | `/{workspace_slug}/{project_slug}/runs`        | Table, Segmented control (date / module / status / executor_type filters), aggregate counters | `GET /runs?project_id=&filters`                                                                  | FR-023                 | Mateo            |
-| Bug list (filtered by Module)          | `/{workspace_slug}/{project_slug}/bugs`        | Table, Chip (severity), Chip (status), Segmented control (filters)                     | `GET /bugs?project_id=&module_id=`                                                                 | FR-026                 | Mateo, Sara      |
-| Settings — Members                     | `/{workspace_slug}/settings/members`           | Table, Select (role), Button (invite), Modal (invite form)                              | `GET /workspaces`, `POST /workspaces/{id}/invites`                                                 | FR-003                 | Mateo            |
-| Settings — Integrations                | `/{workspace_slug}/settings/integrations`     | Card (per integration: Jira / GitHub), Button (connect), Input (credentials), Toggle (enabled) | (Settings UI only — no public API endpoint in MVP)                                              | (referenced by FR-009 + FR-028) | Mateo            |
-| Settings — Tokens                      | `/{workspace_slug}/settings/tokens`            | Table (tokens list), Button (issue), Modal (plain token shown ONCE), Button (danger "Revoke") | `POST/GET/DELETE /auth/tokens`                                                                    | FR-034                 | Elena, Karim     |
-| Settings — Environments                | `/{workspace_slug}/{project_slug}/settings/environments` | Table, Input (name / web_url / api_url), Button                                          | (Settings UI only — referenced by `RunStart.environment` enum)                                    | (cross-cut)            | Mateo            |
-| Command palette                        | (modal, `Cmd/Ctrl+K` anywhere)                | Modal (`--shadow-pop`), Input (search), List (grouped by entity_type), Kbd hints       | `GET /search`                                                                                       | FR-031                 | Elena, Sara      |
+| Screen                                 | Route (proposed)                                         | Components                                                                                                                                                                           | Endpoints called                                                                                           | FR(s)                                                                                                                        | Primary persona |
+| -------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Sign-in                                | `/auth/sign-in`                                          | Button (primary), Input (email), Caret (terminal hint), kanji wordmark                                                                                                               | (Supabase Auth — OAuth + magic-link), `/me`                                                                | {{PROJECT_KEY}}-001                                                                                                          | Elena, Sara     |
+| Workspace Home                         | `/{workspace_slug}`                                      | Card (4 stat cards: Total ATCs, Active Runs, Open Bugs, Coverage %), Button (CTA "Create Project"), Tree (recent projects empty-state)                                               | `/workspaces`, `/projects`, `/runs?status=running`, `/bugs?status=open`, `/projects/{id}/defect-heatmap`   | {{PROJECT_KEY}}-002, {{PROJECT_KEY}}-004, {{PROJECT_KEY}}-005, {{PROJECT_KEY}}-023, {{PROJECT_KEY}}-026, {{PROJECT_KEY}}-027 | Elena, Mateo    |
+| Project View                           | `/{workspace_slug}/{project_slug}`                       | Tree pane (left), Table pane (middle), Right detail panel, Tabs (VS-Code-style for open entities), Dot (status), Chip (layer / status)                                               | `/projects/{id}/tree`, `/atcs?project_id=`, `/tests?project_id=`, `/runs?project_id=`, `/bugs?project_id=` | {{PROJECT_KEY}}-029, {{PROJECT_KEY}}-030, {{PROJECT_KEY}}-032                                                                | Elena           |
+| Module editor (right panel)            | (drawer inside Project View)                             | Input, Textarea (Markdown), Select (parent module)                                                                                                                                   | `POST/PATCH /modules`                                                                                      | {{PROJECT_KEY}}-006                                                                                                          | Elena           |
+| User Story editor                      | (drawer inside Project View)                             | Input (title), Markdown editor (description), Card list (linked ACs), Button ("Import from Jira")                                                                                    | `POST /user-stories`, `POST /imports/jira`                                                                 | {{PROJECT_KEY}}-007, {{PROJECT_KEY}}-009                                                                                     | Elena, Sara     |
+| Acceptance Criterion cards             | (in US editor)                                           | Card (per AC), Input (title), Markdown editor, Button (add/sort)                                                                                                                     | `POST /acceptance-criteria`                                                                                | {{PROJECT_KEY}}-008                                                                                                          | Elena, Sara     |
+| ATC editor (Monaco)                    | (drawer / fullscreen inside Project View)                | Monaco editor, Segmented control (layer: UI / API / Unit), Tag (steps + assertions + tags), Chip (layer), Card (live preview pane), Button ("Used in N tests")                       | `POST/PATCH /atcs`, `GET /atcs/{id}?expand=used_in`, `POST /atcs/{id}/duplicate`                           | {{PROJECT_KEY}}-010, {{PROJECT_KEY}}-012, {{PROJECT_KEY}}-013, {{PROJECT_KEY}}-014                                           | Elena           |
+| Test composer (drag-reorder chain)     | (drawer inside Project View)                             | Tree / List with drag handles, Chip (layer per ATC), Button (primary), Tag (test tags)                                                                                               | `POST/PATCH /tests`                                                                                        | {{PROJECT_KEY}}-015, {{PROJECT_KEY}}-016, {{PROJECT_KEY}}-018                                                                | Elena           |
+| Test expanded view                     | (read-only mode of Test composer)                        | Card list (one per ATC, steps + assertions inline)                                                                                                                                   | `GET /tests/{id}?expand=atcs.steps,atcs.assertions`                                                        | {{PROJECT_KEY}}-017                                                                                                          | Elena, Sara     |
+| Run runner (focused mode)              | `/{workspace_slug}/{project_slug}/runs/{run_id}`         | Progress bar (multi-segment), Card (current ATC), Button (Pass/Fail/Block + Kbd `P`/`F`/`B`), Textarea (notes), Input (evidence URL / paste screenshot), Button (danger "Abort Run") | `POST /runs/{id}/steps/{step_id}/result`, `POST /runs/{id}/abort`, `POST /runs/{id}/finish`                | {{PROJECT_KEY}}-020, {{PROJECT_KEY}}-021, {{PROJECT_KEY}}-024                                                                | Elena, Karim    |
+| Bug drawer (filed in-context from Run) | (side drawer in Run runner)                              | Input (title), Select (severity P1–P4 + Kbd 1–4), Select (module), Textarea (description, steps-to-reproduce auto-populated), Input (evidence URLs)                                  | `POST /bugs`                                                                                               | {{PROJECT_KEY}}-025                                                                                                          | Elena           |
+| Defect heatmap dashboard               | `/{workspace_slug}/{project_slug}/dashboard`             | Card grid (one per Module — count + trend %), Chip (status), Progress bar (trend)                                                                                                    | `GET /projects/{id}/defect-heatmap`                                                                        | {{PROJECT_KEY}}-027                                                                                                          | Mateo           |
+| Run history list per Test              | (tab inside Test detail)                                 | Table (TanStack), Chip (status), Dot (running pulse), Cursor pagination                                                                                                              | `GET /runs?test_id=`                                                                                       | {{PROJECT_KEY}}-022                                                                                                          | Elena, Mateo    |
+| Project-wide Run filter                | `/{workspace_slug}/{project_slug}/runs`                  | Table, Segmented control (date / module / status / executor_type filters), aggregate counters                                                                                        | `GET /runs?project_id=&filters`                                                                            | {{PROJECT_KEY}}-023                                                                                                          | Mateo           |
+| Bug list (filtered by Module)          | `/{workspace_slug}/{project_slug}/bugs`                  | Table, Chip (severity), Chip (status), Segmented control (filters)                                                                                                                   | `GET /bugs?project_id=&module_id=`                                                                         | {{PROJECT_KEY}}-026                                                                                                          | Mateo, Sara     |
+| Settings — Members                     | `/{workspace_slug}/settings/members`                     | Table, Select (role), Button (invite), Modal (invite form)                                                                                                                           | `GET /workspaces`, `POST /workspaces/{id}/invites`                                                         | {{PROJECT_KEY}}-003                                                                                                          | Mateo           |
+| Settings — Integrations                | `/{workspace_slug}/settings/integrations`                | Card (per integration: Jira / GitHub), Button (connect), Input (credentials), Toggle (enabled)                                                                                       | (Settings UI only — no public API endpoint in MVP)                                                         | (referenced by {{PROJECT_KEY}}-009 + {{PROJECT_KEY}}-028)                                                                    | Mateo           |
+| Settings — Tokens                      | `/{workspace_slug}/settings/tokens`                      | Table (tokens list), Button (issue), Modal (plain token shown ONCE), Button (danger "Revoke")                                                                                        | `POST/GET/DELETE /auth/tokens`                                                                             | {{PROJECT_KEY}}-034                                                                                                          | Elena, Karim    |
+| Settings — Environments                | `/{workspace_slug}/{project_slug}/settings/environments` | Table, Input (name / web_url / api_url), Button                                                                                                                                      | (Settings UI only — referenced by `RunStart.environment` enum)                                             | (cross-cut)                                                                                                                  | Mateo           |
+| Command palette                        | (modal, `Cmd/Ctrl+K` anywhere)                           | Modal (`--shadow-pop`), Input (search), List (grouped by entity_type), Kbd hints                                                                                                     | `GET /search`                                                                                              | {{PROJECT_KEY}}-031                                                                                                          | Elena, Sara     |
 
 ### 5.2 Forms
 
-| Form               | Submits to                  | Validation lib (planned) | Mandatory fields                                              |
-| ------------------ | --------------------------- | ------------------------ | ------------------------------------------------------------- |
-| Workspace create   | `POST /workspaces`          | Zod                      | name (3–60)                                                   |
-| Invite teammate    | `POST /workspaces/{id}/invites` | Zod                  | email, role                                                   |
-| Project create     | `POST /projects`            | Zod                      | workspace_id, name (3–80)                                     |
-| Module create/edit | `POST/PATCH /modules`       | Zod                      | project_id, name (2–80)                                       |
-| User Story         | `POST /user-stories`        | Zod                      | module_id, title (3–200)                                      |
-| Acceptance Criterion | `POST /acceptance-criteria` | Zod                    | user_story_id, title (3–200)                                  |
-| ATC                | `POST/PATCH /atcs`          | Zod                      | title, module_id, user_story_id, ≥1 AC, layer, ≥1 step       |
-| Test               | `POST/PATCH /tests`         | Zod                      | project_id, title, atc_chain (≥1)                             |
-| Run start          | `POST /runs`                | Zod                      | test_id, environment, executor                                |
-| Step result        | `POST /runs/.../result`     | Zod                      | status                                                        |
-| Run abort          | `POST /runs/{id}/abort`     | Zod                      | reason (≥3)                                                   |
-| Bug                | `POST /bugs`                | Zod                      | title (5–200), module_id, severity, description               |
-| Token issue        | `POST /auth/tokens`         | Zod                      | scopes                                                        |
-| Jira import        | `POST /imports/jira`        | Zod                      | project_id, jql                                               |
+| Form                 | Submits to                      | Validation lib (planned) | Mandatory fields                                       |
+| -------------------- | ------------------------------- | ------------------------ | ------------------------------------------------------ |
+| Workspace create     | `POST /workspaces`              | Zod                      | name (3–60)                                            |
+| Invite teammate      | `POST /workspaces/{id}/invites` | Zod                      | email, role                                            |
+| Project create       | `POST /projects`                | Zod                      | workspace_id, name (3–80)                              |
+| Module create/edit   | `POST/PATCH /modules`           | Zod                      | project_id, name (2–80)                                |
+| User Story           | `POST /user-stories`            | Zod                      | module_id, title (3–200)                               |
+| Acceptance Criterion | `POST /acceptance-criteria`     | Zod                      | user_story_id, title (3–200)                           |
+| ATC                  | `POST/PATCH /atcs`              | Zod                      | title, module_id, user_story_id, ≥1 AC, layer, ≥1 step |
+| Test                 | `POST/PATCH /tests`             | Zod                      | project_id, title, atc_chain (≥1)                      |
+| Run start            | `POST /runs`                    | Zod                      | test_id, environment, executor                         |
+| Step result          | `POST /runs/.../result`         | Zod                      | status                                                 |
+| Run abort            | `POST /runs/{id}/abort`         | Zod                      | reason (≥3)                                            |
+| Bug                  | `POST /bugs`                    | Zod                      | title (5–200), module_id, severity, description        |
+| Token issue          | `POST /auth/tokens`             | Zod                      | scopes                                                 |
+| Jira import          | `POST /imports/jira`            | Zod                      | project_id, jql                                        |
 
 ### 5.3 Actions (modals / drawers / confirms)
 
-| Component             | Type        | Trigger                                | Endpoint called                              |
-| --------------------- | ----------- | -------------------------------------- | -------------------------------------------- |
-| Create Project modal  | Modal       | "Create Project" CTA on Workspace Home | `POST /projects`                             |
-| Invite teammate modal | Modal       | Settings → Members → "Invite"          | `POST /workspaces/{id}/invites`              |
-| Bug drawer            | Side drawer | "Report Bug" in Run runner             | `POST /bugs`                                 |
-| Abort Run confirm     | Modal       | "Abort Run" button                     | `POST /runs/{id}/abort`                      |
-| Issue token modal     | Modal       | Settings → Tokens → "Issue token"      | `POST /auth/tokens`                          |
-| Revoke token confirm  | Modal (danger) | Token row → "Revoke"                | `DELETE /auth/tokens/{id}`                   |
-| Duplicate ATC confirm | Modal       | ATC editor → "Duplicate"               | `POST /atcs/{id}/duplicate`                  |
-| Delete (soft) confirm | Modal (danger) | Right-click → "Archive"             | `DELETE /modules/{id}` (and other entities)  |
+| Component             | Type           | Trigger                                | Endpoint called                             |
+| --------------------- | -------------- | -------------------------------------- | ------------------------------------------- |
+| Create Project modal  | Modal          | "Create Project" CTA on Workspace Home | `POST /projects`                            |
+| Invite teammate modal | Modal          | Settings → Members → "Invite"          | `POST /workspaces/{id}/invites`             |
+| Bug drawer            | Side drawer    | "Report Bug" in Run runner             | `POST /bugs`                                |
+| Abort Run confirm     | Modal          | "Abort Run" button                     | `POST /runs/{id}/abort`                     |
+| Issue token modal     | Modal          | Settings → Tokens → "Issue token"      | `POST /auth/tokens`                         |
+| Revoke token confirm  | Modal (danger) | Token row → "Revoke"                   | `DELETE /auth/tokens/{id}`                  |
+| Duplicate ATC confirm | Modal          | ATC editor → "Duplicate"               | `POST /atcs/{id}/duplicate`                 |
+| Delete (soft) confirm | Modal (danger) | Right-click → "Archive"                | `DELETE /modules/{id}` (and other entities) |
 
 ---
 
 ## 6. Third-party integrations inventory
 
-| Service              | Purpose                                                | Package (planned)                | MVP status | Community Phase-2 substitute            | Features using it                          |
-| -------------------- | ------------------------------------------------------ | -------------------------------- | ---------- | --------------------------------------- | ------------------------------------------ |
-| **Supabase Auth**    | OAuth (GitHub, Google) + magic-link + session JWT      | `@supabase/supabase-js`          | Planned    | Better Auth (in-process)                | FEAT-001 (sign-up), FEAT-004 (workspace switch) |
-| **Supabase Realtime**| Postgres logical replication → WebSocket row-changes  | `@supabase/supabase-js`          | Planned    | Redis pub/sub + custom WebSocket        | FEAT-026, FEAT-031, FEAT-047 (Run + Bug live updates) |
-| **Supabase Storage** | Server-managed file storage (Markdown attachments)    | `@supabase/supabase-js`          | Planned    | MinIO (S3-compatible)                   | (general)                                  |
-| **Cloudflare R2**    | S3-compatible object storage for Run evidence blobs (screenshots, video) | `@aws-sdk/client-s3`      | Planned    | MinIO                                   | FEAT-026 (evidence URLs), FEAT-031 (Bug evidence) |
-| **Jira REST API**    | Inbound: import US + AC. Outbound: create Jira issue on Bug | `axios` / `fetch`           | Planned    | (unchanged — Jira Cloud is external)    | FEAT-011 (Jira import), FEAT-034 (Bug → Jira sync) |
-| **GitHub OAuth**     | Sign-up / sign-in provider                             | (via Supabase Auth)              | Planned    | Better Auth provider plugin             | FEAT-001                                   |
-| **Google OAuth**     | Sign-up / sign-in provider                             | (via Supabase Auth)              | Planned    | Better Auth provider plugin             | FEAT-001                                   |
-| **Sentry**           | Error monitoring (frontend + serverless API)           | `@sentry/nextjs`                 | Planned    | Sentry self-hosted (community)          | (cross-cut)                                |
-| **PostHog**          | Product analytics + activation funnel metrics           | `posthog-js` + server SDK        | Planned    | PostHog self-hosted                     | (cross-cut — KPIs in executive-summary §3) |
-| **Vercel**           | Hosting (Edge + serverless functions) + preview deploys | (platform, no package)          | Planned    | Self-hosted Next.js in Docker           | (cross-cut)                                |
-| **GitHub Actions**   | CI/CD                                                  | (platform)                       | Planned    | (unchanged)                             | (cross-cut)                                |
-| **Monaco Editor**    | ATC editor (steps + assertions Markdown)              | `@monaco-editor/react`           | Planned    | (unchanged)                             | ATC editor screen                          |
-| **TanStack Table**   | Table View                                             | `@tanstack/react-table`          | Planned    | (unchanged)                             | FEAT-036                                   |
-| **React Flow**       | Mind-map 2D view                                       | `@xyflow/react`                  | Phase 2    | (unchanged)                             | (Phase 2 only)                             |
-| **react-force-graph**| Mind-map 3D toggle                                     | `react-force-graph`              | Phase 3    | (unchanged)                             | (Phase 3 only)                             |
-| **shadcn/ui + Radix**| UI primitives                                          | `@radix-ui/*` + shadcn copies    | Planned    | (unchanged)                             | (all screens)                              |
-| **Lucide icons**     | Iconography (per DESIGN.md §7)                         | `lucide-react`                   | Planned    | (unchanged)                             | (all screens)                              |
-| **Tailwind CSS**     | Styling                                                | `tailwindcss`                    | Planned    | (unchanged)                             | (all screens)                              |
-| **Upstash Redis**    | (Phase 2) idempotency + job queue for self-hosted     | `@upstash/redis`                 | Phase 2    | Plain Redis in Docker                   | FR-037 (Phase 2 mechanism)                 |
-| **BullMQ**           | (Phase 2) background job queue (Jira import, sync)    | `bullmq`                         | Phase 2    | (same in Community)                     | FEAT-011, FEAT-034 in Phase 2              |
+| Service               | Purpose                                                                  | Package (planned)             | MVP status | Community Phase-2 substitute         | Features using it                                     |
+| --------------------- | ------------------------------------------------------------------------ | ----------------------------- | ---------- | ------------------------------------ | ----------------------------------------------------- |
+| **Supabase Auth**     | OAuth (GitHub, Google) + magic-link + session JWT                        | `@supabase/supabase-js`       | Planned    | Better Auth (in-process)             | FEAT-001 (sign-up), FEAT-004 (workspace switch)       |
+| **Supabase Realtime** | Postgres logical replication → WebSocket row-changes                     | `@supabase/supabase-js`       | Planned    | Redis pub/sub + custom WebSocket     | FEAT-026, FEAT-031, FEAT-047 (Run + Bug live updates) |
+| **Supabase Storage**  | Server-managed file storage (Markdown attachments)                       | `@supabase/supabase-js`       | Planned    | MinIO (S3-compatible)                | (general)                                             |
+| **Cloudflare R2**     | S3-compatible object storage for Run evidence blobs (screenshots, video) | `@aws-sdk/client-s3`          | Planned    | MinIO                                | FEAT-026 (evidence URLs), FEAT-031 (Bug evidence)     |
+| **Jira REST API**     | Inbound: import US + AC. Outbound: create Jira issue on Bug              | `axios` / `fetch`             | Planned    | (unchanged — Jira Cloud is external) | FEAT-011 (Jira import), FEAT-034 (Bug → Jira sync)    |
+| **GitHub OAuth**      | Sign-up / sign-in provider                                               | (via Supabase Auth)           | Planned    | Better Auth provider plugin          | FEAT-001                                              |
+| **Google OAuth**      | Sign-up / sign-in provider                                               | (via Supabase Auth)           | Planned    | Better Auth provider plugin          | FEAT-001                                              |
+| **Sentry**            | Error monitoring (frontend + serverless API)                             | `@sentry/nextjs`              | Planned    | Sentry self-hosted (community)       | (cross-cut)                                           |
+| **PostHog**           | Product analytics + activation funnel metrics                            | `posthog-js` + server SDK     | Planned    | PostHog self-hosted                  | (cross-cut — KPIs in executive-summary §3)            |
+| **Vercel**            | Hosting (Edge + serverless functions) + preview deploys                  | (platform, no package)        | Planned    | Self-hosted Next.js in Docker        | (cross-cut)                                           |
+| **GitHub Actions**    | CI/CD                                                                    | (platform)                    | Planned    | (unchanged)                          | (cross-cut)                                           |
+| **Monaco Editor**     | ATC editor (steps + assertions Markdown)                                 | `@monaco-editor/react`        | Planned    | (unchanged)                          | ATC editor screen                                     |
+| **TanStack Table**    | Table View                                                               | `@tanstack/react-table`       | Planned    | (unchanged)                          | FEAT-036                                              |
+| **React Flow**        | Mind-map 2D view                                                         | `@xyflow/react`               | Phase 2    | (unchanged)                          | (Phase 2 only)                                        |
+| **react-force-graph** | Mind-map 3D toggle                                                       | `react-force-graph`           | Phase 3    | (unchanged)                          | (Phase 3 only)                                        |
+| **shadcn/ui + Radix** | UI primitives                                                            | `@radix-ui/*` + shadcn copies | Planned    | (unchanged)                          | (all screens)                                         |
+| **Lucide icons**      | Iconography (per DESIGN.md §7)                                           | `lucide-react`                | Planned    | (unchanged)                          | (all screens)                                         |
+| **Tailwind CSS**      | Styling                                                                  | `tailwindcss`                 | Planned    | (unchanged)                          | (all screens)                                         |
+| **Upstash Redis**     | (Phase 2) idempotency + job queue for self-hosted                        | `@upstash/redis`              | Phase 2    | Plain Redis in Docker                | {{PROJECT_KEY}}-037 (Phase 2 mechanism)               |
+| **BullMQ**            | (Phase 2) background job queue (Jira import, sync)                       | `bullmq`                      | Phase 2    | (same in Community)                  | FEAT-011, FEAT-034 in Phase 2                         |
 
 ---
 
@@ -477,17 +477,17 @@ Components vocabulary sourced from `DESIGN.md §6` (Button, Chip, Dot, Kbd, Tag,
 
 Flags live in the `feature_flags` table (`workspace_id?`, `project_id?`, `key`, `enabled`) per `.context/SRS/architecture-specs.md §1` entity quick reference. Below is the catalog of flags expected to ship with the MVP infrastructure — all `enabled = false` by default until the Phase-2/3 features land.
 
-| Flag                                | Description                                                            | Default | Scope                  | Read by (planned)                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------- | ------- | ---------------------- | ------------------------------------------------------------------- |
-| `phase2.agentic_protocol`           | Enables WebSocket / SSE bidirectional channel for agentic Run streams  | off     | workspace_id          | API middleware (Phase 2 NestJS extract), Run runner UI              |
-| `phase2.semantic_search`            | Enables pgvector ATC similarity search (replaces FR-011 tsvector path) | off     | workspace_id          | `/atcs` search handler                                              |
-| `phase2.mind_map_2d`                | Enables React Flow 2D mind-map view                                    | off     | workspace_id          | Project View view-switcher                                          |
-| `phase2.ci_adapters`                | Enables Playwright / Cypress / Jest / JUnit JSON ingest                | off     | workspace_id          | `/runs` import handler, CLI `bunkai run import`                     |
-| `phase2.jira_bidirectional`         | Enables Jira → Bunkai status push (currently outbound-only)            | off     | project_id            | Jira sync worker                                                    |
-| `phase3.mind_map_3d`                | Enables react-force-graph 3D toggle on top of 2D mind-map              | off     | workspace_id          | Mind-map view component                                             |
-| `enterprise.sso_saml`               | Enables SSO/SAML providers (Okta, Azure AD, Google Workspace)          | off     | workspace_id (plan=enterprise) | Auth middleware                                                    |
-| `enterprise.audit_log`              | Enables compliance-grade audit log (immutable, exportable)             | off     | workspace_id (plan=enterprise) | Activity log write path                                            |
-| `enterprise.role_hierarchy_custom`  | Enables custom permissions beyond owner/admin/member/viewer            | off     | workspace_id (plan=enterprise) | RBAC guards                                                        |
+| Flag                               | Description                                                                         | Default | Scope                          | Read by (planned)                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------- | ------- | ------------------------------ | ------------------------------------------------------ |
+| `phase2.agentic_protocol`          | Enables WebSocket / SSE bidirectional channel for agentic Run streams               | off     | workspace_id                   | API middleware (Phase 2 NestJS extract), Run runner UI |
+| `phase2.semantic_search`           | Enables pgvector ATC similarity search (replaces {{PROJECT_KEY}}-011 tsvector path) | off     | workspace_id                   | `/atcs` search handler                                 |
+| `phase2.mind_map_2d`               | Enables React Flow 2D mind-map view                                                 | off     | workspace_id                   | Project View view-switcher                             |
+| `phase2.ci_adapters`               | Enables Playwright / Cypress / Jest / JUnit JSON ingest                             | off     | workspace_id                   | `/runs` import handler, CLI `bunkai run import`        |
+| `phase2.jira_bidirectional`        | Enables Jira → Bunkai status push (currently outbound-only)                         | off     | project_id                     | Jira sync worker                                       |
+| `phase3.mind_map_3d`               | Enables react-force-graph 3D toggle on top of 2D mind-map                           | off     | workspace_id                   | Mind-map view component                                |
+| `enterprise.sso_saml`              | Enables SSO/SAML providers (Okta, Azure AD, Google Workspace)                       | off     | workspace_id (plan=enterprise) | Auth middleware                                        |
+| `enterprise.audit_log`             | Enables compliance-grade audit log (immutable, exportable)                          | off     | workspace_id (plan=enterprise) | Activity log write path                                |
+| `enterprise.role_hierarchy_custom` | Enables custom permissions beyond owner/admin/member/viewer                         | off     | workspace_id (plan=enterprise) | RBAC guards                                            |
 
 > Naming convention: `<phase-or-tier>.<feature-key>`. Phase-2 flags ship "dark" with the MVP so toggling them later is a config change, not a deploy.
 
@@ -495,11 +495,11 @@ Flags live in the `feature_flags` table (`workspace_id?`, `project_id?`, `key`, 
 
 Greenfield repo — only two commits (`5f16d9d` init project setup, `386b0ca` initial commit from boilerplate). No active feature branches.
 
-| Signal                                | Evidence                              | Estimated status                                  |
-| ------------------------------------- | ------------------------------------- | ------------------------------------------------- |
-| `.context/PRD/*` + `.context/SRS/*` added in working tree | Phase 4 of `/project-foundation` in progress | Foundation in flight; no code yet                 |
-| No `app/api/` or `app/` directories yet | `find . -type d -name app` returns 0   | `/project-bootstrap` not yet run                  |
-| `package.json` exists but skill resolution against scripts pending | (Critical Rule #10 — read package.json directly when scripts referenced) | Scaffolding pending |
+| Signal                                                             | Evidence                                                                 | Estimated status                  |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------- |
+| `.context/PRD/*` + `.context/SRS/*` added in working tree          | Phase 4 of `/project-foundation` in progress                             | Foundation in flight; no code yet |
+| No `app/api/` or `app/` directories yet                            | `find . -type d -name app` returns 0                                     | `/project-bootstrap` not yet run  |
+| `package.json` exists but skill resolution against scripts pending | (Critical Rule #10 — read package.json directly when scripts referenced) | Scaffolding pending               |
 
 ---
 
@@ -507,45 +507,45 @@ Greenfield repo — only two commits (`5f16d9d` init project setup, `386b0ca` in
 
 Legend: **P** = primary user, **S** = secondary user (uses occasionally / consumes output), — = not used.
 
-| Feature                                        | Elena (Senior QA) | Mateo (QA Lead) | Sara (Developer) | Karim (AI Agent) |
-| ---------------------------------------------- | ----------------- | --------------- | ---------------- | ---------------- |
-| FEAT-001 sign-up                              | P                 | P               | P                | S (token issue)  |
-| FEAT-002 workspace create                     | P                 | P               | S                | —                |
-| FEAT-003 invite teammate                      | S                 | P               | —                | —                |
-| FEAT-004 workspace switch                     | P                 | P               | S                | —                |
-| FEAT-005 project create                       | P                 | P               | S                | —                |
-| FEAT-006 module CRUD                          | P                 | S               | —                | S                |
-| FEAT-009 user story CRUD                      | P                 | S               | P                | S                |
-| FEAT-010 AC CRUD                              | P                 | S               | P                | S                |
-| FEAT-011 Jira import                          | S                 | P               | S                | —                |
-| FEAT-014 ATC creation                          | P                 | S               | S                | S (read)         |
-| FEAT-016 ATC search                            | P                 | S               | S                | P                |
-| FEAT-017 ATC edit propagation                  | P                 | S               | —                | —                |
-| FEAT-018 ATC usage report                      | P                 | S               | —                | —                |
-| FEAT-019 ATC duplicate                         | P                 | —               | —                | —                |
-| FEAT-021 Test creation                         | P                 | S               | S                | S                |
-| FEAT-022 drag-reorder chain                    | P                 | —               | —                | —                |
-| FEAT-023 expanded Test view                    | P                 | S               | P                | P (fetch contract) |
-| FEAT-024 Test tagging                          | P                 | P               | —                | —                |
-| FEAT-025 Start Run                             | P                 | S               | —                | P                |
-| FEAT-026 Report step result                    | P                 | S               | —                | P                |
-| FEAT-027 Abort Run                             | P                 | S               | —                | S                |
-| FEAT-028 Run history per Test                  | P                 | P               | S                | S                |
-| FEAT-029 Project-wide Run filter               | S                 | P               | S                | —                |
-| FEAT-030 Finish Run                            | —                 | —               | —                | P                |
-| FEAT-031 File Bug from Run                     | P                 | S               | S                | P                |
-| FEAT-032 Bug listing by Module                 | S                 | P               | P                | —                |
-| FEAT-033 Defect heatmap                        | S                 | P               | S                | —                |
-| FEAT-034 Bug → Jira sync                       | —                 | P               | S                | —                |
-| FEAT-035 Tree view                             | P                 | S               | S                | S                |
-| FEAT-036 Table view                            | P                 | P               | S                | S                |
-| FEAT-038 Command palette                       | P                 | P               | P                | —                |
-| FEAT-039 Persist view state                    | P                 | P               | S                | —                |
-| FEAT-040 OpenAPI spec                          | S                 | —               | S                | P                |
-| FEAT-041 Bearer-token auth                     | S (issues tokens) | S               | —                | P                |
-| FEAT-042 CRUD endpoints                        | S                 | —               | S                | P                |
-| FEAT-043 CLI binary                            | P                 | S               | S                | P                |
-| FEAT-047 Realtime subscriptions                | P                 | P               | S                | S                |
+| Feature                          | Elena (Senior QA) | Mateo (QA Lead) | Sara (Developer) | Karim (AI Agent)   |
+| -------------------------------- | ----------------- | --------------- | ---------------- | ------------------ |
+| FEAT-001 sign-up                 | P                 | P               | P                | S (token issue)    |
+| FEAT-002 workspace create        | P                 | P               | S                | —                  |
+| FEAT-003 invite teammate         | S                 | P               | —                | —                  |
+| FEAT-004 workspace switch        | P                 | P               | S                | —                  |
+| FEAT-005 project create          | P                 | P               | S                | —                  |
+| FEAT-006 module CRUD             | P                 | S               | —                | S                  |
+| FEAT-009 user story CRUD         | P                 | S               | P                | S                  |
+| FEAT-010 AC CRUD                 | P                 | S               | P                | S                  |
+| FEAT-011 Jira import             | S                 | P               | S                | —                  |
+| FEAT-014 ATC creation            | P                 | S               | S                | S (read)           |
+| FEAT-016 ATC search              | P                 | S               | S                | P                  |
+| FEAT-017 ATC edit propagation    | P                 | S               | —                | —                  |
+| FEAT-018 ATC usage report        | P                 | S               | —                | —                  |
+| FEAT-019 ATC duplicate           | P                 | —               | —                | —                  |
+| FEAT-021 Test creation           | P                 | S               | S                | S                  |
+| FEAT-022 drag-reorder chain      | P                 | —               | —                | —                  |
+| FEAT-023 expanded Test view      | P                 | S               | P                | P (fetch contract) |
+| FEAT-024 Test tagging            | P                 | P               | —                | —                  |
+| FEAT-025 Start Run               | P                 | S               | —                | P                  |
+| FEAT-026 Report step result      | P                 | S               | —                | P                  |
+| FEAT-027 Abort Run               | P                 | S               | —                | S                  |
+| FEAT-028 Run history per Test    | P                 | P               | S                | S                  |
+| FEAT-029 Project-wide Run filter | S                 | P               | S                | —                  |
+| FEAT-030 Finish Run              | —                 | —               | —                | P                  |
+| FEAT-031 File Bug from Run       | P                 | S               | S                | P                  |
+| FEAT-032 Bug listing by Module   | S                 | P               | P                | —                  |
+| FEAT-033 Defect heatmap          | S                 | P               | S                | —                  |
+| FEAT-034 Bug → Jira sync         | —                 | P               | S                | —                  |
+| FEAT-035 Tree view               | P                 | S               | S                | S                  |
+| FEAT-036 Table view              | P                 | P               | S                | S                  |
+| FEAT-038 Command palette         | P                 | P               | P                | —                  |
+| FEAT-039 Persist view state      | P                 | P               | S                | —                  |
+| FEAT-040 OpenAPI spec            | S                 | —               | S                | P                  |
+| FEAT-041 Bearer-token auth       | S (issues tokens) | S               | —                | P                  |
+| FEAT-042 CRUD endpoints          | S                 | —               | S                | P                  |
+| FEAT-043 CLI binary              | P                 | S               | S                | P                  |
+| FEAT-047 Realtime subscriptions  | P                 | P               | S                | S                  |
 
 ---
 
@@ -555,35 +555,35 @@ Sourced from `executive-summary.md §5` and `mvp-scope.md §3`. Listed so `/mast
 
 ### Phase 2 (post-validation, target ≤6 months after MVP)
 
-| Feature                                                  | Trigger flag                  | Notes                                              |
-| -------------------------------------------------------- | ----------------------------- | -------------------------------------------------- |
-| Mind-map / graph view (React Flow 2D)                    | `phase2.mind_map_2d`          | Module ↔ US ↔ AC ↔ ATC ↔ Test ↔ Bug visualization  |
-| Semantic search of ATCs (pgvector + embeddings)          | `phase2.semantic_search`      | Replaces tsvector path in `/atcs?q=`               |
-| Agentic execution mode (WebSocket / SSE protocol)        | `phase2.agentic_protocol`     | Requires NestJS extract (architecture-specs §3)   |
-| Automated execution import (Playwright/Cypress/Jest/JUnit/Bunkai-native JSON adapters) | `phase2.ci_adapters` | CLI `bunkai run import` + REST endpoint         |
-| Configurable dashboards (drag-and-drop widgets, PNG/PDF export) | (no flag — full screen)      | Mateo persona heavy                                |
-| Self-hosted distribution (Docker Compose: Postgres + Redis + MinIO + Better Auth) | (build artifact)        | Community edition GA                               |
-| Test Plans (saved subsets + scheduled runs)              | (no flag — new entity)        | Replaces tag-based subsetting for recurring runs   |
+| Feature                                                                                | Trigger flag              | Notes                                             |
+| -------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------- |
+| Mind-map / graph view (React Flow 2D)                                                  | `phase2.mind_map_2d`      | Module ↔ US ↔ AC ↔ ATC ↔ Test ↔ Bug visualization |
+| Semantic search of ATCs (pgvector + embeddings)                                        | `phase2.semantic_search`  | Replaces tsvector path in `/atcs?q=`              |
+| Agentic execution mode (WebSocket / SSE protocol)                                      | `phase2.agentic_protocol` | Requires NestJS extract (architecture-specs §3)   |
+| Automated execution import (Playwright/Cypress/Jest/JUnit/Bunkai-native JSON adapters) | `phase2.ci_adapters`      | CLI `bunkai run import` + REST endpoint           |
+| Configurable dashboards (drag-and-drop widgets, PNG/PDF export)                        | (no flag — full screen)   | Mateo persona heavy                               |
+| Self-hosted distribution (Docker Compose: Postgres + Redis + MinIO + Better Auth)      | (build artifact)          | Community edition GA                              |
+| Test Plans (saved subsets + scheduled runs)                                            | (no flag — new entity)    | Replaces tag-based subsetting for recurring runs  |
 
 ### Phase 3 (post-PMF)
 
-| Feature                                                  | Trigger flag                                | Notes                                            |
-| -------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------ |
-| 3D mind-map (react-force-graph)                          | `phase3.mind_map_3d`                       | Toggle on top of 2D                              |
-| Native parameterization UI (decision tables, equivalence partitions, boundary values, state transitions) | (new entities)              | Persona Elena power feature                     |
-| Bidirectional Jira sync (status push, label/field sync)  | `phase2.jira_bidirectional` (named with `phase2.` prefix — see Gap #1) | Plus GitHub Issues sync + Linear sync          |
-| SSO/SAML enterprise auth                                 | `enterprise.sso_saml`                      | Okta, Azure AD, Google Workspace                 |
-| Compliance-grade audit log                               | `enterprise.audit_log`                     | Immutable, exportable, replaces FR-038 audit-light |
-| Role hierarchy with custom permissions                   | `enterprise.role_hierarchy_custom`         | Beyond owner/admin/member/viewer                  |
-| Jira Data Center support                                 | (integration variant)                       | Self-hosted Jira customers                       |
-| Priority SLA support                                     | (operational)                              | Enterprise contract                              |
+| Feature                                                                                                  | Trigger flag                                                           | Notes                                                           |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 3D mind-map (react-force-graph)                                                                          | `phase3.mind_map_3d`                                                   | Toggle on top of 2D                                             |
+| Native parameterization UI (decision tables, equivalence partitions, boundary values, state transitions) | (new entities)                                                         | Persona Elena power feature                                     |
+| Bidirectional Jira sync (status push, label/field sync)                                                  | `phase2.jira_bidirectional` (named with `phase2.` prefix — see Gap #1) | Plus GitHub Issues sync + Linear sync                           |
+| SSO/SAML enterprise auth                                                                                 | `enterprise.sso_saml`                                                  | Okta, Azure AD, Google Workspace                                |
+| Compliance-grade audit log                                                                               | `enterprise.audit_log`                                                 | Immutable, exportable, replaces {{PROJECT_KEY}}-038 audit-light |
+| Role hierarchy with custom permissions                                                                   | `enterprise.role_hierarchy_custom`                                     | Beyond owner/admin/member/viewer                                |
+| Jira Data Center support                                                                                 | (integration variant)                                                  | Self-hosted Jira customers                                      |
+| Priority SLA support                                                                                     | (operational)                                                          | Enterprise contract                                             |
 
 ### Post-PMF (no committed timeline)
 
-| Feature                                                  | Notes                                            |
-| -------------------------------------------------------- | ------------------------------------------------ |
+| Feature                                                                        | Notes                                   |
+| ------------------------------------------------------------------------------ | --------------------------------------- |
 | Marketplace for community-contributed ATC packs, dashboard templates, adapters | Revenue stream (`business-model.md §5`) |
-| In-app pattern-teaching hints (equivalence partitioning, BVA, decision tables) | Differentiator vs Xray/Zephyr      |
+| In-app pattern-teaching hints (equivalence partitioning, BVA, decision tables) | Differentiator vs Xray/Zephyr           |
 
 ---
 
@@ -597,19 +597,19 @@ Greenfield project gaps surfaced while mapping PRD/SRS to features. None block M
 
 ### Gap #2 — Workspace invite lifecycle endpoints missing
 
-FR-003 covers invite creation but `.context/SRS/api-contracts.yaml` exposes no GET / resend / revoke endpoints for `workspace_invites`. The 24h-expiry behavior implies users will hit expired-invite cases (covered in user-journeys.md §1 edge case "Workspace invite expired"). **Ask**: should `/workspaces/{id}/invites` support GET-list + `POST /workspaces/{id}/invites/{invite_id}/resend` + `DELETE` in MVP, or defer to Phase 2? Likely MVP-needed for invite UX.
+{{PROJECT_KEY}}-003 covers invite creation but `.context/SRS/api-contracts.yaml` exposes no GET / resend / revoke endpoints for `workspace_invites`. The 24h-expiry behavior implies users will hit expired-invite cases (covered in user-journeys.md §1 edge case "Workspace invite expired"). **Ask**: should `/workspaces/{id}/invites` support GET-list + `POST /workspaces/{id}/invites/{invite_id}/resend` + `DELETE` in MVP, or defer to Phase 2? Likely MVP-needed for invite UX.
 
 ### Gap #3 — Settings / integrations / environments have UI but no public API
 
-`environments` and `integrations` tables exist in the entity table; both surface in Settings UI screens (5.1), but neither has a public endpoint in `api-contracts.yaml v1.0`. FR-019 references `environment` enum, FR-009/FR-028 reference Jira credentials retrieved from "Workspace integration config" — but the management API for these is absent. **Ask**: are these Settings-only (server actions, never exposed as Bearer-protected REST) or should they be added to `/api/v1/...` for CLI / agentic use? Decision needed before `/project-bootstrap` scaffolds API routes.
+`environments` and `integrations` tables exist in the entity table; both surface in Settings UI screens (5.1), but neither has a public endpoint in `api-contracts.yaml v1.0`. {{PROJECT_KEY}}-019 references `environment` enum, {{PROJECT_KEY}}-009/{{PROJECT_KEY}}-028 reference Jira credentials retrieved from "Workspace integration config" — but the management API for these is absent. **Ask**: are these Settings-only (server actions, never exposed as Bearer-protected REST) or should they be added to `/api/v1/...` for CLI / agentic use? Decision needed before `/project-bootstrap` scaffolds API routes.
 
 ### Gap #4 — Read/Update/Delete endpoints for User Stories + Acceptance Criteria
 
-`api-contracts.yaml v1.0` documents only `POST /user-stories` and `POST /acceptance-criteria` — no GET / PATCH / DELETE. FR-035 generic ("All FRs 001–032 exposed under `/api/v1/...`") implies they exist but the contract file is incomplete. **Ask**: surface these endpoints in `api-contracts.yaml` before `/project-bootstrap` so OpenAPI consumers (Karim persona) don't hit 404s. Action item for `/project-foundation` Phase 4 wrap-up or `/project-bootstrap` Step 1.
+`api-contracts.yaml v1.0` documents only `POST /user-stories` and `POST /acceptance-criteria` — no GET / PATCH / DELETE. {{PROJECT_KEY}}-035 generic ("All FRs 001–032 exposed under `/api/v1/...`") implies they exist but the contract file is incomplete. **Ask**: surface these endpoints in `api-contracts.yaml` before `/project-bootstrap` so OpenAPI consumers (Karim persona) don't hit 404s. Action item for `/project-foundation` Phase 4 wrap-up or `/project-bootstrap` Step 1.
 
 ### Gap #5 — Sweeper cron for abandoned Runs
 
-`user-journeys.md §3 "Agent abandons (process killed)"` mentions "a sweeper cron times it out after a configurable max_duration (default 4h)" — but no FR documents this behavior. **Ask**: codify as cross-cutting FR (e.g. FR-041 Run abandonment sweeper) and decide whether `max_duration` is per-Project, per-Workspace, or global. Action item for `/product-management` before MVP launch.
+`user-journeys.md §3 "Agent abandons (process killed)"` mentions "a sweeper cron times it out after a configurable max_duration (default 4h)" — but no FR documents this behavior. **Ask**: codify as cross-cutting FR (e.g. {{PROJECT_KEY}}-041 Run abandonment sweeper) and decide whether `max_duration` is per-Project, per-Workspace, or global. Action item for `/product-management` before MVP launch.
 
 ### Gap #6 — Workspace plan field has no toggle / billing endpoint
 
@@ -617,7 +617,7 @@ FR-003 covers invite creation but `.context/SRS/api-contracts.yaml` exposes no G
 
 ### Gap #7 — Search across `acceptance_criteria` not in API
 
-FR-031 (command palette) enumerates `entity_type` enum that includes `acceptance_criterion`, but no dedicated `/acceptance-criteria` search endpoint exists. Likely served by the unified `/search` endpoint. **Confirm**: `/search` covers AC entity; no separate endpoint needed.
+{{PROJECT_KEY}}-031 (command palette) enumerates `entity_type` enum that includes `acceptance_criterion`, but no dedicated `/acceptance-criteria` search endpoint exists. Likely served by the unified `/search` endpoint. **Confirm**: `/search` covers AC entity; no separate endpoint needed.
 
 ### Gap #8 — Markdown sanitization library not pinned
 

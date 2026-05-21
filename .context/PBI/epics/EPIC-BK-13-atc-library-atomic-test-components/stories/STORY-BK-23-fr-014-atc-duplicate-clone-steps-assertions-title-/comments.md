@@ -18,7 +18,7 @@
 - No re-validation of cross-entity rules (AC↔US, module↔project subtree) — the source already passed those rules at its creation time. If the source's relationships have become invalid since (rare, only via admin operations), this is acknowledged as out-of-scope cleanup.
 
 ## Dependencies
-- Upstream: **BK-18 (FR-010a)** — reuses the insert path, slug computation, and event emission. Strongly prefer landing BK-18 first and extracting an internal `createAtc(payload)` service function that this story calls.
+- Upstream: **BK-18 ({{PROJECT_KEY}}-010a)** — reuses the insert path, slug computation, and event emission. Strongly prefer landing BK-18 first and extracting an internal `createAtc(payload)` service function that this story calls.
 - Downstream: ATC list/detail UI gets a "Duplicate" action that calls this endpoint and redirects to the new ATC's detail page.
 - External: same event bus as BK-18.
 
@@ -34,7 +34,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-004 (US 4.6)
-- SRS: `.context/SRS/functional-specs.md` § FR-014
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-014
 - Business map: `.context/business/business-data-map.md` § atcs / atc_steps / atc_assertions
 - API contract: `.context/SRS/api-contracts.yaml` § paths./atcs/{source_id}/duplicate
 

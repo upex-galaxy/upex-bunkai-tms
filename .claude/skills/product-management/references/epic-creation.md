@@ -222,8 +222,8 @@ This file is the local source of truth for the epic — it mirrors the Jira desc
 
 ## Related Functional Requirements
 
-- **FR-XXX:** [FR description]
-- **FR-YYY:** [FR description]
+- **{{PROJECT_KEY}}-XXX:** [FR description]
+- **{{PROJECT_KEY}}-YYY:** [FR description]
 
 See: `.context/SRS/functional-specs.md`
 
@@ -323,7 +323,7 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 ## Related Documentation
 
 - **PRD:** `.context/PRD/executive-summary.md`, `.context/PRD/mvp-scope.md`
-- **SRS:** `.context/SRS/functional-specs.md` (FR-XXX to FR-YYY)
+- **SRS:** `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-XXX to {{PROJECT_KEY}}-YYY)
 - **Architecture:** `.context/SRS/architecture-specs.md`
 - **API Contracts:** `.context/SRS/api-contracts.yaml`
 ```

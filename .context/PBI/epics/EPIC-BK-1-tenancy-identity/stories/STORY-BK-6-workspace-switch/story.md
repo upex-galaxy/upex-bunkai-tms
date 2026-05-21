@@ -10,7 +10,7 @@
 
 ## User Story
 
-As an authenticated user, I want to switch between Workspaces I belong to so that I can serve multiple clients / teams from one Bunkai account. Implements FR-004.
+As an authenticated user, I want to switch between Workspaces I belong to so that I can serve multiple clients / teams from one Bunkai account. Implements {{PROJECT_KEY}}-004.
 
 ---
 

@@ -20,7 +20,7 @@
 - No optimistic UI on create — server is the truth.
 
 ## Dependencies
-- Upstream: **BK-18 (FR-010a)** — this story is fully blocked by the API. Without the contract finalized, the form cannot wire.
+- Upstream: **BK-18 ({{PROJECT_KEY}}-010a)** — this story is fully blocked by the API. Without the contract finalized, the form cannot wire.
 - Upstream: design tokens from `DESIGN.md` (form spacing, chip styling, segmented control)
 - Downstream: BK-21 propagation needs an edit form variant (likely a sibling route `/atcs/{id}/edit`) that reuses these builders; that story may be split or this PR may extract reusable subcomponents.
 - External: React Hook Form, Zod, Next.js App Router
@@ -37,7 +37,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-004 (US 4.1, US 4.2)
-- SRS: `.context/SRS/functional-specs.md` § FR-010 (UI requirements section)
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-010 (UI requirements section)
 - Design tokens: `DESIGN.md` § Forms, § Chips
 - API contract: depends on BK-18 OpenAPI surface
 

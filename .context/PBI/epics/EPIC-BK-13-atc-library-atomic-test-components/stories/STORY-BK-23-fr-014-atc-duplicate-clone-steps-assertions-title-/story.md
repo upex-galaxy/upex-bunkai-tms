@@ -1,90 +1,62 @@
-# FR-014 — ATC duplicate (clone steps + assertions, title suffix "(copy)")
+# ATC duplicate (clone steps + assertions, title suffix "(copy)")
 
 **Jira Key:** [BK-23](https://upexgalaxy67.atlassian.net/browse/BK-23)
 **Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 **Priority:** Medium
-**Story Points:** 1
-**Status:** Backlog
+**Story Points:** -
+**Status:** Shift-Left QA
 
 ---
 
 ## User Story
 
-As a tester building a variant of an existing ATC,
+***Source spec:*** FR-014
 
-I want to duplicate an ATC with all its steps and assertions in one click,
+## User Story
 
-So that I can start from a known-good template instead of re-typing.
+As a tester building a variant of an existing ATC, I want to duplicate an ATC with all its steps and assertions in one click, so that I can start from a known-good template instead of re-typing.
 
+## Context
 
-
-Anchors PRD US 4.6 and implements SRS FR-014. Reuses the same persistence path as FR-010a create but skips form input by deep-copying the source.
+Anchors PRD US 4.6 and implements SRS FR-014. Reuses the same persistence path as FR-010a (BK-18) create but skips form input by deep-copying the source.
 
 ---
 
 ## Acceptance Criteria
 
+```gherkin
 Scenario: Duplicate produces independent copy with "(copy)" title suffix
-
-  Given an ATC titled "Login with valid email" with 4 steps and 2 assertions
-
-  When the user POSTs to /atcs/{source_id}/duplicate without a new_title
-
-  Then the API returns 201 with a new atc_id
-
-  And the new ATC is titled "Login with valid email (copy)"
-
-  And the new ATC has 4 steps and 2 assertions matching the source's content
-
-  And editing the new ATC does NOT modify the source
-
-
+Given an ATC titled "Login with valid email" with 4 steps and 2 assertions
+When the user POSTs to /atcs/{source*id}/duplicate without a new*title
+Then the API returns 201 with a new atc_id
+And the new ATC is titled "Login with valid email (copy)"
+And the new ATC has 4 steps and 2 assertions matching the source's content
+And editing the new ATC does NOT modify the source
 
 Scenario: Custom new_title overrides the default suffix
-
-  Given an existing ATC titled "Login with valid email"
-
-  When the user POSTs /atcs/{source_id}/duplicate with new_title "Login with SSO"
-
-  Then the new ATC is titled exactly "Login with SSO"
-
-  And no "(copy)" suffix is appended
-
-
+Given an existing ATC titled "Login with valid email"
+When the user POSTs /atcs/{source*id}/duplicate with new*title "Login with SSO"
+Then the new ATC is titled exactly "Login with SSO"
+And no "(copy)" suffix is appended
 
 Scenario: Duplicate emits atc.created event (not atc.duplicated)
-
-  Given an authenticated member
-
-  When the user duplicates an ATC
-
-  Then an atc.created event is emitted with the new atc_id and full payload
-
-  And no separate atc.duplicated event is emitted
-
-  And downstream consumers do not need special handling
-
-
+Given an authenticated member
+When the user duplicates an ATC
+Then an atc.created event is emitted with the new atc_id and full payload
+And no separate atc.duplicated event is emitted
+And downstream consumers do not need special handling
 
 Scenario: Reject duplicate when caller lacks member role
-
-  Given an authenticated viewer
-
-  When the viewer POSTs /atcs/{source_id}/duplicate
-
-  Then the API returns 403 with error code "insufficient_role"
-
-
+Given an authenticated viewer
+When the viewer POSTs /atcs/{source_id}/duplicate
+Then the API returns 403 with error code "insufficient_role"
 
 Scenario: new_title length validation matches create endpoint
-
-  Given an authenticated member
-
-  When the user POSTs /atcs/{source_id}/duplicate with new_title "ab"
-
-  Then the API returns 422 with error code "title_too_short"
-
-  And no new ATC is created
+Given an authenticated member
+When the user POSTs /atcs/{source*id}/duplicate with new*title "ab"
+Then the API returns 422 with error code "title*too*short"
+And no new ATC is created
+```
 
 ---
 
@@ -98,7 +70,7 @@ Scenario: new_title length validation matches create endpoint
 
 - new_title is validated by the same rules as create (3..200 chars)
 
-- The duplicate inherits module_id, user_story_id, acceptance_criterion_ids, layer, and tags from the source without re-validation (source already passed those rules)
+- The duplicate inherits module*id, user*story*id, acceptance*criterion_ids, layer, and tags from the source without re-validation (source already passed those rules)
 
 - Emitted event type is atc.created, not atc.duplicated; payload is the full new ATC
 
@@ -108,13 +80,13 @@ Scenario: new_title length validation matches create endpoint
 
 ## Scope
 
-- POST /atcs/{source_id}/duplicate endpoint with optional { new_title } body
+- POST /atcs/{source*id}/duplicate endpoint with optional { new*title } body
 
 - Read source ATC + steps + assertions in a snapshot
 
-- Insert new atcs row inheriting module_id, user_story_id, AC ids, layer, tags, and step/assertion content
+- Insert new atcs row inheriting module*id, user*story_id, AC ids, layer, tags, and step/assertion content
 
-- Title defaults to "{source_title} (copy)" if new_title omitted
+- Title defaults to "{source*title} (copy)" if new*title omitted
 
 - New slug computed from new atc_id (slugs are NOT cloned — each ATC has its own immutable slug)
 
@@ -128,7 +100,7 @@ Scenario: new_title length validation matches create endpoint
 
 ## Workflow
 
-A member POSTs /atcs/{source_id}/duplicate optionally with { new_title }. The service loads the source ATC, its steps, and its assertions. Inside a single transaction it inserts a new atcs row with the new title (default suffix or override), copies all step rows with their content and positions, copies all assertion rows with their content and positions, computes the new slug from the new atc_id, and commits. The event bus emits atc.created carrying the full new ATC payload, identical to a normal create.
+A member POSTs /atcs/{source*id}/duplicate optionally with { new*title }. The service loads the source ATC, its steps, and its assertions. Inside a single transaction it inserts a new atcs row with the new title (default suffix or override), copies all step rows with their content and positions, copies all assertion rows with their content and positions, computes the new slug from the new atc_id, and commits. The event bus emits atc.created carrying the full new ATC payload, identical to a normal create.
 
 ---
 
@@ -144,12 +116,12 @@ A member POSTs /atcs/{source_id}/duplicate optionally with { new_title }. The se
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/19/2026
+- **Updated:** 5/21/2026
 - **Reporter:** Ely
-- **Assignee:** Luis Daniel Medina Meléndez 
+- **Assignee:** Unassigned
 - **Labels:** atc, clone, mvp, wave-2
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:58:08.875Z_
+_Last sync: 2026-05-21T05:14:29.688Z_

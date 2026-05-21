@@ -43,7 +43,7 @@
 
 ### Related
 
-- BK-3 (OAuth sign-in) — same FR-001 with different provider surface.
+- BK-3 (OAuth sign-in) — same {{PROJECT_KEY}}-001 with different provider surface.
 
 ## Definition of Done
 - [ ] Magic-link sign-up + sign-in working end-to-end on staging.

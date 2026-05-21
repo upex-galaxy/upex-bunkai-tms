@@ -10,7 +10,7 @@
 
 ## User Story
 
-As an authenticated user, I want to create a Workspace so that my team's data is isolated from other tenants. Implements FR-002.
+As an authenticated user, I want to create a Workspace so that my team's data is isolated from other tenants. Implements {{PROJECT_KEY}}-002.
 
 ---
 

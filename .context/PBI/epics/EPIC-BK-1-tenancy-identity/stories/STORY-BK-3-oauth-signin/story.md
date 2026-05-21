@@ -10,7 +10,7 @@
 
 ## User Story
 
-As a visitor, I want to sign up and sign in via OAuth (GitHub or Google) so that I can join Bunkai with my existing identity provider. Implements FR-001 partially (OAuth side). Email magic-link is a separate story.
+As a visitor, I want to sign up and sign in via OAuth (GitHub or Google) so that I can join Bunkai with my existing identity provider. Implements {{PROJECT_KEY}}-001 partially (OAuth side). Email magic-link is a separate story.
 
 ---
 

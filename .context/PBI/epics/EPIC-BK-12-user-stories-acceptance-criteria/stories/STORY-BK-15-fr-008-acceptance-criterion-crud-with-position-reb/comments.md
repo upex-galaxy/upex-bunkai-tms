@@ -32,7 +32,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003 / US 3.2
-- SRS: `.context/SRS/functional-specs.md` § FR-008
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-008
 - Business map: `.context/business/business-data-map.md` § acceptance_criteria entity
 - API contract: `.context/SRS/api-contracts.yaml` § `/api/acceptance-criteria`
 

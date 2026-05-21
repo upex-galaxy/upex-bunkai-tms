@@ -3,10 +3,14 @@
 **Jira Key:** [BK-9](https://upexgalaxy67.atlassian.net/browse/BK-9)
 **Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Priority:** Medium
-**Story Points:** 1
-**Status:** Estimation
+**Story Points:** -
+**Status:** Shift-Left QA
 
 ---
+
+## User Story
+
+***Source spec:*** FR-006
 
 ## User Story
 
@@ -16,57 +20,34 @@ As a Project member, I want to define Modules (and nested sub-modules up to dept
 
 ## Acceptance Criteria
 
+```gherkin
 Scenario: Create a top-level Module
-
-  Given a project member of Project P
-
-  When they POST /api/v1/projects/P/modules with { name: "Cart" }
-
-  Then the system inserts a modules row with parent_module_id = null and path "/cart"
-
-  And returns 201 with { module_id, path: "/cart" }
-
-
+Given a project member of Project P
+When they POST /api/v1/projects/P/modules with { name: "Cart" }
+Then the system inserts a modules row with parent*module*id = null and path "/cart"
+And returns 201 with { module_id, path: "/cart" }
 
 Scenario: Create a nested sub-module
-
-  Given Project P already has a Module "Cart" (id = m_cart, path = "/cart")
-
-  When a member POSTs a Module with { name: "Add to Cart", parent_module_id: "m_cart" }
-
-  Then the system inserts modules with parent_module_id = "m_cart" and path "/cart/add-to-cart"
-
-  And returns 201
-
-
+Given Project P already has a Module "Cart" (id = m_cart, path = "/cart")
+When a member POSTs a Module with { name: "Add to Cart", parent*module*id: "m_cart" }
+Then the system inserts modules with parent*module*id = "m_cart" and path "/cart/add-to-cart"
+And returns 201
 
 Scenario: Depth warning at depth 4
-
-  Given a member creates a Module at depth 4 (parent_module is at depth 3)
-
-  When the POST succeeds
-
-  Then the response metadata includes a soft warning DEPTH_APPROACHING_LIMIT
-
-
+Given a member creates a Module at depth 4 (parent_module is at depth 3)
+When the POST succeeds
+Then the response metadata includes a soft warning DEPTH*APPROACHING*LIMIT
 
 Scenario: Depth exceeded at depth 7
-
-  Given a member attempts to create a Module under a depth-6 parent
-
-  When they POST
-
-  Then the system returns 400 with code MODULE_DEPTH_EXCEEDED and no row is inserted
-
-
+Given a member attempts to create a Module under a depth-6 parent
+When they POST
+Then the system returns 400 with code MODULE*DEPTH*EXCEEDED and no row is inserted
 
 Scenario: Parent module belongs to different project rejected
-
-  Given Module m_x belongs to Project A
-
-  When a member of Project B POSTs a Module with parent_module_id = m_x
-
-  Then the system returns 400 with code PARENT_PROJECT_MISMATCH
+Given Module m_x belongs to Project A
+When a member of Project B POSTs a Module with parent*module*id = m_x
+Then the system returns 400 with code PARENT*PROJECT*MISMATCH
+```
 
 ---
 
@@ -86,33 +67,13 @@ Scenario: Parent module belongs to different project rejected
 
 ## Scope
 
-IN SCOPE:
-
 - POST /api/v1/projects/{id}/modules endpoint
-
 - name validation: 2-80 chars
-
-- Optional parent_module_id (nullable for top-level)
-
+- Optional parent*module*id (nullable for top-level)
 - Optional description (Markdown)
-
 - Auto-compute path materialized column
-
 - Depth limit: hard 6, soft warning at 4
-
 - parent must belong to same Project
-
-
-
-OUT OF SCOPE:
-
-- Module rename (separate story, BK-rename-delete)
-
-- Module move (separate story, BK-move)
-
-- Module soft-delete (separate story, BK-rename-delete)
-
-- Drag-and-drop UI reorder (Phase 2, EPIC-BK-008)
 
 ---
 
@@ -124,7 +85,7 @@ OUT OF SCOPE:
 
 3. UI shows name input + description textarea.
 
-4. POST /api/v1/projects/{id}/modules with { name, parent_module_id?, description? }.
+4. POST /api/v1/projects/{id}/modules with { name, parent*module*id?, description? }.
 
 5. Server validates project membership + parent constraints + depth limit.
 
@@ -150,7 +111,7 @@ OUT OF SCOPE:
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/19/2026
+- **Updated:** 5/21/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** hierarchy, mvp, wave-1
@@ -158,4 +119,4 @@ OUT OF SCOPE:
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:58:02.396Z_
+_Last sync: 2026-05-21T05:14:28.578Z_

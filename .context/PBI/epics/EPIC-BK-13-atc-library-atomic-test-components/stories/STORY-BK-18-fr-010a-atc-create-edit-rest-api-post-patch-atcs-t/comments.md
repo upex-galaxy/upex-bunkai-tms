@@ -33,7 +33,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-004 (US 4.1, US 4.2)
-- SRS: `.context/SRS/functional-specs.md` § FR-010
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-010
 - Business map: `.context/business/business-data-map.md` § atcs / atc_steps / atc_assertions
 - API contract: `.context/SRS/api-contracts.yaml` § paths./atcs and paths./atcs/{id}
 

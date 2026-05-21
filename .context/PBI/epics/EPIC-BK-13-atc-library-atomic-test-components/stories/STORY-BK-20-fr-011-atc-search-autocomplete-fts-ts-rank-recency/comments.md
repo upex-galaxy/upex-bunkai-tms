@@ -35,7 +35,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-004 (US 4.3)
-- SRS: `.context/SRS/functional-specs.md` § FR-011
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-011
 - Business map: `.context/business/business-data-map.md` § atcs (search_tsv column)
 - API contract: `.context/SRS/api-contracts.yaml` § paths./atcs/search
 

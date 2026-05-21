@@ -37,7 +37,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003 / US 3.3
-- SRS: `.context/SRS/functional-specs.md` § FR-009
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-009
 - Business map: `.context/business/business-data-map.md` § import_jobs + workspace_integrations entities
 - API contract: `.context/SRS/api-contracts.yaml` § `/api/imports`
 - Jira REST v3 search: https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/

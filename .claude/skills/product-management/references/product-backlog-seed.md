@@ -12,15 +12,15 @@ Actúa como Scrum Master y Product Owner.
 
 ### Campos Disponibles en Jira
 
-| Field ID            | Nombre                           | Tipo     | Requerido | Uso                                        |
-| ------------------- | -------------------------------- | -------- | --------- | ------------------------------------------ |
-| `customfield_10201` | ✅ Acceptance Criteria (Gherkin) | Textarea | ✅ Sí     | Criterios de aceptación en formato Gherkin |
+| Field ID            | Nombre                          | Tipo     | Requerido | Uso                                        |
+| ------------------- | ------------------------------- | -------- | --------- | ------------------------------------------ |
+| `customfield_10201` | ✅ Acceptance Criteria (Gherkin) | Textarea | ✅ Sí      | Criterios de aceptación en formato Gherkin |
 | `customfield_10202` | 🚩BUSINESS RULES SPEC            | Textarea | Opcional  | Reglas de negocio específicas              |
-| `customfield_10401` | ⛳SCOPE                          | Textarea | ✅ Sí     | Alcance de la historia (In/Out scope)      |
+| `customfield_10401` | ⛳SCOPE                          | Textarea | ✅ Sí      | Alcance de la historia (In/Out scope)      |
 | `customfield_10400` | 🎴MOCKUP                         | Textarea | Opcional  | Referencias a mockups/wireframes (URLs)    |
 | `customfield_10500` | 🧬WORKFLOW                       | Textarea | Opcional  | Descripción del flujo de trabajo           |
-| `customfield_10028` | Story Points🎲                   | Number   | ✅ Sí     | Estimación en Fibonacci (1,2,3,5,8,13)     |
-| `customfield_11600` | 🌍️ WEBLINK                       | URL      | ⚠️ Cond.  | URL de la app/feature (ver nota abajo)     |
+| `customfield_10028` | Story Points🎲                   | Number   | ✅ Sí      | Estimación en Fibonacci (1,2,3,5,8,13)     |
+| `customfield_11600` | 🌍️ WEBLINK                       | URL      | ⚠️ Cond.   | URL de la app/feature (ver nota abajo)     |
 
 ### Nota sobre WEBLINK (customfield_11600)
 
@@ -392,8 +392,8 @@ Crear carpeta:
 
 ## Related Functional Requirements
 
-- **FR-XXX:** [Descripción del FR]
-- **FR-YYY:** [Descripción del FR]
+- **{{PROJECT_KEY}}-XXX:** [Descripción del FR]
+- **{{PROJECT_KEY}}-YYY:** [Descripción del FR]
 
 See: `.context/SRS/functional-specs.md`
 
@@ -493,7 +493,7 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 ## Related Documentation
 
 - **PRD:** `.context/PRD/executive-summary.md`, `.context/PRD/mvp-scope.md`
-- **SRS:** `.context/SRS/functional-specs.md` (FR-XXX to FR-YYY)
+- **SRS:** `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-XXX to {{PROJECT_KEY}}-YYY)
 - **Architecture:** `.context/SRS/architecture-specs.md`
 - **API Contracts:** `.context/SRS/api-contracts.yaml`
 ```
@@ -762,7 +762,7 @@ See: refined acceptance criteria + edge cases for the story — refer to `accept
 
 - **Epic:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/epic.md`
 - **PRD:** `.context/PRD/user-journeys.md`
-- **SRS:** `.context/SRS/functional-specs.md` (FR-XXX)
+- **SRS:** `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-XXX)
 - **API Contracts:** `.context/SRS/api-contracts.yaml`
 ```
 

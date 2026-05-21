@@ -32,6 +32,15 @@
         "N8N_API_URL": "${N8N_API_URL}",
         "N8N_API_KEY": "${N8N_API_KEY}"
       }
+    },
+    "atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "JIRA_URL": "${ATLASSIAN_URL}",
+        "JIRA_USERNAME": "${ATLASSIAN_EMAIL}",
+        "JIRA_API_TOKEN": "${ATLASSIAN_API_TOKEN}"
+      }
     }
   }
 }

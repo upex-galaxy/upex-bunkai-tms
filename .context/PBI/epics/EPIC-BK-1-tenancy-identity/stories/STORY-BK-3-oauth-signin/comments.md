@@ -33,7 +33,7 @@
 
 ### Related
 
-- BK-2 (email magic-link) — same FR-001.
+- BK-2 (email magic-link) — same {{PROJECT_KEY}}-001.
 
 ## Definition of Done
 - [ ] Both providers (GitHub + Google) tested in staging.

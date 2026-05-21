@@ -1,22 +1,22 @@
-# FR-013 — ATC usage report ("Used in N tests")
+# ATC usage report ("Used in N tests")
 
 **Jira Key:** [BK-22](https://upexgalaxy67.atlassian.net/browse/BK-22)
 **Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 **Priority:** Medium
-**Story Points:** 1
-**Status:** Backlog
+**Story Points:** -
+**Status:** Shift-Left QA
 
 ---
 
 ## User Story
 
-As a tester evaluating whether an ATC is safe to edit or delete,
+***Source spec:*** FR-013
 
-I want to see which Tests reference this ATC and in what position,
+## User Story
 
-So that I can assess blast radius before making changes.
+As a tester reviewing an ATC, I want a "Used in N tests" report on the ATC detail page, so that I can see the downstream impact of any change before I make it.
 
-
+## Context
 
 Anchors PRD US 4.5 and implements SRS FR-013. Powers the "Used in N tests" widget on the ATC detail page and the impact preview before any destructive action.
 
@@ -24,61 +24,38 @@ Anchors PRD US 4.5 and implements SRS FR-013. Powers the "Used in N tests" widge
 
 ## Acceptance Criteria
 
-Scenario: ATC referenced by multiple Tests
+```gherkin
+Scenario: User views usage report for an ATC with active tests
+Given an ATC atc_id = 42 referenced by 3 active Tests
+And the caller has at least viewer role on the workspace
+When the caller GETs /atcs/42/usage
+Then the response is 200 OK
+And used_in[] contains exactly 3 entries
+And each entry has { test*id, slug, title, position*in_test }
 
-  Given ATC X is referenced by Tests T-1 (position 2), T-2 (position 1), and T-3 (position 4)
+Scenario: ATC with zero usage returns empty list
+Given an ATC atc_id = 99 not referenced by any Test
+When the caller GETs /atcs/99/usage
+Then the response is 200 OK
+And used_in[] equals []
+And the response is NOT 404
 
-  When the user calls GET /atcs/{id}/usage
-
-  Then the API returns 200 with used_in array of 3 entries
-
-  And each entry includes test_id, slug, title, and position_in_test
-
-  And the array is ordered by test slug ascending
-
-
-
-Scenario: ATC not referenced anywhere
-
-  Given ATC Y has never been used in any Test
-
-  When the user calls GET /atcs/{id}/usage
-
-  Then the API returns 200 with an empty used_in array
-
-  And no error is raised
-
-
-
-Scenario: ATC referenced multiple times in the same Test
-
-  Given ATC Z is used in Test T-5 at positions 1 and 3
-
-  When the user calls GET /atcs/{id}/usage
-
-  Then the response includes two entries for T-5 with position_in_test 1 and 3 respectively
-
-  And both entries carry the same test_id, slug, and title
-
-
-
-Scenario: Usage report respects workspace scope
-
-  Given ATC X exists in workspace W-1
-
-  And a viewer of workspace W-2 attempts to call GET /atcs/{id}/usage
-
-  Then the API returns 404 with error code "atc_not_found"
+Scenario: Same ATC chained multiple times in one Test
+Given Test T1 chains ATC 42 at positions 1, 4, and 7
+When the caller GETs /atcs/42/usage
+Then used_in[] contains 3 entries for T1
+And position*in*test values are 1, 4, 7
+```
 
 ---
 
 ## Business Rules
 
-- The endpoint reads from test_steps (join table linking Tests to ATCs), never from atc_steps
+- The endpoint reads from test*steps (join table linking Tests to ATCs), never from atc*steps
 
-- Each row in test_steps with atc_id = {id} produces one entry in used_in
+- Each row in test*steps with atc*id = {id} produces one entry in used_in
 
-- position_in_test is the position field on test_steps, not on atc_steps
+- position*in*test is the position field on test*steps, not on atc*steps
 
 - Results are ordered by test slug ASC for stable UI rendering; ties broken by position ASC
 
@@ -90,9 +67,9 @@ Scenario: Usage report respects workspace scope
 
 - GET /atcs/{id}/usage endpoint
 
-- Query joins test_steps to tests, filtered by test_steps.atc_id
+- Query joins test*steps to tests, filtered by test*steps.atc_id
 
-- Response shape: { used_in: [{ test_id, slug, title, position_in_test }] } ordered by slug ASC
+- Response shape: { used*in: [{ test*id, slug, title, position*in*test }] } ordered by slug ASC
 
 - Multiple positions in the same Test return as multiple entries
 
@@ -108,7 +85,7 @@ Scenario: Usage report respects workspace scope
 
 ## Workflow
 
-The ATC detail page calls GET /atcs/{id}/usage on mount. The service loads the ATC to verify it exists in the caller's workspace (returns 404 if not), then queries test_steps JOIN tests WHERE test_steps.atc_id = {id}, ordered by tests.slug ASC then test_steps.position ASC. Each row becomes one entry in the used_in array. The client renders this as a list under "Used in N tests" with deep links to each referencing Test.
+The ATC detail page calls GET /atcs/{id}/usage on mount. The service loads the ATC to verify it exists in the caller's workspace (returns 404 if not), then queries test*steps JOIN tests WHERE test*steps.atc*id = {id}, ordered by tests.slug ASC then test*steps.position ASC. Each row becomes one entry in the used_in array. The client renders this as a list under "Used in N tests" with deep links to each referencing Test.
 
 ---
 
@@ -124,12 +101,12 @@ The ATC detail page calls GET /atcs/{id}/usage on mount. The service loads the A
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/19/2026
+- **Updated:** 5/21/2026
 - **Reporter:** Ely
-- **Assignee:** Luis Daniel Medina Meléndez 
+- **Assignee:** Unassigned
 - **Labels:** atc, mvp, reporting, wave-2
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:58:08.573Z_
+_Last sync: 2026-05-21T05:14:29.688Z_

@@ -32,7 +32,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003 / US 3.1
-- SRS: `.context/SRS/functional-specs.md` § FR-007
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-007
 - Business map: `.context/business/business-data-map.md` § user_stories entity
 - API contract: `.context/SRS/api-contracts.yaml` § `/api/user-stories`
 

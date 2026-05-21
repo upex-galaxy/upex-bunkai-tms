@@ -18,7 +18,7 @@
 - Role check uses existing session helper; minimum role is `member`.
 
 ## Dependencies
-- Upstream: **BK-18 (FR-010a)** — this story extends the PATCH endpoint defined there. The base validation, transaction shape, and event bus integration come from BK-18.
+- Upstream: **BK-18 ({{PROJECT_KEY}}-010a)** — this story extends the PATCH endpoint defined there. The base validation, transaction shape, and event bus integration come from BK-18.
 - Upstream: EPIC-BK-5 must define the `test_steps(atc_id)` foreign key and any layer-policy column on `tests` before propagation can be tested end-to-end.
 - Downstream: Notifications epic (out-of-scope) will subscribe to `atc.updated` to email affected Test authors. Search index refresh (BK-20) listens to the same event to update `search_tsv` if title/tags changed.
 - External: event bus (same as BK-18).
@@ -36,7 +36,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-004 (US 4.4)
-- SRS: `.context/SRS/functional-specs.md` § FR-012
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-012
 - Business map: `.context/business/business-data-map.md` § atcs (version column) / test_steps (FK to atcs)
 - API contract: `.context/SRS/api-contracts.yaml` § paths./atcs/{id}.patch
 

@@ -10,7 +10,7 @@
 
 ## User Story
 
-As a visitor, I want to sign up and sign in with email using a magic-link flow so that I can access Bunkai without managing a password. Implements FR-001 partially (email side). OAuth side is a separate story.
+As a visitor, I want to sign up and sign in with email using a magic-link flow so that I can access Bunkai without managing a password. Implements {{PROJECT_KEY}}-001 partially (email side). OAuth side is a separate story.
 
 ---
 

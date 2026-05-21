@@ -109,7 +109,7 @@ Escenario: Slug derivado inválido (Sanitización destructiva)
 
 1. **El usuario autenticado puede crear un workspace** enviando un nombre válido vía POST a `/api/v1/workspaces`.
 2. **El nombre del workspace debe tener al menos 3 caracteres**. Si tiene 1 o 2 caracteres, se rechaza con error 400 y código `NAME_TOO_SHORT`.
-3. **El nombre no puede exceder la longitud máxima** (definida en FR-002, por ejemplo 50 caracteres). Si la excede, se rechaza con 400 y código `NAME_TOO_LONG`.
+3. **El nombre no puede exceder la longitud máxima** (definida en {{PROJECT_KEY}}-002, por ejemplo 50 caracteres). Si la excede, se rechaza con 400 y código `NAME_TOO_LONG`.
 4. **No se permiten slugs reservados** (como `api`, `app`, `auth`, `admin`, `bunkai`, etc.). Si el nombre se slugifica a una palabra reservada, se rechaza con 400 y código `SLUG_RESERVED`, indicando la lista de slugs prohibidos.
 5. **Un usuario no puede tener dos workspaces con el mismo nombre (insensible a mayúsculas/minúsculas)**. Si intenta crear un segundo workspace con un nombre que ya posee (ej. ya tiene "Acme QA" y quiere "acme qa"), se rechaza con 409 y código `NAME_DUPLICATE_FOR_OWNER`.
 6. **Se emite un evento **`workspace.created` en el canal de tiempo real exclusivo para el propietario del workspace.
@@ -220,7 +220,7 @@ Escenario: Slug derivado inválido (Sanitización destructiva)
   **Scenario 3.2 — Nombre no reservado que produce slug reservado tras sanitización**
   Given un usuario autenticado
   When POST con { name: "A.D.M.I.N" } que tras sanitización produce slug "admin"
-  Then retorna 400 con code SLUG_RESERVED 
+  Then retorna 400 con code SLUG_RESERVED
 
 > ⚠️ La validación debe ejecutarse sobre el slug derivado, no sobre el nombre literal.
 
@@ -347,14 +347,14 @@ puede crear duplicados.
 
 ## Zonas Grises Pendientes de Decisión
 
-| # | Zona gris | Impacto si no se define |
-| --- | --- | --- |
-| | ZG- | | ¿Slug es único globalmente o solo por owner | | Comportamiento indefinido cuando dos usuarios crean el mismo nombr |
-| | ZG- | | ¿La emisión del evento es síncrona (bloqueante) o asíncrona | | Inconsistencia de estado si el evento falla sin rollbac |
-| | ZG- | | ¿El nombre se almacena normalizado o tal como llega | | Inconsistencias en búsqueda y displa |
-| | ZG- | | ¿Existen límites de workspaces por plan de usuario | | Sin definir, no hay cómo testear el límit |
-| | ZG- | | ¿Qué campos lleva el payload del evento `workspace.created` | | Listeners pueden romper por contrato ambigu |
-| | ZG- | | ¿Cómo se transliteran caracteres unicode en el slug | | Comportamiento no determinístico para nombres no-ASCI |
+| #   | Zona gris | Impacto si no se define |
+| --- | --------- | ----------------------- |
+|     | ZG-       |                         | ¿Slug es único globalmente o solo por owner                 |  | Comportamiento indefinido cuando dos usuarios crean el mismo nombr |
+|     | ZG-       |                         | ¿La emisión del evento es síncrona (bloqueante) o asíncrona |  | Inconsistencia de estado si el evento falla sin rollbac            |
+|     | ZG-       |                         | ¿El nombre se almacena normalizado o tal como llega         |  | Inconsistencias en búsqueda y displa                               |
+|     | ZG-       |                         | ¿Existen límites de workspaces por plan de usuario          |  | Sin definir, no hay cómo testear el límit                          |
+|     | ZG-       |                         | ¿Qué campos lleva el payload del evento `workspace.created` |  | Listeners pueden romper por contrato ambigu                        |
+|     | ZG-       |                         | ¿Cómo se transliteran caracteres unicode en el slug         |  | Comportamiento no determinístico para nombres no-ASCI              |
 
 ---
 
@@ -466,16 +466,16 @@ Scenario: Creation with reserved slug
 
 **Analista: **Maibeth Vega  |  **Fecha: **2026-05-19  |  **Alineación: **100% criterios de aceptación
 
-| ID | Criterio AC | Escenario | Entrada | Resultado Esperado |
-| --- | --- | --- | --- | --- |
-| CP-01 | AC 1–4, 9–10 | Happy path completo | POST /api/v1/workspaces { name: "Acme QA" } — usuario autenticado | 201 con { workspace_id, slug: "acme-qa" }, UI navega al nuevo workspace |
-| CP-02 | AC 5 | Nombre demasiado corto | { name: "A" } (1 char) | 400 — código NAME_TOO_SHORT |
-| CP-03 | AC 5 | Nombre sin carácter alfanumérico | { name: "---" } | 400 — validación alfanumérica |
-| CP-04 | AC 6 | Slug reservado | { name: "API" } → slug "api" | 400 — código SLUG_RESERVED |
-| CP-05 | AC 6 | Nombre duplicado por owner (case-insensitive) | Owner ya tiene "Acme QA". POST con { name: "acme qa" } | 409 — código NAME_DUPLICATE_FOR_OWNER |
-| CP-06 | AC 7 | Creator asignado como owner | Creación exitosa | Fila en workspace_members con role=owner para el creador |
-| CP-07 | AC 8 | Evento workspace.created emitido | Creación exitosa | Evento workspace.created emitido en canal realtime del owner |
-| CP-08 | AC 1 | Usuario no autenticado | POST sin token de autenticación | 401 Unauthorized |
+| ID    | Criterio AC  | Escenario                                     | Entrada                                                           | Resultado Esperado                                                      |
+| ----- | ------------ | --------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| CP-01 | AC 1–4, 9–10 | Happy path completo                           | POST /api/v1/workspaces { name: "Acme QA" } — usuario autenticado | 201 con { workspace_id, slug: "acme-qa" }, UI navega al nuevo workspace |
+| CP-02 | AC 5         | Nombre demasiado corto                        | { name: "A" } (1 char)                                            | 400 — código NAME_TOO_SHORT                                             |
+| CP-03 | AC 5         | Nombre sin carácter alfanumérico              | { name: "---" }                                                   | 400 — validación alfanumérica                                           |
+| CP-04 | AC 6         | Slug reservado                                | { name: "API" } → slug "api"                                      | 400 — código SLUG_RESERVED                                              |
+| CP-05 | AC 6         | Nombre duplicado por owner (case-insensitive) | Owner ya tiene "Acme QA". POST con { name: "acme qa" }            | 409 — código NAME_DUPLICATE_FOR_OWNER                                   |
+| CP-06 | AC 7         | Creator asignado como owner                   | Creación exitosa                                                  | Fila en workspace_members con role=owner para el creador                |
+| CP-07 | AC 8         | Evento workspace.created emitido              | Creación exitosa                                                  | Evento workspace.created emitido en canal realtime del owner            |
+| CP-08 | AC 1         | Usuario no autenticado                        | POST sin token de autenticación                                   | 401 Unauthorized                                                        |
 
 **— Análisis QA generado por Maibeth Vega**
 

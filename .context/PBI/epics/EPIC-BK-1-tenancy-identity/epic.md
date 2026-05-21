@@ -48,10 +48,10 @@ Without this epic shipped, no other epic can be tested end-to-end. It is the pre
 
 ## Related Functional Requirements
 
-- FR-001 — Email + OAuth sign-up
-- FR-002 — Workspace creation
-- FR-003 — Invite teammate
-- FR-004 — Workspace switch
+- {{PROJECT_KEY}}-001 — Email + OAuth sign-up
+- {{PROJECT_KEY}}-002 — Workspace creation
+- {{PROJECT_KEY}}-003 — Invite teammate
+- {{PROJECT_KEY}}-004 — Workspace switch
 
 See: `.context/SRS/functional-specs.md`
 
@@ -76,12 +76,12 @@ See: `.context/SRS/functional-specs.md`
 
 ## Risks & Mitigations
 
-| Risk | Impact | Probability | Mitigation |
-| ---- | ------ | ----------- | ---------- |
-| OAuth callback blocked by IT proxy / third-party-cookie restrictions | High (users locked out) | Medium | Always-available magic-link fallback surfaced within 30s |
-| Invite token leaked / replayed | High (account hijack) | Low | HMAC-signed token, single-use, 24h TTL, rotated on accept |
-| Role-escalation via API bypass | Critical | Low | RLS policies + server-side role-check middleware on every mutation |
-| Supabase Auth outage | High | Low | Manual user-create runbook + status page communication |
+| Risk                                                                 | Impact                  | Probability | Mitigation                                                         |
+| -------------------------------------------------------------------- | ----------------------- | ----------- | ------------------------------------------------------------------ |
+| OAuth callback blocked by IT proxy / third-party-cookie restrictions | High (users locked out) | Medium      | Always-available magic-link fallback surfaced within 30s           |
+| Invite token leaked / replayed                                       | High (account hijack)   | Low         | HMAC-signed token, single-use, 24h TTL, rotated on accept          |
+| Role-escalation via API bypass                                       | Critical                | Low         | RLS policies + server-side role-check middleware on every mutation |
+| Supabase Auth outage                                                 | High                    | Low         | Manual user-create runbook + status page communication             |
 
 ## Testing Strategy
 
@@ -103,13 +103,13 @@ See `.context/PBI/epics/EPIC-BK-{N}-tenancy-identity/stories/*/story.md` for per
 
 ## User Stories
 
-| Key | Story | Points | Priority | Status |
-| --- | ----- | ------ | -------- | ------ |
-| [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2) | Sign up and sign in with email (magic-link) | 5 | Medium | Estimation |
-| [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3) | Sign up and sign in via OAuth (GitHub / Google) | 5 | Medium | Estimation |
-| [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4) | Create a Workspace | 1 | Medium | Shift-Left QA |
-| [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5) | Invite a teammate to a Workspace with role assignment | 1 | Medium | Estimation |
-| [BK-6](https://upexgalaxy67.atlassian.net/browse/BK-6) | Switch between Workspaces I belong to | 1 | Medium | Estimation |
+| Key                                                    | Story                                                 | Points | Priority | Status        |
+| ------------------------------------------------------ | ----------------------------------------------------- | ------ | -------- | ------------- |
+| [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2) | Sign up and sign in with email (magic-link)           | 5      | Medium   | Estimation    |
+| [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3) | Sign up and sign in via OAuth (GitHub / Google)       | 5      | Medium   | Estimation    |
+| [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4) | Create a Workspace                                    | 1      | Medium   | Shift-Left QA |
+| [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5) | Invite a teammate to a Workspace with role assignment | 1      | Medium   | Estimation    |
+| [BK-6](https://upexgalaxy67.atlassian.net/browse/BK-6) | Switch between Workspaces I belong to                 | 1      | Medium   | Estimation    |
 
 ---
 

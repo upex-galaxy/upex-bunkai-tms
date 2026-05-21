@@ -35,12 +35,12 @@ The non-negotiable structural rule that orders every Wave is this: **no feature 
 The order below is derived from the entity dependency topology in `business-data-map.md §2` and the journey traces in `business-api-map.md §3`. It is not a preference — it is what the schema forces.
 
 1. **Tenancy + RLS first.** Every entity in the system carries `workspace_id` directly or transitively. Building Modules, ATCs, or Tests before the RLS policy that gates them is building a cross-tenant data leak. Wave 1 lands tenancy, membership, and the RLS pattern; everything downstream inherits from it.
-2. **Hierarchy entities before content authoring.** Project → Module is the substrate for User Stories, ATCs, Tests, and Bugs. The materialized `modules.path` column and the tree-rebuild query (FR-029) are the workhorse read every other screen depends on. Wave 2 establishes them.
+2. **Hierarchy entities before content authoring.** Project → Module is the substrate for User Stories, ATCs, Tests, and Bugs. The materialized `modules.path` column and the tree-rebuild query ({{PROJECT_KEY}}-029) are the workhorse read every other screen depends on. Wave 2 establishes them.
 3. **Content authoring before execution.** You cannot run a Test that does not exist. The chain US → AC → ATC → Test must close before Wave 4 (Runs) can move. Wave 3 builds the ATC library (the differentiator).
 4. **Execution after authoring.** Run → run_atcs → run_steps → Bug. This is Journey 2 end-to-end. Wave 4 (Runs) and Wave 5 (Bugs) are sequential because Bug-from-Run is the canonical filing flow and depends on a failed `run_atc` being addressable.
-5. **Views parallelizable once entities exist.** Tree view (FR-029), Table view (FR-030), command palette (FR-031) all read from already-existing data. Wave 6 batches them with the API-hardening work that needs no UI.
-6. **API + CLI foundation in parallel with UI, gated on auth.** Bearer-PAT auth (FR-034) and the OpenAPI surface (FR-033) cannot start before Wave 1 (the auth model). But once Wave 1 is done, FEAT-040 / FEAT-041 / FEAT-042 / FEAT-043 can develop in parallel with later UI waves — same endpoints, different consumer.
-7. **Cross-cutting bolted on per-endpoint as features land, not big-bang.** Idempotency (FR-037), audit-light (FR-038), soft-delete (FR-039), Realtime (FR-040) are wired into each endpoint as part of that endpoint's Definition of Done — not delivered as a separate cross-cutting wave. The infrastructure (the `idempotency_keys` table, the `activity_log` table, the `archived_at` columns, the Realtime channels) lands in Wave 0; the per-endpoint integration lands with the endpoint.
+5. **Views parallelizable once entities exist.** Tree view ({{PROJECT_KEY}}-029), Table view ({{PROJECT_KEY}}-030), command palette ({{PROJECT_KEY}}-031) all read from already-existing data. Wave 6 batches them with the API-hardening work that needs no UI.
+6. **API + CLI foundation in parallel with UI, gated on auth.** Bearer-PAT auth ({{PROJECT_KEY}}-034) and the OpenAPI surface ({{PROJECT_KEY}}-033) cannot start before Wave 1 (the auth model). But once Wave 1 is done, FEAT-040 / FEAT-041 / FEAT-042 / FEAT-043 can develop in parallel with later UI waves — same endpoints, different consumer.
+7. **Cross-cutting bolted on per-endpoint as features land, not big-bang.** Idempotency ({{PROJECT_KEY}}-037), audit-light ({{PROJECT_KEY}}-038), soft-delete ({{PROJECT_KEY}}-039), Realtime ({{PROJECT_KEY}}-040) are wired into each endpoint as part of that endpoint's Definition of Done — not delivered as a separate cross-cutting wave. The infrastructure (the `idempotency_keys` table, the `activity_log` table, the `archived_at` columns, the Realtime channels) lands in Wave 0; the per-endpoint integration lands with the endpoint.
 8. **Observability + NFR gates layered last, before launch.** Sentry, PostHog, rate-limit middleware, CSP, accessibility audit, and the NFR-validation pass (`non-functional-specs.md §1`) belong in Wave 7. Shipping them earlier means re-wiring after every Wave's surface changes.
 
 ---
@@ -49,16 +49,16 @@ The order below is derived from the entity dependency topology in `business-data
 
 Top features ranked by **user value × downstream blocking factor × MVP urgency**. Anything below Wave 1 is intentionally omitted from this table — it lives in §11 Out-of-scope or §10 Implementation gaps.
 
-| Priority | Feature                                          | Why it matters                                                       | Unlocks / Depends on                                                  |
-| -------- | ------------------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Wave 0   | Infrastructure scaffolding                       | Nothing ships until Next.js, Supabase, env vars, types pipeline live | Unlocks: every Wave 1+                                                |
-| Wave 1   | Tenancy + Identity + RLS (BK-001)                | Every other feature is workspace-scoped — RLS is the safety net      | Unlocks: 2, 3, 4, 5, 6. Depends on: 0                                 |
-| Wave 2   | Project + Module hierarchy (BK-002)              | Substrate for US, ATC, Test, Bug; tree view depends on it            | Unlocks: 3, 4, 5. Depends on: 1                                       |
-| Wave 3   | ATC library (BK-004)                             | Bunkai's differentiator — one-edit-many-tests is here                | Unlocks: 4 (Tests chain ATCs). Depends on: 2                          |
-| Wave 4   | Tests + Manual Runs (BK-005, BK-006)             | First end-to-end "value loop" the design-partner sees                | Unlocks: 5 (Bugs from failed Runs). Depends on: 3                     |
-| Wave 5   | Bugs + Defect heatmap (BK-007)                   | Closes the QA loop inside Bunkai instead of escaping to Jira         | Unlocks: 7 (NFR validation needs full surface). Depends on: 4         |
-| Wave 6   | Views + Search + API hardening (BK-008, BK-009)  | Density (Table view) + Karim persona (CLI / Bearer / OpenAPI)        | Parallel with 4–5 once 3 is done. Depends on: 1                       |
-| Wave 7   | Launch hardening (NFRs, observability, status)   | Adoption metrics need real telemetry to gate Cloud signup            | Gates GA. Depends on: all                                             |
+| Priority | Feature                                         | Why it matters                                                       | Unlocks / Depends on                                          |
+| -------- | ----------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Wave 0   | Infrastructure scaffolding                      | Nothing ships until Next.js, Supabase, env vars, types pipeline live | Unlocks: every Wave 1+                                        |
+| Wave 1   | Tenancy + Identity + RLS (BK-001)               | Every other feature is workspace-scoped — RLS is the safety net      | Unlocks: 2, 3, 4, 5, 6. Depends on: 0                         |
+| Wave 2   | Project + Module hierarchy (BK-002)             | Substrate for US, ATC, Test, Bug; tree view depends on it            | Unlocks: 3, 4, 5. Depends on: 1                               |
+| Wave 3   | ATC library (BK-004)                            | Bunkai's differentiator — one-edit-many-tests is here                | Unlocks: 4 (Tests chain ATCs). Depends on: 2                  |
+| Wave 4   | Tests + Manual Runs (BK-005, BK-006)            | First end-to-end "value loop" the design-partner sees                | Unlocks: 5 (Bugs from failed Runs). Depends on: 3             |
+| Wave 5   | Bugs + Defect heatmap (BK-007)                  | Closes the QA loop inside Bunkai instead of escaping to Jira         | Unlocks: 7 (NFR validation needs full surface). Depends on: 4 |
+| Wave 6   | Views + Search + API hardening (BK-008, BK-009) | Density (Table view) + Karim persona (CLI / Bearer / OpenAPI)        | Parallel with 4–5 once 3 is done. Depends on: 1               |
+| Wave 7   | Launch hardening (NFRs, observability, status)  | Adoption metrics need real telemetry to gate Cloud signup            | Gates GA. Depends on: all                                     |
 
 Capped at 8 rows. Phase 2 / Phase 3 features sit in §9 (Phase 2 plan) and §10 (Phase 3 plan).
 
@@ -84,9 +84,9 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 - `app/api/openapi.json` mounted (returns spec verbatim; no endpoints to introspect yet).
 - `idempotency_keys`, `activity_log`, `feature_flags`, `user_view_state` tables created up-front so cross-cutting wiring is per-endpoint, not retrofit.
 - `bun run vars:check` + `bun run api:sync` green; CI pipeline runs them.
-- **Most likely scope creep to resist**: do not implement any FR-001..FR-040 logic here. This wave is shape, not feature work.
+- **Most likely scope creep to resist**: do not implement any {{PROJECT_KEY}}-001..{{PROJECT_KEY}}-040 logic here. This wave is shape, not feature work.
 
-### Wave 1 — Tenancy + Identity (EPIC-BK-001, FR-001..FR-004)
+### Wave 1 — Tenancy + Identity (EPIC-BK-001, {{PROJECT_KEY}}-001..{{PROJECT_KEY}}-004)
 
 **Why it matters**: this is the safety net for every other feature. RLS policies that depend on `workspace_members` must be defined before any tenant-scoped table accepts writes. If Wave 1 ships with the wrong RLS pattern, every later Wave silently leaks data and we discover it under load.
 
@@ -95,15 +95,15 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 0 (Supabase project, Next.js shell, Zod schemas).
 
 **How to scope it**:
-- Sign-up + sign-in (GitHub OAuth + Google OAuth + magic-link) via Supabase Auth — `FR-001`.
-- `POST /workspaces` creates `workspaces` + auto-inserts creator as `owner` in `workspace_members` — `FR-002`.
-- `POST /workspaces/{id}/invites` with signed 24h tokens — `FR-003`.
-- Workspace switch — rotates `active_workspace_id` in session — `FR-004`.
+- Sign-up + sign-in (GitHub OAuth + Google OAuth + magic-link) via Supabase Auth — `{{PROJECT_KEY}}-001`.
+- `POST /workspaces` creates `workspaces` + auto-inserts creator as `owner` in `workspace_members` — `{{PROJECT_KEY}}-002`.
+- `POST /workspaces/{id}/invites` with signed 24h tokens — `{{PROJECT_KEY}}-003`.
+- Workspace switch — rotates `active_workspace_id` in session — `{{PROJECT_KEY}}-004`.
 - **The RLS pattern**: write the canonical `EXISTS (SELECT 1 FROM workspace_members WHERE wm.workspace_id = <table>.workspace_id AND wm.user_id = auth.uid() AND wm.status = 'active')` policy here once, in one migration, and apply it to every `workspace_id`-bearing table as part of that table's Wave creation.
 - **Most likely scope creep to resist**: SSO/SAML, custom role hierarchy, workspace deletion. All Phase 3 Enterprise. MVP runs on the four canonical roles.
 - **Exit criteria**: founder and one invitee can both reach the empty Workspace Home, see only their own workspace's data, the activity log shows both joins. Cross-tenant query test (impersonating user B, querying workspace A's data) returns zero rows.
 
-### Wave 2 — Project & Hierarchy (EPIC-BK-002 + EPIC-BK-003, FR-005..FR-008)
+### Wave 2 — Project & Hierarchy (EPIC-BK-002 + EPIC-BK-003, {{PROJECT_KEY}}-005..{{PROJECT_KEY}}-008)
 
 **Why it matters**: the Project + Module tree is the substrate the entire UI sits on. The left-side navigation, defect heatmap rollup axis (`bugs.module_id`), Run filtering, and ATC location all depend on this hierarchy being correct.
 
@@ -112,14 +112,14 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 1 (workspace context + RLS pattern).
 
 **How to scope it**:
-- `POST /projects` + `GET /projects` — workspace-scoped slug — `FR-005`.
-- `POST/PATCH/DELETE /modules` with recursive parent chain — `FR-006`. Materialized `modules.path` column. Depth-≤6 hard guard + soft warning at depth 4. Circular-parent check returns `409 MODULE_CIRCULAR_PARENT`.
-- `POST /user-stories` + `POST /acceptance-criteria` — Markdown bodies — `FR-007`, `FR-008`.
-- **Minimal tree view (Wave-2 slice of FR-029)** — Modules only, no ATC/Test/Run rollup yet. Pure recursive CTE. Status dots come in Wave 4.
-- **Most likely scope creep to resist**: Jira import (`FR-009`) — defer to Wave 3 alongside ATC library work. Bulk-edit, Table view — Wave 6.
+- `POST /projects` + `GET /projects` — workspace-scoped slug — `{{PROJECT_KEY}}-005`.
+- `POST/PATCH/DELETE /modules` with recursive parent chain — `{{PROJECT_KEY}}-006`. Materialized `modules.path` column. Depth-≤6 hard guard + soft warning at depth 4. Circular-parent check returns `409 MODULE_CIRCULAR_PARENT`.
+- `POST /user-stories` + `POST /acceptance-criteria` — Markdown bodies — `{{PROJECT_KEY}}-007`, `{{PROJECT_KEY}}-008`.
+- **Minimal tree view (Wave-2 slice of {{PROJECT_KEY}}-029)** — Modules only, no ATC/Test/Run rollup yet. Pure recursive CTE. Status dots come in Wave 4.
+- **Most likely scope creep to resist**: Jira import (`{{PROJECT_KEY}}-009`) — defer to Wave 3 alongside ATC library work. Bulk-edit, Table view — Wave 6.
 - **Exit criteria**: design-partner can create a 5-level deep Module tree with 10 US and 30 AC, see them in the tree view, navigate to a US and edit AC positions. Cross-tenant test still passes.
 
-### Wave 3 — ATC Library (EPIC-BK-004 + FR-009 Jira import, FR-010..FR-014)
+### Wave 3 — ATC Library (EPIC-BK-004 + {{PROJECT_KEY}}-009 Jira import, {{PROJECT_KEY}}-010..{{PROJECT_KEY}}-014)
 
 **Why it matters**: this is **Bunkai's differentiator**. If Wave 3 ships well, the design-partner sees the "one-edit-many-tests" promise become real and the product's core value-prop is validated. If it ships badly, every other Wave is decoration on a generic CRUD.
 
@@ -128,16 +128,16 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 2 (Module + US + AC must exist before an ATC can anchor to them).
 
 **How to scope it**:
-- `POST /atcs` — transactional insert of `atcs` + `atc_steps` + `atc_assertions` + `atc_acceptance_criteria` — `FR-010`. The mandatory-AC link is enforced at the schema / Zod-validator level, not at the application layer.
-- `GET /atcs?q=` — Postgres `tsvector` GIN search on `title` + `tags` — `FR-011`. Rank by `ts_rank` + recency decay.
-- `PATCH /atcs/{id}` — cascade-replace of `atc_steps` + `atc_assertions`, increment `version`, emit `atc.updated` with `affected_test_ids` — `FR-012`.
-- `GET /atcs/{id}?expand=used_in` — usage report — `FR-013`.
-- `POST /atcs/{id}/duplicate` — `FR-014`.
-- `POST /imports/jira` + `GET /imports/{id}` — async Jira import (ADF → Markdown, AC heuristic extraction, dedup by `external_id`) — `FR-009`. Resolves Discovery Gap G1 from data-map (the `imports` table is materialized here).
+- `POST /atcs` — transactional insert of `atcs` + `atc_steps` + `atc_assertions` + `atc_acceptance_criteria` — `{{PROJECT_KEY}}-010`. The mandatory-AC link is enforced at the schema / Zod-validator level, not at the application layer.
+- `GET /atcs?q=` — Postgres `tsvector` GIN search on `title` + `tags` — `{{PROJECT_KEY}}-011`. Rank by `ts_rank` + recency decay.
+- `PATCH /atcs/{id}` — cascade-replace of `atc_steps` + `atc_assertions`, increment `version`, emit `atc.updated` with `affected_test_ids` — `{{PROJECT_KEY}}-012`.
+- `GET /atcs/{id}?expand=used_in` — usage report — `{{PROJECT_KEY}}-013`.
+- `POST /atcs/{id}/duplicate` — `{{PROJECT_KEY}}-014`.
+- `POST /imports/jira` + `GET /imports/{id}` — async Jira import (ADF → Markdown, AC heuristic extraction, dedup by `external_id`) — `{{PROJECT_KEY}}-009`. Resolves Discovery Gap G1 from data-map (the `imports` table is materialized here).
 - **Most likely scope creep to resist**: semantic search via pgvector. Explicitly Phase 2 (`phase2.semantic_search` flag). Stay on tsvector for MVP.
 - **Exit criteria**: 100 ATCs in <500ms p95 search latency (NFR target). Editing one ATC and viewing two Tests that reference it shows the edit propagated. A Jira import of 50 issues completes in <30s end-to-end (NFR §1 bulk operation budget).
 
-### Wave 4 — Tests + Manual Runs (EPIC-BK-005 + EPIC-BK-006, FR-015..FR-024)
+### Wave 4 — Tests + Manual Runs (EPIC-BK-005 + EPIC-BK-006, {{PROJECT_KEY}}-015..{{PROJECT_KEY}}-024)
 
 **Why it matters**: this is the first wave where the design-partner does **the actual job** — author a Test, run it, mark steps pass/fail. Every prior Wave is setup; this is the value loop. The Realtime row broadcast in `run_steps` updates is also the moment the dashboards stop being mockups and start being live.
 
@@ -146,18 +146,18 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 3 (Tests chain ATCs).
 
 **How to scope it**:
-- `POST /tests` + `PATCH /tests/{id}` — Test creation + chain reorder (diff old vs new `atc_chain[]`, rebalance `position` integers in `test_steps`) — `FR-015`, `FR-016`, `FR-018`.
-- `GET /tests/{id}?expand=atcs.steps,atcs.assertions` — the expanded view + the agent's single-roundtrip contract fetch — `FR-017`.
-- `POST /runs` — transactional insert of `runs` header + full `run_atcs` and `run_steps` skeleton (all `pending`) — `FR-019`. Idempotency-Key handling required from day one (don't retrofit).
-- `POST /runs/{id}/steps/{stepId}/result` — leaf update + derive parent `run_atcs.status` + recompute `runs.progress_pct` **in the same transaction** — `FR-020`.
-- `POST /runs/{id}/abort` + `POST /runs/{id}/finish` — terminal-state transitions — `FR-021`, `FR-024`.
-- `GET /runs` — Run history per Test + project-wide filter — `FR-022`, `FR-023`.
-- Realtime row subscriptions on `runs` / `run_atcs` / `run_steps` — `FR-040`.
+- `POST /tests` + `PATCH /tests/{id}` — Test creation + chain reorder (diff old vs new `atc_chain[]`, rebalance `position` integers in `test_steps`) — `{{PROJECT_KEY}}-015`, `{{PROJECT_KEY}}-016`, `{{PROJECT_KEY}}-018`.
+- `GET /tests/{id}?expand=atcs.steps,atcs.assertions` — the expanded view + the agent's single-roundtrip contract fetch — `{{PROJECT_KEY}}-017`.
+- `POST /runs` — transactional insert of `runs` header + full `run_atcs` and `run_steps` skeleton (all `pending`) — `{{PROJECT_KEY}}-019`. Idempotency-Key handling required from day one (don't retrofit).
+- `POST /runs/{id}/steps/{stepId}/result` — leaf update + derive parent `run_atcs.status` + recompute `runs.progress_pct` **in the same transaction** — `{{PROJECT_KEY}}-020`.
+- `POST /runs/{id}/abort` + `POST /runs/{id}/finish` — terminal-state transitions — `{{PROJECT_KEY}}-021`, `{{PROJECT_KEY}}-024`.
+- `GET /runs` — Run history per Test + project-wide filter — `{{PROJECT_KEY}}-022`, `{{PROJECT_KEY}}-023`.
+- Realtime row subscriptions on `runs` / `run_atcs` / `run_steps` — `{{PROJECT_KEY}}-040`.
 - The Run runner UI screen (focused mode with Pass/Fail/Block kbd shortcuts + Markdown notes + evidence URL paste).
 - **Most likely scope creep to resist**: agentic-mode WebSocket protocol (Phase 2 — `phase2.agentic_protocol`). The agent path in MVP uses the same REST endpoints + polling, not a separate channel.
 - **Exit criteria**: 1 Test of 7 ATCs runs end-to-end with mixed pass/fail/block + evidence URLs + notes + Realtime updates visible in a second browser tab. Run history list shows the completed Run. Project-wide Run filter aggregates correctly across 3 environments.
 
-### Wave 5 — Bugs + Defect heatmap (EPIC-BK-007, FR-025..FR-028)
+### Wave 5 — Bugs + Defect heatmap (EPIC-BK-007, {{PROJECT_KEY}}-025..{{PROJECT_KEY}}-028)
 
 **Why it matters**: this is what makes Bunkai "a TMS, not a test case archive". Bugs filed from inside the Run, anchored to Module, rolling up into the heatmap within 5s — this is the dashboard story the QA Lead persona (Mateo) needs to justify adoption to engineering management.
 
@@ -166,15 +166,15 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 4 — Bug-from-Run drawer reads `module_id` from the failing `run_atc`'s parent ATC and `atc_id` from the failing `run_atc` itself.
 
 **How to scope it**:
-- `POST /bugs` — file Bug + auto-link `atc_id` from `run_atc` when `run_id` set + refresh `module_defect_stats` materialized view in same transaction — `FR-025`.
-- `GET /bugs?module_id=&severity=&status=` — listing with aggregates — `FR-026`.
-- `GET /projects/{id}/defect-heatmap` — reads `module_defect_stats` MV — `FR-027`.
-- Async Jira-sync worker — `FR-028`. Best-effort, never blocks bug creation. `jira-bug-sync-retry` cron handles failures with exponential backoff.
+- `POST /bugs` — file Bug + auto-link `atc_id` from `run_atc` when `run_id` set + refresh `module_defect_stats` materialized view in same transaction — `{{PROJECT_KEY}}-025`.
+- `GET /bugs?module_id=&severity=&status=` — listing with aggregates — `{{PROJECT_KEY}}-026`.
+- `GET /projects/{id}/defect-heatmap` — reads `module_defect_stats` MV — `{{PROJECT_KEY}}-027`.
+- Async Jira-sync worker — `{{PROJECT_KEY}}-028`. Best-effort, never blocks bug creation. `jira-bug-sync-retry` cron handles failures with exponential backoff.
 - Bug-from-Run side drawer (auto-populated `module_id`, `steps_to_reproduce` from executed steps, `atc_id`, `run_id`).
 - **Most likely scope creep to resist**: bidirectional Jira sync (Phase 3 — `phase2.jira_bidirectional` flag is named with Phase-2 prefix but ships Phase 3, see Discovery Gap §12-G8). Bug edit endpoints — only status transitions in MVP.
 - **Exit criteria**: a bug filed from inside a failing Run appears in the heatmap within 5s (NFR target). The same bug is filed-and-synced to a Jira sandbox project within 30s when the integration is enabled; if the Jira sandbox is unreachable, the bug remains usable in Bunkai natively and `jira_sync_status=failed`.
 
-### Wave 6 — Views + Search + API hardening (EPIC-BK-008 + EPIC-BK-009, FR-029..FR-036)
+### Wave 6 — Views + Search + API hardening (EPIC-BK-008 + EPIC-BK-009, {{PROJECT_KEY}}-029..{{PROJECT_KEY}}-036)
 
 **Why it matters**: density and headless operation. Wave 6 is where Mateo gets the Table view to read trends and Karim gets the CLI to drive Bunkai from CI. Both unlock distinct adoption signals — power users and AI-agent users.
 
@@ -183,14 +183,14 @@ One subsection per MVP Wave. Each rationale is product-facing (Why it matters) p
 **Dependencies**: Wave 1 (auth for Bearer-PAT) + Wave 3 (entities to read in Table view). Wave 6 starts in parallel with Wave 4 once Wave 3 closes.
 
 **How to scope it**:
-- Tree view with full status-dot rollup (Modules + US + ATCs + Tests + last-Run status) — `FR-029`.
-- Table view per entity (ATC / Test / Run / Bug) + `PATCH /api/v1/{entity}/bulk` endpoint — `FR-030`. Discovery Gap §12-G6 (bulk endpoint spec) must close here.
-- Command palette `GET /search` — multi-source tsvector union — `FR-031`.
-- Persist view state per (user_id, project_id, view_kind) — `FR-032`. Resolves Discovery Gap G3 from data-map (`user_view_state` table — already scaffolded in Wave 0).
-- `GET /api/openapi.json` served correctly with all endpoints introspectable — `FR-033`.
-- `POST/GET/DELETE /auth/tokens` — Bearer-PAT issuance + revocation + scope-gating — `FR-034`.
-- Complete CRUD endpoints (close Discovery Gap §12-G3: missing R/U/D/List for US + AC) — `FR-035`.
-- `bunkai` CLI binary (Bun-compiled) — `auth login` + `atc list` + `run start` — `FR-036`.
+- Tree view with full status-dot rollup (Modules + US + ATCs + Tests + last-Run status) — `{{PROJECT_KEY}}-029`.
+- Table view per entity (ATC / Test / Run / Bug) + `PATCH /api/v1/{entity}/bulk` endpoint — `{{PROJECT_KEY}}-030`. Discovery Gap §12-G6 (bulk endpoint spec) must close here.
+- Command palette `GET /search` — multi-source tsvector union — `{{PROJECT_KEY}}-031`.
+- Persist view state per (user_id, project_id, view_kind) — `{{PROJECT_KEY}}-032`. Resolves Discovery Gap G3 from data-map (`user_view_state` table — already scaffolded in Wave 0).
+- `GET /api/openapi.json` served correctly with all endpoints introspectable — `{{PROJECT_KEY}}-033`.
+- `POST/GET/DELETE /auth/tokens` — Bearer-PAT issuance + revocation + scope-gating — `{{PROJECT_KEY}}-034`.
+- Complete CRUD endpoints (close Discovery Gap §12-G3: missing R/U/D/List for US + AC) — `{{PROJECT_KEY}}-035`.
+- `bunkai` CLI binary (Bun-compiled) — `auth login` + `atc list` + `run start` — `{{PROJECT_KEY}}-036`.
 - Rate-limit middleware (100 req/min writes, 600 req/min reads, per-token sliding window) — NFR §2.
 - **Most likely scope creep to resist**: WebSocket agentic protocol (Phase 2), mind-map view (Phase 2), 3D toggle (Phase 3), bulk-edit beyond `atc/test/run/bug` entities.
 - **Parallelization within Wave 6**: CLI binary, OpenAPI spec polish, command palette UI, and rate-limit middleware can ship independently — no internal dependencies among them.
@@ -254,7 +254,7 @@ Items where shipping them unblocks ≥2 other features, or shipping them late ac
 
 ### 6.4 Idempotency-Key infrastructure (Wave 0 table, applied per-endpoint Wave 1 onwards)
 
-**Why the dependency is real**: every POST that creates non-trivial state (Workspace create, Project create, US create, ATC create, Test create, Run start, Bug file, Jira import trigger) is supposed to honor it (FR-037). Retrofit per-endpoint after the fact means rewriting every write handler.
+**Why the dependency is real**: every POST that creates non-trivial state (Workspace create, Project create, US create, ATC create, Test create, Run start, Bug file, Jira import trigger) is supposed to honor it ({{PROJECT_KEY}}-037). Retrofit per-endpoint after the fact means rewriting every write handler.
 
 **Downstream rework risk**: every Wave that adds a POST endpoint without honoring `Idempotency-Key` from day one will need a rewrite to be agent-safe.
 
@@ -346,21 +346,21 @@ Per third-party service: when to integrate, what it unlocks, what to mock with i
 
 ### Supabase Auth — Wave 1
 
-**First required by**: FR-001 (sign-up).
+**First required by**: {{PROJECT_KEY}}-001 (sign-up).
 **Unlocks**: every authenticated UI flow, every Bearer-PAT (PATs are minted against a user session — see api-map §2.3 device-code flow).
 **Lead-time**: zero — Supabase Auth is included in the same Supabase project. Just enable GitHub + Google OAuth providers in the dashboard.
 **Stand-in during Wave 0**: env-flag-gated `MOCK_AUTH=true` that bypasses auth in local dev only. Never deployed.
 
 ### Cloudflare R2 — Wave 4
 
-**First required by**: FR-020 (step result evidence URL).
+**First required by**: {{PROJECT_KEY}}-020 (step result evidence URL).
 **Unlocks**: also Bug evidence URLs (Wave 5), Phase 2 Run-evidence video uploads.
 **Lead-time**: R2 account + bucket provisioning + IAM keys; ~30 min. Sign-URL generation is straightforward via `@aws-sdk/client-s3`.
 **Stand-in during Waves 1–3**: store evidence URLs as plain strings; let users paste any URL (no upload UI). Land the signed-URL flow when Wave 4 lands.
 
 ### Jira REST — Wave 3 (inbound import) + Wave 5 (outbound sync)
 
-**First required by**: FR-009 (import inbound).
+**First required by**: {{PROJECT_KEY}}-009 (import inbound).
 **Unlocks**: outbound bug sync (Wave 5), Phase 3 bidirectional sync.
 **Lead-time**: a Jira Cloud sandbox tenant for development (free tier OK). API token issuance is self-service.
 **Stand-in during Waves 1–2**: import endpoint returns 501 Not Implemented; UI hides the "Import from Jira" button behind a feature flag.
@@ -383,7 +383,7 @@ Per third-party service: when to integrate, what it unlocks, what to mock with i
 
 ### GitHub OAuth + Google OAuth — Wave 1 (via Supabase Auth)
 
-**First required by**: FR-001.
+**First required by**: {{PROJECT_KEY}}-001.
 **Unlocks**: sign-up without password.
 **Lead-time**: GitHub OAuth app + Google Cloud OAuth client — ~1 hour total for both.
 **Stand-in**: magic-link email only — already covered by Supabase Auth. OAuth can light up day 2.
@@ -478,7 +478,7 @@ Features with ambiguous scope, pending technical decisions, or competing approac
 
 ### 10.1 Pending architectural decisions
 
-- **Sync vs async for Jira sync** (FR-028). Decision recorded: async with retry, never blocks bug creation. Risk if violated: Bug filing latency held hostage by Jira availability.
+- **Sync vs async for Jira sync** ({{PROJECT_KEY}}-028). Decision recorded: async with retry, never blocks bug creation. Risk if violated: Bug filing latency held hostage by Jira availability.
 - **In-process vs queue for run-timeout sweeper** (Discovery Gap §12-G5). MVP: Vercel cron every 15 min. Phase 2: BullMQ + Redis. Defer the decision by making the sweeper a serverless cron function so it's swappable.
 - **Polling vs WebSocket for agent step-result reporting**. MVP: polling via REST. Phase 2: WebSocket (`phase2.agentic_protocol` flag). Lock-in mitigation = same REST endpoints honored regardless.
 - **NestJS extract or stay-in-Next.js for service layer** (architecture-specs §3). Lock the decision: stay in Next.js for MVP. Revisit only when agentic-mode WebSocket + CI job load justifies it (Phase 2).
@@ -508,10 +508,10 @@ Adapted from the project's CLAUDE.md §1 + behavior layer + `/sprint-development
 
 - Verify the feature is covered by an ATC chain that anchors to a US + AC (Bunkai's own structural rule applies to itself).
 - Verify env vars consumed by the feature are documented in `.env.example` and `.agents/project.yaml` (Wave 0 ships the linter).
-- Verify the feature honors `Idempotency-Key` on every POST that creates non-trivial state (FR-037).
-- Verify the feature inserts an `activity_log` row on every state change (FR-038).
-- Verify soft-delete (`archived_at`) is implemented + listing endpoints filter it out by default (FR-039).
-- Verify Realtime row broadcasts are emitted where the spec calls for them (FR-040: `runs`, `run_atcs`, `run_steps`, `bugs`).
+- Verify the feature honors `Idempotency-Key` on every POST that creates non-trivial state ({{PROJECT_KEY}}-037).
+- Verify the feature inserts an `activity_log` row on every state change ({{PROJECT_KEY}}-038).
+- Verify soft-delete (`archived_at`) is implemented + listing endpoints filter it out by default ({{PROJECT_KEY}}-039).
+- Verify Realtime row broadcasts are emitted where the spec calls for them ({{PROJECT_KEY}}-040: `runs`, `run_atcs`, `run_steps`, `bugs`).
 - Verify the entity definition matches `business-data-map.md` (no schema drift). Run `bun run api:sync` and confirm OpenAPI + types are aligned.
 - Verify the response shape is `{ success, data, error }` and internal fields are stripped.
 - Verify error codes are stable identifiers (`MODULE_CIRCULAR_PARENT`, `TOKEN_EXPIRED`, `VALIDATION_ERROR`) — never localized prose.
@@ -547,7 +547,7 @@ Explicit delegation to keep this plan from absorbing scope.
 - **3D mind-map toggle (react-force-graph)** — Phase 3.
 - **Bidirectional Jira sync + GitHub Issues sync + Linear sync** — Phase 3 (flag named `phase2.jira_bidirectional` ships Phase 3 — see Discovery Gap §13-G8).
 - **SSO/SAML (Okta, Azure AD, Google Workspace)** — Phase 3 Enterprise (`enterprise.sso_saml`).
-- **Compliance-grade audit log** — Phase 3 Enterprise (`enterprise.audit_log`). MVP FR-038 is audit-light only.
+- **Compliance-grade audit log** — Phase 3 Enterprise (`enterprise.audit_log`). MVP {{PROJECT_KEY}}-038 is audit-light only.
 - **Role hierarchy with custom permissions** — Phase 3 Enterprise (`enterprise.role_hierarchy_custom`).
 - **Native parameterization editors (decision tables, equivalence partitions, BVA)** — Phase 3.
 - **Marketplace for community-contributed ATC packs / dashboards / adapters** — post-PMF, undefined.
@@ -564,11 +564,11 @@ Consolidated from the data-map (G1–G7), feature-map (Gap #1–#9), and api-map
 
 ### BLOCKING (close in `/project-bootstrap` Step 1)
 
-- **G1 — `imports` table not declared in canonical ERD.** FR-009 + api-map Journey 1 step 5 reference a polling endpoint `/imports/{id}` returning `{ status, imported_count, errors[] }`, but the table is absent from `architecture-specs.md §2`. **Spike**: materialize the `imports` table (suggested columns: `id, project_id, kind="jira", status, jql, imported_count, errors_jsonb, started_at, finished_at`). Wave 3 cannot ship FR-009 without it.
+- **G1 — `imports` table not declared in canonical ERD.** {{PROJECT_KEY}}-009 + api-map Journey 1 step 5 reference a polling endpoint `/imports/{id}` returning `{ status, imported_count, errors[] }`, but the table is absent from `architecture-specs.md §2`. **Spike**: materialize the `imports` table (suggested columns: `id, project_id, kind="jira", status, jql, imported_count, errors_jsonb, started_at, finished_at`). Wave 3 cannot ship {{PROJECT_KEY}}-009 without it.
 
-- **G2 — `user_view_state` table referenced by FR-032 but not declared.** Required by command-palette persistence + view-state restoration. **Spike**: declare table `(user_id, project_id, view_kind, state_json, updated_at)`. Wave 6 cannot ship FR-032 without it.
+- **G2 — `user_view_state` table referenced by {{PROJECT_KEY}}-032 but not declared.** Required by command-palette persistence + view-state restoration. **Spike**: declare table `(user_id, project_id, view_kind, state_json, updated_at)`. Wave 6 cannot ship {{PROJECT_KEY}}-032 without it.
 
-- **G3 — Missing R/U/D/List endpoints for User Stories + Acceptance Criteria** (feature-map Gap #4, api-map Gap #3). `api-contracts.yaml` only documents `POST`. FR-035 says "all FRs 001–032 exposed under `/api/v1/...`". **Spike**: surface the missing endpoints in `api-contracts.yaml` so Karim doesn't hit 404s. Wave 6 (FR-035 closure) depends on this.
+- **G3 — Missing R/U/D/List endpoints for User Stories + Acceptance Criteria** (feature-map Gap #4, api-map Gap #3). `api-contracts.yaml` only documents `POST`. {{PROJECT_KEY}}-035 says "all FRs 001–032 exposed under `/api/v1/...`". **Spike**: surface the missing endpoints in `api-contracts.yaml` so Karim doesn't hit 404s. Wave 6 ({{PROJECT_KEY}}-035 closure) depends on this.
 
 - **G4 — Workspace invite lifecycle endpoints absent** (feature-map Gap #2, api-map Gap #1). No GET / resend / revoke for `workspace_invites`. 24h-expiry behavior is documented in user-journeys but not in the API. **Spike**: add `GET /workspaces/{id}/invites`, `POST .../{invite_id}/resend`, `DELETE .../{invite_id}` to `api-contracts.yaml` v1.0. Wave 1 needs the resend + revoke for invite UX.
 
@@ -578,11 +578,11 @@ Consolidated from the data-map (G1–G7), feature-map (Gap #1–#9), and api-map
 
 - **G6 — Bug state machine sub-transitions not enumerated in SRS** (data-map G4). Canonical states (open → in_progress → resolved → closed) are clear, but transition triggers and reopen semantics are informal. **Spike**: codify in `/product-management` AC refinement when EPIC-BK-007 stories enter sprint.
 
-- **G7 — Run-timeout sweeper cron is journey-implied but not codified as FR** (data-map "missing FR", feature-map Gap #5, api-map Gap #5). User-journeys §3 mentions a 4h max_duration default. **Spike**: codify as `FR-041 Run abandonment sweeper`. Decide whether `max_duration` is per-Project / per-Workspace / global. Resolve before Wave 4 closes.
+- **G7 — Run-timeout sweeper cron is journey-implied but not codified as FR** (data-map "missing FR", feature-map Gap #5, api-map Gap #5). User-journeys §3 mentions a 4h max_duration default. **Spike**: codify as `{{PROJECT_KEY}}-041 Run abandonment sweeper`. Decide whether `max_duration` is per-Project / per-Workspace / global. Resolve before Wave 4 closes.
 
 - **G8 — Flag naming inconsistency: `phase2.jira_bidirectional` ships Phase 3** (feature-map Gap #1). Architecture entity table calls it Phase 2; executive-summary §5 + mvp-scope.md §3 list bidirectional Jira sync as Phase 3. **Spike**: rename to `phase3.jira_bidirectional` for consistency, OR document the discrepancy in `feature_flags` table comments.
 
-- **G9 — Bulk-edit endpoint declared in FR-030 but not in `api-contracts.yaml`** (api-map Gap #6). `PATCH /api/v1/{entity}/bulk` accepts `{ ids[], patch }`. **Spike**: add to spec during `/project-bootstrap` Step 1; document permissible `{entity}` values (`atc|test|run|bug`) and per-entity bulk-editable field allowlists.
+- **G9 — Bulk-edit endpoint declared in {{PROJECT_KEY}}-030 but not in `api-contracts.yaml`** (api-map Gap #6). `PATCH /api/v1/{entity}/bulk` accepts `{ ids[], patch }`. **Spike**: add to spec during `/project-bootstrap` Step 1; document permissible `{entity}` values (`atc|test|run|bug`) and per-entity bulk-editable field allowlists.
 
 - **G10 — `executor.identity` polymorphism: free-text vs FK** (data-map G7). MVP intent: free-text string. **Spike**: confirm during `/project-bootstrap`; either split into `executor_user_id` (FK) + `executor_label` (string) for cleaner queries, or keep polymorphic string.
 
@@ -592,7 +592,7 @@ Consolidated from the data-map (G1–G7), feature-map (Gap #1–#9), and api-map
 
 ### NICE-TO-HAVE (track but do not block MVP)
 
-- **G13 — Access-token `last_used_at` semantics** (data-map G6). FR-034 does not specify last_used_at tracking. **Spike**: add column + update on every successful auth lookup. Useful for token-rotation UX. Wave 6.
+- **G13 — Access-token `last_used_at` semantics** (data-map G6). {{PROJECT_KEY}}-034 does not specify last_used_at tracking. **Spike**: add column + update on every successful auth lookup. Useful for token-rotation UX. Wave 6.
 
 - **G14 — `users` table is implicit; Cloud uses `auth.users`, Community will introduce its own** (data-map G2). **Spike**: ensure RLS policies join through `workspace_members.user_id` (UUID), not against `auth.users` directly — so Phase 2 Community swap-in is shape-compatible.
 
@@ -624,7 +624,7 @@ Phase 2 takes Bunkai from "validated Cloud SaaS" to "real open-core". 14 feature
 
 **Features**:
 - Docker Compose bundle: Postgres 16 + Redis + MinIO + Better Auth (or Auth.js) + Next.js + self-hosted Sentry (community plan) + self-hosted PostHog.
-- Better Auth in-process replacement for Supabase Auth (same FR-001 surface).
+- Better Auth in-process replacement for Supabase Auth (same {{PROJECT_KEY}}-001 surface).
 - MinIO replacement for R2 (S3-compatible, no code change beyond endpoint config).
 - BullMQ + Redis replacement for Vercel cron (Jira import worker, Jira sync retry, run-timeout sweeper).
 - Plain-Postgres replacement for Supabase Realtime — Redis pub/sub + custom WebSocket process (or accept polling-only in Community).
@@ -680,7 +680,7 @@ Briefer sketch — refine after Phase 2 GA produces revenue signal.
 
 - **3D mind-map toggle** (`phase3.mind_map_3d`) — react-force-graph over Three.js, on top of the 2D view.
 - **SSO/SAML** (`enterprise.sso_saml`) — Okta, Azure AD, Google Workspace.
-- **Compliance-grade audit log** (`enterprise.audit_log`) — immutable, exportable, replaces FR-038 audit-light. Trigger for SOC 2 Type I/II retrofit (NFR §9).
+- **Compliance-grade audit log** (`enterprise.audit_log`) — immutable, exportable, replaces {{PROJECT_KEY}}-038 audit-light. Trigger for SOC 2 Type I/II retrofit (NFR §9).
 - **Role hierarchy with custom permissions** (`enterprise.role_hierarchy_custom`) — beyond `owner|admin|member|viewer`.
 - **Bidirectional Jira sync** — status push + label/field sync. Plus GitHub Issues sync + Linear sync (Discovery Gap §13-G8 flag-rename resolved here).
 - **Native parameterization UI editors** — decision tables, equivalence partitions, BVA, state transitions.
@@ -695,22 +695,22 @@ Briefer sketch — refine after Phase 2 GA produces revenue signal.
 
 Restate the executive-summary §3 metrics as gates that MUST hold before opening Cloud signup beyond the design-partner cohort. These are the conditions in `mvp-scope.md §4 Launch conditions`.
 
-| Metric                                                                                                    | Target              | Wave wiring        |
-| --------------------------------------------------------------------------------------------------------- | ------------------- | ------------------ |
-| Workspaces that complete activation (≥1 Module + ≥1 ATC + ≥1 Test + ≥1 Run in first 24h)                  | ≥60% of new sign-ups | Wave 7 (PostHog)   |
-| Avg ATCs created per active workspace in week 1                                                            | >10                  | Wave 7             |
-| Tests-per-ATC ratio (reuse) at day 30                                                                      | <1.0 per Test (i.e. each ATC reused in >1 Test) | Wave 7 |
-| Week-4 retention of new workspaces                                                                         | >40%                 | Wave 7             |
-| % of ATCs anchored to a US + AC (canary — should be 100% by schema)                                        | 100%                 | Wave 1 enforces via schema; Wave 7 monitors |
-| GitHub stars within 60 days of open-source launch                                                          | >500                 | Phase 2 (Community GA triggers the launch) |
-| Docker Compose installs reported via opt-in telemetry within 60 days                                        | >20                  | Phase 2            |
-| No P0/P1 bugs open                                                                                          | 0                    | Wave 7             |
-| Pricing decision locked (per-seat Cloud + Enterprise floor)                                                 | Locked               | Wave 7 (founder)   |
-| Status page live                                                                                            | Yes                  | Wave 7             |
-| Performance NFRs hold under load: 500 ATCs, 100 Tests, 20 concurrent users                                  | All pass             | Wave 7             |
-| OpenAPI spec consumed by external CLI without manual schema patching                                        | Yes                  | Wave 6             |
-| Bug-from-Run captures all mandatory fields without manual re-entry                                          | Yes                  | Wave 5             |
-| Defect heatmap renders correctly + updates within 5s of new Bug                                             | Yes                  | Wave 5             |
+| Metric                                                                                   | Target                                          | Wave wiring                                 |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| Workspaces that complete activation (≥1 Module + ≥1 ATC + ≥1 Test + ≥1 Run in first 24h) | ≥60% of new sign-ups                            | Wave 7 (PostHog)                            |
+| Avg ATCs created per active workspace in week 1                                          | >10                                             | Wave 7                                      |
+| Tests-per-ATC ratio (reuse) at day 30                                                    | <1.0 per Test (i.e. each ATC reused in >1 Test) | Wave 7                                      |
+| Week-4 retention of new workspaces                                                       | >40%                                            | Wave 7                                      |
+| % of ATCs anchored to a US + AC (canary — should be 100% by schema)                      | 100%                                            | Wave 1 enforces via schema; Wave 7 monitors |
+| GitHub stars within 60 days of open-source launch                                        | >500                                            | Phase 2 (Community GA triggers the launch)  |
+| Docker Compose installs reported via opt-in telemetry within 60 days                     | >20                                             | Phase 2                                     |
+| No P0/P1 bugs open                                                                       | 0                                               | Wave 7                                      |
+| Pricing decision locked (per-seat Cloud + Enterprise floor)                              | Locked                                          | Wave 7 (founder)                            |
+| Status page live                                                                         | Yes                                             | Wave 7                                      |
+| Performance NFRs hold under load: 500 ATCs, 100 Tests, 20 concurrent users               | All pass                                        | Wave 7                                      |
+| OpenAPI spec consumed by external CLI without manual schema patching                     | Yes                                             | Wave 6                                      |
+| Bug-from-Run captures all mandatory fields without manual re-entry                       | Yes                                             | Wave 5                                      |
+| Defect heatmap renders correctly + updates within 5s of new Bug                          | Yes                                             | Wave 5                                      |
 
 If any row above is unmet, Cloud signup stays gated to the design-partner allowlist.
 
@@ -744,7 +744,7 @@ Explicit non-decisions, to keep this plan honest about its scope:
   - `.context/PRD/user-personas.md` — Elena, Mateo, Sara, Karim
 - **SRS**:
   - `.context/SRS/architecture-specs.md` — C4 + ERD + tech stack + ADR placeholders
-  - `.context/SRS/functional-specs.md` — FR-001..FR-040
+  - `.context/SRS/functional-specs.md` — {{PROJECT_KEY}}-001..{{PROJECT_KEY}}-040
   - `.context/SRS/non-functional-specs.md` — performance + security + reliability targets
   - `.context/SRS/api-contracts.yaml` — OpenAPI 3.1 source-of-truth
 - **Business**:

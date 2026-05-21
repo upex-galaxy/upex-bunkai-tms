@@ -4,7 +4,7 @@
 > **Last update**: 2026-05-19
 > **Last verified against OpenAPI on**: 2026-05-19 (`.context/SRS/api-contracts.yaml` v1.0)
 > **Mode**: CREATE (greenfield — no live API exists yet; contract-first synthesis from SRS)
-> **Sources**: `.context/SRS/api-contracts.yaml` (OpenAPI 3.1 source-of-truth, ~30 endpoints), `.context/SRS/architecture-specs.md` (system diagram + data-flow examples + security architecture), `.context/SRS/functional-specs.md` (FR-001..FR-040), `.context/SRS/non-functional-specs.md` (rate limits + CSP + security), `.context/PRD/user-journeys.md` (3 critical journeys), `.context/PRD/user-personas.md` (Karim — AI agent persona), `.context/business/business-data-map.md` (entity map), `.context/business/business-feature-map.md` (feature inventory), `.agents/project.yaml`.
+> **Sources**: `.context/SRS/api-contracts.yaml` (OpenAPI 3.1 source-of-truth, ~30 endpoints), `.context/SRS/architecture-specs.md` (system diagram + data-flow examples + security architecture), `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-001..{{PROJECT_KEY}}-040), `.context/SRS/non-functional-specs.md` (rate limits + CSP + security), `.context/PRD/user-journeys.md` (3 critical journeys), `.context/PRD/user-personas.md` (Karim — AI agent persona), `.context/business/business-data-map.md` (entity map), `.context/business/business-feature-map.md` (feature inventory), `.agents/project.yaml`.
 > **Companion docs**: `business-data-map.md` (entities + state machines), `business-feature-map.md` (feature catalog + CRUD matrix).
 > **Regenerate with**: `/business-api-map` (UPDATE mode shows diff and asks before overwriting).
 
@@ -26,14 +26,14 @@ A small number of conventions hold the surface together: a `{ success, data, err
 
 ### 2.1 Tier table
 
-| Tier                       | Who it applies to                                  | How to acquire                                                                                          | Where enforced (planned code path)                                       |
-| -------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Public (unauth)**        | Anyone — pre-auth callers, OpenAPI spec consumers  | None — no token required                                                                                | Next.js Route Handler with empty `security: []` (only `/openapi.json`)   |
-| **End-user session (JWT)** | Browser-based QA engineers, leads, developers      | Sign in via Supabase Auth (GitHub OAuth, Google OAuth, or email magic-link) → JWT in HttpOnly cookie    | `middleware.ts` resolves Supabase session → attaches `user_id` + active `workspace_id` to request context |
-| **Bearer PAT (token)**     | CLI, AI agents, CI pipelines, scripts              | `POST /auth/tokens` while authenticated as user → plain token returned ONCE; SHA-256 hash stored        | `middleware.ts` looks up `access_tokens` by hash → attaches `{ user_id, workspace_id?, scopes }` |
-| **Role-gated (RBAC)**      | Any authenticated caller acting on workspace data  | Tier above + active membership in target workspace with sufficient role                                 | Postgres **Row Level Security** on every table carrying `workspace_id` + route-handler guards for non-CRUD (invite, role change) |
-| **Scope-gated (token)**    | Bearer PAT callers writing to data                 | Tier above + token's `scopes[]` includes `write` (and optional `workspace_id` constraint matches)       | Route-handler guard checks `request.context.scopes` against endpoint's required scope |
-| **Service-role (system)**  | Migrations, scheduled jobs, the run-timeout sweeper | Supabase service-role key (env-var, NEVER exposed to user agent)                                        | Server-only context with `SET LOCAL row_security = off` after explicit pre-filter (architecture §2.5) |
+| Tier                       | Who it applies to                                   | How to acquire                                                                                       | Where enforced (planned code path)                                                                                               |
+| -------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Public (unauth)**        | Anyone — pre-auth callers, OpenAPI spec consumers   | None — no token required                                                                             | Next.js Route Handler with empty `security: []` (only `/openapi.json`)                                                           |
+| **End-user session (JWT)** | Browser-based QA engineers, leads, developers       | Sign in via Supabase Auth (GitHub OAuth, Google OAuth, or email magic-link) → JWT in HttpOnly cookie | `middleware.ts` resolves Supabase session → attaches `user_id` + active `workspace_id` to request context                        |
+| **Bearer PAT (token)**     | CLI, AI agents, CI pipelines, scripts               | `POST /auth/tokens` while authenticated as user → plain token returned ONCE; SHA-256 hash stored     | `middleware.ts` looks up `access_tokens` by hash → attaches `{ user_id, workspace_id?, scopes }`                                 |
+| **Role-gated (RBAC)**      | Any authenticated caller acting on workspace data   | Tier above + active membership in target workspace with sufficient role                              | Postgres **Row Level Security** on every table carrying `workspace_id` + route-handler guards for non-CRUD (invite, role change) |
+| **Scope-gated (token)**    | Bearer PAT callers writing to data                  | Tier above + token's `scopes[]` includes `write` (and optional `workspace_id` constraint matches)    | Route-handler guard checks `request.context.scopes` against endpoint's required scope                                            |
+| **Service-role (system)**  | Migrations, scheduled jobs, the run-timeout sweeper | Supabase service-role key (env-var, NEVER exposed to user agent)                                     | Server-only context with `SET LOCAL row_security = off` after explicit pre-filter (architecture §2.5)                            |
 
 Role inheritance: `viewer ⊂ member ⊂ admin ⊂ owner`. Token scope is **AND**-ed with role — a `member`-minted read-only token cannot upgrade to write even within the user's own permissions.
 
@@ -213,7 +213,7 @@ Client (Browser)        Middleware            Handler              DB / External
 
 **Numbered narrative:**
 
-1. **OAuth callback (Supabase-managed)** — Elena clicks the invite link → Supabase Auth completes OAuth with GitHub/Google → JWT issued in HttpOnly cookie. No Bunkai endpoint is hit during the OAuth dance itself; FR-001 creates a default workspace on first verified login if no invite was accepted.
+1. **OAuth callback (Supabase-managed)** — Elena clicks the invite link → Supabase Auth completes OAuth with GitHub/Google → JWT issued in HttpOnly cookie. No Bunkai endpoint is hit during the OAuth dance itself; {{PROJECT_KEY}}-001 creates a default workspace on first verified login if no invite was accepted.
 2. `POST /workspaces` `{ name }` → 201 `{ id, slug, role: owner, plan: community }`. _Why_: tenant root; everything else hangs off this id. _Side effects_: creator inserted as `owner` in `workspace_members`; `workspace.created` event emitted; activity_log row appended.
 3. `POST /projects` `{ workspace_id, name, description? }` → 201 `{ id, slug }`. _Why_: separate apps-under-test inside one tenant. _RLS guard_: caller must be `member`+ in workspace.
 4. `POST /modules` (multiple — one per Module in the tree) `{ project_id, name, parent_module_id? }` → 201 each. _Why_: build the taxonomy that defect heatmaps and coverage rollups depend on. _Server-side_: depth ≤6 guard, circular-parent check (returns 409 `MODULE_CIRCULAR_PARENT`), materialized `path` column updated.
@@ -396,112 +396,112 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 
 ### 4.1 Auth tag (5 endpoints)
 
-| Method | Path                            | Summary                                   | FR     | Auth                                    | Side effects                                                              |
-| ------ | ------------------------------- | ----------------------------------------- | ------ | --------------------------------------- | ------------------------------------------------------------------------- |
-| GET    | `/openapi.json`                 | Self-describing OpenAPI 3.1 spec          | FR-033 | Public                                  | None (read-only)                                                          |
-| POST   | `/auth/tokens`                  | Issue Personal Access Token (shown ONCE)  | FR-034 | Bearer (session JWT or existing PAT)    | INSERT `access_tokens` (hash); `activity_log` row                         |
-| GET    | `/auth/tokens`                  | List my tokens                            | FR-034 | Bearer                                  | None                                                                      |
-| DELETE | `/auth/tokens/{token_id}`       | Revoke a token                            | FR-034 | Bearer (owner of token)                 | UPDATE `access_tokens.revoked_at`; immediate invalidation; activity_log    |
-| GET    | `/me`                           | Caller identity + active workspace        | (cross)| Bearer                                  | UPDATE `access_tokens.last_used_at` (side-effect of every auth lookup)    |
+| Method | Path                      | Summary                                  | FR                  | Auth                                 | Side effects                                                            |
+| ------ | ------------------------- | ---------------------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------- |
+| GET    | `/openapi.json`           | Self-describing OpenAPI 3.1 spec         | {{PROJECT_KEY}}-033 | Public                               | None (read-only)                                                        |
+| POST   | `/auth/tokens`            | Issue Personal Access Token (shown ONCE) | {{PROJECT_KEY}}-034 | Bearer (session JWT or existing PAT) | INSERT `access_tokens` (hash); `activity_log` row                       |
+| GET    | `/auth/tokens`            | List my tokens                           | {{PROJECT_KEY}}-034 | Bearer                               | None                                                                    |
+| DELETE | `/auth/tokens/{token_id}` | Revoke a token                           | {{PROJECT_KEY}}-034 | Bearer (owner of token)              | UPDATE `access_tokens.revoked_at`; immediate invalidation; activity_log |
+| GET    | `/me`                     | Caller identity + active workspace       | (cross)             | Bearer                               | UPDATE `access_tokens.last_used_at` (side-effect of every auth lookup)  |
 
 ### 4.2 Workspaces tag (3 endpoints)
 
-| Method | Path                                    | Summary                          | FR     | Auth                       | Side effects                                                                                          |
-| ------ | --------------------------------------- | -------------------------------- | ------ | -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| POST   | `/workspaces`                           | Create a workspace               | FR-002 | Bearer                     | INSERT `workspaces` + `workspace_members` (owner); `workspace.created` event; activity_log            |
-| GET    | `/workspaces`                           | List workspaces I belong to      | FR-004 | Bearer                     | None                                                                                                  |
-| POST   | `/workspaces/{workspace_id}/invites`    | Invite a teammate                | FR-003 | Bearer + role (admin+)     | INSERT `workspace_invites`; signed token email (Supabase-managed transactional); activity_log         |
+| Method | Path                                 | Summary                     | FR                  | Auth                   | Side effects                                                                                  |
+| ------ | ------------------------------------ | --------------------------- | ------------------- | ---------------------- | --------------------------------------------------------------------------------------------- |
+| POST   | `/workspaces`                        | Create a workspace          | {{PROJECT_KEY}}-002 | Bearer                 | INSERT `workspaces` + `workspace_members` (owner); `workspace.created` event; activity_log    |
+| GET    | `/workspaces`                        | List workspaces I belong to | {{PROJECT_KEY}}-004 | Bearer                 | None                                                                                          |
+| POST   | `/workspaces/{workspace_id}/invites` | Invite a teammate           | {{PROJECT_KEY}}-003 | Bearer + role (admin+) | INSERT `workspace_invites`; signed token email (Supabase-managed transactional); activity_log |
 
 ### 4.3 Projects tag (4 endpoints)
 
-| Method | Path                                            | Summary                              | FR     | Auth                  | Side effects                                                                |
-| ------ | ----------------------------------------------- | ------------------------------------ | ------ | --------------------- | --------------------------------------------------------------------------- |
-| POST   | `/projects`                                     | Create a project                     | FR-005 | Bearer + role (member+)| INSERT `projects`; `project.created` event; activity_log                    |
-| GET    | `/projects`                                     | List projects in active workspace    | FR-005 | Bearer                | None                                                                        |
-| GET    | `/projects/{project_id}/tree`                   | Project tree (modules + status dots) | FR-029 | Bearer                | None (workhorse read; recursive CTE; indexed on `(project_id, parent_module_id)`) |
-| GET    | `/projects/{project_id}/defect-heatmap`         | Defect heatmap by module             | FR-027 | Bearer                | None (reads `module_defect_stats` materialized view)                        |
+| Method | Path                                    | Summary                              | FR                  | Auth                    | Side effects                                                                      |
+| ------ | --------------------------------------- | ------------------------------------ | ------------------- | ----------------------- | --------------------------------------------------------------------------------- |
+| POST   | `/projects`                             | Create a project                     | {{PROJECT_KEY}}-005 | Bearer + role (member+) | INSERT `projects`; `project.created` event; activity_log                          |
+| GET    | `/projects`                             | List projects in active workspace    | {{PROJECT_KEY}}-005 | Bearer                  | None                                                                              |
+| GET    | `/projects/{project_id}/tree`           | Project tree (modules + status dots) | {{PROJECT_KEY}}-029 | Bearer                  | None (workhorse read; recursive CTE; indexed on `(project_id, parent_module_id)`) |
+| GET    | `/projects/{project_id}/defect-heatmap` | Defect heatmap by module             | {{PROJECT_KEY}}-027 | Bearer                  | None (reads `module_defect_stats` materialized view)                              |
 
 ### 4.4 Modules tag (4 endpoints)
 
-| Method | Path                       | Summary                | FR              | Auth                   | Side effects                                                              |
-| ------ | -------------------------- | ---------------------- | --------------- | ---------------------- | ------------------------------------------------------------------------- |
-| POST   | `/modules`                 | Create a module        | FR-006          | Bearer + role (member+)| INSERT `modules`; recompute materialized `path`; activity_log; Realtime broadcast |
-| GET    | `/modules/{module_id}`     | Get a module           | FR-006          | Bearer                 | None                                                                      |
-| PATCH  | `/modules/{module_id}`     | Update a module        | FR-006          | Bearer + role (member+)| UPDATE `modules`; recompute `path`; activity_log; Realtime broadcast      |
-| DELETE | `/modules/{module_id}`     | Soft-delete (archive)  | FR-006 + FR-039 | Bearer + role (member+)| UPDATE `archived_at`; cascade soft-delete to descendant entities; activity_log |
+| Method | Path                   | Summary               | FR                                        | Auth                    | Side effects                                                                      |
+| ------ | ---------------------- | --------------------- | ----------------------------------------- | ----------------------- | --------------------------------------------------------------------------------- |
+| POST   | `/modules`             | Create a module       | {{PROJECT_KEY}}-006                       | Bearer + role (member+) | INSERT `modules`; recompute materialized `path`; activity_log; Realtime broadcast |
+| GET    | `/modules/{module_id}` | Get a module          | {{PROJECT_KEY}}-006                       | Bearer                  | None                                                                              |
+| PATCH  | `/modules/{module_id}` | Update a module       | {{PROJECT_KEY}}-006                       | Bearer + role (member+) | UPDATE `modules`; recompute `path`; activity_log; Realtime broadcast              |
+| DELETE | `/modules/{module_id}` | Soft-delete (archive) | {{PROJECT_KEY}}-006 + {{PROJECT_KEY}}-039 | Bearer + role (member+) | UPDATE `archived_at`; cascade soft-delete to descendant entities; activity_log    |
 
 ### 4.5 User Stories tag (1 endpoint — see Gap #5)
 
-| Method | Path             | Summary             | FR     | Auth                    | Side effects                                                  |
-| ------ | ---------------- | ------------------- | ------ | ----------------------- | ------------------------------------------------------------- |
-| POST   | `/user-stories`  | Create a user story | FR-007 | Bearer + role (member+) | INSERT `user_stories`; activity_log; (Jira backlink if external_id set) |
+| Method | Path            | Summary             | FR                  | Auth                    | Side effects                                                            |
+| ------ | --------------- | ------------------- | ------------------- | ----------------------- | ----------------------------------------------------------------------- |
+| POST   | `/user-stories` | Create a user story | {{PROJECT_KEY}}-007 | Bearer + role (member+) | INSERT `user_stories`; activity_log; (Jira backlink if external_id set) |
 
-> R/U/D/List endpoints for US implied by FR-035 but missing in api-contracts.yaml v1.0 — see Gap #5.
+> R/U/D/List endpoints for US implied by {{PROJECT_KEY}}-035 but missing in api-contracts.yaml v1.0 — see Gap #5.
 
 ### 4.6 Acceptance Criteria tag (1 endpoint — see Gap #5)
 
-| Method | Path                       | Summary                       | FR     | Auth                    | Side effects                                            |
-| ------ | -------------------------- | ----------------------------- | ------ | ----------------------- | ------------------------------------------------------- |
-| POST   | `/acceptance-criteria`     | Create an acceptance criterion| FR-008 | Bearer + role (member+) | INSERT `acceptance_criteria`; rebalance `position`; activity_log |
+| Method | Path                   | Summary                        | FR                  | Auth                    | Side effects                                                     |
+| ------ | ---------------------- | ------------------------------ | ------------------- | ----------------------- | ---------------------------------------------------------------- |
+| POST   | `/acceptance-criteria` | Create an acceptance criterion | {{PROJECT_KEY}}-008 | Bearer + role (member+) | INSERT `acceptance_criteria`; rebalance `position`; activity_log |
 
-> R/U/D/List endpoints for AC implied by FR-035 but missing — see Gap #5.
+> R/U/D/List endpoints for AC implied by {{PROJECT_KEY}}-035 but missing — see Gap #5.
 
 ### 4.7 ATCs tag (6 endpoints)
 
-| Method | Path                              | Summary                                       | FR              | Auth                    | Side effects                                                                                                                  |
-| ------ | --------------------------------- | --------------------------------------------- | --------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/atcs`                           | Create an ATC                                 | FR-010          | Bearer + role (member+) | TX: INSERT `atcs` + `atc_steps` + `atc_assertions` + `atc_acceptance_criteria`; update `tsvector`; `atc.created`; Realtime; activity_log |
-| GET    | `/atcs`                           | List / search (`q`, `module_id`, `layer`)     | FR-011          | Bearer                  | None (tsvector + GIN; ranked by `ts_rank` + recency)                                                                          |
-| GET    | `/atcs/{atc_id}`                  | Get ATC (expandable steps/assertions/etc.)    | FR-010 + FR-013 | Bearer                  | None                                                                                                                          |
-| PATCH  | `/atcs/{atc_id}`                  | Update ATC (cascade replace children)         | FR-012          | Bearer + role (member+) | TX: replace `atc_steps` + `atc_assertions`; increment `version`; `atc.updated` with `affected_test_ids`; Realtime              |
-| DELETE | `/atcs/{atc_id}`                  | Soft-delete (archive)                          | FR-039          | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                                                            |
-| POST   | `/atcs/{atc_id}/duplicate`        | Duplicate ATC                                 | FR-014          | Bearer + role (member+) | INSERT new `atcs` row + child copies; `atc.created`; activity_log                                                              |
+| Method | Path                       | Summary                                    | FR                                        | Auth                    | Side effects                                                                                                                             |
+| ------ | -------------------------- | ------------------------------------------ | ----------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/atcs`                    | Create an ATC                              | {{PROJECT_KEY}}-010                       | Bearer + role (member+) | TX: INSERT `atcs` + `atc_steps` + `atc_assertions` + `atc_acceptance_criteria`; update `tsvector`; `atc.created`; Realtime; activity_log |
+| GET    | `/atcs`                    | List / search (`q`, `module_id`, `layer`)  | {{PROJECT_KEY}}-011                       | Bearer                  | None (tsvector + GIN; ranked by `ts_rank` + recency)                                                                                     |
+| GET    | `/atcs/{atc_id}`           | Get ATC (expandable steps/assertions/etc.) | {{PROJECT_KEY}}-010 + {{PROJECT_KEY}}-013 | Bearer                  | None                                                                                                                                     |
+| PATCH  | `/atcs/{atc_id}`           | Update ATC (cascade replace children)      | {{PROJECT_KEY}}-012                       | Bearer + role (member+) | TX: replace `atc_steps` + `atc_assertions`; increment `version`; `atc.updated` with `affected_test_ids`; Realtime                        |
+| DELETE | `/atcs/{atc_id}`           | Soft-delete (archive)                      | {{PROJECT_KEY}}-039                       | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                                                                       |
+| POST   | `/atcs/{atc_id}/duplicate` | Duplicate ATC                              | {{PROJECT_KEY}}-014                       | Bearer + role (member+) | INSERT new `atcs` row + child copies; `atc.created`; activity_log                                                                        |
 
 ### 4.8 Tests tag (5 endpoints)
 
-| Method | Path                       | Summary                                 | FR              | Auth                    | Side effects                                                                                  |
-| ------ | -------------------------- | --------------------------------------- | --------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| POST   | `/tests`                   | Create a test                           | FR-015          | Bearer + role (member+) | TX: INSERT `tests` + `test_steps` (chain); `test.created`; activity_log                       |
-| GET    | `/tests`                   | List tests (project, tag filter)        | FR-022          | Bearer                  | None                                                                                          |
-| GET    | `/tests/{test_id}`         | Get test (expand=atcs.steps,assertions) | FR-017          | Bearer                  | None (single join; Karim journey 3 step 2 uses this)                                          |
-| PATCH  | `/tests/{test_id}`         | Reorder / update chain                  | FR-016 + FR-018 | Bearer + role (member+) | Diff old vs new chain; INSERT/DELETE/UPDATE `test_steps`; rebalance positions; activity_log    |
-| DELETE | `/tests/{test_id}`         | Soft-delete (archive)                   | FR-039          | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                            |
+| Method | Path               | Summary                                 | FR                                        | Auth                    | Side effects                                                                                |
+| ------ | ------------------ | --------------------------------------- | ----------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
+| POST   | `/tests`           | Create a test                           | {{PROJECT_KEY}}-015                       | Bearer + role (member+) | TX: INSERT `tests` + `test_steps` (chain); `test.created`; activity_log                     |
+| GET    | `/tests`           | List tests (project, tag filter)        | {{PROJECT_KEY}}-022                       | Bearer                  | None                                                                                        |
+| GET    | `/tests/{test_id}` | Get test (expand=atcs.steps,assertions) | {{PROJECT_KEY}}-017                       | Bearer                  | None (single join; Karim journey 3 step 2 uses this)                                        |
+| PATCH  | `/tests/{test_id}` | Reorder / update chain                  | {{PROJECT_KEY}}-016 + {{PROJECT_KEY}}-018 | Bearer + role (member+) | Diff old vs new chain; INSERT/DELETE/UPDATE `test_steps`; rebalance positions; activity_log |
+| DELETE | `/tests/{test_id}` | Soft-delete (archive)                   | {{PROJECT_KEY}}-039                       | Bearer + role (member+) | UPDATE `archived_at`; activity_log                                                          |
 
 ### 4.9 Runs tag (6 endpoints)
 
-| Method | Path                                                  | Summary                            | FR              | Auth                                | Side effects                                                                                                                                                   |
-| ------ | ----------------------------------------------------- | ---------------------------------- | --------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/runs`                                               | Start a run (Idempotency-Key)      | FR-019 + FR-037 | Bearer + role (member+) + scope:write | TX: INSERT `runs` + `run_atcs` skeleton (pending) + `run_steps` skeleton (pending); store `idempotency_key`; `run.started`; Realtime broadcast                  |
-| GET    | `/runs`                                               | List runs (project-wide filters)   | FR-022 + FR-023 | Bearer                              | None (filters: `project_id`, `test_id?`, `module_id?`, `status?`, `date_from?`, `date_to?`)                                                                    |
-| GET    | `/runs/{run_id}`                                      | Get run (expand=atcs.steps)        | FR-019          | Bearer                              | None                                                                                                                                                           |
-| POST   | `/runs/{run_id}/steps/{run_step_id}/result`           | Report step result                 | FR-020          | Bearer + scope:write                | TX: UPDATE `run_steps`; recompute parent `run_atcs.status`; recompute `runs.progress_pct`; Realtime broadcast; rejects if Run in terminal state                |
-| POST   | `/runs/{run_id}/abort`                                | Abort run with reason              | FR-021          | Bearer + scope:write                | UPDATE `runs.status=aborted` + `abort_reason`; sweep remaining `run_steps` → `skipped`; activity_log; Realtime broadcast                                       |
-| POST   | `/runs/{run_id}/finish`                               | Finish run (agentic / automated)   | FR-024          | Bearer + scope:write                | UPDATE `runs.status` (passed/failed/aborted) + `finished_at`; sweep pending steps → skipped if any; activity_log; Realtime broadcast                           |
+| Method | Path                                        | Summary                          | FR                                        | Auth                                  | Side effects                                                                                                                                    |
+| ------ | ------------------------------------------- | -------------------------------- | ----------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/runs`                                     | Start a run (Idempotency-Key)    | {{PROJECT_KEY}}-019 + {{PROJECT_KEY}}-037 | Bearer + role (member+) + scope:write | TX: INSERT `runs` + `run_atcs` skeleton (pending) + `run_steps` skeleton (pending); store `idempotency_key`; `run.started`; Realtime broadcast  |
+| GET    | `/runs`                                     | List runs (project-wide filters) | {{PROJECT_KEY}}-022 + {{PROJECT_KEY}}-023 | Bearer                                | None (filters: `project_id`, `test_id?`, `module_id?`, `status?`, `date_from?`, `date_to?`)                                                     |
+| GET    | `/runs/{run_id}`                            | Get run (expand=atcs.steps)      | {{PROJECT_KEY}}-019                       | Bearer                                | None                                                                                                                                            |
+| POST   | `/runs/{run_id}/steps/{run_step_id}/result` | Report step result               | {{PROJECT_KEY}}-020                       | Bearer + scope:write                  | TX: UPDATE `run_steps`; recompute parent `run_atcs.status`; recompute `runs.progress_pct`; Realtime broadcast; rejects if Run in terminal state |
+| POST   | `/runs/{run_id}/abort`                      | Abort run with reason            | {{PROJECT_KEY}}-021                       | Bearer + scope:write                  | UPDATE `runs.status=aborted` + `abort_reason`; sweep remaining `run_steps` → `skipped`; activity_log; Realtime broadcast                        |
+| POST   | `/runs/{run_id}/finish`                     | Finish run (agentic / automated) | {{PROJECT_KEY}}-024                       | Bearer + scope:write                  | UPDATE `runs.status` (passed/failed/aborted) + `finished_at`; sweep pending steps → skipped if any; activity_log; Realtime broadcast            |
 
 ### 4.10 Bugs tag (3 endpoints)
 
-| Method | Path                                          | Summary                       | FR              | Auth                                | Side effects                                                                                                                                          |
-| ------ | --------------------------------------------- | ----------------------------- | --------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/bugs`                                       | File a bug (Idempotency-Key)  | FR-025 + FR-037 | Bearer + role (member+) + scope:write | INSERT `bugs`; auto-link `atc_id` from failing `run_atc` if `run_id` set; refresh `module_defect_stats` MV; activity_log; enqueue Jira sync async worker |
-| GET    | `/bugs`                                       | List bugs (filters)           | FR-026          | Bearer                              | None (filters: `project_id`, `module_id?`, `severity?`, `status?`)                                                                                    |
-| GET    | `/projects/{project_id}/defect-heatmap`       | Defect heatmap by module      | FR-027          | Bearer                              | None (declared under Bugs tag in api-contracts.yaml; logically also a Projects read)                                                                  |
+| Method | Path                                    | Summary                      | FR                                        | Auth                                  | Side effects                                                                                                                                             |
+| ------ | --------------------------------------- | ---------------------------- | ----------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/bugs`                                 | File a bug (Idempotency-Key) | {{PROJECT_KEY}}-025 + {{PROJECT_KEY}}-037 | Bearer + role (member+) + scope:write | INSERT `bugs`; auto-link `atc_id` from failing `run_atc` if `run_id` set; refresh `module_defect_stats` MV; activity_log; enqueue Jira sync async worker |
+| GET    | `/bugs`                                 | List bugs (filters)          | {{PROJECT_KEY}}-026                       | Bearer                                | None (filters: `project_id`, `module_id?`, `severity?`, `status?`)                                                                                       |
+| GET    | `/projects/{project_id}/defect-heatmap` | Defect heatmap by module     | {{PROJECT_KEY}}-027                       | Bearer                                | None (declared under Bugs tag in api-contracts.yaml; logically also a Projects read)                                                                     |
 
 ### 4.11 Search tag (1 endpoint)
 
-| Method | Path        | Summary                              | FR     | Auth     | Side effects                                                                            |
-| ------ | ----------- | ------------------------------------ | ------ | -------- | --------------------------------------------------------------------------------------- |
-| GET    | `/search`   | Command palette / cross-entity search | FR-031 | Bearer   | None (multi-source `tsvector` union: modules, US, AC, ATCs, tests, runs, bugs; weighted) |
+| Method | Path      | Summary                               | FR                  | Auth   | Side effects                                                                             |
+| ------ | --------- | ------------------------------------- | ------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| GET    | `/search` | Command palette / cross-entity search | {{PROJECT_KEY}}-031 | Bearer | None (multi-source `tsvector` union: modules, US, AC, ATCs, tests, runs, bugs; weighted) |
 
 ### 4.12 Imports tag (2 endpoints)
 
-| Method | Path                                    | Summary                       | FR     | Auth                              | Side effects                                                                                                                |
-| ------ | --------------------------------------- | ----------------------------- | ------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/imports/jira`                         | Trigger Jira import (async)   | FR-009 | Bearer + role (member+) + scope:write | Enqueue Vercel-cron-triggered worker; INSERT `imports` row (Gap G1 in data-map — table not in canonical ERD); returns 202 |
-| GET    | `/imports/{import_job_id}`              | Poll import status            | FR-009 | Bearer                            | None                                                                                                                        |
+| Method | Path                       | Summary                     | FR                  | Auth                                  | Side effects                                                                                                              |
+| ------ | -------------------------- | --------------------------- | ------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/imports/jira`            | Trigger Jira import (async) | {{PROJECT_KEY}}-009 | Bearer + role (member+) + scope:write | Enqueue Vercel-cron-triggered worker; INSERT `imports` row (Gap G1 in data-map — table not in canonical ERD); returns 202 |
+| GET    | `/imports/{import_job_id}` | Poll import status          | {{PROJECT_KEY}}-009 | Bearer                                | None                                                                                                                      |
 
 ### 4.13 Integrations tag (declared, 0 endpoints — see Gap #2)
 
-The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exist under it. FR-009 + FR-028 reference Jira credentials "retrieved from Workspace integration config", implying a settings-layer Server Action path rather than a public Bearer-accessible API. **Open question** below.
+The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exist under it. {{PROJECT_KEY}}-009 + {{PROJECT_KEY}}-028 reference Jira credentials "retrieved from Workspace integration config", implying a settings-layer Server Action path rather than a public Bearer-accessible API. **Open question** below.
 
 **Endpoint totals**: 30 endpoints (29 Bearer-protected + 1 public `/openapi.json`). All under `/api/v1/...` except `/openapi.json` which is at root (`/api/openapi.json`).
 
@@ -567,7 +567,7 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 │  │  - wrap in { success, data, error } envelope                           │  │
 │  │  - strip internal fields (*_internal, payload_summary)                 │  │
 │  │  - emit Realtime row broadcasts (Supabase Realtime) for subscribed     │  │
-│  │    tables (FR-040: runs, run_atcs, run_steps, bugs)                    │  │
+│  │    tables ({{PROJECT_KEY}}-040: runs, run_atcs, run_steps, bugs)                    │  │
 │  │  - cache Idempotency-Key → response snapshot (24h)                     │  │
 │  └────────────────────────┬───────────────────────────────────────────────┘  │
 └───────────────────────────┼──────────────────────────────────────────────────┘
@@ -576,8 +576,8 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │         SUPABASE (Postgres 16 + Auth + Realtime + Storage)                   │
 │  - RLS policies on every workspace_id-bearing table                          │
-│  - tsvector GIN indexes (FR-011 ATC search, FR-031 command palette)          │
-│  - materialized views (module_defect_stats — FR-027)                         │
+│  - tsvector GIN indexes ({{PROJECT_KEY}}-011 ATC search, {{PROJECT_KEY}}-031 command palette)          │
+│  - materialized views (module_defect_stats — {{PROJECT_KEY}}-027)                         │
 │  - logical replication → Realtime WebSocket fan-out                          │
 └──────────────────────────────────────────────────────────────────────────────┘
                             │
@@ -591,18 +591,18 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 
 ### 5.2 Component reference
 
-| Component                | Role                                                                                          | Persistence / Integrations touched                                  | Why it matters for dev                                                                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Vercel Edge**          | HTTPS termination, CSP enforcement, edge-level rate-limit gate                                | —                                                                   | Where rate-limit headers (`Retry-After`) are surfaced. CSP allowlist controlled here. Not where business logic lives.                            |
-| **Next.js middleware**   | Auth resolution + idempotency check + per-token rate-limit per workspace                      | reads `access_tokens` (Bearer) or Supabase JWT verify (session); reads `idempotency_keys` | Single chokepoint for "is this caller allowed and is this request fresh?" — new auth schemes go here, not in handlers.                            |
-| **Route Handler**        | HTTP I/O — extract params, call validation, call service, shape response                      | None directly                                                       | Where new endpoints land — one file per `/api/v1/<resource>/route.ts`. Keep thin; push logic into service layer.                                |
-| **Zod validator**        | Schema-driven input/output validation, shared client+server                                   | None                                                                | Schemas live in `api/schemas/*.types.ts` (regenerated via `bun run api:sync` from OpenAPI). Authoritative shape source. Mock target in unit tests. |
-| **Service layer**        | Business rules: provenance enforcement, state-machine guards, transactional orchestration     | Reads/writes via Supabase client; emits domain events               | Where business invariants live (e.g. "ATC requires ≥1 AC", "Run in terminal state rejects step writes"). Mock target in unit tests. Phase 2 candidate for NestJS extract. |
-| **Supabase client**      | Parameterized SQL with RLS enforcement                                                        | Postgres 16 (Supabase-managed)                                      | Never bypass RLS in user-context queries. Service-role queries must explicitly pre-filter `workspace_id`. Performance bottleneck if RLS overhead surfaces (architecture §2.5 mitigation). |
-| **Response shaper**      | Envelope wrapping, internal-field stripping, Realtime broadcast trigger                       | Supabase Realtime (logical replication WebSocket)                   | Where the `{ success, data, error }` envelope is enforced. Any new "this should hit the UI live" pattern hooks here.                              |
-| **Async workers**        | Out-of-request work: Jira import, Jira bug sync, run-timeout sweeper, idempotency cleanup     | Reads/writes Postgres + Jira REST                                   | Vercel-cron-triggered serverless functions in MVP; BullMQ + Redis in Phase 2 self-hosted. Failure here is invisible to the requesting client.    |
-| **Postgres**             | Source of truth for entities, RLS-gated, indexed by `workspace_id` + per-feature indexes      | —                                                                   | Schema migrations are the only durable artifact (architecture §3 lock-in mitigation). pgvector enabled for Phase 2 semantic search.              |
-| **External integrations** | Outbound REST (Jira, R2 signed URL gen, Sentry, PostHog); inbound none in MVP                | —                                                                   | Where user-visible failure modes hide. See §6.                                                                                                  |
+| Component                 | Role                                                                                      | Persistence / Integrations touched                                                        | Why it matters for dev                                                                                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vercel Edge**           | HTTPS termination, CSP enforcement, edge-level rate-limit gate                            | —                                                                                         | Where rate-limit headers (`Retry-After`) are surfaced. CSP allowlist controlled here. Not where business logic lives.                                                                     |
+| **Next.js middleware**    | Auth resolution + idempotency check + per-token rate-limit per workspace                  | reads `access_tokens` (Bearer) or Supabase JWT verify (session); reads `idempotency_keys` | Single chokepoint for "is this caller allowed and is this request fresh?" — new auth schemes go here, not in handlers.                                                                    |
+| **Route Handler**         | HTTP I/O — extract params, call validation, call service, shape response                  | None directly                                                                             | Where new endpoints land — one file per `/api/v1/<resource>/route.ts`. Keep thin; push logic into service layer.                                                                          |
+| **Zod validator**         | Schema-driven input/output validation, shared client+server                               | None                                                                                      | Schemas live in `api/schemas/*.types.ts` (regenerated via `bun run api:sync` from OpenAPI). Authoritative shape source. Mock target in unit tests.                                        |
+| **Service layer**         | Business rules: provenance enforcement, state-machine guards, transactional orchestration | Reads/writes via Supabase client; emits domain events                                     | Where business invariants live (e.g. "ATC requires ≥1 AC", "Run in terminal state rejects step writes"). Mock target in unit tests. Phase 2 candidate for NestJS extract.                 |
+| **Supabase client**       | Parameterized SQL with RLS enforcement                                                    | Postgres 16 (Supabase-managed)                                                            | Never bypass RLS in user-context queries. Service-role queries must explicitly pre-filter `workspace_id`. Performance bottleneck if RLS overhead surfaces (architecture §2.5 mitigation). |
+| **Response shaper**       | Envelope wrapping, internal-field stripping, Realtime broadcast trigger                   | Supabase Realtime (logical replication WebSocket)                                         | Where the `{ success, data, error }` envelope is enforced. Any new "this should hit the UI live" pattern hooks here.                                                                      |
+| **Async workers**         | Out-of-request work: Jira import, Jira bug sync, run-timeout sweeper, idempotency cleanup | Reads/writes Postgres + Jira REST                                                         | Vercel-cron-triggered serverless functions in MVP; BullMQ + Redis in Phase 2 self-hosted. Failure here is invisible to the requesting client.                                             |
+| **Postgres**              | Source of truth for entities, RLS-gated, indexed by `workspace_id` + per-feature indexes  | —                                                                                         | Schema migrations are the only durable artifact (architecture §3 lock-in mitigation). pgvector enabled for Phase 2 semantic search.                                                       |
+| **External integrations** | Outbound REST (Jira, R2 signed URL gen, Sentry, PostHog); inbound none in MVP             | —                                                                                         | Where user-visible failure modes hide. See §6.                                                                                                                                            |
 
 **Phase-2 split note**: when agentic mode (`phase2.agentic_protocol` flag) + CI imports demand persistent WebSockets + long jobs, the service layer extracts into a NestJS process; route handlers in Next.js become thin proxies. The contract (`/api/v1` shape) does not change — only the implementation behind it.
 
@@ -612,17 +612,17 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 
 > **Discovery phase**: Phase 4 — External integrations at the API boundary. Enriches `business-feature-map.md §6` with failure-mode column.
 
-| Service                   | Trigger                                                              | Direction       | Failure mode (user-visible)                                                                            | Where configured                                                          | Journeys affected     |
-| ------------------------- | -------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | --------------------- |
-| **Supabase Auth**         | OAuth callback (browser) / magic-link email                          | Outbound + inbound (callback) | OAuth blocked by IT proxy → magic-link fallback offered within 30s (Journey 1 alt-path); auth provider down → users cannot sign in | env: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE`         | Journey 1 (sign-in)   |
-| **Cloudflare R2**         | Client uploads evidence via signed URL from server                   | Outbound (signed URL gen) + inbound PUT direct from client | Signed-URL generation 5xx → step still records pass/fail with empty evidence, user notified; R2 unreachable at view time → broken-image placeholder | env: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Journey 2, Journey 3  |
-| **Jira REST API (import)**| `POST /imports/jira` enqueue → async worker                          | Outbound async  | Jira unreachable → import job marked `failed`, `errors[]` returned via `GET /imports/{id}`; partial success allowed | `integrations` row (jsonb config + `secrets_ref` Vault)                   | Journey 1 (US import) |
-| **Jira REST API (sync)**  | `bugs` INSERT when `integrations.kind=jira` enabled                  | Outbound async  | Jira unreachable on bug create → `bugs.jira_sync_status=failed`, `jira-bug-sync-retry` cron retries with exponential backoff; **bug remains usable natively in Bunkai** (Jira sync is best-effort, not blocking) | `integrations` row                                                        | Journey 2, Journey 3  |
-| **Sentry**                | Unhandled exceptions on server + client                              | Outbound        | Sentry unreachable → events buffered briefly client-side, dropped on overflow; **no user-visible impact** | env: `SENTRY_DSN`                                                         | (all journeys, cross-cut) |
-| **PostHog**               | Frontend product-analytics events (page views, feature usage, funnel) | Outbound        | PostHog unreachable → events queued client-side, lost on overflow; **no user-visible impact**          | env: `POSTHOG_KEY`, `POSTHOG_HOST`                                        | (all journeys, cross-cut) |
-| **Vercel platform**       | Hosting + cron-triggered serverless functions (Jira import/sync, sweepers) | (platform)     | Vercel outage → API unavailable end-to-end (99.99% headline, NFR §6 99.5% MVP target)                  | Vercel project config                                                     | All                   |
-| **GitHub OAuth provider** | Via Supabase Auth                                                    | Outbound        | GitHub OAuth down → fallback to Google or magic-link (Journey 1)                                       | Supabase Auth dashboard                                                   | Journey 1             |
-| **Google OAuth provider** | Via Supabase Auth                                                    | Outbound        | Same as GitHub — fallback available                                                                    | Supabase Auth dashboard                                                   | Journey 1             |
+| Service                    | Trigger                                                                    | Direction                                                  | Failure mode (user-visible)                                                                                                                                                                                      | Where configured                                                              | Journeys affected         |
+| -------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------- |
+| **Supabase Auth**          | OAuth callback (browser) / magic-link email                                | Outbound + inbound (callback)                              | OAuth blocked by IT proxy → magic-link fallback offered within 30s (Journey 1 alt-path); auth provider down → users cannot sign in                                                                               | env: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE`             | Journey 1 (sign-in)       |
+| **Cloudflare R2**          | Client uploads evidence via signed URL from server                         | Outbound (signed URL gen) + inbound PUT direct from client | Signed-URL generation 5xx → step still records pass/fail with empty evidence, user notified; R2 unreachable at view time → broken-image placeholder                                                              | env: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Journey 2, Journey 3      |
+| **Jira REST API (import)** | `POST /imports/jira` enqueue → async worker                                | Outbound async                                             | Jira unreachable → import job marked `failed`, `errors[]` returned via `GET /imports/{id}`; partial success allowed                                                                                              | `integrations` row (jsonb config + `secrets_ref` Vault)                       | Journey 1 (US import)     |
+| **Jira REST API (sync)**   | `bugs` INSERT when `integrations.kind=jira` enabled                        | Outbound async                                             | Jira unreachable on bug create → `bugs.jira_sync_status=failed`, `jira-bug-sync-retry` cron retries with exponential backoff; **bug remains usable natively in Bunkai** (Jira sync is best-effort, not blocking) | `integrations` row                                                            | Journey 2, Journey 3      |
+| **Sentry**                 | Unhandled exceptions on server + client                                    | Outbound                                                   | Sentry unreachable → events buffered briefly client-side, dropped on overflow; **no user-visible impact**                                                                                                        | env: `SENTRY_DSN`                                                             | (all journeys, cross-cut) |
+| **PostHog**                | Frontend product-analytics events (page views, feature usage, funnel)      | Outbound                                                   | PostHog unreachable → events queued client-side, lost on overflow; **no user-visible impact**                                                                                                                    | env: `POSTHOG_KEY`, `POSTHOG_HOST`                                            | (all journeys, cross-cut) |
+| **Vercel platform**        | Hosting + cron-triggered serverless functions (Jira import/sync, sweepers) | (platform)                                                 | Vercel outage → API unavailable end-to-end (99.99% headline, NFR §6 99.5% MVP target)                                                                                                                            | Vercel project config                                                         | All                       |
+| **GitHub OAuth provider**  | Via Supabase Auth                                                          | Outbound                                                   | GitHub OAuth down → fallback to Google or magic-link (Journey 1)                                                                                                                                                 | Supabase Auth dashboard                                                       | Journey 1                 |
+| **Google OAuth provider**  | Via Supabase Auth                                                          | Outbound                                                   | Same as GitHub — fallback available                                                                                                                                                                              | Supabase Auth dashboard                                                       | Journey 1                 |
 
 **Webhook posture**: MVP is **outbound-only** (no inbound webhook endpoints). Jira bidirectional sync (`phase2.jira_bidirectional` flag — see Discovery Gap #1 in feature-map for the phase naming) ships Phase 2/3 and will add `POST /api/webhooks/jira` for status push back into Bunkai.
 
@@ -632,7 +632,7 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 
 ## 7. Conventions & cross-cutting
 
-> Cross-cutting facts that span every endpoint. Drawn from `api-contracts.yaml` info block, FR-037-040, NFR §2.
+> Cross-cutting facts that span every endpoint. Drawn from `api-contracts.yaml` info block, {{PROJECT_KEY}}-037-040, NFR §2.
 
 ### 7.1 Versioning
 
@@ -649,7 +649,7 @@ The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exis
 
 Error `code` is a stable identifier (e.g. `TOKEN_EXPIRED`, `MODULE_CIRCULAR_PARENT`, `VALIDATION_ERROR`, `RATE_LIMITED`) so agents can branch on it without parsing prose.
 
-### 7.3 Idempotency (FR-037)
+### 7.3 Idempotency ({{PROJECT_KEY}}-037)
 
 - Header: `Idempotency-Key: <max 64 chars>`.
 - Applies to writes: workspace create, project create, US create, ATC create, Test create, Run start, Bug file, Jira import trigger.
@@ -664,10 +664,10 @@ Error `code` is a stable identifier (e.g. `TOKEN_EXPIRED`, `MODULE_CIRCULAR_PARE
 
 ### 7.5 Rate limits (NFR §2)
 
-| Endpoint class | Limit                          | 429 response                     |
-| -------------- | ------------------------------ | -------------------------------- |
-| Write (POST/PATCH/DELETE) | 100 req/min/token   | 429 + `Retry-After: <seconds>`   |
-| Read (GET)     | 600 req/min/token              | 429 + `Retry-After`              |
+| Endpoint class            | Limit             | 429 response                   |
+| ------------------------- | ----------------- | ------------------------------ |
+| Write (POST/PATCH/DELETE) | 100 req/min/token | 429 + `Retry-After: <seconds>` |
+| Read (GET)                | 600 req/min/token | 429 + `Retry-After`            |
 
 Scope is per-token (per workspace), not global. Agents must back off on 429.
 
@@ -683,26 +683,26 @@ Scope is per-token (per workspace), not global. Agents must back off on 429.
 - `connect-src` allowlist: Supabase URL, R2, Sentry, PostHog.
 - Strict — no `unsafe-inline` or `unsafe-eval`.
 
-### 7.8 Realtime (FR-040) — adjacent surface, not REST
+### 7.8 Realtime ({{PROJECT_KEY}}-040) — adjacent surface, not REST
 
 Supabase Realtime channels keyed by `project_id`:
 
-| Table        | Subscribers                          | Use                                                          |
-| ------------ | ------------------------------------ | ------------------------------------------------------------ |
-| `runs`       | Run runner UI, Project View dashboard | Live progress on the Run, status transitions                  |
-| `run_atcs`   | Run runner UI                        | Per-ATC verdict rollup (derived from steps)                  |
-| `run_steps`  | Run runner UI                        | Per-step result push (replaces polling)                      |
-| `bugs`       | Defect heatmap, activity timeline    | New bug rolls up immediately into module heatmap             |
+| Table       | Subscribers                           | Use                                              |
+| ----------- | ------------------------------------- | ------------------------------------------------ |
+| `runs`      | Run runner UI, Project View dashboard | Live progress on the Run, status transitions     |
+| `run_atcs`  | Run runner UI                         | Per-ATC verdict rollup (derived from steps)      |
+| `run_steps` | Run runner UI                         | Per-step result push (replaces polling)          |
+| `bugs`      | Defect heatmap, activity timeline     | New bug rolls up immediately into module heatmap |
 
 Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated WebSocket/SSE channel for the agentic protocol (`phase2.agentic_protocol` flag) — lower latency, bidirectional, vendor-neutral.
 
-### 7.9 Soft-delete (FR-039)
+### 7.9 Soft-delete ({{PROJECT_KEY}}-039)
 
 - `DELETE` endpoints on Modules / US / AC / ATC / Tests set `archived_at = now()`. Cascade to descendants.
 - Listing endpoints filter `archived_at IS NULL` by default; `?include_archived=true` opts in.
 - Hard-delete only via admin endpoint with confirmation header.
 
-### 7.10 Audit-light (FR-038)
+### 7.10 Audit-light ({{PROJECT_KEY}}-038)
 
 - Every state-changing endpoint inserts an `activity_log` row: `{ actor_id, action, entity_type, entity_id, payload_summary, at }`.
 - NOT compliance-grade — Enterprise audit log (immutable, exportable) ships Phase 3 via `enterprise.audit_log` flag.
@@ -713,20 +713,20 @@ Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated 
 
 > The API surface treats AI agents as first-class consumers, not afterthoughts. Each affordance below was selected because it addresses one of Karim's pain points (`user-personas.md` §Persona 4) — "APIs that fight back", "no idempotency", "auth complexity", "hidden state".
 
-| Affordance                                                  | What it provides                                                                                                                       | Where in the spec                                                                                            |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Self-describing OpenAPI** at `/api/openapi.json`           | Agent reads its own contract at runtime — no hidden endpoints, no out-of-band docs to drift                                            | FR-033; `api-contracts.yaml` `/openapi.json` path                                                            |
-| **Predictable response envelope** `{ success, data, error }` | Agent never branches on response shape; deterministic parser                                                                           | `api-contracts.yaml` info block                                                                              |
-| **Stable error codes**                                       | `TOKEN_EXPIRED`, `VALIDATION_ERROR`, `RATE_LIMITED`, `MODULE_CIRCULAR_PARENT` etc. — agent branches on `code`, never on `message` prose | `api-contracts.yaml` `ErrorResponse` schema                                                                  |
-| **Bearer-token auth (no OAuth dance)**                       | One-shot token issuance via device-code flow; no browser redirect dance at runtime                                                     | FR-034; §2.3 above                                                                                           |
-| **Idempotency-Key on every write**                           | Retry-safe by design — duplicate POST returns original response, not duplicate state                                                   | FR-037; `Idempotency-Key` header documented on `POST /runs`, `POST /bugs`                                    |
-| **Identical data shape across modes**                        | Human runs and agent runs produce structurally identical `runs`/`run_atcs`/`run_steps`/`bugs` rows — dashboards aggregate without conditional logic. `executor.type ∈ {human \| agent \| ci}` is metadata, not a switch | architecture-specs.md §4.3                                                                                   |
-| **Full Test contract in one round trip**                     | `GET /tests/{id}?expand=atcs.steps,atcs.assertions` returns the entire script — no N+1 latency to discover what to execute             | FR-017; api-contracts.yaml `expand` query param                                                              |
-| **401 with explicit `code`**                                 | `TOKEN_EXPIRED` vs `TOKEN_REVOKED` vs `INVALID_TOKEN` so the agent can fail loudly and route to the right human                        | FR-034; `Unauthorized` response shape                                                                        |
-| **Rate limits with `Retry-After`**                           | Agent computes back-off from header value, not heuristics                                                                              | NFR §2; 429 response                                                                                         |
-| **Cursor pagination (not offset)**                            | Deterministic results across concurrent writes; agent does not skip rows under load                                                    | `?limit` + `?before=<cursor>` on list endpoints                                                              |
-| **Stateless steps endpoint**                                  | `POST /runs/{id}/steps/{stepId}/result` carries the full state of one step result — no hidden in-flight state between calls           | FR-020                                                                                                       |
-| **Audit-light captures executor identity**                    | `executor.identity` (e.g. `claude-code-nightly-v3`) is durably stored on `runs`; investigators can trace which agent did what          | FR-019                                                                                                       |
+| Affordance                                                   | What it provides                                                                                                                                                                                                        | Where in the spec                                                                      |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Self-describing OpenAPI** at `/api/openapi.json`           | Agent reads its own contract at runtime — no hidden endpoints, no out-of-band docs to drift                                                                                                                             | {{PROJECT_KEY}}-033; `api-contracts.yaml` `/openapi.json` path                         |
+| **Predictable response envelope** `{ success, data, error }` | Agent never branches on response shape; deterministic parser                                                                                                                                                            | `api-contracts.yaml` info block                                                        |
+| **Stable error codes**                                       | `TOKEN_EXPIRED`, `VALIDATION_ERROR`, `RATE_LIMITED`, `MODULE_CIRCULAR_PARENT` etc. — agent branches on `code`, never on `message` prose                                                                                 | `api-contracts.yaml` `ErrorResponse` schema                                            |
+| **Bearer-token auth (no OAuth dance)**                       | One-shot token issuance via device-code flow; no browser redirect dance at runtime                                                                                                                                      | {{PROJECT_KEY}}-034; §2.3 above                                                        |
+| **Idempotency-Key on every write**                           | Retry-safe by design — duplicate POST returns original response, not duplicate state                                                                                                                                    | {{PROJECT_KEY}}-037; `Idempotency-Key` header documented on `POST /runs`, `POST /bugs` |
+| **Identical data shape across modes**                        | Human runs and agent runs produce structurally identical `runs`/`run_atcs`/`run_steps`/`bugs` rows — dashboards aggregate without conditional logic. `executor.type ∈ {human \| agent \| ci}` is metadata, not a switch | architecture-specs.md §4.3                                                             |
+| **Full Test contract in one round trip**                     | `GET /tests/{id}?expand=atcs.steps,atcs.assertions` returns the entire script — no N+1 latency to discover what to execute                                                                                              | {{PROJECT_KEY}}-017; api-contracts.yaml `expand` query param                           |
+| **401 with explicit `code`**                                 | `TOKEN_EXPIRED` vs `TOKEN_REVOKED` vs `INVALID_TOKEN` so the agent can fail loudly and route to the right human                                                                                                         | {{PROJECT_KEY}}-034; `Unauthorized` response shape                                     |
+| **Rate limits with `Retry-After`**                           | Agent computes back-off from header value, not heuristics                                                                                                                                                               | NFR §2; 429 response                                                                   |
+| **Cursor pagination (not offset)**                           | Deterministic results across concurrent writes; agent does not skip rows under load                                                                                                                                     | `?limit` + `?before=<cursor>` on list endpoints                                        |
+| **Stateless steps endpoint**                                 | `POST /runs/{id}/steps/{stepId}/result` carries the full state of one step result — no hidden in-flight state between calls                                                                                             | {{PROJECT_KEY}}-020                                                                    |
+| **Audit-light captures executor identity**                   | `executor.identity` (e.g. `claude-code-nightly-v3`) is durably stored on `runs`; investigators can trace which agent did what                                                                                           | {{PROJECT_KEY}}-019                                                                    |
 
 **Phase-2 upgrade**: WebSocket / SSE bidirectional channel (`phase2.agentic_protocol` flag) replaces polling-style result reporting with a push stream — same data, lower latency, no polling cost.
 
@@ -748,15 +748,15 @@ Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated 
 
 ### Gap #1 — Workspace invite lifecycle endpoints absent
 
-FR-003 covers invite **creation**, but `api-contracts.yaml` v1.0 exposes no `GET /workspaces/{id}/invites` (list pending), no `POST /workspaces/{id}/invites/{invite_id}/resend`, and no `DELETE /workspaces/{id}/invites/{invite_id}` (revoke). The 24h-expiry behavior implies users will hit expired-invite cases (Journey 1 alt-path documents this). **Resolution**: surface in v1.0 before `/project-bootstrap` — invite UX is MVP-needed. Also documented as Gap #2 in `business-feature-map.md`.
+{{PROJECT_KEY}}-003 covers invite **creation**, but `api-contracts.yaml` v1.0 exposes no `GET /workspaces/{id}/invites` (list pending), no `POST /workspaces/{id}/invites/{invite_id}/resend`, and no `DELETE /workspaces/{id}/invites/{invite_id}` (revoke). The 24h-expiry behavior implies users will hit expired-invite cases (Journey 1 alt-path documents this). **Resolution**: surface in v1.0 before `/project-bootstrap` — invite UX is MVP-needed. Also documented as Gap #2 in `business-feature-map.md`.
 
 ### Gap #2 — Integrations + Environments management API absent
 
-`integrations` and `environments` tables exist in the ERD (`business-data-map.md` §2). Both surface in Settings UI screens (`business-feature-map.md` §5.1). Neither has a public endpoint in `api-contracts.yaml v1.0` — FR-019 references `environment` enum, FR-009/FR-028 reference Jira credentials retrieved from "integration config", but the management API is missing. **Resolution path**: confirm whether these are Settings-only (Next.js Server Actions, never exposed as Bearer REST) or whether the CLI / agent persona needs them. If Karim is expected to manage environments and integrations from CI, they must surface as `/integrations` and `/environments` resources. Also documented as Gap #3 in `business-feature-map.md`.
+`integrations` and `environments` tables exist in the ERD (`business-data-map.md` §2). Both surface in Settings UI screens (`business-feature-map.md` §5.1). Neither has a public endpoint in `api-contracts.yaml v1.0` — {{PROJECT_KEY}}-019 references `environment` enum, {{PROJECT_KEY}}-009/{{PROJECT_KEY}}-028 reference Jira credentials retrieved from "integration config", but the management API is missing. **Resolution path**: confirm whether these are Settings-only (Next.js Server Actions, never exposed as Bearer REST) or whether the CLI / agent persona needs them. If Karim is expected to manage environments and integrations from CI, they must surface as `/integrations` and `/environments` resources. Also documented as Gap #3 in `business-feature-map.md`.
 
 ### Gap #3 — Missing R/U/D/List for User Stories and Acceptance Criteria
 
-`api-contracts.yaml` v1.0 documents only `POST /user-stories` and `POST /acceptance-criteria`. FR-035 ("All FRs 001–032 exposed under `/api/v1/...`") implies GET, PATCH, DELETE, and List endpoints exist — but the contract file is incomplete. Agent persona (Karim) using `/openapi.json` at runtime will encounter 404s on assumed reads/updates. **Resolution**: surface in v1.0 during `/project-bootstrap` Step 1. Also documented as Gap #4 in `business-feature-map.md`.
+`api-contracts.yaml` v1.0 documents only `POST /user-stories` and `POST /acceptance-criteria`. {{PROJECT_KEY}}-035 ("All FRs 001–032 exposed under `/api/v1/...`") implies GET, PATCH, DELETE, and List endpoints exist — but the contract file is incomplete. Agent persona (Karim) using `/openapi.json` at runtime will encounter 404s on assumed reads/updates. **Resolution**: surface in v1.0 during `/project-bootstrap` Step 1. Also documented as Gap #4 in `business-feature-map.md`.
 
 ### Gap #4 — Workspace `plan` setter missing
 
@@ -764,11 +764,11 @@ FR-003 covers invite **creation**, but `api-contracts.yaml` v1.0 exposes no `GET
 
 ### Gap #5 — Run-timeout sweeper cron is journey-implied but not exposed
 
-`user-journeys.md` §3 "Agent abandons" notes "a sweeper cron times it out after a configurable max_duration (default 4h)" — no FR documents this behavior and no admin endpoint exposes the configuration. **Resolution**: codify as cross-cutting FR (e.g. FR-041 Run abandonment sweeper). Decide whether `max_duration` is per-Project, per-Workspace, or global, and surface as a settings endpoint or feature-flag value. Action item for `/product-management`. Also documented as Gap #5 in `business-feature-map.md`.
+`user-journeys.md` §3 "Agent abandons" notes "a sweeper cron times it out after a configurable max_duration (default 4h)" — no FR documents this behavior and no admin endpoint exposes the configuration. **Resolution**: codify as cross-cutting FR (e.g. {{PROJECT_KEY}}-041 Run abandonment sweeper). Decide whether `max_duration` is per-Project, per-Workspace, or global, and surface as a settings endpoint or feature-flag value. Action item for `/product-management`. Also documented as Gap #5 in `business-feature-map.md`.
 
 ### Gap #6 — Bulk-edit endpoint declared but not specced
 
-FR-030 (Table view) mentions `PATCH /api/v1/{entity}/bulk` accepting `{ ids[], patch }`. The endpoint shape is described in `functional-specs.md` but is not present in `api-contracts.yaml v1.0`. **Resolution**: add to spec during `/project-bootstrap` Step 1, document permissible `{entity}` values (atc / test / run / bug) and `patch` payload constraints (which fields are bulk-editable per entity).
+{{PROJECT_KEY}}-030 (Table view) mentions `PATCH /api/v1/{entity}/bulk` accepting `{ ids[], patch }`. The endpoint shape is described in `functional-specs.md` but is not present in `api-contracts.yaml v1.0`. **Resolution**: add to spec during `/project-bootstrap` Step 1, document permissible `{entity}` values (atc / test / run / bug) and `patch` payload constraints (which fields are bulk-editable per entity).
 
 ### Gap #7 — Token introspection endpoint missing
 
@@ -776,7 +776,7 @@ FR-030 (Table view) mentions `PATCH /api/v1/{entity}/bulk` accepting `{ ids[], p
 
 ### Gap #8 — Realtime channel auth model undocumented
 
-FR-040 declares Supabase Realtime channels keyed by `project_id` for `runs`, `run_atcs`, `run_steps`, `bugs`. The Bearer-PAT auth model in `api-contracts.yaml` covers REST only — how an agent subscribes to Realtime channels via a PAT (vs end-user JWT) is not documented. **Resolution**: confirm whether Realtime is browser-only (end-user JWT) in MVP and agent push is polling-only until the Phase-2 WebSocket protocol lands.
+{{PROJECT_KEY}}-040 declares Supabase Realtime channels keyed by `project_id` for `runs`, `run_atcs`, `run_steps`, `bugs`. The Bearer-PAT auth model in `api-contracts.yaml` covers REST only — how an agent subscribes to Realtime channels via a PAT (vs end-user JWT) is not documented. **Resolution**: confirm whether Realtime is browser-only (end-user JWT) in MVP and agent push is polling-only until the Phase-2 WebSocket protocol lands.
 
 ### Gap #9 — `/me` security declaration
 
@@ -784,7 +784,7 @@ FR-040 declares Supabase Realtime channels keyed by `project_id` for `runs`, `ru
 
 ### Gap #10 — Search endpoint and ATC list endpoint overlap
 
-`GET /search` (FR-031, command palette) and `GET /atcs?q=...` (FR-011, ATC search) both serve full-text search use cases. The differentiation (cross-entity vs ATC-only) is clear at the spec level but should be documented to avoid client confusion about which to call. **Resolution**: clarify in OpenAPI descriptions during `/project-bootstrap`.
+`GET /search` ({{PROJECT_KEY}}-031, command palette) and `GET /atcs?q=...` ({{PROJECT_KEY}}-011, ATC search) both serve full-text search use cases. The differentiation (cross-entity vs ATC-only) is clear at the spec level but should be documented to avoid client confusion about which to call. **Resolution**: clarify in OpenAPI descriptions during `/project-bootstrap`.
 
 ---
 
@@ -795,7 +795,7 @@ FR-040 declares Supabase Realtime channels keyed by `project_id` for `runs`, `ru
   - `.context/business/business-feature-map.md` — feature catalog + CRUD matrix + UI inventory (sibling output, Wave 1)
 - **API contract source-of-truth**: `.context/SRS/api-contracts.yaml` (OpenAPI 3.1, ~30 endpoints)
 - **Type generation**: `bun run api:sync` regenerates TypeScript types under `api/schemas/` (post-`/project-bootstrap`)
-- **Functional requirements**: `.context/SRS/functional-specs.md` (FR-001..FR-040)
+- **Functional requirements**: `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-001..{{PROJECT_KEY}}-040)
 - **Architecture**: `.context/SRS/architecture-specs.md` (§1 system diagram, §4 data flows, §5 security architecture)
 - **Performance + security NFRs**: `.context/SRS/non-functional-specs.md`
 - **User journeys (traced through API in §3 above)**: `.context/PRD/user-journeys.md`

@@ -7,18 +7,18 @@
 
 ## 1. Performance
 
-| Metric | Target (MVP) |
-|---|---|
-| **LCP** (Largest Contentful Paint) on Project View | < 2.0s p75 |
-| **TTI** (Time to Interactive) on Project View | < 3.0s p75 |
-| **API response time** — single-entity reads (`GET /atcs/{id}`) | < 200ms p95 |
-| **API response time** — listing endpoints (paged, 50 rows) | < 500ms p95 |
-| **API response time** — tree view query (recursive CTE) | < 800ms p95 at 500 modules / 5000 ATCs |
-| **Realtime propagation latency** (Supabase Realtime row change → connected client) | < 1.5s p95 |
-| **DB query** simple PK reads | < 50ms p95 |
-| **DB query** complex JOINs (run + run_atcs + run_steps + ATCs + steps) | < 200ms p95 |
-| **Concurrent active users per workspace** | 50 (MVP target) / 500 (Phase 2) |
-| **Bulk operations** (e.g. import 100 user stories from Jira) | < 30s end-to-end |
+| Metric                                                                             | Target (MVP)                           |
+| ---------------------------------------------------------------------------------- | -------------------------------------- |
+| **LCP** (Largest Contentful Paint) on Project View                                 | < 2.0s p75                             |
+| **TTI** (Time to Interactive) on Project View                                      | < 3.0s p75                             |
+| **API response time** — single-entity reads (`GET /atcs/{id}`)                     | < 200ms p95                            |
+| **API response time** — listing endpoints (paged, 50 rows)                         | < 500ms p95                            |
+| **API response time** — tree view query (recursive CTE)                            | < 800ms p95 at 500 modules / 5000 ATCs |
+| **Realtime propagation latency** (Supabase Realtime row change → connected client) | < 1.5s p95                             |
+| **DB query** simple PK reads                                                       | < 50ms p95                             |
+| **DB query** complex JOINs (run + run_atcs + run_steps + ATCs + steps)             | < 200ms p95                            |
+| **Concurrent active users per workspace**                                          | 50 (MVP target) / 500 (Phase 2)        |
+| **Bulk operations** (e.g. import 100 user stories from Jira)                       | < 30s end-to-end                       |
 
 ### Performance budgets (frontend)
 
@@ -28,19 +28,19 @@
 
 ## 2. Security
 
-| Concern | Approach |
-|---|---|
-| **Authentication** | Supabase Auth (email + magic link + GitHub OAuth + Google OAuth) for end-users; Bunkai Personal Access Tokens (Bearer, sha-256-hashed at rest) for API/CLI. |
-| **Authorization** | RBAC at Workspace level (`owner|admin|member|viewer`) enforced by Supabase Row Level Security (RLS) policies on every table that carries `workspace_id`. Application-layer checks for non-CRUD actions (invite, role change). |
-| **Data encryption at rest** | Supabase-managed (AES-256). R2 blobs encrypted at rest by Cloudflare. |
-| **Data encryption in transit** | HTTPS / TLS 1.3 only. HSTS enabled with 1-year max-age. Vercel-managed cert. |
-| **Input validation** | Zod schemas server-side AND client-side. Markdown sanitized via `rehype-sanitize` before render; user-supplied HTML stripped. |
-| **OWASP Top 10** | A01 (broken access control) — RLS policies + scoped tokens. A02 (cryptographic failures) — TLS + Supabase encryption. A03 (injection) — parameterized queries via Supabase client, Zod validation. A04 (insecure design) — see Architecture spec §5. A05 (security misconfig) — env-var-driven config; secrets in Vercel/Supabase vaults. A07 (auth failures) — Supabase Auth handles rate-limit + brute-force protection. A08 (data integrity) — idempotency keys + audit-light log. A09 (logging) — Sentry + Supabase logs. A10 (SSRF) — webhook URLs validated against an allowlist (no `localhost`, no private IPs). |
-| **Session management** | Supabase JWT, 1h access token, 30d refresh token, sliding renewal. Logout revokes refresh token server-side. |
-| **Password policy** | Magic-link primary; if password fallback enabled later, min 12 chars + zxcvbn score ≥ 3. |
-| **API rate limits** | 100 req/min/token for write endpoints; 600 req/min for reads. 429 responses include `Retry-After`. Token-scoped (per workspace, not global). |
-| **Secrets** | Never in code. `.env` for local; Vercel env vars for prod/staging. `bunkai vars:check` lints absence. |
-| **CSP** | Strict; `script-src 'self'` + nonces for inline; `connect-src` allowlist (Supabase URL, R2, Sentry, PostHog). |
+| Concern                        | Approach                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Authentication**             | Supabase Auth (email + magic link + GitHub OAuth + Google OAuth) for end-users; Bunkai Personal Access Tokens (Bearer, sha-256-hashed at rest) for API/CLI.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Authorization**              | RBAC at Workspace level (`owner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | admin | member | viewer`) enforced by Supabase Row Level Security (RLS) policies on every table that carries `workspace_id`. Application-layer checks for non-CRUD actions (invite, role change). |
+| **Data encryption at rest**    | Supabase-managed (AES-256). R2 blobs encrypted at rest by Cloudflare.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Data encryption in transit** | HTTPS / TLS 1.3 only. HSTS enabled with 1-year max-age. Vercel-managed cert.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Input validation**           | Zod schemas server-side AND client-side. Markdown sanitized via `rehype-sanitize` before render; user-supplied HTML stripped.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **OWASP Top 10**               | A01 (broken access control) — RLS policies + scoped tokens. A02 (cryptographic failures) — TLS + Supabase encryption. A03 (injection) — parameterized queries via Supabase client, Zod validation. A04 (insecure design) — see Architecture spec §5. A05 (security misconfig) — env-var-driven config; secrets in Vercel/Supabase vaults. A07 (auth failures) — Supabase Auth handles rate-limit + brute-force protection. A08 (data integrity) — idempotency keys + audit-light log. A09 (logging) — Sentry + Supabase logs. A10 (SSRF) — webhook URLs validated against an allowlist (no `localhost`, no private IPs). |
+| **Session management**         | Supabase JWT, 1h access token, 30d refresh token, sliding renewal. Logout revokes refresh token server-side.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Password policy**            | Magic-link primary; if password fallback enabled later, min 12 chars + zxcvbn score ≥ 3.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **API rate limits**            | 100 req/min/token for write endpoints; 600 req/min for reads. 429 responses include `Retry-After`. Token-scoped (per workspace, not global).                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Secrets**                    | Never in code. `.env` for local; Vercel env vars for prod/staging. `bunkai vars:check` lints absence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **CSP**                        | Strict; `script-src 'self'` + nonces for inline; `connect-src` allowlist (Supabase URL, R2, Sentry, PostHog).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## 3. Scalability
 
@@ -52,7 +52,7 @@
   - In-memory — React Query / TanStack Query for client-side de-duplication and stale-while-revalidate.
 - **Horizontal scaling**: API routes are stateless — Vercel handles scale-out automatically. WebSocket / SSE channels in Phase 2 require a Redis pub/sub for multi-instance fan-out.
 - **Blob storage**: Cloudflare R2 with signed URLs (5-min expiry) for run evidence — egress-free, predictable cost.
-- **Search indexing**: Postgres `tsvector` GIN indexes for FR-011 + FR-031. Move to Meilisearch / Typesense only if p95 search latency degrades past 500ms.
+- **Search indexing**: Postgres `tsvector` GIN indexes for {{PROJECT_KEY}}-011 + {{PROJECT_KEY}}-031. Move to Meilisearch / Typesense only if p95 search latency degrades past 500ms.
 
 ## 4. Accessibility (WCAG 2.1 AA)
 
@@ -105,6 +105,6 @@
 
 ## Cross-references
 
-- API rate-limits and idempotency: `.context/SRS/api-contracts.yaml` + `.context/SRS/functional-specs.md` (FR-037).
+- API rate-limits and idempotency: `.context/SRS/api-contracts.yaml` + `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-037).
 - Architecture decisions that derive from these NFRs: `.context/SRS/architecture-specs.md`.
 - Color contrast and accessibility detail: `DESIGN.md`.

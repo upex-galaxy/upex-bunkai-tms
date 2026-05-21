@@ -73,6 +73,19 @@
         "N8N_API_URL": "{env:N8N_API_URL}",
         "N8N_API_KEY": "{env:N8N_API_KEY}"
       }
+    },
+    "atlassian": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "mcp-atlassian"
+      ],
+      "enabled": true,
+      "environment": {
+        "JIRA_URL": "{env:ATLASSIAN_URL}",
+        "JIRA_USERNAME": "{env:ATLASSIAN_EMAIL}",
+        "JIRA_API_TOKEN": "{env:ATLASSIAN_API_TOKEN}"
+      }
     }
   },
   // Permissions — mirrors .claude/settings.json 1:1.

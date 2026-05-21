@@ -13,7 +13,7 @@
 - **Server-side sanitizer**: `sanitize-html` configured with an allowlist — `h1-h4, p, ul, ol, li, strong, em, code, pre, blockquote, table, thead, tbody, tr, th, td, a, hr, br`. Allowed `a` attributes: `href` (schemes `http|https|mailto`), `target` (force `_blank`), `rel` (force `noopener noreferrer`). All inline event handlers, `style`, `iframe`, `object`, `script`, `embed` stripped.
 - **Client renderer**: `react-markdown` + `remark-gfm` (tables, task lists) + `rehype-sanitize` (defense in depth). Code blocks render through a thin wrapper that adds `className="language-<lang>"` (no syntax highlighter in MVP — leaves the hook for Phase 2).
 - **Editor component**: textarea + toolbar (Bold, Italic, Code, Link, UL, OL, H2, H3). Toolbar wraps selection with Markdown syntax; keyboard shortcuts `Cmd/Ctrl+B`, `Cmd/Ctrl+I`, `Cmd/Ctrl+K` (link prompt). Live preview panel toggleable via icon.
-- **Size cap**: shared with FR-007 — 50KB UTF-8 bytes. Client uses `new Blob([value]).size` for warning at 90% and hard stop at 100% before submit.
+- **Size cap**: shared with {{PROJECT_KEY}}-007 — 50KB UTF-8 bytes. Client uses `new Blob([value]).size` for warning at 90% and hard stop at 100% before submit.
 - **Defense in depth**: sanitize on save AND on render. Two layers guards against future migration that might persist legacy unsanitized content.
 
 ## Dependencies
@@ -34,7 +34,7 @@
 
 ## Related Documentation
 - PRD: `.context/PRD/mvp-scope.md` § EPIC-BK-003 / US 3.4
-- SRS: `.context/SRS/functional-specs.md` § FR-007 (description cap reused)
+- SRS: `.context/SRS/functional-specs.md` § {{PROJECT_KEY}}-007 (description cap reused)
 - Business map: `.context/business/business-data-map.md` § content rendering
 - Frontend design tokens: `DESIGN.md` § editor & code block styles
 

@@ -10,7 +10,7 @@
 
 ## User Story
 
-As a Workspace owner or admin, I want to invite a teammate by email and assign them a role (owner / admin / member / viewer) so that access is controlled. Implements FR-003.
+As a Workspace owner or admin, I want to invite a teammate by email and assign them a role (owner / admin / member / viewer) so that access is controlled. Implements {{PROJECT_KEY}}-003.
 
 ---
 
