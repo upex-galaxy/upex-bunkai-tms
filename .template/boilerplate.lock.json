@@ -1,0 +1,19 @@
+{
+  "lastSync": "2026-05-21T03:29:27.970Z",
+  "templateCommit": "fc1c075db2a71348253572c9594b291376b517fe",
+  "cliVersion": "6.0",
+  "syncedComponents": [
+    "docs",
+    "context",
+    "docs-mcp",
+    "scripts",
+    "cli",
+    "agents",
+    "claude",
+    "vscode",
+    "husky",
+    "tooling",
+    "examples"
+  ],
+  "variableSystemVersion": true
+}

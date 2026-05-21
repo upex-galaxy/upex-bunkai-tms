@@ -123,8 +123,6 @@ interface CommunitySkill {
 // Users can run `bunx autoskills` later to refine for their concrete stack.
 const PROJECT_LEVEL_SKILLS: ReadonlyArray<CommunitySkill> = [
   { package: 'https://github.com/anthropics/skills', skill: 'frontend-design' },
-  { package: 'https://github.com/vercel-labs/agent-skills', skill: 'react-best-practices' },
-  { package: 'https://github.com/vercel-labs/agent-skills', skill: 'composition-patterns' },
   { package: 'https://github.com/vercel-labs/next-skills', skill: 'next-best-practices' },
   { package: 'https://github.com/vercel-labs/next-skills', skill: 'next-cache-components' },
   { package: 'https://github.com/vercel-labs/next-skills', skill: 'next-upgrade' },
@@ -170,51 +168,34 @@ const USER_LEVEL_SKILLS: ReadonlyArray<CommunitySkill> = [
 // Rule: any install whose command depends on the user's OS must be deferred to
 // the upstream docs (Rule 4). Single-shot cross-platform commands (e.g.
 // `bun add -g X`) MAY ship as `install`; everything else uses `docs` only.
-//
-// ── Cross-repo sentinel ───────────────────────────────────────────────────
-// This repo (agentic-dev-boilerplate) declares CLIs for a Next.js + Supabase
-// development stack. Sister repo agentic-qa-boilerplate declares a narrower
-// set for QA test automation. Per-CLI scope is tagged inline below as one of:
-//   `[shared]`     — declared in BOTH dev + qa, same purpose
-//   `[dev-only]`   — declared only in dev (stack-specific to dev workflow)
-//   `[qa-only]`    — declared only in qa (would NOT appear here)
-// When changing this list, update the sister repo's EXTERNAL_CLIS too if the
-// CLI is intended to be `[shared]`, or extend the scope tag if scope shifts.
 const EXTERNAL_CLIS: ReadonlyArray<{ name: string, install?: string, docs: string, purpose: string, required?: boolean }> = [
   {
-    // [shared] — runtime + package manager in both repos.
     name: 'bun',
     docs: 'https://bun.com/',
     purpose: 'general-purpose runtime + package manager (this repo runs on bun)',
   },
   {
-    // [shared] — GitHub flow in both repos.
     name: 'gh',
     docs: 'https://github.com/cli/cli#installation',
     purpose: 'GitHub CLI — repos, PRs, releases, gh api',
   },
   {
-    // [dev-only] — dev uses Supabase as primary DB. qa does not.
     name: 'supabase',
     docs: 'https://supabase.com/docs/guides/local-development/cli/getting-started',
     purpose: 'database — migrations, types, local stack',
   },
   {
-    // [dev-only] — dev deploys to Vercel. qa deploys nothing (test-only repo).
     name: 'vercel',
     install: 'bun add -g vercel',
     docs: 'https://vercel.com/docs/cli',
     purpose: 'deploys + project linking',
   },
   {
-    // [shared] — transactional email used in both (dev: app email; qa: test fixtures).
     name: 'resend',
     docs: 'https://resend.com/docs/cli',
     purpose: 'email development + transactional sending',
   },
   {
-    // [shared] — Jira/Confluence CLI in both. Install depends on OS (brew tap
-    // on macOS, manual binary on Linux/Windows). Defer to upstream docs.
     // Required: the boilerplate ships the Atlassian MCP server as opt-in only
     // (docs/mcp/*.template.*), so acli is the sole default tool for Jira/
     // Confluence. Missing acli at install time is a hard abort.
@@ -224,17 +205,15 @@ const EXTERNAL_CLIS: ReadonlyArray<{ name: string, install?: string, docs: strin
     required: true,
   },
   {
-    // [shared] — agent-driven browser automation CLI. Binary produced by
-    // @playwright/cli is `playwright-cli`, NOT @playwright/test (devDep test
-    // runner library producing no global binary — `which playwright` would
-    // never find it).
+    // Binary produced by @playwright/cli is `playwright-cli`, NOT
+    // @playwright/test (devDep test runner library producing no global
+    // binary — `which playwright` would never find it).
     name: 'playwright-cli',
     install: 'bun add -g @playwright/cli@latest',
     docs: 'https://playwright.dev/agent-cli/introduction',
     purpose: 'browser automation — screenshots, traces, recordings',
   },
   {
-    // [shared] — JSON processor required by /acli skill.
     name: 'jq',
     docs: 'https://jqlang.org/',
     purpose: 'JSON processor — required by /acli skill for parsing acli --json output',
@@ -645,6 +624,11 @@ async function installCommunitySkills(
       log.dim(`  skipping ${slug} (already installed)`);
       continue;
     }
+    // Community skills install to `.agents/skills/<slug>/` by default (no `--agent`
+    // flag passed). This is INTENTIONAL: T1 repo-owned skills live in
+    // `.claude/skills/`, T3/T4 community skills live in `.agents/skills/`. Keeping
+    // them separate prevents visual confusion and ensures community installs are
+    // gitignored independently of T1 skill commits.
     const args = ['skills', 'add', item.package];
     if (item.skill && item.skill !== '*') {
       args.push('--skill', item.skill);
@@ -1222,6 +1206,7 @@ async function setupGithubRemote(state: InstallState): Promise<void> {
   }
 
   log.info(`Creating ${account}/${repoName} (${visibility})…`);
+  // Step 1: create remote (no push)
   const createRes = spawnSync('gh', [
     'repo',
     'create',
@@ -1229,15 +1214,30 @@ async function setupGithubRemote(state: InstallState): Promise<void> {
     `--${visibility}`,
     '--source=.',
     '--remote=origin',
-    '--push',
   ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
 
   if (createRes.status !== 0) {
     log.error(`gh repo create failed (exit ${createRes.status}).`);
     if (createRes.stderr) { log.dim(`  ${createRes.stderr.trim()}`); }
-    log.dim('  Repo not created. Local files left intact. You can retry later.');
+    log.dim('  Remote was NOT created. Local files left intact. You can retry later.');
     return;
   }
+  log.success(`Remote created: ${account}/${repoName}`);
+
+  // Step 2: push (separate so we can distinguish failure modes)
+  const pushRes = spawnSync('git', ['push', '-u', 'origin', 'main'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+  if (pushRes.status !== 0) {
+    log.warn(`Remote was created but local push failed (exit ${pushRes.status}).`);
+    if (pushRes.stderr) { log.dim(`  ${pushRes.stderr.trim()}`); }
+    log.dim('  This usually means pre-push hooks rejected the push.');
+    log.dim('  Fix the hook errors then retry:');
+    log.dim('    git push -u origin main');
+    return;
+  }
+  log.success('Initial push succeeded.');
 
   const url = `https://github.com/${account}/${repoName}`;
   state.github = {
@@ -1571,7 +1571,13 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
       process.stdout.write(`${tui.statusIcon('warn')} Skipped by user. Re-run via: bun run jira:sync-fields\n`);
     }
     else {
-      const res = spawnSync('bun', ['run', 'jira:sync-fields'], { stdio: 'inherit' });
+      // We're here only when jiraSyncFields is not 'completed' (early-exit
+      // upstream returns when it is). That means this is a first-run pass, so
+      // we always force-overwrite the template's stale jira-fields.json. The
+      // script's safety check still protects user edits in later sessions
+      // because the early-exit guard above short-circuits subsequent runs.
+      const syncArgs = ['run', 'jira:sync-fields', '--', '--force'];
+      const res = spawnSync('bun', syncArgs, { stdio: 'inherit' });
       state.postInstall.jiraSyncFields = res.status === 0 ? 'completed' : 'failed';
       if (res.status === 0) {
         process.stdout.write(`${tui.statusIcon('ok')} jira:sync-fields completed\n`);
@@ -2038,7 +2044,7 @@ async function main(): Promise<void> {
   await offerDirenvAutoload();
 
   // Step 9 — optional GitHub repo creation
-  tui.section('Step 9: GitHub repository (optional)');
+  tui.section('Step 7b: GitHub repository (optional)');
   await setupGithubRemote(state);
 
   // ── PHASE 4 — VERIFICATION ───────────────────────────────────────────────

@@ -248,7 +248,7 @@ The skill roster is split by _phase_ (declared in each `SKILL.md` frontmatter as
 
 On top of the project-shipped skills, the boilerplate composes with **two external skill catalogs** installed via `bun run setup`:
 
-- **Reusable community skills** (installed via `bunx skills add` from community repositories): stack-aware skills like `next-best-practices`, `next-cache-components`, `next-upgrade`, `react-best-practices`, `tailwind-css-patterns`, `shadcn`, `react-hook-form`, `zod`, `typescript-advanced-types`, `accessibility`, `seo`, `frontend-design`. These ship the canonical "how to do X in framework Y" knowledge so the project-shipped skills can stay stack-agnostic.
+- **Reusable community skills** (installed via `bunx skills add` from community repositories): stack-aware skills like `next-best-practices`, `next-cache-components`, `next-upgrade`, `tailwind-css-patterns`, `shadcn`, `react-hook-form`, `zod`, `typescript-advanced-types`, `accessibility`, `seo`, `frontend-design`. These ship the canonical "how to do X in framework Y" knowledge so the project-shipped skills can stay stack-agnostic.
 - **User-level skills installed via `bunx skills add`** (cross-cutting, repo-agnostic): `skill-creator`, `find-skills`, `github-actions-docs`, `brainstorming`, `html-ppt`, plus every CLI-companion skill (`supabase`, `supabase-postgres-best-practices`, `deploy-to-vercel`, `resend-cli`, `bun`, `playwright-cli`). These follow the user across every project.
 - **Gentle-AI skills** (installed by `gentle-ai install --preset minimal`): the `engram` MCP for persistent memory.
 
