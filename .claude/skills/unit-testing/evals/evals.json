@@ -27,7 +27,7 @@
     {
       "name": "should-not-trigger-e2e-tests",
       "prompt": "Write E2E tests for the login flow — Playwright, end-to-end against staging.",
-      "expected_behavior": "Does NOT activate unit-testing. E2E testing is out of scope; should route to the playwright-cli skill or to the sister repo agentic-qa-boilerplate which owns E2E test design. unit-testing is strictly unit-level (single function/module, mocked boundaries).",
+      "expected_behavior": "Does NOT activate unit-testing. E2E testing is out of scope; should route to the playwright-cli skill or to a separate QA workflow that owns E2E test design. unit-testing is strictly unit-level (single function/module, mocked boundaries).",
       "category": "negative"
     },
     {
@@ -39,7 +39,7 @@
     {
       "name": "should-not-trigger-regression-run",
       "prompt": "Run the regression test suite — I want to know if anything broke before the release.",
-      "expected_behavior": "Does NOT activate unit-testing. Regression suite execution is out of scope for this repo (QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns regression-testing. unit-testing only writes/advises on unit-level tests, never runs the regression suite.",
+      "expected_behavior": "Does NOT activate unit-testing. Regression suite execution is out of scope for this repo (QA workflow). unit-testing only writes/advises on unit-level tests, never runs the regression suite.",
       "category": "negative"
     }
   ]

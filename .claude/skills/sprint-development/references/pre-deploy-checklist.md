@@ -14,7 +14,7 @@ Antes de desplegar a producción, validar que todo está listo.
 - [ ] Build de producción exitoso
 - [ ] Dev smoke checks OK en staging (curl health endpoint, verify deploy version, basic UI load — not QA test suite)
 
-> Full QA verification (E2E, exploratory, regression) is out of scope here — see `agentic-qa-boilerplate` for sprint-testing workflow.
+> Full QA verification (E2E, exploratory, regression) is out of scope here.
 
 ### 2. Code Quality
 

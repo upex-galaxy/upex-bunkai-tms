@@ -1,6 +1,6 @@
 ---
 name: project-foundation
-description: 'Orchestrates the foundational definition of a new product/project: Constitution (business model + market context), Architecture (PRD + SRS + API contracts), and Discovery (business data map + API architecture + dev guide). Triggers on: `ideando un nuevo producto`, `define el PRD`, `construir la constitución del proyecto`, `mapear arquitectura del sistema`, `definir SRS`, `user personas`, `user journeys`, `MVP scope`, `business data map`, `api architecture discovery`, `project dev guide`, `constituir el proyecto desde cero`. Do NOT use for: infrastructure scaffolding (use `/project-bootstrap`), backlog seeding (use `/product-management`), per-story development (use `/sprint-development`), unit testing (use `/unit-testing`), or QA workflows (out of scope, see `agentic-qa-boilerplate`).'
+description: 'Orchestrates the foundational definition of a new product/project: Constitution (business model + market context), Architecture (PRD + SRS + API contracts), and Discovery (business data map + API architecture + dev guide). Triggers on: `ideando un nuevo producto`, `define el PRD`, `construir la constitución del proyecto`, `mapear arquitectura del sistema`, `definir SRS`, `user personas`, `user journeys`, `MVP scope`, `business data map`, `api architecture discovery`, `project dev guide`, `constituir el proyecto desde cero`. Do NOT use for: infrastructure scaffolding (use `/project-bootstrap`), backlog seeding (use `/product-management`), per-story development (use `/sprint-development`), unit testing (use `/unit-testing`), or formal QA workflows (out of scope here).'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation
@@ -33,6 +33,8 @@ Requires `agentic-dev-core`. Loads on demand:
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching subagents to research market data, audit competitors, or interview users.
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase below.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the step below.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/project-foundation/`, archive on completion.
 
 ---
 
@@ -74,13 +76,48 @@ Do NOT use this skill to:
 - Seed the Jira backlog with epics + stories — that's `/product-management`.
 - Plan or implement an individual user story — that's `/sprint-development`.
 - Set up unit tests — that's `/unit-testing`.
-- Run QA workflows (test plans, exploratory testing, automation) — out of scope, see the sister `agentic-qa-boilerplate`.
+- Run formal QA workflows (test plans, exploratory testing, automation) — out of scope here.
 
 ---
+
+## Session & Dispatch
+
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
+
+This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/project-foundation/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
+
+## Phase 0 — Resume check (MANDATORY, inline)
+
+Before any subagent dispatch and before invoking any phase below, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
+
+1. Check whether `.session/project-foundation/progress.md` exists.
+2. If it does NOT exist → proceed to Phase 1 (write `plan.md`).
+3. If it DOES exist:
+   1. Read `.session/project-foundation/plan.md` in full.
+   2. Read the tail of `.session/project-foundation/progress.md` (last ~3 phase entries).
+   3. Surface to the user: plan Goal (one sentence), last completed phase + timestamp, next planned phase, any blocking notes.
+   4. Offer three options and WAIT for input: **resume** (jump to the next planned phase) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-project-foundation-project-aborted/`, then proceed to Phase 1 fresh) / **abort** (leave directory untouched, stop).
+
+Phase 0 is inline — no subagent dispatch. The check fires even on first invocation so resume-vs-fresh is deterministic.
+
+## Phase 1 — Write `plan.md`
+
+After Phase 0 confirms no prior session exists, write `.session/project-foundation/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6. The plan must capture which sub-deliverables the user picked across Constitution / PRD / SRS / Discovery:
+
+- Frontmatter: `topic_key: session/project-foundation/project/plan`, `skill: project-foundation`, `scope: project`, `status: draft`, `capture_prompt: true`.
+- Body sections (fixed H2 order): `## Goal` · `## Inputs` · `## Approach` · `## Phase breakdown` (Phase 1 Constitution → Phase 2 PRD → Phase 2.5 DESIGN handoff → Phase 3 SRS → Phase 4 sub-steps 1–5, with dispatch pattern per row) · `## Risks & open questions` · `## Verification checklist` · `## Cross-references`.
+
+**Hand-off note (required in `## Cross-references`)**: Phase 2.5 hands off to the separate `/design-system` skill, which owns its own `.session/design-system/` directory. The Phase 4 sub-steps that delegate to standalone commands (`/business-data-map`, `/business-feature-map`, `/business-api-map`, `/master-implementation-plan`) each manage their own progress checkpoints inline; this skill's `progress.md` records the orchestrator-level "delegated → returned" entries only.
+
+Dispatch: a Single planner subagent is typical when Constitution + PRD inputs are substantial (the orchestrator inline-drafts the plan only when scope is tiny).
+
+After `plan.md` is written and the user approves the scope, transition `status: draft → approved` in the frontmatter and proceed to Phase 2 (the existing "Phase walkthrough" below).
 
 ## Phase walkthrough
 
 The skill covers three sequential phases. Each phase has multiple sub-deliverables; read only the references your current task needs.
+
+> **Progress checkpoint**: after each of Phase 1 (Constitution), Phase 2 (PRD), Phase 2.5 (DESIGN handoff return), Phase 3 (SRS), and Phase 4 sub-steps 1–5 completes, the orchestrator appends a phase entry to `.session/project-foundation/progress.md` per `agentic-dev-core/references/session-management.md` §7.
 
 ### 1. Constitution (Why we're building this)
 
@@ -171,6 +208,8 @@ Phase 4 is now an **orchestrator** — it delegates to four standalone commands 
 - `.context/business/business-api-map.md`
 - `.context/business/project-dev-guide.md`
 - `.context/master-implementation-plan.md` (if Step 5 ran)
+
+On successful completion of Phase 4 (Verification checklist from `plan.md` passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/project-foundation/` to `.session/.archive/<YYYY-MM-DD>-project-foundation-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back.
 
 ---
 

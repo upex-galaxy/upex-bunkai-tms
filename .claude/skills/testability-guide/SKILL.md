@@ -1,6 +1,6 @@
 ---
 name: testability-guide
-description: 'Generates a public in-app `/qa` page ("Software Testability Guide for QA") + a tool-agnostic credentials artifact (markdown body) the user publishes to Jira Epic (default), Confluence, Notion, any MCP/CLI-reachable tool, or via manual paste. Idempotent — re-runs detect host-stack drift via a snapshot comment in the generated page and propose surgical patches instead of rewriting. Invoke whenever the user asks to create, update, regenerate, or publish a QA testing guide, testability guide, /qa page, credentials Epic, or says "guía de testeabilidad", "credenciales para testing", "publish credentials artifact", "/testability-guide". Do NOT use for: PRD definition (`/project-foundation`), infrastructure scaffolding (`/project-bootstrap`), per-story implementation (`/sprint-development`), unit testing (`/unit-testing`), or formal QA test cases / TMS workflows (sister repo `agentic-qa-boilerplate`).'
+description: 'Generates a public in-app `/qa` page ("Software Testability Guide for QA") + a tool-agnostic credentials artifact (markdown body) the user publishes to Jira Epic (default), Confluence, Notion, any MCP/CLI-reachable tool, or via manual paste. Idempotent — re-runs detect host-stack drift via a snapshot comment in the generated page and propose surgical patches instead of rewriting. Invoke whenever the user asks to create, update, regenerate, or publish a QA testing guide, testability guide, /qa page, credentials Epic, or says "guía de testeabilidad", "credenciales para testing", "publish credentials artifact", "/testability-guide". Do NOT use for: PRD definition (`/project-foundation`), infrastructure scaffolding (`/project-bootstrap`), per-story implementation (`/sprint-development`), unit testing (`/unit-testing`), or formal QA test cases / TMS workflows (out of scope here).'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation-extension
@@ -39,6 +39,8 @@ Requires `agentic-dev-core`. Loads on demand from its references:
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching parallel sub-agents (e.g. page codegen + credentials-artifact publish in parallel).
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the auto-resolve step below.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/testability-guide/`, archive on completion.
 
 ---
 
@@ -58,7 +60,7 @@ Expected matches on a Next.js + Supabase project (illustrative — actual list d
 
 | Category             | Likely matches                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------- |
-| `frontend-framework` | `next-best-practices`, `next-cache-components`, `react-best-practices`, `composition-patterns` |
+| `frontend-framework` | `next-best-practices`, `next-cache-components`                                                 |
 | `frontend-ui`        | `tailwind-css-patterns`, `shadcn`, `frontend-design`, `emil-design-eng`, `ui-ux-pro-max`       |
 | `issue-tracker`      | `acli` (T1) — used by the Jira Epic + Confluence publishers                                    |
 | `testing-e2e`        | `playwright-cli` — used during §verification                                                   |
@@ -82,11 +84,51 @@ Do NOT use this skill for:
 - Setting up the backend, frontend, OpenAPI, auth, or env scaffolding — that is `/project-bootstrap`. This skill MAY run AFTER `/project-bootstrap` completes.
 - Implementing an individual user story — that is `/sprint-development`.
 - Writing unit tests — that is `/unit-testing`.
-- Authoring formal QA test cases or wiring a test-management system — out of scope here, lives in sister repo `agentic-qa-boilerplate`.
+- Authoring formal QA test cases or wiring a test-management system — out of scope here.
 
 If the project still lacks a backend / frontend / auth scaffolding, surface that to the user before continuing — the `/qa` page describes a real app, and there is little value in generating it against a hollow scaffold.
 
 ---
+
+## Session & Dispatch
+
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
+
+This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/testability-guide/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
+
+**Snapshot ≠ session.** This skill has TWO separate persistence mechanisms; do not conflate them:
+
+- The `/* qa-guide-snapshot: stack=…, generated=… */` comment at the top of the generated `/qa` page detects **cross-run code drift** (host stack changed between two completed runs).
+- `.session/testability-guide/` detects **in-flight interruption within a single run** (the AI got cut off between Phase 4 codegen and Phase 6 publish, and needs to resume).
+
+Both stay. Phase 0 reads the session directory; Phase 2 (idempotency check) reads the snapshot comment.
+
+## Phase 0 — Resume check (MANDATORY, inline)
+
+Before any subagent dispatch and before Phase 1 (pre-flight discovery) runs, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
+
+1. Check whether `.session/testability-guide/progress.md` exists.
+2. If it does NOT exist → proceed to Phase 1 (pre-flight discovery) which also writes `plan.md` after Phase 3 decisions land.
+3. If it DOES exist:
+   1. Read `.session/testability-guide/plan.md` in full.
+   2. Read the tail of `.session/testability-guide/progress.md` (last ~3 entries).
+   3. Surface to the user: plan Goal, last completed phase + timestamp, next planned phase, any blocking notes (e.g. "publisher = Jira Epic but `acli` auth failed; user asked to install MCP fallback").
+   4. Offer three options and WAIT for input: **resume** / **restart** (archive to `.session/.archive/<YYYY-MM-DD>-testability-guide-project-aborted/`) / **abort**.
+
+Phase 0 is inline — no subagent dispatch.
+
+## Phase 1 — Write `plan.md` (after Phase 3 batched decisions)
+
+Phase 3 below collects the user's batched answers to Q1–Q5 (credentials destination, DB role policy, page route, redirect of old route, language). Immediately after those answers land, write `.session/testability-guide/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6:
+
+- Frontmatter: `topic_key: session/testability-guide/project/plan`, `skill: testability-guide`, `scope: project`, `status: draft`, `capture_prompt: true`.
+- Body sections (fixed H2 order): `## Goal` · `## Inputs` (host stack from Phase 1 discovery, snapshot diff from Phase 2 idempotency check, Q1–Q5 answers from Phase 3) · `## Approach` · `## Phase breakdown` (Phase 4 page codegen, Phase 5 credentials content build, Phase 6 publish via chosen channel, Phase 7 security audit, Phase 8 verification, Phase 9 commit / PR — with dispatch pattern per row, Single / Parallel / inline as documented in §"Subagent dispatch") · `## Risks & open questions` · `## Verification checklist` (mirrors `references/verification-checklist.md`) · `## Cross-references` (target `/qa` page path, chosen credentials destination URL, branch name handed to `/git-flow-master`).
+
+Dispatch: inline draft is normal — the Phase 3 answers are the deciding inputs and they are short.
+
+After `plan.md` is written and the user accepts the plan, transition `status: draft → approved` and proceed to Phase 4.
+
+> **Progress checkpoint**: after each of Phase 1 (discovery), Phase 3 (decisions captured + `plan.md` written), Phase 4 (page codegen), Phase 5 (artifact content built), Phase 6 (publish completed or fallback to manual-paste), Phase 7 (security audit), Phase 8 (verification), Phase 9 (commit / PR opened), the orchestrator appends a phase entry to `.session/testability-guide/progress.md` per `agentic-dev-core/references/session-management.md` §7. Phase 2 (idempotency check) emits a checkpoint with `status: skipped` when the snapshot reports no drift (so the no-op branch is still resumable for audit).
 
 ## Phase walkthrough
 
@@ -191,6 +233,8 @@ After the skill completes, the page + artifact are live. Hand off to:
 ## Verification rule
 
 The skill is "done" only when every box in `references/verification-checklist.md` is checked. Self-check questions live at the bottom of that reference (mirroring the source prompt's §11). Do not declare completion until all eight items are true.
+
+On successful completion (all eight verification items pass), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/testability-guide/` to `.session/.archive/<YYYY-MM-DD>-testability-guide-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back. The `/qa` page snapshot comment is left in place — it is the cross-run drift signal for the NEXT invocation, independent of the archived session directory.
 
 ---
 

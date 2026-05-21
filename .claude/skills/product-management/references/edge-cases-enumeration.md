@@ -253,7 +253,7 @@ For each enumerated edge case, apply this rule:
 
 > **High-criticality edge case + clear expected behavior → promote to acceptance criterion**
 >
-> Otherwise → leave as a test-only concern (out of scope of this skill — see the QA boilerplate `agentic-qa-boilerplate`)
+> Otherwise → leave as a test-only concern (out of scope of this skill)
 
 This rule keeps stories focused: AC describes the behaviors the _team and PO_ have explicitly agreed on. Other edge cases still get tested, but not via the AC contract — they live in the test plan.
 
@@ -290,4 +290,4 @@ Patterns that recur across features regardless of domain. Use this list as a fin
 - See `acceptance-criteria.md` for AC quality patterns, Gherkin scenario writing, and the AC refinement workflow
 - See `story-refinement.md` for the full story-level INVEST checklist and 3-amigos protocol
 - See `epic-creation.md` for epic-level scope refinement (the layer above edge-case enumeration)
-- For formal test case design, parametrization, fixtures, and automation — out of scope here — see the QA boilerplate (`agentic-qa-boilerplate`)
+- For formal test case design, parametrization, fixtures, and automation — out of scope here

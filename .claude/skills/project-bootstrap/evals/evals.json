@@ -39,7 +39,7 @@
     {
       "name": "should-not-trigger-test-framework-setup",
       "prompt": "Setup the test framework — Playwright + KATA + Allure for E2E tests.",
-      "expected_behavior": "Does NOT activate project-bootstrap. Test framework setup is out of scope for this repo (the boilerplate covers product/dev infrastructure, not QA infra). Should direct the user to the sister repo agentic-qa-boilerplate which has its own setup skills.",
+      "expected_behavior": "Does NOT activate project-bootstrap. Test framework setup is out of scope for this repo (the boilerplate covers product/dev infrastructure, not QA infra).",
       "category": "negative"
     }
   ]

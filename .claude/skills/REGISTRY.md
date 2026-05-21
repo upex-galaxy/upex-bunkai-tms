@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-05-19T10:37:09.811Z`
+> Generated: `2026-05-21T00:51:28.404Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -102,6 +102,8 @@ Skills indexed: 11
 **Compact Rules**:
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching to a subagent (Open Design or Claude Design handoff conversion).
 - `agentic-dev-core/references/dispatch-patterns.md` — selects Single / Sequential / Parallel for the chosen path.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/design-system/`, archive on completion.
 - `.context/business/business-model.md` — industria, value-prop, tone implícito.
 - `.context/PRD/personas.md` — target visual, demographic signal.
 - `.context/PRD/executive-summary.md` — positioning, success KPIs.
@@ -113,8 +115,6 @@ Skills indexed: 11
 - **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this design-system work? Y/N"`. Cache the answer for the session.
 - When dispatching sub-agents (Open Design conversion, Claude Design handoff, LLM-authored custom DESIGN.md), inject a `## Composable Skills` block per strategy doc §6.2.
 - A new project just finished the PRD and needs to define visual identity before the SRS architecture phase.
-- An existing project wants to rebrand without touching Constitution / PRD / code.
-- A team wants to centralize design tokens in a portable format consumable by multiple AI agents.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -187,6 +187,8 @@ Skills indexed: 11
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching parallel scaffolding subagents (e.g. backend + frontend in parallel).
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase below.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the step below.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/project-bootstrap/`, archive on completion.
 - Read `complementary_categories` from this skill's frontmatter (`frontend-framework`, `frontend-ui`, `backend-db`, `runtime`, `language`, `ci-cd`).
 - Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
 - For each matched skill, classify tier per strategy doc §2 (path-based: `.claude/skills/` → T1; PROJECT_LEVEL_SKILLS → T3; USER_LEVEL_SKILLS → T4).
@@ -197,8 +199,6 @@ Skills indexed: 11
 - A fresh repo has its product foundation (`/project-foundation` already ran) but no code yet.
 - An existing repo needs an incremental infrastructure feature added (e.g. "add OpenAPI to the API", "add bearer auth", "wire Supabase types into the frontend").
 - Define the product (PRD, user journeys, architecture decisions) — that's `/project-foundation`.
-- Seed the Jira backlog with epics + user stories — that's `/product-management`.
-- Implement an individual user story (planning → code → review → deploy) — that's `/sprint-development`.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -215,6 +215,8 @@ Skills indexed: 11
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching subagents to research market data, audit competitors, or interview users.
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase below.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the step below.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/project-foundation/`, archive on completion.
 - Read `complementary_categories` from this skill's frontmatter (`creativity`).
 - Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
 - For each matched skill, classify tier per strategy doc §2.
@@ -225,8 +227,6 @@ Skills indexed: 11
 - A new product/project is being defined from scratch and you need Constitution + PRD + SRS + Discovery artifacts.
 - An existing project needs to redefine scope significantly (e.g. pivot, new MVP cut) and the foundation docs must be regenerated.
 - A specific section is missing or stale (e.g. user journeys haven't been written yet) — invoke just that phase via the Specific tasks table below.
-- Scaffold the codebase (backend / frontend / OpenAPI / auth) — that's `/project-bootstrap`.
-- Seed the Jira backlog with epics + stories — that's `/product-management`.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -273,6 +273,8 @@ Skills indexed: 11
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching parallel sub-agents (e.g. page codegen + credentials-artifact publish in parallel).
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the auto-resolve step below.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/testability-guide/`, archive on completion.
 - Read `complementary_categories` from this skill's frontmatter.
 - Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
 - Classify tier per strategy doc §2.
@@ -281,8 +283,6 @@ Skills indexed: 11
 - **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this run? Y/N"`. Cache the answer.
 - Inject a `## Composable Skills` block per strategy doc §6.2 into every sub-agent prompt.
 - A working app exists and QA (humans or AI agents) need a single page in the product that explains how to test it.
-- The user wants to create or refresh the credentials artifact (Jira Epic, Confluence, Notion, or another destination) that backs the `/qa` page's CTA.
-- The host project's stack drifted (auth changed, DB moved, new MCP available) and the existing `/qa` needs to be brought back in sync.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).

@@ -460,7 +460,7 @@ npm run dev
 **3. Integration/E2E Tests (out of scope for this skill):**
 
 - Después de code review y deployment staging
-- _Test automation belongs to the QA workflow — see the `agentic-qa-boilerplate` sister repo._
+- _Test automation belongs to the QA workflow — out of scope here._
 
 ### 💬 Sugerencia de commit message:
 

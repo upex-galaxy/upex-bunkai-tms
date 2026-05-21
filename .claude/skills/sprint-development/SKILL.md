@@ -1,6 +1,6 @@
 ---
 name: sprint-development
-description: "Orchestrates the per-story dev loop end-to-end: Planning -> Implementation -> Code Review -> Staging deploy -> (gated) Production deploy. Mega-orchestrator on the dev side, equivalent of sister repo's sprint-testing. Drives the 12-step workflow: epic precheck, Jira transitions (Ready For Dev -> In Progress -> In Review -> Ready For QA), impl plan, code, PR, review, docs, merge, staging deploy, optional production deploy with rollback. Triggers on: implementar esta historia, implement this story, trabajar el ticket UPEX-XXX, plan to code to review to deploy, fix this bug and merge, deploy a staging, code review for PR, production deployment, rollback, continue implementation, story-level dev workflow, sprint-development, process sprint N, continue sprint, implement sprint N, sprint-file. Do NOT use for: foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), backlog seeding / AC refinement (use /product-management), unit-testing TDD (use /unit-testing), formal QA testing (out of scope, see agentic-qa-boilerplate)."
+description: "Orchestrates the per-story dev loop end-to-end: Planning -> Implementation -> Code Review -> Staging deploy -> (gated) Production deploy. Mega-orchestrator on the dev side. Drives the 12-step workflow: epic precheck, Jira transitions (Ready For Dev -> In Progress -> In Review -> Ready For QA), impl plan, code, PR, review, docs, merge, staging deploy, optional production deploy with rollback. Triggers on: implementar esta historia, implement this story, trabajar el ticket UPEX-XXX, plan to code to review to deploy, fix this bug and merge, deploy a staging, code review for PR, production deployment, rollback, continue implementation, story-level dev workflow, sprint-development, process sprint N, continue sprint, implement sprint N, sprint-file. Do NOT use for: foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), backlog seeding / AC refinement (use /product-management), unit-testing TDD (use /unit-testing), formal QA testing (out of scope here)."
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: implementation
@@ -27,7 +27,7 @@ model_preferences:
 
 # Sprint Dev — Plan, Code, Review, Deploy per Story
 
-Drive the per-story development loop from Jira ticket to deployed code. Five stages, always in this order: **Stage 1 Planning -> Stage 2 Implementation -> Stage 3 Code Review -> Stage 4 Staging Deploy -> Stage 5 Production Deploy (gated, optional)**. Mega-orchestrator equivalent of `sprint-testing` from the sister repo, on the development side.
+Drive the per-story development loop from Jira ticket to deployed code. Five stages, always in this order: **Stage 1 Planning -> Stage 2 Implementation -> Stage 3 Code Review -> Stage 4 Staging Deploy -> Stage 5 Production Deploy (gated, optional)**.
 
 The same pipeline runs whether the input is a new story, a bug fix, or a resume of an interrupted implementation. Only the entry point and the dispatch payload per stage differ.
 
@@ -61,6 +61,10 @@ If any of the above is missing, fast-fail and hand off to the appropriate setup 
 ---
 
 ## Subagent Dispatch Strategy
+
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) is NOT optional. Phase 1 plan is delegated to the canonical artifact at `.context/PBI/<JIRA-KEY>/impl-plan.md`; this skill writes only `progress.md`.
+
+This skill is **per-ticket scope**: `<scope>` = `<JIRA-KEY>` (e.g. `UPEX-123`), resolved from the invocation trigger. Session state lives at `.session/sprint-development/<JIRA-KEY>/progress.md` per `agentic-dev-core/references/session-management.md` §3 + §9. This skill adopts the **progress-only variant** (§5 special cases + §13) — no `plan.md` is written under `.session/`; the canonical plan stays committed at `.context/PBI/<JIRA-KEY>/impl-plan.md`.
 
 This skill is compliant with the doctrine in `agentic-dev-core/references/orchestration-doctrine.md`. Every dispatch follows the 6-component briefing format defined in `agentic-dev-core/references/briefing-template.md`, and the pattern selected per stage matches the decision guide in `agentic-dev-core/references/dispatch-patterns.md`.
 
@@ -167,7 +171,7 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
    +--------------------------+
        |
        v
-[QA verifies on staging — out of scope, sister repo]
+[QA verifies on staging — out of scope here]
        |
        v (gate: QA green + business approval)
    +--------------------------+
@@ -179,6 +183,25 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
 ```
 
 ---
+
+## Phase 0 — Resume check (MANDATORY, inline)
+
+Before Epic precheck and Stage 1 — Planning, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
+
+1. Resolve `<scope>` for this invocation: `<JIRA-KEY>` from the trigger (e.g. `UPEX-123`).
+2. Check whether `.session/sprint-development/<JIRA-KEY>/progress.md` exists.
+3. If it does NOT exist → proceed to Epic precheck and Stage 1. The orchestrator creates the directory and writes the first `progress.md` entry once Stage 1 begins. **No `plan.md` is written under `.session/`** — `.context/PBI/<JIRA-KEY>/impl-plan.md` remains canonical.
+4. If it DOES exist:
+   1. Read `.session/sprint-development/<JIRA-KEY>/progress.md` in full (tail of last ~3 entries minimum).
+   2. Read the cross-referenced `.context/PBI/<JIRA-KEY>/impl-plan.md` (canonical plan).
+   3. Surface to the user: ticket Goal (from impl-plan), last completed stage + timestamp, next planned stage, any blocking notes (e.g. "PR opened but CI red — last review note unresolved").
+   4. Offer three options and WAIT for input: **resume** (jump to the next planned stage — Stage 2 chunk, Stage 3 fix-iterate, etc.) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-sprint-development-<JIRA-KEY>-aborted/`, then re-enter Epic precheck) / **abort**.
+
+Phase 0 is inline — no subagent dispatch. The check fires even on first invocation so resume-vs-fresh is deterministic.
+
+**`progress.md` Cross-references contract**: when the orchestrator writes the first entry, the file's `## Cross-references` section MUST cite both `.context/PBI/<JIRA-KEY>/impl-plan.md` (canonical plan) and `.context/reports/SPRINT-<N>-DEVELOPMENT.md` (cross-ticket sprint tracker, when batch mode is active). These two pointers replace the `plan.md` that the full variant would write.
+
+> **Progress checkpoint**: the orchestrator appends a `progress.md` entry per `agentic-dev-core/references/session-management.md` §7 at each of: Stage 1 done (impl-plan committed + Jira → In Progress), every Stage 2 implementation chunk completed (multi-file edit pass + verification cap=3 green), each Stage 3 review iteration (review pass red → fix-issues loop → re-review), Stage 4 staging merged (Jira → Ready For QA), Stage 5 prod deployed (or rollback). Failed phases emit `status: failed` entries; retries emit fresh entries (append-only mandate, never rewrite).
 
 ## Stage walkthroughs
 
@@ -293,7 +316,9 @@ Sync `staging` locally (`git pull origin staging`) and clean up the merged branc
 
 **Sprint report**: Status IN_REVIEW → MERGED once the squash-merge lands, then MERGED → STAGING_DEPLOYED after CI smoke passes. Move the row to "Done — This Sprint" once Jira reaches Ready For QA. Append a Session Log entry with date + ticket + transition.
 
-**Hand-off**: QA verification on staging is **out of scope here**. See `agentic-qa-boilerplate` for the `sprint-testing` skill that picks up from `Ready For QA`.
+**Hand-off**: QA verification on staging is **out of scope here**. A separate QA workflow picks up from `Ready For QA`.
+
+On successful completion of Stage 4 (Jira reaches `Ready For QA` and staging smoke passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/sprint-development/<JIRA-KEY>/` to `.session/.archive/<YYYY-MM-DD>-sprint-development-<JIRA-KEY>/` and calls `mem_session_summary` with the archive path included (so future `mem_search "session sprint-development <JIRA-KEY>"` finds it). Stage 5 (optional production deploy) is a separate event — when invoked later, Phase 0 reopens the archived session by recreating `.session/sprint-development/<JIRA-KEY>/progress.md` and appends the Stage 5 entries on top of the archived progress (or the user can start fresh and link forward).
 
 ### Stage 5: Production Deploy (optional, gated)
 
@@ -328,7 +353,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 
 ### Staging deploy result
 
-- Smoke green -> hand off to QA (out of scope; sister repo's `sprint-testing`)
+- Smoke green -> hand off to QA (out of scope here)
 - Smoke red -> back to Stage 2 with `bug-fix-workflow.md` or `fix-issues.md`
 
 ### Production deploy
@@ -378,7 +403,7 @@ See `complementary_categories` in this skill's frontmatter. Discovery and thresh
 
 ### Out of scope
 
-- **QA verification on staging** -> sister repo `agentic-qa-boilerplate`'s `sprint-testing` skill picks up from `Ready For QA`.
+- **QA verification on staging** -> out of scope here; a separate QA workflow picks up from `Ready For QA`.
 
 If the prerequisite check at the top of this skill fails (no `.agents/project.yaml`, no story, no AC), STOP and hand off — do not continue.
 
@@ -418,7 +443,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 7. **Jira automation verification**: after PR open and after merge, wait ~30s and verify the auto-transition fired. If not, transition manually and surface the gap.
 8. **ATP source-of-truth**: Jira comments first, then custom field, then local file fallback. Never assume the local file is authoritative.
 9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers.
-10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side belongs to the sister repo.
+10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
 
 ---
@@ -437,7 +462,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Stage 3 docs (status-report + release-notes) updated in the PR branch
 - [ ] Stage 4 PR merged to `staging`; CI green; auto-deploy fired; Jira to `Ready For QA`; QA notified in comment
 - [ ] Stage 5 (only if applicable): pre-deploy checklist green; rollback plan loaded; monitoring window observed
-- [ ] Hand-off identified for next step (QA via sister repo, or next story)
+- [ ] Hand-off identified for next step (QA workflow, or next story)
 
 ---
 

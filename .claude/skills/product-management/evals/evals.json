@@ -39,7 +39,7 @@
     {
       "name": "should-not-trigger-tms-test-cases",
       "prompt": "Document these test cases in Xray with full traceability and link them to UPEX-456.",
-      "expected_behavior": "Does NOT activate product-management. TMS test case documentation is out of scope for this repo (it's a QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns the test-documentation skill and Xray integration.",
+      "expected_behavior": "Does NOT activate product-management. TMS test case documentation is out of scope for this repo (it's a QA workflow).",
       "category": "negative"
     }
   ]

@@ -45,7 +45,7 @@
     {
       "name": "should-not-trigger-regression-suite",
       "prompt": "Run the regression test suite on staging and tell me if we can release.",
-      "expected_behavior": "Does NOT activate sprint-development. Regression testing is out of scope for this repo (QA workflow). Should direct the user to the sister repo agentic-qa-boilerplate which owns regression-testing. sprint-development's Stage 4 deploys to staging but does not run formal regression.",
+      "expected_behavior": "Does NOT activate sprint-development. Regression testing is out of scope for this repo (QA workflow). sprint-development's Stage 4 deploys to staging but does not run formal regression.",
       "category": "negative"
     }
   ]

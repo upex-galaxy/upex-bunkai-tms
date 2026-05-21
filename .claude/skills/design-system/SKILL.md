@@ -32,6 +32,8 @@ Requires `agentic-dev-core`. Loads on demand:
 
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching to a subagent (Open Design or Claude Design handoff conversion).
 - `agentic-dev-core/references/dispatch-patterns.md` — selects Single / Sequential / Parallel for the chosen path.
+- `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
+- `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/design-system/`, archive on completion.
 
 Optionally consumes (informa el matcher y la generación custom):
 
@@ -94,6 +96,41 @@ Do NOT use this skill to:
 - If `DESIGN.md` already exists, the skill offers: **skip** (keep current) / **overwrite** (replace) / **variant** (write `DESIGN.<slug>.md` alongside, e.g. for light/dark or A/B branding).
 
 ---
+
+## Session & Dispatch
+
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
+
+This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/design-system/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
+
+**Highest-value resume case**: Paths C (Open Design app, Docker iteration) and D (Claude Design at `claude.ai/design`) both PAUSE for external user action — without a persistent session, the skill cannot tell on resume whether it was mid-Path-C waiting for Docker artifacts or mid-Path-D waiting for the exported bundle. Phase 0 + `progress.md` is what makes those paths interruption-resilient.
+
+## Phase 0 — Resume check (MANDATORY, inline)
+
+Before any path selection or subagent dispatch, run the resume contract from `agentic-dev-core/references/session-management.md` §4:
+
+1. Check whether `.session/design-system/progress.md` exists.
+2. If it does NOT exist → proceed to Phase 1 (write `plan.md` during path selection).
+3. If it DOES exist:
+   1. Read `.session/design-system/plan.md` in full (records the chosen path + completed steps).
+   2. Read the tail of `.session/design-system/progress.md` (last ~3 entries — for Paths C/D especially, this is where "waiting for external work" was recorded).
+   3. Surface to the user: chosen path, last completed step, next planned step, any blocking notes (e.g. "waiting for Docker artifact at `design/handoff/`").
+   4. Offer three options and WAIT for input: **resume** (continue from the next planned step on the chosen path) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-design-system-project-aborted/`, then proceed to Phase 1 fresh — useful if the user switched paths) / **abort**.
+
+Phase 0 is inline — no subagent dispatch.
+
+## Phase 1 — Write `plan.md` (during path selection)
+
+The path-selection step below also writes `.session/design-system/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6:
+
+- Frontmatter: `topic_key: session/design-system/project/plan`, `skill: design-system`, `scope: project`, `status: draft`, `capture_prompt: true`.
+- Body sections (fixed H2 order): `## Goal` · `## Inputs` (PRD personas, business-model, existing `DESIGN.md` if any) · `## Approach` (the chosen path — A / B / C / D / E — with rationale) · `## Phase breakdown` (the steps from §"Default flow" for Path B, or the path's own checklist for the others) · `## Risks & open questions` · `## Verification checklist` (lint pass, frontmatter parses, 8 sections present, WCAG AA OK) · `## Cross-references` (`.context/business/business-model.md`, `.context/PRD/personas.md`, `DESIGN.md` target path).
+
+Dispatch: inline draft is normal — inputs are short. A Single planner subagent is warranted only when the LLM-authored custom path (E) needs to ingest a very long Constitution + PRD.
+
+After `plan.md` is written and the user confirms the chosen path, transition `status: draft → approved` and proceed.
+
+> **Progress checkpoint**: write a `progress.md` entry per default-flow step (1–8 of Path B). For Paths A / C / D / E the checkpoints are "path chosen", "external work in progress" (C/D wait for user — recorded with `status: started` and `notes` explaining what is awaited), "DESIGN.md committed", "lint passed". All checkpoints follow `agentic-dev-core/references/session-management.md` §7.
 
 ## Path selection
 
@@ -176,6 +213,8 @@ After generating `DESIGN.md`, confirm:
 - WCAG AA contrast passes for the primary/text pairs reported by the lint output.
 
 If any check fails, surface the failure in the report rather than papering over. Do not invent fixes — ask the user how to proceed (retry with a different brand, run lint:check with `--strict false`, or edit by hand).
+
+On successful completion (all verification items pass), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/design-system/` to `.session/.archive/<YYYY-MM-DD>-design-system-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back.
 
 ---
 

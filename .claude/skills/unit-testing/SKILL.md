@@ -1,6 +1,6 @@
 ---
 name: unit-testing
-description: 'Focused skill for unit-test design — TDD workflow (red-green-refactor), test naming (AAA, Given-When-Then), mocking patterns (mocks/spies/stubs/fakes, dependency injection), and coverage strategy (line vs branch, mutation testing). Composable: invokable standalone (write unit tests for this function, qué mockear aquí, what to mock) or mid-flight from sprint-development for TDD slices. Triggers on: write unit tests, TDD this function, test-driven development, qué mockear aquí, what to mock, test naming, AAA pattern, Given-When-Then, test coverage, branch coverage, Jest, Vitest, unit testing. Do NOT use for: feature implementation orchestration (use /sprint-development), E2E or integration testing (out of scope, see playwright-cli skill or sister repo), production deploy, or formal QA workflow.'
+description: 'Focused skill for unit-test design — TDD workflow (red-green-refactor), test naming (AAA, Given-When-Then), mocking patterns (mocks/spies/stubs/fakes, dependency injection), and coverage strategy (line vs branch, mutation testing). Composable: invokable standalone (write unit tests for this function, qué mockear aquí, what to mock) or mid-flight from sprint-development for TDD slices. Triggers on: write unit tests, TDD this function, test-driven development, qué mockear aquí, what to mock, test naming, AAA pattern, Given-When-Then, test coverage, branch coverage, Jest, Vitest, unit testing. Do NOT use for: feature implementation orchestration (use /sprint-development), E2E or integration testing (out of scope, see playwright-cli skill), production deploy, or formal QA workflow.'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: implementation
@@ -101,7 +101,7 @@ When in doubt, start with `references/unit-testing.md` — it covers the broad w
 ## Hand-offs
 
 - **Implementing a feature with TDD** → return to `/sprint-development` Stage 2 once tests are green and the slice is refactored
-- **Integration / E2E tests** → out of scope; see `agentic-qa-boilerplate` (sister repo) for sprint-testing and test-automation
+- **Integration / E2E tests** → out of scope here; handled by a separate QA workflow
 - **First-time test runner setup in a fresh repo** → `/sprint-development` Stage 4 (deploy/scaffolding) covers tooling installation; this skill assumes a runner exists
 - **Bug-fix workflow with reproducer-first** → invoke this skill from `/sprint-development` for the reproducer test, then continue with the fix
 
@@ -116,4 +116,4 @@ When in doubt, start with `references/unit-testing.md` — it covers the broad w
 - Prefer behavior-based tests over implementation-detail tests. Names like `returnsZeroForEmptyArray` beat `callsCalculateOnce`.
 - Coverage is a floor, not a target. 100% coverage with brittle, mock-heavy tests is worse than 80% with robust, behavior-driven tests.
 - Mocking should be reserved for true external dependencies (HTTP, DB, filesystem, time, randomness). Mocking pure functions or the unit under test is a smell.
-- For E2E or integration tests, see the sister repo `agentic-qa-boilerplate` — different concerns, different tools, different skills.
+- E2E or integration tests are out of scope here — different concerns, different tools, different skills.

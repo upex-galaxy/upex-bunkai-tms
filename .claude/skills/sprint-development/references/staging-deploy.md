@@ -451,7 +451,7 @@ Envía staging URL al equipo de QA y comunica la versión desplegada.
 
 ### 2️⃣ Hand-off a QA
 
-_QA verification on staging is out of scope here — see `agentic-qa-boilerplate` for sprint-testing workflow._
+_QA verification on staging is out of scope here._
 
 ---
 

@@ -267,4 +267,4 @@ Use this checklist as the gate from refinement → sprint:
 - See `story-refinement.md` for the full story-level INVEST checklist and 3-amigos protocol applied at the story (not AC) level
 - See `edge-cases-enumeration.md` for systematic edge-case discovery at the feature / epic level — useful when refining stories that sit inside a complex feature
 - See `epic-creation.md` for epic-level scope and AC patterns
-- For formal test case design (Gherkin scenarios → automated tests, parametrization, fixtures) — out of scope here — see the QA boilerplate (`agentic-qa-boilerplate`)
+- For formal test case design (Gherkin scenarios → automated tests, parametrization, fixtures) — out of scope here

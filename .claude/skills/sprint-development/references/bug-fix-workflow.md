@@ -883,7 +883,7 @@ Use [ISSUE_TRACKER_TOOL] to get issue:
 ---
 
 _Este feedback es constructivo y busca mejorar nuestro proceso de testing._
-_Bug retest / QA verification: out of scope here — see `agentic-qa-boilerplate` sister repo._
+_Bug retest / QA verification: out of scope here._
 ```
 
 ---
@@ -1387,7 +1387,7 @@ After completing the workflow, present this consolidated report to the user in t
 
 ---
 
-**Próximo paso:** Bug retest / QA verification: out of scope here — see `agentic-qa-boilerplate` sister repo.
+**Próximo paso:** Bug retest / QA verification: out of scope here.
 ```
 
 ### Report Variations
@@ -1587,7 +1587,7 @@ Use [ISSUE_TRACKER_TOOL] to transition issue:
 | `fase-8-code-review/review-pr.md`          | For code review of the fix PR |
 | `git-flow.md`                              | For advanced git operations   |
 
-> _Bug reporting, retest, and QA verification flows are out of scope here — see the `agentic-qa-boilerplate` sister repo._
+> _Bug reporting, retest, and QA verification flows are out of scope here._
 
 ---
 

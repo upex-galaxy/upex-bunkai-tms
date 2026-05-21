@@ -21,7 +21,7 @@
 
 The repo ships with **11 project-owned workflow skills** (`.claude/skills/`). The installer (`cli/install.ts`) also installs:
 
-- **23 community skills (project-level)**: `next-best-practices`, `next-cache-components`, `next-upgrade`, `react-best-practices`, `composition-patterns`, `deploy-to-vercel`, `tailwind-css-patterns`, `shadcn`, `react-hook-form`, `zod`, `typescript-advanced-types`, `supabase`, `supabase-postgres-best-practices`, `resend-cli`, `accessibility`, `seo`, `frontend-design`, `n8n-skills`, `emil-design-eng`, `ui-ux-pro-max`, `impeccable`, `design-taste-frontend`, `redesign-existing-projects`.
+- **21 community skills (project-level)**: `next-best-practices`, `next-cache-components`, `next-upgrade`, `deploy-to-vercel`, `tailwind-css-patterns`, `shadcn`, `react-hook-form`, `zod`, `typescript-advanced-types`, `supabase`, `supabase-postgres-best-practices`, `resend-cli`, `accessibility`, `seo`, `frontend-design`, `n8n-skills`, `emil-design-eng`, `ui-ux-pro-max`, `impeccable`, `design-taste-frontend`, `redesign-existing-projects`.
 - **7 community skills (user-level / global)**: `skill-creator`, `find-skills`, `github-actions-docs`, `brainstorming`, `html-ppt`, `bun`, `playwright-cli`.
 - **Engram (persistent memory)**: installed via `gentle-ai install --preset minimal`. Not a workflow skill — it is the persistent-memory MCP referenced from CLAUDE.md §12 (proactive memory triggers).
 
@@ -103,7 +103,7 @@ Project-owned skills are named explicitly. Community skills (T3, T4) are matched
 | Category             | Examples of skills that fit (T3/T4)                                                                                                                           | Used by (T1)                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `frontend-ui`        | `frontend-design`, `ui-ux-pro-max`, `emil-design-eng`, `shadcn`, `tailwind-css-patterns`, `impeccable`, `design-taste-frontend`, `redesign-existing-projects` | `design-system`, `project-bootstrap` (frontend phase), `sprint-development` (UI work) |
-| `frontend-framework` | `next-best-practices`, `next-cache-components`, `next-upgrade`, `react-best-practices`, `composition-patterns`                                                | `project-bootstrap`, `sprint-development`                                             |
+| `frontend-framework` | `next-best-practices`, `next-cache-components`, `next-upgrade`                                                                                                | `project-bootstrap`, `sprint-development`                                             |
 | `forms-validation`   | `react-hook-form`, `zod`                                                                                                                                      | `sprint-development` (form work)                                                      |
 | `backend-db`         | `supabase`, `supabase-postgres-best-practices`                                                                                                                | `project-bootstrap` (backend phase), `sprint-development` (DB work)                   |
 | `runtime`            | `bun`                                                                                                                                                         | `project-bootstrap`, `sprint-development`                                             |
@@ -205,5 +205,5 @@ This doc does NOT:
 
 - Replace any skill's internal workflow. Each skill stays in charge of its own steps.
 - Merge project-owned skills into one mega-skill. They stay separate; the orchestrator composes them.
-- Define the QA-side composition. QA workflows live in the sister repo `agentic-qa-boilerplate` and follow their own composition strategy.
+- Define the QA-side composition. QA workflows are out of scope here and follow their own composition strategy.
 - Specify exact prompt text for the `## Composable Skills` injection block. That belongs in the orchestrator template, drafted later.
