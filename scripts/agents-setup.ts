@@ -27,8 +27,8 @@
  *                        {{PROJECT_KEY}}, {{ATLASSIAN_URL}}, etc.
  *
  *   - ENV-SCOPED vars  — under `environments:`. Each environment (local,
- *                        staging, production, …) owns the same four leaves:
- *                        web_url, api_url, db_mcp, api_mcp. Skills reference
+ *                        staging, production, …) owns the same three leaves:
+ *                        web_url, api_url, db_project_ref. Skills reference
  *                        them either as bare {{WEB_URL}} (resolves against
  *                        the active env at runtime) or explicit
  *                        {{environments.<env>.<var>}} for cross-env contexts.
@@ -60,12 +60,11 @@
  *
  *   ENV-SCOPED — pattern <KEY>_<ENV>, where KEY is the env-scoped leaf and
  *   ENV is the upper-cased environment name. The CLI scans process.env for
- *   any var matching the four scoped keys (WEB_URL, API_URL, DB_MCP, API_MCP)
+ *   any var matching the three scoped keys (WEB_URL, API_URL, DB_PROJECT_REF)
  *   followed by `_<ENV>` and writes to `environments.<env>.<var>`. Examples:
- *     WEB_URL_LOCAL        -> environments.local.web_url
- *     API_URL_STAGING      -> environments.staging.api_url
- *     DB_MCP_PRODUCTION    -> environments.production.db_mcp
- *     API_MCP_QA           -> environments.qa.api_mcp
+ *     WEB_URL_LOCAL              -> environments.local.web_url
+ *     API_URL_STAGING            -> environments.staging.api_url
+ *     DB_PROJECT_REF_PRODUCTION  -> environments.production.db_project_ref
  *
  *   If `<ENV>` doesn't exist under `environments:` yet, the CLI creates it.
  *
@@ -180,12 +179,11 @@ const FLAT_FIELDS: FlatFieldSpec[] = [
   { section: 'testing', key: 'default_env', envVar: 'DEFAULT_ENV', validator: 'env_select' },
 ];
 
-/** The four leaves that exist under EVERY environment. */
+/** The three leaves that exist under EVERY environment. */
 const ENV_SCOPED_FIELDS: EnvScopedFieldSpec[] = [
   { key: 'web_url', label: 'Frontend URL', validator: 'url' },
   { key: 'api_url', label: 'API base URL', validator: 'url' },
-  { key: 'db_mcp', label: 'DB MCP server name', validator: 'non_empty' },
-  { key: 'api_mcp', label: 'API MCP server name', validator: 'non_empty' },
+  { key: 'db_project_ref', label: 'Supabase project ref', validator: 'non_empty' },
 ];
 
 // ============================================================================
@@ -255,8 +253,8 @@ VARIABLE MODEL:
                  issue_tracker, testing). Skills reference them as bare
                  {{PROJECT_KEY}}, {{ATLASSIAN_URL}}, etc.
 
-    ENV-SCOPED — under \`environments:\`. Each environment owns the same four
-                 leaves: web_url, api_url, db_mcp, api_mcp. Skills reference
+    ENV-SCOPED — under \`environments:\`. Each environment owns the same three
+                 leaves: web_url, api_url, db_project_ref. Skills reference
                  them either as bare {{WEB_URL}} (resolves to the active env
                  at runtime) or explicit {{environments.<env>.<var>}}.
 
@@ -289,10 +287,9 @@ ENV-VAR MAPPING (--non-interactive):
     DEFAULT_ENV
 
   ENV-SCOPED — pattern <KEY>_<ENV>:
-    WEB_URL_LOCAL, WEB_URL_STAGING, …       -> environments.<env>.web_url
-    API_URL_LOCAL, API_URL_STAGING, …       -> environments.<env>.api_url
-    DB_MCP_LOCAL, DB_MCP_STAGING, …         -> environments.<env>.db_mcp
-    API_MCP_LOCAL, API_MCP_STAGING, …       -> environments.<env>.api_mcp
+    WEB_URL_LOCAL, WEB_URL_STAGING, …                   -> environments.<env>.web_url
+    API_URL_LOCAL, API_URL_STAGING, …                   -> environments.<env>.api_url
+    DB_PROJECT_REF_LOCAL, DB_PROJECT_REF_STAGING, …     -> environments.<env>.db_project_ref
 
   If <ENV> doesn't exist under \`environments:\` yet, the CLI creates it.
 
@@ -925,8 +922,7 @@ function renderCommentForEnvLeaf(envName: string, sf: EnvScopedFieldSpec, filled
   const descriptions: Record<string, string> = {
     web_url: `Frontend URL for ${envName} env (e.g. https://example.com)`,
     api_url: `API base URL for ${envName} env (e.g. https://api.example.com)`,
-    db_mcp: `MCP server name for ${envName} DB (e.g. myproject-${envName}-db)`,
-    api_mcp: `MCP server name for ${envName} API (e.g. myproject-${envName}-api)`,
+    db_project_ref: `Supabase project ref for ${envName} (e.g. czuusjchqpgvanvbdrnz — visible in your Supabase dashboard URL)`,
   };
   const desc = descriptions[sf.key];
   if (!desc) { return ''; }

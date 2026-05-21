@@ -2629,7 +2629,7 @@ bun run vars:check           # validate placeholders</code></pre>
                     </td>
                     <td>
                       <code>PROJECT_KEY</code>, <code>WEB_URL</code>, <code>API_URL</code>,
-                      <code>JIRA_URL</code>, <code>DB_MCP</code>, <code>default_env</code>.
+                      <code>JIRA_URL</code>, <code>DB_PROJECT_REF</code>, <code>default_env</code>.
                     </td>
                   </tr>
                   <tr>
@@ -2660,7 +2660,8 @@ bun run vars:check           # validate placeholders</code></pre>
               <li>
                 <code>{{VAR_NAME}}</code> → resolves from
                 <code>.agents/project.yaml</code> (project-level static config). Env-scoped vars
-                like <code>{{WEB_URL}}</code>, <code>{{API_URL}}</code>, <code>{{DB_MCP}}</code>
+                like <code>{{WEB_URL}}</code>, <code>{{API_URL}}</code>,
+                <code>{{DB_PROJECT_REF}}</code>
                 resolve against the active environment (default
                 <code>testing.default_env</code>).
               </li>
@@ -3345,7 +3346,7 @@ bun run vars:check           # validate placeholders</code></pre>
               or at <strong>user level</strong> (T4, into <code>~/.claude/skills/</code> for any
               project). Examples that get installed: <code>frontend-design</code>,
               <code>next-best-practices</code>, <code>next-cache-components</code>,
-              <code>next-upgrade</code>, <code>shadcn</code>, <code>react-best-practices</code>,
+              <code>next-upgrade</code>, <code>shadcn</code>,
               <code>supabase-postgres-best-practices</code>, <code>playwright-cli</code>,
               <code>skill-creator</code>, <code>find-skills</code>, <code>gh-cli</code>,
               <code>brainstorming</code>, and more.
@@ -3999,7 +4000,7 @@ bun run vars:check           # validate placeholders</code></pre>
                   ><code>docs/workflows/environments.md</code></a
                 >
                 — env-scoping conventions for <code>{{WEB_URL}}</code>, <code>{{API_URL}}</code>,
-                <code>{{DB_MCP}}</code>, and friends.
+                <code>{{DB_PROJECT_REF}}</code>, and friends.
               </li>
               <li>
                 <a

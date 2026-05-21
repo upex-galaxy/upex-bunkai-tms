@@ -44,26 +44,22 @@ testing:
 external_consumers:
   - default_env # consumed implicitly by the AI variable resolver (sets active env for {{WEB_URL}} / {{API_URL}} / ...) AND by scripts/agents-setup.ts via process.env.DEFAULT_ENV in --non-interactive mode
   - design_md_path # read by `yq '.design_md_path'` inside bash code fences of .claude/skills/{design-system/references/getdesign-matcher.md, project-bootstrap/references/frontend-setup.md}
-  - api_mcp # reserved env-scoped slot — placeholder for an MCP server that exposes the project's REST API (sister to db_mcp). Currently no skill/prompt resolves {{API_MCP}}; the slot is kept so projects that DO expose an API MCP can plug it in without a schema migration. Provisioned per-env by scripts/agents-setup.ts (API_MCP_LOCAL, API_MCP_STAGING, ...).
 
 # Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).
-# Each environment must define ALL four keys: web_url, api_url, db_mcp, api_mcp.
-# Prompts referencing {{WEB_URL}} / {{API_URL}} / {{DB_MCP}} / {{API_MCP}} resolve to the
+# Each environment must define ALL three keys: web_url, api_url, db_project_ref.
+# Prompts referencing {{WEB_URL}} / {{API_URL}} / {{DB_PROJECT_REF}} resolve to the
 # active environment (`testing.default_env` above, or a session override).
 # For explicit cross-env references use {{environments.<env>.<var>}} (e.g. {{environments.local.web_url}}).
 environments:
   local:
     web_url: 'http://localhost:3000' # fill per project — Frontend URL for local env (e.g. http://localhost:3000)
     api_url: 'http://localhost:3000/api' # fill per project — API base URL for local env (e.g. http://localhost:3000/api)
-    db_mcp: fmbpikzpkafptqximhxn.supabase.co # fill per project — MCP server name for local DB (e.g. myproject-local-db)
-    api_mcp: myproject-local-api # fill per project — MCP server name for local API (e.g. myproject-local-api)
+    db_project_ref: fmbpikzpkafptqximhxn # Supabase project ref (visible in dashboard URL); single-project tenancy across envs for MVP
   staging:
     web_url: https://staging-upexbunkai.vercel.app # Vercel preview alias for the staging branch
     api_url: https://staging-upexbunkai.vercel.app/api # Same host as staging web; API mounted under /api
-    db_mcp: fmbpikzpkafptqximhxn.supabase.co # Same Supabase project as local/prod for MVP (single-project tenancy)
-    api_mcp: bunkai-staging-api # Reserved MCP slot — not yet wired
+    db_project_ref: fmbpikzpkafptqximhxn # Same Supabase project as local/prod for MVP (single-project tenancy)
   production:
     web_url: https://upexbunkai.vercel.app # Vercel production alias (defensive bunkai.io to be wired post-MVP)
     api_url: https://upexbunkai.vercel.app/api # Same host as production web; API mounted under /api
-    db_mcp: fmbpikzpkafptqximhxn.supabase.co # Same Supabase project as local/staging for MVP
-    api_mcp: bunkai-production-api # Reserved MCP slot — not yet wired
+    db_project_ref: fmbpikzpkafptqximhxn # Same Supabase project as local/staging for MVP
