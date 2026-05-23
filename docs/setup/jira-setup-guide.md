@@ -359,7 +359,7 @@ ATLASSIAN_EMAIL=your.email@example.com
 ATLASSIAN_API_TOKEN=your_api_token
 
 # Operational params (NOT credentials)
-JIRA_PROJECT=PROJ
+JIRA_PROJECT_KEY=PROJ
 
 # Xray Cloud Authentication
 XRAY_CLIENT_ID=your_client_id

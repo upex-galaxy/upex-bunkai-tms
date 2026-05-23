@@ -26,6 +26,13 @@
  *                      Validating that those declared slugs actually exist in
  *                      the user's Jira (`.agents/jira-fields.json`) is owned by
  *                      `bun run jira:check`.
+ *   4a. {{jira.statuses.<slug>}} — default-status pointer reference. MUST
+ *                      resolve to a key under `statuses:` in `.agents/jira-required.yaml`.
+ *   4b. {{jira.link_types.<slug>}} and {{jira.link_types.<slug>.<sub>}} —
+ *                      link-type reference. <slug> must resolve to a key under
+ *                      `link_types.required:` or `link_types.optional:`. The
+ *                      <sub> segment (outward / inward / fallback) is implicit;
+ *                      any of those are valid for link types.
  *
  * Exit code: 0 if no ERRORs, 1 otherwise. WARNs do not affect exit code.
  */
@@ -178,8 +185,18 @@ function loadDeclaredVariables(yamlPath: string): DeclaredVars {
  * Both `required:` and `optional:` slugs are accepted — `unmapped:` is NOT
  * (those have no matching `{{jira.<slug>}}` syntax; prompts reference them as
  * literal `customfield_*` markers).
+ *
+ * Also extracts the `statuses:` slugs and `link_types.required.*` /
+ * `link_types.optional.*` slugs so K5 can validate multi-segment refs like
+ * `{{jira.statuses.<slug>}}` and `{{jira.link_types.<slug>}}`.
  */
-function loadManifestSlugs(yamlPath: string): { all: Set<string>, required: number, optional: number } {
+function loadManifestSlugs(yamlPath: string): {
+  all: Set<string>
+  required: number
+  optional: number
+  statuses: Set<string>
+  linkTypes: Set<string>
+} {
   if (!existsSync(yamlPath)) {
     console.error(`FATAL: ${yamlPath} does not exist. Required for Jira slug validation.`);
     process.exit(1);
@@ -200,7 +217,22 @@ function loadManifestSlugs(yamlPath: string): { all: Set<string>, required: numb
   const required = (root.required ?? {}) as Record<string, unknown>;
   const optional = (root.optional ?? {}) as Record<string, unknown>;
   const all = new Set<string>([...Object.keys(required), ...Object.keys(optional)]);
-  return { all, required: Object.keys(required).length, optional: Object.keys(optional).length };
+
+  const statusesRaw = (root.statuses ?? {}) as Record<string, unknown>;
+  const statuses = new Set<string>(Object.keys(statusesRaw));
+
+  const linkTypesRaw = (root.link_types ?? {}) as Record<string, unknown>;
+  const ltReq = (linkTypesRaw.required ?? {}) as Record<string, unknown>;
+  const ltOpt = (linkTypesRaw.optional ?? {}) as Record<string, unknown>;
+  const linkTypes = new Set<string>([...Object.keys(ltReq), ...Object.keys(ltOpt)]);
+
+  return {
+    all,
+    required: Object.keys(required).length,
+    optional: Object.keys(optional).length,
+    statuses,
+    linkTypes,
+  };
 }
 
 /**
@@ -326,7 +358,14 @@ interface ExplicitEnvHit {
 }
 
 interface JiraSlugHit {
+  /** Raw reference text (without `{{`/`}}`), e.g. `jira.statuses.epic_default`. */
+  raw: string
+  /** Kind of reference: `field` (single-segment), `status`, or `link_type`. */
+  kind: 'field' | 'status' | 'link_type'
+  /** Resolved slug to validate against the manifest. */
   slug: string
+  /** Sub-field for link_type refs (outward / inward / fallback); undefined otherwise. */
+  sub?: string
   file: string
   line: number
 }
@@ -345,7 +384,19 @@ interface ScanResult {
 // columns, then scan PROJECT_RE while skipping covered ranges.
 const PROJECT_RE = /\{\{([A-Z_][A-Z0-9_]*)\}\}/g;
 const EXPLICIT_ENV_RE = /\{\{environments\.([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\}\}/g;
-const JIRA_RE = /\{\{jira\.([a-z_][a-z0-9_]*)\}\}/g;
+// Matches any of:
+//   {{jira.<slug>}}                       -> field
+//   {{jira.statuses.<slug>}}              -> status
+//   {{jira.link_types.<slug>}}            -> link_type (bare)
+//   {{jira.link_types.<slug>.<sub>}}      -> link_type with sub-field
+// First capture group is the inner dot-path (e.g. `link_types.dependencies.outward`).
+const JIRA_RE = /\{\{jira\.([a-z_][a-z0-9_.]*)\}\}/g;
+// Valid sub-fields when a {{jira.link_types.<slug>.<sub>}} reference is used.
+// `name` is the workspace label resolved against `.agents/jira-link-types.json`;
+// `outward`/`inward` are the directional phrasings; `fallback` is the slug to
+// degrade to when the workspace lacks the link type. All four are declared per
+// link-type entry in `.agents/jira-required.yaml`.
+const LINK_TYPE_SUBFIELDS = new Set(['name', 'outward', 'inward', 'fallback']);
 const SESSION_RE = /<<([A-Z_][A-Z0-9_]*)>>/g;
 
 function isAllowlisted(varName: string, filePath: string): boolean {
@@ -392,12 +443,40 @@ function scanFiles(files: string[]): ScanResult {
         projectVarHits.push({ name, file, line: i + 1 });
       }
 
-      // --- jira refs
+      // --- jira refs (single + multi-segment)
+      //
+      // Three reference shapes are validated against `.agents/jira-required.yaml`:
+      //   1. {{jira.<slug>}}                       → manifest required:/optional:
+      //   2. {{jira.statuses.<slug>}}              → manifest statuses:
+      //   3. {{jira.link_types.<slug>[.<sub>]}}    → manifest link_types.required:/optional:
+      //
+      // Any other dot-notation under `jira.` (e.g. `jira.status.X`, `jira.transition.X`
+      // used in other skills) is OUT OF SCOPE for this linter — silently skipped so
+      // we never invalidate unrelated namespaces. Owners of those namespaces are
+      // responsible for their own validation.
       JIRA_RE.lastIndex = 0;
       for (;;) {
         const m = JIRA_RE.exec(line);
         if (m === null) { break; }
-        jiraSlugHits.push({ slug: m[1], file, line: i + 1 });
+        const raw = `jira.${m[1]}`;
+        const segments = m[1].split('.');
+        if (segments.length === 1) {
+          jiraSlugHits.push({ raw, kind: 'field', slug: segments[0], file, line: i + 1 });
+        }
+        else if (segments[0] === 'statuses' && segments.length === 2) {
+          jiraSlugHits.push({ raw, kind: 'status', slug: segments[1], file, line: i + 1 });
+        }
+        else if (segments[0] === 'link_types' && (segments.length === 2 || segments.length === 3)) {
+          jiraSlugHits.push({
+            raw,
+            kind: 'link_type',
+            slug: segments[1],
+            sub: segments[2],
+            file,
+            line: i + 1,
+          });
+        }
+        // else: unknown jira.* shape — silently skip (owned by other namespaces).
       }
 
       // --- session vars
@@ -467,8 +546,21 @@ function main(): void {
     .sort();
   const externalSkippedCount = [...allDeclared].filter(d => external.allowlist.has(d)).length;
 
-  // Jira slug validation: every {{jira.<slug>}} must be declared in the manifest.
-  const invalidJiraHits = result.jiraSlugHits.filter(h => !manifest.all.has(h.slug));
+  // Jira slug validation: every {{jira.*}} reference must resolve.
+  //   - kind=field      → slug ∈ manifest.all (required | optional)
+  //   - kind=status     → slug ∈ manifest.statuses
+  //   - kind=link_type  → slug ∈ manifest.linkTypes (required | optional);
+  //                       sub-field (outward/inward/fallback) must be in the allowed set
+  const invalidJiraHits = result.jiraSlugHits.filter((h) => {
+    if (h.kind === 'field') { return !manifest.all.has(h.slug); }
+    if (h.kind === 'status') { return !manifest.statuses.has(h.slug); }
+    if (h.kind === 'link_type') {
+      if (!manifest.linkTypes.has(h.slug)) { return true; }
+      if (h.sub !== undefined && !LINK_TYPE_SUBFIELDS.has(h.sub)) { return true; }
+      return false;
+    }
+    return true;
+  });
   const validJiraCount = result.jiraSlugHits.length - invalidJiraHits.length;
 
   const filesWithProjectHits = new Set(result.projectVarHits.map(h => h.file)).size;
@@ -486,7 +578,11 @@ function main(): void {
     `Declared in project.yaml:        ${declared.flat.size} flat + ${declared.envScoped.size} env-scoped `
     + `(across ${declared.envNames.size} envs: ${envList}) = ${declaredTotal} variables`,
   );
-  console.log(`Declared in jira-required.yaml:  ${manifest.all.size} slugs (${manifest.required} required + ${manifest.optional} optional)`);
+  console.log(
+    `Declared in jira-required.yaml:  ${manifest.all.size} field slugs `
+    + `(${manifest.required} required + ${manifest.optional} optional) `
+    + `+ ${manifest.statuses.size} statuses + ${manifest.linkTypes.size} link_types`,
+  );
   console.log('');
 
   console.log(`ERRORS (${totalErrors}):`);
@@ -507,7 +603,22 @@ function main(): void {
     }
     for (const hit of invalidJiraHits) {
       const rel = relative(REPO_ROOT, hit.file);
-      console.log(`  - UNDECLARED: {{jira.${hit.slug}}} at ${rel}:${hit.line}`);
+      let reason = '';
+      if (hit.kind === 'status') {
+        reason = `unknown status slug '${hit.slug}' (not declared under .agents/jira-required.yaml: statuses:)`;
+      }
+      else if (hit.kind === 'link_type') {
+        if (!manifest.linkTypes.has(hit.slug)) {
+          reason = `unknown link-type slug '${hit.slug}' (not under link_types.required: / link_types.optional:)`;
+        }
+        else {
+          reason = `unknown link-type sub-field '${hit.sub}' (allowed: outward, inward, fallback)`;
+        }
+      }
+      else {
+        reason = 'not declared under required: / optional:';
+      }
+      console.log(`  - UNDECLARED: {{${hit.raw}}} at ${rel}:${hit.line}  (${reason})`);
     }
     for (const entry of external.undocumented) {
       console.log(`  - EXTERNAL_CONSUMER_UNDOCUMENTED: ${entry.name} at .agents/project.yaml:${entry.line}  (missing inline '# ...' comment explaining where it's consumed)`);

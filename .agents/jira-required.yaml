@@ -28,13 +28,13 @@
 
 required:
   # ---- Story / User-story fields (consumed by scripts/sync-jira-issues.ts) ----
-  acceptance_criteria_gherkin:
+  acceptance_criteria:
     name: ✅ Acceptance Criteria (Gherkin)
     type: string
     description: Gherkin-formatted acceptance criteria attached to user stories.
     used_by: [sync-jira-issues, sprint-development]
 
-  acceptance_test_results_atr:
+  acceptance_test_results:
     name: 🧪 Acceptance Test Results (ATR)
     type: string
     description: |
@@ -52,8 +52,19 @@ required:
   scope:
     name: Scope ⛳
     type: string
-    description: In-scope / out-of-scope notes captured at story-grooming time.
-    used_by: [sync-jira-issues]
+    description: |
+      In-scope items only — what the story IS expected to deliver. Out-of-scope
+      exclusions live in the separate `out_of_scope` field (no cross-pollination).
+    used_by: [sync-jira-issues, product-management]
+
+  out_of_scope:
+    name: 🏴 Out Of Scope
+    type: string
+    description: |
+      Explicit exclusions from the story scope — what this story is NOT going
+      to deliver. Complementary to `scope`. Surfaces scope-creep risks during
+      sprint planning and shift-left QA review.
+    used_by: [sync-jira-issues, product-management]
 
   mockup:
     name: Mockup 🎴
@@ -73,16 +84,42 @@ required:
     description: Agile estimate for the story (planning poker).
     used_by: [sync-jira-issues]
 
-  weblink_url:
+  weblink:
     name: Weblink (URL) 🌍️
     type: string
     description: External reference URL attached to the story.
     used_by: [sync-jira-issues]
 
+  # ---- Dev-side planning fields (Epic + Story level) ----
+  # Consumed by sprint-development/references/{feature-plan,story-plan,implement-story}.md
+  # — the dev-side workflow stores its planning artifacts on Jira so the loop
+  # survives session resets (Jira is the source of truth, local files are caches).
+  feature_implementation_plan:
+    name: Feature Implementation Plan (Dev)🛠️
+    type: string
+    description: |
+      Epic-level technical implementation plan authored by sprint-development's
+      planning stage. Mirrors the body of `.context/PBI/{module}/{EPIC}-*/feature-plan.md`
+      onto the Epic in Jira so the plan survives local-context loss.
+    used_by:
+      - sprint-development/references/feature-plan.md
+
+  spec_implementation_plan:
+    name: Spec Implementation Plan (Dev)🛠️
+    type: string
+    description: |
+      Story-level technical implementation plan authored by sprint-development's
+      planning stage (per-story slice of the parent feature plan). Mirrors the
+      body of `.context/PBI/{module}/{STORY}-*/implementation-plan.md` onto the
+      Story in Jira so the plan survives local-context loss.
+    used_by:
+      - sprint-development/references/story-plan.md
+      - sprint-development/references/implement-story.md
+
   # ---- Bug / Defect fields ----
   # Consumed by scripts/sync-jira-issues.ts + sprint-development/references/bug-fix-workflow.md
   # (dev side) and the agentic-qa-boilerplate sister repo (sprint-testing/bug-report).
-  actual_result_comportamiento:
+  actual_result:
     name: 🐞 Actual Result (Comportamiento)
     type: string
     description: Observed behavior captured during bug repro.
@@ -91,7 +128,7 @@ required:
       - sprint-development/references/bug-fix-workflow.md
       - agentic-qa-boilerplate (sprint-testing)
 
-  expected_result_output:
+  expected_result:
     name: ✅ Expected Result (Output)
     type: string
     description: 'Expected behavior per acceptance criteria, contrasted against the bug.'
@@ -141,7 +178,7 @@ required:
       - integration_error
       - requirement_error
       - third_party_error
-      - working_as_designed_wad
+      - working_as_designed
     description: 'Post-mortem cause classification, set after the fix.'
     used_by:
       - sync-jira-issues
@@ -178,7 +215,7 @@ required:
 
   # ---- TMS Modality B fields (Jira-native, no Xray) ----
   # QA-side fields kept here so a single Jira workspace can serve both repos.
-  acceptance_test_plan_atp:
+  acceptance_test_plan:
     name: 🧪 Acceptance Test Plan (ATP)
     type: string
     description: |
@@ -196,7 +233,7 @@ required:
 
 optional:
   # Fields that enhance the workflow but won't break it if missing.
-  to_be_automated_qa:
+  to_be_automated:
     name: To Be Automated (QA)🧪
     type: option
     options: [yes, no]
@@ -212,6 +249,120 @@ unmapped:
 # (No unmapped slugs at this time. See README §5.3 for the unmapped pattern
 # — declare a slug here when the methodology expects a field semantically but
 # no real Jira field exists yet, then promote it to `required:` once configured.)
+
+# Default-status pointers per work type — slug indirection so methodology skills
+# (notably `product-management`) can transition newly created items to the
+# workspace's canonical default without hardcoding the human status name.
+#
+# Each entry maps a semantic role (e.g. "what status does a newly created epic
+# land in?") to either:
+#   - a slug declared under `work_types.<type>.required_statuses`, OR
+#   - a literal Jira status name when no work_type catalog entry exists yet
+#     (acts as a fallback default — workspaces with custom status taxonomies
+#      should override).
+#
+# `bun run jira:check` warns when a referenced status is missing from the
+# workspace; methodology consumers should degrade gracefully (skip transition,
+# surface warning to user, never crash).
+statuses:
+  epic_default:
+    description: |
+      Status an Epic transitions into immediately after creation. Bunkai-style
+      default: "Planning" (used as fallback literal when `work_types.epic` is
+      not declared in this catalog).
+    fallback_literal: Planning
+    work_type_slug: null # set to `planning` once `work_types.epic` is declared
+    used_by: [product-management/epic-creation]
+
+  story_default:
+    description: |
+      Status a Story transitions into immediately after creation. Methodology
+      default: `shift_left_qa` (already declared under `work_types.story.required_statuses`).
+    fallback_literal: Shift-Left QA
+    work_type_slug: shift_left_qa
+    used_by:
+      - product-management/add-feature
+      - product-management/product-backlog-seed
+      - product-management/story-refinement
+
+# Issue-link types the methodology needs to create relationships between work
+# items (story-to-story dependencies, epic blocks, related work). Slug-based so
+# workspaces with custom link-type names can override.
+#
+# Each entry declares:
+#   name      — human label of the link type in the workspace
+#   outward   — phrasing seen from the source issue (e.g. "depends on")
+#   inward    — phrasing seen from the target issue (e.g. "is dependency for")
+#   fallback  — optional slug to degrade to when the workspace lacks this type
+#               (e.g. fall back to symmetric `relates` if `dependencies` missing
+#               — but flag as degradation since direction is lost)
+#   used_by   — methodology consumers
+#
+# Sync workspace state to `.agents/jira-link-types.json` via
+# `bun run jira:sync-link-types` (manual; not auto-invoked by setup or check).
+# `bun run jira:check` validates: required slug exists in workspace OR its
+# fallback exists; both missing → exit 1.
+#
+# NEVER hardcode link-type names ("Dependencies", "Blocks", "Relates") in skill
+# content. Always resolve via {{jira.link_types.<slug>}}, .outward, .inward,
+# .fallback.
+link_types:
+  required:
+    dependencies:
+      name: Dependencies
+      outward: depends on
+      inward: is dependency for
+      description: |
+        Hard sequencing — the outward issue cannot start until the inward
+        issue is Done. Drives sprint-sequencing topological sort.
+      fallback: relates # symmetric — direction lost; flag as degradation
+      used_by:
+        - product-management/dependency-linking
+        - product-management/sprint-sequencing
+
+    blocks:
+      name: Blocks
+      outward: blocks
+      inward: is blocked by
+      description: |
+        Jira built-in synonym of `dependencies`. Treated equivalently by
+        sprint-sequencing (contributes to topological sort).
+      fallback: null # built-in, no fallback needed
+      used_by:
+        - product-management/dependency-linking
+        - product-management/sprint-sequencing
+
+  optional:
+    relates:
+      name: Relates
+      outward: relates to
+      inward: relates to
+      description: |
+        Symmetric, informational link. Does NOT contribute to sprint-sequencing
+        topological sort. Used as fallback when `dependencies` missing — but
+        consumers MUST flag the fallback as degradation (direction is lost).
+      fallback: null
+      used_by: [product-management/dependency-linking (fallback only)]
+
+    causes:
+      name: Causes
+      outward: causes
+      inward: is caused by
+      description: |
+        Causal relationship — typically used by bug triage to link a defect
+        to its root cause story or earlier defect.
+      fallback: null
+      used_by: [bug-triage]
+
+    tested_by:
+      name: Tested By
+      outward: tested by
+      inward: tests
+      description: |
+        Story-to-test linkage — used by the QA-side methodology to bind a
+        Test case work item to the Story it verifies.
+      fallback: null
+      used_by: [agentic-qa-boilerplate]
 
 # Issue types (`work_types`) plus the canonical statuses + transitions the
 # methodology requires per work type. Validated by `bun run jira:check` against
