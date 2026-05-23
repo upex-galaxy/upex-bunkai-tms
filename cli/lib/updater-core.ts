@@ -34,6 +34,8 @@ import type {
   GitVersion,
   IgnoreDelta,
   IgnoreLineOption,
+  PackageJsonDelta,
+  PackageJsonKeyOption,
   PairedDiff,
   ReportSink,
   RunSummary,
@@ -51,7 +53,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { applyIgnoreAppend, computeBlobSha, detectIgnoreDelta } from './updater-ignore';
-import { CorruptStateError } from './updater-types';
+import { applyPackageJsonAppend, detectPackageJsonDelta } from './updater-package';
+import { ComponentOverlapError, CorruptStateError } from './updater-types';
 
 // ============================================================================
 // SILENT LOGGER — default no-op used when the caller does not supply one.
@@ -369,6 +372,32 @@ export function normalizeWhitespace(s: string): string {
  * Repo-specific config flows through `components` (for `bootstrapOnly`) and
  * `agentsBootstrapFiles` (for the `agents` component's basename allowlist).
  */
+/**
+ * Match a delta path against a component's file-list whitelist.
+ *
+ * Behavior by component type:
+ *  - `'directory'` / `'mixed'`  → always true (no whitelist filtering; the
+ *    component owns its declared directory tree wholesale).
+ *  - `'file-list'`              → true iff `filePath` exactly equals
+ *    `<root>/<file>` for one of `component.files`, where `<root>` is the
+ *    component's first declared path. `paths: ['.']` matches root-level files
+ *    by their literal name (no leading `./`).
+ *
+ * Match is exact-string only — no glob expansion, no nested-path expansion.
+ * `files: ['README.md']` with `paths: ['.agents']` matches `.agents/README.md`
+ * but NOT `.agents/subdir/README.md` (predictable + collision-free).
+ */
+export function entryMatchesFileList(filePath: string, component: Component): boolean {
+  if (component.type !== 'file-list') { return true; }
+  const root = component.paths[0];
+  const files = component.files ?? [];
+  for (const f of files) {
+    const expected = (root === '.' || root === undefined) ? f : `${root}/${f}`;
+    if (filePath === expected) { return true; }
+  }
+  return false;
+}
+
 export function classifyFile(
   entry: Omit<DeltaEntry, 'classification'>,
   templateDir: string,
@@ -393,7 +422,11 @@ export function classifyFile(
   // 4. Bootstrap-aware override
   const component = components.find(c => c.name === entry.component);
   const basename = path.basename(entry.path);
-  const isBootstrapFile = (
+  const isFrameworkExempt = (
+    component?.bootstrapOnly === true
+    && component.frameworkFiles?.includes(basename) === true
+  );
+  const isBootstrapFile = !isFrameworkExempt && (
     (component?.bootstrapOnly === true)
     || (entry.component === 'agents' && agentsBootstrapFiles.includes(basename))
   );
@@ -565,6 +598,11 @@ export function computeDelta(
     }
 
     for (const [filePath, status] of fileStatuses) {
+      // File-list whitelist filter (Level 1 — closes the gap where computeDelta
+      // ignored `component.files` and captured every change under
+      // `component.paths`). `directory` / `mixed` components are unaffected.
+      if (!entryMatchesFileList(filePath, component)) { continue; }
+
       const numstat = numstatMap.get(filePath) ?? { added: 0, removed: 0, isBinary: false };
 
       // Resolve templateOldSha (blob at componentSha)
@@ -624,7 +662,211 @@ export function computeDelta(
     }
   }
 
-  return delta;
+  // --- Level 2: GLOBAL DEDUPE BY PATH ---
+  // Two components can match the same path (e.g. a directory component and a
+  // file-list component whose root contains files inside the directory). Without
+  // dedupe, Phase 4 prompts the user twice for the same file and applyResolution
+  // runs twice on the same path (corrupts pre-write backup).
+  //
+  // Ownership rule:
+  //   1. Pick the component whose *matching* path is the longest prefix of the
+  //      file path (most specific).
+  //   2. On tie, the component that appears earlier in the `components[]`
+  //      declaration wins (maintainer-controlled, stable across runs).
+  //
+  // Eviction is logged via the optional `logger.step` so users can audit
+  // conflicts during `--auto` runs.
+  const componentIndex = new Map<string, number>();
+  components.forEach((c, idx) => { componentIndex.set(c.name, idx); });
+  return dedupeDeltaByPath(delta, components, componentIndex, logger);
+}
+
+/**
+ * Internal helper for the Level 2 dedupe pass at the end of `computeDelta`.
+ *
+ * Walks `delta`, keeping at most one entry per `path`. Owner is chosen by
+ * `pathSpecificity` (longest matching prefix from the component's `paths`),
+ * with declaration order as the deterministic tie-breaker.
+ *
+ * Emits one `logger.step` line per evicted (path, loser) pair.
+ */
+function dedupeDeltaByPath(
+  delta: DeltaEntry[],
+  components: readonly Component[],
+  componentIndex: Map<string, number>,
+  logger: CoreLogger,
+): DeltaEntry[] {
+  const owned = new Map<string, DeltaEntry>();
+  const evictions: { path: string, winner: string, loser: string }[] = [];
+
+  for (const entry of delta) {
+    const existing = owned.get(entry.path);
+    if (!existing) { owned.set(entry.path, entry); continue; }
+
+    const compA = components.find(c => c.name === existing.component);
+    const compB = components.find(c => c.name === entry.component);
+    if (!compA || !compB) {
+      // Component lookup failed (stale registry / state) — keep the entry that
+      // resolves to a known component; record the eviction so it isn't silent.
+      if (!compA && compB) {
+        evictions.push({ path: entry.path, winner: entry.component, loser: existing.component });
+        owned.set(entry.path, entry);
+      }
+      else {
+        evictions.push({ path: entry.path, winner: existing.component, loser: entry.component });
+      }
+      continue;
+    }
+
+    const specA = pathSpecificity(existing.path, compA);
+    const specB = pathSpecificity(entry.path, compB);
+    const idxA = componentIndex.get(existing.component) ?? Number.MAX_SAFE_INTEGER;
+    const idxB = componentIndex.get(entry.component) ?? Number.MAX_SAFE_INTEGER;
+
+    const newWins = specB > specA || (specB === specA && idxB < idxA);
+    if (newWins) {
+      evictions.push({ path: entry.path, winner: entry.component, loser: existing.component });
+      owned.set(entry.path, entry);
+    }
+    else {
+      evictions.push({ path: entry.path, winner: existing.component, loser: entry.component });
+    }
+  }
+
+  for (const { path: p, winner, loser } of evictions) {
+    logger.step(`Path '${p}' owned by '${winner}' (also matched by '${loser}' — evicted)`);
+  }
+
+  return [...owned.values()];
+}
+
+/**
+ * Score a file path against a component's `paths` array. Returns the length
+ * of the longest matching prefix; -1 if no path matches.
+ *
+ *   - `paths: ['.']` matches any path; specificity 0.
+ *   - `paths: ['.claude']` matches `.claude/foo`; specificity 7.
+ *   - `paths: ['.claude/skills']` matches `.claude/skills/foo`; specificity 14.
+ *
+ * Used by `dedupeDeltaByPath` to pick the most-specific owner when two
+ * components both match a file.
+ */
+// ============================================================================
+// COMPONENT REGISTRY VALIDATION (Level 3 — fatal at startup)
+// ============================================================================
+
+interface ComponentClaim {
+  name: string
+  literals: string[] // exact path strings this component owns (file-list)
+  trees: string[] // directory trees this component owns wholesale
+}
+
+/**
+ * Compute the effective path claims of a component.
+ *
+ *  - `'file-list'`            → `literals` only; each entry resolved against the
+ *    component's first declared `paths` element (or treated as root-level when
+ *    that path is `'.'`).
+ *  - `'directory'` / `'mixed'` → `trees` only; the component owns each declared
+ *    path and everything below it.
+ */
+function componentClaims(c: Component): ComponentClaim {
+  if (c.type === 'file-list') {
+    const root = c.paths[0];
+    const files = c.files ?? [];
+    const literals = files.map((f) => {
+      if (root === '.' || root === undefined) { return f; }
+      return `${root}/${f}`;
+    });
+    return { name: c.name, literals, trees: [] };
+  }
+  return { name: c.name, literals: [], trees: [...c.paths] };
+}
+
+/**
+ * Return true if `literal` falls inside `tree` (or is `tree` itself, or `tree`
+ * is the repo root `'.'`).
+ */
+function literalInsideTree(literal: string, tree: string): boolean {
+  if (tree === '.') { return true; }
+  return literal === tree || literal.startsWith(`${tree}/`);
+}
+
+/**
+ * Return true if directory trees `a` and `b` overlap — i.e. one is the other,
+ * one is a prefix of the other, or either is the repo root.
+ */
+function treesOverlap(a: string, b: string): boolean {
+  if (a === '.' || b === '.') { return true; }
+  if (a === b) { return true; }
+  return a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+}
+
+/**
+ * Find an overlapping path between two component claims, or null when they are
+ * disjoint. Inspects all four cross-products: literal ∩ literal,
+ * literal ⊂ tree (both directions), and tree ∩ tree.
+ */
+function findOverlap(a: ComponentClaim, b: ComponentClaim): string | null {
+  for (const la of a.literals) {
+    if (b.literals.includes(la)) { return la; }
+  }
+  for (const la of a.literals) {
+    for (const tb of b.trees) {
+      if (literalInsideTree(la, tb)) { return la; }
+    }
+  }
+  for (const lb of b.literals) {
+    for (const ta of a.trees) {
+      if (literalInsideTree(lb, ta)) { return lb; }
+    }
+  }
+  for (const ta of a.trees) {
+    for (const tb of b.trees) {
+      if (treesOverlap(ta, tb)) {
+        // Report the more-specific tree as the overlap point.
+        return ta.length > tb.length ? ta : tb;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate a component registry at config-time. Throws `ComponentOverlapError`
+ * on the first pair of components that claim ownership over the same path.
+ *
+ * Pure / no I/O — operates on `paths` + `files` + `type` only. Safe to call
+ * before any clone or filesystem operation, so misconfigured registries fail
+ * fast before consuming network or disk resources.
+ */
+export function validateComponentRegistry(components: readonly Component[]): void {
+  const claims = components.map(componentClaims);
+  for (let i = 0; i < claims.length; i++) {
+    for (let j = i + 1; j < claims.length; j++) {
+      const overlap = findOverlap(claims[i], claims[j]);
+      if (overlap !== null) {
+        throw new ComponentOverlapError(
+          `Componentes '${claims[i].name}' y '${claims[j].name}' se solapan en '${overlap}'. `
+          + 'Ajusta \'paths\' / \'files\' para que cada ruta tenga un único dueño.',
+        );
+      }
+    }
+  }
+}
+
+export function pathSpecificity(filePath: string, component: Component): number {
+  let best = -1;
+  for (const p of component.paths) {
+    if (p === '.') {
+      best = Math.max(best, 0);
+      continue;
+    }
+    if (filePath === p || filePath.startsWith(`${p}/`)) {
+      best = Math.max(best, p.length);
+    }
+  }
+  return best;
 }
 
 // ============================================================================
@@ -1068,6 +1310,7 @@ export function advanceSyncStateV7(
     cliVersion,
     perComponentCommit: { ...prior.perComponentCommit },
     ignoreFileSync: { ...prior.ignoreFileSync },
+    packageJsonSync: { ...(prior.packageJsonSync ?? {}) },
   };
 
   const advancedSet = new Set(summary.componentsAdvanced);
@@ -1350,6 +1593,20 @@ export async function runUpdate(
     throw new Error('runUpdate received rollback=true; wrapper must short-circuit first');
   }
 
+  // Component registry validation (Level 3 — fatal). Runs BEFORE fetch so a
+  // misconfigured registry never wastes a clone. ComponentOverlapError bubbles
+  // up to the wrapper which prints it as a structured error.
+  try {
+    validateComponentRegistry(cfg.components);
+  }
+  catch (err) {
+    if (err instanceof ComponentOverlapError) {
+      sink.error(err.message);
+      throw err;
+    }
+    throw err;
+  }
+
   const repoRoot = process.cwd();
   const emptySummary: RunSummary = {
     applied: [],
@@ -1400,6 +1657,11 @@ export async function runUpdate(
   if (v7State !== null && !v7State.ignoreFileSync) {
     v7State.ignoreFileSync = {};
   }
+  // Same defensive init for packageJsonSync (added in-place on v7 schema —
+  // older v7 lockfiles predate this field).
+  if (v7State !== null && !v7State.packageJsonSync) {
+    v7State.packageJsonSync = {};
+  }
 
   // --- PHASE 1 — FETCH ---
   sink.phase(1, 'FETCH');
@@ -1407,11 +1669,12 @@ export async function runUpdate(
   fetchSpin.start(`Cloning upstream (${cfg.templateRepo})…`);
   const templateDir = cfg.tempDir;
   try {
-    // Sparse-checkout must include both component paths AND ignore-file paths
-    // so Phase 4.5 can read them out of the partial clone.
+    // Sparse-checkout must include component paths, ignore-file paths AND
+    // package.json paths so Phase 4.5 / 4.5b can read them out of the partial clone.
     const sparsePatterns = [
       ...buildSparseCheckoutPatterns(cfg.components),
       ...cfg.ignoreFiles.map(spec => spec.path),
+      ...(cfg.packageJsonSpecs ?? []).map(spec => spec.path),
     ];
     await partialCloneTemplate(cfg.templateRepo, cfg.tempDir, sparsePatterns);
     fetchSpin.stop(`Template descargado (sparse-checkout): ${cfg.templateRepo}`);
@@ -1478,13 +1741,24 @@ export async function runUpdate(
       }
       if (stale.length > 0) {
         sink.warn(`Self-update: actualizando ${stale.length} archivo(s) del CLI antes de continuar…`);
+        // Pre-write backup contract: mirror each existing local file into a
+        // fresh `.backups/update-<ts>/` before overwriting. Symmetric with
+        // applyResolution's backup behavior. `bun run up --rollback` can then
+        // restore the prior CLI if a self-update breaks it.
+        const selfBackupDir = createBackupDir(repoRoot);
         for (const relPath of stale) {
           const src = path.join(templateDir, relPath);
           const dst = path.join(repoRoot, relPath);
+          if (fs.existsSync(dst)) {
+            const backupPath = path.join(selfBackupDir, relPath);
+            fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+            fs.copyFileSync(dst, backupPath);
+          }
           fs.mkdirSync(path.dirname(dst), { recursive: true });
           fs.cpSync(src, dst);
           sink.step(`  · ${relPath}`);
         }
+        sink.step(`Backup en ${path.relative(repoRoot, selfBackupDir)}`);
         sink.step('Re-ejecutando con código actualizado…');
         const child = spawnSync('bun', [process.argv[1], ...process.argv.slice(2)], {
           stdio: 'inherit',
@@ -1599,7 +1873,27 @@ export async function runUpdate(
     }
   }
 
-  if (visible.length === 0 && ignoreDeltasPre.length === 0) {
+  // Pre-detect package.json deltas (Phase 4.5b). Same early-exit semantics: a
+  // non-empty pkg-json delta keeps us alive even when file delta + ignore delta
+  // are empty. A delta is "non-empty" when ANY section has either upstream-only
+  // keys (append candidates) or local-override keys (FYI warns).
+  const pkgJsonDeltasPre: PackageJsonDelta[] = [];
+  for (const spec of cfg.packageJsonSpecs ?? []) {
+    const delta = detectPackageJsonDelta(spec, repoRoot, templateDir, v7State);
+    let hasSomething = false;
+    for (const secDelta of Object.values(delta.sections)) {
+      if (Object.keys(secDelta.upstreamOnlyKeys).length > 0
+        || Object.keys(secDelta.localOverrideKeys).length > 0) {
+        hasSomething = true;
+        break;
+      }
+    }
+    if (hasSomething) {
+      pkgJsonDeltasPre.push(delta);
+    }
+  }
+
+  if (visible.length === 0 && ignoreDeltasPre.length === 0 && pkgJsonDeltasPre.length === 0) {
     sink.step('Sin cambios detectados respecto al upstream. Nada que sincronizar.');
     return emptySummary;
   }
@@ -1611,8 +1905,11 @@ export async function runUpdate(
     const label = bootstrapMode ? 'archivo(s) nuevos/cambiados' : 'archivo(s) con cambios';
     sink.step(`Detectados ${visible.length} ${label} en ${perComp.size} componente(s)${suffix}.`);
   }
-  else {
+  else if (ignoreDeltasPre.length > 0) {
     sink.step(`Sin cambios de archivos — solo líneas nuevas en ${ignoreDeltasPre.length} ignore-file(s).`);
+  }
+  else {
+    sink.step(`Sin cambios de archivos — solo keys nuevas en ${pkgJsonDeltasPre.length} package.json.`);
   }
 
   // --- PHASE 3 — SCOPE ---
@@ -1634,7 +1931,7 @@ export async function runUpdate(
         divergedCount: s.diverged,
       }));
       chosenScopes = await sink.pickScopes(scopeOpts);
-      if (chosenScopes.length === 0 && ignoreDeltasPre.length === 0) {
+      if (chosenScopes.length === 0 && ignoreDeltasPre.length === 0 && pkgJsonDeltasPre.length === 0) {
         sink.warn('No seleccionaste ningún componente. Saliendo sin cambios.');
         return emptySummary;
       }
@@ -1864,6 +2161,61 @@ export async function runUpdate(
     }
   }
 
+  // --- PHASE 4.5b — PACKAGE.JSON KEYS ---
+  // Append-only sync for configured sections (default: scripts + devDependencies).
+  // Same shape as Phase 4.5: pre-detected deltas → per-section selection →
+  // applied later in Phase 5 before state write. localOverrideKeys (drift) is
+  // surfaced as FYI warn — NEVER overwritten.
+  const pkgJsonSelections = new Map<string, { selectedKeys: Record<string, string[]>, values: Record<string, Record<string, string>> }>();
+  if (pkgJsonDeltasPre.length > 0) {
+    sink.subphase('PACKAGE.JSON KEYS');
+    for (const delta of pkgJsonDeltasPre) {
+      // Surface drift first (FYI only — never written)
+      for (const [section, secDelta] of Object.entries(delta.sections)) {
+        for (const [key, drift] of Object.entries(secDelta.localOverrideKeys)) {
+          const truncL = drift.localValue.length > 60 ? `${drift.localValue.slice(0, 60)}…` : drift.localValue;
+          const truncU = drift.upstreamValue.length > 60 ? `${drift.upstreamValue.slice(0, 60)}…` : drift.upstreamValue;
+          sink.warn(`${delta.file} ${section}.${key}: divergencia local (local: ${truncL}, upstream: ${truncU}) — se mantiene local`);
+        }
+      }
+
+      const selectedKeys: Record<string, string[]> = {};
+      const values: Record<string, Record<string, string>> = {};
+      for (const [section, secDelta] of Object.entries(delta.sections)) {
+        const upstreamOnly = Object.entries(secDelta.upstreamOnlyKeys);
+        if (upstreamOnly.length === 0) { continue; }
+
+        let selected: string[];
+        if (opts.auto) {
+          selected = upstreamOnly.map(([k]) => k);
+          sink.step(`[auto] ${delta.file} ${section}: aceptando ${selected.length} key(s)`);
+        }
+        else if (sink.pickPackageJsonKeys) {
+          const options: PackageJsonKeyOption[] = upstreamOnly.map(([k, v]) => ({
+            value: k,
+            label: `${k}: ${v.length > 50 ? `${v.slice(0, 50)}…` : v}`,
+            checked: true,
+          }));
+          selected = await sink.pickPackageJsonKeys(delta.file, section, options);
+        }
+        else {
+          // Sink hasn't implemented interactive pick — fall back to auto-accept.
+          selected = upstreamOnly.map(([k]) => k);
+          sink.step(`${delta.file} ${section}: ${selected.length} key(s) (sink sin picker, aceptando todas)`);
+        }
+
+        if (selected.length > 0) {
+          selectedKeys[section] = selected;
+          values[section] = Object.fromEntries(upstreamOnly);
+        }
+      }
+
+      if (Object.keys(selectedKeys).length > 0) {
+        pkgJsonSelections.set(delta.file, { selectedKeys, values });
+      }
+    }
+  }
+
   // --- PHASE 5 — APPLY (state write + deprecated cleanup) ---
   sink.phase(5, 'APPLY');
 
@@ -1890,6 +2242,7 @@ export async function runUpdate(
         perComponentCommit: {},
         syncedComponents: [],
         ignoreFileSync: {},
+        packageJsonSync: {},
         cliVersion: cfg.cliVersion,
         lastSyncedAt: new Date().toISOString(),
         variableSystemVersion: 1,
@@ -1903,6 +2256,67 @@ export async function runUpdate(
         lastSyncedSha: blobSha,
         appendedLines: Array.from(new Set([...prev, ...appended])),
       },
+    };
+  }
+
+  // Apply package.json appends BEFORE state write (mirror of ignore-append above).
+  for (const spec of cfg.packageJsonSpecs ?? []) {
+    const selection = pkgJsonSelections.get(spec.path);
+    if (!selection || Object.keys(selection.selectedKeys).length === 0) { continue; }
+
+    // Back up the local file BEFORE write (pre-write backup contract).
+    const localPath = path.join(repoRoot, spec.path);
+    if (!opts.dryRun && fs.existsSync(localPath)) {
+      const dir = ensureBackup();
+      const backupPath = path.join(dir, spec.path);
+      fs.mkdirSync(path.dirname(backupPath), { recursive: true });
+      fs.copyFileSync(localPath, backupPath);
+    }
+
+    let writtenBySection: Record<string, string[]>;
+    if (!opts.dryRun) {
+      writtenBySection = applyPackageJsonAppend(spec, selection.values, repoRoot, selection.selectedKeys);
+      for (const [section, keys] of Object.entries(writtenBySection)) {
+        sink.step(`Append a ${spec.path} ${section}: ${keys.length} key(s)`);
+      }
+    }
+    else {
+      writtenBySection = selection.selectedKeys;
+      for (const [section, keys] of Object.entries(writtenBySection)) {
+        sink.step(`[dry-run] aplicaría a ${spec.path} ${section}: ${keys.length} key(s)`);
+      }
+    }
+
+    // Materialise v7State lazily (bootstrap mode) so the state update sticks.
+    if (v7State === null) {
+      v7State = {
+        schemaVersion: 7,
+        templateRepo: cfg.templateRepo,
+        templateCommit: '',
+        perComponentCommit: {},
+        syncedComponents: [],
+        ignoreFileSync: {},
+        packageJsonSync: {},
+        cliVersion: cfg.cliVersion,
+        lastSyncedAt: new Date().toISOString(),
+        variableSystemVersion: 1,
+      };
+    }
+
+    const upstreamBlobSha = computeBlobSha(path.join(templateDir, spec.path));
+    const fileState = v7State.packageJsonSync?.[spec.path] ?? {};
+    const newFileState: Record<string, { lastSyncedSha: string, appliedKeys: string[] }> = {};
+    for (const section of spec.sections) {
+      const prevKeys = fileState[section]?.appliedKeys ?? [];
+      const writtenForSection = writtenBySection[section] ?? [];
+      newFileState[section] = {
+        lastSyncedSha: upstreamBlobSha,
+        appliedKeys: Array.from(new Set([...prevKeys, ...writtenForSection])),
+      };
+    }
+    v7State.packageJsonSync = {
+      ...(v7State.packageJsonSync ?? {}),
+      [spec.path]: newFileState,
     };
   }
 
@@ -1949,6 +2363,7 @@ export async function runUpdate(
       perComponentCommit: {},
       syncedComponents: [],
       ignoreFileSync: {},
+      packageJsonSync: {},
       cliVersion: cfg.cliVersion,
       lastSyncedAt: new Date().toISOString(),
       variableSystemVersion: 1,

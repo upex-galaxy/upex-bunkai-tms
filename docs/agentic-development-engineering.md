@@ -732,6 +732,7 @@ The rest is execution.
 - `.claude/skills/sprint-development/SKILL.md` — Per-story dev loop skill internals.
 - `.claude/skills/unit-testing/SKILL.md` — TDD slice skill internals.
 - `.claude/skills/git-flow-master/SKILL.md` — Git operator skill internals.
+- `.claude/skills/vercel-cli/SKILL.md` — Vercel CLI cookbook: deployment verification, env var sync, build/runtime log streaming, rollback, project linking. Companion to community `deploy-to-vercel`.
 - `.context/README.md` — canonical context layout.
 - `.agents/README.md` — project variable contract and validation scripts.
 - Sister repo: [`agentic-qa-boilerplate`](https://github.com/upex-galaxy/agentic-qa-boilerplate) — the QA half of the practice.

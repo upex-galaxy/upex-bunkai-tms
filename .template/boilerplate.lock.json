@@ -1,17 +1,17 @@
 {
   "schemaVersion": 7,
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
-  "templateCommit": "ef0bef6c4d936130cfd9ea6e4cc0d146f8f71bbc",
+  "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "claude": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
+    "cli": "5a66c0b19bb11bc748716495f61500ea68adacb7",
+    "claude": "c684bc430d49d862644cd1c34954dd26ec095391",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "agents": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
+    "agents": "c684bc430d49d862644cd1c34954dd26ec095391",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "scripts": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
+    "docs": "c684bc430d49d862644cd1c34954dd26ec095391",
     "context": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "context-engineering": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
+    "context-engineering": "c684bc430d49d862644cd1c34954dd26ec095391",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -20,6 +20,20 @@
   "syncedComponents": [],
   "ignoreFileSync": {},
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-23T00:08:03.398Z",
-  "variableSystemVersion": 1
+  "lastSyncedAt": "2026-05-23T06:20:39.625Z",
+  "variableSystemVersion": 1,
+  "packageJsonSync": {
+    "package.json": {
+      "scripts": {
+        "lastSyncedSha": "0318a02c7804d429be8ef790afe4371cf449edd9",
+        "appliedKeys": [
+          "jira:sync-link-types"
+        ]
+      },
+      "devDependencies": {
+        "lastSyncedSha": "0318a02c7804d429be8ef790afe4371cf449edd9",
+        "appliedKeys": []
+      }
+    }
+  }
 }

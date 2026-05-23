@@ -80,7 +80,7 @@ These are **not optional** for the workflow — each one is required by a specif
 | `acli`           | `/acli`, `/sprint-development`, `/product-management` (Jira / Confluence from terminal)                              | [Atlassian docs](https://developer.atlassian.com/cloud/acli/guides/install-acli/)                                                        |
 | `playwright-cli` | `/playwright-cli`, `/sprint-development` (agent-driven browser automation, E2E checks)                               | `bun add -g @playwright/cli@latest`                                                                                                      |
 | `supabase`       | `/supabase`, `/supabase-postgres-best-practices`, `/project-bootstrap` (local stack, migrations, type gen)           | [supabase.com/docs/guides/local-development/cli/getting-started](https://supabase.com/docs/guides/local-development/cli/getting-started) |
-| `vercel`         | `/deploy-to-vercel`, `/sprint-development` (staging + production deploys)                                            | `bun add -g vercel`                                                                                                                      |
+| `vercel`         | `/vercel-cli`, `/deploy-to-vercel`, `/sprint-development` (staging + production deploys; verification, env sync, debug, rollback)        | `bun add -g vercel`                                                                                                                      |
 | `resend`         | `/resend-cli` (transactional email development + sending)                                                            | [resend.com/docs/cli](https://resend.com/docs/cli)                                                                                       |
 | `jq`             | `/acli` JSON pipelines (`acli ... --json \| jq ...`)                                                                 | [jqlang.org](https://jqlang.org/)                                                                                                        |
 
@@ -300,6 +300,7 @@ Project values (URLs, project key, Jira fields) live in `.agents/project.yaml` a
 | `/unit-testing`        | implementation | TDD, test naming, mocking patterns, coverage. Composable from `/sprint-development`                                                                                                       |
 | `/git-flow-master`     | git            | End-to-end Git operator: branches, commits, push, PR, conflicts, chained-PR planning                                                                                                      |
 | `/acli`                | tooling        | Atlassian CLI cookbook for Jira Cloud + Confluence Cloud workflows                                                                                                                        |
+| `/vercel-cli`          | tooling        | Vercel CLI cookbook: deployment verification, env var sync (`.env` ↔ Preview/Production), debug, rollback. Companion to community `/deploy-to-vercel`. Auto-loads on `vercel` Bash calls   |
 | `/agentic-dev-onboard` | onboarding     | Walks new users through the repo's dev flow, MCPs, env vars, workflow skills                                                                                                              |
 
 ### Reusable community skills (installed by `bun run setup`)
@@ -397,7 +398,6 @@ bun up --auto             # Non-interactive / CI mode (safe changes only, exit 0
 bun up --dry-run          # Preview what would change without writing anything
 bun up --rollback         # Restore from most recent backup
 bun run api:sync          # Sync OpenAPI spec + generate types
-bun run types:gen         # Regenerate lib/types/supabase.ts from the live Supabase schema
 bun run vars:check         # Validate {{VAR}} and {{jira.*}} references
 bun run jira:sync-fields  # Sync Jira custom fields -> .agents/jira-fields.json
 bun run jira:check        # Validate Jira manifest vs catalog

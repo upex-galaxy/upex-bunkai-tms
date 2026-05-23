@@ -161,6 +161,7 @@ Verify your config by running the linter declared in `package.json` (typically `
 | `unit-testing`        | `/unit-testing`               | TDD red-green-refactor (composable mid-flight from `/sprint-development`)                                                                                              |
 | `git-flow-master`     | (auto)                        | Branch / commit / push / PR — adapts to detected branching strategy                                                                                                    |
 | `acli`                | (auto)                        | Atlassian CLI wrapper for Jira/Confluence terminal work                                                                                                                |
+| `vercel-cli`          | (auto on `vercel`)            | Vercel CLI cookbook — deployment verification, env var sync, debug, rollback. Companion to community `/deploy-to-vercel`                                               |
 
 Browser automation is provided by `/playwright-cli` (community skill from `microsoft/playwright-cli`, installed by setup — see Critical Rule #11 in CLAUDE.md).
 

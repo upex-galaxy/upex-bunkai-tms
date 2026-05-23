@@ -167,12 +167,15 @@ Example (same work, different register):
 | `unit-testing`        | `/unit-testing`               | TDD red-green-refactor, mocking, coverage. Composable with `/sprint-development`.                                                                                                                                                                                                      |
 | `git-flow-master`     | (auto on git/PR intents)      | End-to-end Git operator. Auto-detects branching strategy.                                                                                                                                                                                                                              |
 | `acli`                | `/acli`                       | Atlassian CLI cookbook (Jira + Confluence). Resolves `[ISSUE_TRACKER_TOOL]`.                                                                                                                                                                                                           |
+| `vercel-cli`          | (auto on `vercel` Bash calls) | Vercel CLI cookbook: deployment verification (poll commit SHA + `inspect --wait`), env var sync (`.env` ↔ Preview/Production scopes), build/runtime log streaming, rollback, `.vercel/` linking. Companion to community `/deploy-to-vercel`.                                          |
 
 > **Persistent memory** — `bun run setup` installs Engram via `gentle-ai install --preset minimal`. Active across sessions and compactions per §12 (proactive memory triggers). No other gentle-ai skills are installed.
 >
 > **T3 (community project-level)** — frontend/backend skills matched by category at runtime, NOT by literal name. List in `cli/install.ts`.
 >
 > **T4 (community user-level)** — repo-agnostic skills, auto-discovered at runtime, **ASK before load** per strategy §3.2.
+>
+> Layout convention: T1 repo skills → `.claude/skills/<slug>/` (committed source). T3/T4 community skills installed via `bunx skills add` → `.agents/skills/<slug>/` (gitignored, default CLI behavior).
 
 ### Slash commands (utilities, 5)
 
@@ -188,8 +191,8 @@ Example (same work, different register):
 
 | MCP      | Use for                                         | Rule                                    |
 | -------- | ----------------------------------------------- | --------------------------------------- |
-| Tavily   | Web search, troubleshooting community solutions | `[WEB_SEARCH_TOOL]`                     |
-| Context7 | Library official docs ("how to use X")          | Prefer over web search for library APIs |
+| Tavily   | Web search, troubleshooting community solutions, non-doc research | `[WEB_SEARCH_TOOL]` primary. **MANDATORY** for any general web search — community fixes, error message lookups, "how to solve X". PREFER OVER built-in `WebSearch` / `WebFetch` — Tavily returns ranked + summarized results; built-in is shallower. |
+| Context7 | Library / framework / SDK / API / CLI official docs ("how to use X") | `[DOCS_TOOL]` primary. **MANDATORY** for any library / framework / SDK / API / CLI doc lookup (React, Next, Prisma, Tailwind, Express, etc.). PREFER OVER built-in `WebSearch` / `WebFetch` — Context7 returns current versioned docs; built-in returns stale blog posts. |
 | Supabase | DB queries, schema, project state               | `[DB_TOOL]` primary                     |
 | n8n      | Workflow automation, integrations               | `[AUTOMATION_FLOWS_TOOL]`               |
 
@@ -199,14 +202,19 @@ Example (same work, different register):
 
 > Skills use `[TAG_TOOL]` pseudocode. Resolve via this table. **PRIORITY**: CLI tools first (fewer tokens). MCP = fallback only.
 
-| Tag                    | Domain                      | Primary                                   | Fallback                 |
-| ---------------------- | --------------------------- | ----------------------------------------- | ------------------------ |
-| `[ISSUE_TRACKER_TOOL]` | Jira Cloud (story/bug/epic) | `/acli`                                   | MCP Atlassian (opt-in — see docs/mcp/) |
-| `[AUTOMATION_TOOL]`    | Browser automation          | `/playwright-cli`                         | MCP Playwright           |
-| `[DB_TOOL]`            | Database                    | Supabase MCP                              | raw SQL via Supabase CLI |
-| `[API_TOOL]`           | API exploration             | curl + OpenAPI types (`bun run api:sync`) | Postman manual           |
+| Tag                     | Domain                            | Primary                                   | Fallback                               |
+| ----------------------- | --------------------------------- | ----------------------------------------- | -------------------------------------- |
+| `[ISSUE_TRACKER_TOOL]`  | Jira Cloud (story/bug/epic)       | `/acli`                                   | MCP Atlassian (opt-in — see docs/mcp/) |
+| `[KNOWLEDGE_BASE_TOOL]` | Confluence (knowledge base/docs)  | `/acli` (Confluence subcommands)          | MCP Atlassian (opt-in — see docs/mcp/) |
+| `[AUTOMATION_TOOL]`     | Browser automation                | `/playwright-cli`                         | MCP Playwright                         |
+| `[DB_TOOL]`             | Database                          | Supabase MCP                              | raw SQL via Supabase CLI               |
+| `[API_TOOL]`            | API exploration                   | curl + OpenAPI types (`bun run api:sync`) | Postman manual                         |
+| `[DOCS_TOOL]`           | Library / framework / SDK / API / CLI official docs | Context7 MCP (`mcp__context7__resolve-library-id` → `mcp__context7__query-docs`) | built-in `WebSearch` / `WebFetch` (last resort only) |
+| `[WEB_SEARCH_TOOL]`     | General web search, community fixes, troubleshooting, non-doc research | Tavily MCP (`mcp__tavily__tavily_search` / `tavily_extract` / `tavily_research`) | built-in `WebSearch` / `WebFetch` (last resort only) |
 
 **MANDATORY**: LOAD owning skill BEFORE invoking its tool. Skills hold WHEN/WHAT only. HOW (syntax, flags, auth, pagination, errors) lives inside owning skill's `references/`.
+
+**MCP-only tags** (`[DOCS_TOOL]`, `[WEB_SEARCH_TOOL]`): no skill load required — MCPs self-document via tool descriptions. But **NEVER** substitute these with built-in `WebSearch` / `WebFetch` when MCP available — Context7 and Tavily return higher-quality, current, ranked results. Built-ins are stale-blog-post traps for library docs.
 
 **Pseudocode value types**: `Literal` (fixed domain) · `{per convention}` (consult skill ref) · `{{PROJECT_VAR}}` (from `.agents/project.yaml`) · `{from analysis}` (runtime-derived).
 
@@ -221,7 +229,7 @@ Example (same work, different register):
 | `bun`            | `/bun`                                                                 | Runtime + package manager. Skill covers bun-specific APIs, scripts, lockfile.   |
 | `gh`             | `/git-flow-master`                                                     | GitHub CLI + git workflow. Skill covers repo ops, PRs, `gh api` patterns.       |
 | `supabase`       | `/supabase`, `/supabase-postgres-best-practices`, `/project-bootstrap` | DB CLI + Postgres patterns + DB scaffold flow.                                  |
-| `vercel`         | `/deploy-to-vercel`, `/sprint-development`                             | Deploy CLI + sprint-dev's staging/prod deploy steps.                            |
+| `vercel`         | `/vercel-cli`, `/deploy-to-vercel`, `/sprint-development`              | Vercel CLI cookbook (verification, env, debug, rollback) + community deploy workflow + sprint deploy stages. |
 | `resend`         | `/resend-cli`                                                          | Transactional email CLI — covers send, templates, domains.                      |
 | `acli`           | `/acli`                                                                | Atlassian CLI — Jira/Confluence workflows. Owns slug syntax + custom-field IDs. |
 | `playwright-cli` | `/playwright-cli`, `/sprint-development`                               | Browser automation — used by sprint-dev E2E checks + standalone QA capture.     |

@@ -228,17 +228,33 @@ const SECRET_NAME_HINTS = ['TOKEN', 'KEY', 'SECRET', 'PASSWORD'];
 
 // Map MCP server → env vars its secrets depend on. Servers with empty arrays
 // have no secrets (so they're always "configured-no-key").
+//
+// The supabase MCP server is admin-scoped via SUPABASE_ACCESS_TOKEN (PAT).
+// The other Supabase vars (URL + publishable/secret keys) ARE consumed via
+// the "env" mapping in .mcp.json / opencode.jsonc, but they're project-bound
+// (require an existing Supabase project) — so they're deferred to doctor.
 const MCP_SERVER_SECRETS: Record<string, readonly string[]> = {
   context7: [],
   tavily: ['TAVILY_API_KEY'],
   supabase: [
     'SUPABASE_ACCESS_TOKEN',
-    'SUPABASE_URL',
-    'SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'SUPABASE_PUBLISHABLE_KEY',
+    'SUPABASE_SECRET_KEY',
   ],
   n8n: ['N8N_API_URL', 'N8N_API_KEY'],
 };
+
+// Vars discovered from committed MCP configs that the installer should NOT
+// prompt for at install time — they require an existing Supabase project /
+// n8n instance / backend. Surfaced later by `bun run doctor`.
+const INSTALLER_DEFERRED_VARS = new Set<string>([
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'N8N_API_URL',
+  'N8N_API_KEY',
+]);
 
 // ============================================================================
 // CLI flags
@@ -773,6 +789,11 @@ async function configureMcps(agents: AgentId[], state: InstallState): Promise<vo
       log.dim(`  ${name}: captured from shell environment`);
       continue;
     }
+    if (INSTALLER_DEFERRED_VARS.has(name)) {
+      stillPending.push(name);
+      log.dim(`  ${name}: deferred to \`bun run doctor\` (project-bound — needs Supabase project / n8n instance).`);
+      continue;
+    }
     if (NON_INTERACTIVE) {
       stillPending.push(name);
       continue;
@@ -809,6 +830,106 @@ async function configureMcps(agents: AgentId[], state: InstallState): Promise<vo
       state.mcps[server] = anyMissing ? 'placeholder' : 'configured-with-key';
     }
   }
+}
+
+// ----------------------------------------------------------------------------
+// Day-0 credentials (ATLASSIAN_*, RESEND_API_KEY)
+// ----------------------------------------------------------------------------
+//
+// Credentials a user CAN provide on a fresh clone (no existing cloud project
+// required). Promoted out of the acli auth loop (formerly Step 12.4) so the
+// user is asked even if they later skip Jira bootstrap.
+//
+// Project-bound vars (SUPABASE_URL + new-style keys, POSTGRES_*, N8N_*) are
+// deferred to `bun run doctor` — see INSTALLER_DEFERRED_VARS above.
+
+const DAY_ZERO_ATLASSIAN_VARS = ['ATLASSIAN_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
+
+async function configureDayZeroCredentials(state: InstallState): Promise<void> {
+  await ensureEnvFileExists();
+  const envValues = parseEnvFile(await readFile(ENV_PATH, 'utf8'));
+  const newValues: Record<string, string> = {};
+
+  // ── Atlassian credentials ─────────────────────────────────────────────────
+  const missingAtlassian = DAY_ZERO_ATLASSIAN_VARS.filter((name) => {
+    const fromFile = envValues[name];
+    if (fromFile && fromFile.trim().length > 0) { return false; }
+    const fromProcess = process.env[name];
+    return !(fromProcess && fromProcess.trim().length > 0);
+  });
+
+  if (missingAtlassian.length > 0) {
+    if (NON_INTERACTIVE) {
+      log.warn(`Atlassian vars missing in non-interactive mode: ${missingAtlassian.join(', ')}`);
+    }
+    else {
+      tui.note(
+        'Used by acli + scripts/sync-jira-*.ts. Get a token at: https://id.atlassian.com/manage-profile/security/api-tokens',
+        'Atlassian credentials',
+      );
+      for (const name of missingAtlassian) {
+        const value = await promptForVar(name);
+        if (value.length > 0) {
+          newValues[name] = value;
+          process.env[name] = value;
+        }
+      }
+    }
+  }
+  else {
+    log.dim('  ATLASSIAN_URL / ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN: already set.');
+  }
+
+  // ── Resend API key ────────────────────────────────────────────────────────
+  const currentResend = (envValues.RESEND_API_KEY ?? process.env.RESEND_API_KEY ?? '').trim();
+  if (currentResend.length === 0) {
+    if (NON_INTERACTIVE) {
+      log.dim('  RESEND_API_KEY: skipped in non-interactive mode.');
+    }
+    else {
+      tui.note(
+        'Optional. Used by application code AND for `resend` CLI authentication. Get a key: https://resend.com/api-keys — Docs: https://resend.com/docs/api-reference/introduction',
+        'Resend API key',
+      );
+      const value = await promptForVar('RESEND_API_KEY');
+      if (value.length > 0) {
+        newValues.RESEND_API_KEY = value;
+        process.env.RESEND_API_KEY = value;
+      }
+    }
+  }
+  else {
+    log.dim('  RESEND_API_KEY: already set.');
+  }
+
+  if (Object.keys(newValues).length > 0) {
+    await appendVarsToEnv(newValues);
+    reloadDotEnv();
+    log.success(`Wrote ${Object.keys(newValues).length} day-0 var(s) to .env: ${Object.keys(newValues).join(', ')}`);
+  }
+
+  // ── Resend CLI authentication attempt ────────────────────────────────────
+  const resendToken = (process.env.RESEND_API_KEY ?? '').trim();
+  if (resendToken.length > 0 && !NON_INTERACTIVE) {
+    const resendBin = tryRun('resend', ['--version']);
+    if (!resendBin.ok) {
+      log.dim('  resend CLI not installed — skipping auto-login. Install: npm i -g resend-cli');
+    }
+    else {
+      const loginRes = spawnSync('resend', ['login', '--api-key', resendToken], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10000,
+      });
+      if (loginRes.status === 0) {
+        process.stdout.write(`${tui.statusIcon('ok')} resend CLI authenticated.\n`);
+      }
+      else {
+        process.stdout.write(`${tui.statusIcon('warn')} resend CLI auto-login failed (exit ${loginRes.status}). Run manually: resend login\n`);
+      }
+    }
+  }
+
+  void state;
 }
 
 // ----------------------------------------------------------------------------
@@ -1465,30 +1586,9 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
     }
   }
   else {
-    // Interactive: collect any missing ATLASSIAN_* vars via the existing
-    // promptForVar helper (which uses password() for *_TOKEN names), persist
-    // them to .env, then probe + login.
-    tui.note(
-      'Used by acli + scripts/sync-jira-*.ts. Get a token at: https://id.atlassian.com/manage-profile/security/api-tokens',
-      'Atlassian credentials',
-    );
-
+    // ATLASSIAN_* credentials were collected during Step 7c (day-0 creds).
+    // Here we only probe + authenticate; we DON'T re-prompt up front.
     reloadDotEnv();
-    const envValues = existsSync(ENV_PATH) ? parseEnvFile(readFileSync(ENV_PATH, 'utf8')) : {};
-    const newValues: Record<string, string> = {};
-    for (const name of ATLASSIAN_VARS) {
-      const fromFile = envValues[name];
-      const fromShell = process.env[name];
-      if ((fromFile && fromFile.trim().length > 0) || (fromShell && fromShell.trim().length > 0)) {
-        continue;
-      }
-      const value = await promptForVar(name);
-      if (value.length > 0) { newValues[name] = value; }
-    }
-    if (Object.keys(newValues).length > 0) {
-      await appendVarsToEnv(newValues);
-      reloadDotEnv();
-    }
 
     // Probe first: any existing acli session short-circuits the login.
     const probe = acliProbe();
@@ -2042,6 +2142,9 @@ async function main(): Promise<void> {
   tui.section('Step 7: Wiring .env for MCP servers');
   await configureMcps(agents, state);
   await offerDirenvAutoload();
+
+  tui.section('Step 7c: Day-0 credentials (Atlassian, Resend)');
+  await configureDayZeroCredentials(state);
 
   // Step 9 — optional GitHub repo creation
   tui.section('Step 7b: GitHub repository (optional)');

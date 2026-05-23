@@ -56,6 +56,16 @@ export interface IgnoreFileSyncState {
   appendedLines: string[] // lines previously appended via applyIgnoreAppend (de-dup source)
 }
 
+export interface PackageJsonSectionSyncState {
+  lastSyncedSha: string // blob SHA of the upstream package.json when last compared
+  appliedKeys: string[] // keys previously appended via applyPackageJsonAppend (de-dup source)
+}
+
+export interface PackageJsonSyncState {
+  // keyed by section name (e.g. 'scripts', 'devDependencies')
+  [section: string]: PackageJsonSectionSyncState
+}
+
 export interface SyncStateV7 {
   schemaVersion: 7
   templateRepo: string
@@ -63,6 +73,10 @@ export interface SyncStateV7 {
   perComponentCommit: Record<string, string>
   syncedComponents: string[]
   ignoreFileSync: Record<string, IgnoreFileSyncState>
+  // Optional — added in-place (no schema bump) following the same pattern as
+  // ignoreFileSync. Older v7 lockfiles without this field are migrated lazily
+  // via a defensive init in runUpdate (mirror of ignoreFileSync init).
+  packageJsonSync?: Record<string, PackageJsonSyncState>
   cliVersion: string
   lastSyncedAt: string // ISO-8601 UTC
   variableSystemVersion: number
@@ -90,6 +104,18 @@ export class CorruptStateError extends Error {
   }
 }
 
+/**
+ * Thrown by `validateComponentRegistry` when two components claim ownership
+ * over the same path or file. Wrapper catches this to print a friendly error
+ * before exiting (misconfigured registry — maintainer must split paths).
+ */
+export class ComponentOverlapError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ComponentOverlapError';
+  }
+}
+
 // ============================================================================
 // COMPONENTS / DELTA
 // ============================================================================
@@ -107,6 +133,20 @@ export interface Component {
    *   - if local file MISSING → classifier forces `new-upstream` (bootstrap copy)
    */
   bootstrapOnly?: boolean
+  /**
+   * Basename allowlist that EXEMPTS files from the component-level `bootstrapOnly`
+   * behavior. Files whose basename appears here are treated as framework templates
+   * (normal sync semantics) even when `bootstrapOnly: true` on the component.
+   *
+   * Use case: `.context/` is bootstrap-only at the component level (data files like
+   * `master-implementation-plan.md` / `business-*.md` are project-generated and must
+   * never be overwritten), but README scaffolding files (`README.md` under each
+   * sub-directory) ARE framework templates that should keep flowing to targets.
+   *
+   * Matching is on `path.basename(entry.path)` — no path globs.
+   * Ignored when `bootstrapOnly` is false/undefined.
+   */
+  frameworkFiles?: string[]
 }
 
 export type ChangeStatus = 'M' | 'A' | 'D';
@@ -215,6 +255,55 @@ export interface IgnoreDelta {
 }
 
 // ============================================================================
+// PACKAGE.JSON handler contracts (consumed by `updater-package.ts`)
+// ============================================================================
+
+/**
+ * Sections of package.json that the append-only sync supports.
+ * Deliberately limited to fields where additive merging is safe and well-defined.
+ * Runtime `dependencies` are excluded (higher blast radius — separate decision).
+ */
+export type PackageJsonSection = 'scripts' | 'devDependencies';
+
+export interface PackageJsonSpec {
+  /** Repo-relative file path, e.g. 'package.json' */
+  path: string
+  /** Sections to sync within the file. Top-level keys outside this list stay byte-identical. */
+  sections: PackageJsonSection[]
+}
+
+export interface PackageJsonKeyDrift {
+  localValue: string
+  upstreamValue: string
+}
+
+export interface PackageJsonSectionDelta {
+  /** Keys present upstream but absent locally — SAFE APPEND candidates. */
+  upstreamOnlyKeys: Record<string, string>
+  /** Keys present in both but with different values — FYI only, NEVER overwritten. */
+  localOverrideKeys: Record<string, PackageJsonKeyDrift>
+  /** FYI only — local-only keys absent upstream. NEVER removed. */
+  localOnlyKeys: string[]
+  /** Keys previously appended (from state.packageJsonSync[file][section].appliedKeys). */
+  alreadyApplied: string[]
+}
+
+export interface PackageJsonDelta {
+  file: string
+  /** Per-section delta. Keyed by section name (e.g. 'scripts', 'devDependencies'). */
+  sections: Record<string, PackageJsonSectionDelta>
+}
+
+export interface PackageJsonKeyOption {
+  /** The exact key name (value submitted by multiselect). */
+  value: string
+  /** Display label, e.g. `"test:smoke" → "playwright test --project=smoke"`. */
+  label: string
+  /** Whether the key is checked by default in the multiselect. */
+  checked: boolean
+}
+
+// ============================================================================
 // PHASE A — forward-declared skeletons for Phase B integration.
 // Not consumed by any Phase A code path; included so call-sites and external
 // consumers can compile against the final surface area today.
@@ -292,6 +381,12 @@ export interface ReportSink {
   pickScopeStrategy?: (scope: string, stats: ScopeStats) => Promise<ScopeStrategy>
   pickFiles: (scope: string, files: FileOption[]) => Promise<DeltaEntry[]>
   pickIgnoreLines: (file: string, lines: IgnoreLineOption[]) => Promise<string[]>
+  /**
+   * Optional Phase-4.5b hook: multiselect for new package.json keys per section.
+   * If not implemented, the core auto-accepts ALL upstream-only keys (append-only
+   * is safe — mirror of `--auto` policy for ignore-line append).
+   */
+  pickPackageJsonKeys?: (file: string, section: string, keys: PackageJsonKeyOption[]) => Promise<string[]>
   resolveDiverged: (entry: DeltaEntry, diff: PairedDiff) => Promise<Resolution>
   confirmDelete: (entry: DeltaEntry) => Promise<boolean>
   /**
@@ -314,6 +409,11 @@ export interface UpdaterConfig {
   versionFile: string
   components: Component[]
   ignoreFiles: IgnoreFileSpec[]
+  /**
+   * Optional append-only sync targets for package.json (or any JSON file with
+   * the same shape). Keyed by section. Empty / undefined = phase skipped.
+   */
+  packageJsonSpecs?: PackageJsonSpec[]
   deprecatedFiles: DeprecatedFile[]
   bootstrapOnlyPaths: string[]
   agentsFrameworkFiles?: string[]

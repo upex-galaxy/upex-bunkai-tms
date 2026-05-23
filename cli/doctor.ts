@@ -55,32 +55,66 @@ const MIN_BUN: readonly [number, number, number] = [1, 0, 0];
 // docs/mcp/ for the templates to enable it manually. No JIRA_* credential
 // overrides; the JIRA_* prefix is reserved for operational params (project
 // key, output dir, custom field IDs).
-const REQUIRED_VARS = [
+// Env vars surfaced by doctor.
+//
+// Split into two tiers:
+//   - DAY_ZERO_VARS — collectable on a fresh clone. Installer also prompts.
+//   - PROJECT_BOUND_VARS — require an existing Supabase project / n8n
+//     instance / Postgres connection. Deferred by the installer; doctor
+//     reports them as pending.
+//
+// Legacy Supabase keys (SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY) are
+// intentionally NOT listed — `.mcp.json` / `opencode.jsonc` map the new-style
+// SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY into the legacy names the
+// Supabase MCP server reads internally.
+const DAY_ZERO_VARS = [
   'TAVILY_API_KEY',
+  'RESEND_API_KEY',
   'ATLASSIAN_URL',
   'ATLASSIAN_EMAIL',
   'ATLASSIAN_API_TOKEN',
   'SUPABASE_ACCESS_TOKEN',
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
+] as const;
+
+const PROJECT_BOUND_VARS = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'SUPABASE_JWT_SECRET',
+  'POSTGRES_HOST',
+  'POSTGRES_USER',
+  'POSTGRES_PASSWORD',
+  'POSTGRES_DATABASE',
+  'POSTGRES_URL',
+  'POSTGRES_URL_NON_POOLING',
+  'POSTGRES_PRISMA_URL',
   'N8N_API_URL',
   'N8N_API_KEY',
 ] as const;
 
+const REQUIRED_VARS = [...DAY_ZERO_VARS, ...PROJECT_BOUND_VARS] as const;
+
 // Legacy credential keys some users may still have in `.env` from before the
-// DRY rename. Detected so doctor can emit a migration hint — they're harmless
-// (nothing reads them anymore) but signal a stale .env.
+// DRY rename or before the legacy-Supabase-keys removal. Detected so doctor
+// can emit a migration hint — they're harmless (nothing reads them anymore)
+// but signal a stale .env.
 const LEGACY_JIRA_CRED_KEYS = [
   'JIRA_URL',
   'JIRA_USERNAME',
   'JIRA_API_TOKEN',
+  'SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ] as const;
 
 const VAR_HINTS: Record<string, { hint: string, where: string }> = {
   TAVILY_API_KEY: {
     hint: 'Tavily web-search MCP API key',
     where: 'https://app.tavily.com/  →  account  →  API keys',
+  },
+  RESEND_API_KEY: {
+    hint: 'Resend API key (transactional email + resend CLI auth)',
+    where: 'https://resend.com/api-keys  (docs: https://resend.com/docs/api-reference/introduction)',
   },
   ATLASSIAN_URL: {
     hint: 'Atlassian credentials (canonical) — see .env.example',
@@ -98,20 +132,52 @@ const VAR_HINTS: Record<string, { hint: string, where: string }> = {
     hint: 'Supabase personal access token (PAT) for the Supabase MCP server',
     where: 'https://supabase.com/dashboard/account/tokens',
   },
-  SUPABASE_URL: {
-    hint: 'Supabase project URL',
+  NEXT_PUBLIC_SUPABASE_URL: {
+    hint: 'Supabase project URL (project-bound — Vercel integration generates only this var, no server-only counterpart)',
     where: 'Supabase dashboard → Project Settings → API',
   },
-  SUPABASE_ANON_KEY: {
-    hint: 'Supabase anon (public) API key',
+  SUPABASE_PUBLISHABLE_KEY: {
+    hint: 'Supabase new-style publishable key (browser-safe, replaces anon key)',
     where: 'Supabase dashboard → Project Settings → API',
   },
-  SUPABASE_SERVICE_ROLE_KEY: {
-    hint: 'Supabase service-role key (server-side, full DB access)',
+  SUPABASE_SECRET_KEY: {
+    hint: 'Supabase new-style secret key (server only, replaces service_role)',
     where: 'Supabase dashboard → Project Settings → API',
+  },
+  SUPABASE_JWT_SECRET: {
+    hint: 'Secret used to sign / verify custom JWTs',
+    where: 'Supabase dashboard → Project Settings → API → JWT Settings',
+  },
+  POSTGRES_HOST: {
+    hint: 'Direct Postgres host for the Supabase project',
+    where: 'db.<project-ref>.supabase.co',
+  },
+  POSTGRES_USER: {
+    hint: 'Postgres user (default: postgres)',
+    where: 'Supabase dashboard → Project Settings → Database',
+  },
+  POSTGRES_PASSWORD: {
+    hint: 'Postgres password for the project',
+    where: 'Supabase dashboard → Project Settings → Database',
+  },
+  POSTGRES_DATABASE: {
+    hint: 'Postgres database name (default: postgres)',
+    where: 'Supabase dashboard → Project Settings → Database',
+  },
+  POSTGRES_URL: {
+    hint: 'Pooled Postgres connection string (port 6543)',
+    where: 'Supabase dashboard → Project Settings → Database → Connection string (Pooler)',
+  },
+  POSTGRES_URL_NON_POOLING: {
+    hint: 'Direct Postgres connection string (port 5432)',
+    where: 'Supabase dashboard → Project Settings → Database → Connection string',
+  },
+  POSTGRES_PRISMA_URL: {
+    hint: 'Pooled connection with pgbouncer=true (for Prisma ORM)',
+    where: 'Same as POSTGRES_URL with &pgbouncer=true',
   },
   N8N_API_URL: {
-    hint: 'n8n instance API URL for the n8n MCP server',
+    hint: 'n8n instance API URL for the n8n MCP server (project-bound)',
     where: 'e.g. https://n8n.yourapp.com/api/v1',
   },
   N8N_API_KEY: {

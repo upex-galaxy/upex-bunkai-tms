@@ -121,6 +121,7 @@ These files have stable names and locations. Any skill, command, or doc can refe
 | `/unit-testing`        | Standalone or composable mid-flight from `/sprint-development` for TDD slices                                                                      |
 | `/git-flow-master`     | Any git/PR work — auto-detects branching strategy and adapts                                                                                       |
 | `/acli`                | Atlassian CLI cookbook for Jira Cloud + Confluence Cloud                                                                                           |
+| `/vercel-cli`          | Vercel CLI cookbook: deployment verification (poll commit SHA + `inspect --wait`), env sync, debug, rollback. Auto-loads on `vercel` Bash calls    |
 | `/agentic-dev-onboard` | Walk a new user through the repo's dev flow, MCPs, env vars, skills                                                                                |
 
 ### Utility slash commands

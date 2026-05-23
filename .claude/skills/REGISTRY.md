@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-05-22T09:47:52.482Z`
+> Generated: `2026-05-23T03:30:06.052Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -8,7 +8,7 @@ This file is the per-session compact-rules cache for the Skill Resolver protocol
 The orchestrator copies one or more `## Skill: <slug>` blocks below into every subagent briefing under `## Project Standards (auto-resolved)`.
 Subagents trust those compact rules and only read the full SKILL.md when explicitly instructed.
 
-Skills indexed: 11
+Skills indexed: 12
 
 ---
 ## Skill: acli
@@ -316,3 +316,31 @@ Skills indexed: 11
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
 > Source: `.claude/skills/unit-testing/SKILL.md` · phase: `implementation` · extraction strategy: B
+
+---
+
+## Skill: vercel-cli
+
+**Purpose**: Vercel CLI cookbook for this Next.js + Supabase + Vercel boilerplate.
+
+**Compact Rules**:
+- **`vercel ls | grep` is the wrong tool to check whether YOUR deploy is ready.** ANSI color codes break the regex, and the output mixes new and old deploys for the same branch. The canonical "is this exact commit deployed" question has a different answer: `vercel ls -m githubCommitSha=<sha> --format json` to find the URL, then `vercel inspect <url> --wait --timeout=10m` to block until terminal state.
+- **`vercel deploy` blocks by default; `vercel inspect` does NOT.** That asymmetry is backwards from intuition and trips agents constantly. Rule: **always pass `--no-wait` to `vercel deploy`** (return URL immediately), **always pass `--wait` to `vercel inspect`** (block until READY / ERROR / CANCELED). See `references/gotchas.md`.
+- **Env-var scopes are not the same string in the CLI and the dashboard.** CLI uses lowercase `production` / `preview` / `development`; the dashboard shows "Production" / "Preview" / "Development". The CLI is the authoritative spelling — if you need to script env mutations, use the CLI form.
+- Read `complementary_categories` from this skill's frontmatter (`deploy-vercel`).
+- Look up the local skill-registry script (`scripts/build-skill-registry.ts` → `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
+- If `/deploy-to-vercel` is installed (default project-level community skill per `cli/install.ts`), prefer it for any "I haven't deployed this project yet" intent.
+- **`--no-wait` on deploy, `--wait` on inspect — never the other way around.** Inverting these means you either block for 10 minutes waiting on a deploy URL you needed immediately, or you race an unfinished deployment with a smoke test.
+- **`vercel ls -m githubCommitSha=<sha>` is the canonical "find MY deploy" query.** No grep, no parsing, no race. Use `--format json` and `jq`.
+- **Status filter values are UPPERCASE.** `vercel ls --status READY` works; `--status ready` returns empty with no error.
+- **`vercel env pull` writes to `.env.local` by default.** That file is in `.gitignore` for a reason — never commit it. If you need a different filename, pass it as a positional arg.
+- **Multi-team accounts need `--scope <team-slug>` on EVERY mutating command.** Otherwise the operation hits the wrong team's project, or fails with a confusing 404.
+- **Always `--format json`** on `ls`, `env ls`, `teams ls`. Human tables include ANSI color and lose columns at narrow widths.
+- **Always `--no-wait` on `vercel deploy`** in scripts. Capture the URL, then poll with `vercel inspect --wait` separately.
+- **Always `--wait --timeout=10m`** on `vercel inspect` when verifying. Default behavior returns immediately with whatever state the deploy is currently in — usually `BUILDING`, which tells you nothing.
+- **Always pass `--scope <team-slug>`** if `vercel teams ls` shows more than one team. If the project is already linked, the `orgId` in `.vercel/project.json` / `.vercel/repo.json` resolves the team automatically and you can omit `--scope`.
+- (truncated — read full SKILL.md for the rest)
+
+**Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
+
+> Source: `.claude/skills/vercel-cli/SKILL.md` · phase: `implementation` · extraction strategy: B

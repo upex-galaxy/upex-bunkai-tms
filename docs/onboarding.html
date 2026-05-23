@@ -2960,8 +2960,14 @@ bun run vars:check           # validate placeholders</code></pre>
                   </tr>
                   <tr>
                     <td><code>vercel</code></td>
-                    <td><code>/deploy-to-vercel</code>, <code>/sprint-development</code></td>
-                    <td>Deploy CLI + sprint-dev staging/prod deploy steps.</td>
+                    <td>
+                      <code>/vercel-cli</code>, <code>/deploy-to-vercel</code>,
+                      <code>/sprint-development</code>
+                    </td>
+                    <td>
+                      Vercel CLI cookbook (verification, env sync, debug, rollback) + community
+                      deploy workflow + sprint-dev staging/prod deploy steps.
+                    </td>
                   </tr>
                   <tr>
                     <td><code>acli</code></td>
@@ -3331,6 +3337,25 @@ bun run vars:check           # validate placeholders</code></pre>
                   Atlassian CLI cookbook for Jira Cloud + Confluence Cloud — work items, projects,
                   boards, sprints, fields, transitions. Resolves the
                   <code>[ISSUE_TRACKER_TOOL]</code> pseudocode tag.
+                </p>
+              </article>
+
+              <article class="skill-card">
+                <div class="skill-card-head">
+                  <span class="skill-card-name">vercel-cli</span>
+                  <span class="badge badge-tool">Tool</span>
+                  <span class="badge badge-tier-t1">T1</span>
+                </div>
+                <p class="skill-card-trigger">
+                  /vercel-cli (auto on <code>vercel</code> Bash calls)
+                </p>
+                <p class="skill-card-desc">
+                  Vercel CLI cookbook tailored to this Next.js + Supabase + Vercel stack —
+                  deployment verification (poll commit SHA + <code>vercel inspect --wait</code>),
+                  env var sync (<code>.env</code> ↔ Preview / Production scopes), build / runtime
+                  log streaming, rollback, <code>.vercel/</code> project linking. Companion to
+                  community <code>/deploy-to-vercel</code> (which owns the deploy method selection)
+                  and <code>/sprint-development</code> Stages 9 & 12.
                 </p>
               </article>
             </div>
