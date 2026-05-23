@@ -85,7 +85,7 @@ This boilerplate is designed to be cloned in full. The workflow skills under `.c
 
 ---
 
-## Out of scope
+## What this skill does NOT cover
 
 `agentic-dev-core` does not:
 

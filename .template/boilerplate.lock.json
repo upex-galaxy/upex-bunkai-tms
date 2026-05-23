@@ -4,7 +4,7 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "5a66c0b19bb11bc748716495f61500ea68adacb7",
-    "claude": "c684bc430d49d862644cd1c34954dd26ec095391",
+    "claude": "0517fda9adebda15b471085a5c5913ff7a56b2ff",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "agents": "c684bc430d49d862644cd1c34954dd26ec095391",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -20,7 +20,7 @@
   "syncedComponents": [],
   "ignoreFileSync": {},
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-23T06:20:39.625Z",
+  "lastSyncedAt": "2026-05-23T06:50:24.081Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
