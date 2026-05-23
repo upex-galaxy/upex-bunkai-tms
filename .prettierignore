@@ -5,6 +5,10 @@ node_modules/
 dist/
 build/
 .next/
+supabase/.temp/
+
+# Local backups created by `bun run setup` between boilerplate updates
+.backups/
 
 # Test artifacts
 test-results/
