@@ -23,6 +23,10 @@ model_preferences:
 
 Orchestrates the continuous product management lifecycle: turning a fresh PRD into an initial Jira backlog, adding new features incrementally as the product evolves, structuring epics, and refining individual stories until they are truly "ready for development". Unlike `/project-foundation` (one-time, foundational), product management is **ongoing work** — re-invoke this skill any time backlog work surfaces.
 
+## Tool abstraction — hard rule
+
+This skill describes methodology — *what* to do at each phase. It NEVER hardcodes the *how* (specific CLI flags, MCP call shapes, REST endpoints). All tool interactions are expressed as `[ISSUE_TRACKER_TOOL]`, `[DB_TOOL]`, `[AUTOMATION_TOOL]` pseudo-code variables that resolve via `CLAUDE.md` Tool Resolution table. When the AI executes an operation, it loads the matching tool's own skill (e.g. `/acli` for Jira). Methodology persists across tool changes; this skill must too. See `references/jira-operations.md` for the operation-by-operation decision table.
+
 ## When to use
 
 Use this skill whenever you are doing backlog or refinement work after the foundational PRD/SRS exists:
@@ -40,6 +44,37 @@ The skill is reference-driven: each workflow points to a specific reference file
 - `/project-foundation` should have produced `.context/PRD/` and `.context/SRS/` (required for the initial backlog-seed workflow; useful context for all others)
 - `.agents/project.yaml` populated with `{{PROJECT_KEY}}`, `{{ISSUE_TRACKER}}`, `{{ATLASSIAN_URL}}` — these ship with the cloned boilerplate; if missing, clone the full repo
 - Atlassian / Jira tooling reachable (Atlassian CLI `acli` preferred, MCP Atlassian as fallback) for any workflow that writes to Jira
+
+### Inputs — read these first
+
+Canonical reading order for any AI starting cold on a product-management workflow. Read in order; stop earlier when the workflow is small enough that later inputs add no signal.
+
+1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+2. `.agents/jira-required.yaml` — canonical slug catalog (fields + statuses + link types).
+3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping.
+4. `.agents/jira-workflows.json` — workflow + transition catalog.
+5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
+6. `.context/master-implementation-plan.md` — Master Sprint roadmap.
+7. `.context/PRD/mvp-scope.md` — what's in vs out of the MVP.
+8. `.context/PRD/user-personas.md` — actor model.
+9. `.context/PRD/user-journeys.md` — flow-level expectations.
+10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:**` references).
+11. `.context/SRS/non-functional-specs.md` — NFRs (perf, security, a11y).
+12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies).
+13. `.context/business/business-feature-map.md` — CRUD matrix.
+14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journey breakdown).
+15. `.context/PBI/epic-tree.md` — current backlog state.
+
+**Optional inputs.** Business maps (12–14) frequently arrive after `/business-*-map` runs and may be absent at seed time. Proceed without them when missing; surface a `missing_input` note in the workflow output so a later refinement pass can fill the gap.
+
+## Glossary
+
+Two layers share the noun "Sprint". Disambiguate when ambiguity matters; otherwise use the bare term.
+
+- **Master Sprint** — strategic / architectural grouping (Master Sprint 1–7 typical) sourced from `.context/master-implementation-plan.md` §5. Locked at PRD time; updates rarely. A single Master Sprint contains multiple Execution Sprints internally.
+- **Execution Sprint** — operational / dependency-driven grouping (Execution Sprint 1, 2, 3 …) produced by `references/sprint-sequencing.md` via topological sort of the dependency-link graph. Recomputed whenever stories or links change.
+
+Use the bare word **Sprint** only when the layer is obvious from context. When ambiguity matters, qualify.
 
 ## Composable Skills (auto-resolved at skill entry)
 
@@ -79,8 +114,9 @@ Session management applies **only to workflows A, B, C** below. Short, single-ac
 | E — AC quality refinement         | No                         |
 | F — Edge-case enumeration         | No                         |
 | G — Sprint reporting              | No (read-only)             |
+| H — Sprint sequencing             | No (one-shot derivation, no scope) |
 
-When the user invokes any of D / E / F / G, do NOT create a `.session/product-management/` directory and do NOT run Phase 0. Skill the carve-out is documented here so users don't expect a session directory for those workflows.
+When the user invokes any of D / E / F / G / H, do NOT create a `.session/product-management/` directory and do NOT run Phase 0. Skill the carve-out is documented here so users don't expect a session directory for those workflows.
 
 ## Phase 0 — Resume check (MANDATORY for A / B / C only, inline)
 
@@ -170,6 +206,14 @@ Read `references/sprint-report.md`.
 
 Output: a markdown sprint report rendered inline (epics + stories + PRs + status summary + per-epic progress + alerts). Not persisted by default — persist only if the user explicitly asks.
 
+### H. Sprint sequencing (topological execution order)
+
+When the user asks "what do we work on first?", "qué historias trabajamos primero", "execution order", "sprint plan", or "topological order". Compute Execution Sprints by topologically sorting the dependency-link graph across the in-scope epics + stories.
+
+Read `references/sprint-sequencing.md`.
+
+Output: `.context/PBI/sprint-sequence.md` (always persisted, overwrite on re-run) + an inline summary table. Session-managed: NO (one-shot derivation, no plan.md required).
+
 ## Archive (A / B / C only)
 
 On successful completion of workflow A / B / C (Verification checklist from the workflow's `plan.md` passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/product-management/<scope>/` to `.session/.archive/<YYYY-MM-DD>-product-management-<scope>/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back. Workflows D / E / F / G never write `.session/` directories and therefore have nothing to archive.
@@ -185,6 +229,7 @@ On successful completion of workflow A / B / C (Verification checklist from the 
 | "refine AC" / "acceptance criteria quality" / "Gherkin scenarios" / "AC ambiguities"                                               | `references/acceptance-criteria.md`    |
 | "enumerate edge cases" / "boundary scenarios" / "failure modes" / "what could go wrong"                                            | `references/edge-cases-enumeration.md` |
 | "sprint report" / "reporte de sprint" / "estado del sprint" / "qué hay en el sprint" / "progress report" / "dashboard del backlog" | `references/sprint-report.md`          |
+| "what do we work on first?" / "qué historias trabajamos primero" / "execution order" / "sprint plan" / "topological order"         | `references/sprint-sequencing.md`      |
 
 ## Optional: Delta Specs Pattern
 
@@ -206,6 +251,23 @@ When PM artifacts are ready, the natural downstream skills are:
 - **TDD on a single function** → `/unit-testing` (composable inside `/sprint-development`)
 - **Formal QA test cases, exploratory testing, automation, regression** → out of scope here; handled by a separate QA workflow
 
+## Anti-patterns — NEVER do these
+
+- **I1.** NEVER hardcode `customfield_NNNNN` IDs in skill or AI output. Resolve via `{{jira.<slug>}}`.
+- **I2.** NEVER prefix story summaries with `FR-XXX —`. Use `**Source spec:** FR-XXX` as the first body line.
+- **I3.** NEVER copy AC / Scope / Out-of-Scope content into the description. Those live exclusively in their custom fields.
+- **I4.** NEVER let two stories in the same epic share a literal Scope bullet. Surface as `overlap_alert` and ask the user to resolve.
+- **I5.** NEVER invent acceptance criteria, scope items, or business rules. Source must be PRD / SRS / business map / explicit user input. If missing → report `gap`, halt that field, continue with the rest.
+- **I6.** NEVER batch multiple ADF custom fields in a single MCP update call. Split per field, or pre-convert with `md-to-adf.ts`.
+- **I7.** NEVER nest inline `` `code` `` inside `**bold**` markdown destined for ADF — the converter combines incompatible marks and Jira rejects HTTP 400.
+- **I8.** NEVER create stories without immediately running the dependency-linking phase. Local declarations are not enough; Jira links must exist.
+- **I9.** NEVER hardcode `acli`, `mcp__atlassian__`, or REST URL examples in this skill. Use `[ISSUE_TRACKER_TOOL]` pseudo-code. The tool skill owns the syntax.
+- **I10.** NEVER use "Wave" terminology. Use "Sprint" (or "Master Sprint" / "Execution Sprint" when ambiguity matters).
+- **I11.** NEVER skip sprint-sequencing after creating multiple linked stories.
+- **I12.** NEVER hardcode link-type names (`"Dependencies"`, `"Blocks"`, `"Relates"`). Use `{{jira.link_types.<slug>}}`.
+- **I13.** NEVER use `Relates` for ordering-sensitive dependencies. Symmetric → direction is lost. Use `Dependencies` (or flag fallback explicitly as degradation).
+- **I14.** NEVER ignore cycle detection in sprint-sequencing. A cycle in the `dependencies` graph is a bug — halt and report.
+
 ## Variables consumed
 
 This skill uses standard `.agents/project.yaml` variables resolved at runtime:
@@ -213,6 +275,12 @@ This skill uses standard `.agents/project.yaml` variables resolved at runtime:
 - `{{PROJECT_KEY}}` — Jira project key (e.g., `MYM`, `UPEX`)
 - `{{ISSUE_TRACKER}}` — issue tracker name (typically `Jira`)
 - `{{ATLASSIAN_URL}}` — workspace URL
+
+In addition, every Jira-side identifier (custom field, status, link type) is resolved via slug indirection. `.agents/jira-required.yaml` is the canonical slug catalog:
+
+- `{{jira.<slug>}}` — custom-field IDs resolved via `.agents/jira-required.yaml` + `.agents/jira-fields.json`. Examples: `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.business_rules_specification}}`, `{{jira.workflow}}`, `{{jira.weblink}}`, `{{jira.mockup}}`.
+- `{{jira.statuses.<slug>}}` — default statuses for newly-created items. Examples: `{{jira.statuses.epic_default}}` (default literal `Planning`), `{{jira.statuses.story_default}}` (default literal `Shift-Left QA`).
+- `{{jira.link_types.<slug>}}` — link-type names resolved via `.agents/jira-link-types.json`. Sub-fields: `.outward`, `.inward`, `.fallback`. Examples: `{{jira.link_types.dependencies}}`, `{{jira.link_types.dependencies.outward}}` (`depends on`), `{{jira.link_types.dependencies.inward}}` (`is dependency for`), `{{jira.link_types.dependencies.fallback}}` (`relates`).
 
 If unset, clone the full boilerplate — these foundation files ship with the repo.
 

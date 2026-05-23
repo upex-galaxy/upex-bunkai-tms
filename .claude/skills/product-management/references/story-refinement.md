@@ -8,6 +8,34 @@
 > - `epic-creation.md` — when a story turns out to be an epic instead
 > - `acceptance-criteria.md` — for the deep AC refinement pass (after this guide)
 > - `edge-cases-enumeration.md` — for the edge-case discovery pass (after this guide)
+> - `jira-operations.md` — Primary / Fallback / Last-resort tool-layer decisions for every Jira operation
+> - `dependency-linking.md` — publishing Blocked By / Blocks declarations as Jira issue links
+> - `description-custom-field-dedup.md` — single-source-of-truth rule for AC / Scope / Out-of-Scope
+> - `jira-publishing-gotchas.md` — ADF + MCP pitfalls when writing rich-text fields
+
+---
+
+## Inputs — read these first, in this order
+
+A cold-start refinement needs the following files loaded in this exact sequence. Skip a file only if it is absent (mature-project artifacts may lag at seed time — flag and continue).
+
+1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+2. `.agents/jira-required.yaml` — canonical slug catalog (custom fields + statuses + link types).
+3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping.
+4. `.agents/jira-workflows.json` — workflow + transition catalog.
+5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
+6. `.context/master-implementation-plan.md` — Master Sprint roadmap.
+7. `.context/PRD/mvp-scope.md` — what is in vs out of the MVP.
+8. `.context/PRD/user-personas.md` — actor model (for the `As a` line).
+9. `.context/PRD/user-journeys.md` — flow-level expectations.
+10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:**` references).
+11. `.context/SRS/non-functional-specs.md` — NFRs (perf, security, a11y).
+12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies).
+13. `.context/business/business-feature-map.md` — CRUD matrix.
+14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journey breakdown).
+15. `.context/PBI/epic-tree.md` — current backlog state.
+
+Optional inputs (present in mature projects, may be missing at seed time): business maps (12–14) arrive after `/business-*-map` runs; treat as soft prerequisites and continue refining with the rest if absent.
 
 ---
 
@@ -74,58 +102,55 @@ Common failures and fixes:
 ## Story Structure: Template & Patterns
 
 > Adapted from the `story.md` template in `product-backlog-seed.md`. The full template lives there; this section focuses on the parts that get refined.
+>
+> **No content duplication**: the body of `story.md` carries narrative + DoD only. Acceptance Criteria, Scope, and Out-of-Scope live exclusively in their dedicated Jira custom fields (`{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`). See `references/description-custom-field-dedup.md` for the full single-source-of-truth rule and audit procedure.
 
-**The User Story line** — locked format:
+**In-file `story.md` body template** — locked shape:
 
 ```markdown
-**As a** [specific user type]
-**I want to** [clear, concrete action]
-**So that** [measurable user benefit]
+**Source spec:** {{FR-XXX | omit if not applicable}}
+
+## User story
+
+**As a** [specific persona from PRD]
+**I want to** [single verb + single object]
+**So that** [observable benefit]
+
+## Business rules
+
+[Overflow only — keep canonical content in `{{jira.business_rules_specification}}`.]
+
+## Workflow
+
+[Overflow only — keep canonical content in `{{jira.workflow}}`.]
+
+## Definition of done
+
+- [ ] [Project-standard DoD items]
+
+<!-- AC / Scope / Out-of-Scope live exclusively in their dedicated custom fields
+     (`{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`).
+     See `references/description-custom-field-dedup.md`. -->
 ```
 
-Refinement rules:
+Refinement rules for the User Story line:
 
-- **As a** — name a real persona or role from the PRD (not "the user")
-- **I want to** — one verb + one object; if you find yourself writing "and", split the story
+- **As a** — name a real persona or role from the PRD (not "the user").
+- **I want to** — one verb + one object; if you find yourself writing "and", split the story.
 - **So that** — must be a benefit, not a feature restatement. "So I can log in" is not a benefit; "so I can resume my session without re-entering credentials" is.
 
-**Scope (In / Out)** — be explicit. Out-of-scope items are the team's defense against scope creep mid-sprint.
+**Scope (In / Out) — custom-field only.** Be explicit. Out-of-scope items are the team's defense against scope creep mid-sprint. Write In-Scope bullets to `{{jira.scope}}` and Out-of-Scope bullets to `{{jira.out_of_scope}}` via `[ISSUE_TRACKER_TOOL]`. Do NOT duplicate into the description body. When writing these rich-text fields, follow `references/jira-publishing-gotchas.md` (per-field-per-call when batching ADF; no inline `code` inside `**bold**`).
 
-```markdown
-### In Scope
+**Acceptance Criteria — custom-field only.** Gherkin Scenario format, **minimum 3 scenarios**, written to `{{jira.acceptance_criteria}}` via `[ISSUE_TRACKER_TOOL]`. Pattern per scenario:
 
-- [Functionality included 1]
-- [Functionality included 2]
-
-### Out of Scope
-
-- [Functionality NOT included in this story]
-- [Items for future iterations]
+```gherkin
+Scenario: [Descriptive name]
+  Given [Initial context / clear preconditions]
+  When  [Specific user action]
+  Then  [Verifiable expected result]
 ```
 
-**Acceptance Criteria** — Gherkin Scenario format, **minimum 3 scenarios**:
-
-```markdown
-### Scenario 1: [Happy path — descriptive name]
-
-- **Given:** [Initial context / clear preconditions]
-- **When:** [Specific user action]
-- **Then:** [Verifiable expected result]
-
-### Scenario 2: [Validation/Error — descriptive name]
-
-- **Given:** [Initial context]
-- **When:** [Action that triggers an error or validation]
-- **Then:** [Expected system behavior]
-
-### Scenario 3: [Edge case — descriptive name]
-
-- **Given:** [Boundary or special context]
-- **When:** [User action]
-- **Then:** [Expected result]
-```
-
-The **min-3-scenarios rule**: 1 happy path + 1 validation/error + 1 edge case. Stories with only a happy path are not refined. For deep AC refinement (negative paths, boundaries, equivalence partitions), hand off to `acceptance-criteria.md` and `edge-cases-enumeration.md` after this pass.
+The **min-3-scenarios rule**: 1 happy path + 1 validation/error + 1 edge case. Stories with only a happy path are not refined. For deep AC refinement (negative paths, boundaries, equivalence partitions), hand off to `acceptance-criteria.md` and `edge-cases-enumeration.md` after this pass. When publishing AC, mind `references/jira-publishing-gotchas.md`.
 
 ---
 
@@ -176,17 +201,36 @@ A story is Ready when **all** of these are true:
 - [ ] **Local folder exists** under the parent epic (`.context/PBI/epics/EPIC-.../stories/STORY-.../`)
 - [ ] **`story.md` populated** — no `[placeholder]` left
 - [ ] **User story line** uses real persona, single action, real benefit
-- [ ] **Scope** explicitly lists In and Out of Scope
+- [ ] **Source spec line** present as the first body line (`**Source spec:** FR-XXX`) when an FR motivates the story, otherwise omitted
+- [ ] **Scope** explicitly populated in `{{jira.scope}}` (in-scope) and `{{jira.out_of_scope}}` (exclusions) — never in the description body
 - [ ] **INVEST** — all six criteria pass
-- [ ] **Acceptance Criteria** — minimum 3 Gherkin Scenarios (happy + error + edge)
+- [ ] **Acceptance Criteria** — minimum 3 Gherkin Scenarios (happy + error + edge) in `{{jira.acceptance_criteria}}`
+- [ ] **Deduplication audit passed** — run the dedup audit per `references/description-custom-field-dedup.md`. Confirm the description body excludes AC / Scope / OOS H2 sections and that those contents live in `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}` respectively. If a duplicate is found, strip from the description and keep the custom field as canonical.
 - [ ] **Story Points** estimated (1, 2, 3, 5, 8) and ≤8
-- [ ] **Dependencies declared** — Blocked By / Blocks / Related
+- [ ] **Dependencies declared locally** — Blocked By / Blocks / Related sections present in `story.md`
+- [ ] **Dependencies published to Jira** — see the "Dependency-link verification" step below
 - [ ] **Mockups linked** if a UI change (or "N/A — no UI change" stated)
 - [ ] **Technical notes** include any non-obvious implementation considerations
 - [ ] **3-amigos done** if triggered (>5 SP or integration-heavy)
 - [ ] **Definition of Done** present and project-standard
+- [ ] **Status transitioned** to `{{jira.statuses.story_default}}` (literal default `Shift-Left QA`) — see the "Status transition" step below
 
 When all are checked, the story can enter a sprint.
+
+### Dependency-link verification step
+
+Local `### Blocked By` / `### Blocks` declarations in `story.md` are not enough — they must exist as Jira issue links so downstream sprint-sequencing and JQL filters see them. For each declared dependency:
+
+1. Re-read the `### Blocked By` and `### Blocks` sections in the local `story.md`.
+2. For each declared key, use `[ISSUE_TRACKER_TOOL]` to check whether the corresponding Jira issue link already exists on the story (the link type is `{{jira.link_types.dependencies}}`; direction follows the dependent → prerequisite rule documented in `references/dependency-linking.md`).
+3. If a declared dependency has no matching Jira link, create it via `[ISSUE_TRACKER_TOOL]` per `references/dependency-linking.md` — including the directionality + fallback semantics for workspaces missing the canonical link type.
+4. If a Jira link exists with no matching local declaration, surface it to the user for triage (do not silently delete).
+
+Anti-pattern: NEVER skip this step on the assumption that the local declarations "speak for themselves." They do not — Jira-side automations (sprint-sequencing, board filters, blocked-flag rendering) only see the issue links.
+
+### Status transition step
+
+If the story is not yet at `{{jira.statuses.story_default}}` (literal default `Shift-Left QA`), transition it via `[ISSUE_TRACKER_TOOL]` using the transition resolved from `.agents/jira-workflows.json`. Run this as the final action of refinement — it signals to the rest of the team that the story has cleared the Ready gate. When the workspace overrides the slug to a non-standard status, the override wins; the methodology applies the safe default only when the slug is unset.
 
 ---
 
@@ -328,9 +372,11 @@ Scenario: Discount code applies before tax calculation
 
 When a story passes the Ready checklist:
 
-1. Hand off to **`acceptance-criteria.md`** for deep AC refinement (refine each Scenario, add negative paths, boundary conditions, equivalence partitions).
+1. Hand off to **`acceptance-criteria.md`** for deep AC refinement (refine each Scenario, add negative paths, boundary conditions, equivalence partitions). Mind `references/jira-publishing-gotchas.md` when writing the deepened AC back to `{{jira.acceptance_criteria}}`.
 2. Hand off to **`edge-cases-enumeration.md`** for systematic edge-case discovery.
-3. Once both refinement passes are complete, the story is ready to be pulled into a sprint and moved to "In Progress".
+3. Confirm the Status transition step has executed (story sits at `{{jira.statuses.story_default}}`).
+4. Confirm the Dependency-link verification step has executed (Jira issue links match local declarations).
+5. Once both refinement passes are complete, the story is ready to be pulled into a sprint and moved to "In Progress". Sprint-sequencing (`references/sprint-sequencing.md`) can now consume the link graph this story contributes to.
 
 ---
 
@@ -341,3 +387,8 @@ When a story passes the Ready checklist:
 - `epic-creation.md` — when a "story" turns out to be an epic
 - `acceptance-criteria.md` — deep AC refinement (next pass)
 - `edge-cases-enumeration.md` — systematic edge-case discovery (next pass)
+- `jira-operations.md` — Jira operation → tool layer mapping
+- `dependency-linking.md` — publishing dependency declarations as Jira links
+- `description-custom-field-dedup.md` — single-source-of-truth rule
+- `sprint-sequencing.md` — topological ordering of refined stories
+- `jira-publishing-gotchas.md` — ADF + MCP pitfalls

@@ -1,6 +1,8 @@
 # Delta Specs Pattern (optional)
 
 > **Status:** OPTIONAL pattern. The default `product-management` flow edits acceptance criteria **in place** on each story. Only adopt delta specs when one of the conditions in [§ When to use](#when-to-use) actually holds — the overhead is real.
+>
+> **Scope:** Methodology + local-file pattern only. This workflow does NOT push rich-text content to the issue tracker — all artifacts live under `.context/PBI/`. If a future extension publishes deltas to Jira, route through `[ISSUE_TRACKER_TOOL]` and see `references/jira-publishing-gotchas.md` for ADF rules.
 
 ---
 

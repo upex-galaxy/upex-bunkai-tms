@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-05-21T00:51:28.404Z`
+> Generated: `2026-05-22T09:47:52.482Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -164,13 +164,13 @@ Skills indexed: 11
 - `/project-foundation` should have produced `.context/PRD/` and `.context/SRS/` (required for the initial backlog-seed workflow; useful context for all others)
 - `.agents/project.yaml` populated with `{{PROJECT_KEY}}`, `{{ISSUE_TRACKER}}`, `{{ATLASSIAN_URL}}` — these ship with the cloned boilerplate; if missing, clone the full repo
 - Atlassian / Jira tooling reachable (Atlassian CLI `acli` preferred, MCP Atlassian as fallback) for any workflow that writes to Jira
-- Read `complementary_categories` from this skill's frontmatter (`issue-tracker`, `creativity`).
-- Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
-- For each matched skill, classify tier per strategy doc §2.
-- Apply threshold rule per strategy doc §3.2:
-- **T1 / T3** matches → load silently. Cache for the session.
-- **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this PM workflow? Y/N"`. Cache the answer for the session.
-- When dispatching sub-agents (backlog seeding, story refinement, AC enumeration, sprint reporting), inject a `## Composable Skills` block per strategy doc §6.2.
+- `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+- `.agents/jira-required.yaml` — canonical slug catalog (fields + statuses + link types).
+- `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping.
+- `.agents/jira-workflows.json` — workflow + transition catalog.
+- `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
+- `.context/master-implementation-plan.md` — Master Sprint roadmap.
+- `.context/PRD/mvp-scope.md` — what's in vs out of the MVP.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -224,9 +224,9 @@ Skills indexed: 11
 - **T1 / T3** matches → load silently. Cache for the session.
 - **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this foundation work? Y/N"`. Cache the answer for the session.
 - When dispatching sub-agents (Constitution, PRD, SRS, Discovery), inject a `## Composable Skills` block per strategy doc §6.2.
-- A new product/project is being defined from scratch and you need Constitution + PRD + SRS + Discovery artifacts.
-- An existing project needs to redefine scope significantly (e.g. pivot, new MVP cut) and the foundation docs must be regenerated.
-- A specific section is missing or stale (e.g. user journeys haven't been written yet) — invoke just that phase via the Specific tasks table below.
+- Stakeholder brief or initial PRD draft — whatever the user provides as the seed for this foundation pass (paste, doc link, voice-memo transcript, etc.).
+- `.context/PRD/` — existing PRD outputs if a prior version exists. UPSERT semantics: re-invoking a phase refines what's there; it does NOT rewrite from scratch.
+- `.context/business/` — existing personas, business model, market context if prior research exists. Surface what's there; never invent replacements.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -251,10 +251,10 @@ Skills indexed: 11
 - Branch policy clear and CI configured. First-time-only setup lives in `references/setup-linting.md` and `references/ci-cd-setup.md`.
 - Working directory is the **target project repo**. Sprint-dev runs there, not in the boilerplate.
 - `.env` populated with environment URLs and credentials. Never hardcode credentials.
-- **Missing** → generate it before entering the ticket loop. Delegate to
-- **Present but older than 24h, OR the user explicitly asks for a refresh** →
-- **Present and fresh** → proceed.
-- **UI work in any stage** → `frontend-ui` category match (T3 or T4 — ASK if T4).
+- `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+- `.agents/jira-required.yaml` — canonical slug catalog (custom fields, statuses, link types) for the active workspace.
+- `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for `{{jira.<slug>}}` resolution.
+- `.agents/jira-workflows.json` — workflow + transition catalog (resolves Ready For Dev → In Progress → In Review → Ready For QA).
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -270,6 +270,11 @@ Skills indexed: 11
 **Compact Rules**:
 - **A public `/qa` page inside the app** titled _"Software Testability Guide for QA"_ — explains the architecture, demo users, DB-level testing via DBHub MCP, API-level testing via OpenAPI MCP, UI-level testing via Playwright (scripted and agentic). The page links out to the real credentials but never inlines them.
 - **A tool-agnostic credentials artifact** (a markdown body) that holds the real DB connection, API login, demo passwords, OpenAPI spec URL, and Swagger UI link. The user picks where this artifact gets published: a Jira Epic (default), a Confluence page, a Notion page, any tool reachable via an MCP or a CLI, or — as a last resort — manual paste.
+- `.agents/project.yaml` — project identity, env URLs, default branch, MCP names.
+- `.mcp.json` — available MCP servers (Atlassian, Notion, etc.). Determines which publisher targets are reachable.
+- `app/qa/page.tsx` snapshot (or framework-equivalent location) when present — current state of the `/qa` page; needed for the idempotency / drift-detection check (Phase 2).
+- The publisher target's API contract — varies by Q1 answer: Jira Epic via `[ISSUE_TRACKER_TOOL]`, Confluence page via `[KNOWLEDGE_BASE_TOOL]`, Notion page via Notion MCP, generic MCP / CLI per `references/publishers/`.
+- `.env.example` — to know which credentials slots the credentials artifact should reference by name (NEVER quote the actual values).
 - `agentic-dev-core/references/briefing-template.md` — used when dispatching parallel sub-agents (e.g. page codegen + credentials-artifact publish in parallel).
 - `agentic-dev-core/references/dispatch-patterns.md` — picks Single / Sequential / Parallel for each phase.
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the auto-resolve step below.
@@ -278,11 +283,6 @@ Skills indexed: 11
 - Read `complementary_categories` from this skill's frontmatter.
 - Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
 - Classify tier per strategy doc §2.
-- Apply threshold rule per strategy doc §3.2:
-- **T1 / T3** matches → load silently. Cache for the session.
-- **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for this run? Y/N"`. Cache the answer.
-- Inject a `## Composable Skills` block per strategy doc §6.2 into every sub-agent prompt.
-- A working app exists and QA (humans or AI agents) need a single page in the product that explains how to test it.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
@@ -306,11 +306,11 @@ Skills indexed: 11
 - Test command exists in `package.json` (`bun test`, `npm test`, `vitest`, etc.)
 - For TDD: test runner supports watch mode (`--watch`)
 - If no runner is configured, the first task is to set one up — see `references/unit-testing.md` § Setup
-- Read `complementary_categories` from this skill's frontmatter (`language`).
-- Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
-- For each matched skill, classify tier per strategy doc §2.
-- Apply threshold rule per strategy doc §3.2:
-- **T1 / T3** matches → load silently. Cache for the session.
+- The function / module under test — read its public interface first; that's the contract the tests must lock in.
+- Existing tests for the same module (sibling `*.test.ts` / `*.spec.ts` in the same folder) — extend, don't duplicate.
+- The function's callers (search by symbol) — informs which collaborators are external (mock) vs internal (use real).
+- Test framework config (`vitest.config.ts` / `jest.config.ts` / equivalent) — env vars, setup files, coverage thresholds, path aliases.
+- Test helpers / fixtures used by sibling tests in the same folder — reuse the project's seams instead of inventing parallel ones.
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).

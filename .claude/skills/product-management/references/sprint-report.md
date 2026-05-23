@@ -2,6 +2,8 @@
 
 > **Purpose**: Generate a development-oriented snapshot of the current sprint and backlog — epics, stories, PRs grouped by status — so the team (PM, PO, dev leads) can see at a glance what's blocked, what's in flight, what's ready to start, and what's done.
 > **Output**: A markdown report assembled in the conversation (not persisted as a file unless the user asks).
+>
+> **READ-ONLY**: This workflow MUST NOT transition statuses, create or modify issues, change links, or mutate any tracker state. It only reads. Sibling read-only workflow that also reads state but persists to `.context/PBI/sprint-sequence.md` → `references/sprint-sequencing.md`.
 
 ---
 

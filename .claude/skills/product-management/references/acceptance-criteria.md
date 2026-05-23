@@ -16,6 +16,14 @@ Good AC answers three questions every reviewer will ask:
 
 If any of those three is vague, you do not have AC — you have a wish. The goal of AC refinement is to remove every "it depends" before the work enters a sprint.
 
+### Where AC live in the issue tracker
+
+Acceptance criteria are stored in the `{{jira.acceptance_criteria}}` custom field. NEVER duplicate them into the issue description body — see `references/description-custom-field-dedup.md`. When writing the field via `[ISSUE_TRACKER_TOOL]`, follow the ADF guidance in `references/jira-publishing-gotchas.md`.
+
+### Source-grounding rule
+
+NEVER invent acceptance criteria. Every AC must trace back to a concrete source: PRD, SRS, business map, or explicit user input. AC that cannot be grounded in one of those is a guess — flag it and ask before promoting.
+
 ---
 
 ## Understanding the Story Context

@@ -8,6 +8,35 @@
 > - `add-feature.md` — for adding a feature to an existing backlog (decides if you need an epic)
 > - `story-refinement.md` — once the epic is created, refine each story before development
 > - `acceptance-criteria.md` / `edge-cases-enumeration.md` — for refined ACs per story
+> - `jira-operations.md` — issue tracker pseudo-code (create / transition / link)
+> - `dependency-linking.md` — how to link stories via `{{jira.link_types.dependencies}}`
+> - `description-custom-field-dedup.md` — keep description body free of AC / Scope / OOS duplication
+> - `sprint-sequencing.md` — Execution Sprint ordering after the epic decomposition
+> - `jira-publishing-gotchas.md` — rich-text field encoding pitfalls (ADF, code blocks, lists)
+
+---
+
+## Inputs — read these first
+
+Before creating any epic, read these in order. Skip files marked **optional** if they do not exist yet.
+
+1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+2. `.agents/jira-required.yaml` — canonical slug catalog (fields + statuses + link types).
+3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping.
+4. `.agents/jira-workflows.json` — workflow + transition catalog.
+5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
+6. `.context/master-implementation-plan.md` — Master Sprint roadmap (use to set the epic's Master Sprint).
+7. `.context/PRD/mvp-scope.md` — what's in vs out of the MVP.
+8. `.context/PRD/user-personas.md` — actor model.
+9. `.context/PRD/user-journeys.md` — flow-level expectations.
+10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:** FR-XXX` references on each child story).
+11. `.context/SRS/non-functional-specs.md` — NFRs (performance, security, accessibility).
+12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies). **Optional** at seed time.
+13. `.context/business/business-feature-map.md` — CRUD matrix. **Optional** at seed time.
+14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journey breakdown). **Optional** at seed time.
+15. `.context/PBI/epic-tree.md` — current backlog state (skip if seeding from scratch).
+
+**Optional inputs note.** Items 12-14 arrive after `/business-*-map` has been run. In a fresh project, the business maps may not exist yet — proceed without them and re-evaluate dependencies once the maps are seeded.
 
 ---
 
@@ -104,31 +133,41 @@ Project "BLOG" (Jira issued #1):
 
 ## Creating an Epic: Step-by-Step
 
-### Step 1 — Create the Epic in Jira (MCP)
+### Step 1 — Create the Epic in the issue tracker
 
-**Action:** Use the available Atlassian MCP tools to create the epic in Jira.
+**Action:** Use `[ISSUE_TRACKER_TOOL]` to create the epic. See `references/jira-operations.md` for the pseudo-code patterns (create / transition / link). Description fields are rich-text — review `references/jira-publishing-gotchas.md` before publishing the body.
 
 **Required data:**
 
-- **Project:** `{PROJECT_KEY}`
+- **Project:** `{{PROJECT_KEY}}`
 - **Issue type:** Epic
-- **Title (Summary):** Epic name from PRD
-- **Description:** Detailed description (2-3 paragraphs)
+- **Title (Summary):** Epic name from PRD (NEVER embed `FR-XXX —` prefix in the summary)
+- **Description:** Detailed description (2-3 paragraphs) — body only, no AC / Scope / OOS duplication (see `references/description-custom-field-dedup.md`)
 - **Priority:** High | Medium | Low
 - **Labels:** `mvp`, `fase-1` (or `post-mvp`, `new-feature` for additions — adjust as appropriate)
 
 **Instructions:**
 
-1. Use MCP tooling to create an issue of type "Epic" in Jira.
+1. Invoke `[ISSUE_TRACKER_TOOL]` to create an issue of type "Epic".
 2. Fill in all required fields.
-3. **Capture the Issue Number** Jira assigns to the epic.
-   - Key format: `{PROJECT_KEY}-{ISSUE_NUM}` (e.g., `MYM-13`, `SHOP-45`, `BLOG-1`)
+3. **Capture the Issue Key** the tracker assigns to the epic.
+   - Key format: `{{PROJECT_KEY}}-{ISSUE_NUM}` (e.g., `MYM-13`, `SHOP-45`, `BLOG-1`)
 
 **Expected result:**
 
-- Epic created in Jira.
-- Full Jira Key captured (e.g., `MYM-13`).
+- Epic created in the tracker.
+- Full Issue Key captured (e.g., `MYM-13`).
 - `ISSUE_NUM` extracted for the local folder name.
+
+---
+
+### Step 1b — Transition the epic to its default status
+
+**Action:** Right after creation, transition the epic to its default working status so it appears on the planning board.
+
+Use `[ISSUE_TRACKER_TOOL]` with the transition resolved from `{{jira.statuses.epic_default}}` (literal default: `Planning`). See `references/jira-operations.md` for the transition pseudo-code and how to read the workflow catalog. If the slug is unresolved, fall back to the literal `Planning` and flag the missing catalog entry.
+
+**Expected result:** epic moves from the tracker's initial creation state to `Planning` (or the workspace-configured equivalent).
 
 ---
 
@@ -164,6 +203,12 @@ This file is the local source of truth for the epic — it mirrors the Jira desc
 
 ---
 
+## No content duplication
+
+> **Callout — applies to the epic body AND every child story.** The epic description body MUST NOT duplicate content that belongs in dedicated custom fields on child stories (Acceptance Criteria, In Scope, Out of Scope). The epic body carries narrative + outcomes; the AC / Scope / OOS detail lives on each child story in its dedicated custom field, NOT inside the description text. See `references/description-custom-field-dedup.md` for the full rule and examples. Rich-text encoding pitfalls when writing any of these fields: `references/jira-publishing-gotchas.md`.
+
+---
+
 ## Epic Documentation (`epic.md` Template)
 
 ```markdown
@@ -173,6 +218,14 @@ This file is the local source of truth for the epic — it mirrors the Jira desc
 **Status:** [ASSIGNED | IN PROGRESS | DONE]
 **Priority:** [CRITICAL | HIGH | MEDIUM | LOW]
 **Phase:** [Foundation | Core Features | etc.]
+
+---
+
+## Master Sprint
+
+> **Soft contract.** Include this section only when `.context/master-implementation-plan.md` exists. Omit it for standalone runs (e.g. seeding before `/project-bootstrap`) — the rest of the template stands on its own.
+
+**Master Sprint {N}** — {short rationale, 1-2 sentences explaining why this epic belongs to that Master Sprint}. See `.context/master-implementation-plan.md` §5.
 
 ---
 
@@ -222,10 +275,12 @@ This file is the local source of truth for the epic — it mirrors the Jira desc
 
 ## Related Functional Requirements
 
-- **{{PROJECT_KEY}}-XXX:** [FR description]
-- **{{PROJECT_KEY}}-YYY:** [FR description]
+- **FR-XXX:** [FR description]
+- **FR-YYY:** [FR description]
 
-See: `.context/SRS/functional-specs.md`
+See: `.context/SRS/functional-specs.md`.
+
+**Note on FR placement.** At the **epic level**, list the relevant FRs here in the description body. At the **story level**, the `**Source spec:** FR-XXX` line is the FIRST body line of the story description — NEVER embed `FR-XXX —` into the story summary. See `references/description-custom-field-dedup.md` for the description-vs-custom-field boundary.
 
 ---
 
@@ -323,7 +378,7 @@ See: `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/feature-implementatio
 ## Related Documentation
 
 - **PRD:** `.context/PRD/executive-summary.md`, `.context/PRD/mvp-scope.md`
-- **SRS:** `.context/SRS/functional-specs.md` ({{PROJECT_KEY}}-XXX to {{PROJECT_KEY}}-YYY)
+- **SRS:** `.context/SRS/functional-specs.md` (FR-XXX to FR-YYY)
 - **Architecture:** `.context/SRS/architecture-specs.md`
 - **API Contracts:** `.context/SRS/api-contracts.yaml`
 ```
@@ -344,6 +399,39 @@ Epic-level ACs are **outcomes**, not test scenarios. They describe what must be 
 ```
 
 Story-level ACs (Gherkin Scenario / Given-When-Then) live in each story.md and get further refined in `acceptance-criteria.md`. Do not duplicate them at the epic level.
+
+---
+
+## Step N — Link dependencies (after all child stories exist)
+
+**When:** This phase runs AFTER every child story under the epic has been created in the tracker (so the keys exist and can be referenced). Do not attempt linking before then — it will fail or create dangling references.
+
+**Action:** For each dependency edge surfaced by the Internal Dependencies / Blocks blocks in `epic.md`, create an issue link in the tracker.
+
+- Use `[ISSUE_TRACKER_TOOL]` with the link type resolved from `{{jira.link_types.dependencies}}`.
+- If `{{jira.link_types.dependencies}}` is unresolved in the workspace, degrade to the fallback `{{jira.link_types.dependencies.fallback}}` (literal: `relates`) and flag the degradation in the run report — `relates` loses directional semantics.
+- For "this epic blocks X" relationships, use `{{jira.link_types.blocks}}` (directional). For symmetric coupling without a blocker semantic, `relates` is acceptable.
+- Description / comment fields touched during linking are rich-text — see `references/jira-publishing-gotchas.md` if you attach a justification comment.
+
+See `references/dependency-linking.md` for the full pseudo-code, slug-resolution algorithm, and degradation handling.
+
+**Expected result:** Every documented dependency edge has a corresponding tracker link; the run report records any fallback uses.
+
+---
+
+## Step N+1 — Sprint sequencing (final step before handoff)
+
+**When:** Runs LAST, after the epic is decomposed into child stories and the dependency graph is complete (Step N done). This is the bridge between epic planning and `/sprint-development`.
+
+**Action:** Order the child stories into **Execution Sprints** using the dependency graph as the primary constraint and value / risk as tie-breakers. Persist the ordering to `.context/PBI/sprint-sequence.md`.
+
+- Sequence stories so that no story is scheduled before its `{{jira.link_types.dependencies}}` predecessors.
+- Fill each Execution Sprint up to its capacity (story points + count) per the project's sprint rules.
+- Cross-reference the epic's Master Sprint context from §`Master Sprint` above.
+
+See `references/sprint-sequencing.md` for the full algorithm, conflict resolution, and the exact shape of `.context/PBI/sprint-sequence.md`.
+
+**Expected result:** A persisted Execution-Sprint ordering ready for `/sprint-development` to pick up story-by-story. Any cycles or unresolved dependencies are flagged before handoff.
 
 ---
 
@@ -419,3 +507,8 @@ When all are checked, hand off each story to `story-refinement.md` for developme
 - `story-refinement.md` — refining individual stories before sprint
 - `acceptance-criteria.md` — refined ACs per story
 - `edge-cases-enumeration.md` — edge case discovery per story
+- `jira-operations.md` — issue tracker pseudo-code (create / transition / link)
+- `dependency-linking.md` — linking stories via `{{jira.link_types.dependencies}}`
+- `description-custom-field-dedup.md` — keep description body free of AC / Scope / OOS duplication
+- `sprint-sequencing.md` — Execution Sprint ordering after epic decomposition
+- `jira-publishing-gotchas.md` — rich-text encoding pitfalls (ADF, code blocks, lists)
