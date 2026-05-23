@@ -11,7 +11,7 @@ Mapea cada User Story del PRD a Functional Requirements (FR):
 
 **Formato por FR:**
 
-**{{PROJECT_KEY}}-[NUM]: [Feature] debe permitir [acción específica]**
+**FR-[NUM]: [Feature] debe permitir [acción específica]**
 
 - **Relacionado a:** Epic X, US Y.Z (del PRD)
 - **Input:** [Datos de entrada esperados - tipos, formatos, validaciones]
@@ -21,7 +21,7 @@ Mapea cada User Story del PRD a Functional Requirements (FR):
 
 **Ejemplo:**
 
-**{{PROJECT_KEY}}-001: El sistema debe permitir registro de usuarios con email**
+**FR-001: El sistema debe permitir registro de usuarios con email**
 
 - **Relacionado a:** EPIC-001 (User Authentication), US 1.1
 - **Input:**
@@ -45,7 +45,7 @@ Mapea cada User Story del PRD a Functional Requirements (FR):
 **Restricciones:**
 
 - Mapeo 1:1 con User Stories del PRD
-- FRs numerados secuencialmente ({{PROJECT_KEY}}-001, {{PROJECT_KEY}}-002, etc.)
+- FRs numerados secuencialmente (FR-001, FR-002, etc.)
 - Específicos y no ambiguos
 - Incluir validaciones de negocio
 

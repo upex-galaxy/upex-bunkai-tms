@@ -60,6 +60,24 @@ If any of the above is missing, fast-fail and hand off to the appropriate setup 
 
 ---
 
+## Inputs — read these first, in this order
+
+Canonical reading order for any AI starting cold on a sprint-development workflow. Read in order; stop earlier when the ticket is small enough that later inputs add no signal.
+
+1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+2. `.agents/jira-required.yaml` — canonical slug catalog (custom fields, statuses, link types) for the active workspace.
+3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for `{{jira.<slug>}}` resolution.
+4. `.agents/jira-workflows.json` — workflow + transition catalog (resolves Ready For Dev → In Progress → In Review → Ready For QA).
+5. `.context/master-implementation-plan.md` — Master Sprint roadmap for the parent feature (priority + dependency context).
+6. `.context/PBI/{module}/{TICKET}-{slug}/context.md` — story-level context: ACs, session notes, open questions.
+7. `.context/PBI/{module}/{TICKET}-{slug}/implementation-plan.md` — canonical story-level technical plan (read before Stage 2 resume).
+8. `.context/SRS/` architecture-specs — only when the story touches a cross-cutting concern (auth, data model, infra).
+9. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
+
+**Optional inputs.** Business maps (9) frequently arrive after `/business-*-map` runs and may be absent. Proceed without them when missing; surface a `missing_input` note in the Stage 1 plan so a later pass can fill the gap.
+
+---
+
 ## Subagent Dispatch Strategy
 
 > **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) is NOT optional. Phase 1 plan is delegated to the canonical artifact at `.context/PBI/<JIRA-KEY>/impl-plan.md`; this skill writes only `progress.md`.
@@ -426,7 +444,7 @@ Concrete tools (`bun`, `git`, `gh`) are used literally. Project variables resolv
 - `{{PROJECT_KEY}}`, `{{ISSUE_TRACKER}}`, `{{ATLASSIAN_URL}}` — issue tracker
 - `{{WEB_URL}}`, `{{API_URL}}` — env-scoped, active env from `.agents/project.yaml`
 - `{{BACKEND_STACK}}`, `{{FRONTEND_STACK}}`, `{{DB_TYPE}}` — stack-specific patterns
-- `{{jira.*}}` — story custom fields (acceptance_criteria_gherkin, business_rules, acceptance_test_plan, etc.)
+- `{{jira.*}}` — story custom fields (acceptance_criteria, business_rules, acceptance_test_plan, etc.)
 
 If any required var is unset, ensure `.agents/project.yaml` exists (clone the full boilerplate — foundation files ship with the repo) and run `/project-foundation` to fill in stack values.
 
@@ -463,6 +481,23 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Stage 4 PR merged to `staging`; CI green; auto-deploy fired; Jira to `Ready For QA`; QA notified in comment
 - [ ] Stage 5 (only if applicable): pre-deploy checklist green; rollback plan loaded; monitoring window observed
 - [ ] Hand-off identified for next step (QA workflow, or next story)
+
+---
+
+## Anti-patterns — NEVER do these
+
+- **S1.** NEVER push to `main` without explicit user confirmation. PR flow targets `staging`; production is gated Stage 5.
+- **S2.** NEVER skip the Stage 1 impl-plan and jump straight to code. Plan → Code → Review is a hard order; even bug fixes get a one-paragraph root-cause analysis first.
+- **S3.** NEVER declare a story done without verification green across tests + types + lint (parallel cap=3). No "I'll fix the lint after merge".
+- **S4.** NEVER bypass code review on a PR that touches production behavior. Review checklist + Spec Compliance Matrix gate the merge.
+- **S5.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or similar AI-attribution lines in commit messages or PR bodies.
+- **S6.** NEVER force-push, amend, or rewrite history on pushed commits in shared branches (`main`, `staging`, any branch with an open PR).
+- **S7.** NEVER commit credentials, secrets, or `.env` content. Read credentials from `.env` at runtime; never inline them in code, plans, or commit messages.
+- **S8.** NEVER touch files outside the story's stated scope. No "while I'm here" refactors — open a separate ticket instead.
+- **S9.** NEVER mark a story `Ready For QA` without verifying the staging deploy succeeded (CI green + smoke passed). A premature transition burns QA cycles.
+- **S10.** NEVER suppress failing pre-commit / pre-push hooks with `--no-verify`. If a hook is wrong, fix the hook in a separate commit; never silence it to ship.
+- **S11.** NEVER hardcode `customfield_NNNNN` IDs in plans, references, or AI output. Resolve every Jira field via `{{jira.<slug>}}` against `.agents/jira-required.yaml`.
+- **S12.** NEVER assume the local `acceptance-test-plan.md` is authoritative. ATP source-of-truth order: Jira comments → Jira custom field → local file fallback.
 
 ---
 

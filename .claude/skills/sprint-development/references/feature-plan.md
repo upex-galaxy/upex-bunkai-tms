@@ -1,5 +1,19 @@
 Actúa como Senior Software Architect, Tech Lead, y UI/UX Designer.
 
+---
+
+## Custom field resolution — slug-based, never hardcoded
+
+Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
+
+**Slug que este workflow escribe** (semántica del campo):
+
+- `{{jira.feature_implementation_plan}}` — Feature Implementation Plan (Epic-level Textarea). Plan técnico generado por este flujo y publicado al Epic.
+
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `CLAUDE.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.claude/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.claude/skills/product-management/references/jira-publishing-gotchas.md`.
+
+---
+
 **Input:**
 
 - Epic: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/epic.md]
@@ -440,36 +454,36 @@ Todas las stories de esta feature usan vocabulario consistente del dominio, refl
 
 ### Custom Field para Feature Implementation Plan
 
-| Field ID            | Nombre                              | Tipo     | Nivel |
-| ------------------- | ----------------------------------- | -------- | ----- |
-| `customfield_10043` | Feature Implementation Plan (Dev)🛠️ | Textarea | Epic  |
+| Slug (resuelve vía jira-required.yaml) | Nombre                              | Tipo     | Nivel |
+| -------------------------------------- | ----------------------------------- | -------- | ----- |
+| `{{jira.feature_implementation_plan}}` | Feature Implementation Plan (Dev)🛠️ | Textarea | Epic  |
 
 ### Instrucciones de Sincronización
 
 **DESPUÉS de generar el archivo `feature-implementation-plan.md` localmente:**
 
 1. **Verificar si el Epic tiene el custom field:**
-   - Usar MCP de Atlassian para obtener el Epic
-   - Verificar si `customfield_10043` existe y está disponible
+   - `[ISSUE_TRACKER_TOOL] get_issue(issue_key={EPIC_JIRA_KEY})` para obtener el Epic.
+   - Verificar si el slug `{{jira.feature_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json`).
+
+> Antes de escribir campos rich-text en Jira, leé `.claude/skills/product-management/references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos y sus workarounds.
 
 2. **Si el campo existe:**
-   - Copiar el contenido COMPLETO del `feature-implementation-plan.md` generado
-   - Actualizar el Epic en Jira usando MCP:
+   - Copiar el contenido COMPLETO del `feature-implementation-plan.md` generado.
+   - Actualizar el Epic en Jira:
      ```
-     jira_update_issue(
-       issue_key: "{EPIC_JIRA_KEY}",
-       fields: {
-         "customfield_10043": "{CONTENIDO_COMPLETO_DEL_PLAN}"
-       }
+     [ISSUE_TRACKER_TOOL] update_issue_field(
+       issue_key={EPIC_JIRA_KEY},
+       field={{jira.feature_implementation_plan}},
+       value={CONTENIDO_COMPLETO_DEL_PLAN}
      )
      ```
    - Agregar label: `implementation-plan-ready`
 
-3. **Si el campo NO existe (Workspace non-UPEX):**
-   - Buscar campo equivalente: `jira_search_fields(keyword: "implementation plan")`
-   - Si se encuentra alternativa, usar ese field ID
+3. **Si el campo NO existe en el workspace:**
+   - Resolver fallback declarado en `.agents/jira-required.yaml` para el slug `feature_implementation_plan` (puede ser un slug equivalente o instrucción de comentar).
    - Si no existe ningún campo equivalente:
-     - Agregar el plan como **comentario** en el Epic
+     - Agregar el plan como **comentario** en el Epic vía `[ISSUE_TRACKER_TOOL] add_comment(...)`.
      - Formato del comentario:
 
        ```

@@ -62,6 +62,18 @@ Skip step only if the registry cache is missing AND no session-start skill list 
 
 ---
 
+## Inputs — read these first, in this order
+
+Canonical reading order for any AI starting cold on a project-foundation workflow. Read in order; stop earlier when the phase you're driving is small enough that later inputs add no signal. Several inputs are optional at inception — surface a `missing_input` note rather than fabricating content.
+
+1. Stakeholder brief or initial PRD draft — whatever the user provides as the seed for this foundation pass (paste, doc link, voice-memo transcript, etc.).
+2. `.context/PRD/` — existing PRD outputs if a prior version exists. UPSERT semantics: re-invoking a phase refines what's there; it does NOT rewrite from scratch.
+3. `.context/business/` — existing personas, business model, market context if prior research exists. Surface what's there; never invent replacements.
+4. Market context / competitor research artifacts the user provides (links, PDFs, analyst notes). Optional but high-leverage for Constitution Phase 1.
+5. `.agents/project.yaml` — project identity (project name, key, domain, env URLs). Created or refined as part of this foundation pass when missing.
+
+---
+
 ## When to use
 
 Use this skill when:
@@ -274,6 +286,18 @@ After running any phase, confirm:
 - `bun run vars:check` does not surface new unresolved `{{VAR}}` references introduced by the new docs.
 
 If a section is left as `[PLACEHOLDER]` because the user could not yet answer (e.g. no real user-research data exists), surface it in the report as an open TODO rather than inventing content.
+
+---
+
+## Anti-patterns — NEVER do these
+
+- **F1.** NEVER rewrite the project Constitution, PRD, or SRS from scratch when prior versions exist under `.context/`. Always UPSERT — preserve existing decisions, surface diffs, refine in place.
+- **F2.** NEVER fabricate user personas, market data, or competitor analysis. If the user has no research, surface the gap as a `[PLACEHOLDER]` open TODO and ask — speculative personas mislead every downstream skill.
+- **F3.** NEVER conflate PRD scope with SRS architecture. PRD answers WHAT and WHY (problem, users, journeys, MVP cut); SRS answers HOW (functional contracts, NFRs, tech stack, API definitions). Cross-contamination breaks traceability.
+- **F4.** NEVER skip Phase 4 Discovery (`/business-data-map`, `/business-feature-map`, `/business-api-map`, `project-dev-guide`). Downstream skills (`/product-management`, `/sprint-development`) assume those running-mental-model docs exist.
+- **F5.** NEVER hardcode tool choices (DB engine, hosting provider, auth vendor, framework) in the Constitution. Tool selection lives in SRS architecture — Constitution stays vendor-agnostic so the SRS can change without invalidating the strategic anchor.
+- **F6.** NEVER define personas, problem statements, or KPIs without quoting evidence (user interview, analytics snapshot, stakeholder ask, market data citation). Evidence-free claims look authoritative and mislead the PRD downstream.
+- **F7.** NEVER produce a PRD without an explicit out-of-scope section. Implicit scope boundaries always leak; missing out-of-scope is the #1 source of mid-sprint argumentation.
 
 ---
 

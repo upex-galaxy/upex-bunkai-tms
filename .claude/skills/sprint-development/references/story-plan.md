@@ -1,11 +1,26 @@
 Actúa como Senior Full-Stack Developer + UI/UX Designer.
 
+---
+
+## Custom field resolution — slug-based, never hardcoded
+
+Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
+
+**Slugs que este workflow lee/escribe** (semántica de cada campo):
+
+- `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los escenarios de aceptación que la implementación debe cubrir. Solo lectura desde este flujo.
+- `{{jira.spec_implementation_plan}}` — Spec Implementation Plan (Story-level Textarea). Plan técnico generado por este flujo y publicado a la Story.
+
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `CLAUDE.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.claude/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.claude/skills/product-management/references/jira-publishing-gotchas.md`.
+
+---
+
 **Input:**
 
 - Story: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/story.md]
 - **Acceptance Test Plan (artefacto de la fase de planning):** Usar el siguiente orden de descubrimiento:
-  1. **Jira Comments** (preferido): Buscar en comentarios de la US usando `[ISSUE_TRACKER_TOOL]` para obtener el issue con `comment_limit: 50`. Buscar comentarios que contengan "Test Case", "TC-", "Scenario:", o tablas de test cases.
-  2. **Jira Custom Field**: Campo `customfield_12400` ("Acceptance Test Plan") usando `fields: "*all"`
+  1. **Jira Comments** (preferido): Buscar en comentarios de la US vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, comment_limit=50)`. Buscar comentarios que contengan "Test Case", "TC-", "Scenario:", o tablas de test cases.
+  2. **Jira Custom Field**: Campo `{{jira.acceptance_test_plan}}` ("Acceptance Test Plan"), leído vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, fields=<all>)`.
   3. **Archivo Local** (fallback): `.context/PBI/epics/.../stories/.../test-cases.md` o `acceptance-test-plan.md`
 - Feature Implementation Plan: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/feature-implementation-plan.md]
 - SRS relevante: [usar secciones relacionadas de .context/SRS/]
@@ -458,31 +473,35 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
 
 ### Custom Field para Story Implementation Plan
 
-| Field ID            | Nombre                           | Tipo     | Nivel |
-| ------------------- | -------------------------------- | -------- | ----- |
-| `customfield_12401` | Spec Implementation Plan (Dev)🛠️ | Textarea | Story |
+| Slug (resuelve vía jira-required.yaml) | Nombre                           | Tipo     | Nivel |
+| -------------------------------------- | -------------------------------- | -------- | ----- |
+| `{{jira.spec_implementation_plan}}`    | Spec Implementation Plan (Dev)🛠️ | Textarea | Story |
 
 ### Instrucciones de Sincronización
 
 **DESPUÉS de generar el archivo `implementation-plan.md` localmente:**
 
 1. **Verificar si la Story tiene el custom field:**
-   - Usar MCP de Atlassian para obtener la Story: `jira_get_issue`
-   - Verificar si `customfield_12401` existe y está disponible en el response
+   - `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>)` para obtener la Story.
+   - Verificar si el slug `{{jira.spec_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json`).
+
+> Antes de escribir campos rich-text en Jira, leé `.claude/skills/product-management/references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos y sus workarounds.
 
 2. **Si el campo existe:**
-   - Copiar el contenido COMPLETO del `implementation-plan.md` generado
-   - Actualizar la Story en Jira usando MCP `jira_update_issue`:
+   - Copiar el contenido COMPLETO del `implementation-plan.md` generado.
+   - Actualizar la Story en Jira:
      ```
-     fields: {
-       "customfield_12401": "[contenido del implementation-plan.md]"
-     }
+     [ISSUE_TRACKER_TOOL] update_issue_field(
+       issue_key=<STORY_KEY>,
+       field={{jira.spec_implementation_plan}},
+       value=<contenido del implementation-plan.md>
+     )
      ```
    - Agregar label: `implementation-plan-ready`
 
-3. **Si el campo NO existe (Workspace non-UPEX):**
-   - Buscar campo equivalente con nombre similar ("Implementation Plan", "Dev Plan", "Technical Plan")
-   - Si no existe ningún campo equivalente, agregar como **comentario** en la Story:
+3. **Si el campo NO existe en el workspace:**
+   - Resolver fallback declarado en `.agents/jira-required.yaml` para el slug `spec_implementation_plan`.
+   - Si no existe ningún campo equivalente, agregar como **comentario** en la Story vía `[ISSUE_TRACKER_TOOL] add_comment(...)`:
 
      ```
      📋 **Spec Implementation Plan (Dev)**
@@ -493,6 +512,6 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
 ### Output Esperado
 
 - [ ] Archivo `implementation-plan.md` creado en `.context/PBI/epics/.../stories/.../`
-- [ ] Custom field `customfield_12401` actualizado en Jira (si existe)
+- [ ] Campo `{{jira.spec_implementation_plan}}` actualizado en la Story (si el slug resuelve a un campo presente)
 - [ ] Label `implementation-plan-ready` agregado a la Story
 - [ ] Comentario agregado como fallback (si campo no existe)

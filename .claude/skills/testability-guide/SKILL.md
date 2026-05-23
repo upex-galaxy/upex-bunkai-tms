@@ -32,6 +32,18 @@ The skill is idempotent. On re-run it reads a snapshot comment at the top of the
 
 ---
 
+## Inputs — read these first, in this order
+
+Canonical reading order for any AI starting cold on a testability-guide run. Read in order; stop earlier when the run is small enough (e.g. a snapshot no-op) that later inputs add no signal.
+
+1. `.agents/project.yaml` — project identity, env URLs, default branch, MCP names.
+2. `.mcp.json` — available MCP servers (Atlassian, Notion, etc.). Determines which publisher targets are reachable.
+3. `app/qa/page.tsx` snapshot (or framework-equivalent location) when present — current state of the `/qa` page; needed for the idempotency / drift-detection check (Phase 2).
+4. The publisher target's API contract — varies by Q1 answer: Jira Epic via `[ISSUE_TRACKER_TOOL]`, Confluence page via `[KNOWLEDGE_BASE_TOOL]`, Notion page via Notion MCP, generic MCP / CLI per `references/publishers/`.
+5. `.env.example` — to know which credentials slots the credentials artifact should reference by name (NEVER quote the actual values).
+
+---
+
 ## Dependencies
 
 Requires `agentic-dev-core`. Loads on demand from its references:
@@ -235,6 +247,17 @@ After the skill completes, the page + artifact are live. Hand off to:
 The skill is "done" only when every box in `references/verification-checklist.md` is checked. Self-check questions live at the bottom of that reference (mirroring the source prompt's §11). Do not declare completion until all eight items are true.
 
 On successful completion (all eight verification items pass), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/testability-guide/` to `.session/.archive/<YYYY-MM-DD>-testability-guide-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back. The `/qa` page snapshot comment is left in place — it is the cross-run drift signal for the NEXT invocation, independent of the archived session directory.
+
+---
+
+## Anti-patterns — NEVER do these
+
+- **T1.** NEVER hardcode credential values in the in-app `/qa` page or in the credentials artifact body. Reference environment / config slots by name (e.g. `LOCAL_USER_EMAIL`, `STAGING_USER_PASSWORD`); the real values live in `.env` and in the chosen publisher destination, never in source.
+- **T2.** NEVER bypass drift detection. When the host-stack signature changes, respect the snapshot-comment mechanism (`/* qa-guide-snapshot: stack=…, generated=… */`) and propose a surgical patch — do NOT regenerate the page from scratch when a targeted diff suffices.
+- **T3.** NEVER ship the `/qa` route in production without an env-gated guard or kill-switch. The page is operational, not customer-facing; gate it behind the host's standard environment check.
+- **T4.** NEVER include PII, real customer data, or production data examples in the testability guide. Demo users and sanitized fixtures only.
+- **T5.** NEVER duplicate the credentials-artifact body across multiple publisher targets. The markdown body in `references/credentials-content-template.md` is the single source of truth; publishers are thin adapters.
+- **T6.** NEVER assume idempotency without re-checking the snapshot comment. Re-runs MUST read the snapshot, diff against current detected stack, and only then decide no-op vs surgical patch vs fresh scaffold.
 
 ---
 

@@ -204,6 +204,9 @@ Jira stores rich-text content (descriptions, comments, and any rich-text field) 
 
 `acli` accepts ADF JSON in every rich-text input. `acli` **never** converts markdown — passing `# Heading` to `--description` or `--body` stores the literal string `# Heading` wrapped in a single ADF paragraph.
 
+> **⚠️ Asymmetry: `create` supports custom-field rich text, `edit` does NOT.**
+> `acli workitem create --from-json` accepts custom fields via `additionalAttributes` (ADF doc payloads work). `acli workitem edit --from-json` **hard-rejects every custom-field shape** (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1 + `unknown field` error. No silent drop, no escape hatch in the binary. To update or correct a rich-text custom field on an **existing** work item, you MUST use the REST PUT workaround documented below — `acli` cannot do it.
+
 To publish anything richer than plain prose, use this three-step workflow by default:
 
 ```
@@ -244,7 +247,7 @@ const adf = mdToAdf(markdownString);  // returns { type: "doc", version: 1, cont
 | `description` on `workitem create` | `--from-json` payload, `description` key holds an ADF doc | Custom-field values live in `additionalAttributes` of the same payload, same ADF shape |
 | `description` on `workitem edit` | `--description-file <file>` accepts a JSON file containing an ADF doc | `acli` auto-detects ADF vs plain text by file content |
 | Rich-text custom field on `workitem create` | `additionalAttributes.customfield_NNNNN` = ADF doc inside `--from-json` | Same shape as `description` |
-| Rich-text custom field on an existing item | REST `PUT /rest/api/3/issue/{KEY}` with `{"fields": {customfield_NNNNN: <ADF>}}` | `acli workitem edit` does not cover custom fields — see gotcha #4 |
+| Rich-text custom field on an existing item | **`acli` cannot do this — use REST PUT workaround.** `PUT /rest/api/3/issue/{KEY}` with `{"fields": {customfield_NNNNN: <ADF>}}` via `curl` | `acli workitem edit` hard-rejects `additionalAttributes`, `fields`, and flat `customfield_X` with `✗ Error: json: unknown field …`. Confirmed empirically. See gotcha #4 + dedicated workaround section below. |
 | Comment create | `comment create --body-file <file>` (alias `-F`) accepts ADF | The `--body` (plain) flag remains plain text only |
 | Comment update | `comment update --body-adf <file>` | Dedicated ADF flag |
 
@@ -308,21 +311,70 @@ When the task is to populate N work items with M rich-text fields each, the conv
 
 This pattern scales cleanly to dozens of items in one run. The bottleneck is authoring quality, not the conversion mechanic.
 
-### Editing a custom-field value after create — REST fallback
+### WORKAROUND: Editing rich-text custom fields on existing work items (REST PUT)
 
-`acli workitem edit` does not expose custom-field input (gotcha #4). To update a rich-text custom field on an existing item:
+This is the **only** working path as of acli v1.3.18 — there is no acli-native channel for editing custom-field values on existing items. The recipe below is the turnkey workaround.
+
+**Prerequisites.** Three env vars must be exported in the current shell. They are loaded automatically by the project tooling (`bun claude`, `bun opencode`, or `direnv`) from `.env`:
+
+- `ATLASSIAN_URL` — e.g. `https://your-domain.atlassian.net`
+- `ATLASSIAN_EMAIL` — the API-token owner's email
+- `ATLASSIAN_API_TOKEN` — the API token paired with the email
+
+**Recipe.**
 
 ```bash
+# 1. Author the new value as Markdown
+cat > /tmp/new.md <<'MD'
+## New content
+- with **bold**, `inline code`, and a [link](https://example.com)
+MD
+
+# 2. Convert MD → ADF
 bun .claude/skills/acli/scripts/md-to-adf.ts /tmp/new.md /tmp/new.adf.json
+
+# 3. Wrap the ADF doc in the REST `{ "fields": { ... } }` envelope
+#    (NOTE: same ADF payload acli would consume; only the wrapper key changes)
 jq -n --slurpfile adf /tmp/new.adf.json \
   '{fields: {customfield_NNNNN: $adf[0]}}' > /tmp/put.json
-curl -s -w "\nHTTP %{http_code}\n" \
+
+# 4. PUT against the issue
+curl -sS -w "\nHTTP %{http_code}\n" \
   -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   -X PUT "$ATLASSIAN_URL/rest/api/3/issue/EXAMPLE-123" \
+  -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   --data-binary @/tmp/put.json
-# 204 = success; Jira returns no body on PUT
+# Expected: HTTP 204 (Jira returns no body on a successful PUT)
 ```
+
+**Reference.** Official Atlassian REST v3 PUT endpoint:
+<https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-put>
+
+**Empirical proof this is the only path.** Three variants tested against `acli workitem edit --from-json` on a real workitem:
+
+| Payload shape sent to `acli edit` | Result |
+|---|---|
+| `{issues:[...], additionalAttributes:{customfield_X:<ADF>}}` | `✗ Error: json: unknown field "additionalAttributes"` · exit 1 |
+| `{issues:[...], fields:{customfield_X:<ADF>}}` | `✗ Error: json: unknown field "fields"` · exit 1 |
+| `{issues:[...], customfield_X:<ADF>}` | `✗ Error: json: unknown field "customfield_X"` · exit 1 |
+
+Same ADF doc through REST PUT: HTTP 204 OK.
+
+**Batch variant.** Loop the recipe per `--data-binary @/tmp/put-N.json` and capture HTTP codes:
+
+```bash
+for KEY in UPEX-1 UPEX-2 UPEX-3; do
+  status=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
+    -X PUT "$ATLASSIAN_URL/rest/api/3/issue/$KEY" \
+    -H "Content-Type: application/json" \
+    --data-binary @/tmp/put-"$KEY".json)
+  echo "$KEY -> HTTP $status"
+done
+```
+
+**When this becomes unnecessary.** If Atlassian adds an `additionalAttributes`-style channel to `acli workitem edit`, retire this workaround and update the recipe table.
 
 ### Why this is the default
 
@@ -331,10 +383,22 @@ curl -s -w "\nHTTP %{http_code}\n" \
 - One workflow covers every rich-text surface uniformly: descriptions, comments, custom fields, all the same three steps.
 - Identifier-heavy prose (snake_case, kebab-case) survives the conversion because the italic detection has word-boundary guards.
 
+## Anti-patterns — NEVER do these
+
+These are formal companions to the gotchas section below. Gotchas describe *surprising behavior to remember*; anti-patterns describe *actions to refuse outright*. Both apply.
+
+- **A1.** NEVER run a `bun run jira:sync-*` script without a fresh `acli jira auth login` — stale or expired auth produces silent partial-data syncs that poison `.agents/jira-fields.json` / `jira-workflows.json` / `jira-link-types.json` downstream.
+- **A2.** NEVER hardcode Jira `customfield_NNNNN` IDs in prompts, skills, or scripts. Resolve via the slug catalog (`{{jira.<slug>}}` against `.agents/jira-required.yaml` + `.agents/jira-fields.json`). IDs differ per workspace; slugs travel.
+- **A3.** NEVER assume `acli jira workitem edit` accepts custom-field input. It hard-rejects every shape (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1. Use the REST `PUT /rest/api/3/issue/{KEY}` workaround documented above — there is no acli-native path.
+- **A4.** NEVER hand-author raw ADF JSON for rich-text fields. Use `scripts/md-to-adf.ts` — deterministic, diffable, snake_case-safe, and avoids the combined-marks bug (inline `code` co-occurring with `strong`/`em` causes HTTP 400).
+- **A5.** NEVER use `acli` against a production Jira workspace from a developer workstation without an explicit per-operation confirmation step. Transitions, deletions, and bulk edits are irreversible — `--yes` in CI is fine, `--yes` ad-hoc against prod is not.
+- **A6.** NEVER batch transitions or mutations with quiet flags in CI without capturing the full per-item response (HTTP code, trace ID, JSON). Failures hide otherwise, and trace IDs are the only debug signal Atlassian Support accepts.
+- **A7.** NEVER assume teammates run the same `acli` version. Pin a minimum version in CI and document it in `docs/`. Subcommand surfaces (e.g. `workitem` vs legacy `issue`) and flag shapes have shifted across minor releases.
+
 ## Five gotchas to keep in mind always
 
 1. **`--paginate` is opt-in.** Default limit is server-side (30–50 depending on command). No warning on truncation. If you are counting, iterating, or making decisions based on the result, pass `--paginate`.
-2. **Custom fields on `workitem create` go through `additionalAttributes` in `--from-json`.** Numeric IDs only (`customfield_10122`), no name-addressing. Documented value shapes in the `create` template are: `{"value": "..."}` (single-select), bare number, bare string. **`workitem edit` does NOT document custom-field input** — for editing custom-field values on existing items, fall back to REST/MCP. See `references/workitem.md` and `references/gotchas.md`.
+2. **Custom fields on `workitem create` go through `additionalAttributes` in `--from-json`.** Numeric IDs only (`customfield_10122`), no name-addressing. Documented value shapes in the `create` template are: `{"value": "..."}` (single-select), bare number, bare string. **`workitem edit` actively REJECTS custom-field input — hard error, exit 1, not a silent drop** (empirically confirmed across `additionalAttributes`, `fields`, and flat `customfield_X` shapes). For editing custom-field values on existing items, the **only** working path is REST `PUT /rest/api/3/issue/{KEY}` via `curl` using the session env vars — see the "WORKAROUND" subsection in "Publishing rich text" above, plus `references/gotchas.md` §4 and `references/workitem.md`.
 3. **`acli` cannot enumerate custom fields.** `acli jira field` only does create/update/delete/cancel-delete. To discover field IDs, use `workitem view --json | jq` against an item that has the field set, or call `GET /rest/api/3/field` directly. There is no in-CLI listing. In this boilerplate, `bun run jira:sync-fields` writes the canonical map to `.agents/jira-fields.json` — reference fields by slug via `{{jira.<slug>}}` instead of hardcoding numeric IDs.
 4. **Transitions match by status name, not transition ID.** When two transitions lead to the same status with different validators, the CLI picks one and may fail. No `--transition-id` escape hatch exists — fall back to REST if this hits.
 5. **Trace IDs are the only debug signal.** An `unexpected error, trace id: XXXXXXXX` line is all you get on backend failures. Capture and log the trace ID always; Atlassian Support needs it.

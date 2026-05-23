@@ -153,7 +153,7 @@ Example: `--fields "*navigable,-comment"` — everything navigable except the co
 
 Default view fields: `key,issuetype,summary,status,assignee,description`.
 
-> The actual `customfield_NNNNN` IDs in the example above are illustrative — your real IDs come from `.agents/jira-fields.json` after `bun run jira:sync-fields`. Reference them by slug via `{{jira.<slug>}}` in prompts and skill bodies (e.g. `{{jira.acceptance_criteria_gherkin}}`).
+> The actual `customfield_NNNNN` IDs in the example above are illustrative — your real IDs come from `.agents/jira-fields.json` after `bun run jira:sync-fields`. Reference them by slug via `{{jira.<slug>}}` in prompts and skill bodies (e.g. `{{jira.acceptance_criteria}}`).
 
 ## <a id="search"></a>search
 
@@ -210,7 +210,9 @@ acli jira workitem edit --key "UPEX-123" --remove-assignee
 Editable flags via `acli jira workitem edit`: `--summary`, `--description`, `--description-file`, `--assignee`, `--labels`, `--type`.
 Removal flags: `--remove-assignee`, `--remove-labels`.
 
-**Critical limitation**: `acli jira workitem edit` does **NOT** document any way to set custom-field values. `edit --generate-json` produces a template with only built-in fields — no `additionalAttributes` block. To edit a custom-field value on an existing item (e.g. update Story Points after estimation, refine ACs after grooming), use REST or MCP. See [Custom fields](#custom-fields) below for the full picture.
+**Critical limitation — `workitem edit` hard-rejects custom fields.** `acli jira workitem edit --from-json` validates the payload against a strict whitelist of built-in keys (`summary`, `description`, `assignee`, `labels`, `type`, `issues`, `labelsToAdd`, `labelsToRemove`). Every custom-field shape — `additionalAttributes.customfield_X`, `fields.customfield_X`, or `customfield_X` at the root — raises `✗ Error: json: unknown field …` and exits 1. Confirmed empirically against a live workitem; no silent drop, no escape hatch.
+
+**The only working path** is REST `PUT /rest/api/3/issue/{KEY}` with `{"fields": {customfield_NNNNN: <value-or-ADF>}}` — see the dedicated `SKILL.md` "WORKAROUND" subsection for the turnkey curl recipe and `references/gotchas.md` §4 for the wire-level detail. Both use the session env vars `$ATLASSIAN_URL`, `$ATLASSIAN_EMAIL`, `$ATLASSIAN_API_TOKEN` (loaded by `bun claude` / `bun opencode` / `direnv` from `.env`).
 
 ## <a id="transition"></a>transition
 
@@ -578,7 +580,7 @@ curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
 
 In this boilerplate, `bun run jira:sync-fields` writes the canonical map to `.agents/jira-fields.json`. Reference fields by slug via `{{jira.<slug>}}` instead of hardcoding numeric IDs. The DEV slugs you'll touch most often:
 
-- `{{jira.acceptance_criteria_gherkin}}` — Gherkin ACs on a Story
+- `{{jira.acceptance_criteria}}` — Gherkin ACs on a Story
 - `{{jira.business_rules_specification}}` — story-level business rules
 - `{{jira.scope}}` — in-scope / out-of-scope notes
 - `{{jira.mockup}}` — design mockup link

@@ -23,7 +23,7 @@ If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a T
 
 ## Matrix format (verbatim)
 
-One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria_gherkin` field, or `.context/PBI/{ticket}/spec.md` fallback). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
+One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or `.context/PBI/{ticket}/spec.md` fallback). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
 
 ```
 | AC scenario (Gherkin)                          | covered_by                          | evidence                              | status           |
@@ -128,7 +128,7 @@ Five values. Mechanically derived from `covered_by`:
 
 The reviewer subagent walks each AC scenario in order and applies these steps:
 
-1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria_gherkin` custom field, (2) `.context/PBI/{ticket}/spec.md`, (3) story description fallback. Every Given/When/Then block is one row.
+1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) `.context/PBI/{ticket}/spec.md`, (3) story description fallback. Every Given/When/Then block is one row.
 2. **For each scenario, ask: is there an automated test that exercises it?** Walk the diff + the existing test suite. If yes, mark `covered_by: test:<id>`, `status: covered`. The test must assert the scenario's outcome, not just the same code path.
 3. **If no test exists, ask: is there manual evidence on file?** Look in `.context/PBI/{ticket}/evidence/` and PR comments. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-path>`, `status: manual`.
 4. **If no evidence and the scenario is impractical to test in dev**, write a specific `exempt:<reason>`. Vague reasons are rejected. Mark `status: exempt`. The PR comment should also state how the scenario will be verified post-deploy (synthetic monitor, staging smoke, prod observability, etc.).

@@ -4,6 +4,26 @@
 
 ---
 
+## Custom field resolution — slug-based, never hardcoded
+
+Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
+
+**Slugs que este workflow lee/escribe** (semántica de cada campo):
+
+- `{{jira.actual_result}}` — 🐞 Actual Result (Textarea). Lo que pasó (comportamiento del bug).
+- `{{jira.expected_result}}` — ✅ Expected Result (Textarea). Lo que debería haber pasado.
+- `{{jira.error_type}}` — Error Type (Dropdown). Functional/Visual/Content/Performance/Crash/Data/Integration/Security.
+- `{{jira.severity}}` — SEVERITY (Dropdown). Crítica/Mayor/Moderada/Menor/Trivial.
+- `{{jira.test_environment}}` — Test Environment (Dropdown). Dev/QA/UAT/Staging/Production.
+- `{{jira.root_cause}}` — Root Cause🐞 (Dropdown). Code Error/Config-Env Error/Environment Error/Requirement Error/WAD/Third-Party/etc.
+- `{{jira.workaround}}` — Workaround (Textarea). Solución temporal mientras se aplica el fix definitivo.
+- `{{jira.evidence}}` — Evidence (attachments/links). Screenshots, logs, traces.
+- `{{jira.fix}}` — Fix (Radio). Bugfix (standard) / Hotfix (critical, immediate deploy).
+
+**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `CLAUDE.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.claude/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.claude/skills/product-management/references/jira-publishing-gotchas.md`.
+
+---
+
 ## Purpose
 
 Analyze, triage, and fix bugs/defects reported during exploratory testing or production. This prompt helps the AI:
@@ -26,7 +46,7 @@ Analyze, triage, and fix bugs/defects reported during exploratory testing or pro
 - Optional: API testing tools (e.g., Postman MCP)
 - Optional: Context7 MCP for library documentation
 
-**Important:** This prompt is primarily configured for the **UPEX Galaxy Jira Workspace**. The custom field IDs below are shared across all projects in this workspace. For external workspaces, see the **Fallback Strategy** section.
+**Important:** Custom fields are referenced by slug (resolved against `.agents/jira-required.yaml`) — never by hardcoded `customfield_NNNNN`. If a slug doesn't resolve to a workspace field, see the **Fallback Strategy** section.
 
 ---
 
@@ -111,21 +131,21 @@ This workflow requires GitHub CLI for:
 
 ---
 
-## Custom Fields Schema (UPEX Galaxy Workspace)
+## Custom Fields Schema
 
-> **CRITICAL:** Use these exact field IDs for bug custom fields. For non-UPEX workspaces, see **Fallback Strategy**.
+> **CRITICAL:** Reference bug fields by slug; the runtime resolves each slug against `.agents/jira-fields.json`. For workspaces missing a slug, see **Fallback Strategy**.
 
 ### Bug Fields Reference
 
-| Field ID            | Jira Field Name    | Type     | Values/Usage                                                                         |
-| ------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------ |
-| `customfield_10109` | 🐞 Actual Result   | Textarea | What happened (the bug behavior)                                                     |
-| `customfield_10110` | ✅ Expected Result | Textarea | What should have happened                                                            |
-| `customfield_10112` | Error Type         | Dropdown | Functional/Visual/Content/Performance/Crash/Data/Integration/Security                |
-| `customfield_10116` | SEVERITY           | Dropdown | Crítica/Mayor/Moderada/Menor/Trivial                                                 |
-| `customfield_12210` | Test Environment   | Dropdown | Dev/QA/UAT/Staging/Production                                                        |
-| `customfield_10701` | Root Cause🐞       | Dropdown | Code Error/Config-Env Error/Environment Error/Requirement Error/WAD/Third-Party/etc. |
-| `customfield_12212` | Fix                | Radio    | Bugfix (standard) / Hotfix (critical, immediate deploy)                              |
+| Slug (resuelve vía jira-required.yaml)  | Jira Field Name    | Type     | Values/Usage                                                                         |
+| --------------------------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------ |
+| `{{jira.actual_result}}` | 🐞 Actual Result   | Textarea | What happened (the bug behavior)                                                     |
+| `{{jira.expected_result}}`       | ✅ Expected Result | Textarea | What should have happened                                                            |
+| `{{jira.error_type}}`                   | Error Type         | Dropdown | Functional/Visual/Content/Performance/Crash/Data/Integration/Security                |
+| `{{jira.severity}}`                     | SEVERITY           | Dropdown | Crítica/Mayor/Moderada/Menor/Trivial                                                 |
+| `{{jira.test_environment}}`             | Test Environment   | Dropdown | Dev/QA/UAT/Staging/Production                                                        |
+| `{{jira.root_cause}}`                   | Root Cause🐞       | Dropdown | Code Error/Config-Env Error/Environment Error/Requirement Error/WAD/Third-Party/etc. |
+| `{{jira.fix}}`                          | Fix                | Radio    | Bugfix (standard) / Hotfix (critical, immediate deploy)                              |
 
 ### Root Cause Categories
 
@@ -152,36 +172,35 @@ This workflow requires GitHub CLI for:
 
 ---
 
-## Fallback Strategy (Non-UPEX Workspaces)
+## Fallback Strategy (Slug doesn't resolve in workspace)
 
-> Apply when using this prompt in Jira workspaces OTHER than UPEX Galaxy.
+> Apply when a `{{jira.<slug>}}` doesn't resolve to a present field in the target workspace (per `.agents/jira-fields.json` or a runtime probe).
 
 ### Fallback 1: Search for Equivalent Field
 
-When a custom field ID fails, use `[ISSUE_TRACKER_TOOL]` to search for fields:
+When a slug doesn't resolve to a present field, search the workspace:
 
 ```
-Use [ISSUE_TRACKER_TOOL] to search fields:
-  keyword: "root cause"  // or "severity", "error type", etc.
+[ISSUE_TRACKER_TOOL] search_fields(keyword="root cause")  // or "severity", "error type", etc.
 ```
 
 If found:
 
-1. Use discovered field ID for this session
-2. Inform user: "Using `customfield_XXXXX` for [Field Name] in this workspace"
-3. Proceed with fix workflow
+1. Update `.agents/jira-required.yaml` to point the slug at the discovered field (or add an alias slug) and re-run `bun run jira:sync-fields`.
+2. Inform user: "Slug `<slug>` now resolves to the discovered field in this workspace."
+3. Proceed with fix workflow.
 
 ### Fallback 2: Ask User to Define Fields
 
 ```
 ⚠️ Custom Field Not Found
 
-The field "[Field Name]" (UPEX ID: `customfield_XXXXX`) doesn't exist.
+The slug `{{jira.<slug>}}` ("[Field Name]") doesn't resolve to a present field in this workspace.
 
 Options:
-1. Tell me the correct custom field ID for this workspace
-2. Skip this field and include info in the Jira comment
-3. Proceed without updating this field
+1. Tell me which existing workspace field maps to this slug — I'll update `.agents/jira-required.yaml`.
+2. Skip this field and include info in the Jira comment.
+3. Proceed without updating this field.
 
 Which would you prefer?
 ```
@@ -202,34 +221,46 @@ As last resort:
 
 ### 1. Bug Issue from Jira
 
-> **⚠️ IMPORTANT:** The Atlassian MCP may not return custom fields with `fields: "*all"`. Make TWO calls to ensure complete data.
+> **⚠️ IMPORTANT:** Some `[ISSUE_TRACKER_TOOL]` fallbacks (notably the Atlassian MCP) do not return custom fields with a blanket "all fields" request. Make TWO calls — the second explicitly enumerating the slugs — to ensure complete data.
 
 **Call 1 - Standard fields:**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to get issue:
-  issue_key: "PROJ-123"
-  fields: "*all"
-  expand: "changelog"
-  comment_limit: 50
+[ISSUE_TRACKER_TOOL] get_issue(
+  issue_key="PROJ-123",
+  fields=<all>,
+  expand="changelog",
+  comment_limit=50
+)
 ```
 
-**Call 2 - Custom fields explicitly:**
+**Call 2 - Custom fields explicitly (by slug):**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to get issue:
-  issue_key: "PROJ-123"
-  fields: "customfield_10109,customfield_10110,customfield_10112,customfield_10116,customfield_12210,customfield_10701,customfield_10111,customfield_10607,customfield_12212"
+[ISSUE_TRACKER_TOOL] get_issue(
+  issue_key="PROJ-123",
+  fields=[
+    {{jira.actual_result}},
+    {{jira.expected_result}},
+    {{jira.error_type}},
+    {{jira.severity}},
+    {{jira.test_environment}},
+    {{jira.root_cause}},
+    {{jira.workaround}},
+    {{jira.evidence}},
+    {{jira.fix}}
+  ]
+)
 ```
 
 **Extract from combined results:**
 
 - Summary and Description
 - Steps to Reproduce
-- **Actual Result** (customfield_10109) vs **Expected Result** (customfield_10110)
-- **Error Type** (customfield_10112) and **Severity** (customfield_10116)
-- **Test Environment** (customfield_12210)
-- **Root Cause** (customfield_10701) - may be empty initially
+- **Actual Result** (`{{jira.actual_result}}`) vs **Expected Result** (`{{jira.expected_result}}`)
+- **Error Type** (`{{jira.error_type}}`) and **Severity** (`{{jira.severity}}`)
+- **Test Environment** (`{{jira.test_environment}}`)
+- **Root Cause** (`{{jira.root_cause}}`) - may be empty initially
 - All comments (context, discussions, prior attempts)
 - Attachments (screenshots, logs)
 
@@ -271,24 +302,36 @@ Check issue links for:
 
 **Step 1: Read the bug issue (TWO CALLS REQUIRED)**
 
-> **CRITICAL:** The Atlassian MCP may not return custom fields with `fields: "*all"`. You MUST make TWO separate calls to ensure you have all information.
+> **CRITICAL:** Some `[ISSUE_TRACKER_TOOL]` fallbacks (notably the Atlassian MCP) do not return custom fields with a blanket "all fields" request. You MUST make TWO separate calls to ensure you have all information.
 
 **Call 1 - Standard fields and comments:**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to get issue:
-  issue_key: "[BUG_ID]"
-  fields: "*all"
-  expand: "changelog"
-  comment_limit: 50
+[ISSUE_TRACKER_TOOL] get_issue(
+  issue_key="[BUG_ID]",
+  fields=<all>,
+  expand="changelog",
+  comment_limit=50
+)
 ```
 
-**Call 2 - Custom fields explicitly (REQUIRED):**
+**Call 2 - Custom fields explicitly by slug (REQUIRED):**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to get issue:
-  issue_key: "[BUG_ID]"
-  fields: "customfield_10109,customfield_10110,customfield_10112,customfield_10116,customfield_12210,customfield_10701,customfield_10111,customfield_10607,customfield_12212"
+[ISSUE_TRACKER_TOOL] get_issue(
+  issue_key="[BUG_ID]",
+  fields=[
+    {{jira.actual_result}},
+    {{jira.expected_result}},
+    {{jira.error_type}},
+    {{jira.severity}},
+    {{jira.test_environment}},
+    {{jira.root_cause}},
+    {{jira.workaround}},
+    {{jira.evidence}},
+    {{jira.fix}}
+  ]
+)
 ```
 
 **Why two calls?**
@@ -763,14 +806,22 @@ Next steps:
 
 **Objective:** Update Jira with complete fix documentation.
 
+> Before writing rich-text fields in Jira, read `.claude/skills/product-management/references/jira-publishing-gotchas.md` for the two known ADF bugs and their workarounds.
+
 **Step 1: Update Custom Fields (Root Cause)**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to update issue:
-  issue_key: "[BUG_ID]"
-  fields:
-    customfield_10701: {"value": "[Root Cause Category]"}
-    customfield_12212: {"value": "Bugfix"}  // or "Hotfix"
+[ISSUE_TRACKER_TOOL] update_issue_field(
+  issue_key="[BUG_ID]",
+  field={{jira.root_cause}},
+  value={"value": "[Root Cause Category]"}
+)
+
+[ISSUE_TRACKER_TOOL] update_issue_field(
+  issue_key="[BUG_ID]",
+  field={{jira.fix}},
+  value={"value": "Bugfix"}  // or "Hotfix"
+)
 ```
 
 **Step 2: Add Fix Documentation Comment**
@@ -816,14 +867,25 @@ Use [ISSUE_TRACKER_TOOL] to update issue:
 Before evaluating whether fields are "missing" or "incomplete":
 
 1. **Ensure you made the explicit custom fields call** (Phase 1, Call 2)
-2. **Re-verify if uncertain:** Make another call with explicit field IDs
+2. **Re-verify if uncertain:** Make another call with explicit slugs
 3. **List found values:** In your feedback, show the ACTUAL values found
 4. **Only mark as "missing" if the explicit call returned `null` or empty**
 
 ```
-Use [ISSUE_TRACKER_TOOL] to get issue:
-  issue_key: "[BUG_ID]"
-  fields: "customfield_10109,customfield_10110,customfield_10112,customfield_10116,customfield_12210,customfield_10701,customfield_10111,customfield_10607,customfield_12212"
+[ISSUE_TRACKER_TOOL] get_issue(
+  issue_key="[BUG_ID]",
+  fields=[
+    {{jira.actual_result}},
+    {{jira.expected_result}},
+    {{jira.error_type}},
+    {{jira.severity}},
+    {{jira.test_environment}},
+    {{jira.root_cause}},
+    {{jira.workaround}},
+    {{jira.evidence}},
+    {{jira.fix}}
+  ]
+)
 ```
 
 **If fields return null after explicit call:** Then it's valid to note as missing in feedback.
@@ -1345,7 +1407,7 @@ After completing the workflow, present this consolidated report to the user in t
 
 | Acción            | Detalle                                                   |
 | ----------------- | --------------------------------------------------------- |
-| Jira - Read       | `jira_get_issue` [ISSUE_KEY] (con comentarios/changelog)  |
+| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY] (con comentarios/changelog)  |
 | Jira - Transition | [Status inicial] → In Progress → Ready For QA             |
 | Jira - Fields     | Root Cause, Fix Type actualizados                         |
 | Jira - Comments   | [N] comentarios añadidos (Fix documentation [+ Feedback]) |
@@ -1419,7 +1481,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                        |
 | ----------------- | ------------------------------ |
-| Jira - Read       | `jira_get_issue` [ISSUE_KEY]   |
+| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY]   |
 | Jira - Link       | Linked to [EXISTING_ISSUE_KEY] |
 | Jira - Transition | [Status] → Duplicate           |
 | Jira - Comment    | Documented duplicate reasoning |
@@ -1445,7 +1507,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                      |
 | ----------------- | ---------------------------- |
-| Jira - Read       | `jira_get_issue` [ISSUE_KEY] |
+| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY] |
 | Jira - Transition | [Status] → Won't Fix         |
 | Jira - Comment    | Documented WAD reasoning     |
 
@@ -1471,7 +1533,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                           |
 | ----------------- | --------------------------------- |
-| Jira - Read       | `jira_get_issue` [ISSUE_KEY]      |
+| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY]      |
 | Jira - Comment    | Preguntas específicas al reporter |
 | Jira - Transition | [Status] → Need Info              |
 
@@ -1739,34 +1801,44 @@ To continue a previous session, paste this block with updated data:
 
 ## Troubleshooting
 
-| Issue                               | Solution                                             |
-| ----------------------------------- | ---------------------------------------------------- |
-| "Field customfield_XXXXX not found" | Use Fallback Strategy (search or include in comment) |
-| "Transition not valid"              | Check available transitions for current status       |
-| Cannot reproduce bug                | Request more info, check environment differences     |
-| Fix breaks other tests              | Investigate regression, consider scope of fix        |
-| PR conflicts                        | Rebase on target branch, resolve conflicts           |
-| Hotfix needs backport               | Use cherry-pick to apply to staging/develop          |
+| Issue                            | Solution                                             |
+| -------------------------------- | ---------------------------------------------------- |
+| "Slug `{{jira.<slug>}}` doesn't resolve to a workspace field" | Use Fallback Strategy (search or include in comment) |
+| "Transition not valid"           | Check available transitions for current status       |
+| Cannot reproduce bug             | Request more info, check environment differences     |
+| Fix breaks other tests           | Investigate regression, consider scope of fix        |
+| PR conflicts                     | Rebase on target branch, resolve conflicts           |
+| Hotfix needs backport            | Use cherry-pick to apply to staging/develop          |
 
 ### Custom Fields Not Returned (Common Issue)
 
-**Problem:** `jira_get_issue` with `fields: "*all"` returns standard fields but custom field values are `null` or missing.
+**Problem:** `[ISSUE_TRACKER_TOOL] get_issue(...)` with `fields=<all>` returns standard fields but custom field values are `null` or missing.
 
-**Root Cause:** The Atlassian MCP may not expand custom fields automatically.
+**Root Cause:** Some fallback tiers (notably the Atlassian MCP) do not expand custom fields automatically.
 
 **Solution:** Always make TWO calls:
 
-1. **First call:** `fields: "*all"` for standard fields + comments
-2. **Second call:** Explicitly list custom field IDs:
+1. **First call:** `fields=<all>` for standard fields + comments.
+2. **Second call:** Explicitly list slugs:
    ```
-   fields: "customfield_10109,customfield_10110,customfield_10112,customfield_10116,customfield_12210,customfield_10701,customfield_10111,customfield_10607,customfield_12212"
+   fields=[
+     {{jira.actual_result}},
+     {{jira.expected_result}},
+     {{jira.error_type}},
+     {{jira.severity}},
+     {{jira.test_environment}},
+     {{jira.root_cause}},
+     {{jira.workaround}},
+     {{jira.evidence}},
+     {{jira.fix}}
+   ]
    ```
 
 **If still not found:**
 
-1. Verify field exists: use `[ISSUE_TRACKER_TOOL]` to search fields with keyword
-2. Ask user for correct field ID
-3. Check if field is only visible to certain roles/projects
+1. Verify field exists: use `[ISSUE_TRACKER_TOOL] search_fields(...)` with keyword.
+2. Update `.agents/jira-required.yaml` mapping for the slug (or ask user).
+3. Check if field is only visible to certain roles/projects.
 
 **NEVER assume a field is empty without making the explicit call.**
 

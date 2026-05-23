@@ -90,6 +90,18 @@ The infrastructure choices below flow from the SRS architecture decisions made d
 
 ---
 
+## Inputs — read these first, in this order
+
+Canonical reading order for any AI starting cold on a project-bootstrap workflow. Read in order; stop earlier when the workflow is small enough that later inputs add no signal.
+
+1. `.context/PRD/` — outputs from `/project-foundation`. Feature inventory + MVP scope drive what to scaffold.
+2. `.context/SRS/` — outputs from `/project-foundation`. Infrastructure decisions (DB, hosting, auth provider, runtime).
+3. `DESIGN.md` (repo root) — design system + tokens. Required input for the frontend scaffold; must exist before Phase 2.
+4. `.agents/project.yaml` — project identity, env URLs, stack vars (`{{BACKEND_STACK}}`, `{{FRONTEND_STACK}}`, `{{DB_TYPE}}`, `{{API_URL}}`, `{{WEB_URL}}`).
+5. Existing scaffolding under `app/`, `lib/`, `db/` (if present) — detect prior state and UPSERT surgically; do NOT clobber.
+
+---
+
 ## Session & Dispatch
 
 > **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) and Phase 1 (plan write) are NOT optional.
@@ -208,6 +220,19 @@ After running any phase, confirm:
 If any check fails, surface the failure in the report rather than papering over it. Do not invent fixes for unfamiliar stacks — ask the user.
 
 On successful completion (Verification checklist from `plan.md` passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/project-bootstrap/` to `.session/.archive/<YYYY-MM-DD>-project-bootstrap-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back.
+
+---
+
+## Anti-patterns — NEVER do these
+
+- **B1.** NEVER collapse the scaffold architecture layers (`api/` / `schemas/` / `db/` boundaries in backend, design-system structure in frontend). That structure is framework architecture, not speculative abstraction — CLAUDE.md §2 SIMPLICITY FIRST exempts it.
+- **B2.** NEVER skip env-var validation (Zod or equivalent schema check at boot). Silent missing env vars cause cryptic prod failures far from the root cause.
+- **B3.** NEVER clobber existing scaffolding. Detect prior state under `app/`, `lib/`, `db/` and apply UPSERT semantics — patch surgically, preserve user edits.
+- **B4.** NEVER hardcode credentials, URLs, or env-specific values in scaffolded code. They belong in `.env` (secrets) + `.agents/project.yaml` (non-secret config).
+- **B5.** NEVER scaffold the frontend before `DESIGN.md` exists at repo root. Design tokens are the input contract for Phase 2 — run `/design-system` first.
+- **B6.** NEVER skip Supabase types generation when scaffolding the DB layer. Runtime TypeScript types must match the live schema; drift is a silent bug factory.
+- **B7.** NEVER ship bearer-token auth without rate-limiting + secret-rotation guidance in the same scaffold. Auth without those two is a half-finished feature.
+- **B8.** NEVER scaffold OpenAPI without the Scalar UI route. The contract surface must be browsable from day one or downstream consumers won't trust it.
 
 ---
 

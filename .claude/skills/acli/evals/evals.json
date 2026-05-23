@@ -15,7 +15,7 @@
     {
       "name": "should-trigger-fetch-story-details",
       "prompt": "Pull UPEX-277 from Jira via acli — I need the ACs, scope and mockup link to write the impl plan.",
-      "expected_behavior": "Activates acli skill. Loads references/workitem.md §view. Runs `acli jira workitem view UPEX-277 --json` and pipes through jq to extract the relevant custom fields (acceptance_criteria_gherkin, scope, mockup, business_rules_specification, workflow). References fields by slug per the boilerplate convention ({{jira.<slug>}}) and notes that the actual customfield IDs come from .agents/jira-fields.json.",
+      "expected_behavior": "Activates acli skill. Loads references/workitem.md §view. Runs `acli jira workitem view UPEX-277 --json` and pipes through jq to extract the relevant custom fields (acceptance_criteria, scope, mockup, business_rules_specification, workflow). References fields by slug per the boilerplate convention ({{jira.<slug>}}) and notes that the actual customfield IDs come from .agents/jira-fields.json.",
       "category": "positive"
     },
     {

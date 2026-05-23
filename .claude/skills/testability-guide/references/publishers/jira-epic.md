@@ -2,7 +2,7 @@
 
 > **When this adapter runs**: Q1 answered with `Jira Epic` (or the user accepted the default).
 >
-> **Tool**: `/acli`. The skill loads it silently per `skill-composition-strategy.md` §3.2 (T1 tier).
+> **Tool**: `[ISSUE_TRACKER_TOOL]` per `CLAUDE.md` §6. Resolves to `/acli` primary, Atlassian MCP fallback. This adapter owns the WHEN/WHAT — for the HOW (exact syntax, auth, flags, ADF), load `.claude/skills/acli/SKILL.md` §Jira and §Publishing rich text.
 >
 > **Body**: `references/credentials-content-template.md`. This adapter ONLY describes how to convert + publish; it does not duplicate content.
 
@@ -11,7 +11,7 @@
 ## Why Jira Epic is the default
 
 - Native `{noformat}` blocks render a copy button on every snippet — perfect for one-credential-per-block.
-- `/acli` is already wired in this boilerplate. Auth via API token in `.env`.
+- `[ISSUE_TRACKER_TOOL]` is already wired in this boilerplate. Auth via API token in `.env`.
 - Epic-level permissions can be restricted to the QA group.
 - The Epic ID becomes the snapshot's `credentials-source` value, durable across re-runs.
 
@@ -19,7 +19,7 @@
 
 ## Pre-publish checks
 
-1. Confirm `/acli` is authenticated (`acli jira workspace list` succeeds).
+1. Confirm `[ISSUE_TRACKER_TOOL]` is authenticated via the tier's auth-check operation (e.g. listing accessible workspaces succeeds). Load the owning skill for the exact command.
 2. Confirm the Jira project key in `.agents/project.yaml` (`project.project_key`). NEVER guess — ask the user if missing.
 3. Run `security-rules.md` checklist.
 4. Check whether a previous Epic exists (read the snapshot's `credentials-source` field). If yes → UPDATE that Epic, do NOT create a new one.
@@ -35,18 +35,20 @@
    - `### H3` → `h3.`
    - `code fence` → `{noformat}…{noformat}` (one block per credential).
    - Markdown tables → Jira table syntax (`||header||header||` / `|cell|cell|`).
-3. Create the Epic via `/acli`:
+3. Create the Epic:
 
-```bash
-acli jira issue create \
-  --project "{{PROJECT_KEY}}" \
-  --type "Epic" \
-  --summary "{{PROJECT_NAME}} — Credenciales de Acceso para Testing (DB / API / UI)" \
-  --description-file /tmp/qa-credentials-body.wiki
-```
+   ```text
+   [ISSUE_TRACKER_TOOL] create_issue(
+     project          = "{{PROJECT_KEY}}",
+     type             = "Epic",
+     summary          = "{{PROJECT_NAME}} — Credenciales de Acceso para Testing (DB / API / UI)",
+     description_body = /tmp/qa-credentials-body.wiki,
+   )
+   ```
 
+   For exact tier syntax, load `.claude/skills/acli/SKILL.md` §Jira.
 4. Capture the returned Epic key (e.g. `UPEX-321`).
-5. **Immediately update the Epic** with the same body via `acli jira issue update`. Reason: Jira Cloud's Markdown→ADF converter (used on `create`) escapes `**bold**` as literal `\*\*bold\*\*` and silently drops `+` characters between words. The `update` path converts cleanly to wiki markup, so this two-step dance is the only safe authoring path.
+5. **Immediately update the Epic** with the same body via the same tier's update-issue operation. Reason: Jira Cloud's Markdown→ADF converter (used on `create`) escapes `**bold**` as literal `\*\*bold\*\*` and silently drops `+` characters between words. The `update` path converts cleanly to wiki markup, so this two-step dance is the only safe authoring path. See `.claude/skills/product-management/references/jira-publishing-gotchas.md` for the full ADF-bug catalog.
 6. Set view restrictions to the QA group (if `.agents/project.yaml` declares one).
 
 ---
@@ -60,11 +62,14 @@ acli jira issue create \
 3. Read the existing snapshot's `content-hash`. If identical → skip publish, report `re-publish skipped (content-hash unchanged)`.
 4. If different:
 
-```bash
-acli jira issue update "<EPIC_KEY>" \
-  --description-file /tmp/qa-credentials-body.wiki
-```
+   ```text
+   [ISSUE_TRACKER_TOOL] update_issue(
+     key              = "<EPIC_KEY>",
+     description_body = /tmp/qa-credentials-body.wiki,
+   )
+   ```
 
+   For exact tier syntax, load `.claude/skills/acli/SKILL.md` §Jira.
 5. Add a comment on the Epic with the change summary (drifted fields, date).
 
 ---
@@ -94,7 +99,7 @@ acli jira issue update "<EPIC_KEY>" \
 
 | Symptom                                              | Cause                                         | Fix                                                                                                     |
 | ---------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `acli` returns `401`                                 | API token expired or missing in `.env`        | STOP, ask user to set `ATLASSIAN_API_TOKEN`, restart session. CLAUDE.md Rule #11.                       |
+| Tier returns `401`                                   | API token expired or missing in `.env`        | STOP, ask user to set `ATLASSIAN_API_TOKEN`, restart session. CLAUDE.md Rule #11.                       |
 | Epic created but body renders as literal `**`        | `update` step skipped after `create`          | Re-run the update flow. The fix is in the two-step dance, not in the conversion code.                   |
 | Epic exists with same summary in a different project | Wrong `project_key` in `.agents/project.yaml` | Ask user to confirm key. Do NOT auto-pick.                                                              |
 | View restrictions can't be applied                   | Account lacks permission                      | Surface to user. Continue with publish — the Epic is still less risky than the page inline credentials. |
