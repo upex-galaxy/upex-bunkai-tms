@@ -27,8 +27,8 @@ Every mutating command on `workitem` (except `create`, `view`) accepts **exactly
 
 | Flag              | Form                 | Example                                                                     |
 | ----------------- | -------------------- | --------------------------------------------------------------------------- |
-| `-k, --key`       | Comma-separated keys | `--key "UPEX-123,UPEX-124"`                                                 |
-| `--jql`           | JQL query string     | `--jql "project = UPEX AND status = '{{jira.status.story.ready_for_dev}}'"` |
+| `-k, --key`       | Comma-separated keys | `--key "{{PROJECT_KEY}}-123,{{PROJECT_KEY}}-124"`                                           |
+| `--jql`           | JQL query string     | `--jql "project = {{PROJECT_KEY}} AND status = 'Ready For Dev'"`                    |
 | `--filter`        | Saved filter ID      | `--filter 10001`                                                            |
 | `-f, --from-file` | File listing keys    | `--from-file keys.txt` (some commands)                                      |
 
@@ -39,28 +39,26 @@ JQL and filter selectors can target many items at once — the command becomes a
 Three input modes:
 
 ```bash
-# 1. Direct flags — simplest. Common DEV cases:
-
-# Create a Story (rare from CLI — usually /product-management does this)
+# 1. Direct flags — simplest case
 acli jira workitem create \
-  --project "UPEX" \
+  --project "{{PROJECT_KEY}}" \
   --type "Story" \
   --summary "Add empty-states to the dashboard" \
   --assignee "@me" \
   --label "frontend,empty-states"
 
-# Create a Bug from inside /sprint-development when QA reports an issue
+# Create a Bug linked to a parent Story
 acli jira workitem create \
-  --project "UPEX" \
+  --project "{{PROJECT_KEY}}" \
   --type "Bug" \
   --summary "Login button does nothing on Safari 17" \
   --assignee "@me" \
   --label "ui,bug" \
-  --parent "UPEX-123"
+  --parent "{{PROJECT_KEY}}-123"
 
 # 2. Summary/description from a file (longer bug repro)
 acli jira workitem create \
-  --project "UPEX" \
+  --project "{{PROJECT_KEY}}" \
   --type "Bug" \
   --from-file "bug-repro.md" \
   --assignee "user@example.com"
@@ -75,7 +73,7 @@ Useful flags:
 
 | Flag                 | Meaning                                                            |
 | -------------------- | ------------------------------------------------------------------ |
-| `-p, --project`      | Project key (e.g. `UPEX`)                                          |
+| `-p, --project`      | Project key (e.g. `{{PROJECT_KEY}}`)                                       |
 | `-t, --type`         | Work item type name (`Epic`, `Story`, `Task`, `Bug`)               |
 | `-s, --summary`      | One-line title                                                     |
 | `-d, --description`  | Plain text or ADF. Markdown is **not** interpreted.                |
@@ -93,7 +91,7 @@ Useful flags:
 For many items at once, use JSON or CSV input:
 
 ```bash
-# CSV path — fastest for spreadsheet-style input (e.g. seeding stories from a PRD)
+# CSV path — fastest for spreadsheet-style input
 acli jira workitem create-bulk --from-csv stories.csv --yes
 ```
 
@@ -101,8 +99,8 @@ Required CSV columns (literal names, comma-separated header row):
 
 ```
 summary,projectKey,issueType,description,label,parentIssueId,assignee
-Add empty-states to dashboard,UPEX,Story,FE story for empty states,frontend,UPEX-100,you@example.com
-Fix login button on Safari,UPEX,Bug,Reported by QA,ui,UPEX-123,auto
+Add empty-states to dashboard,{{PROJECT_KEY}},Story,FE story for empty states,frontend,{{PROJECT_KEY}}-100,you@example.com
+Fix login button on Safari,{{PROJECT_KEY}},Bug,Reported by QA,ui,{{PROJECT_KEY}}-123,auto
 ```
 
 Or scaffold a JSON template:
@@ -119,25 +117,23 @@ acli jira workitem create-bulk --from-json bulk.json --yes
 
 ```bash
 # Default fields — quick peek at a story
-acli jira workitem view UPEX-123
+acli jira workitem view {{PROJECT_KEY}}-123
 
-# Select fields — what /sprint-development Stage 1 (impl-plan) actually consumes
-acli jira workitem view UPEX-123 --fields "summary,status,assignee,description,parent"
+# Select fields
+acli jira workitem view {{PROJECT_KEY}}-123 --fields "summary,status,assignee,description,parent"
 
-# JSON for scripting — feed the impl-plan generator
-acli jira workitem view UPEX-123 --json | jq '.fields | {
+# JSON for scripting — feed a downstream generator
+acli jira workitem view {{PROJECT_KEY}}-123 --json | jq '.fields | {
   summary,
   status: .status.name,
   assignee: .assignee.emailAddress,
-  acceptance_criteria: .customfield_acceptance_criteria_gherkin,
-  business_rules: .customfield_business_rules_specification,
-  scope: .customfield_scope,
-  mockup: .customfield_mockup,
-  workflow: .customfield_workflow
+  acceptance_criteria: .customfield_NNNNN,
+  scope: .customfield_NNNNN,
+  mockup: .customfield_NNNNN
 }'
 
-# Open in browser — handy when discussing with the user
-acli jira workitem view UPEX-123 --web
+# Open in browser
+acli jira workitem view {{PROJECT_KEY}}-123 --web
 ```
 
 The `--fields` selector supports meta-tokens documented by the CLI:
@@ -153,28 +149,28 @@ Example: `--fields "*navigable,-comment"` — everything navigable except the co
 
 Default view fields: `key,issuetype,summary,status,assignee,description`.
 
-> The actual `customfield_NNNNN` IDs in the example above are illustrative — your real IDs come from `.agents/jira-fields.json` after `bun run jira:sync-fields`. Reference them by slug via `{{jira.<slug>}}` in prompts and skill bodies (e.g. `{{jira.acceptance_criteria}}`).
+> The `customfield_NNNNN` IDs above are placeholders. Real IDs are workspace-specific and have no name-addressing in `acli` — see the "Custom fields" section below for the discovery recipe.
 
 ## <a id="search"></a>search
 
 ```bash
-# JQL search — what's ready for me to pick up?
-acli jira workitem search --jql "project = UPEX AND status = '{{jira.status.story.ready_for_dev}}' AND assignee = currentUser()"
+# JQL search — what's ready for someone to pick up
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND status = 'Ready For Dev' AND assignee = currentUser()"
 
 # Saved filter (sprint dashboard, etc.)
 acli jira workitem search --filter 10001
 
 # Count only — sprint scorecards
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints() AND status = 'In Progress'" --count
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND sprint in openSprints() AND status = 'In Progress'" --count
 
 # Full result set — always pass --paginate when iterating
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints()" --paginate --json
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND sprint in openSprints()" --paginate --json
 
-# CSV for spreadsheets (handing off a sprint snapshot)
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints()" --fields "key,summary,assignee,status" --csv > sprint.csv
+# CSV for spreadsheets
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND sprint in openSprints()" --fields "key,summary,assignee,status" --csv > sprint.csv
 
 # Open search in browser
-acli jira workitem search --jql "project = UPEX AND assignee = currentUser()" --web
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND assignee = currentUser()" --web
 ```
 
 Flags:
@@ -196,15 +192,15 @@ Flags:
 
 ```bash
 # Simple flag-based edit — fix a typo in the summary
-acli jira workitem edit --key "UPEX-123" --summary "Updated story title" --yes
+acli jira workitem edit --key "{{PROJECT_KEY}}-123" --summary "Updated story title" --yes
 
 # Re-assign a batch of stories with JQL
-acli jira workitem edit --jql "project = UPEX AND assignee = formerdev@example.com" \
+acli jira workitem edit --jql "project = {{PROJECT_KEY}} AND assignee = formerdev@example.com" \
   --assignee "newdev@example.com" --yes --ignore-errors
 
 # Remove labels / assignee (cannot be done by passing empty values)
-acli jira workitem edit --key "UPEX-123" --remove-labels "stale,deprecated"
-acli jira workitem edit --key "UPEX-123" --remove-assignee
+acli jira workitem edit --key "{{PROJECT_KEY}}-123" --remove-labels "stale,deprecated"
+acli jira workitem edit --key "{{PROJECT_KEY}}-123" --remove-assignee
 ```
 
 Editable flags via `acli jira workitem edit`: `--summary`, `--description`, `--description-file`, `--assignee`, `--labels`, `--type`.
@@ -212,58 +208,50 @@ Removal flags: `--remove-assignee`, `--remove-labels`.
 
 **Critical limitation — `workitem edit` hard-rejects custom fields.** `acli jira workitem edit --from-json` validates the payload against a strict whitelist of built-in keys (`summary`, `description`, `assignee`, `labels`, `type`, `issues`, `labelsToAdd`, `labelsToRemove`). Every custom-field shape — `additionalAttributes.customfield_X`, `fields.customfield_X`, or `customfield_X` at the root — raises `✗ Error: json: unknown field …` and exits 1. Confirmed empirically against a live workitem; no silent drop, no escape hatch.
 
-**The only working path** is REST `PUT /rest/api/3/issue/{KEY}` with `{"fields": {customfield_NNNNN: <value-or-ADF>}}` — see the dedicated `SKILL.md` "WORKAROUND" subsection for the turnkey curl recipe and `references/gotchas.md` §4 for the wire-level detail. Both use the session env vars `$ATLASSIAN_URL`, `$ATLASSIAN_EMAIL`, `$ATLASSIAN_API_TOKEN` (loaded by `bun claude` / `bun opencode` / `direnv` from `.env`).
+**The only working path** is REST `PUT /rest/api/3/issue/{KEY}` with `{"fields": {customfield_NNNNN: <value-or-ADF>}}` — see the dedicated `SKILL.md` "WORKAROUND" subsection for the turnkey curl recipe and `references/gotchas.md` §4 for the wire-level detail. Both use the session env vars `$ATLASSIAN_URL`, `$ATLASSIAN_EMAIL`, `$ATLASSIAN_API_TOKEN` exported from the shell.
 
 ## <a id="transition"></a>transition
 
-This is the workhorse during `/sprint-development`. The DEV-side workflow this boilerplate uses:
-
-```
-Ready For Dev → In Progress → In Review → Ready For QA
-```
-
 ```bash
-# Stage 1 — start working on a story
-acli jira workitem transition --key "UPEX-123" --status "{{jira.status.story.in_progress}}"
+# Transition by key
+acli jira workitem transition --key "{{PROJECT_KEY}}-123" --status "In Progress"
 
-# Stage 3 — opened a PR, hand to code review
-acli jira workitem transition --key "UPEX-123" --status "{{jira.status.story.in_review}}"
+# Common forward-flow transitions
+acli jira workitem transition --key "{{PROJECT_KEY}}-123" --status "In Review"
+acli jira workitem transition --key "{{PROJECT_KEY}}-123" --status "Ready For QA"
 
-# Stage 4 — code merged to staging, hand off to QA
-acli jira workitem transition --key "UPEX-123" --status "{{jira.status.story.ready_for_qa}}"
-
-# Batch via JQL — close out everything that shipped to prod last release
-acli jira workitem transition --jql "project = UPEX AND fixVersion = '2026.05'" \
-  --status "{{jira.status.story.deployed_to_production}}" --yes --ignore-errors
+# Batch via JQL — close out everything that shipped last release
+acli jira workitem transition --jql "project = {{PROJECT_KEY}} AND fixVersion = '2026.05'" \
+  --status "Done" --yes --ignore-errors
 
 # Via saved filter
-acli jira workitem transition --filter 10001 --status "{{jira.status.story.ready_for_dev}}" --yes
+acli jira workitem transition --filter 10001 --status "Ready For Dev" --yes
 ```
 
 `--status` is a **status name**, not a transition ID. The target must be reachable from the current status through the project's workflow.
 
 Two known limitations:
 
-- **No `--transition-id`.** If two transitions lead to the same status with different validators (e.g. both "Resolve" and "Cancel" end in "{{jira.status.bug.closed}}"), `acli` may pick the wrong one and fail.
+- **No `--transition-id`.** If two transitions lead to the same status with different validators (e.g. both "Resolve" and "Cancel" end in "Closed"), `acli` may pick the wrong one and fail.
 - **Loop transitions** (actions that keep the status the same) are supported — just pass the same status name.
 
-Fallback when the CLI cannot disambiguate: call `POST /rest/api/3/issue/{key}/transitions` directly. See `references/gotchas.md` §9 for the canonical pattern using `{{jira.transition.<work_type>.<slug>}}` from `.agents/jira-fields.json`.
+Fallback when the CLI cannot disambiguate: call `POST /rest/api/3/issue/{key}/transitions` directly with an explicit transition ID. See `references/gotchas.md` §9 for the wire-level pattern.
 
 ## <a id="assign"></a>assign
 
 ```bash
-# Self-assign — picking up a story
-acli jira workitem assign --key "UPEX-123" --assignee "@me"
+# Self-assign
+acli jira workitem assign --key "{{PROJECT_KEY}}-123" --assignee "@me"
 
 # Batch reassign via JQL — handover when someone leaves the team
-acli jira workitem assign --jql "project = UPEX AND assignee = formerdev@example.com" \
+acli jira workitem assign --jql "project = {{PROJECT_KEY}} AND assignee = formerdev@example.com" \
   --assignee "newdev@example.com" --yes
 
 # Reset to the project default
-acli jira workitem assign --key "UPEX-123" --assignee "default"
+acli jira workitem assign --key "{{PROJECT_KEY}}-123" --assignee "default"
 
 # Unassign — putting it back in the pool
-acli jira workitem assign --key "UPEX-123" --remove-assignee
+acli jira workitem assign --key "{{PROJECT_KEY}}-123" --remove-assignee
 ```
 
 Assignee values: email, Atlassian account ID, `@me`, or `default`.
@@ -274,20 +262,20 @@ Assignee values: email, Atlassian account ID, `@me`, or `default`.
 
 ```bash
 # Clone within the same project (single or many)
-acli jira workitem clone --key "UPEX-100,UPEX-101" --to-project "UPEX"
+acli jira workitem clone --key "{{PROJECT_KEY}}-100,{{PROJECT_KEY}}-101" --to-project "{{PROJECT_KEY}}"
 
-# Clone into another project on the same site (e.g. spinning up a new tenant)
-acli jira workitem clone --key "TEMPLATE-1" --to-project "UPEX"
+# Clone into another project on the same site
+acli jira workitem clone --key "TEMPLATE-1" --to-project "{{PROJECT_KEY}}"
 
 # Clone every backlog item into another project
 acli jira workitem clone --jql "project = TEMPLATE AND status = 'Backlog'" \
-  --to-project "UPEX" --yes --ignore-errors
+  --to-project "{{PROJECT_KEY}}" --yes --ignore-errors
 
 # Clone a saved-filter result set
-acli jira workitem clone --filter 10001 --to-project "UPEX" --yes
+acli jira workitem clone --filter 10001 --to-project "{{PROJECT_KEY}}" --yes
 
 # Clone to a project on another site (cross-site)
-acli jira workitem clone --key "UPEX-1" --to-project "UPEX" --to-site "othersite.atlassian.net"
+acli jira workitem clone --key "{{PROJECT_KEY}}-1" --to-project "{{PROJECT_KEY}}" --to-site "othersite.atlassian.net"
 ```
 
 The clone copies summary, description, labels, and most routine fields. Attachments and comment history are **not** cloned. Parent/epic links may or may not carry depending on project settings.
@@ -295,15 +283,15 @@ The clone copies summary, description, labels, and most routine fields. Attachme
 ## <a id="archive"></a>archive / unarchive / delete
 
 ```bash
-# Archive — reversible (e.g. clean up old completed sprints)
-acli jira workitem archive --key "UPEX-100,UPEX-101" --yes
-acli jira workitem archive --jql "project = UPEX AND resolved < -180d" --yes --ignore-errors
+# Archive — reversible
+acli jira workitem archive --key "{{PROJECT_KEY}}-100,{{PROJECT_KEY}}-101" --yes
+acli jira workitem archive --jql "project = {{PROJECT_KEY}} AND resolved < -180d" --yes --ignore-errors
 
 # Unarchive — only --key and --from-file selectors are supported
-acli jira workitem unarchive --key "UPEX-100,UPEX-101" --yes
+acli jira workitem unarchive --key "{{PROJECT_KEY}}-100,{{PROJECT_KEY}}-101" --yes
 
 # Delete — destructive, use with care (only for items created by mistake)
-acli jira workitem delete --key "UPEX-999" --yes
+acli jira workitem delete --key "{{PROJECT_KEY}}-999" --yes
 ```
 
 Archived items no longer appear in normal search results and cannot be edited, but the key remains stable and can be restored.
@@ -314,27 +302,27 @@ Archived items no longer appear in normal search results and cannot be edited, b
 
 ```bash
 # Plain text — renders as a single ADF paragraph, no markdown
-acli jira workitem comment create --key "UPEX-123" --body "PR opened: https://github.com/org/repo/pull/456"
+acli jira workitem comment create --key "{{PROJECT_KEY}}-123" --body "PR opened: https://github.com/org/repo/pull/456"
 
-# Comment body from a file (longer impl notes)
-acli jira workitem comment create --key "UPEX-123" --body-file impl-notes.md
+# Comment body from a file (longer notes)
+acli jira workitem comment create --key "{{PROJECT_KEY}}-123" --body-file notes.md
 
 # Batch the same comment across many items
 acli jira workitem comment create --jql "labels = needs-review" \
   --body "Please review by Friday." --ignore-errors
 
 # Edit the author's last comment instead of adding a new one
-acli jira workitem comment create --key "UPEX-123" --body "Updated message" --edit-last
+acli jira workitem comment create --key "{{PROJECT_KEY}}-123" --body "Updated message" --edit-last
 
 # Open $EDITOR for the body
-acli jira workitem comment create --key "UPEX-123" --editor
+acli jira workitem comment create --key "{{PROJECT_KEY}}-123" --editor
 ```
 
 `comment create` accepts ADF via `-F, --body-file`. The flag's `--help` text reads "Plain text file with text or Atlassian Document Format (ADF)"; when the file begins with `{`, `acli` forwards the content as ADF. The legacy two-step workaround (create placeholder body → `comment update --body-adf`) is no longer required as of `acli` v1.3.18+. To author rich comments:
 
 ```bash
-bun .claude/skills/acli/scripts/md-to-adf.ts impl-notes.md impl-notes.adf.json
-acli jira workitem comment create --key EXAMPLE-123 -F impl-notes.adf.json
+bun .claude/skills/acli/scripts/md-to-adf.ts notes.md notes.adf.json
+acli jira workitem comment create --key {{PROJECT_KEY}}-123 -F notes.adf.json
 ```
 
 The plain `-b, --body` flag is plain text only — Markdown syntax in `--body` is stored literally as a single ADF paragraph. For any rich content, use `-F` with an ADF file produced by the bundled converter. See "Publishing rich text" in `SKILL.md` for the full workflow.
@@ -342,19 +330,19 @@ The plain `-b, --body` flag is plain text only — Markdown syntax in `--body` i
 ### list
 
 ```bash
-acli jira workitem comment list --key "UPEX-123" --json
-acli jira workitem comment list --key "UPEX-123" --order "+created"
-acli jira workitem comment list --key "UPEX-123" --paginate
+acli jira workitem comment list --key "{{PROJECT_KEY}}-123" --json
+acli jira workitem comment list --key "{{PROJECT_KEY}}-123" --order "+created"
+acli jira workitem comment list --key "{{PROJECT_KEY}}-123" --paginate
 ```
 
 ### delete
 
 ```bash
 # First find the comment ID via `comment list --json`
-CID=$(acli jira workitem comment list --key "UPEX-123" --json | jq -r '.[] | select(.body | contains("typo")) | .id')
+CID=$(acli jira workitem comment list --key "{{PROJECT_KEY}}-123" --json | jq -r '.[] | select(.body | contains("typo")) | .id')
 
 # Then delete by ID
-acli jira workitem comment delete --key "UPEX-123" --id "$CID"
+acli jira workitem comment delete --key "{{PROJECT_KEY}}-123" --id "$CID"
 ```
 
 Flags: `--key` (target work item), `--id` (comment ID). No batch selectors — operates on one comment at a time.
@@ -362,9 +350,9 @@ Flags: `--key` (target work item), `--id` (comment ID). No batch selectors — o
 ### update
 
 ```bash
-acli jira workitem comment update --key "UPEX-123" --id 10001 --body "Updated text"
-acli jira workitem comment update --key "UPEX-123" --id 10001 --body-adf rich.json
-acli jira workitem comment update --key "UPEX-123" --id 10001 --body "Internal note" \
+acli jira workitem comment update --key "{{PROJECT_KEY}}-123" --id 10001 --body "Updated text"
+acli jira workitem comment update --key "{{PROJECT_KEY}}-123" --id 10001 --body-adf rich.json
+acli jira workitem comment update --key "{{PROJECT_KEY}}-123" --id 10001 --body "Internal note" \
   --visibility-role "Administrators" --notify
 ```
 
@@ -374,7 +362,7 @@ Discover available visibility options before setting them:
 
 ```bash
 # Project roles (requires --project)
-acli jira workitem comment visibility --role --project UPEX
+acli jira workitem comment visibility --role --project {{PROJECT_KEY}}
 
 # Atlassian groups
 acli jira workitem comment visibility --group
@@ -382,16 +370,14 @@ acli jira workitem comment visibility --group
 
 ## <a id="link"></a>link
 
-This is how `/sprint-development` Stage 4 attaches a merged PR back to the story (`web link` to the PR URL is preferred — see REST fallback at the end of this section if you need a true remote link).
-
 ### create
 
 ```bash
 # Single link, inline — "this story BLOCKS that one"
-acli jira workitem link create --out UPEX-123 --in UPEX-124 --type "Blocks"
+acli jira workitem link create --out {{PROJECT_KEY}}-123 --in {{PROJECT_KEY}}-124 --type "Blocks"
 
 # "this bug RELATES TO that story"
-acli jira workitem link create --out UPEX-456 --in UPEX-123 --type "Relates"
+acli jira workitem link create --out {{PROJECT_KEY}}-456 --in {{PROJECT_KEY}}-123 --type "Relates"
 
 # Batch via JSON
 acli jira workitem link create --generate-json > links.json
@@ -406,8 +392,8 @@ acli jira workitem link create --from-csv links.csv --yes
 ### list / type
 
 ```bash
-# All links on a story — quickly see blockers & related bugs
-acli jira workitem link list --key "UPEX-123" --json
+# All links on a story
+acli jira workitem link list --key "{{PROJECT_KEY}}-123" --json
 
 # Available link types on the site (use these as --type values)
 acli jira workitem link type --json
@@ -428,13 +414,14 @@ acli jira workitem link delete --from-csv link-ids.csv --yes
 
 Flags: `--id`, `--from-csv`, `--from-json`, `--ignore-errors`, `--yes`. No work-item selector — operates on link IDs directly.
 
-### Linking a GitHub PR via remote link
+### Linking an external URL via remote link
 
-`acli` does not expose remote-link (web link) creation. To attach a PR URL to a story, fall back to REST:
+`acli` does not expose remote-link (web link) creation. To attach a URL (e.g. a GitHub PR) to a story, fall back to REST:
 
 ```bash
+SITE="${ATLASSIAN_URL#https://}"
 curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
-  -X POST "https://${ATLASSIAN_SITE}/rest/api/3/issue/UPEX-123/remotelink" \
+  -X POST "https://${SITE}/rest/api/3/issue/{{PROJECT_KEY}}-123/remotelink" \
   -H "Content-Type: application/json" \
   -d '{
     "object": {
@@ -445,13 +432,13 @@ curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   }'
 ```
 
-If the GitHub for Jira integration is installed on the org, just mentioning the story key (e.g. `UPEX-123`) in the PR title or body is enough — the integration auto-links. The REST recipe above is the manual fallback.
+If a GitHub-for-Jira integration is installed on the org, mentioning the story key (e.g. `{{PROJECT_KEY}}-123`) in the PR title or body is enough — the integration auto-links. The REST recipe above is the manual fallback.
 
 ## <a id="attachment"></a>attachment
 
 ```bash
-acli jira workitem attachment list --key "UPEX-123" --json
-acli jira workitem attachment delete --key "UPEX-123" --id 12345
+acli jira workitem attachment list --key "{{PROJECT_KEY}}-123" --json
+acli jira workitem attachment delete --key "{{PROJECT_KEY}}-123" --id 12345
 ```
 
 Upload is not yet covered by the CLI — use REST (`POST /rest/api/3/issue/{key}/attachments`).
@@ -462,7 +449,7 @@ Upload is not yet covered by the CLI — use REST (`POST /rest/api/3/issue/{key}
 
 ```bash
 # All watchers on a work item
-acli jira workitem watcher list --key "UPEX-123" --json
+acli jira workitem watcher list --key "{{PROJECT_KEY}}-123" --json
 ```
 
 Returns the watch count and the list of watcher accounts (each with `accountId`, `displayName`, `emailAddress` — the same shape Jira REST returns).
@@ -470,7 +457,7 @@ Returns the watch count and the list of watcher accounts (each with `accountId`,
 ### remove
 
 ```bash
-acli jira workitem watcher remove --key "UPEX-123" --user 5b10ac8d82e05b22cc7d4ef5
+acli jira workitem watcher remove --key "{{PROJECT_KEY}}-123" --user 5b10ac8d82e05b22cc7d4ef5
 ```
 
 `--user` takes an Atlassian account ID (not email). To get an account ID, run `watcher list --json` first (or look it up via `GET /rest/api/3/user/search?query=email`).
@@ -479,7 +466,7 @@ acli jira workitem watcher remove --key "UPEX-123" --user 5b10ac8d82e05b22cc7d4e
 
 ## <a id="custom-fields"></a>Custom fields
 
-This is one of the rougher edges in `acli`. Read this section carefully — the CLI exposes first-class flags only for built-in fields (`summary`, `description`, `assignee`, `labels`, `priority`, `parent`, `type`). Everything else — story points, acceptance criteria (Gherkin), business rules, scope, mockup, workflow — must go through `--from-json` on `create`. **Editing custom-field values on existing items has no documented `acli` path** and requires REST/MCP.
+This is one of the rougher edges in `acli`. Read this section carefully — the CLI exposes first-class flags only for built-in fields (`summary`, `description`, `assignee`, `labels`, `priority`, `parent`, `type`). Everything else — story points, acceptance criteria, business rules, scope, mockup, workflow — must go through `--from-json` on `create`. **Editing custom-field values on existing items has no documented `acli` path** and requires REST/MCP.
 
 ### What `acli` documents officially
 
@@ -489,13 +476,13 @@ This is one of the rougher edges in `acli`. Read this section carefully — the 
 {
   "summary": "Summary/Title of work item",
   "type": "Work item type, case sensitive, e.g. 'Story'",
-  "projectKey": "Project key to associate the work item with, e.g. 'UPEX'",
+  "projectKey": "Project key to associate the work item with, e.g. '{{PROJECT_KEY}}'",
   "assignee": "Assignee email or ID (optional)",
   "labels": ["feature", "optional"],
   "additionalAttributes": {
-    "customfield_10000": { "value": "Custom field value" },
-    "customfield_10001": 50,
-    "customfield_10002": "string value"
+    "customfield_NNNN": { "value": "Custom field value" },
+    "customfield_NNNN": 50,
+    "customfield_NNNN": "string value"
   }
 }
 ```
@@ -519,7 +506,7 @@ Three things to internalize:
 | Date (date-only) | `"2026-01-18"` (YYYY-MM-DD)                                                                                                             |
 | Datetime         | `"2026-01-18T19:28:09.762-0300"` (ISO-8601 with offset)                                                                                 |
 | URL              | bare string (`"https://example.com"`)                                                                                                   |
-| Epic Link        | bare string (issue key, e.g. `"UPEX-100"`)                                                                                              |
+| Epic Link        | bare string (issue key, e.g. `"{{PROJECT_KEY}}-100"`)                                                                                           |
 | User picker      | `{"accountId": "5b10ac8d82e05b22cc7d4ef5"}`                                                                                             |
 | Cascading select | `{"value": "Parent", "child": {"value": "Child"}}`                                                                                      |
 | Rich text (ADF)  | full ADF doc tree (same shape as `description`). Produce the tree from Markdown via `scripts/md-to-adf.ts`, then nest the result inside `additionalAttributes` for `create`, or inside `{"fields": {...}}` for a REST `PUT` on an existing item. See "Publishing rich text" in `SKILL.md`. |
@@ -550,42 +537,38 @@ Running `acli jira workitem edit --generate-json` produces:
 For editing a custom-field value on an existing work item (e.g. updating Story Points after estimation, polishing ACs after a 3-amigos), fall back to REST:
 
 ```bash
+SITE="${ATLASSIAN_URL#https://}"
 curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
-  -X PUT "https://${ATLASSIAN_SITE}/rest/api/3/issue/UPEX-123" \
+  -X PUT "https://${SITE}/rest/api/3/issue/{{PROJECT_KEY}}-123" \
   -H "Content-Type: application/json" \
-  -d '{"fields": {"customfield_10016": 8}}'
+  -d '{"fields": {"customfield_NNNNN": 8}}'
 ```
 
 Note the REST shape uses `{"fields": {...}}`, not `additionalAttributes`.
 
 ### Critical limitation: bulk operations do not document custom-field input
 
-`acli jira workitem create-bulk --generate-json` and the CSV column list (`summary, projectKey, issueType, description, label, parentIssueId, assignee`) both omit any way to set custom fields. If you need bulk creation with custom fields (e.g. seeding a backlog with Gherkin ACs already attached), the workaround is single-create-in-a-loop or REST batch.
+`acli jira workitem create-bulk --generate-json` and the CSV column list (`summary, projectKey, issueType, description, label, parentIssueId, assignee`) both omit any way to set custom fields. If you need bulk creation with custom fields (e.g. seeding a backlog with ACs already attached), the workaround is single-create-in-a-loop or REST batch.
 
 ### Finding a custom field ID
 
 `acli` cannot enumerate custom fields (`field` group only does create/update/delete/cancel-delete). To discover IDs:
 
 ```bash
+SITE="${ATLASSIAN_URL#https://}"
+
 # From an existing item that has the field set
-acli jira workitem view UPEX-123 --json | jq '.fields | keys[] | select(startswith("customfield_"))'
+acli jira workitem view {{PROJECT_KEY}}-123 --json | jq '.fields | keys[] | select(startswith("customfield_"))'
 
 # From the field admin UI — the ID is in the URL when editing the field
-# https://${ATLASSIAN_SITE}/secure/admin/EditCustomField!default.jspa?id=10016
+# https://${SITE}/secure/admin/EditCustomField!default.jspa?id=NNNNN
 
 # From REST — the only way to enumerate ALL fields on the site
 curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
-  "https://${ATLASSIAN_SITE}/rest/api/3/field" | jq '.[] | {id, name, custom, schema}'
+  "https://${SITE}/rest/api/3/field" | jq '.[] | {id, name, custom, schema}'
 ```
 
-In this boilerplate, `bun run jira:sync-fields` writes the canonical map to `.agents/jira-fields.json`. Reference fields by slug via `{{jira.<slug>}}` instead of hardcoding numeric IDs. The DEV slugs you'll touch most often:
-
-- `{{jira.acceptance_criteria}}` — Gherkin ACs on a Story
-- `{{jira.business_rules_specification}}` — story-level business rules
-- `{{jira.scope}}` — in-scope / out-of-scope notes
-- `{{jira.mockup}}` — design mockup link
-- `{{jira.workflow}}` — workflow notes
-- `{{jira.story_points}}` — estimation
+> Repo integration: host repos typically cache the field catalog under `.agents/` and reference fields by stable slug rather than numeric ID. See the host repo's `<repo-core>/references/acli-integration.md` for the slug catalog and refresh script.
 
 ### Putting it together — full `create` example with custom fields
 
@@ -593,17 +576,17 @@ In this boilerplate, `bun run jira:sync-fields` writes the canonical map to `.ag
 # 1. Scaffold
 acli jira workitem create --generate-json > new-story.json
 
-# 2. Edit to include the DEV custom fields (the IDs come from .agents/jira-fields.json)
+# 2. Edit to include custom fields (IDs come from your workspace — see "Finding a custom field ID" above)
 cat > new-story.json <<'JSON'
 {
   "summary": "Add empty-states to the dashboard",
   "type": "Story",
-  "projectKey": "UPEX",
+  "projectKey": "{{PROJECT_KEY}}",
   "assignee": "you@example.com",
   "labels": ["frontend", "empty-states"],
   "additionalAttributes": {
-    "customfield_10016": 5,
-    "customfield_acceptance_criteria_gherkin": "Given a user with no items\nWhen they open the dashboard\nThen they see the empty-state illustration"
+    "customfield_NNNN": 5,
+    "customfield_NNNNN": "Given a user with no items\nWhen they open the dashboard\nThen they see the empty-state illustration"
   }
 }
 JSON
@@ -612,4 +595,4 @@ JSON
 acli jira workitem create --from-json new-story.json
 ```
 
-_(IDs like `customfield_10016` are illustrative. Your actual IDs come from `.agents/jira-fields.json` after `bun run jira:sync-fields`.)_
+_(IDs like `customfield_NNNN` and `customfield_NNNNN` are placeholders — substitute your workspace's real IDs.)_

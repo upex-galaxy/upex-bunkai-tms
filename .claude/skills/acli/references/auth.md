@@ -19,7 +19,7 @@ Three credential mechanics are available depending on the namespace:
 | OAuth     | Human at a terminal, multi-site exploration | `jira auth login --web` · `acli auth login` |
 | API key   | Org-level admin commands                    | `admin auth login`                          |
 
-In this DEV boilerplate, dev work needs only the Jira namespace 99% of the time. Confluence is occasional (e.g. publishing release notes). Admin is rare (org-wide user lifecycle).
+For most workflows, the Jira namespace covers 99% of the surface. Confluence is occasional (e.g. publishing release notes). Admin is rare (org-wide user lifecycle).
 
 ## API token (the scriptable path)
 
@@ -28,19 +28,19 @@ Generate the token at https://id.atlassian.com/manage-profile/security/api-token
 ```bash
 # Read token from stdin (most portable)
 echo "$ATLASSIAN_API_TOKEN" | acli jira auth login \
-  --site "{{ATLASSIAN_SITE}}" \
+  --site "<your-site>.atlassian.net" \
   --email "you@example.com" \
   --token
 
 # Read from a file
 acli jira auth login \
-  --site "{{ATLASSIAN_SITE}}" \
+  --site "<your-site>.atlassian.net" \
   --email "you@example.com" \
   --token < token.txt
 
 # Windows PowerShell
 Get-Content token.txt | .\acli.exe jira auth login `
-  --site "{{ATLASSIAN_SITE}}" `
+  --site "<your-site>.atlassian.net" `
   --email "you@example.com" `
   --token
 ```
@@ -68,7 +68,7 @@ echo "$ATLASSIAN_ADMIN_API_KEY" | acli admin auth login \
   --token
 ```
 
-> **Naming note**: `ATLASSIAN_ADMIN_API_KEY` is **not** part of this boilerplate's `.env`. It is an organisation-scoped admin key, distinct from the regular per-user `ATLASSIAN_API_TOKEN`, and is only needed for ad-hoc org-admin sessions. Generate and export it for the one shell that runs `acli admin` commands; do not commit it.
+> **Naming note**: `ATLASSIAN_ADMIN_API_KEY` is an organisation-scoped admin key, distinct from the regular per-user `ATLASSIAN_API_TOKEN`, and is only needed for ad-hoc org-admin sessions. Generate and export it for the one shell that runs `acli admin` commands; do not commit it.
 
 The API key path is independent of `jira auth`. A session authenticated as a Jira user cannot run `admin user activate`.
 
@@ -78,7 +78,7 @@ Same shape as `jira auth` — same flag set, same credentials (Atlassian account
 
 ```bash
 echo "$ATLASSIAN_API_TOKEN" | acli confluence auth login \
-  --site "{{ATLASSIAN_SITE}}" \
+  --site "<your-site>.atlassian.net" \
   --email "you@example.com" \
   --token
 
@@ -168,7 +168,7 @@ Three rules for CI:
       --token
 ```
 
-Same env-var family as `.env` — no bot-prefixed names, no separate `ATLASSIAN_SITE` variable. The site slug is derived from `ATLASSIAN_URL` (strip the `https://` prefix).
+Convention: a single `ATLASSIAN_URL` / `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` family — no bot-prefixed names, no separate `ATLASSIAN_SITE` variable. The site slug `acli` wants on `--site` is derived from `ATLASSIAN_URL` (strip the `https://` prefix).
 
 Pin the version in the URL (`1.3.18/` instead of `latest/`) — unpinned installs have caused same-day mass failures in the past.
 

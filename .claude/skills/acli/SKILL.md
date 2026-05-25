@@ -1,18 +1,17 @@
 ---
 name: acli
-description: 'Atlassian CLI (official `acli` binary, v1.3+ as of 2026) for Jira Cloud, Confluence Cloud, and org admin tasks from the terminal. Use whenever the user wants to create, view, edit, transition, assign, clone, archive, comment on, link, or bulk-operate on Jira work items (Story, Bug, Task, Epic) from the command line; list or manage projects, boards, sprints, filters, dashboards, or custom-field definitions; create or update Confluence spaces, pages, or blog posts; activate/deactivate users at the org level; or authenticate to Atlassian from a shell or CI pipeline. Triggers on: `acli`, Atlassian CLI, Jira from the terminal, Confluence from the terminal, transition Jira ticket, transition story to In Review, create Jira issue from CLI, create bug from CLI, fetch story details from CLI, link PR to story, bulk Jira operations, create issues from a JSON/CSV file, script Jira, automate Jira tickets, transition a bunch of issues, CI pipeline that touches Jira, log in to Jira CLI, switch Atlassian sites, API-token auth for Jira. Use this skill even when the user does not say the word `acli` — if the task is CLI-driven Jira or Confluence work, this is the right tool. Do NOT use for: full sprint-development orchestration (use /sprint-development), code review workflow (use /sprint-development Stage 3), product backlog seeding (use /product-management), Bitbucket command-line needs (acli does not cover Bitbucket), or the legacy Appfire/Bob Swift `acli` tool (a different product that happens to share the binary name).'
+description: "Atlassian CLI (official `acli` binary, v1.3+ as of 2026) for Jira Cloud, Confluence Cloud, and org admin tasks from the terminal. Use whenever the user wants to create, view, edit, transition, assign, clone, archive, comment on, link, or bulk-operate on Jira work items; list or manage projects, boards, sprints, filters, dashboards, or custom-field definitions; create or update Confluence spaces, pages, or blog posts; activate/deactivate users at the org level; or authenticate to Atlassian from a shell or CI pipeline. Triggers on: `acli`, Atlassian CLI, Jira from the terminal, Confluence from the terminal, bulk Jira operations, scripting Jira, automate Jira tickets, transition a bunch of issues, create issues from a JSON/CSV file, CI pipeline that touches Jira, log in to Jira CLI, switch Atlassian sites, API-token auth for Jira. Use this skill even when the user does not say the word `acli` — if the task is CLI-driven Jira or Confluence work, this is the right tool. Do NOT use for: Atlassian MCP server work (that is a different integration), REST-API-only workflows where no CLI is involved, Bitbucket command-line needs (acli does not cover Bitbucket yet), or the legacy Appfire/Bob Swift `acli` tool (a different product that happens to share the binary name). The Atlassian MCP server is OPT-IN, documented in docs/mcp/."
 license: MIT
 compatibility: [claude-code, cursor, codex, opencode]
 allowed-tools: Bash(acli:*)
-complementary_categories:
-  - issue-tracker
+complementary_categories: [issue-tracker]
 ---
 
 # Atlassian CLI (`acli`)
 
-`acli` is Atlassian's official command-line tool for Jira Cloud, Confluence Cloud, and org admin operations. In this DEV boilerplate it serves as the primary `[ISSUE_TRACKER_TOOL]` — see `CLAUDE.md` Tool Resolution table. The Atlassian MCP server is OPT-IN (not enabled by default) and documented as a fallback in docs/mcp/ for users who choose to install it manually.
+`acli` is Atlassian's official command-line tool for Jira Cloud, Confluence Cloud, and org admin operations. It replaces terminal-based Jira automation that previously required raw REST calls, and unifies Jira + Confluence + admin actions behind one binary with one credential store per product.
 
-This skill teaches how to drive `acli` for any DEV intent: fetching story details for an implementation plan, transitioning a ticket through the Ready For Dev → In Progress → In Review → Ready For QA workflow, creating bugs from inside `/sprint-development`, linking PRs to stories, and scripted/CI Jira automation.
+This skill teaches how to drive `acli` for any intent: one-off commands, batch mutations, scripted pipelines, and CI jobs. **Repo-specific integration** (how this skill plugs into the host repo's workflow, TMS modality, project conventions, anti-patterns) lives in the companion file `<repo-core>/references/acli-integration.md` — load it on demand. See "Navigation" below.
 
 ## Why this skill exists
 
@@ -24,22 +23,22 @@ This skill teaches how to drive `acli` for any DEV intent: fetching story detail
 4. **Unknown subcommands fail silently.** Typing `acli jira workflow --help` does NOT error — it falls back to `acli jira --help` with exit 0. So "no error" ≠ "command exists". Always verify by checking the help body actually changed.
 5. **Hard limits the docs do not advertise.** `acli` cannot list custom fields, edit custom-field values on existing items, manage workflows, manage issue types, or touch project versions/components. See `references/gotchas.md`.
 
-The body below covers the core that applies to almost every DEV session. The `references/` directory holds the deep material — load only the one you need.
+The body below covers the core that applies to almost every session. The `references/` directory holds the deep material — load only the one you need.
 
 ## Composable Skills (auto-resolved at skill entry)
 
-`acli` is itself the canonical issue-tracker skill — there are no T3 skills that overlap its category in `.claude/skills/agentic-dev-core/references/skill-composition-strategy.md` §5.1. Composition is therefore minimal and exists for protocol consistency only.
+`acli` is itself the canonical `issue-tracker` skill. The category typically has no T3 skills that overlap — `acli` is the tool surface, not a borrower of community skills.
 
-Steps:
+Steps for protocol consistency:
 
 1. Read `complementary_categories` from this skill's frontmatter (`issue-tracker`).
-2. Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
-3. Apply threshold rule per strategy doc §3.2 (T1/T3 silent; T4 ASK).
-4. The Atlassian MCP fallback documented below is OPT-IN, not a skill — enable manually via docs/mcp/.
+2. Resolve via the host repo's skill-registry cache (`.claude/skills/REGISTRY.md`, built by `scripts/build-skill-registry.ts`). Fallback: scan the session-start `system-reminder` skill list.
+3. Apply the threshold rule per the host repo's skill-composition strategy doc (T1 / T3 silent; T4 ASK).
+4. The Atlassian MCP fallback documented below is OPT-IN, not a skill — enable manually via `docs/mcp/`.
 
-Expected matches: typically none. If the user has installed a future T4 skill in the `issue-tracker` category (e.g. an `acli` extension authored by a third party), it would surface here under the ASK rule.
+Expected matches: typically none. Repo-specific composability (which workflow skills load this) lives in `<repo-core>/references/acli-integration.md` §Composability.
 
-Skip step if the catalog is unavailable; log `skill_resolution: "fallback-inline"` plus `missing: [<categories>]` per §3.4.
+Skip step if the catalog is unavailable; log `skill_resolution: "fallback-inline"` plus `missing: [<categories>]` per the strategy doc's composability fallback contract.
 
 ## Fallback: Atlassian MCP
 
@@ -61,39 +60,22 @@ If `acli` is not installed or authenticated, fall back to the Atlassian MCP serv
 
 **Coverage parity**: MCP and `acli` overlap for issues, projects, boards, sprints, comments, and basic Confluence ops. For org-admin user lifecycle and Confluence space CRUD, `acli` is more direct. For schema/admin reads (field catalog, workflow definitions), MCP/REST is the only viable path.
 
-## Role inside the DEV workflow
-
-This skill complements the `/sprint-development` mega-orchestrator. It does NOT drive the sprint loop — it is the underlying CLI surface that `/sprint-development` and other DEV skills call when they need to talk to Jira:
-
-| DEV moment                                                                          | What this skill does                                                                            |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `/sprint-development` Stage 1 (Planning) — fetch ticket                             | `acli jira workitem view UPEX-123 --json` → ACs, Gherkin, Scope, Mockup, Workflow custom fields |
-| `/sprint-development` Stage 1 — transition story to In Progress                     | `acli jira workitem transition --key UPEX-123 --status "{{jira.status.story.in_progress}}"`     |
-| `/sprint-development` Stage 3 (Code Review) — transition to In Review               | `acli jira workitem transition --key UPEX-123 --status "{{jira.status.story.in_review}}"`       |
-| `/sprint-development` Stage 4 — handoff to QA                                       | `acli jira workitem transition --key UPEX-123 --status "{{jira.status.story.ready_for_qa}}"`    |
-| `/sprint-development` Stage 3 — found a defect mid-implementation                   | `acli jira workitem create --project UPEX --type Bug --summary "..." --parent UPEX-123`         |
-| Linking the merged PR back to the ticket                                            | `acli jira workitem link create --out UPEX-123 --in <pr-issue-or-remote-link>`                  |
-| `/product-management` — bulk-create stories from a CSV                              | `acli jira workitem create-bulk --from-csv stories.csv --yes`                                   |
-| `/product-management` (workflow G) — pull all in-flight stories for a sprint report | `acli jira workitem search --jql "..." --paginate --json`                                       |
-
-Issue types DEV cares about: **Story**, **Bug**, **Task**, **Epic**. Test-management issue types live in the sister QA repo and are not handled here.
-
 ## Command structure
 
 ```
 acli <product> [<feature>] <action> [flags]
 ```
 
-| Product      | Purpose                                                                                           |
-| ------------ | ------------------------------------------------------------------------------------------------- |
-| `jira`       | Jira Cloud — work items, projects, boards, sprints, filters, dashboards, custom-field definitions |
-| `confluence` | Confluence Cloud — spaces (CRUD), blog posts, page view                                           |
-| `admin`      | Organization admin — API-key auth, user lifecycle                                                 |
-| `auth`       | Global OAuth (cross-product, newer top-level surface)                                             |
-| `rovodev`    | Rovo Dev AI coding agent (separate beta product)                                                  |
-| `feedback`   | Send feedback or a bug report to Atlassian                                                        |
-| `config`     | Atlassian Government Cloud configuration (`gov-cloud`)                                            |
-| `completion` | Generate shell-autocompletion script (bash / zsh / fish / powershell)                             |
+| Product       | Purpose                                                          |
+| ------------- | ---------------------------------------------------------------- |
+| `jira`        | Jira Cloud — work items, projects, boards, sprints, filters, dashboards, custom-field definitions |
+| `confluence`  | Confluence Cloud — spaces (CRUD), blog posts, page view          |
+| `admin`       | Organization admin — API-key auth, user lifecycle                |
+| `auth`        | Global OAuth (cross-product, newer top-level surface)            |
+| `rovodev`     | Rovo Dev AI coding agent (separate beta product)                 |
+| `feedback`    | Send feedback or a bug report to Atlassian                       |
+| `config`      | Atlassian Government Cloud configuration (`gov-cloud`)           |
+| `completion`  | Generate shell-autocompletion script (bash / zsh / fish / powershell) |
 
 Every level has `--help`. Use it aggressively when unsure:
 
@@ -104,71 +86,72 @@ acli jira workitem --help
 acli jira workitem create --help
 ```
 
-## Quick start (DEV flow)
+## Quick start
 
 ```bash
 # 1. Authenticate against a site using an API token (scriptable path)
 echo "$ATLASSIAN_API_TOKEN" | acli jira auth login \
-  --site "{{ATLASSIAN_SITE}}" \
+  --site "<your-site>.atlassian.net" \
   --email "you@example.com" \
   --token
 
 # 2. Verify
 acli jira auth status
 
-# 3. Fetch the story you are about to implement (impl-plan input)
-acli jira workitem view UPEX-123 --json | jq '.fields | {summary, status, assignee, customfield_acceptance_criteria_gherkin}'
+# 3. Create a work item
+acli jira workitem create --project "{{PROJECT_KEY}}" --type "Task" --summary "Draft the Q3 OKRs"
 
-# 4. Move it into "In Progress" when /sprint-development Stage 1 starts
-acli jira workitem transition --key UPEX-123 --status "{{jira.status.story.in_progress}}"
+# 4. Search with JQL — ALWAYS pass --paginate or --limit explicitly
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND status = 'To Do'" --paginate --json
 
-# 5. Search for everything you own that is still open (sprint dashboard)
-acli jira workitem search \
-  --jql "assignee = currentUser() AND status in ('Ready For Dev','In Progress','In Review')" \
-  --paginate --json
+# 5. Transition one or many
+acli jira workitem transition --jql "project = {{PROJECT_KEY}} AND assignee = currentUser()" \
+  --status "In Progress" --yes --ignore-errors
 ```
+
+> **Repo-specific quick start**: when the host repo defines its own workflow (status names, project keys, slug-resolved custom fields), see `<repo-core>/references/acli-integration.md` — it documents the project-flavored variant of the steps above.
 
 ## Top-level command map
 
 ### Jira (`acli jira`)
 
-| Subcommand  | What it covers                                                                                                                                                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`      | login · logout · status · switch — API-token or OAuth                                                                                                                                                                                                           |
-| `workitem`  | archive · assign · attachment (list / delete) · clone · comment (create / delete / list / update / visibility) · create · create-bulk · delete · edit · link (create / delete / list / type) · search · transition · unarchive · view · watcher (list / remove) |
-| `project`   | archive · create · delete · list · restore · update · view                                                                                                                                                                                                      |
-| `board`     | create · delete · get · list-projects · list-sprints · search                                                                                                                                                                                                   |
-| `sprint`    | create · delete · list-workitems · update · view                                                                                                                                                                                                                |
-| `filter`    | add-favourite · change-owner · get · get-columns · list · reset-columns · search · update                                                                                                                                                                       |
-| `dashboard` | search                                                                                                                                                                                                                                                          |
-| `field`     | cancel-delete · create · delete · update — **custom-field DEFINITIONS only**, NOT values, and **no listing**                                                                                                                                                    |
+| Subcommand   | What it covers                                            |
+| ------------ | --------------------------------------------------------- |
+| `auth`       | login · logout · status · switch — API-token or OAuth     |
+| `workitem`   | archive · assign · attachment (list / delete) · clone · comment (create / delete / list / update / visibility) · create · create-bulk · delete · edit · link (create / delete / list / type) · search · transition · unarchive · view · watcher (list / remove) |
+| `project`    | archive · create · delete · list · restore · update · view |
+| `board`      | create · delete · get · list-projects · list-sprints · search |
+| `sprint`     | create · delete · list-workitems · update · view          |
+| `filter`     | add-favourite · change-owner · get · get-columns · list · reset-columns · search · update |
+| `dashboard`  | search                                                    |
+| `field`      | cancel-delete · create · delete · update — **custom-field DEFINITIONS only**, NOT values, and **no listing** |
 
 ### Confluence (`acli confluence`)
 
-| Subcommand | What it covers                                                |
-| ---------- | ------------------------------------------------------------- |
-| `auth`     | login · logout · status · switch — same model as `jira auth`  |
-| `space`    | archive · create · list · restore · update · view (full CRUD) |
-| `blog`     | create · list · view                                          |
-| `page`     | view (read-only as of v1.3.18 — page CRUD not yet exposed)    |
+| Subcommand | What it covers                                                       |
+| ---------- | -------------------------------------------------------------------- |
+| `auth`     | login · logout · status · switch — same model as `jira auth`         |
+| `space`    | archive · create · list · restore · update · view (full CRUD)        |
+| `blog`     | create · list · view                                                 |
+| `page`     | view (read-only as of v1.3.18 — page CRUD not yet exposed)           |
 
 ### Admin (`acli admin`)
 
-| Subcommand | What it covers                                 |
-| ---------- | ---------------------------------------------- |
-| `auth`     | login · logout · status · switch — API key     |
+| Subcommand | What it covers                                |
+| ---------- | --------------------------------------------- |
+| `auth`     | login · logout · status · switch — API key    |
 | `user`     | activate · deactivate · delete · cancel-delete |
 
 ## The selector pattern (the thing to internalize)
 
 Most mutating `workitem` commands (`edit`, `transition`, `assign`, `archive`, `clone`, `comment create`) accept **one of** these target selectors:
 
-| Selector            | When to use                                                                 |
-| ------------------- | --------------------------------------------------------------------------- |
-| `--key KEY-1,KEY-2` | You already know the exact keys (the common DEV case — you have a UPEX-XXX) |
-| `--jql "..."`       | You want everything matching a JQL query (sweeps, bulk transitions)         |
-| `--filter 10001`    | You want to reuse a saved Jira filter                                       |
-| `--from-file f`     | You have a file listing keys (`archive`/`unarchive`/`assign`)               |
+| Selector            | When to use                                                    |
+| ------------------- | -------------------------------------------------------------- |
+| `--key KEY-1,KEY-2` | You already know the exact keys                                |
+| `--jql "..."`       | You want everything matching a JQL query                       |
+| `--filter 10001`    | You want to reuse a saved Jira filter                          |
+| `--from-file f`     | You have a file listing keys (`archive`/`unarchive`/`assign`)  |
 
 When the selector matches many items, the command is **a batch operation**. Two flags almost always matter:
 
@@ -186,14 +169,14 @@ All list/search/view commands support three shapes:
 Example pipe patterns:
 
 ```bash
-# Count only — how many stories are still in "In Progress"?
-acli jira workitem search --jql "project = UPEX AND status = 'In Progress'" --count
+# Count only
+acli jira workitem search --jql "project = {{PROJECT_KEY}}" --count
 
-# Save a sprint snapshot to CSV
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints()" --paginate --csv > sprint.csv
+# Save full result set to CSV
+acli jira workitem search --jql "project = {{PROJECT_KEY}}" --paginate --csv > team.csv
 
-# Extract a single field with jq (story summary for the impl-plan header)
-acli jira workitem view UPEX-123 --json | jq '.fields.summary'
+# Extract a single field with jq
+acli jira workitem view {{PROJECT_KEY}}-123 --json | jq '.fields.summary'
 ```
 
 The JSON shape from `workitem search` has a top-level `issues` array (not `workitems`) — the Jira REST v3 wire format shows through.
@@ -281,7 +264,7 @@ bun .claude/skills/acli/scripts/md-to-adf.ts /tmp/ac.md   /tmp/ac.adf.json
 
 # 3. Splice the ADF docs into the create-from-json payload
 jq -n \
-  --arg pk "EXAMPLE" \
+  --arg pk "{{PROJECT_KEY}}" \
   --slurpfile desc /tmp/desc.adf.json \
   --slurpfile ac   /tmp/ac.adf.json \
   '{
@@ -341,7 +324,7 @@ jq -n --slurpfile adf /tmp/new.adf.json \
 # 4. PUT against the issue
 curl -sS -w "\nHTTP %{http_code}\n" \
   -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
-  -X PUT "$ATLASSIAN_URL/rest/api/3/issue/EXAMPLE-123" \
+  -X PUT "$ATLASSIAN_URL/rest/api/3/issue/{{PROJECT_KEY}}-123" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   --data-binary @/tmp/put.json
@@ -364,7 +347,7 @@ Same ADF doc through REST PUT: HTTP 204 OK.
 **Batch variant.** Loop the recipe per `--data-binary @/tmp/put-N.json` and capture HTTP codes:
 
 ```bash
-for KEY in UPEX-1 UPEX-2 UPEX-3; do
+for KEY in {{PROJECT_KEY}}-1 {{PROJECT_KEY}}-2 {{PROJECT_KEY}}-3; do
   status=$(curl -sS -o /dev/null -w "%{http_code}" \
     -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
     -X PUT "$ATLASSIAN_URL/rest/api/3/issue/$KEY" \
@@ -383,23 +366,22 @@ done
 - One workflow covers every rich-text surface uniformly: descriptions, comments, custom fields, all the same three steps.
 - Identifier-heavy prose (snake_case, kebab-case) survives the conversion because the italic detection has word-boundary guards.
 
-## Anti-patterns — NEVER do these
+## Anti-patterns — NEVER do these (tool-level)
 
-These are formal companions to the gotchas section below. Gotchas describe *surprising behavior to remember*; anti-patterns describe *actions to refuse outright*. Both apply.
+These are tool-level anti-patterns intrinsic to the `acli` binary and its REST companion. They apply regardless of host repo. Gotchas describe *surprising behavior to remember*; anti-patterns describe *actions to refuse outright*. Both apply.
 
-- **A1.** NEVER run a `bun run jira:sync-*` script without a fresh `acli jira auth login` — stale or expired auth produces silent partial-data syncs that poison `.agents/jira-fields.json` / `jira-workflows.json` / `jira-link-types.json` downstream.
-- **A2.** NEVER hardcode Jira `customfield_NNNNN` IDs in prompts, skills, or scripts. Resolve via the slug catalog (`{{jira.<slug>}}` against `.agents/jira-required.yaml` + `.agents/jira-fields.json`). IDs differ per workspace; slugs travel.
-- **A3.** NEVER assume `acli jira workitem edit` accepts custom-field input. It hard-rejects every shape (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1. Use the REST `PUT /rest/api/3/issue/{KEY}` workaround documented above — there is no acli-native path.
-- **A4.** NEVER hand-author raw ADF JSON for rich-text fields. Use `scripts/md-to-adf.ts` — deterministic, diffable, snake_case-safe, and avoids the combined-marks bug (inline `code` co-occurring with `strong`/`em` causes HTTP 400).
-- **A5.** NEVER use `acli` against a production Jira workspace from a developer workstation without an explicit per-operation confirmation step. Transitions, deletions, and bulk edits are irreversible — `--yes` in CI is fine, `--yes` ad-hoc against prod is not.
-- **A6.** NEVER batch transitions or mutations with quiet flags in CI without capturing the full per-item response (HTTP code, trace ID, JSON). Failures hide otherwise, and trace IDs are the only debug signal Atlassian Support accepts.
-- **A7.** NEVER assume teammates run the same `acli` version. Pin a minimum version in CI and document it in `docs/`. Subcommand surfaces (e.g. `workitem` vs legacy `issue`) and flag shapes have shifted across minor releases.
+- **T1.** NEVER hand-author raw ADF JSON for descriptions, comments, or rich-text custom fields. Use `scripts/md-to-adf.ts` — deterministic, diffable, snake_case-safe, and avoids the combined-marks bug (inline `code` co-occurring with `strong`/`em` causes HTTP 400).
+- **T2.** NEVER hardcode Jira `customfield_NNNNN` IDs in scripts or AI output that consumes `acli`. Resolve via the host project's slug catalog (see the host repo's `acli-integration.md`). IDs differ per workspace; slugs travel.
+- **T3.** NEVER assume `acli` accepts custom-field input on `workitem edit`. It hard-rejects every shape (`additionalAttributes`, `fields`, flat `customfield_X`) with exit 1. Use the REST `PUT /rest/api/3/issue/{KEY}` workaround documented above — there is no acli-native path.
+- **T4.** NEVER run a bulk `acli` mutation (transition, edit, comment, link, archive) without first verifying `acli jira auth status`. Silent auth expiry cascades into HTTP 401s mid-loop, leaving the batch half-applied with no clean rollback.
+
+> **Repo-specific anti-patterns** (workflow abstraction, project-key portability, TMS modality boundaries, prod-workspace safety, CI batching, version pinning, sync-script auth) live in `<repo-core>/references/acli-integration.md`. Load it whenever a session touches the host repo's Jira workflow.
 
 ## Five gotchas to keep in mind always
 
 1. **`--paginate` is opt-in.** Default limit is server-side (30–50 depending on command). No warning on truncation. If you are counting, iterating, or making decisions based on the result, pass `--paginate`.
-2. **Custom fields on `workitem create` go through `additionalAttributes` in `--from-json`.** Numeric IDs only (`customfield_10122`), no name-addressing. Documented value shapes in the `create` template are: `{"value": "..."}` (single-select), bare number, bare string. **`workitem edit` actively REJECTS custom-field input — hard error, exit 1, not a silent drop** (empirically confirmed across `additionalAttributes`, `fields`, and flat `customfield_X` shapes). For editing custom-field values on existing items, the **only** working path is REST `PUT /rest/api/3/issue/{KEY}` via `curl` using the session env vars — see the "WORKAROUND" subsection in "Publishing rich text" above, plus `references/gotchas.md` §4 and `references/workitem.md`.
-3. **`acli` cannot enumerate custom fields.** `acli jira field` only does create/update/delete/cancel-delete. To discover field IDs, use `workitem view --json | jq` against an item that has the field set, or call `GET /rest/api/3/field` directly. There is no in-CLI listing. In this boilerplate, `bun run jira:sync-fields` writes the canonical map to `.agents/jira-fields.json` — reference fields by slug via `{{jira.<slug>}}` instead of hardcoding numeric IDs.
+2. **Custom fields on `workitem create` go through `additionalAttributes` in `--from-json`.** Numeric IDs only (`customfield_NNNN`), no name-addressing. Documented value shapes in the `create` template are: `{"value": "..."}` (single-select), bare number, bare string. **`workitem edit` actively REJECTS custom-field input — hard error, exit 1, not a silent drop** (empirically confirmed across `additionalAttributes`, `fields`, and flat `customfield_X` shapes). For editing custom-field values on existing items, the **only** working path is REST `PUT /rest/api/3/issue/{KEY}` via `curl` using the session env vars — see the "WORKAROUND" subsection in "Publishing rich text" above, plus `references/gotchas.md` §4 and `references/workitem.md`.
+3. **`acli` cannot enumerate custom fields.** `acli jira field` only does create/update/delete/cancel-delete. To discover field IDs, use `workitem view --json | jq` against an item that has the field set, or call `GET /rest/api/3/field` directly. There is no in-CLI listing. Host repos typically cache the catalog under `.agents/` and resolve fields by slug — see `<repo-core>/references/acli-integration.md`.
 4. **Transitions match by status name, not transition ID.** When two transitions lead to the same status with different validators, the CLI picks one and may fail. No `--transition-id` escape hatch exists — fall back to REST if this hits.
 5. **Trace IDs are the only debug signal.** An `unexpected error, trace id: XXXXXXXX` line is all you get on backend failures. Capture and log the trace ID always; Atlassian Support needs it.
 
@@ -429,7 +411,7 @@ acli feedback \
   --attachments error.log,trace.txt
 ```
 
-Flags: `-s, --summary`, `-d, --details`, `-e, --email`, `-t, --time` (estimated timeframe like `1h`, `15m`), `-a, --attachments` (multiple files).
+Flags: `-s, --summary` (required-ish), `-d, --details` (required-ish), `-e, --email`, `-t, --time` (estimated timeframe like `1h`, `15m`), `-a, --attachments` (multiple files).
 
 ### `acli auth` — global OAuth (newer surface)
 
@@ -457,16 +439,17 @@ Niche — only relevant if your org is on Atlassian Government Cloud. Not used i
 
 Load the reference that matches the user's current need. Do not preload all of them.
 
-| If the user wants to…                                                                                           | Load                                  |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Log in, switch sites, handle tokens, authenticate in CI                                                         | `references/auth.md`                  |
-| Work with Jira tickets (create, edit, transition, search, bulk, comments, links, watchers, custom-field shapes) | `references/workitem.md`              |
-| Manage projects, boards, sprints, filters, dashboards, custom-field definitions                                 | `references/project-board-sprint.md`  |
-| Work with Confluence spaces, blogs, pages                                                                       | `references/confluence.md`            |
-| Run org-level admin tasks (API key, user lifecycle)                                                             | `references/admin.md`                 |
-| Pipe output, produce JSON/CSV, dry-run, run on CI/CD                                                            | `references/output-and-automation.md` |
-| Diagnose surprising behavior, known bugs, REST fallback points                                                  | `references/gotchas.md`               |
-| Publish rich text to descriptions, comments, or custom fields                                                   | Inline section "Publishing rich text" + `scripts/md-to-adf.ts` |
+| If the user wants to…                                                | Load                                        |
+| -------------------------------------------------------------------- | ------------------------------------------- |
+| Log in, switch sites, handle tokens, authenticate in CI              | `references/auth.md`                        |
+| Work with Jira tickets (create, edit, transition, search, bulk, comments, links, watchers, custom-field shapes) | `references/workitem.md`  |
+| Manage projects, boards, sprints, filters, dashboards, custom-field definitions | `references/project-board-sprint.md` |
+| Work with Confluence spaces, blogs, pages                            | `references/confluence.md`                  |
+| Run org-level admin tasks (API key, user lifecycle)                  | `references/admin.md`                       |
+| Pipe output, produce JSON/CSV, dry-run, run on CI/CD                 | `references/output-and-automation.md`       |
+| Diagnose surprising behavior, known bugs, REST fallback points       | `references/gotchas.md`                     |
+| Publish rich text to descriptions, comments, or custom fields        | Inline section "Publishing rich text" + `scripts/md-to-adf.ts` |
+| Plug `acli` into the host repo's workflow (TMS modality, slug catalog, project conventions, anti-patterns specific to this repo) | `<repo-core>/references/acli-integration.md` |
 
 ## Working style
 

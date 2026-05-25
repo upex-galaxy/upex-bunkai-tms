@@ -32,27 +32,27 @@ Most search/list commands also take:
 The JSON emitted by `workitem search`, `workitem view`, and similar commands mirrors the Jira REST v3 shape. Two key facts:
 
 - The top-level array from `search` is `issues`, **not** `workitems` (the rename is UI/CLI-surface only).
-- Each issue has the standard REST shape: `{ id, key, self, fields: { summary, status, assignee, customfield_X, ... } }`.
-
-_(IDs like `customfield_10016` shown below are illustrative — they reflect the JSON shape returned by `acli`. Your actual custom field IDs come from `.agents/jira-fields.json` after `bun run jira:sync-fields`.)_
+- Each issue has the standard REST shape: `{ id, key, self, fields: { summary, status, assignee, customfield_NNNN, ... } }`.
 
 ```bash
 # Extract the summary from a view
-acli jira workitem view UPEX-123 --json | jq '.fields.summary'
+acli jira workitem view {{PROJECT_KEY}}-N --json | jq '.fields.summary'
 
 # Extract all keys from a search
-acli jira workitem search --jql "project = UPEX" --paginate --json \
+acli jira workitem search --jql "project = {{PROJECT_KEY}}" --paginate --json \
   | jq -r '.issues[].key'
 
 # Count by assignee (sprint workload distribution)
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints()" --paginate --json \
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND sprint in openSprints()" --paginate --json \
   | jq -r '.issues[].fields.assignee.displayName' \
   | sort | uniq -c | sort -rn
 
-# Pluck a custom field
-acli jira workitem view UPEX-123 --json \
-  | jq '.fields.customfield_10016'
+# Pluck a custom field by ID (real IDs are workspace-specific — see references/workitem.md §Custom fields)
+acli jira workitem view {{PROJECT_KEY}}-N --json \
+  | jq '.fields.customfield_NNNN'
 ```
+
+> Repo integration: host repos typically reference custom fields by stable slug rather than the numeric ID shown above. See `<repo-core>/references/acli-integration.md` for the slug catalog.
 
 ## Piping with `jq`
 
@@ -66,7 +66,7 @@ jq -r '.issues[].key'
 jq -r '.issues[] | [.key, .fields.summary] | @tsv'
 
 # Filter by status
-jq '.issues[] | select(.fields.status.name == "{{jira.status.story.deployed_to_production}}")'
+jq '.issues[] | select(.fields.status.name == "Done")'
 
 # Count
 jq '.issues | length'
@@ -81,10 +81,10 @@ jq '.fields | keys[] | select(startswith("customfield_"))'
 
 ```bash
 # Default fields (issuetype,key,assignee,priority,status,summary)
-acli jira workitem search --jql "project = UPEX" --paginate --csv > upex.csv
+acli jira workitem search --jql "project = {{PROJECT_KEY}}" --paginate --csv > project.csv
 
-# Custom columns — sprint snapshot for /product-management workflow G (sprint report)
-acli jira workitem search --jql "project = UPEX AND sprint in openSprints()" --paginate \
+# Custom columns — sprint snapshot
+acli jira workitem search --jql "project = {{PROJECT_KEY}} AND sprint in openSprints()" --paginate \
   --fields "key,summary,assignee,status,priority,created,updated" \
   --csv > sprint-detailed.csv
 ```
@@ -97,16 +97,16 @@ From the official docs:
 
 ```bash
 # Redirect to file
-acli jira workitem search --jql 'project = UPEX' --limit 10 --csv > output.csv
+acli jira workitem search --jql 'project = {{PROJECT_KEY}}' --limit 10 --csv > output.csv
 
 # Chain with &&
-acli jira workitem search --jql 'project = UPEX' --limit 10 && echo "Completed"
+acli jira workitem search --jql 'project = {{PROJECT_KEY}}' --limit 10 && echo "Completed"
 
 # Pipe through grep
-acli jira workitem search --jql 'project = UPEX' --limit 10 | grep "{{jira.status.story.in_review}}"
+acli jira workitem search --jql 'project = {{PROJECT_KEY}}' --limit 10 | grep "In Review"
 
 # Pipe through jq
-acli jira workitem view UPEX-123 --json | jq '.fields.summary'
+acli jira workitem view {{PROJECT_KEY}}-N --json | jq '.fields.summary'
 ```
 
 The default human-readable table is stable enough for `grep`/`awk` inspection, but not for production parsing — use `--json` or `--csv`.
@@ -138,7 +138,7 @@ unexpected error, trace id: XXXXXXXX
 The trace ID is the only thing Atlassian Support can correlate. Capture it in logs:
 
 ```bash
-acli jira workitem create --project UPEX --type Task --summary "Ship it" 2>&1 \
+acli jira workitem create --project {{PROJECT_KEY}} --type Task --summary "Ship it" 2>&1 \
   | tee -a acli.log
 ```
 
@@ -156,8 +156,8 @@ There is no `--dry-run` on any `acli` command. For high-blast-radius batches, wr
 #!/usr/bin/env bash
 set -euo pipefail
 
-JQL="project = UPEX AND status = {{jira.status.story.ready_for_dev}}"
-NEW_STATUS="{{jira.status.story.in_progress}}"
+JQL="project = {{PROJECT_KEY}} AND status = 'Ready For Dev'"
+NEW_STATUS="In Progress"
 
 echo "Preview — items that would transition to '$NEW_STATUS':"
 acli jira workitem search --jql "$JQL" --paginate \
@@ -208,10 +208,13 @@ jobs:
             --token
 
       - name: Mark stories shipped after a release
+        env:
+          PROJECT_KEY: ${{ vars.PROJECT_KEY }}
+          RELEASE: ${{ inputs.release }}
         run: |
           acli jira workitem transition \
-            --jql "project = UPEX AND fixVersion = '${{ inputs.release }}' AND status = '{{jira.status.story.ready_for_qa}}'" \
-            --status "{{jira.status.story.deployed_to_production}}" --yes --ignore-errors --json
+            --jql "project = $PROJECT_KEY AND fixVersion = '$RELEASE' AND status = 'Ready For QA'" \
+            --status "Done" --yes --ignore-errors --json
 ```
 
 ### Bitbucket Pipelines (Atlassian's sample pattern)
@@ -228,7 +231,7 @@ pipelines:
           - SITE="${ATLASSIAN_URL#https://}"
           - echo "$ATLASSIAN_API_TOKEN" | ./acli jira auth login \
             --email "$ATLASSIAN_EMAIL" --site "$SITE" --token
-          - ./acli jira workitem search --jql "project = UPEX AND updated > -1d" --paginate --csv > changes.csv
+          - ./acli jira workitem search --jql "project = $PROJECT_KEY AND updated > -1d" --paginate --csv > changes.csv
 ```
 
 ### GitLab CI
@@ -241,7 +244,7 @@ sync-jira:
     - chmod +x acli
     - SITE="${ATLASSIAN_URL#https://}"
     - echo "$ATLASSIAN_API_TOKEN" | ./acli jira auth login --site "$SITE" --email "$ATLASSIAN_EMAIL" --token
-    - ./acli jira workitem search --jql "project = UPEX AND updated > -1d" --paginate --json > changes.json
+    - ./acli jira workitem search --jql "project = $PROJECT_KEY AND updated > -1d" --paginate --json > changes.json
   artifacts:
     paths: [changes.json]
 ```
