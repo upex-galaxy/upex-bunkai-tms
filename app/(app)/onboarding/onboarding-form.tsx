@@ -2,11 +2,9 @@
 
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { createClient } from '@lib/supabase/client';
-import { bootstrapWorkspace } from '@lib/supabase/rpc';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -21,6 +19,10 @@ function slugify(input: string): string {
     .slice(0, 40);
 }
 
+interface ApiErrorBody {
+  error?: { code?: string, message?: string }
+}
+
 export function OnboardingForm({ userEmail }: { userEmail: string }) {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -31,27 +33,34 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
   const effectiveSlug = slugTouched ? slug : slugify(name);
   const isValid = SLUG_REGEX.test(effectiveSlug) && name.trim().length > 0;
 
-  const supabase = useMemo(() => createClient(), []);
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || submitting) { return; }
     setSubmitting(true);
-    const { error } = await bootstrapWorkspace(supabase, {
-      slug: effectiveSlug,
-      name: name.trim(),
-    });
-    if (error) {
-      const friendly = error.code === '23505'
-        ? `Slug "${effectiveSlug}" is taken — try another.`
-        : error.message;
-      toast.error(friendly);
-      setSubmitting(false);
-      return;
+    try {
+      const response = await fetch('/api/v1/workspaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: effectiveSlug, name: name.trim() }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+        const code = body.error?.code;
+        const friendly = code === 'conflict'
+          ? `Slug "${effectiveSlug}" is taken — try another.`
+          : body.error?.message ?? 'Could not create workspace.';
+        toast.error(friendly);
+        setSubmitting(false);
+        return;
+      }
+      toast.success('Workspace created');
+      router.replace('/projects');
+      router.refresh();
     }
-    toast.success('Workspace created');
-    router.replace('/projects');
-    router.refresh();
+    catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error.');
+      setSubmitting(false);
+    }
   };
 
   return (

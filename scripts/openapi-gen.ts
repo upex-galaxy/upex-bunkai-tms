@@ -32,6 +32,10 @@ import '../app/api/v1/tokens/route.openapi';
 
 import '../app/api/v1/tokens/[id]/route.openapi';
 
+import '../app/api/v1/workspaces/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });
