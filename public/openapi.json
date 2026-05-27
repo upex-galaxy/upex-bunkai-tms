@@ -319,6 +319,35 @@
           "created_at"
         ]
       },
+      "InviteAcceptResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"]
+          }
+        },
+        "required": ["ok", "workspace_id", "role"]
+      },
+      "InviteAcceptBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 256
+          }
+        },
+        "required": ["token"]
+      },
       "WorkspaceCreateResponse": {
         "type": "object",
         "properties": {
@@ -404,6 +433,144 @@
             "maxLength": 80
           }
         }
+      },
+      "WorkspaceInviteCreateResponse": {
+        "type": "object",
+        "properties": {
+          "invite": {
+            "$ref": "#/components/schemas/WorkspaceInvite"
+          },
+          "token": {
+            "type": "string",
+            "description": "Raw token. Returned exactly once."
+          },
+          "accept_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": ["invite", "token", "accept_url", "warning"]
+      },
+      "WorkspaceInvite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "accepted_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "accepted", "revoked", "expired"]
+          }
+        },
+        "required": ["id", "email", "role", "expires_at", "created_at"]
+      },
+      "WorkspaceInviteCreateBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin"],
+            "default": "member"
+          }
+        },
+        "required": ["email"]
+      },
+      "WorkspaceInviteListResponse": {
+        "type": "object",
+        "properties": {
+          "invites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceInvite"
+            }
+          }
+        },
+        "required": ["invites"]
+      },
+      "WorkspaceInviteResendResponse": {
+        "type": "object",
+        "properties": {
+          "invite": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": ["viewer", "member", "admin"]
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": ["id", "email", "role", "expires_at", "created_at"]
+          },
+          "token": {
+            "type": "string"
+          },
+          "accept_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": ["invite", "token", "accept_url", "warning"]
+      },
+      "WorkspaceInviteDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          }
+        },
+        "required": ["ok"]
       }
     },
     "parameters": {}
@@ -662,6 +829,83 @@
         }
       }
     },
+    "/api/v1/invites/accept": {
+      "post": {
+        "tags": ["Invites"],
+        "summary": "Redeem a workspace invite token",
+        "description": "Caller must be signed in. Caller email must match invite email. Adds membership in the invite's workspace + role; stamps acceptance on the invite.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteAcceptBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteAcceptResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invite email does not match caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invite already accepted / revoked / expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces": {
       "post": {
         "tags": ["Workspaces"],
@@ -886,6 +1130,261 @@
           },
           "422": {
             "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/invites": {
+      "post": {
+        "tags": ["Invites"],
+        "summary": "Issue a workspace invite",
+        "description": "Admin/owner only. Generates a one-time token; returns the raw token + accept_url in the body. MVP does not send an email — share the URL out-of-band.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceInviteCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invite created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInviteCreateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not an admin/owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Invites"],
+        "summary": "List workspace invites",
+        "description": "RLS limits results to admins/owners of the workspace.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInviteListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/invites/{inviteId}": {
+      "post": {
+        "tags": ["Invites"],
+        "summary": "Rotate (resend) a workspace invite token",
+        "description": "Generates a new secret + extends expiry by 7 days. Clears any prior acceptance/revocation. Admin/owner only via RLS.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inviteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rotated invite.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInviteResendResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found or no permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Invites"],
+        "summary": "Revoke a workspace invite",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inviteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInviteDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found or no permission.",
             "content": {
               "application/json": {
                 "schema": {

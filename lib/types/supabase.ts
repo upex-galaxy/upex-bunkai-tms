@@ -581,6 +581,56 @@ export interface Database {
           },
         ]
       }
+      workspace_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by_user_id: string | null
+          revoked_at: string | null
+          role: string
+          token_hash: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          revoked_at?: string | null
+          role?: string
+          token_hash: string
+          workspace_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by_user_id?: string | null
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_invites_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           joined_at: string

@@ -32,9 +32,15 @@ import '../app/api/v1/tokens/route.openapi';
 
 import '../app/api/v1/tokens/[id]/route.openapi';
 
+import '../app/api/v1/invites/accept/route.openapi';
+
 import '../app/api/v1/workspaces/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/invites/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/invites/[inviteId]/route.openapi';
 
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
