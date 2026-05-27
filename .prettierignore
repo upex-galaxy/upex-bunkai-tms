@@ -38,6 +38,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Vercel CLI scratch dir (gitignored, but prettier still globs it)
+.vercel/
+
 # ===========================================
 # TypeScript/JavaScript - ESLint handles these
 # ===========================================
