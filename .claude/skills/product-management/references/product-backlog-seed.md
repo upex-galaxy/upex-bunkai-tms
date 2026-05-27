@@ -41,9 +41,9 @@ Slugs written by this workflow:
 - `{{jira.scope}}` — in-scope bullets only (no out-of-scope mixed in).
 - `{{jira.out_of_scope}}` — explicit exclusions; complementary to `scope`.
 - `{{jira.mockup}}` — design references (Figma URLs etc.).
-- `{{jira.workflow}}` — narrative description of a non-trivial flow.
+- `{{jira.workflow}}` — narrative description of a non-trivial flow, written from the persona's POV (not a code-walkthrough). See anti-pattern `I15`.
 - `{{jira.weblink}}` — app URL for the story (conditional — only when known with certainty).
-- `{{jira.story_points}}` — Fibonacci estimate (1, 2, 3, 5, 8, 13).
+- `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY by default. Populate only when the user explicitly requested estimation in this session. PO/BA do not estimate; the building team does (Design + Dev + Test). When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
 
 Field reads/writes route through `[ISSUE_TRACKER_TOOL]`; the owning tool skill resolves the slug → numeric ID before issuing the call. See `references/jira-operations.md` for the routing decision table.
 
@@ -400,13 +400,13 @@ If any criterion fails, split or rewrite the story before creating it. Never pus
 - Priority: `High | Medium | Low`.
 - Labels: `mvp` (plus project-specific).
 - Custom fields (slug-resolved at the tool layer):
-  - `{{jira.acceptance_criteria}}` — minimum 3 Gherkin scenarios (1 happy path + 2 edge / error cases).
-  - `{{jira.scope}}` — in-scope bullets only.
-  - `{{jira.out_of_scope}}` — explicit exclusions.
-  - `{{jira.story_points}}` — Fibonacci value (1, 2, 3, 5, 8, 13). 13 is a smell — split.
-  - `{{jira.business_rules_specification}}` — optional.
+  - `{{jira.acceptance_criteria}}` — minimum 3 Gherkin scenarios (1 happy path + 2 edge / error cases), each wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language only; no endpoint paths, HTTP status codes, table names, or framework names (anti-pattern `I15`).
+  - `{{jira.scope}}` — in-scope bullets only. Bullets describe capabilities the persona gains, not endpoints / DB tables / services (anti-pattern `I15`).
+  - `{{jira.out_of_scope}}` — explicit exclusions, also in persona-capability voice.
+  - `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY unless the user explicitly requested estimation in this session. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+  - `{{jira.business_rules_specification}}` — optional. Domain rules (boundaries, role gates, retry semantics, audit guarantees) — NOT internal algorithms.
   - `{{jira.mockup}}` — optional.
-  - `{{jira.workflow}}` — optional.
+  - `{{jira.workflow}}` — optional. Narrates the persona's flow, not the code's flow.
   - `{{jira.weblink}}` — conditional; only when the app URL is known with certainty (from `.agents/project.yaml` or explicit user input). When in doubt, leave empty.
 
 **Rich-text caveat**: every custom field above is an ADF rich-text field except `{{jira.story_points}}` (number) and `{{jira.weblink}}` (URL string). Apply `references/jira-publishing-gotchas.md` rules — split the update into one call per ADF field if your tool layer requires it.
@@ -595,7 +595,21 @@ Wait for the user's decision per overlap before continuing. Never silently dedup
 
 **Goal**: publish the local `Blocked by` / `Blocks` / `Related` declarations as real Jira issue links so the dependency graph is queryable and the next phase (sprint sequencing) has live data.
 
-**Operation**: for each declared dependency, create an issue link via `[ISSUE_TRACKER_TOOL]` using the slug-resolved link type (`{{jira.link_types.dependencies}}` for hard ordering; `{{jira.link_types.blocks}}` is interchangeable per the catalog; `{{jira.link_types.relates}}` for informational ties only).
+### Phase 3.0 — Active Dependency Discovery (MANDATORY, before any link write)
+
+Anti-pattern `I18` in `SKILL.md` requires an **active** discovery pass before any link is created. Passive "only link if obviously needed" is rejected.
+
+1. Read `.context/PBI/epic-tree.md` (just produced in Phase 1, refined in Phase 2).
+2. Read `.context/business/business-data-map.md` if present (entity foreign-key graph).
+3. For every epic and story created in Phase 2, query its current Jira link graph via `[ISSUE_TRACKER_TOOL]` so the discovery pass sees any links that may already exist.
+4. Build a candidate matrix `(from, to, link_type_slug, source-of-decision)` where `source-of-decision` is one of: `prd-sequencing`, `srs-sequencing`, `master-implementation-plan`, `business-data-map`, `local-declaration`.
+5. **Filter noise**: discard candidates whose only justification is a global / infrastructural prerequisite (auth exists, DB exists, framework is wired up, observability is set up). Those are properties of the project as a whole, not of one story over another. Keep ONLY feature-level, observable, explicit dependencies between specific work items.
+6. **Heuristic**: would the candidate dependency disappear if we reordered sprints? YES → it is global noise, drop. NO → it is a real feature-level dependency, keep.
+7. Surface the filtered matrix to the user and wait for confirmation before any link is written. Never auto-create.
+
+This step runs once before the link-creation loop below.
+
+**Operation**: for each confirmed dependency, create an issue link via `[ISSUE_TRACKER_TOOL]` using the slug-resolved link type (`{{jira.link_types.dependencies}}` for hard ordering; `{{jira.link_types.blocks}}` is interchangeable per the catalog; `{{jira.link_types.relates}}` for informational ties only).
 
 **Routing**: see `references/jira-operations.md` (operation: *create link*) and the full procedure + directionality table in `references/dependency-linking.md`.
 
@@ -637,6 +651,11 @@ When the seed completes, verify in order:
 
 - [ ] Every epic from `epic-tree.md` exists in Jira with a real key, transitioned to `{{jira.statuses.epic_default}}` (or fallback).
 - [ ] Every foundational story exists in Jira with a real key, transitioned to `{{jira.statuses.story_default}}` (or fallback), populated AC + Scope + Out-of-Scope custom fields, INVEST-validated.
+- [ ] **Voice gate** — every AC, Scope bullet, Out-of-Scope bullet, and Workflow narrative is in persona-observable language. No endpoint paths, HTTP status codes, DB table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
+- [ ] **Gherkin code-fence** — every scenario in `{{jira.acceptance_criteria}}` is wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`).
+- [ ] **Persona grounding** — every `As a` line names a persona that exists in `.context/PRD/user-personas.md` (anti-pattern `I19`).
+- [ ] **Story Points policy** — `{{jira.story_points}}` is EMPTY by default; populated only when the user explicitly requested estimation in this session (anti-pattern `I16`).
+- [ ] **Active Dependency Discovery ran** — Phase 3.0 produced a candidate matrix, global/infrastructural noise was filtered, user confirmed before any link was written (anti-pattern `I18`).
 - [ ] Every local folder mirrors a real Jira key 1:1 (no `TBD` placeholders remain in any `epic.md` story list).
 - [ ] Cross-story Scope overlap check ran for every epic; any overlaps were resolved by user decision.
 - [ ] Every `Blocked by` / `Blocks` declaration in local mirrors is reflected as a Jira link.

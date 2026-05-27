@@ -1,344 +1,358 @@
-Actúa como Product Owner, Scrum Master y Solution Architect experto.
+Act as an expert Product Owner, Scrum Master, and Solution Architect.
 
 **Input:**
 
-- Descripción de la nueva feature/idea: [especificar en detalle]
-- Epic tree existente: [usar `.context/PBI/epic-tree.md`]
-- PRD (opcional): [usar `.context/PRD/mvp-scope.md` si necesitas contexto adicional]
-- SRS (opcional): [usar `.context/SRS/functional-specs.md` si necesitas contexto técnico]
-- **PROJECT_KEY:** Código del proyecto en Jira — léelo de `.agents/project.yaml` o, en su defecto, del `epic-tree.md`. NO lo hardcodees aquí.
+- New feature/idea description: [specify in detail]
+- Existing epic tree: [use `.context/PBI/epic-tree.md`]
+- PRD (optional): [use `.context/PRD/mvp-scope.md` if additional context is needed]
+- SRS (optional): [use `.context/SRS/functional-specs.md` if technical context is needed]
+- **PROJECT_KEY:** Jira project code — read it from `.agents/project.yaml`, or as a fallback, from `epic-tree.md`. DO NOT hardcode it here.
 
 ---
 
 ## Inputs — read these first, in this order
 
-Cold start? Lee estos archivos exactamente en este orden antes de proponer cualquier cosa. Cada uno aporta una capa específica de contexto; saltarte uno desperdicia tokens y aumenta el riesgo de inventar.
+Cold start? Read these files in this exact order before proposing anything. Each one adds a specific context layer; skipping one wastes tokens and increases the risk of invention.
 
 1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
 2. `.agents/jira-required.yaml` — canonical slug catalog (fields + statuses + link types).
 3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping (resolved at sync time).
 4. `.agents/jira-workflows.json` — workflow + transition catalog (status names live here).
-5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (cuando exista).
-6. `.context/master-implementation-plan.md` — Master Sprint roadmap (sequencing estratégico).
-7. `.context/PRD/mvp-scope.md` — qué está dentro y qué está fuera del MVP.
-8. `.context/PRD/user-personas.md` — modelo de actores.
-9. `.context/PRD/user-journeys.md` — expectativas a nivel de flujo.
-10. `.context/SRS/functional-specs.md` — catálogo de FR (fuente para `**Source spec:**`).
+5. `.agents/jira-link-types.json` — slug → workspace link-type mapping (when present).
+6. `.context/master-implementation-plan.md` — Master Sprint roadmap (strategic sequencing).
+7. `.context/PRD/mvp-scope.md` — what is in vs out of the MVP.
+8. `.context/PRD/user-personas.md` — actor model.
+9. `.context/PRD/user-journeys.md` — flow-level expectations.
+10. `.context/SRS/functional-specs.md` — FR catalog (source of `**Source spec:**` references).
 11. `.context/SRS/non-functional-specs.md` — NFRs (performance, security, a11y).
-12. `.context/business/business-data-map.md` — grafo de entidades (fuente de dependencias entity-level).
-13. `.context/business/business-feature-map.md` — matriz CRUD por dominio.
-14. `.context/business/business-api-map.md` — catálogo de endpoints (auth model, journeys).
-15. `.context/PBI/epic-tree.md` — estado actual del backlog.
+12. `.context/business/business-data-map.md` — entity graph (source of entity-level dependencies).
+13. `.context/business/business-feature-map.md` — CRUD matrix by domain.
+14. `.context/business/business-api-map.md` — endpoint catalog (auth model, journeys).
+15. `.context/PBI/epic-tree.md` — current backlog state.
 
-**Optional inputs.** Algunos proyectos maduros suman business maps generados por `/business-*-map`. Si están ausentes (típicamente en seed temprano), continúa sin ellos pero marca el gap.
+**Optional inputs.** Some mature projects also produce business maps via `/business-*-map`. If they are absent (typically at early seed time), proceed without them but flag the gap.
 
 ---
 
 ## Custom field resolution — slug-based, never hardcoded
 
-Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO viven en este skill. Esta metodología resuelve cada campo en runtime vía `{{jira.<slug>}}` contra el catálogo canónico en `.agents/jira-required.yaml`. El AI runtime resuelve el slug → ID numérico vía `.agents/jira-fields.json` (poblado por `bun run jira:sync-fields`). Si un slug no existe en el workspace de destino, el catálogo declara el fallback y `bun run jira:check` warnea.
+Jira numeric IDs (`customfield_NNNNN`) vary per workspace and DO NOT live in this skill. The methodology resolves each field at runtime via `{{jira.<slug>}}` against the canonical catalog in `.agents/jira-required.yaml`. The AI runtime resolves slug → numeric ID via `.agents/jira-fields.json` (populated by `bun run jira:sync-fields`). If a slug does not exist in the target workspace, the catalog declares the fallback and `bun run jira:check` warns.
 
-**Slugs que este workflow escribe** (semántica de cada campo):
+**Slugs this workflow writes** (semantics of each field):
 
-- `{{jira.acceptance_criteria}}` — escenarios Given/When/Then. Fuente única de verdad para AC.
-- `{{jira.business_rules_specification}}` — reglas de negocio específicas de la story (validaciones, invariantes de dominio).
-- `{{jira.scope}}` — in-scope únicamente. Lo excluido va a `out_of_scope`.
-- `{{jira.out_of_scope}}` — exclusiones explícitas y complementarias a `scope` (no cross-pollination entre ambos).
-- `{{jira.mockup}}` — URLs de Figma / wireframes / referencias visuales.
-- `{{jira.workflow}}` — descripción del flujo de trabajo cuando es complejo.
-- `{{jira.weblink}}` — URL de la app/feature. Llenar SOLO si el dominio se conoce con certeza; en duda, omitir.
-- `{{jira.story_points}}` — estimación en Fibonacci (1, 2, 3, 5, 8, 13).
+- `{{jira.acceptance_criteria}}` — Given/When/Then scenarios. Single source of truth for AC.
+- `{{jira.business_rules_specification}}` — story-specific business rules (validations, domain invariants).
+- `{{jira.scope}}` — in-scope only. Excluded items go to `out_of_scope`.
+- `{{jira.out_of_scope}}` — explicit exclusions, complementary to `scope` (no cross-pollination).
+- `{{jira.mockup}}` — Figma URLs / wireframes / visual references.
+- `{{jira.workflow}}` — flow description from the persona's POV, not a code-walkthrough (see anti-pattern `I15`).
+- `{{jira.weblink}}` — app/feature URL. Populate ONLY when the domain is known with certainty; when in doubt, omit.
+- `{{jira.story_points}}` — **OPT-IN ONLY**. Leave EMPTY by default. Populate only when the user explicitly requests estimation in this session. PO/BA do not estimate; the team that will build it does (Design + Dev + Test). When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
 
-**Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `CLAUDE.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `references/jira-publishing-gotchas.md`.
+**Operation → tool layer.** Every read/write against Jira is expressed as `[ISSUE_TRACKER_TOOL]` pseudo-code. The consuming skill (AI runtime) resolves the tool via the `CLAUDE.md` §6 table (primary `/acli`, fallback Atlassian MCP, last resort REST). For the operation → tool-layer matrix, see `references/jira-operations.md`. For rich-text (ADF) publishing gotchas, see `references/jira-publishing-gotchas.md`.
 
-> **Nota sobre `{{jira.weblink}}`.** Es opcional y solo debe llenarse si: (a) la IA conoce con certeza el dominio de la app bajo prueba (sistema prompt o contexto explícito del proyecto), o (b) el usuario proporcionó la URL. En duda → NO llenar.
+> **Note on `{{jira.weblink}}`.** It is optional and should only be populated when: (a) the AI knows the app domain under test with certainty (system prompt or explicit project context), or (b) the user provided the URL. When in doubt → DO NOT populate.
 
 ---
 
 ## Summary nomenclature
 
-**NUNCA prefijes el summary de una story con la referencia a la spec funcional** (e.g. patrón `FR-XXX` seguido de em-dash y el título). El Jira key (`{PROJECT_KEY}-{NUM}`) es el único identificador real; mezclar referencias de metodología en el summary contamina la búsqueda Jira-side y rompe filtros JQL por summary.
+**NEVER prefix a story summary with the functional-spec reference** (e.g. pattern `FR-XXX` followed by em-dash and title). The Jira key (`{PROJECT_KEY}-{NUM}`) is the only real identifier; mixing methodology references into the summary pollutes Jira-side search and breaks JQL summary filters.
 
-La referencia a la spec va en el **cuerpo** del issue como primera línea:
+The spec reference goes in the issue **body** as the first line:
 
 ```
 **Source spec:** FR-XXX
 ```
 
-Si la story no mapea 1:1 a un FR (e.g. mejora cosmética sin spec dedicada), **omite la línea** completa. No la rellenes con `N/A` ni con un FR forzado.
+If the story does not map 1:1 to an FR (e.g. cosmetic improvement without a dedicated spec), **omit the line** entirely. Do not fill it with `N/A` or with a forced FR.
 
-Same rule applies al summary del epic.
+The same rule applies to the epic summary.
 
 ---
 
 ## No content duplication — description ↔ custom fields
 
-**Hard rule:** AC, Scope y Out-of-Scope viven **EXCLUSIVAMENTE** en sus custom fields slug-resueltos. La descripción del issue NUNCA debe llevar `## Acceptance Criteria`, `## Scope`, `## Out of Scope` como H2 sections.
+**Hard rule:** AC, Scope, and Out-of-Scope live **EXCLUSIVELY** in their slug-resolved custom fields. The issue description NEVER carries `## Acceptance Criteria`, `## Scope`, or `## Out of Scope` as H2 sections.
 
-El body de la descripción carga:
+The description body carries:
 
-- `**Source spec:** FR-XXX` (primera línea, opcional).
-- `## User story` — narrativa As/I want/So that.
-- `## Business rules` — solo overflow cuando el contenido no quepa en `{{jira.business_rules_specification}}`.
-- `## Workflow` — solo overflow cuando el contenido no quepa en `{{jira.workflow}}`.
-- `## Definition of done` — checklist de cierre.
-- Opcional: `## Mockups / Wireframes`, `## Technical notes`.
+- `**Source spec:** FR-XXX` (first line, optional).
+- `## User story` — As/I want/So that narrative.
+- `## Business rules` — overflow only when the content does not fit in `{{jira.business_rules_specification}}`.
+- `## Workflow` — overflow only when the content does not fit in `{{jira.workflow}}`.
+- `## Definition of done` — closing checklist.
+- Optional: `## Mockups / Wireframes`, `## Technical notes`.
 
-Detalle completo del contrato + procedimiento de auditoría de deduplicación → `references/description-custom-field-dedup.md`.
-
----
-
-## 🎯 OBJETIVO
-
-Analizar una nueva idea/feature y determinar cómo agregarla eficientemente al backlog existente, siguiendo el flujo **Jira-First → Local**.
+Full contract details + deduplication audit procedure → `references/description-custom-field-dedup.md`.
 
 ---
 
-## 📊 FASE 1: ANÁLISIS DE COMPLEJIDAD
+## 🎯 GOAL
 
-**Acción:** Analiza la idea proporcionada y clasifícala en uno de estos 3 niveles.
-
-### Criterios de Clasificación
-
-#### **NIVEL 1: Story Individual**
-
-✅ Ejecutar directamente
-
-**Características:**
-
-- Es una mejora/extensión de funcionalidad existente
-- Encaja claramente en una épica ya existente
-- Puede completarse en 1-8 story points
-- No requiere cambios arquitectónicos significativos
-- 1 user story es suficiente
-
-**Ejemplos:**
-
-- "Agregar filtro por [atributo] en la búsqueda de [entidad principal]" (→ Epic existente relacionada con búsqueda/descubrimiento)
-- "Permitir cancelar [acción de negocio] con X horas de anticipación" (→ Epic existente relacionada con gestión de operaciones)
-- "Agregar notificación email cuando [evento de negocio] ocurre" (→ Epic existente relacionada con notificaciones)
-
-(Donde [entidad principal], [atributo], [acción de negocio] y [evento de negocio] se determinan analizando el PRD/SRS del proyecto actual)
-
-**Acción:** → Ir a **FASE 2A**
+Analyze a new idea/feature and decide how to efficiently add it to the existing backlog, following the **Jira-First → Local** flow.
 
 ---
 
-#### **NIVEL 2: Épica Completa**
+## 📊 PHASE 1: COMPLEXITY ANALYSIS
 
-✅ Ejecutar directamente
+**Action:** Analyze the provided idea and classify it into one of these 3 levels.
 
-**Características:**
+### Classification Criteria
 
-- Es una feature nueva que NO encaja en épicas existentes
-- Requiere múltiples user stories (3-8 stories)
-- Tiene scope bien definido y acotado
-- No depende críticamente de otras épicas nuevas
-- Puede implementarse de forma independiente
+#### **LEVEL 1: Individual Story**
 
-**Ejemplos:**
+✅ Execute directly
 
-- "Sistema de mensajería entre [user-type-1] y [user-type-2]"
-- "Dashboard de analytics para [user-type]"
-- "Sistema de certificados/badges al completar [evento de negocio]"
+**Characteristics:**
 
-(Donde [user-type-1], [user-type-2] y [evento de negocio] se determinan analizando el PRD/SRS del proyecto actual)
+- An improvement/extension of existing functionality
+- Clearly fits into an existing epic
+- Can be completed in 1-8 story points
+- Does not require significant architectural changes
+- 1 user story is enough
 
-**Acción:** → Ir a **FASE 2B**
+**Examples:**
 
----
+- "Add a filter by [attribute] to the search of [main entity]" (→ existing epic related to search/discovery)
+- "Allow canceling [business action] up to X hours in advance" (→ existing epic related to operations management)
+- "Add email notification when [business event] occurs" (→ existing epic related to notifications)
 
-#### **NIVEL 3: Múltiples Épicas**
+(Where [main entity], [attribute], [business action], and [business event] are determined by analyzing the current project's PRD/SRS.)
 
-⚠️ **ADVERTENCIA - REQUIERE PLAN PREVIO**
-
-**Características:**
-
-- La idea requiere 2+ épicas para implementarse
-- Tiene dependencias complejas entre componentes
-- Requiere cambios arquitectónicos significativos
-- Scope muy amplio (20+ stories estimadas)
-- Alta complejidad técnica o de negocio
-
-**Ejemplos:**
-
-- "Sistema completo de suscripciones mensuales con planes"
-- "Marketplace de cursos pregrabados con creador de contenido"
-- "Sistema de gamificación con badges, rankings y rewards"
-
-**Acción:** → Ir a **FASE 2C (STOP + Plan Requerido)**
+**Action:** → Go to **PHASE 2A**
 
 ---
 
-## 🚨 VALIDACIÓN CRÍTICA
+#### **LEVEL 2: Full Epic**
 
-Antes de clasificar, pregúntate:
+✅ Execute directly
 
-1. ¿Cuántas user stories necesito? (1 = Nivel 1, 3-8 = Nivel 2, 8+ = revisar si Nivel 3)
-2. ¿Encaja en una épica existente? (Sí = probablemente Nivel 1, No = Nivel 2+)
-3. ¿Requiere cambios en múltiples módulos del sistema? (Sí = probablemente Nivel 2-3)
-4. ¿Puedo dividirlo en 2+ épicas independientes? (Sí = Nivel 3)
-5. ¿Es técnicamente simple o complejo? (Simple = Nivel 1-2, Complejo = Nivel 2-3)
+**Characteristics:**
 
-**OUTPUT FASE 1:**
+- A new feature that does NOT fit into existing epics
+- Requires multiple user stories (3-8 stories)
+- Has a well-defined and bounded scope
+- Does not critically depend on other new epics
+- Can be implemented independently
+
+**Examples:**
+
+- "Messaging system between [user-type-1] and [user-type-2]"
+- "Analytics dashboard for [user-type]"
+- "Certificate/badge system when [business event] completes"
+
+(Where [user-type-1], [user-type-2], and [business event] are determined by analyzing the current project's PRD/SRS.)
+
+**Action:** → Go to **PHASE 2B**
+
+---
+
+#### **LEVEL 3: Multiple Epics**
+
+⚠️ **WARNING — REQUIRES A PRIOR PLAN**
+
+**Characteristics:**
+
+- The idea requires 2+ epics to implement
+- Has complex inter-component dependencies
+- Requires significant architectural changes
+- Very broad scope (20+ stories estimated)
+- High technical or business complexity
+
+**Examples:**
+
+- "Full monthly subscription system with plans"
+- "Pre-recorded course marketplace with content creator"
+- "Gamification system with badges, rankings, and rewards"
+
+**Action:** → Go to **PHASE 2C (STOP + Plan Required)**
+
+---
+
+## 🚨 CRITICAL VALIDATION
+
+Before classifying, ask yourself:
+
+1. How many user stories do I need? (1 = Level 1, 3-8 = Level 2, 8+ = check if Level 3)
+2. Does it fit into an existing epic? (Yes = likely Level 1, No = Level 2+)
+3. Does it require changes across multiple system modules? (Yes = likely Level 2-3)
+4. Can I split it into 2+ independent epics? (Yes = Level 3)
+5. Is it technically simple or complex? (Simple = Level 1-2, Complex = Level 2-3)
+
+**PHASE 1 OUTPUT:**
 
 ```markdown
-## Análisis de Complejidad
+## Complexity Analysis
 
-**Feature:** [nombre de la feature]
-**Clasificación:** NIVEL [1/2/3]
+**Feature:** [feature name]
+**Classification:** LEVEL [1/2/3]
 
-**Justificación:**
-[Explicar por qué pertenece a este nivel]
+**Justification:**
+[Explain why it belongs to this level]
 
-**Estimación preliminar:**
+**Preliminary estimation:**
 
-- User Stories: [número estimado]
-- Story Points totales: [estimación]
-- Épicas necesarias: [número] - [nombres si aplica]
+- User Stories: [estimated number]
+- Total Story Points: [estimate]
+- Epics needed: [number] - [names if applicable]
 
-**Épica existente (si aplica):** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre} o "N/A - requiere nueva épica"
+**Existing epic (if applicable):** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name} or "N/A — requires a new epic"
 
-**Dependencias identificadas:**
-[Listar dependencias con otras épicas o sistemas — fuente: PRD/SRS sequencing, master-plan Master Sprints, business-data-map. Nunca inventar.]
+**Identified dependencies:**
+[List dependencies with other epics or systems — sources: PRD/SRS sequencing, master-plan Master Sprints, business-data-map. Never invent.]
 ```
 
 ---
 
-## 📝 FASE 2A: CREAR STORY INDIVIDUAL (Nivel 1)
+## 📝 PHASE 2A: CREATE INDIVIDUAL STORY (Level 1)
 
-**Prerequisito:** Feature clasificada como Nivel 1.
+**Prerequisite:** Feature classified as Level 1.
 
-### Paso 1: Identificar Épica Padre
+### Step 1: Identify Parent Epic
 
-**Acción:** Determina a qué épica existente pertenece esta story.
+**Action:** Determine which existing epic this story belongs to.
 
-**Referencia:** Revisa `.context/PBI/epic-tree.md` para listar épicas existentes.
+**Reference:** Review `.context/PBI/epic-tree.md` to list existing epics.
 
 **Output:**
 
 ```markdown
-**Épica seleccionada:** EPIC-{PROJECT_KEY}-{NUM}-{nombre}
-**Razón:** [Por qué esta story pertenece a esta épica]
+**Selected epic:** EPIC-{PROJECT_KEY}-{NUM}-{name}
+**Reason:** [Why this story belongs to this epic]
 ```
 
 ---
 
-### Paso 2: Crear Story en Jira
+### Step 2: Create Story in Jira
 
-**Acción:** Pide a `[ISSUE_TRACKER_TOOL]` crear un issue tipo `Story` en el proyecto resuelto. NO cites sintaxis de herramienta — el skill resolver (`/acli` u otro) la posee. Para la matriz operación → capa, ver `references/jira-operations.md`. Antes de escribir campos rich-text, lee `references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos.
+**Action:** Ask `[ISSUE_TRACKER_TOOL]` to create a `Story`-type issue in the resolved project. DO NOT cite tool syntax — the skill resolver (`/acli` or other) owns it. For the operation → tool-layer matrix, see `references/jira-operations.md`. Before writing rich-text fields, read `references/jira-publishing-gotchas.md` for the two known ADF bugs.
 
-**Datos del issue:**
+**Issue data:**
 
-- **Proyecto:** PROJECT_KEY resuelto desde `.agents/project.yaml`.
-- **Tipo de issue:** Story.
-- **Summary:** Patrón "As a [user], I want to [action] so that [benefit]". Sin prefijo de spec funcional (ver "Summary nomenclature").
-- **Description (body):** primera línea `**Source spec:** FR-XXX` si aplica. Body contiene `## User story`, `## Definition of done`, y overflow opcional de business rules / workflow / mockups / technical notes. **NUNCA** incluye `## Acceptance Criteria`, `## Scope`, ni `## Out of Scope` — esos viven en custom fields (ver "No content duplication").
-- **Epic Link:** Jira key de la épica padre identificada en Paso 1.
-- **Prioridad:** High | Medium | Low.
-- **Labels:** `feature-extension`, `post-mvp` (ajustar según corresponda).
+- **Project:** PROJECT_KEY resolved from `.agents/project.yaml`.
+- **Issue type:** Story.
+- **Summary:** Pattern "As a [user], I want to [action] so that [benefit]". No functional-spec prefix (see "Summary nomenclature").
+- **Description (body):** first line `**Source spec:** FR-XXX` when applicable. Body contains `## User story`, `## Definition of done`, and optional overflow for business rules / workflow / mockups / technical notes. **NEVER** include `## Acceptance Criteria`, `## Scope`, or `## Out of Scope` — those live in custom fields (see "No content duplication").
+- **Epic Link:** Jira key of the parent epic identified in Step 1.
+- **Priority:** High | Medium | Low.
+- **Labels:** `feature-extension`, `post-mvp` (adjust as appropriate).
 
-**Custom fields (slug-resueltos):**
+**Custom fields (slug-resolved):**
 
-| Slug                                       | Contenido                                                                          |
+| Slug                                       | Content                                                                          |
 | ------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `{{jira.acceptance_criteria}}`     | Escenarios Given/When/Then (mínimo 3: 1 happy + 2 error/edge)                      |
-| `{{jira.scope}}`                           | In-scope únicamente (lista de bullets)                                              |
-| `{{jira.out_of_scope}}`                    | Exclusiones explícitas (complementario a `scope`, sin cross-pollination)            |
-| `{{jira.story_points}}`                    | Fibonacci: 1, 2, 3, 5, 8, 13                                                        |
-| `{{jira.business_rules_specification}}`    | Reglas de negocio (opcional)                                                        |
-| `{{jira.mockup}}`                          | URLs de Figma / diseños (opcional)                                                  |
-| `{{jira.workflow}}`                        | Descripción del flujo si es complejo (opcional)                                     |
-| `{{jira.weblink}}`                     | URL de la app SOLO si se conoce con certeza (condicional, ver nota en sección de slugs) |
+| `{{jira.acceptance_criteria}}`     | Minimum 3 Given/When/Then scenarios (1 happy + 2 error/edge). Each scenario wrapped in a ```gherkin code-fence (anti-pattern `I17`). Persona-observable language; no endpoints, HTTP codes, table names, framework names (anti-pattern `I15`). |
+| `{{jira.scope}}`                           | In-scope only (bullet list). Bullets describe capabilities the persona gains, not endpoints / tables / services (anti-pattern `I15`). |
+| `{{jira.out_of_scope}}`                    | Explicit exclusions (complementary to `scope`, no cross-pollination), also in capability voice. |
+| `{{jira.story_points}}`                    | **OPT-IN ONLY**. Leave EMPTY unless the user explicitly requested estimation in this session. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`. |
+| `{{jira.business_rules_specification}}`    | Business rules (optional). Domain rules (boundaries, role gates, retry/audit semantics) — NOT internal algorithms. |
+| `{{jira.mockup}}`                          | Figma URLs / designs (optional)                                                  |
+| `{{jira.workflow}}`                        | Persona-flow description when complex (optional). NO code-walkthrough.  |
+| `{{jira.weblink}}`                     | App URL ONLY when known with certainty (conditional, see note in slugs section) |
 
-**Procedimiento:**
+**Procedure:**
 
-1. Pide a `[ISSUE_TRACKER_TOOL]` crear el issue tipo `Story` con los campos anteriores.
-2. Vincula a la épica padre vía epic link.
-3. Llena los custom fields slug-resueltos según la tabla.
-4. **Captura el Jira Key** asignado (formato `{PROJECT_KEY}-{ISSUE_NUM}`).
+1. Ask `[ISSUE_TRACKER_TOOL]` to create the `Story`-type issue with the fields above.
+2. Link to the parent epic via epic link.
+3. Populate slug-resolved custom fields per the table.
+4. **Capture the assigned Jira Key** (format `{PROJECT_KEY}-{ISSUE_NUM}`).
 
-**Nota ADF:** si vas a escribir múltiples custom fields rich-text en un solo update batch, splittea por campo o pre-convierte vía `md-to-adf.ts` — ver `references/jira-publishing-gotchas.md`.
-
----
-
-### Paso 3: Transitar story al estado por defecto
-
-**Acción:** Una vez creada, pide a `[ISSUE_TRACKER_TOOL]` transicionar la story al estado declarado en `{{jira.statuses.story_default}}` (default literal `Shift-Left QA` si el slug no está configurado en el workspace).
-
-Si el workflow del proyecto no ofrece esa transición desde el estado inicial (`To Do`), reporta el gap al usuario y deja la story en su estado inicial — no fuerces una transición arbitraria.
+**ADF note:** if you write multiple rich-text custom fields in a single update batch, split per field or pre-convert via `md-to-adf.ts` — see `references/jira-publishing-gotchas.md`.
 
 ---
 
-### Paso 4: Linkear dependencias en Jira
+### Step 3: Transition story to the default status
 
-**Acción:** Si la story tiene dependencias observables, créalas como issue links en Jira. Detalle completo → `references/dependency-linking.md`.
+**Action:** Once created, ask `[ISSUE_TRACKER_TOOL]` to transition the story to the status declared in `{{jira.statuses.story_default}}` (literal default `Shift-Left QA` if the slug is not configured in the workspace).
 
-**Fuentes válidas de dependencias** (ninguna otra; nunca inventes):
-
-- Sequencing explícito en PRD / SRS / functional-specs.
-- Ordenamiento de Master Sprint en `.context/master-implementation-plan.md`.
-- Relaciones entity-level en `.context/business/business-data-map.md`.
-- Declaraciones explícitas `Blocked By` / `Blocks` en el archivo local `story.md` (Paso 5).
-
-**Cómo:**
-
-- Slug primario: `{{jira.link_types.dependencies}}` (outward = "depends on", inward = "is dependency for").
-- Si el workspace no declara el slug `dependencies` y el catálogo declara `{{jira.link_types.dependencies.fallback}}` (típicamente `relates`), úsalo y **flagea explícitamente la degradación** — `relates` es simétrico y la dirección se pierde.
-- Para bloqueos duros, usa `{{jira.link_types.blocks}}` (Jira built-in).
-- Pide a `[ISSUE_TRACKER_TOOL]` crear el link respetando la direccionalidad: `outwardIssue = dependent`, `inwardIssue = prerequisite`.
-
-**Reporting:** después de crear los links, reporta una matriz `from → to → type → source-of-decision` para que el usuario audite.
+If the project's workflow does not offer that transition from the initial status (`To Do`), report the gap to the user and leave the story in its initial status — do not force an arbitrary transition.
 
 ---
 
-### Paso 5: Crear Carpeta Local de Story
+### Step 3.5: Active Dependency Discovery (MANDATORY, before linking)
 
-**Acción:** Crea carpeta local usando el Jira Key obtenido en Paso 2.
+Anti-pattern `I18` requires an **active** discovery pass before any link is created.
 
-**Nomenclatura:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre-descriptivo}/`
+1. Read `.context/PBI/epic-tree.md` — stories of the same epic + related epics.
+2. Read `.context/business/business-data-map.md` if present — entity-level relations.
+3. Query via `[ISSUE_TRACKER_TOOL]` the current link graph of the new story and of its possible neighbors in the parent epic.
+4. Build a candidate matrix `(from, to, link_type_slug, source-of-decision)` where `source-of-decision` ∈ `{prd-sequencing, srs-sequencing, master-implementation-plan, business-data-map, local-declaration}`.
+5. **Filter noise**: discard candidates whose only justification is a global / infrastructural prerequisite (auth exists, DB exists, framework is wired up). Those are properties of the project, not dependencies between stories.
+6. **Heuristic**: does the candidate dependency disappear if we reorder sprints? YES → global noise, drop. NO → real feature-level dependency, keep.
+7. Surface the filtered matrix to the user and wait for confirmation before creating any link in Step 4.
 
-**Ubicación:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/stories/`
+---
 
-**Ejemplo:**
+### Step 4: Link Dependencies in Jira
 
-Si PROJECT_KEY = "MYM", la épica padre es "MYM-13", y Jira asignó issue number = 45, entonces el Jira Key completo es "MYM-45".
+**Action:** For every dependency the user confirmed in Step 3.5, create it as a Jira issue link. Full details → `references/dependency-linking.md`.
 
-Crear carpeta:
+**Valid dependency sources** (no others; never invent):
+
+- Explicit sequencing in PRD / SRS / functional-specs.
+- Master Sprint ordering in `.context/master-implementation-plan.md`.
+- Entity-level relations in `.context/business/business-data-map.md`.
+- Explicit `Blocked By` / `Blocks` declarations in the local `story.md` (Step 5).
+
+**How:**
+
+- Primary slug: `{{jira.link_types.dependencies}}` (outward = "depends on", inward = "is dependency for").
+- If the workspace does not declare the `dependencies` slug and the catalog declares `{{jira.link_types.dependencies.fallback}}` (typically `relates`), use it and **explicitly flag the degradation** — `relates` is symmetric and direction is lost.
+- For hard blockers, use `{{jira.link_types.blocks}}` (Jira built-in).
+- Ask `[ISSUE_TRACKER_TOOL]` to create the link respecting directionality: `outwardIssue = dependent`, `inwardIssue = prerequisite`.
+
+**Reporting:** after creating the links, report a `from → to → type → source-of-decision` matrix so the user can audit it.
+
+---
+
+### Step 5: Create Local Story Folder
+
+**Action:** Create the local folder using the Jira Key obtained in Step 2.
+
+**Naming:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+
+**Location:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{name}/stories/`
+
+**Example:**
+
+If PROJECT_KEY = "MYM", the parent epic is "MYM-13", and Jira assigned issue number = 45, then the full Jira Key is "MYM-45".
+
+Create folder:
 
 ```
 .context/PBI/epics/EPIC-MYM-13-{epic-name}/stories/STORY-MYM-45-{story-name}/
 ```
 
-(Donde `{epic-name}` y `{story-name}` se infieren del análisis del dominio del proyecto actual.)
+(Where `{epic-name}` and `{story-name}` are inferred from the current project's domain analysis.)
 
 ---
 
-### Paso 6: Crear Archivo story.md
+### Step 6: Create story.md File
 
-**Criterios INVEST para User Stories:**
+**INVEST criteria for User Stories:**
 
-| Criterio        | Descripción                                            | Validación                              |
+| Criterion       | Description                                            | Validation                              |
 | --------------- | ------------------------------------------------------ | --------------------------------------- |
-| **I**ndependent | La story puede desarrollarse sin depender de otras     | ¿Puede completarse en aislamiento?      |
-| **N**egotiable  | Los detalles pueden ajustarse durante el desarrollo    | ¿Hay flexibilidad en la implementación? |
-| **V**aluable    | Aporta valor al usuario o al negocio                   | ¿El "so that" es claro y valioso?       |
-| **E**stimable   | Se puede estimar el esfuerzo con la información dada   | ¿El equipo puede dar story points?      |
-| **S**mall       | Puede completarse en un sprint (máximo 8 story points) | ¿Es menor a 8 SP? Si no, dividir        |
-| **T**estable    | Los criterios de aceptación son verificables           | ¿Los scenarios son claros y medibles?   |
+| **I**ndependent | The story can be developed without depending on others | Can it be completed in isolation?       |
+| **N**egotiable  | Details can be adjusted during development             | Is there flexibility in implementation? |
+| **V**aluable    | Delivers value to the user or the business             | Is the "so that" clear and valuable?    |
+| **E**stimable   | Effort can be estimated with the info given            | Can the team assign story points?       |
+| **S**mall       | Can be completed in a sprint (max 8 story points)      | Less than 8 SP? If not, split.          |
+| **T**estable    | Acceptance criteria are verifiable                     | Are the scenarios clear and measurable? |
 
-**Estructura del archivo `story.md`** (local, NO refleja Jira description 1:1):
+**`story.md` file structure** (local, does NOT mirror Jira description 1:1):
 
 ```markdown
-**Source spec:** FR-XXX  <!-- primera línea, omitir si no aplica -->
+**Source spec:** FR-XXX  <!-- first line, omit if not applicable -->
 
 # [Story Title]
 
-**Jira Key:** [KEY real de Jira, ej: MYM-45]
+**Jira Key:** [real Jira key, e.g. MYM-45]
 **Epic:** [EPIC-{PROJECT_KEY}-{NUM}] ([Epic Title])
 **Priority:** [High | Medium | Low]
 **Story Points:** [1, 2, 3, 5, 8, 13]
-**Status:** [estado actual en Jira]
+**Status:** [current status in Jira]
 **Assignee:** null
 **Type:** Feature Extension (Post-MVP)
 
@@ -346,38 +360,38 @@ Crear carpeta:
 
 ## User Story
 
-**As a** [tipo de usuario específico]
-**I want to** [acción clara y concreta]
-**So that** [beneficio medible para el usuario]
+**As a** [specific user type]
+**I want to** [clear and concrete action]
+**So that** [measurable benefit to the user]
 
 ---
 
 ## Business Rules
 
-<!-- Mirror de {{jira.business_rules_specification}} (opcional, solo overflow) -->
+<!-- Mirror of {{jira.business_rules_specification}} (optional, overflow only) -->
 
-- [Regla de negocio 1 que aplica a esta story]
-- [Regla de negocio 2]
+- [Business rule 1 that applies to this story]
+- [Business rule 2]
 
 ---
 
 ## Workflow
 
-<!-- Mirror de {{jira.workflow}} (opcional, solo overflow) -->
+<!-- Mirror of {{jira.workflow}} (optional, overflow only) -->
 
-[Descripción del flujo de trabajo si es complejo]
+[Workflow description when complex]
 
-1. Usuario hace X
-2. Sistema responde Y
-3. Usuario confirma Z
+1. User does X
+2. System responds Y
+3. User confirms Z
 
 ---
 
 ## Mockups / Wireframes
 
-<!-- Mirror de {{jira.mockup}} (opcional) -->
+<!-- Mirror of {{jira.mockup}} (optional) -->
 
-- [URL a Figma/diseño si existe]
+- [URL to Figma/design if it exists]
 
 ---
 
@@ -385,20 +399,20 @@ Crear carpeta:
 
 ### Frontend
 
-[Componentes a crear/modificar]
+[Components to create/modify]
 
 ### Backend
 
-[APIs a crear/modificar, lógica de negocio]
+[APIs to create/modify, business logic]
 
 ### Database
 
-[Tablas/campos a agregar]
-**IMPORTANTE:** NO hardcodear SQL. Usar `[DB_TOOL]`.
+[Tables/fields to add]
+**IMPORTANT:** DO NOT hardcode SQL. Use `[DB_TOOL]`.
 
 ### Impact Analysis
 
-[Qué partes del sistema se ven afectadas]
+[Which parts of the system are affected]
 
 ---
 
@@ -406,26 +420,26 @@ Crear carpeta:
 
 ### Blocked By
 
-[Otras stories que deben completarse primero — Jira keys]
+[Other stories that must complete first — Jira keys]
 
 ### Blocks
 
-[Qué stories dependen de esta — Jira keys]
+[Which stories depend on this one — Jira keys]
 
 ### Related Stories
 
-[Stories relacionadas — informativo, no bloquea]
+[Related stories — informational, not blocking]
 
 ---
 
 ## Definition of Done
 
-- [ ] Código implementado y funcionando
-- [ ] Tests unitarios (coverage > 80%)
-- [ ] Tests de integración (API + DB)
-- [ ] Tests E2E
-- [ ] Code review aprobado (2 reviewers)
-- [ ] Documentación actualizada
+- [ ] Code implemented and working
+- [ ] Unit tests (coverage > 80%)
+- [ ] Integration tests (API + DB)
+- [ ] E2E tests
+- [ ] Code review approved (2 reviewers)
+- [ ] Documentation updated
 - [ ] Deployed to staging
 - [ ] QA testing passed
 - [ ] Acceptance criteria validated
@@ -435,255 +449,269 @@ Crear carpeta:
 
 ## Related Documentation
 
-- **Epic:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{nombre}/epic.md`
+- **Epic:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{name}/epic.md`
 - **PRD:** `.context/PRD/[relevant-section].md`
 - **SRS:** `.context/SRS/functional-specs.md`
 ```
 
-**Notas importantes:**
+**Important notes:**
 
-- **AC, Scope, Out-of-Scope NO se replican en `story.md`** — viven solo en sus custom fields Jira-side. Ver `references/description-custom-field-dedup.md`.
-- Las secciones `## Business Rules`, `## Workflow`, `## Mockups` en local son mirror opcional para developers que prefieren leer todo en filesystem; deben mantenerse en sync con sus slugs respectivos durante refinement.
+- **AC, Scope, Out-of-Scope are NOT replicated in `story.md`** — they live only in their custom fields Jira-side. See `references/description-custom-field-dedup.md`.
+- The local `## Business Rules`, `## Workflow`, `## Mockups` sections are optional mirrors for developers who prefer to read everything in the filesystem; they must be kept in sync with their respective slugs during refinement.
 
-**Output esperado:** `.context/PBI/epics/EPIC-[...]/stories/STORY-[...]/story.md`
+**Expected output:** `.context/PBI/epics/EPIC-[...]/stories/STORY-[...]/story.md`
 
 ---
 
-### Paso 7: Actualizar epic.md
+### Step 7: Update epic.md
 
-**Acción:** Agrega la nueva story a la lista de user stories en `epic.md` de la épica padre.
+**Action:** Add the new story to the list of user stories in the parent epic's `epic.md`.
 
-**Buscar sección "User Stories" y agregar:**
+**Find the "User Stories" section and add:**
 
 ```markdown
 ## User Stories
 
-[... stories existentes ...]
+[... existing stories ...]
 X. **{PROJECT_KEY}-{ISSUE_NUM}** - As a [user-type], I want to [action on entities] so that [benefit]
 ```
 
-(Donde `{PROJECT_KEY}` y `{ISSUE_NUM}` son los obtenidos en Paso 2, y `[user-type]`, `[action on entities]` y `[benefit]` se determinan del análisis del proyecto actual.)
+(Where `{PROJECT_KEY}` and `{ISSUE_NUM}` are the ones obtained in Step 2, and `[user-type]`, `[action on entities]`, and `[benefit]` are determined from the analysis of the current project.)
 
 ---
 
-### Paso 8: Actualizar epic-tree.md
+### Step 8: Update epic-tree.md
 
-**Acción:** Agrega la nueva story al árbol visual del backlog.
+**Action:** Add the new story to the backlog's visual tree.
 
-**Ejemplo:**
+**Example:**
 
 ```markdown
-EPIC-{PROJECT_KEY}-{NUM}: [Epic Title según dominio]
+EPIC-{PROJECT_KEY}-{NUM}: [Epic Title per domain]
 ├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 1]
 ├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 2]
 ├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 3]
 └── STORY-{PROJECT_KEY}-{ISSUE_NUM}: [New story title] ⭐ NEW
 ```
 
-(Los nombres de stories y epic se determinan analizando el dominio del proyecto actual.)
+(Story and epic names are determined by analyzing the current project's domain.)
 
 ---
 
-## ✅ FASE 2A COMPLETADA
+## ✅ PHASE 2A COMPLETED
 
-**Resultado:**
+**Result:**
 
-- ✅ Story creada en Jira con ID real
-- ✅ Story transicionada al estado por defecto (`{{jira.statuses.story_default}}`)
-- ✅ Dependencias publicadas como issue links en Jira (si aplican)
-- ✅ Carpeta local creada con nomenclatura correcta
-- ✅ Archivo `story.md` completo (sin AC/Scope/OOS duplicados)
-- ✅ Epic.md actualizado
-- ✅ Epic-tree.md actualizado
+- ✅ Story created in Jira with real ID
+- ✅ Story transitioned to the default status (`{{jira.statuses.story_default}}`)
+- ✅ Dependencies published as Jira issue links (when applicable)
+- ✅ Local folder created with correct naming
+- ✅ `story.md` file complete (no AC/Scope/OOS duplicated)
+- ✅ epic.md updated
+- ✅ epic-tree.md updated
 
 ---
 
-## 📝 FASE 2B: CREAR ÉPICA COMPLETA (Nivel 2)
+## 📝 PHASE 2B: CREATE FULL EPIC (Level 2)
 
-**Prerequisito:** Feature clasificada como Nivel 2.
+**Prerequisite:** Feature classified as Level 2.
 
-### Paso 1: Definir Épica y Stories
+### Step 1: Define Epic and Stories
 
-**Acción:** Define la nueva épica y descompón en user stories.
+**Action:** Define the new epic and decompose it into user stories.
 
 **Output:**
 
 ```markdown
-## Nueva Épica
+## New Epic
 
-**Título:** [Nombre de la épica]
-**Descripción:** [2-3 párrafos explicando la épica]
-**Prioridad:** High | Medium | Low
-**Valor de Negocio:** [Por qué es importante]
+**Title:** [Epic name]
+**Description:** [2-3 paragraphs explaining the epic]
+**Priority:** High | Medium | Low
+**Business Value:** [Why it matters]
 
-## User Stories Identificadas
+## Identified User Stories
 
 1. As a [user], I want to [action], so that [benefit] - [X pts]
 2. As a [user], I want to [action], so that [benefit] - [X pts]
 3. As a [user], I want to [action], so that [benefit] - [X pts]
    ...
 
-**Total estimado:** [suma de story points]
-**Número de stories:** [número]
+**Total estimated:** [sum of story points]
+**Number of stories:** [number]
 ```
 
 ---
 
-### Paso 2: Crear Épica en Jira
+### Step 2: Create Epic in Jira
 
-**Acción:** Pide a `[ISSUE_TRACKER_TOOL]` crear un issue tipo `Epic` en el proyecto resuelto. Para la matriz operación → capa, ver `references/jira-operations.md`. Antes de escribir campos rich-text (description), lee `references/jira-publishing-gotchas.md`.
+**Action:** Ask `[ISSUE_TRACKER_TOOL]` to create an `Epic`-type issue in the resolved project. For the operation → tool-layer matrix, see `references/jira-operations.md`. Before writing rich-text fields (description), read `references/jira-publishing-gotchas.md`.
 
-**Datos del issue:**
+**Issue data:**
 
-- **Proyecto:** PROJECT_KEY resuelto desde `.agents/project.yaml`.
-- **Tipo de issue:** Epic.
-- **Summary:** Nombre de la épica (sin prefijo de spec funcional).
-- **Description (body):** descripción detallada 2-3 párrafos. Si la épica mapea a un set de FRs, el body puede listar la referencia (e.g. "Cubre FR-101 … FR-108"). NO duplicar AC/Scope en description.
-- **Prioridad:** High | Medium | Low.
+- **Project:** PROJECT_KEY resolved from `.agents/project.yaml`.
+- **Issue type:** Epic.
+- **Summary:** Epic name (no functional-spec prefix).
+- **Description (body):** detailed 2-3 paragraph description. If the epic maps to a set of FRs, the body may list the reference (e.g. "Covers FR-101 … FR-108"). DO NOT duplicate AC/Scope in the description.
+- **Priority:** High | Medium | Low.
 - **Labels:** `post-mvp`, `new-feature`.
 
-**Procedimiento:**
+**Procedure:**
 
-1. Pide a `[ISSUE_TRACKER_TOOL]` crear el issue tipo `Epic`.
-2. **Captura el Jira Key** asignado (formato `{PROJECT_KEY}-{ISSUE_NUM}`).
-
----
-
-### Paso 3: Transitar épica al estado por defecto
-
-**Acción:** Pide a `[ISSUE_TRACKER_TOOL]` transicionar el epic recién creado al estado declarado en `{{jira.statuses.epic_default}}` (default literal `Planning` si el slug no está configurado).
+1. Ask `[ISSUE_TRACKER_TOOL]` to create the `Epic`-type issue.
+2. **Capture the assigned Jira Key** (format `{PROJECT_KEY}-{ISSUE_NUM}`).
 
 ---
 
-### Paso 4: Crear Carpeta Local de Épica
+### Step 3: Transition epic to the default status
 
-**Nomenclatura:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre-descriptivo}/`
+**Action:** Ask `[ISSUE_TRACKER_TOOL]` to transition the newly created epic to the status declared in `{{jira.statuses.epic_default}}` (literal default `Planning` if the slug is not configured).
 
-**Ejemplo:**
+---
 
-Si PROJECT_KEY = "MYM" y Jira asignó issue number = 50, el Jira Key completo es "MYM-50".
+### Step 4: Create Local Epic Folder
 
-Crear carpeta:
+**Naming:** `EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+
+**Example:**
+
+If PROJECT_KEY = "MYM" and Jira assigned issue number = 50, the full Jira Key is "MYM-50".
+
+Create folder:
 
 ```
-.context/PBI/epics/EPIC-MYM-50-{nombre-segun-dominio}/
+.context/PBI/epics/EPIC-MYM-50-{name-per-domain}/
 ```
 
-(Donde `{nombre-segun-dominio}` se infiere del análisis del PRD/SRS del proyecto actual.)
+(Where `{name-per-domain}` is inferred from the current project's PRD/SRS analysis.)
 
 ---
 
-### Paso 5: Crear Archivo epic.md
+### Step 5: Create epic.md File
 
-**Estructura completa (igual que prompt `product-backlog-seed.md`)**
+**Full structure (same as the `product-backlog-seed.md` prompt)**
 
-Incluye todas las secciones:
+Includes every section:
 
 - Epic Description
-- User Stories (con IDs TBD por ahora)
-- Related Functional Requirements (referencia FR-XXX al nivel del body, no del summary)
+- User Stories (with TBD IDs for now)
+- Related Functional Requirements (FR-XXX reference at body level, not in the summary)
 - Technical Considerations
 - Dependencies
 - Success Metrics
 - Risks & Mitigations
-- Testing Strategy (referencia a archivos futuros)
-- Implementation Plan (referencia a archivos futuros)
+- Testing Strategy (reference to future files)
+- Implementation Plan (reference to future files)
 - Notes
 - Related Documentation
 
-**Importante:** `epic.md` LOCAL no replica `## Acceptance Criteria (Epic Level)`, `## Scope`, ni `## Out of Scope` si estos viven en custom fields del epic Jira-side. Si el workspace no los expone como custom fields del epic, sí pueden ir en `epic.md` local — pero la decisión se documenta una vez por proyecto en `description-custom-field-dedup.md`.
+**Important:** the LOCAL `epic.md` does not replicate `## Acceptance Criteria (Epic Level)`, `## Scope`, or `## Out of Scope` when those live in epic-side custom fields. If the workspace does not expose them as epic custom fields, they may live in the local `epic.md` — but the decision is documented once per project in `description-custom-field-dedup.md`.
 
-**IMPORTANTE:** Marca claramente que es una feature post-MVP.
+**IMPORTANT:** Clearly mark it as a post-MVP feature.
 
 ---
 
-### Paso 6: Crear Stories en Jira
+### Step 6: Create Stories in Jira
 
-**Acción:** Por cada user story definida en Paso 1, pide a `[ISSUE_TRACKER_TOOL]` crearla.
+**Action:** For each user story defined in Step 1, ask `[ISSUE_TRACKER_TOOL]` to create it.
 
-**Datos por story:** mismo contrato que Fase 2A Paso 2 (summary sin prefijo de spec funcional; description con `**Source spec:**` como primera línea cuando aplique; AC/Scope/OOS exclusivamente en custom fields).
+**Per-story data:** same contract as Phase 2A Step 2 (summary without functional-spec prefix; description with `**Source spec:**` as the first line when applicable; AC/Scope/OOS exclusively in custom fields).
 
-**Custom fields slug-resueltos por story:**
+**Slug-resolved custom fields per story:**
 
-| Slug                                       | Contenido                                                                          |
+| Slug                                       | Content                                                                          |
 | ------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `{{jira.acceptance_criteria}}`     | Escenarios Given/When/Then                                                          |
-| `{{jira.scope}}`                           | In-scope únicamente                                                                 |
-| `{{jira.out_of_scope}}`                    | Exclusiones explícitas                                                              |
+| `{{jira.acceptance_criteria}}`     | Given/When/Then scenarios                                                          |
+| `{{jira.scope}}`                           | In-scope only                                                                 |
+| `{{jira.out_of_scope}}`                    | Explicit exclusions                                                              |
 | `{{jira.story_points}}`                    | Fibonacci                                                                           |
-| `{{jira.business_rules_specification}}`    | Reglas de negocio (opcional)                                                        |
-| `{{jira.mockup}}`                          | URLs de diseños (opcional)                                                          |
-| `{{jira.workflow}}`                        | Flujo si es complejo (opcional)                                                     |
-| `{{jira.weblink}}`                     | URL de la app (condicional, omitir en duda)                                         |
+| `{{jira.business_rules_specification}}`    | Business rules (optional)                                                        |
+| `{{jira.mockup}}`                          | Design URLs (optional)                                                          |
+| `{{jira.workflow}}`                        | Flow when complex (optional)                                                     |
+| `{{jira.weblink}}`                     | App URL (conditional, omit when in doubt)                                         |
 
-**Procedimiento:**
+**Procedure:**
 
-1. Crea cada story vinculada al epic recién creado.
-2. Llena los custom fields slug-resueltos.
-3. **Captura el Jira Key** de cada story.
+1. Create each story linked to the newly created epic.
+2. Populate the slug-resolved custom fields.
+3. **Capture the Jira Key** of every story.
 
-**Nota ADF:** updates multi-campo deben hacerse split por campo o pre-convertidos. Ver `references/jira-publishing-gotchas.md`.
-
----
-
-### Paso 7: Transitar stories al estado por defecto
-
-**Acción:** Por cada story creada en Paso 6, pide a `[ISSUE_TRACKER_TOOL]` transicionarla al estado declarado en `{{jira.statuses.story_default}}` (default literal `Shift-Left QA`).
+**ADF note:** multi-field updates must be split per field or pre-converted. See `references/jira-publishing-gotchas.md`.
 
 ---
 
-### Paso 8: Linkear dependencias entre stories
+### Step 7: Transition stories to the default status
 
-**Acción:** Una vez que TODAS las stories del epic existen, publica las dependencias internas como issue links. Detalle completo → `references/dependency-linking.md`.
-
-**Fuentes válidas** (nunca inventes):
-
-- Sequencing explícito en PRD / SRS / functional-specs.
-- Ordenamiento de Master Sprint en `.context/master-implementation-plan.md`.
-- Relaciones entity-level en `.context/business/business-data-map.md`.
-- Declaraciones explícitas `Blocked By` / `Blocks` en cada `story.md` local (poblado en Paso 10).
-
-**Cómo:**
-
-- Slug primario: `{{jira.link_types.dependencies}}` con `outwardIssue = dependent`, `inwardIssue = prerequisite`.
-- Fallback (si el workspace carece del slug): `{{jira.link_types.dependencies.fallback}}` — flagea degradación porque `relates` es simétrico.
-- Bloqueos duros: `{{jira.link_types.blocks}}`.
-
-**Reporting:** matriz `from → to → type → source` al cierre del paso.
+**Action:** For every story created in Step 6, ask `[ISSUE_TRACKER_TOOL]` to transition it to the status declared in `{{jira.statuses.story_default}}` (literal default `Shift-Left QA`).
 
 ---
 
-### Paso 9: Cross-story Scope overlap check
+### Step 7.5: Active Dependency Discovery (MANDATORY, before linking)
 
-**Acción:** Antes de pasar a sprint-sequencing, audita pairwise los bullets de `{{jira.scope}}` entre todas las stories hijas del epic.
+Anti-pattern `I18` requires an **active** discovery pass before any internal link of the newly created epic is created.
 
-**Procedimiento:**
+1. Read `.context/PBI/epic-tree.md` — stories of the newly created epic + related epics that already exist.
+2. Read `.context/business/business-data-map.md` if present — entity-level relations between the entities these stories touch.
+3. Query via `[ISSUE_TRACKER_TOOL]` the current link graph of every story created in Step 6.
+4. Build the candidate matrix `(from, to, link_type_slug, source-of-decision)`.
+5. **Filter noise**: discard candidates justified only by global / infrastructural prerequisites. Keep only feature-level dependencies between specific stories of the epic (or cross-epic when explicit).
+6. **Heuristic**: does it disappear if we reorder sprints? YES → discard. NO → keep.
+7. Surface the filtered matrix to the user and wait for confirmation before creating any link in Step 8.
 
-1. Para cada par de stories `(A, B)` dentro del epic, compara literal bullet-by-bullet el contenido de `{{jira.scope}}`.
-2. Si dos stories comparten un bullet idéntico (case-insensitive, trimmed) → surface al usuario:
+---
+
+### Step 8: Link Dependencies Between Stories
+
+**Action:** For every dependency the user confirmed in Step 7.5, publish it as a Jira issue link. Full details → `references/dependency-linking.md`.
+
+**Valid sources** (never invent):
+
+- Explicit sequencing in PRD / SRS / functional-specs.
+- Master Sprint ordering in `.context/master-implementation-plan.md`.
+- Entity-level relations in `.context/business/business-data-map.md`.
+- Explicit `Blocked By` / `Blocks` declarations in each local `story.md` (populated in Step 10).
+
+**How:**
+
+- Primary slug: `{{jira.link_types.dependencies}}` with `outwardIssue = dependent`, `inwardIssue = prerequisite`.
+- Fallback (when the workspace lacks the slug): `{{jira.link_types.dependencies.fallback}}` — flag the degradation because `relates` is symmetric.
+- Hard blockers: `{{jira.link_types.blocks}}`.
+
+**Reporting:** `from → to → type → source` matrix at the end of the step.
+
+---
+
+### Step 9: Cross-story Scope overlap check
+
+**Action:** Before moving to sprint-sequencing, pairwise-audit the bullets of `{{jira.scope}}` across all child stories of the epic.
+
+**Procedure:**
+
+1. For each story pair `(A, B)` within the epic, literally compare the contents of `{{jira.scope}}` bullet-by-bullet.
+2. If two stories share an identical bullet (case-insensitive, trimmed) → surface to the user:
    ```
    overlap_alert: <KEY-A> vs <KEY-B> on bullet "<text>"
    ```
-3. **NO auto-resolver.** Ofrece al usuario tres opciones explícitas:
-   - **(a) Mover el bullet** a una única story owner (el bullet se borra de la otra).
-   - **(b) Extraer una shared dependency story** que contenga el bullet y de la cual ambas dependan.
-   - **(c) Aceptar el duplicate** si es contexto compartido intencional (raro; documentar la razón en el `story.md` de ambas).
+3. **DO NOT auto-resolve.** Offer the user three explicit options:
+   - **(a) Move the bullet** to a single owning story (the bullet is removed from the other).
+   - **(b) Extract a shared dependency story** that contains the bullet and that both depend on.
+   - **(c) Accept the duplicate** if it is intentional shared context (rare; document the rationale in both `story.md` files).
 
-Detalle conceptual de slicing limpio y la anti-pattern asociada (`I4`) → `SKILL.md` Anti-patterns.
+Conceptual detail of clean slicing and the related anti-pattern (`I4`) → `SKILL.md` Anti-patterns.
 
 ---
 
-### Paso 10: Crear Carpetas Locales de Stories
+### Step 10: Create Local Story Folders
 
-**Acción:** Por cada story creada, crea su carpeta local.
+**Action:** For every created story, create its local folder.
 
-**Nomenclatura:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre-descriptivo}/`
+**Naming:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
 
-**Ubicación:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{epic-name}/stories/`
+**Location:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{epic-name}/stories/`
 
-**Ejemplo:**
+**Example:**
 
-Si PROJECT_KEY = "MYM", épica padre = "MYM-50", y stories con issue numbers 51, 52, 53:
+If PROJECT_KEY = "MYM", parent epic = "MYM-50", and stories with issue numbers 51, 52, 53:
 
 ```
 .context/PBI/epics/EPIC-MYM-50-{epic-name}/stories/
@@ -692,28 +720,28 @@ Si PROJECT_KEY = "MYM", épica padre = "MYM-50", y stories con issue numbers 51,
 └── STORY-MYM-53-{story-name-3}/
 ```
 
-(Donde `{epic-name}` y `{story-name-X}` se infieren del análisis del dominio del proyecto actual.)
+(Where `{epic-name}` and `{story-name-X}` are inferred from the current project's domain analysis.)
 
 ---
 
-### Paso 11: Crear Archivos story.md
+### Step 11: Create story.md Files
 
-**Acción:** Crea `story.md` para cada story (estructura igual que Fase 2A Paso 6).
+**Action:** Create a `story.md` for each story (same structure as Phase 2A Step 6).
 
-**IMPORTANTE:**
+**IMPORTANT:**
 
-- Marca que son stories de feature post-MVP.
-- `**Source spec:** FR-XXX` como primera línea cuando aplique.
-- NO incluyas `## Acceptance Criteria` / `## Scope` / `## Out of Scope` en `story.md` local — viven en custom fields Jira-side.
-- Las declaraciones `Blocked By` / `Blocks` en cada `story.md` deben coincidir con los issue links creados en Paso 8.
+- Mark them as post-MVP feature stories.
+- `**Source spec:** FR-XXX` as the first line when applicable.
+- DO NOT include `## Acceptance Criteria` / `## Scope` / `## Out of Scope` in the local `story.md` — they live in Jira-side custom fields.
+- `Blocked By` / `Blocks` declarations in every `story.md` must match the issue links created in Step 8.
 
 ---
 
-### Paso 12: Actualizar epic.md con IDs Reales
+### Step 12: Update epic.md With Real IDs
 
-**Acción:** Actualiza la sección "User Stories" de `epic.md` con los Jira keys reales.
+**Action:** Update the "User Stories" section of `epic.md` with the real Jira keys.
 
-**Ejemplo:**
+**Example:**
 
 ```markdown
 ## User Stories
@@ -723,29 +751,29 @@ Si PROJECT_KEY = "MYM", épica padre = "MYM-50", y stories con issue numbers 51,
 3. **{PROJECT_KEY}-53** - As a [user-type], I want to [action 3] so that [benefit]
 ```
 
-(Donde `{PROJECT_KEY}` es el obtenido del input, los números son los asignados por Jira, y las user stories se determinan del análisis del proyecto actual.)
+(Where `{PROJECT_KEY}` is the one from input, the numbers are Jira-assigned, and the user stories are determined by analyzing the current project.)
 
 ---
 
-### Paso 13: Actualizar epic-tree.md
+### Step 13: Update epic-tree.md
 
-**Acción:** Agrega la nueva épica al árbol visual del backlog.
+**Action:** Add the new epic to the backlog's visual tree.
 
-**Ejemplo:**
+**Example:**
 
 ```markdown
-[... épicas MVP existentes ...]
+[... existing MVP epics ...]
 
 ---
 
 ## Post-MVP Features
 
-### ⭐ EPIC-{PROJECT_KEY}-{NUM}: [Epic Title según dominio]
+### ⭐ EPIC-{PROJECT_KEY}-{NUM}: [Epic Title per domain]
 
 **Jira Key:** {PROJECT_KEY}-{ISSUE_NUM}
-**Status:** [estado actual]
+**Status:** [current status]
 **Priority:** MEDIUM (Post-MVP)
-**Description:** [Descripción según análisis del dominio del proyecto actual]
+**Description:** [Description per current project's domain analysis]
 
 **User Stories (X):**
 
@@ -753,106 +781,106 @@ Si PROJECT_KEY = "MYM", épica padre = "MYM-50", y stories con issue numbers 51,
 2. **{PROJECT_KEY}-{NUM}** - [Story title 2]
 3. **{PROJECT_KEY}-{NUM}** - [Story title 3]
 
-**Related Functional Requirements:** [FR list at body level, opcional]
+**Related Functional Requirements:** [FR list at body level, optional]
 ```
 
 ---
 
-### Paso 14 (final): Sprint sequencing
+### Step 14 (final): Sprint sequencing
 
-**Acción:** Después de que TODAS las stories existen, todos los links de dependencias están publicados, y el overlap check pasó (o se resolvió), ejecuta sprint-sequencing.
+**Action:** After ALL stories exist, all dependency links are published, and the overlap check passed (or was resolved), run sprint-sequencing.
 
-Detalle completo (algoritmo Kahn, cycle detection, output schema) → `references/sprint-sequencing.md`.
+Full details (Kahn algorithm, cycle detection, output schema) → `references/sprint-sequencing.md`.
 
-**Output:** este paso SIEMPRE persiste el resultado en `.context/PBI/sprint-sequence.md` (overwrite on re-run).
+**Output:** this step ALWAYS persists the result to `.context/PBI/sprint-sequence.md` (overwrite on re-run).
 
-**Cuándo re-correr:** cada vez que cambie el grafo de dependencias (nuevas stories, nuevos links, links removidos).
+**When to re-run:** whenever the dependency graph changes (new stories, new links, removed links).
 
-**Reglas críticas** (resumen, fuente: `sprint-sequencing.md`):
+**Critical rules** (summary, source: `sprint-sequencing.md`):
 
-- Solo `dependencies` y `Blocks` contribuyen al topological sort. `Relates` es informacional.
-- Cycle detection es obligatorio: si el grafo no se vacía y ningún nodo tiene in-degree cero → halt + report. Nunca silenciar.
-- El output es input al planning humano, **nunca un commitment**.
-
----
-
-## ✅ FASE 2B COMPLETADA
-
-**Resultado:**
-
-- ✅ Épica creada en Jira con ID real y transicionada a `{{jira.statuses.epic_default}}`
-- ✅ Carpeta de épica local creada
-- ✅ Archivo `epic.md` completo (sin duplicar AC/Scope si viven en custom fields del epic)
-- ✅ Todas las stories creadas en Jira con IDs reales
-- ✅ Stories transicionadas a `{{jira.statuses.story_default}}`
-- ✅ Dependencias publicadas como issue links (matriz reportada)
-- ✅ Scope overlap check completado (alerts resueltos por el usuario)
-- ✅ Carpetas locales de stories creadas
-- ✅ Archivos `story.md` completos (sin AC/Scope/OOS duplicados)
-- ✅ `epic.md` actualizado con IDs reales
-- ✅ `epic-tree.md` actualizado
-- ✅ Sprint sequencing ejecutado y persistido en `.context/PBI/sprint-sequence.md`
+- Only `dependencies` and `Blocks` contribute to the topological sort. `Relates` is informational.
+- Cycle detection is mandatory: if the graph does not drain and no node has in-degree zero → halt + report. Never silence.
+- The output is input to human planning, **never a commitment**.
 
 ---
 
-## 🚨 FASE 2C: MÚLTIPLES ÉPICAS - ADVERTENCIA Y PLAN (Nivel 3)
+## ✅ PHASE 2B COMPLETED
 
-**Prerequisito:** Feature clasificada como Nivel 3.
+**Result:**
 
-### ⚠️ ADVERTENCIA CRÍTICA
-
-**La idea proporcionada es DEMASIADO COMPLEJA para ser creada directamente.**
-
-Esta feature requiere **múltiples épicas** con dependencias y scope extenso. Crear todas las épicas de una vez resultaría en:
-
-❌ Sobrecarga de tokens
-❌ Contexto desorganizado
-❌ Dependencias mal gestionadas
-❌ Riesgo de inconsistencias
-❌ Difícil de planificar correctamente
+- ✅ Epic created in Jira with real ID and transitioned to `{{jira.statuses.epic_default}}`
+- ✅ Local epic folder created
+- ✅ `epic.md` file complete (no AC/Scope duplicated when they live in epic custom fields)
+- ✅ All stories created in Jira with real IDs
+- ✅ Stories transitioned to `{{jira.statuses.story_default}}`
+- ✅ Dependencies published as issue links (matrix reported)
+- ✅ Scope overlap check completed (alerts resolved by the user)
+- ✅ Local story folders created
+- ✅ `story.md` files complete (no AC/Scope/OOS duplicated)
+- ✅ `epic.md` updated with real IDs
+- ✅ `epic-tree.md` updated
+- ✅ Sprint sequencing executed and persisted to `.context/PBI/sprint-sequence.md`
 
 ---
 
-### 📋 PLAN RECOMENDADO
+## 🚨 PHASE 2C: MULTIPLE EPICS — WARNING AND PLAN (Level 3)
 
-**Acción:** NO crees nada todavía. Primero genera un plan de división.
+**Prerequisite:** Feature classified as Level 3.
 
-**Output esperado:**
+### ⚠️ CRITICAL WARNING
+
+**The provided idea is TOO COMPLEX to be created directly.**
+
+This feature requires **multiple epics** with dependencies and broad scope. Creating every epic at once would lead to:
+
+❌ Token overload
+❌ Disorganized context
+❌ Mismanaged dependencies
+❌ Risk of inconsistencies
+❌ Hard to plan correctly
+
+---
+
+### 📋 RECOMMENDED PLAN
+
+**Action:** DO NOT create anything yet. First, generate a split plan.
+
+**Expected output:**
 
 ```markdown
-# Plan de Implementación: [Nombre de la Feature]
+# Implementation Plan: [Feature Name]
 
-## 🚨 ADVERTENCIA
+## 🚨 WARNING
 
-Esta feature requiere **[número] épicas** para implementarse correctamente.
+This feature requires **[number] epics** to implement correctly.
 
-**IMPORTANTE:** NO proceder con la creación hasta que este plan sea revisado y aprobado.
-
----
-
-## Análisis de Complejidad
-
-**Scope total estimado:**
-
-- Épicas necesarias: [número]
-- User stories estimadas: [número total]
-- Story points totales: [estimación]
-- Duración estimada: [Master Sprints]
-
-**¿Por qué múltiples épicas?**
-[Explicar razones: complejidad técnica, dominios separados, dependencias, etc.]
+**IMPORTANT:** Do NOT proceed with creation until this plan has been reviewed and approved.
 
 ---
 
-## División Recomendada en Épicas
+## Complexity Analysis
 
-### ÉPICA 1: [Nombre]
+**Estimated total scope:**
 
-**Prioridad:** CRITICAL | HIGH | MEDIUM
-**Master Sprint:** [N — referencia a `.context/master-implementation-plan.md` §5 si existe]
-**Descripción:** [1-2 párrafos]
+- Required epics: [number]
+- Estimated user stories: [total number]
+- Total story points: [estimate]
+- Estimated duration: [Master Sprints]
 
-**User Stories estimadas:** [número]
+**Why multiple epics?**
+[Explain the reasons: technical complexity, separate domains, dependencies, etc.]
+
+---
+
+## Recommended Split Into Epics
+
+### EPIC 1: [Name]
+
+**Priority:** CRITICAL | HIGH | MEDIUM
+**Master Sprint:** [N — reference to `.context/master-implementation-plan.md` §5 when present]
+**Description:** [1-2 paragraphs]
+
+**Estimated user stories:** [number]
 **Story Points:** [total]
 
 **Scope:**
@@ -861,22 +889,22 @@ Esta feature requiere **[número] épicas** para implementarse correctamente.
 - Feature 2
 - ...
 
-**Dependencias:**
+**Dependencies:**
 
-- **Requiere:** [Épicas que deben completarse antes]
-- **Bloqueada por:** [Épicas externas]
+- **Requires:** [Epics that must complete first]
+- **Blocked by:** [External epics]
 
-**Orden sugerido:** #1 (implementar primero)
+**Suggested order:** #1 (implement first)
 
 ---
 
-### ÉPICA 2: [Nombre]
+### EPIC 2: [Name]
 
-**Prioridad:** CRITICAL | HIGH | MEDIUM
+**Priority:** CRITICAL | HIGH | MEDIUM
 **Master Sprint:** [N]
-**Descripción:** [1-2 párrafos]
+**Description:** [1-2 paragraphs]
 
-**User Stories estimadas:** [número]
+**Estimated user stories:** [number]
 **Story Points:** [total]
 
 **Scope:**
@@ -885,371 +913,374 @@ Esta feature requiere **[número] épicas** para implementarse correctamente.
 - Feature 2
 - ...
 
-**Dependencias:**
+**Dependencies:**
 
-- **Requiere:** ÉPICA 1 completada
-- **Bloqueada por:** [Si aplica]
+- **Requires:** EPIC 1 completed
+- **Blocked by:** [If applicable]
 
-**Orden sugerido:** #2 (implementar después de ÉPICA 1)
-
----
-
-[... repetir para todas las épicas necesarias ...]
+**Suggested order:** #2 (implement after EPIC 1)
 
 ---
 
-## Orden de Implementación Recomendado
+[... repeat for every required epic ...]
+
+---
+
+## Recommended Implementation Order
 
 ### Master Sprint 1: Foundation
 
-1. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** - [Descripción] (base fundamental)
-   - **¿Por qué primero?** [Razón]
+1. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}** - [Description] (foundational base)
+   - **Why first?** [Reason]
 
 ### Master Sprint 2: Core Features
 
-2. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** - [Descripción] (funcionalidad principal)
-   - **Depende de:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
-   - **¿Por qué ahora?** [Razón]
+2. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}** - [Description] (main functionality)
+   - **Depends on:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}
+   - **Why now?** [Reason]
 
-3. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** - [Descripción]
-   - **Depende de:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
-   - **¿Por qué ahora?** [Razón]
+3. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}** - [Description]
+   - **Depends on:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}
+   - **Why now?** [Reason]
 
 ### Master Sprint 3: Enhancements
 
-4. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}** - [Descripción] (mejoras y optimizaciones)
-   - **Depende de:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}, EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}
-   - **¿Por qué al final?** [Razón]
+4. **EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}** - [Description] (improvements and optimizations)
+   - **Depends on:** EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}, EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}
+   - **Why last?** [Reason]
 
-> **Nota terminológica:** "Master Sprint" agrupa estratégicamente al nivel de roadmap (`.context/master-implementation-plan.md`). "Execution Sprint" es la salida del topological sort dependency-driven, derivable solo después de crear stories + links (ver `references/sprint-sequencing.md`).
-
----
-
-## Riesgos Identificados
-
-| Riesgo     | Impacto         | Probabilidad    | Mitigación           |
-| ---------- | --------------- | --------------- | -------------------- |
-| [Riesgo 1] | High/Medium/Low | High/Medium/Low | [Plan de mitigación] |
-| [Riesgo 2] | High/Medium/Low | High/Medium/Low | [Plan de mitigación] |
+> **Terminology note:** "Master Sprint" groups strategically at roadmap level (`.context/master-implementation-plan.md`). "Execution Sprint" is the output of the dependency-driven topological sort, derivable only after stories + links are created (see `references/sprint-sequencing.md`).
 
 ---
 
-## Cambios Arquitectónicos Necesarios
+## Identified Risks
 
-[Listar cambios significativos en la arquitectura del sistema que esta feature requiere]
-
-**Ejemplos:**
-
-- Nueva tabla de base de datos: [nombre y propósito]
-- Nuevo servicio backend: [nombre y propósito]
-- Integración con API externa: [cuál y por qué]
-- Cambios en frontend: [componentes principales]
+| Risk     | Impact          | Probability     | Mitigation           |
+| -------- | --------------- | --------------- | -------------------- |
+| [Risk 1] | High/Medium/Low | High/Medium/Low | [Mitigation plan]    |
+| [Risk 2] | High/Medium/Low | High/Medium/Low | [Mitigation plan]    |
 
 ---
 
-## Decisiones Técnicas Pendientes
+## Required Architectural Changes
 
-Antes de comenzar la implementación, se deben tomar estas decisiones:
+[List significant architectural changes this feature requires]
 
-1. **[Decisión 1]**
-   - **Opciones:** [Opción A, Opción B]
-   - **Recomendación:** [Opción X porque ...]
+**Examples:**
 
-2. **[Decisión 2]**
-   - **Opciones:** [Opción A, Opción B]
-   - **Recomendación:** [Opción X porque ...]
-
----
-
-## Próximos Pasos
-
-**NO proceder con la creación de épicas/stories todavía.**
-
-### Paso 1: Revisar este Plan
-
-- [ ] Revisar división de épicas propuesta
-- [ ] Validar orden de implementación
-- [ ] Confirmar estimaciones de esfuerzo
-- [ ] Aprobar cambios arquitectónicos
-
-### Paso 2: Dividir la Idea
-
-Una vez aprobado el plan, dividir la idea original en épicas individuales.
-
-### Paso 3: Ejecutar Incremental
-
-Re-ejecuta este reference, pero ahora con **UNA épica a la vez**:
-
-Input para primera ejecución:
-"Implementar ÉPICA 1 del plan: [Nombre de la épica]
-[Pegar descripción y scope de ÉPICA 1 del plan]"
-
-→ Esto será clasificado como NIVEL 2 → Crear épica completa (Fase 2B), que incluye creación de stories, transiciones, dependency-linking, scope overlap check y sprint sequencing.
-
-Repetir para cada épica según el orden recomendado.
+- New database table: [name and purpose]
+- New backend service: [name and purpose]
+- Integration with external API: [which one and why]
+- Frontend changes: [main components]
 
 ---
 
-## Estimación de Esfuerzo Total
+## Pending Technical Decisions
 
-**Total del proyecto:**
+Before starting implementation, these decisions must be made:
 
-- Master Sprints: [número]
-- Developers: [número recomendado]
-- QA: [número recomendado]
-- Duración: [semanas/meses]
+1. **[Decision 1]**
+   - **Options:** [Option A, Option B]
+   - **Recommendation:** [Option X because ...]
 
-**Costo estimado:** [Si aplica]
+2. **[Decision 2]**
+   - **Options:** [Option A, Option B]
+   - **Recommendation:** [Option X because ...]
 
 ---
 
-## Notas Adicionales
+## Next Steps
 
-[Cualquier información relevante adicional sobre la feature, consideraciones de negocio, impacto en usuarios, etc.]
+**Do NOT proceed with epic/story creation yet.**
+
+### Step 1: Review This Plan
+
+- [ ] Review the proposed epic split
+- [ ] Validate the implementation order
+- [ ] Confirm effort estimates
+- [ ] Approve architectural changes
+
+### Step 2: Split the Idea
+
+Once the plan is approved, split the original idea into individual epics.
+
+### Step 3: Execute Incrementally
+
+Re-run this reference, but now with **ONE epic at a time**:
+
+Input for the first run:
+"Implement EPIC 1 of the plan: [Epic name]
+[Paste EPIC 1 description and scope from the plan]"
+
+→ This will be classified as LEVEL 2 → Create full epic (Phase 2B), which includes story creation, transitions, dependency-linking, scope overlap check, and sprint sequencing.
+
+Repeat for each epic following the recommended order.
+
+---
+
+## Total Effort Estimate
+
+**Total project:**
+
+- Master Sprints: [number]
+- Developers: [recommended number]
+- QA: [recommended number]
+- Duration: [weeks/months]
+
+**Estimated cost:** [If applicable]
+
+---
+
+## Additional Notes
+
+[Any other relevant information about the feature, business considerations, user impact, etc.]
 ```
 
 ---
 
-## ✅ FASE 2C COMPLETADA
+## ✅ PHASE 2C COMPLETED
 
-**Resultado:**
+**Result:**
 
-- ✅ Plan detallado de división generado
-- ✅ Advertencia clara al usuario
-- ⚠️ NINGUNA épica/story creada (esperando aprobación)
-- ✅ Roadmap claro de próximos pasos
-- ✅ Usuario sabe que debe dividir la idea y ejecutar incrementalmente (cada épica → Fase 2B completa)
+- ✅ Detailed split plan generated
+- ✅ Clear warning to the user
+- ⚠️ NO epic/story created (awaiting approval)
+- ✅ Clear roadmap of next steps
+- ✅ User knows to split the idea and execute incrementally (each epic → full Phase 2B)
 
 ---
 
-## 📋 NOMENCLATURA Y ESTÁNDARES
+## 📋 NAMING AND STANDARDS
 
-### Nomenclatura de Carpetas
+### Folder Naming
 
-**Épicas:**
+**Epics:**
 
 ```
-EPIC-{PROYECTO}-{NUMERO}-{nombre-descriptivo}/
+EPIC-{PROJECT}-{NUMBER}-{descriptive-name}/
 ```
 
 **Stories:**
 
 ```
-STORY-{PROYECTO}-{NUMERO}-{nombre-descriptivo}/
+STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 ```
 
-**Reglas:**
+**Rules:**
 
-- Usar kebab-case en nombres
-- IDs sin ceros a la izquierda (MYM-2, no MYM-002)
-- Nombres descriptivos pero concisos (2-4 palabras)
-- NO usar snake_case, CamelCase, o espacios
-- SIEMPRE usar IDs reales de Jira (flujo Jira-First)
+- Use kebab-case in names
+- IDs without leading zeros (MYM-2, not MYM-002)
+- Descriptive but concise names (2-4 words)
+- DO NOT use snake_case, CamelCase, or spaces
+- ALWAYS use real Jira IDs (Jira-First flow)
 
 ### Summary nomenclature (reminder)
 
-- **Nunca** prefix story / epic summaries with the functional-spec reference (e.g. `FR-XXX` followed by em-dash and title).
-- `**Source spec:** FR-XXX` como primera línea del body, omitible.
+- **Never** prefix story / epic summaries with the functional-spec reference (e.g. `FR-XXX` followed by em-dash and title).
+- `**Source spec:** FR-XXX` as the first body line, omittable.
 
 ---
 
-## 🎯 RESUMEN DE FLUJOS
+## 🎯 FLOW SUMMARY
 
-### Story Individual (Nivel 1)
-
-```
-1. Analizar → Clasificar como Nivel 1
-2. Identificar épica padre existente
-3. Crear story en Jira → Obtener ID
-4. Transitar story a {{jira.statuses.story_default}}
-5. Linkear dependencias (si aplican) → ver dependency-linking.md
-6. Crear carpeta local STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/
-7. Crear story.md (sin AC/Scope/OOS duplicados)
-8. Actualizar epic.md de épica padre
-9. Actualizar epic-tree.md
-✅ Completado
-```
-
-### Épica Completa (Nivel 2)
+### Individual Story (Level 1)
 
 ```
- 1. Analizar → Clasificar como Nivel 2
- 2. Definir épica y descomponer en stories
- 3. Crear épica en Jira → Obtener ID
- 4. Transitar epic a {{jira.statuses.epic_default}}
- 5. Crear carpeta local EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/
- 6. Crear epic.md
- 7. Crear todas las stories en Jira → Obtener IDs
- 8. Transitar stories a {{jira.statuses.story_default}}
- 9. Linkear dependencias internas → ver dependency-linking.md
+1. Analyze → Classify as Level 1
+2. Identify existing parent epic
+3. Create story in Jira → Capture ID
+4. Transition story to {{jira.statuses.story_default}}
+5. Link dependencies (when applicable) → see dependency-linking.md
+6. Create local folder STORY-{PROJECT_KEY}-{ISSUE_NUM}-{name}/
+7. Create story.md (no AC/Scope/OOS duplicated)
+8. Update parent epic.md
+9. Update epic-tree.md
+✅ Completed
+```
+
+### Full Epic (Level 2)
+
+```
+ 1. Analyze → Classify as Level 2
+ 2. Define epic and decompose into stories
+ 3. Create epic in Jira → Capture ID
+ 4. Transition epic to {{jira.statuses.epic_default}}
+ 5. Create local folder EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{name}/
+ 6. Create epic.md
+ 7. Create every story in Jira → Capture IDs
+ 8. Transition stories to {{jira.statuses.story_default}}
+ 9. Link internal dependencies → see dependency-linking.md
 10. Cross-story Scope overlap check (pairwise)
-11. Crear carpetas locales de stories
-12. Crear archivos story.md (sin AC/Scope/OOS duplicados)
-13. Actualizar epic.md con IDs reales
-14. Actualizar epic-tree.md
-15. Sprint sequencing (final) → persiste .context/PBI/sprint-sequence.md
-✅ Completado
+11. Create local story folders
+12. Create story.md files (no AC/Scope/OOS duplicated)
+13. Update epic.md with real IDs
+14. Update epic-tree.md
+15. Sprint sequencing (final) → persists .context/PBI/sprint-sequence.md
+✅ Completed
 ```
 
-### Múltiples Épicas (Nivel 3)
+### Multiple Epics (Level 3)
 
 ```
-1. Analizar → Clasificar como Nivel 3
-2. ⚠️ ADVERTENCIA: Demasiado complejo
-3. Generar plan de división detallado (con Master Sprints como agrupación estratégica)
-4. STOP - No crear nada
-5. Usuario revisa plan
-6. Usuario divide la idea
-7. Usuario re-ejecuta este reference por cada épica (→ Nivel 2 / Fase 2B completa)
-✅ Plan generado - Esperando división
+1. Analyze → Classify as Level 3
+2. ⚠️ WARNING: too complex
+3. Generate a detailed split plan (with Master Sprints as a strategic grouping)
+4. STOP — do not create anything
+5. User reviews the plan
+6. User splits the idea
+7. User re-runs this reference for each epic (→ Level 2 / full Phase 2B)
+✅ Plan generated — awaiting split
 ```
 
 ---
 
-## 🚨 VALIDACIONES IMPORTANTES
+## 🚨 IMPORTANT VALIDATIONS
 
-### Antes de Crear en Jira
+### Before Creating in Jira
 
-- ✅ ¿El nombre de la story/épica es descriptivo y claro?
-- ✅ ¿El summary está libre del prefijo de spec funcional (e.g. `FR-XXX` con em-dash y título)?
-- ✅ ¿Los acceptance criteria están en formato Gherkin?
-- ✅ ¿Los story points están en escala Fibonacci?
-- ✅ ¿La épica padre (si aplica) existe realmente?
-- ✅ ¿`description-custom-field-dedup.md` revisado para evitar duplicación?
+- ✅ Is the story/epic name descriptive and clear?
+- ✅ Is the summary free of the functional-spec prefix (e.g. `FR-XXX` with em-dash and title)?
+- ✅ Are acceptance criteria in Gherkin format **wrapped in a ```gherkin code-fence** (anti-pattern `I17`)?
+- ✅ **Voice gate**: do AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior, with no endpoints, HTTP status codes, table names, framework names, or internal algorithms (anti-pattern `I15`)? Exception: persona = API consumer.
+- ✅ **Persona grounding**: does the `As a` name a persona that exists in `.context/PRD/user-personas.md` (anti-pattern `I19`)?
+- ✅ **Story Points policy**: is `{{jira.story_points}}` left EMPTY unless the user explicitly requested estimation in this session (anti-pattern `I16`)?
+- ✅ **Active Dependency Discovery executed**: did the active pass run (Step 3.5 or 7.5), was global noise filtered out, and did the user confirm the matrix before any link (anti-pattern `I18`)?
+- ✅ Does the parent epic (when applicable) actually exist?
+- ✅ Was `description-custom-field-dedup.md` reviewed to avoid duplication?
 
-### Después de Crear en Jira
+### After Creating in Jira
 
-- ✅ ¿Capturaste el Jira Key real asignado?
-- ✅ ¿Verificaste que el epic link se creó correctamente?
-- ✅ ¿El issue tiene todos los campos obligatorios completos (slug-resueltos)?
-- ✅ ¿Transicionaste al estado por defecto (`story_default` / `epic_default`)?
-- ✅ ¿Publicaste las dependencias como issue links?
-- ✅ (Nivel 2) ¿Pasó el Scope overlap check?
-- ✅ (Nivel 2) ¿Ejecutaste sprint-sequencing y persistió `.context/PBI/sprint-sequence.md`?
+- ✅ Did you capture the real assigned Jira Key?
+- ✅ Did you verify the epic link was created correctly?
+- ✅ Does the issue have every required field populated (slug-resolved)?
+- ✅ Did you transition to the default status (`story_default` / `epic_default`)?
+- ✅ Did you publish the dependencies as issue links?
+- ✅ (Level 2) Did the Scope overlap check pass?
+- ✅ (Level 2) Did you run sprint-sequencing and did it persist `.context/PBI/sprint-sequence.md`?
 
-### Al Crear Archivos Locales
+### When Creating Local Files
 
-- ✅ ¿La nomenclatura de carpeta usa el ID real de Jira?
-- ✅ ¿El formato es EPIC-{PROYECTO}-{NUM}-{nombre}?
-- ✅ ¿Usaste kebab-case en el nombre descriptivo?
-- ✅ ¿Los archivos `.md` tienen toda la información requerida y NO duplican AC/Scope/OOS?
+- ✅ Does the folder naming use the real Jira ID?
+- ✅ Is the format EPIC-{PROJECT}-{NUM}-{name}?
+- ✅ Did you use kebab-case in the descriptive name?
+- ✅ Do the `.md` files carry every required piece of information AND not duplicate AC/Scope/OOS?
 
 ---
 
-## 📚 ARCHIVOS GENERADOS
+## 📚 GENERATED FILES
 
-Dependiendo del nivel, se generan:
+Depending on the level, the following are generated:
 
-### Nivel 1 (Story Individual)
+### Level 1 (Individual Story)
 
 ```
-.context/PBI/epics/EPIC-{PROYECTO}-{NUM}-{nombre}/stories/
-└── STORY-{PROYECTO}-{NUM}-{nombre}/
+.context/PBI/epics/EPIC-{PROJECT}-{NUM}-{name}/stories/
+└── STORY-{PROJECT}-{NUM}-{name}/
     └── story.md
 ```
 
-**Archivos actualizados:**
+**Updated files:**
 
-- `epic.md` de la épica padre
+- Parent epic's `epic.md`
 - `epic-tree.md`
 
 ---
 
-### Nivel 2 (Épica Completa)
+### Level 2 (Full Epic)
 
 ```
 .context/PBI/epics/
-└── EPIC-{PROYECTO}-{NUM}-{nombre}/
+└── EPIC-{PROJECT}-{NUM}-{name}/
     ├── epic.md
     └── stories/
-        ├── STORY-{PROYECTO}-{NUM}-{nombre}/
+        ├── STORY-{PROJECT}-{NUM}-{name}/
         │   └── story.md
-        ├── STORY-{PROYECTO}-{NUM}-{nombre}/
+        ├── STORY-{PROJECT}-{NUM}-{name}/
         │   └── story.md
         └── ...
 ```
 
-**Archivos actualizados:**
+**Updated files:**
 
 - `epic-tree.md`
-- `.context/PBI/sprint-sequence.md` (generado/sobrescrito por sprint-sequencing)
+- `.context/PBI/sprint-sequence.md` (generated/overwritten by sprint-sequencing)
 
 ---
 
-### Nivel 3 (Plan de División)
+### Level 3 (Split Plan)
 
 ```
-[NO se crean archivos - solo se genera el plan en la respuesta]
+[NO files created — only the plan is generated in the response]
 ```
 
-**Próximos archivos (después de división):**
+**Next files (after the split):**
 
-- Se crearán múltiples épicas usando Nivel 2 (cada una incluye su propio sprint-sequence).
-
----
-
-## ⚙️ PREREQUISITOS
-
-**Obligatorios:**
-
-- Proyecto en Jira existente y configurado.
-- `[ISSUE_TRACKER_TOOL]` resuelto y operativo (primary `/acli`, fallback Atlassian MCP — ver `CLAUDE.md` §6).
-- `.agents/project.yaml`, `.agents/jira-required.yaml`, `.agents/jira-fields.json`, `.agents/jira-workflows.json` presentes y sincronizados (`bun run jira:sync-fields` ejecutado al menos una vez).
-- `.context/PBI/epic-tree.md` actualizado (para revisar épicas existentes).
-
-**Opcionales pero recomendados:**
-
-- `.agents/jira-link-types.json` — necesario para dependency-linking robusto (poblado por `bun run jira:sync-link-types` cuando el script exista).
-- `.context/master-implementation-plan.md` — para alinear con Master Sprints estratégicos.
-- `.context/PRD/mvp-scope.md` — contexto de producto.
-- `.context/SRS/functional-specs.md` — contexto técnico y catálogo de FRs.
-- `.context/SRS/architecture-specs.md` — validación de cambios arquitectónicos.
-- `.context/business/business-data-map.md` — para inferir dependencias entity-level reales.
+- Multiple epics will be created via Level 2 (each one includes its own sprint-sequence).
 
 ---
 
-## 💡 TIPS DE USO
+## ⚙️ PREREQUISITES
 
-### Para Story Individual (Nivel 1)
+**Required:**
 
-- Sé específico en la descripción de la mejora
-- Menciona explícitamente la épica existente si ya la identificaste
-- Proporciona contexto de por qué se necesita ahora
+- Existing and configured Jira project.
+- `[ISSUE_TRACKER_TOOL]` resolved and operational (primary `/acli`, fallback Atlassian MCP — see `CLAUDE.md` §6).
+- `.agents/project.yaml`, `.agents/jira-required.yaml`, `.agents/jira-fields.json`, `.agents/jira-workflows.json` present and synced (`bun run jira:sync-fields` executed at least once).
+- `.context/PBI/epic-tree.md` up to date (to review existing epics).
 
-### Para Épica Completa (Nivel 2)
+**Optional but recommended:**
 
-- Describe el valor de negocio claramente
-- Explica qué problema resuelve la feature
-- Proporciona ejemplos de casos de uso si es posible
-- Recuerda: dependency-linking + scope overlap check + sprint-sequencing son fases **obligatorias** al final, no opcionales
-
-### Para Ideas Complejas (potencial Nivel 3)
-
-- Si sospechas que es compleja, menciona tus dudas
-- Proporciona toda la información disponible
-- Confía en el análisis para clasificar correctamente
-
-### En General
-
-- NO intentes forzar una clasificación específica
-- Deja que el análisis determine el nivel objetivamente
-- Si el análisis dice "Nivel 3", NO insistas en crear todo de una vez
-- Trabaja incrementalmente siempre que sea posible
+- `.agents/jira-link-types.json` — required for robust dependency-linking (populated by `bun run jira:sync-link-types` when the script exists).
+- `.context/master-implementation-plan.md` — to align with strategic Master Sprints.
+- `.context/PRD/mvp-scope.md` — product context.
+- `.context/SRS/functional-specs.md` — technical context and FR catalog.
+- `.context/SRS/architecture-specs.md` — validation of architectural changes.
+- `.context/business/business-data-map.md` — to infer real entity-level dependencies.
 
 ---
 
-## 🔗 REFERENCIAS CRUZADAS
+## 💡 USAGE TIPS
 
-- `references/jira-operations.md` — matriz operación → capa de herramienta (Primary / Fallback / Last resort). Consultar antes de cualquier escritura a Jira.
-- `references/dependency-linking.md` — directionality table, link-type semantics, fuentes válidas de dependencias, reporting.
-- `references/description-custom-field-dedup.md` — contrato body ↔ custom fields y procedimiento de auditoría.
-- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection, persistencia en `.context/PBI/sprint-sequence.md`.
-- `references/jira-publishing-gotchas.md` — dos bugs ADF conocidos (combined `code` + `strong` marks; MCP batched custom fields) y workarounds.
+### For Individual Story (Level 1)
+
+- Be specific in the improvement description
+- Explicitly mention the existing epic when already identified
+- Provide context on why it is needed now
+
+### For Full Epic (Level 2)
+
+- Describe the business value clearly
+- Explain what problem the feature solves
+- Provide example use cases when possible
+- Remember: dependency-linking + scope overlap check + sprint-sequencing are **mandatory** phases at the end, not optional
+
+### For Complex Ideas (potential Level 3)
+
+- If you suspect it is complex, mention your doubts
+- Provide every piece of available information
+- Trust the analysis to classify correctly
+
+### In General
+
+- DO NOT force a specific classification
+- Let the analysis determine the level objectively
+- If the analysis says "Level 3", DO NOT insist on creating everything at once
+- Work incrementally whenever possible
 
 ---
 
-**Formato:** Archivos Markdown + Issues en Jira listos para implementación.
+## 🔗 CROSS-REFERENCES
 
-**Última actualización:** 2026-05-22 — slug-based catalog refactor (custom fields + statuses + link types), dependency-linking phase, sprint sequencing, scope overlap check, dedup audit, Source spec convention.
+- `references/jira-operations.md` — operation → tool-layer matrix (Primary / Fallback / Last resort). Consult before any Jira write.
+- `references/dependency-linking.md` — directionality table, link-type semantics, valid dependency sources, reporting.
+- `references/description-custom-field-dedup.md` — body ↔ custom fields contract and audit procedure.
+- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection, persistence in `.context/PBI/sprint-sequence.md`.
+- `references/jira-publishing-gotchas.md` — two known ADF bugs (combined `code` + `strong` marks; MCP batched custom fields) and workarounds.
 
-**Complementa a:** `product-backlog-seed.md` (para setup inicial MVP), `epic-creation.md`, `story-refinement.md`.
+---
+
+**Format:** Markdown files + Jira issues ready for implementation.
+
+**Last update:** 2026-05-22 — slug-based catalog refactor (custom fields + statuses + link types), dependency-linking phase, sprint sequencing, scope overlap check, dedup audit, Source spec convention.
+
+**Complements:** `product-backlog-seed.md` (initial MVP setup), `epic-creation.md`, `story-refinement.md`.

@@ -84,7 +84,9 @@ Every refined story must pass INVEST. This is the gate between "exists" and "rea
 | **S**mall       | Can complete in one sprint (max 8 story points)           | Under 8 SP? If not, split.              |
 | **T**estable    | Acceptance criteria are verifiable                        | Are the Scenarios clear and measurable? |
 
-**If a criterion fails, do NOT proceed to development.** Either refine further or split the story.
+> **Voice check** (complements INVEST; applies to `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.workflow}}`): does each criterion stay true after a stack swap? If endpoint paths, HTTP status codes, table/column names, framework or library names, error-code identifiers, or transaction/locking patterns appear, the criterion is implementation, not behavior — rewrite from the persona's POV. **Exception**: persona is an API consumer (DevEx, integration agent, headless client) — API surface IS their UX. See anti-pattern `I15` in `SKILL.md`. The Voice check is a hard gate alongside INVEST; failing it blocks Ready-for-Development.
+
+**If a criterion (INVEST or Voice) fails, do NOT proceed to development.** Either refine further or split the story.
 
 Common failures and fixes:
 
@@ -204,9 +206,12 @@ A story is Ready when **all** of these are true:
 - [ ] **Source spec line** present as the first body line (`**Source spec:** FR-XXX`) when an FR motivates the story, otherwise omitted
 - [ ] **Scope** explicitly populated in `{{jira.scope}}` (in-scope) and `{{jira.out_of_scope}}` (exclusions) — never in the description body
 - [ ] **INVEST** — all six criteria pass
-- [ ] **Acceptance Criteria** — minimum 3 Gherkin Scenarios (happy + error + edge) in `{{jira.acceptance_criteria}}`
+- [ ] **Acceptance Criteria** — minimum 3 Gherkin Scenarios (happy + error + edge) in `{{jira.acceptance_criteria}}`, each wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`)
+- [ ] **Voice gate passed** — AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior; no endpoint paths, HTTP status codes, table/column names, framework names, or internal algorithms appear (anti-pattern `I15`). Exception: API-consumer persona.
+- [ ] **Persona grounded** — `As a` line names a persona that exists in `.context/PRD/user-personas.md`; no generic "user" / "system" actors (anti-pattern `I19`).
 - [ ] **Deduplication audit passed** — run the dedup audit per `references/description-custom-field-dedup.md`. Confirm the description body excludes AC / Scope / OOS H2 sections and that those contents live in `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}` respectively. If a duplicate is found, strip from the description and keep the custom field as canonical.
-- [ ] **Story Points** estimated (1, 2, 3, 5, 8) and ≤8
+- [ ] **Story Points** — leave `{{jira.story_points}}` EMPTY by default. Populate ONLY if the user explicitly requested estimation in this session. Estimation belongs to the team that will build the story (Design + Dev + Test), not to the PO/BA. When opted-in: Fibonacci (1, 2, 3, 5, 8); 13+ → split. See anti-pattern `I16`.
+- [ ] **Dependency Discovery executed** — active pass over the current backlog graph (epic-tree + Jira link graph + business-data-map) ran BEFORE creation/edit. Candidate `(from, to, source)` matrix surfaced to the user; global/infrastructural noise filtered out; only feature-level explicit dependencies kept. See anti-pattern `I18`.
 - [ ] **Dependencies declared locally** — Blocked By / Blocks / Related sections present in `story.md`
 - [ ] **Dependencies published to Jira** — see the "Dependency-link verification" step below
 - [ ] **Mockups linked** if a UI change (or "N/A — no UI change" stated)
