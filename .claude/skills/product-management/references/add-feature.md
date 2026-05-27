@@ -621,13 +621,13 @@ Includes every section:
 
 | Slug                                       | Content                                                                          |
 | ------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `{{jira.acceptance_criteria}}`     | Given/When/Then scenarios                                                          |
-| `{{jira.scope}}`                           | In-scope only                                                                 |
-| `{{jira.out_of_scope}}`                    | Explicit exclusions                                                              |
-| `{{jira.story_points}}`                    | Fibonacci                                                                           |
-| `{{jira.business_rules_specification}}`    | Business rules (optional)                                                        |
+| `{{jira.acceptance_criteria}}`     | Given/When/Then scenarios, wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language; no endpoints, HTTP codes, table names, framework names (anti-pattern `I15`). |
+| `{{jira.scope}}`                           | In-scope only. Capabilities, not endpoints (anti-pattern `I15`).                                 |
+| `{{jira.out_of_scope}}`                    | Explicit exclusions. Deferred capabilities, not deferred endpoints (anti-pattern `I15`).                    |
+| `{{jira.story_points}}`                    | **EMPTY by default** (anti-pattern `I16`) — only populate when the user explicitly asked for estimation. If opted-in: Fibonacci 1, 2, 3, 5, 8; 13+ → split. |
+| `{{jira.business_rules_specification}}`    | Domain rules (boundaries, role gates, retry semantics, audit guarantees). NOT internal algorithms (anti-pattern `I15`). Optional. |
 | `{{jira.mockup}}`                          | Design URLs (optional)                                                          |
-| `{{jira.workflow}}`                        | Flow when complex (optional)                                                     |
+| `{{jira.workflow}}`                        | User flow narrative (NOT code path walkthrough — anti-pattern `I15`). Optional.                  |
 | `{{jira.weblink}}`                     | App URL (conditional, omit when in doubt)                                         |
 
 **Procedure:**

@@ -86,9 +86,13 @@ Never silently use `relates` for ordering-sensitive dependencies. Sprint-sequenc
 2. **Resolve the link type** via `{{jira.link_types.<slug>}}`. Default slug is `dependencies`; use `blocks` only when the existing story already declares "Blocks" explicitly and the user wants the built-in synonym.
 3. **Determine direction** per the directionality table. The story that needs the other one done first is the `outwardIssue` ("depends on" perspective). The prerequisite is the `inwardIssue` ("is dependency for" perspective).
 4. **Verify the link type resolves** in the workspace. If absent, apply the fallback rules above before continuing.
-5. **Use `[ISSUE_TRACKER_TOOL]` to create the link** — one call per edge, never batch into a single multi-link operation. Verify each link's direction after creation by reading it back; phrasing mismatches are silent bugs at the API level.
-6. **Build the dependency matrix** and surface it to the user using the output template below.
-7. **Hand off** to `sprint-sequencing.md`.
+5. **Use `[ISSUE_TRACKER_TOOL]` to create the link** — one call per edge, never batch into a single multi-link operation. The tool layer owns the flag syntax; some implementations (notably `acli`'s `--out` / `--in` flags) are EMPIRICALLY INVERTED relative to Jira's outward/inward semantics — see the owning tool skill's gotcha catalog before calling.
+6. **Verify direction (MANDATORY).** Immediately after each `create`, query the dependent's link list via `[ISSUE_TRACKER_TOOL]` and confirm the outward partner matches the intended prerequisite. The methodology rule:
+   - For every edge declared as "A depends on B" in the local matrix → list A's links → confirm the outward partner is B.
+   - Mismatch → flag, delete the link, recreate with arguments adjusted per the tool's gotcha catalog (e.g. swap `--out` / `--in` for `acli`). Re-verify before moving on.
+   - Symmetric link types (`relates`) cannot be verified for direction — note this in the matrix and rely on sprint-sequencing's `dependencies` / `blocks`-only filter.
+7. **Build the dependency matrix** and surface it to the user using the output template below. Include a "verified direction" column so the user can audit at a glance.
+8. **Hand off** to `sprint-sequencing.md`.
 
 ---
 
@@ -99,6 +103,7 @@ Never silently use `relates` for ordering-sensitive dependencies. Sprint-sequenc
 - NEVER use `relates` for ordering-sensitive dependencies. Direction is lost; sprint-sequencing ignores it.
 - NEVER skip the dependency-linking phase after creating multiple stories in an epic. Local declarations alone do not feed sprint-sequencing.
 - NEVER batch create links in a single tool call without verifying each direction afterward. The single-edge / dual-phrasing model is easy to get wrong; round-trip verification is the only safe check.
+- NEVER trust the tool layer's flag naming without consulting the owning tool skill's gotcha catalog first. At least one production tool (`acli`) silently swaps the meaning of `--out` / `--in` relative to Jira's outward/inward semantics; the methodology has no way to detect this without the post-create direction verification step.
 
 ---
 

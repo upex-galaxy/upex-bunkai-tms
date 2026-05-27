@@ -148,6 +148,24 @@ After `plan.md` is written and the user approves, transition `status: draft → 
 
 > **Progress checkpoint**: per-epic-created (A), per-story-added (B), per-section-of-epic decomposed (C). The orchestrator appends an entry to `.session/product-management/<scope>/progress.md` per `agentic-dev-core/references/session-management.md` §7 at each checkpoint.
 
+## Pre-flight — voice & format gate (MANDATORY before every Jira write)
+
+This is a force-function checklist. Run it in working memory immediately before any `[ISSUE_TRACKER_TOOL]` `create` / `edit` that touches `summary`, `description`, `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.business_rules_specification}}`, `{{jira.workflow}}`, or `{{jira.story_points}}`. If any item fails, fix the draft BEFORE the write — never publish and patch.
+
+- [ ] **Persona (I19)** — the `As a` clause names a real entity from `.context/PRD/user-personas.md`. Generic ("the user", "the customer", "the system") → STOP, ask the user or surface as `gap`.
+- [ ] **Voice (I15)** — no API endpoint paths, no HTTP status codes (`201`/`422`/`403`), no DB table or column names, no error-code identifiers (`VALIDATION_ERROR`, `FOO_NOT_FOUND`), no framework or library names (`Zod`, `Supabase`, `Next.js`), no transaction/locking patterns, no internal algorithms appear in `{{jira.acceptance_criteria}}` / `{{jira.scope}}` / `{{jira.out_of_scope}}` / `{{jira.workflow}}`. Exception: persona is an API consumer (DevEx / agent / headless client) — then endpoint paths and response shapes ARE part of their observable UX.
+- [ ] **AC format (I17)** — every Gherkin scenario for `{{jira.acceptance_criteria}}` is wrapped in a fenced ` ```gherkin ` code block (Jira ADF renders this as monospaced + syntax-highlighted; unfenced AC is unreadable in the Jira UI). On re-format passes of existing AC, rewrite the field in full to apply the fence.
+- [ ] **Story Points (I16)** — `{{jira.story_points}}` is left EMPTY unless the user explicitly asked for estimation in the current session ("estimate this", "size this story", "story points", or equivalent). If opted-in: Fibonacci 1, 2, 3, 5, 8; 13+ is a smell → split.
+- [ ] **No-duplication (I3)** — the description body contains no `## Acceptance Criteria`, `## Scope`, or `## Out of Scope` H2 sections. Those live exclusively in their custom fields.
+- [ ] **Source spec (I2)** — if the story maps to a single FR, the description body starts with `**Source spec:** FR-XXX` as its first line. If no FR maps cleanly, omit the line — never invent or use `N/A`.
+- [ ] **Summary nomenclature (I2)** — the summary contains no functional-spec or issue-key prefix (e.g. patterns like `FR-NNN` followed by an em-dash, or `<PROJECT>-NNN` followed by an em-dash). The Jira issue key is the only identifier that belongs in the summary.
+- [ ] **No-invent (I5)** — every AC, Scope item, OOS item, business rule traces back to a concrete source (PRD, SRS, business map, explicit user input). Missing source → report `gap`, halt that field, continue with the rest.
+
+After the write, before moving to the next field/story:
+
+- [ ] **AC render verification (I17)** — confirm the Jira UI renders the AC field as a monospace code block with Gherkin highlighting (open the issue or rely on the user's visual confirmation when running in autonomous mode).
+- [ ] **Link direction verification (I8)** — if any link was created in this step, run the post-create direction check from `references/dependency-linking.md` §Procedure step 6 before declaring the operation complete.
+
 ## Main workflows
 
 ### A. Initial backlog seeding (one-time, from PRD)

@@ -36,10 +36,10 @@ Custom-field IDs vary per workspace (`customfield_10201` in one tenant, `customf
 
 Slugs written by this workflow:
 
-- `{{jira.acceptance_criteria}}` — Gherkin-formatted scenarios (Given / When / Then).
-- `{{jira.business_rules_specification}}` — domain rules and validations.
-- `{{jira.scope}}` — in-scope bullets only (no out-of-scope mixed in).
-- `{{jira.out_of_scope}}` — explicit exclusions; complementary to `scope`.
+- `{{jira.acceptance_criteria}}` — Gherkin-formatted scenarios (Given / When / Then), every scenario wrapped in a ` ```gherkin ` fenced code block (anti-pattern `I17`). Persona-observable language only — no endpoint paths, HTTP status codes, table names, or framework names (anti-pattern `I15`).
+- `{{jira.business_rules_specification}}` — domain rules and validations (boundaries, role gates, retry semantics, audit guarantees). NOT internal algorithms or implementation patterns (anti-pattern `I15`).
+- `{{jira.scope}}` — in-scope bullets only (no out-of-scope mixed in). Capabilities the persona gains, not endpoints / tables / services (anti-pattern `I15`).
+- `{{jira.out_of_scope}}` — explicit exclusions; complementary to `scope`. Deferred capabilities, not deferred endpoints.
 - `{{jira.mockup}}` — design references (Figma URLs etc.).
 - `{{jira.workflow}}` — narrative description of a non-trivial flow, written from the persona's POV (not a code-walkthrough). See anti-pattern `I15`.
 - `{{jira.weblink}}` — app URL for the story (conditional — only when known with certainty).
