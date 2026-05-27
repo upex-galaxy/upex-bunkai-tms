@@ -17,6 +17,10 @@ const MeResponseSchema = z
       }),
     ),
     active_workspace_id: z.string().uuid().nullable(),
+    auth: z.object({
+      source: z.enum(['cookie', 'bearer']),
+      scopes: z.array(z.string()),
+    }),
   })
   .openapi('MeResponse');
 
