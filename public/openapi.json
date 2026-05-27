@@ -348,6 +348,85 @@
         },
         "required": ["token"]
       },
+      "ActiveWorkspaceResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "active_workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["ok", "active_workspace_id"]
+      },
+      "ActiveWorkspaceBody": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["workspace_id"]
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"],
+                "format": "email"
+              }
+            },
+            "required": ["id", "email"]
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "plan": {
+                  "type": "string",
+                  "enum": ["community", "cloud", "enterprise"]
+                },
+                "owner_user_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": ["id", "slug", "name", "plan", "owner_user_id", "created_at"]
+            }
+          },
+          "active_workspace_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["user", "workspaces", "active_workspace_id"]
+      },
       "WorkspaceCreateResponse": {
         "type": "object",
         "properties": {
@@ -895,6 +974,110 @@
           },
           "409": {
             "description": "Invite already accepted / revoked / expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/active-workspace": {
+      "post": {
+        "tags": ["Identity"],
+        "summary": "Set the active workspace for the current session",
+        "description": "Validates membership, then sets the `bk_active_ws` httpOnly cookie. Supabase JWT is untouched.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActiveWorkspaceBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cookie set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveWorkspaceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not a member of the target workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "Introspect the authenticated principal",
+        "description": "Returns the signed-in user, all workspaces they belong to, and the selected active workspace (driven by the bk_active_ws cookie).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identity snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
             "content": {
               "application/json": {
                 "schema": {

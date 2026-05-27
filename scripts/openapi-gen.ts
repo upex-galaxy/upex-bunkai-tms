@@ -34,6 +34,10 @@ import '../app/api/v1/tokens/[id]/route.openapi';
 
 import '../app/api/v1/invites/accept/route.openapi';
 
+import '../app/api/v1/me/active-workspace/route.openapi';
+
+import '../app/api/v1/me/route.openapi';
+
 import '../app/api/v1/workspaces/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/route.openapi';
