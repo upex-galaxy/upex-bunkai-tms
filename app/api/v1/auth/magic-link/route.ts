@@ -1,12 +1,18 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { webUrl } from '@lib/urls';
 import { z } from 'zod';
 
+// RFC 5321 §4.5.3.1.3 — local-part 64 + "@" + domain 255 = max 320. The
+// pragmatic ceiling most providers honour is 254 (the SMTP MAIL FROM path
+// limit), so we enforce that.
+const EMAIL_MAX_LENGTH = 254;
+
 const BodySchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().max(EMAIL_MAX_LENGTH),
   // Root-relative path the user should land on after the OTP exchange.
   // Validated again in `/auth/callback` (open-redirect guard) so we can keep
   // this check loose.
@@ -44,5 +50,46 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     );
   }
 
+  // Best-effort audit row for replay correlation. Failures here must never
+  // fail the user-visible request — we already enqueued the email.
+  void recordIssuance({
+    email,
+    ip: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip'),
+    userAgent: request.headers.get('user-agent'),
+  });
+
   return jsonResponse({ ok: true });
 });
+
+interface IssuanceMeta {
+  email: string
+  ip: string | null
+  userAgent: string | null
+}
+
+async function recordIssuance(meta: IssuanceMeta): Promise<void> {
+  try {
+    const tokenHash = await sha256Hex(
+      `${meta.email}:${Date.now()}:${crypto.randomUUID()}`,
+    );
+    const ipHash = meta.ip ? await sha256Hex(meta.ip) : null;
+    const admin = createAdminClient();
+    await admin.from('magic_link_tokens').insert({
+      email: meta.email,
+      token_hash: tokenHash,
+      ip_hash: ipHash,
+      user_agent: meta.userAgent?.slice(0, 512) ?? null,
+    });
+  }
+  catch {
+    // Swallow — audit is best-effort. Do not break the auth flow.
+  }
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}

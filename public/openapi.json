@@ -109,6 +109,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "maxLength": 254,
             "format": "email",
             "example": "tester@bunkai.io"
           },

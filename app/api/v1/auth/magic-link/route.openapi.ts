@@ -6,7 +6,7 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 export const MagicLinkBodySchema = z
   .object({
-    email: z.string().email().openapi({ example: 'tester@bunkai.io' }),
+    email: z.string().email().max(254).openapi({ example: 'tester@bunkai.io' }),
     next: z
       .string()
       .min(1)
