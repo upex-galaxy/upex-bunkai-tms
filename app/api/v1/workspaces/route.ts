@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server';
+import { requireAuth } from '@lib/api/auth';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
@@ -94,21 +96,42 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   return jsonResponse({ workspace }, { status: 201 });
 });
 
-export const GET = withApiHandler(async () => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in to list workspaces.');
+export const GET = withApiHandler(async (request: NextRequest) => {
+  const auth = await requireAuth(request);
+
+  if (auth.source === 'cookie') {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('workspaces')
+      .select('id, slug, name, owner_user_id, plan, created_at')
+      .order('created_at', { ascending: true });
+    if (error) {
+      throw new ApiError('internal_error', error.message);
+    }
+    return jsonResponse({ workspaces: data ?? [] });
   }
 
-  const { data, error } = await supabase
-    .from('workspaces')
-    .select('id, slug, name, owner_user_id, plan, created_at')
-    .order('created_at', { ascending: true });
-
+  // Bearer path — admin client bypasses RLS; we join on workspace_members
+  // ourselves so the caller only sees workspaces they actually belong to.
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('workspace_members')
+    .select('workspace_id, status, workspaces!inner(id, slug, name, owner_user_id, plan, created_at)')
+    .eq('user_id', auth.userId)
+    .eq('status', 'active');
   if (error) {
     throw new ApiError('internal_error', error.message);
   }
-
-  return jsonResponse({ workspaces: data ?? [] });
+  const workspaces = (data ?? [])
+    .map(r => r.workspaces as unknown as {
+      id: string
+      slug: string
+      name: string
+      owner_user_id: string
+      plan: string
+      created_at: string
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return jsonResponse({ workspaces });
 });
