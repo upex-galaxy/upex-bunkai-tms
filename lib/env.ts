@@ -20,12 +20,23 @@ const EnvSchema = z.object({
 
   // Supabase — service role. Server-only. Bypasses RLS. Never expose.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+
+  // Supabase JWT secret. Optional in MVP — populated when the Bearer-PAT
+  // middleware needs to verify a Supabase-issued JWT instead of just the PAT
+  // hash. Required before any feature that signs custom claims.
+  SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+
+  // Public app URL used for auth redirects, invite links, and OAuth callbacks.
+  // Defaults to localhost in dev; must be set in every deployed env.
+  NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
 });
 
 const parsed = EnvSchema.safeParse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 });
 
 if (!parsed.success) {

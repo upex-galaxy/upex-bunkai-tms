@@ -12,8 +12,6 @@ export type Json
     | Json[];
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: '14.5'
   }
@@ -97,6 +95,47 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'access_tokens_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      activity_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          payload: Json
+          workspace_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          payload?: Json
+          workspace_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          payload?: Json
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'activity_log_workspace_id_fkey'
             columns: ['workspace_id']
             isOneToOne: false
             referencedRelation: 'workspaces'
@@ -268,6 +307,130 @@ export interface Database {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          payload: Json
+          scope: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          payload?: Json
+          scope?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          payload?: Json
+          scope?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'feature_flags_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      idempotency_keys: {
+        Row: {
+          created_at: string
+          endpoint: string
+          expires_at: string
+          id: string
+          key: string
+          request_hash: string
+          response_snapshot: Json | null
+          response_status: number | null
+          status: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          expires_at?: string
+          id?: string
+          key: string
+          request_hash: string
+          response_snapshot?: Json | null
+          response_status?: number | null
+          status?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          expires_at?: string
+          id?: string
+          key?: string
+          request_hash?: string
+          response_snapshot?: Json | null
+          response_status?: number | null
+          status?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'idempotency_keys_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      magic_link_tokens: {
+        Row: {
+          consumed_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          ip_hash: string | null
+          issued_at: string
+          token_hash: string
+          user_agent: string | null
+        }
+        Insert: {
+          consumed_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          issued_at?: string
+          token_hash: string
+          user_agent?: string | null
+        }
+        Update: {
+          consumed_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          issued_at?: string
+          token_hash?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       modules: {
         Row: {
           created_at: string
@@ -382,6 +545,38 @@ export interface Database {
             columns: ['module_id']
             isOneToOne: false
             referencedRelation: 'modules'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      user_view_state: {
+        Row: {
+          project_id: string
+          state: Json
+          updated_at: string
+          user_id: string
+          view_kind: string
+        }
+        Insert: {
+          project_id: string
+          state?: Json
+          updated_at?: string
+          user_id: string
+          view_kind: string
+        }
+        Update: {
+          project_id?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+          view_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'user_view_state_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
             referencedColumns: ['id']
           },
         ]

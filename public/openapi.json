@@ -144,6 +144,28 @@
         },
         "required": ["ok", "service", "env", "ts"]
       },
+      "ApiVersionResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": ["v1"]
+          },
+          "openapi": {
+            "type": "string",
+            "example": "/api/openapi"
+          },
+          "docs": {
+            "type": "string",
+            "example": "/api/docs"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["live"]
+          }
+        },
+        "required": ["version", "openapi", "docs", "status"]
+      },
       "CreateTokenResponse": {
         "type": "object",
         "properties": {
@@ -371,6 +393,35 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unhandled error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "API version discovery",
+        "description": "Discovery endpoint that points clients (CLI, agents, browsers) at the OpenAPI spec and the Scalar docs UI. Public.",
+        "responses": {
+          "200": {
+            "description": "API banner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiVersionResponse"
                 }
               }
             }
