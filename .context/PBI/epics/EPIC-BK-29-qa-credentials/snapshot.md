@@ -37,6 +37,30 @@
 - 12 paths / 17 operations.
 - Discovery: `/api/v1`. Spec: `/api/openapi`. Docs: `/api/docs`.
 
+## DB roles (provisioned 2026-05-27)
+
+| Role | BYPASSRLS | Login | Privileges |
+|---|---|---|---|
+| `qa_inspector_ro` | YES | YES | SELECT on `public.*` |
+| `qa_inspector_rw` | YES | YES | SELECT + INSERT + UPDATE + DELETE on `public.*` + sequence usage |
+
+Defense-in-depth: column-level REVOKE on `access_tokens.hash`, `workspace_invites.token_hash`, `magic_link_tokens.token_hash` for both roles.
+
+**Initial passwords** (provisioned on creation, **MUST be rotated** before sharing with the QA team): `rotate-me-after-creation-001-bk`. Rotation SQL:
+
+```sql
+alter role qa_inspector_ro password '<new-secret>';
+alter role qa_inspector_rw password '<new-secret>';
+```
+
+## Bearer-token end-to-end
+
+`GET /api/v1/me` accepts both Supabase cookie session and Bearer PAT (`Authorization: Bearer bk_pat_<prefix>.<secret>`). Issue a PAT via `POST /api/v1/tokens` from a cookie-authenticated session. The response includes `auth.source` to confirm which auth path served the request.
+
+Commits:
+
+- `6f1b7a3 feat(api): dual-mode auth (cookie + bearer pat) wired into /api/v1/me`
+
 ## Re-run policy
 
 Next time `/testability-guide` runs:

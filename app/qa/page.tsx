@@ -138,6 +138,17 @@ export default function QAGuidePage() {
             <code>Authorization: Bearer bk_pat_…</code>
             .
           </li>
+          <li>
+            Bearer PAT end-to-end:
+            {' '}
+            <code>GET /api/v1/me</code>
+            {' '}
+            accepts both cookie and Bearer auth. The response field
+            {' '}
+            <code>auth.source</code>
+            {' '}
+            tells you which path served the request — handy for CLI smoke tests.
+          </li>
         </ul>
         <pre className="mt-3 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
           {`# Issue a Bearer PAT (session-authenticated; cookie required)
@@ -159,14 +170,43 @@ curl https://<host>/api/v1/me \\
           {' '}
           <code>fmbpikzpkafptqximhxn</code>
           {' '}
-          (region us-east-1, Postgres 17.6).
-          Use the
-          {' '}
-          <code>qa_read_only</code>
-          {' '}
-          role for any direct SQL — credentials live in the Jira Epic
-          listed in the next section. Connection details (host / port / db name) are
-          environment-specific; see
+          (region us-east-1, Postgres 17.6). Two QA roles are provisioned with BYPASSRLS so
+          testers can inspect or mutate state without going through the API:
+        </p>
+        <ul className="m-0 mt-3 grid gap-1 pl-5 text-sm leading-relaxed text-fg-2">
+          <li>
+            <code>qa_inspector_ro</code>
+            {' '}
+            — read-only (SELECT on
+            {' '}
+            <code>public.*</code>
+            ).
+          </li>
+          <li>
+            <code>qa_inspector_rw</code>
+            {' '}
+            — read + write (SELECT, INSERT, UPDATE, DELETE on
+            {' '}
+            <code>public.*</code>
+            ).
+          </li>
+          <li>
+            Both roles have column-level REVOKE on
+            {' '}
+            <code>access_tokens.hash</code>
+            ,
+            {' '}
+            <code>workspace_invites.token_hash</code>
+            , and
+            {' '}
+            <code>magic_link_tokens.token_hash</code>
+            {' '}
+            — secret material remains opaque even with BYPASSRLS.
+          </li>
+        </ul>
+        <p className="m-0 mt-3 text-sm leading-relaxed text-fg-3">
+          Passwords for both roles live in the credentials Epic (BK-29). Connection details
+          (host / port / db name) are environment-specific; see
           {' '}
           <code>.env.example</code>
           {' '}
