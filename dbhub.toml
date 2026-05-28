@@ -1,0 +1,20 @@
+# DBHub MCP source config — committed to git, NO secrets.
+# Values resolve from .env at MCP spawn time (${VAR} expansion).
+#
+# FOOTGUN: a missing ${VAR} substitutes the LITERAL string -> a cryptic auth
+# failure instead of a startup error. Verify before launching: env | grep DBHUB
+#
+# QA connects through the Supabase SESSION pooler (port 5432) with a read-only
+# role (qa_inspector_ro.<project-ref>). Do NOT use the transaction pooler
+# (port 6543) — it disallows prepared statements. Real passwords live in the
+# credentials Epic (BK-29), never in this file.
+
+[[sources]]
+id = "primary"
+type = "${DBHUB_TYPE}" # sqlserver | postgres | mysql | sqlite | mariadb
+host = "${DBHUB_HOST}"
+port = "${DBHUB_PORT}" # 5432 session pooler (use for QA) · 6543 transaction pooler
+database = "${DBHUB_DATABASE}"
+user = "${DBHUB_USER}" # qa_inspector_ro.<project-ref>
+password = "${DBHUB_PASSWORD}"
+sslmode = "require"

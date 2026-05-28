@@ -87,7 +87,10 @@ Thumbs.db
 # Local per-developer overrides go in *.local.* files (ignored below).
 .mcp.local.json
 opencode.local.jsonc
-dbhub.toml
+# dbhub.toml is COMMITTED (committed; ${VAR} placeholders, no secrets) — part of
+# the QA testing-MCP strategy, same convention as .mcp.json / opencode.jsonc above.
+# Per-developer overrides go in dbhub.local.toml (ignored below).
+dbhub.local.toml
 
 # Planning / audit scaffolding (working notes, plan drafts, audit
 # reports, session handoffs). Kept on local disk only — never pushed.

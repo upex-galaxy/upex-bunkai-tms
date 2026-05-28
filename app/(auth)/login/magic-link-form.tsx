@@ -83,6 +83,7 @@ export function MagicLinkForm() {
         </span>
         <Input
           type="email"
+          data-testid="login-email"
           autoComplete="email"
           placeholder="qa@your-org.dev"
           value={email}
@@ -92,6 +93,7 @@ export function MagicLinkForm() {
       </label>
       <Button
         type="submit"
+        data-testid="login-submit"
         variant="primary"
         size="lg"
         disabled={!isValid || submitting}

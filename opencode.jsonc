@@ -65,6 +65,43 @@
         "N8N_API_KEY": "{env:N8N_API_KEY}",
       },
     },
+    "dbhub": {
+      "type": "local",
+      "command": ["bunx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
+      "enabled": true,
+    },
+    "openapi": {
+      "type": "local",
+      "command": ["bunx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
+      "enabled": true,
+      "environment": {
+        "API_BASE_URL": "{env:API_BASE_URL}",
+        "OPENAPI_SPEC_PATH": "{env:OPENAPI_SPEC_PATH}",
+        "API_HEADERS": "Authorization:Bearer {env:API_TOKEN}",
+      },
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "@playwright/mcp@latest",
+        "--caps",
+        "vision,pdf,testing,tracing,tabs",
+        "--timeout-action",
+        "10000",
+        "--timeout-navigation",
+        "30000",
+        "--viewport-size",
+        "1920x1080",
+      ],
+      "enabled": true,
+    },
+    "postman": {
+      "type": "remote",
+      "url": "https://mcp.postman.com/mcp",
+      "headers": { "Authorization": "Bearer {env:POSTMAN_API_KEY}" },
+      "enabled": true,
+    },
   },
 
   // Permissions — mirrors .claude/settings.json 1:1.
