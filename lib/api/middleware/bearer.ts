@@ -43,10 +43,19 @@ export async function requireBearerToken(request: Request): Promise<BearerContex
   }
 
   const prefix = body.slice(0, dotIdx);
-  const secret = body.slice(dotIdx + 1);
-  if (prefix.length !== TOKEN_PREFIX_LENGTH || secret.length === 0) {
+  const remainder = body.slice(dotIdx + 1);
+  if (prefix.length !== TOKEN_PREFIX_LENGTH || remainder.length === 0) {
     throw new ApiError('unauthorized', 'Invalid token.');
   }
+
+  // The dot in `bk_pat_<prefix>.<remainder>` is a visual separator that
+  // makes the prefix-indexed lookup possible. The minting code (lib/api/pat.ts
+  // and the legacy POST /api/v1/tokens handler) hashes the FULL base64url
+  // secret BEFORE splitting it — so the verify side must reconstruct that
+  // full secret (prefix + remainder) before comparing. The earlier impl
+  // hashed only `remainder` here, which silently never matched and produced
+  // a 401 "Invalid token" on every Bearer call.
+  const fullSecret = `${prefix}${remainder}`;
 
   const admin = createAdminClient();
 
@@ -64,7 +73,7 @@ export async function requireBearerToken(request: Request): Promise<BearerContex
     throw new ApiError('unauthorized', 'Invalid token.');
   }
 
-  const expectedHash = await sha256Hex(secret);
+  const expectedHash = await sha256Hex(fullSecret);
   const now = Date.now();
 
   const match = candidates.find((row) => {
