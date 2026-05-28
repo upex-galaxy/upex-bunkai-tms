@@ -10,8 +10,8 @@ Configurar un sistema completo de **documentación de APIs** que incluye:
 
 - Registry OpenAPI con Zod schemas
 - Endpoint `/api/openapi` que genera spec JSON
-- Página `/api-docu` con UI interactiva (Redoc)
-- Panel de información de autenticación para testers
+- Ruta `/api/docs` con UI interactiva (**Scalar**, vía route handler)
+- Métodos de autenticación documentados en el spec (`info.description` + `securitySchemes`), que Scalar renderiza nativamente
 
 ---
 
@@ -73,7 +73,7 @@ ls -la src/lib/openapi/ 2>/dev/null
 
 - Crea estructura base de OpenAPI
 - Endpoint `/api/openapi` funcional
-- UI `/api-docu` con info genérica
+- UI `/api/docs` (Scalar) con info genérica
 - Sin schemas de dominio específicos
 
 ### Modo COMPLETO (adicional):
@@ -132,15 +132,12 @@ src/lib/openapi/
 
 ```typescript
 // ✅ CORRECTO: src/types/communication.ts (FUENTE DE VERDAD)
-import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-
-extendZodWithOpenApi(z);
+import { z } from '@/lib/openapi/zod'; // instancia única extendida — NUNCA importar de 'zod' si usás .openapi()
 
 // Schema con metadata OpenAPI
 export const CommunicationChannelSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     type: z.enum(['zoom', 'google_meet', 'phone', 'whatsapp']),
     handle: z.string().nullable().optional(),
     isActive: z.boolean().default(true),
@@ -165,7 +162,7 @@ export function isValidChannelType(type: string): boolean {
 ```typescript
 // ✅ CORRECTO: src/lib/openapi/schemas/users.ts (SOLO REGISTRA PATHS)
 import { registry } from '../registry';
-import { z } from 'zod';
+import { z } from '../zod'; // instancia única extendida
 import { CommunicationChannelSchema, ChannelInputSchema } from '@/types/communication'; // ← IMPORTA de types, NO define aquí
 import { ErrorResponseSchema } from './common';
 
@@ -238,8 +235,24 @@ export const ChannelInputSchema = z.object({
 // ✅ TypeScript types actualizados
 // ✅ Validación en runtime actualizada
 // ✅ OpenAPI spec actualizado
-// ✅ Documentación en /api-docu actualizada
+// ✅ Documentación en /api/docs actualizada
 ```
+
+### Relación con los tipos generados de Supabase (`src/types/supabase.ts`)
+
+Hay DOS familias de tipos en `src/types/` — no se pisan, pero hay que entender el límite:
+
+| Familia | Origen | Naming | Rol |
+| --- | --- | --- | --- |
+| `Database` (`supabase.ts`) | generada por `supabase gen types` (supabase-types-setup) | **snake_case** (`user_id`, `created_at`) — refleja columnas DB | Verdad de la **fila de la DB** (queries del cliente Supabase) |
+| Schemas Zod (`booking.ts`, etc.) | escritos a mano con `.openapi()` | normalmente **camelCase** (`userId`, `createdAt`) | Verdad del **contrato de la API** (validación + OpenAPI) |
+
+**Regla:**
+
+- El **payload de la API** (request/response) lo define el schema Zod en `src/types/` → fuente única del contrato + OpenAPI.
+- La **fila de la DB** la define `Database` generado → fuente única del acceso a datos.
+- El **route handler es el punto de mapeo**: valida con Zod, consulta con tipos `Database`, y mapea snake_case ↔ camelCase explícitamente. NO derives uno del otro a ciegas.
+- Para evitar drift de naming, podés: (a) mantener el schema Zod en snake_case para igualar la DB (menos mapeo, contrato menos idiomático), o (b) camelCase en la API + una función de mapeo. Elegí UNA convención por proyecto y documentala.
 
 ---
 
@@ -258,16 +271,11 @@ export const ChannelInputSchema = z.object({
 
 - ✅ `route.ts` - GET endpoint
 
-**UI (`src/app/(minimal)/api-docu/`):**
+**UI (`src/app/api/docs/`):**
 
-- ✅ `page.tsx` - Página principal
-- ✅ `redoc-viewer.tsx` - Viewer client
-- ✅ `api-doc-selector.tsx` - Selector API
-- ✅ `auth-info-panel.tsx` - Info autenticación
+- ✅ `route.ts` - Route handler de Scalar (un solo archivo; sirve la UI desde el spec)
 
-**Layout (`src/app/(minimal)/`):**
-
-- ✅ `layout.tsx` - Layout minimal
+> Scalar reemplaza la página + componentes bespoke de Redoc. El selector multi-spec y el panel de auth se obtienen de forma nativa (config `sources` + `info.description`/`securitySchemes` del spec) — no se generan componentes React aparte.
 
 ### Modo COMPLETO (adicional):
 
@@ -280,7 +288,7 @@ export const ChannelInputSchema = z.object({
 
 - ✅ `[dominio].ts` - Solo `registry.registerPath()`, importa de `@/types`
 - ✅ Endpoints registrados en registry
-- ✅ Auth info panel con detalles específicos
+- ✅ Auth documentada en `info.description` + `securitySchemes` del registry (Scalar la renderiza en `/api/docs`)
 
 > **Nota:** Los schemas de dominio viven en `src/types/`, NO en `src/lib/openapi/schemas/`
 
@@ -334,30 +342,49 @@ Si no existe, preguntar al usuario por las URLs.
 **Paso 1.1: Verificar dependencias existentes**
 
 ```bash
-grep -E "zod|openapi" package.json
+grep -E "zod|openapi|@scalar" package.json
 ```
 
 **Paso 1.2: Instalar (si necesario)**
 
 ```bash
-# Consultar Context7 primero para versiones actuales
-bun add @asteasolutions/zod-to-openapi zod
+# Consultar Context7 primero para versiones actuales.
+# Generación del spec (UI-agnóstico) — Zod v4 + zod-to-openapi v8 (combinación oficial actual):
+bun add zod@^4 @asteasolutions/zod-to-openapi@^8
+# UI de documentación (Scalar, route handler para Next.js App Router):
+bun add @scalar/nextjs-api-reference
 ```
+
+> **Versiones (verificado)**: `@asteasolutions/zod-to-openapi` v8.x soporta **Zod 4.x**. Si el proyecto está pinneado a **Zod 3**, usar `@asteasolutions/zod-to-openapi@7.3.4` (la rama v3, ya sin soporte activo) y la sintaxis legacy `z.email()/.uuid()/.datetime()`. Este documento usa la sintaxis **Zod v4** (`z.email()`, `z.uuid()`, `z.iso.datetime()`, `error.issues`).
+>
+> **Peer compat Scalar**: `@scalar/nextjs-api-reference` actual soporta Next.js 15 (versiones <0.5 pinneaban `next@^14`). Si `bun add` reporta conflicto de peer, instalar `@latest` y confirmar la versión.
 
 **Verificar instalación:**
 
 ```bash
-bun pm ls | grep -E "zod|openapi"
+bun pm ls | grep -E "zod|openapi|@scalar"
 ```
 
 ---
 
 ### FASE 2: Crear Estructura OpenAPI
 
-**Paso 2.1: Crear directorio**
+**Paso 2.1: Crear directorio + instancia única de Zod**
 
 ```bash
 mkdir -p src/lib/openapi/schemas
+```
+
+> **CRÍTICO (evita crash de `.openapi()` undefined)**: `extendZodWithOpenApi` muta el singleton de Zod. Si unos archivos importan `z` de `'zod'` y otros lo extienden por separado, un módulo que use `.openapi()` puede cargarse ANTES de que se ejecute `extendZodWithOpenApi` → `.openapi` es `undefined` en runtime. Solución: **UN** módulo que extiende y reexporta `z`, y **todo archivo que use `.openapi()` importa `z` desde aquí** (nunca de `'zod'`).
+
+```typescript
+// src/lib/openapi/zod.ts — instancia única de Zod extendida con OpenAPI.
+import { z } from 'zod';
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+
+extendZodWithOpenApi(z);
+
+export { z };
 ```
 
 **Paso 2.2: Crear `registry.ts`**
@@ -372,15 +399,8 @@ mkdir -p src/lib/openapi/schemas
  * from Zod schemas. This is the source of truth for the API spec.
  */
 
-import {
-  OpenAPIRegistry,
-  OpenApiGeneratorV3,
-  extendZodWithOpenApi,
-} from '@asteasolutions/zod-to-openapi';
-import { z } from 'zod';
-
-// Extend Zod with OpenAPI methods
-extendZodWithOpenApi(z);
+import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import { z } from './zod'; // instancia única ya extendida con .openapi()
 
 // Create the registry instance
 export const registry = new OpenAPIRegistry();
@@ -417,6 +437,8 @@ registry.registerComponent('securitySchemes', 'cronAuth', {
 // ============================================================================
 
 export function generateOpenAPIDocument() {
+  // 3.0.3 funciona con Scalar. Opcional: para OpenAPI 3.1 (más alineado con
+  // JSON Schema / Zod v4) usar `OpenApiGeneratorV31` + `openapi: '3.1.0'`.
   const generator = new OpenApiGeneratorV3(registry.definitions);
 
   return generator.generateDocument({
@@ -457,29 +479,21 @@ Cron endpoints require Bearer token authorization.
 
 ## Base URLs
 
-| Environment | URL |
-|------------|-----|
-| Development | \`http://localhost:3000/api\` |
-| Staging | \`[STAGING_URL]/api\` |
-| Production | \`[PRODUCTION_URL]/api\` |
+Las URLs por ambiente se resuelven desde \`src/lib/urls.ts\` (env-url-setup) o \`.agents/project.yaml\` — NUNCA se hardcodean acá (anti-patrón B4).
       `.trim(),
       contact: {
         name: 'Development Team',
         url: '[REPO_URL]',
       },
     },
+    // ANTI-PATRÓN B4: no hardcodear URLs ni placeholders. Derivar del entorno.
+    // Preferido (si corriste env-url-setup): import { getBaseUrl } from '@/lib/urls'
+    //   → url: `${getBaseUrl()}/api`
+    // Fallback sin env-url-setup: leer de .agents/project.yaml / env.
     servers: [
       {
-        url: 'http://localhost:3000/api',
-        description: 'Development server',
-      },
-      {
-        url: '[STAGING_URL]/api', // Reemplazar
-        description: 'Staging server',
-      },
-      {
-        url: '[PRODUCTION_URL]/api', // Reemplazar
-        description: 'Production server',
+        url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api`,
+        description: 'Current environment',
       },
     ],
     tags: [
@@ -500,8 +514,6 @@ export { z };
 
 - `[SUPABASE_PROJECT_ID]`
 - `[PROJECT_NAME]`
-- `[STAGING_URL]`
-- `[PRODUCTION_URL]`
 - `[REPO_URL]`
 
 **Paso 2.3: Crear `index.ts`**
@@ -530,17 +542,17 @@ import { registry, z } from '../registry';
 // Common Type Schemas
 // ============================================================================
 
-export const UUIDSchema = z.string().uuid().openapi({
+export const UUIDSchema = z.uuid().openapi({
   description: 'UUID v4 identifier',
   example: '550e8400-e29b-41d4-a716-446655440000',
 });
 
-export const TimestampSchema = z.string().datetime().openapi({
+export const TimestampSchema = z.iso.datetime().openapi({
   description: 'ISO 8601 timestamp',
   example: '2024-01-15T10:30:00Z',
 });
 
-export const EmailSchema = z.string().email().openapi({
+export const EmailSchema = z.email().openapi({
   description: 'Email address',
   example: 'user@example.com',
 });
@@ -659,342 +671,72 @@ export async function OPTIONS() {
 
 ---
 
-### FASE 4: Crear Página /api-docu
+### FASE 4: Crear ruta /api/docs (Scalar)
 
-**Paso 4.1: Crear layout minimal**
+Scalar se monta como **route handler** de Next.js App Router — un solo archivo, sin página ni componentes React. Sirve la UI interactiva desde el spec de `/api/openapi`, con el gate de entorno (404 en producción).
+
+**Paso 4.1: Crear el route handler**
 
 ```bash
-mkdir -p "src/app/(minimal)/api-docu"
+mkdir -p "src/app/api/docs"
 ```
 
 ```typescript
-// src/app/(minimal)/layout.tsx
+// src/app/api/docs/route.ts
 
-/**
- * Minimal layout for documentation pages
- * No sidebar, no header - just the content
- */
+import { ApiReference } from "@scalar/nextjs-api-reference";
 
-export default function MinimalLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <div className="min-h-screen">
-      {children}
-    </div>
-  )
-}
-```
-
-**Paso 4.2: Crear `page.tsx`**
-
-```typescript
-// src/app/(minimal)/api-docu/page.tsx
-
-import { notFound } from "next/navigation";
-import { RedocViewer } from "./redoc-viewer";
-import { ApiDocSelector } from "./api-doc-selector";
-import { AuthInfoPanel } from "./auth-info-panel";
-
-// Check if we're in an allowed environment
+// 404 en producción: la doc de API no se expone públicamente.
 function isAllowedEnvironment(): boolean {
   const vercelEnv = process.env.VERCEL_ENV;
-
   if (vercelEnv) {
-    // On Vercel: allow preview (staging), block production
+    // En Vercel: permitir preview (staging), bloquear production
     return vercelEnv !== "production";
   }
-
-  // Local development: always allow
+  // Local: permitir solo en development
   return process.env.NODE_ENV === "development";
 }
 
-interface PageProps {
-  searchParams: Promise<{ api?: string }>;
-}
+// ApiReference(config) devuelve un handler () => Response (SIN argumentos).
+const handler = ApiReference({
+  // Multi-documento nativo de Scalar. El primero (o `default: true`) es el activo.
+  sources: [
+    { title: "Next.js API", slug: "nextjs", url: "/api/openapi", default: true },
+    // Opcional — Supabase REST (la anon key es pública por diseño):
+    // {
+    //   title: "Supabase REST",
+    //   slug: "supabase",
+    //   url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+    // },
+  ],
+  theme: "purple", // matchear brand (Redoc usaba #7c3aed)
+  pageTitle: "[PROJECT_NAME] — API Reference",
+});
 
-export default async function ApiDocuPage({ searchParams }: PageProps) {
-  // Return 404 in production
+export async function GET(): Promise<Response> {
   if (!isAllowedEnvironment()) {
-    notFound();
+    return new Response(null, { status: 404 });
   }
-
-  const params = await searchParams;
-  const apiType = params.api || "nextjs";
-
-  // Build the OpenAPI spec URL based on selected API
-  // Para Supabase, necesitas importar las variables de config
-  const specUrl = apiType === "supabase"
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/?apikey=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-    : "/api/openapi";
-
-  return (
-    <div className="min-h-screen bg-background">
-      <ApiDocSelector currentApi={apiType} />
-      <AuthInfoPanel apiType={apiType} />
-      <RedocViewer specUrl={specUrl} />
-    </div>
-  );
+  return handler();
 }
 ```
 
-**Paso 4.3: Crear `redoc-viewer.tsx`**
+> **Auth en la UI**: Scalar renderiza los métodos de autenticación desde el `info.description` + los `securitySchemes` del spec (definidos en `src/lib/openapi/registry.ts`, FASE 2). No hace falta un panel de auth aparte.
+>
+> **Multi-spec**: para exponer también el REST de Supabase, descomentar la segunda `source`. Scalar muestra un selector de documentos nativo. Confirmá vía Context7 que la versión instalada de `@scalar/nextjs-api-reference` soporta `sources`; si no, montá una segunda ruta `src/app/api/docs/supabase/route.ts` con su propia `url`.
+>
+> **`notFound()` NO se usa en route handlers** (es para RSC/pages) — el gate devuelve `new Response(null, { status: 404 })`.
 
-```typescript
-// src/app/(minimal)/api-docu/redoc-viewer.tsx
+> **Migración desde Redoc**: el antiguo `auth-info-panel.tsx` (y `redoc-viewer.tsx`, `api-doc-selector.tsx`, `page.tsx`, y el layout `(minimal)/layout.tsx`) se eliminan. La info de autenticación (cookie de sesión Supabase `sb-[SUPABASE_PROJECT_ID]-auth-token`, `Authorization: Bearer`, `X-API-Key`, `CRON_SECRET`) vive ahora en los `securitySchemes` del registry (FASE 2) + `info.description`; Scalar la renderiza en `/api/docs`. Reemplazá `[SUPABASE_PROJECT_ID]` donde aparezca en `registry.ts`.
 
-"use client";
+**Paso 4.2: (si migrás un proyecto existente) limpiar Redoc**
 
-import { useEffect, useRef } from "react";
-
-interface RedocViewerProps {
-  specUrl: string;
-}
-
-export function RedocViewer({ specUrl }: RedocViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Load Redoc from CDN
-    const script = document.createElement("script");
-    script.src = "https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js";
-    script.async = true;
-
-    script.onload = () => {
-      if (containerRef.current && window.Redoc) {
-        window.Redoc.init(specUrl, {
-          theme: {
-            colors: {
-              primary: { main: "#7c3aed" }, // Purple to match brand
-            },
-            typography: {
-              fontFamily: "system-ui, sans-serif",
-            },
-          },
-          hideDownloadButton: false,
-          expandResponses: "200,201",
-        }, containerRef.current);
-      }
-    };
-
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, [specUrl]);
-
-  return <div ref={containerRef} />;
-}
-
-// Type declaration for Redoc
-declare global {
-  interface Window {
-    Redoc?: {
-      init: (
-        specUrl: string,
-        options: Record<string, unknown>,
-        element: HTMLElement
-      ) => void;
-    };
-  }
-}
+```bash
+# Borrar la implementación vieja de Redoc si existe
+rm -rf "src/app/(minimal)/api-docu"
+# Borrar el layout minimal SOLO si ninguna otra página lo usa
+[ -z "$(ls -A 'src/app/(minimal)' 2>/dev/null)" ] && rm -f "src/app/(minimal)/layout.tsx" && rmdir "src/app/(minimal)" 2>/dev/null || true
 ```
-
-**Paso 4.4: Crear `api-doc-selector.tsx`**
-
-```typescript
-// src/app/(minimal)/api-docu/api-doc-selector.tsx
-
-"use client";
-
-import { useRouter, useSearchParams } from "next/navigation";
-import { Database, Server } from "lucide-react";
-
-interface ApiDocSelectorProps {
-  currentApi: string;
-}
-
-export function ApiDocSelector({ currentApi }: ApiDocSelectorProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const handleApiChange = (api: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("api", api);
-    router.push(`/api-docu?${params.toString()}`);
-  };
-
-  return (
-    <div className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">API Documentation</h1>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleApiChange("nextjs")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                currentApi === "nextjs"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              <Server className="h-4 w-4" />
-              Next.js API
-            </button>
-
-            <button
-              onClick={() => handleApiChange("supabase")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                currentApi === "supabase"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              <Database className="h-4 w-4" />
-              Supabase REST
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-```
-
-**Paso 4.5: Crear `auth-info-panel.tsx`**
-
-```typescript
-// src/app/(minimal)/api-docu/auth-info-panel.tsx
-
-"use client";
-
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Key, Cookie, FileText } from "lucide-react";
-
-interface AuthInfoPanelProps {
-  apiType: string;
-}
-
-export function AuthInfoPanel({ apiType }: AuthInfoPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const isNextJs = apiType === "nextjs";
-
-  // Cookie name - REEMPLAZAR [SUPABASE_PROJECT_ID] con ID real
-  const cookieName = "sb-[SUPABASE_PROJECT_ID]-auth-token";
-
-  return (
-    <div className="border-b border-border bg-muted/30">
-      <div className="max-w-7xl mx-auto px-4">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full py-3 flex items-center justify-between text-sm hover:bg-muted/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            {isNextJs ? (
-              <Cookie className="h-4 w-4 text-blue-500" />
-            ) : (
-              <Key className="h-4 w-4 text-green-500" />
-            )}
-            <span className="font-medium">
-              {isNextJs ? "Cookie-based Authentication" : "API Key + JWT Authentication"}
-            </span>
-            <span className="text-muted-foreground">
-              - Click for quick reference
-            </span>
-          </div>
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-        </button>
-
-        {isExpanded && (
-          <div className="pb-4 grid md:grid-cols-2 gap-4">
-            {isNextJs ? (
-              <>
-                <div className="bg-background border rounded-lg p-4">
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <Cookie className="h-4 w-4 text-blue-500" />
-                    Most Endpoints (Cookie Auth)
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Supabase session cookies are sent automatically from the browser.
-                  </p>
-                  <code className="text-xs bg-muted px-2 py-1 rounded block overflow-x-auto">
-                    Cookie: {cookieName}=...
-                  </code>
-                </div>
-                <div className="bg-background border rounded-lg p-4">
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <Key className="h-4 w-4 text-amber-500" />
-                    Special Endpoints
-                  </h4>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p><strong>Cron jobs:</strong> Authorization: Bearer CRON_SECRET</p>
-                    <p><strong>Testing:</strong> X-API-Key: [your-key]</p>
-                    <p><strong>Webhooks:</strong> Signature header from provider</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="bg-background border rounded-lg p-4">
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <Key className="h-4 w-4 text-green-500" />
-                    Required Headers
-                  </h4>
-                  <div className="text-xs space-y-2">
-                    <div>
-                      <p className="text-muted-foreground mb-1">Always required:</p>
-                      <code className="bg-muted px-2 py-1 rounded block">
-                        apikey: {"<SUPABASE_ANON_KEY>"}
-                      </code>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">For authenticated requests:</p>
-                      <code className="bg-muted px-2 py-1 rounded block">
-                        Authorization: Bearer {"<JWT_TOKEN>"}
-                      </code>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-background border rounded-lg p-4">
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-purple-500" />
-                    Getting the JWT
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Login via Supabase Auth, then extract the access_token from the session.
-                    See <code className="bg-muted px-1 rounded">docs/api-testing/</code> for detailed guides.
-                  </p>
-                </div>
-              </>
-            )}
-            <div className="md:col-span-2 text-xs text-muted-foreground border-t pt-3 mt-2 flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span>
-                For detailed guides and Postman collections, see{" "}
-                <code className="bg-muted px-1 rounded">docs/api-testing/</code>
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-```
-
-**IMPORTANTE:** Reemplazar `[SUPABASE_PROJECT_ID]` en el archivo.
 
 ---
 
@@ -1021,10 +763,7 @@ Por cada dominio identificado (ej: users, bookings, payments), crear en `src/typ
 ```typescript
 // src/types/booking.ts (FUENTE DE VERDAD)
 
-import { z } from 'zod';
-import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-
-extendZodWithOpenApi(z);
+import { z } from '@/lib/openapi/zod'; // instancia única extendida — NUNCA importar de 'zod' si usás .openapi()
 
 // ============================================================================
 // SCHEMAS (con metadata OpenAPI)
@@ -1036,14 +775,14 @@ export const BookingStatusSchema = z
 
 export const BookingSchema = z
   .object({
-    id: z.string().uuid().openapi({ description: 'Unique booking identifier' }),
-    userId: z.string().uuid().openapi({ description: 'User who made the booking' }),
-    serviceId: z.string().uuid().openapi({ description: 'Service being booked' }),
+    id: z.uuid().openapi({ description: 'Unique booking identifier' }),
+    userId: z.uuid().openapi({ description: 'User who made the booking' }),
+    serviceId: z.uuid().openapi({ description: 'Service being booked' }),
     status: BookingStatusSchema,
-    scheduledAt: z.string().datetime().openapi({ description: 'Scheduled date/time' }),
+    scheduledAt: z.iso.datetime().openapi({ description: 'Scheduled date/time' }),
     notes: z.string().nullable().optional().openapi({ description: 'Additional notes' }),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
   })
   .openapi('Booking');
 
@@ -1089,7 +828,7 @@ Crear archivo que SOLO registra paths, importando schemas de `@/types`:
 // src/lib/openapi/schemas/bookings.ts (SOLO PATHS, NO SCHEMAS)
 
 import { registry } from '../registry';
-import { z } from 'zod';
+import { z } from '../zod'; // instancia única extendida
 import { BookingSchema, CreateBookingSchema, UpdateBookingSchema } from '@/types/booking'; // ← IMPORTA de types
 import { ErrorResponseSchema, UUIDSchema } from './common';
 
@@ -1249,10 +988,10 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
 
 **Paso 6.3: Verificar UI**
 
-1. Abrir `http://localhost:3000/api-docu`
-2. Verificar que Redoc carga
-3. Verificar selector Next.js/Supabase funciona
-4. Verificar auth info panel se expande
+1. Abrir `http://localhost:3000/api/docs`
+2. Verificar que Scalar carga y renderiza los endpoints del spec
+3. Verificar que la sección de autenticación (desde `securitySchemes` + `info.description`) aparece
+4. (Si habilitaste multi-spec) verificar el selector de documentos Next.js/Supabase de Scalar
 
 ---
 
@@ -1265,11 +1004,11 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
 - [ ] `src/lib/openapi/schemas/common.ts` creado
 - [ ] `src/lib/openapi/schemas/index.ts` creado
 - [ ] `src/app/api/openapi/route.ts` creado
-- [ ] `src/app/(minimal)/layout.tsx` creado
-- [ ] `src/app/(minimal)/api-docu/` con 4 archivos
+- [ ] `src/app/api/docs/route.ts` creado (Scalar route handler)
+- [ ] `@scalar/nextjs-api-reference` instalado
 - [ ] `/api/openapi` retorna JSON válido
-- [ ] `/api-docu` renderiza Redoc
-- [ ] Auth info panel funciona
+- [ ] `/api/docs` renderiza Scalar (404 en producción)
+- [ ] Auth visible en la UI (desde `securitySchemes` + `info.description`)
 
 ### Modo COMPLETO (adicional):
 
@@ -1302,18 +1041,14 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
 
 - src/app/api/openapi/route.ts
 
-### UI:
+### UI (Scalar):
 
-- src/app/(minimal)/layout.tsx
-- src/app/(minimal)/api-docu/page.tsx
-- src/app/(minimal)/api-docu/redoc-viewer.tsx
-- src/app/(minimal)/api-docu/api-doc-selector.tsx
-- src/app/(minimal)/api-docu/auth-info-panel.tsx
+- src/app/api/docs/route.ts
 
 ## URLs Disponibles:
 
 - `/api/openapi` - JSON spec para herramientas
-- `/api-docu` - UI interactiva (solo dev/staging)
+- `/api/docs` - UI interactiva Scalar (solo dev/staging)
 
 ## Próximos Pasos:
 
@@ -1321,7 +1056,7 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
    - Definir schemas Zod en `src/types/[dominio].ts` con `.openapi()`
    - Registrar paths en `src/lib/openapi/schemas/[dominio].ts`
    - **NUNCA duplicar schemas** - siempre importar de `@/types`
-2. Actualizar auth-info-panel si agregas métodos de auth
+2. Al agregar métodos de auth: registrarlos en `securitySchemes` del registry + `info.description` (Scalar los muestra automáticamente en `/api/docs`)
 
 ## Patrón Single Source of Truth:
 
@@ -1334,8 +1069,8 @@ curl -s http://localhost:3000/api/openapi | jq '.info.title'
 
 ## ❓ PREGUNTAS FRECUENTES
 
-**P: ¿Por qué /api-docu retorna 404 en production?**
-R: Es intencional. La documentación de API no debe exponerse públicamente. Solo está disponible en development y staging.
+**P: ¿Por qué /api/docs retorna 404 en production?**
+R: Es intencional. La documentación de API no debe exponerse públicamente. El route handler de Scalar aplica `isAllowedEnvironment()` y devuelve `new Response(null, { status: 404 })` en producción. Solo está disponible en development y staging.
 
 **P: ¿Cómo registro un nuevo endpoint?**
 R: Primero define el schema en `src/types/`, luego registra el path:

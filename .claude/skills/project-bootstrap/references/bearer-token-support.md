@@ -81,13 +81,17 @@ cat src/lib/supabase/server.ts | head -20
 
 - ✅ `server.ts` - Agregar `createServerFromRequest()` con soporte dual
 
+**Auth helper compartido (si existe, de `api-routes-setup`):**
+
+- ✅ `src/lib/api/auth.ts` (`getAuthenticatedUser`/`requireAuth`) actualizado para recibir `request` y usar `createServerFromRequest`
+
 **API Routes (`src/app/api/`):**
 
-- ✅ Todos los endpoints protegidos actualizados para usar `createServerFromRequest`
+- ✅ Todos los endpoints protegidos actualizados para usar `createServerFromRequest` (o el helper actualizado), pasando `request`
 
-**Documentación (si existe `api-docu`):**
+**Documentación (si existe OpenAPI / `/api/docs`):**
 
-- ✅ `auth-info-panel.tsx` actualizado con guía de Bearer Token
+- ✅ `securitySchemes` Bearer registrado en `src/lib/openapi/registry.ts` + documentado en `info.description` (Scalar lo renderiza en `/api/docs`)
 
 ---
 
@@ -253,41 +257,77 @@ Endpoints que NO requieren autenticación NO necesitan cambios:
 - `/api/openapi` - Spec OpenAPI público
 - `/api/auth/forgot-password` - Flujo de reset password
 
+**Paso 2.4: Actualizar el helper de auth compartido (si existe `src/lib/api/auth.ts`)**
+
+> **CRÍTICO**: si `api-routes-setup` creó `src/lib/api/auth.ts`, los endpoints suelen autenticar vía `getAuthenticatedUser()` / `requireAuth()`, NO llamando `createServer()` directo. Si solo actualizás los `route.ts` pero el helper sigue usando `createServer()` (cookie), el Bearer **no funcionará** en ningún endpoint que use el helper. Actualizá el helper para que acepte el `request` y use `createServerFromRequest`:
+
+```typescript
+// src/lib/api/auth.ts (ACTUALIZADO para soporte dual cookie + Bearer)
+import { createServerFromRequest } from '@/lib/supabase/server';
+import { unauthorizedError } from './responses';
+
+// Pasar SIEMPRE el request: createServerFromRequest lee Authorization: Bearer
+// y cae a cookies si no hay header.
+export async function getAuthenticatedUser(request: Request) {
+  const supabase = await createServerFromRequest(request);
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return { user: null, error: unauthorizedError() };
+  }
+  return { user, error: null };
+}
+
+export async function requireAuth(request: Request) {
+  const { user, error } = await getAuthenticatedUser(request);
+  if (error) throw error;
+  return user!;
+}
+```
+
+Y en cada endpoint que lo use, pasar el `request`:
+
+```typescript
+// ANTES:  const { user, error } = await getAuthenticatedUser();
+// DESPUÉS:
+export async function GET(request: Request) {
+  const { user, error } = await getAuthenticatedUser(request);
+  // ...
+}
+```
+
 ---
 
 ### FASE 3: (Opcional) Actualizar Documentación
 
-**Solo si existe `/api-docu`.**
+**Solo si existe OpenAPI (`src/lib/openapi/registry.ts`).** Scalar (`/api/docs`) renderiza la auth desde el spec — no hay panel React que editar.
 
 **Paso 3.1: Verificar existencia**
 
 ```bash
-ls src/app/**/api-docu/auth-info-panel.tsx 2>/dev/null
+ls src/lib/openapi/registry.ts 2>/dev/null
 ```
 
-**Paso 3.2: Actualizar `auth-info-panel.tsx`**
+**Paso 3.2: Registrar el `securitySchemes` Bearer + documentar en `info.description`**
 
-Si existe, agregar sección de Bearer Token con:
+En `src/lib/openapi/registry.ts`:
 
-1. **Flujo de autenticación** - Diagrama ASCII mostrando:
-   - POST a Supabase Auth para obtener token
-   - Usar token en header Authorization
+1. **Registrar el scheme Bearer** (si no existe ya un `bearerAuth`):
 
-2. **Paso a paso** - Instrucciones claras:
-   - URL del endpoint de login de Supabase
-   - Headers requeridos (apikey, Content-Type)
-   - Body con email/password
-   - Cómo usar el access_token obtenido
+```typescript
+registry.registerComponent('securitySchemes', 'bearerAuth', {
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT',
+  description: 'Supabase access_token (JWT). Obtené uno vía POST /auth/v1/token?grant_type=password y mandalo como Authorization: Bearer <token>.',
+});
+```
 
-3. **Ejemplos copiables** - Botones de copiar para:
-   - URL de login
-   - Headers
-   - Body JSON
-   - cURL de ejemplo
+2. **Aplicar `security: [{ bearerAuth: [] }]`** en los `registry.registerPath()` de los endpoints protegidos.
 
-4. **Lista de endpoints** - Todos los endpoints protegidos
+3. **Documentar el flujo en `info.description`** del `generateOpenAPIDocument()` (login Supabase → `access_token` → header `Authorization: Bearer`, expiración, renovación). Scalar lo muestra arriba en `/api/docs` con ejemplos copiables nativos (incluido "Test Request").
 
-5. **Info de expiración** - Token expira en 1 hora, cómo renovar
+> No se crea ni edita ningún componente React: la doc vive 100% en el spec (single source of truth) y la UI la provee Scalar.
 
 ---
 
@@ -334,6 +374,8 @@ curl "http://localhost:3000/api/[endpoint]" \
 - [ ] Todos los endpoints protegidos actualizados
 - [ ] Import cambiado de `createServer` a `createServerFromRequest`
 - [ ] Parámetro `request` usado (no `_request`)
+- [ ] (Si existe) `src/lib/api/auth.ts` actualizado a `createServerFromRequest` y recibe `request`
+- [ ] Endpoints que usan el helper pasan `request` a `getAuthenticatedUser(request)` / `requireAuth(request)`
 
 ### Validación:
 
@@ -344,8 +386,9 @@ curl "http://localhost:3000/api/[endpoint]" \
 
 ### Documentación (si aplica):
 
-- [ ] `auth-info-panel.tsx` actualizado
-- [ ] Guía de Bearer Token visible en `/api-docu`
+- [ ] `securitySchemes` Bearer registrado en `registry.ts` + aplicado en endpoints protegidos
+- [ ] Flujo de Bearer Token documentado en `info.description`
+- [ ] Guía de Bearer Token visible en `/api/docs` (Scalar)
 
 ---
 
@@ -366,7 +409,7 @@ curl "http://localhost:3000/api/[endpoint]" \
 
 ### Documentación:
 
-- src/app/(minimal)/api-docu/auth-info-panel.tsx (si existe)
+- src/lib/openapi/registry.ts (securitySchemes `bearerAuth` + `info.description`, si existe OpenAPI)
 
 ## Cómo Usar:
 
@@ -437,7 +480,7 @@ Este feature complementa `api-routes-setup`. Si ejecutas primero `api-routes-set
 
 ### Con `openapi-setup`:
 
-Si tienes `/api-docu` configurado, este feature actualiza el `auth-info-panel` con la documentación de Bearer token.
+Si tienes OpenAPI + `/api/docs` (Scalar) configurado, este feature registra el `securitySchemes` Bearer en `registry.ts` y documenta el flujo en `info.description`; Scalar lo renderiza en `/api/docs`.
 
 ### Con `supabase-types-setup`:
 
@@ -453,6 +496,6 @@ Los tipos de `Database` deben estar disponibles en `@/types/supabase` para el ty
 
 3. **Preservar funcionalidad existente**. El fallback a cookies es crítico para que el browser siga funcionando.
 
-4. **Documentar cambios**. Si existe `/api-docu`, actualizar la documentación es parte del feature.
+4. **Documentar cambios**. Si existe OpenAPI/`/api/docs`, actualizar `securitySchemes` + `info.description` en `registry.ts` es parte del feature.
 
 5. **Usar el request parameter**. Cambiar `_request` a `request` en los handlers es necesario para pasar el header.

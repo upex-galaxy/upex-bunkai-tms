@@ -157,7 +157,7 @@ Read `references/frontend-setup.md` for the full procedure: brand-aware design s
 
 Each of the following layers in a single capability on top of the base backend + frontend. They are independent — pick the ones the project needs, skip the rest, run them in any order after the base is in place.
 
-- **OpenAPI integration** → `references/openapi-setup.md`. Schema generation, Swagger / Scalar UI, contract publication.
+- **OpenAPI integration** → `references/openapi-setup.md`. Schema generation (Zod → OpenAPI), Scalar UI at `/api/docs` (route handler), contract publication.
 - **API routes + middleware** → `references/api-routes-setup.md`. Route conventions, error responses, request logging, auth middleware wiring.
 - **Bearer-token auth** → `references/bearer-token-support.md`. JWT issuance, refresh tokens, protected-route middleware, session handling.
 - **Env vars + URL builders** → `references/env-url-setup.md`. Typed `.env` schema, environment-aware URL helpers, validation at boot.
@@ -232,7 +232,7 @@ On successful completion (Verification checklist from `plan.md` passes), the orc
 - **B5.** NEVER scaffold the frontend before `DESIGN.md` exists at repo root. Design tokens are the input contract for Phase 2 — run `/design-system` first.
 - **B6.** NEVER skip Supabase types generation when scaffolding the DB layer. Runtime TypeScript types must match the live schema; drift is a silent bug factory.
 - **B7.** NEVER ship bearer-token auth without rate-limiting + secret-rotation guidance in the same scaffold. Auth without those two is a half-finished feature.
-- **B8.** NEVER scaffold OpenAPI without the Scalar UI route. The contract surface must be browsable from day one or downstream consumers won't trust it.
+- **B8.** NEVER scaffold OpenAPI without the Scalar UI route at `/api/docs` (the `@scalar/nextjs-api-reference` route handler). The contract surface must be browsable from day one or downstream consumers won't trust it. Do NOT ship Redoc/Swagger instead — Scalar is the standard for this stack.
 
 ---
 

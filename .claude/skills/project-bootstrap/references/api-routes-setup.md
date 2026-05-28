@@ -95,7 +95,7 @@ grep -i "endpoint\|api\|route" .context/SRS/functional-specs.md | head -10
 **Documentación:**
 
 - ✅ Patterns documentados en código
-- ✅ (Si OpenAPI) Endpoints auto-documentados en `/api-docu`
+- ✅ (Si OpenAPI) Endpoints auto-documentados en `/api/docs` (Scalar)
 
 ### Modo COMPLETO (adicional):
 
@@ -293,6 +293,9 @@ import { getAuthenticatedUser } from '@/lib/api/auth';
 // ============================================================================
 // Validation Schemas
 // ============================================================================
+// PARCIAL (sin OpenAPI): schema local, como acá.
+// COMPLETO (con OpenAPI): NO redefinir — importar de @/types/example (Single
+// Source of Truth): `import { CreateExampleSchema } from '@/types/example'`.
 
 const CreateExampleSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -349,7 +352,8 @@ export async function POST(request: NextRequest) {
     const validation = CreateExampleSchema.safeParse(body);
 
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
+      // Zod v4: usar `.issues` (`.errors` fue removido; `.issues` funciona en v3 y v4)
+      const firstError = validation.error.issues[0];
       return validationError(firstError.path.join('.'), firstError.message);
     }
 
@@ -386,23 +390,24 @@ export async function POST(request: NextRequest) {
 
 **Solo si `openapi-setup` fue ejecutado.**
 
-**Paso 4.1: Registrar endpoint en OpenAPI**
+**Paso 4.1: Definir el schema en `src/types/` (FUENTE DE VERDAD) y registrar el path**
+
+> Patrón Single Source of Truth (ver `openapi-setup.md`): el schema vive en `src/types/`, NO en `src/lib/openapi/schemas/`. El archivo de `schemas/` SOLO registra paths. El route handler (`route.ts`) y el registro de paths importan el MISMO schema desde `@/types`.
 
 ```typescript
-// src/lib/openapi/schemas/example.ts
+// src/types/example.ts (FUENTE DE VERDAD)
+import { z } from '@/lib/openapi/zod'; // instancia única extendida — nunca 'zod' si usás .openapi()
 
-import { registry, z } from '../registry';
-
-// Define schemas
 export const ExampleSchema = z
   .object({
-    id: z.string().uuid(),
-    user_id: z.string().uuid(),
+    id: z.uuid(),
+    user_id: z.uuid(),
     name: z.string(),
     description: z.string().nullable(),
-    created_at: z.string().datetime(),
+    created_at: z.iso.datetime(),
   })
   .openapi('Example');
+export type Example = z.infer<typeof ExampleSchema>;
 
 export const CreateExampleSchema = z
   .object({
@@ -410,10 +415,15 @@ export const CreateExampleSchema = z
     description: z.string().optional(),
   })
   .openapi('CreateExample');
+export type CreateExample = z.infer<typeof CreateExampleSchema>;
+```
 
-// Register schemas
-registry.register('Example', ExampleSchema);
-registry.register('CreateExample', CreateExampleSchema);
+```typescript
+// src/lib/openapi/schemas/example.ts (SOLO REGISTRA PATHS)
+
+import { registry } from '../registry';
+import { z } from '../zod';
+import { ExampleSchema, CreateExampleSchema } from '@/types/example'; // ← importa de types, NO define aquí
 
 // Register endpoints
 registry.registerPath({
@@ -564,7 +574,7 @@ export async function POST(request: NextRequest) {
 
 **Nota:** La documentación de endpoints se maneja automáticamente:
 
-- **Endpoints**: Si ejecutaste `openapi-setup.md`, los endpoints se documentan automáticamente en `/api-docu` (Redoc UI)
+- **Endpoints**: Si ejecutaste `openapi-setup.md`, los endpoints se documentan automáticamente en `/api/docs` (Scalar UI)
 - **Autenticación**: Documentada en `.context/api-auth.md` (generado por `backend-setup.md`)
 
 **Paso 6.1: Verificar integración OpenAPI**

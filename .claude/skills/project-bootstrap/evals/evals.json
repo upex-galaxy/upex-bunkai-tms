@@ -15,7 +15,7 @@
     {
       "name": "should-trigger-openapi-scalar",
       "prompt": "Configure OpenAPI/Scalar UI for the backend so contracts are documented and explorable.",
-      "expected_behavior": "Activates project-bootstrap in incremental-feature mode. Reads openapi-setup.md reference, wires the OpenAPI generator into the API, mounts the Scalar UI route, and runs bun run api:sync to verify the spec generates. Final report includes the Scalar URL and a sample endpoint visible in the UI.",
+      "expected_behavior": "Activates project-bootstrap in incremental-feature mode. Reads openapi-setup.md reference, wires the Zod->OpenAPI generator into the API (@asteasolutions/zod-to-openapi), installs @scalar/nextjs-api-reference, and mounts the Scalar UI as a route handler at /api/docs (env-gated, 404 in production). Verifies the spec generates by GETting /api/openapi (e.g. curl). Final report includes the Scalar URL (/api/docs) and a sample endpoint visible in the UI.",
       "category": "positive"
     },
     {

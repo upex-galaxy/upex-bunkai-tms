@@ -1329,7 +1329,7 @@ type [Entity] = Database['public']['Tables']['[table_name]']['Row']
 - Validar permisos en cada endpoint
 ```
 
-**Nota:** La documentación de endpoints (rutas, parámetros, respuestas) se maneja via OpenAPI/Redoc UI si se ejecutó `openapi-setup.md`.
+**Nota:** La documentación de endpoints (rutas, parámetros, respuestas) se maneja via OpenAPI + Scalar UI (`/api/docs`) si se ejecutó `openapi-setup.md`.
 
 ---
 
