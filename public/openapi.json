@@ -122,6 +122,210 @@
         },
         "required": ["email"]
       },
+      "SigninResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"],
+                "format": "email"
+              }
+            },
+            "required": ["id", "email"]
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "access_token": {
+                "type": "string"
+              },
+              "refresh_token": {
+                "type": "string"
+              },
+              "expires_at": {
+                "type": "number"
+              },
+              "token_type": {
+                "type": "string"
+              }
+            },
+            "required": ["access_token", "refresh_token"]
+          },
+          "pat": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+                }
+              },
+              "expires_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": ["token", "id", "name", "scopes", "expires_at"]
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": ["user", "session", "pat", "warning"]
+      },
+      "SigninBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 128
+          },
+          "pat_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "pat_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+            }
+          },
+          "pat_expires_in_days": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 365
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "SignupResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"],
+                "format": "email"
+              }
+            },
+            "required": ["id", "email"]
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "access_token": {
+                "type": "string"
+              },
+              "refresh_token": {
+                "type": "string"
+              },
+              "expires_at": {
+                "type": "number"
+              },
+              "token_type": {
+                "type": "string"
+              }
+            },
+            "required": ["access_token", "refresh_token"]
+          },
+          "pat": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+                }
+              },
+              "expires_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": ["token", "id", "name", "scopes", "expires_at"]
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": ["user", "session", "pat", "warning"]
+      },
+      "SignupBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 128
+          },
+          "pat_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "pat_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+            }
+          },
+          "pat_expires_in_days": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 365
+          }
+        },
+        "required": ["email", "password"]
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -423,9 +627,25 @@
           "active_workspace_id": {
             "type": ["string", "null"],
             "format": "uuid"
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": ["cookie", "bearer"]
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["source", "scopes"]
           }
         },
-        "required": ["user", "workspaces", "active_workspace_id"]
+        "required": ["user", "workspaces", "active_workspace_id", "auth"]
       },
       "WorkspaceCreateResponse": {
         "type": "object",
@@ -703,6 +923,104 @@
           },
           "502": {
             "description": "Upstream Supabase error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/signin": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Headless password sign-in + auto-minted PAT",
+        "description": "Password sign-in for CLI / agent callers. Returns the Supabase session AND a freshly-minted Bearer PAT in a single response so the caller can immediately authenticate subsequent requests without a browser.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SigninBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SigninResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Headless sign-up + auto-minted PAT",
+        "description": "Provisions a user via the Supabase admin API with `email_confirm: true` so no email click is required, then signs them in and mints a PAT. Intended for QA / CLI environments — production sign-up should still use the magic-link path.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created + signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
             "content": {
               "application/json": {
                 "schema": {

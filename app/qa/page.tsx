@@ -1,4 +1,4 @@
-/* qa-guide-snapshot: stack=next-supabase-scalar, generated=2026-05-27, epic=BK-29 */
+/* qa-guide-snapshot: stack=next-supabase-scalar, generated=2026-05-27, epic=BK-29, paths=14, ops=19 */
 
 import Link from 'next/link';
 
@@ -125,15 +125,22 @@ export default function QAGuidePage() {
             .
           </li>
           <li>
-            Auth flow:
+            Browser auth:
             {' '}
             <code>POST /api/v1/auth/magic-link</code>
             {' '}
-            (browser session) or issue a PAT via
+            then click the email link.
+          </li>
+          <li>
+            Headless auth (no browser):
             {' '}
-            <code>POST /api/v1/tokens</code>
+            <code>POST /api/v1/auth/signup</code>
             {' '}
-            with the cookie session, then send
+            then
+            {' '}
+            <code>POST /api/v1/auth/signin</code>
+            {' '}
+            with email + password — both return a Supabase session AND a freshly-minted Bearer PAT in the same response. Use the PAT in
             {' '}
             <code>Authorization: Bearer bk_pat_…</code>
             .
@@ -150,17 +157,253 @@ export default function QAGuidePage() {
             tells you which path served the request — handy for CLI smoke tests.
           </li>
         </ul>
-        <pre className="mt-3 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
-          {`# Issue a Bearer PAT (session-authenticated; cookie required)
-curl -X POST https://<host>/api/v1/tokens \\
-  -H 'content-type: application/json' \\
-  --cookie 'sb-fmbpikzpkafptqximhxn-auth-token=...' \\
-  -d '{ "name": "qa", "scopes": ["atc:read"] }'
+      </section>
 
-# Then use it
-curl https://<host>/api/v1/me \\
+      <section className="mb-8 rounded-3 border border-stroke-2 bg-surface-1 p-5">
+        <h2 className="m-0 mb-2 text-lg font-semibold tracking-tight text-fg-0">
+          Headless API auth (CLI / agent / QA)
+        </h2>
+        <p className="m-0 text-sm leading-relaxed text-fg-3">
+          Three-step flow to authenticate against the API without ever opening a browser.
+          Designed for automation scripts, curl smoke tests, and CI pipelines.
+        </p>
+
+        <div className="mt-4 rounded-2 border border-stroke-2 bg-surface-2 p-3 text-xs leading-relaxed text-fg-2">
+          <strong className="text-fg-0">Important:</strong>
+          {' '}
+          Users created via magic-link
+          (
+          <code>/login</code>
+          {' '}
+          UI) have
+          {' '}
+          <em>no password set</em>
+          {' '}
+          in
+          {' '}
+          <code>auth.users.encrypted_password</code>
+          . They cannot authenticate via
+          {' '}
+          <code>/api/v1/auth/signin</code>
+          . Provision a dedicated QA user via
+          {' '}
+          <code>/api/v1/auth/signup</code>
+          {' '}
+          (which sets a password explicitly) before running headless flows.
+        </div>
+
+        <ol className="m-0 mt-4 grid gap-4 pl-5 text-sm leading-relaxed text-fg-2">
+          <li>
+            <strong className="text-fg-0">Step 1 — Provision a QA user (one-time per environment)</strong>
+            <pre className="mt-2 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
+              {`curl -X POST https://<host>/api/v1/auth/signup \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "qa.bot@bunkai-test.dev",
+    "password": "<strong-secret>",
+    "pat_name": "qa-bot-primary",
+    "pat_scopes": ["atc:read","atc:write","run:execute","workspace:admin"]
+  }'
+
+# 201 Created
+# {
+#   "user":    { "id": "<uuid>", "email": "qa.bot@bunkai-test.dev" },
+#   "session": { "access_token": "...", "refresh_token": "...", "expires_at": <ts> },
+#   "pat":     {
+#     "token":   "bk_pat_<prefix>.<secret>",   <- shown once. SAVE IT.
+#     "id":      "<uuid>",
+#     "scopes":  ["atc:read","atc:write","run:execute","workspace:admin"],
+#     "expires_at": null
+#   },
+#   "warning": "Store the PAT token now — it cannot be retrieved later."
+# }
+
+# 409 Conflict  -> user already exists; skip to Step 2.
+# 422           -> validation (password too short, bad email, etc).`}
+            </pre>
+          </li>
+
+          <li>
+            <strong className="text-fg-0">Step 2 — Sign in to mint a fresh PAT</strong>
+            {' '}
+            (every CI run, every test session)
+            <pre className="mt-2 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
+              {`curl -X POST https://<host>/api/v1/auth/signin \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "qa.bot@bunkai-test.dev",
+    "password": "<strong-secret>",
+    "pat_name": "ci-run-${'$'}{BUILD_ID}",
+    "pat_expires_in_days": 7
+  }'
+
+# 200 OK -> same shape as Step 1.
+# 401    -> wrong credentials (or magic-link-only user without password).`}
+            </pre>
+          </li>
+
+          <li>
+            <strong className="text-fg-0">Step 3 — Call any protected endpoint with the Bearer PAT</strong>
+            <pre className="mt-2 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
+              {`curl https://<host>/api/v1/me \\
+  -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
+
+# 200 OK
+# {
+#   "user":               { "id": "...", "email": "..." },
+#   "workspaces":         [ { "id": "...", "slug": "...", "name": "..." } ],
+#   "active_workspace_id": "<uuid>",
+#   "auth": { "source": "bearer", "scopes": [...] }   <- confirms the path
+# }
+
+curl https://<host>/api/v1/workspaces \\
   -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'`}
-        </pre>
+            </pre>
+          </li>
+        </ol>
+
+        <div className="mt-4">
+          <strong className="block text-xs font-semibold uppercase tracking-widest text-fg-3">
+            PAT scopes (granted at issuance time, immutable per token)
+          </strong>
+          <ul className="m-0 mt-2 grid gap-1 pl-5 text-sm leading-relaxed text-fg-2">
+            <li>
+              <code>atc:read</code>
+              {' '}
+              — read ATCs, steps, assertions, modules, user stories, AC.
+            </li>
+            <li>
+              <code>atc:write</code>
+              {' '}
+              — create/update/delete ATCs.
+            </li>
+            <li>
+              <code>run:execute</code>
+              {' '}
+              — start runs + post step results (lands in Sprint 2).
+            </li>
+            <li>
+              <code>workspace:admin</code>
+              {' '}
+              — manage members, invites, workspace metadata.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <strong className="block text-xs font-semibold uppercase tracking-widest text-fg-3">
+            Endpoints already accepting Bearer
+          </strong>
+          <ul className="m-0 mt-2 grid gap-1 pl-5 text-sm leading-relaxed text-fg-2">
+            <li>
+              <code>GET /api/v1/me</code>
+              {' '}
+              — identity + workspace list + active workspace.
+            </li>
+            <li>
+              <code>GET /api/v1/workspaces</code>
+              {' '}
+              — workspaces the caller belongs to.
+            </li>
+            <li>
+              All others currently require the cookie session. Bearer is rolled into
+              additional read endpoints as the Sprint progresses.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-6 border-t border-stroke-2 pt-4">
+          <h3 className="m-0 mb-2 text-sm font-semibold uppercase tracking-widest text-fg-3">
+            Hybrid path — extract a PAT from an existing browser session
+          </h3>
+          <p className="m-0 text-sm leading-relaxed text-fg-2">
+            If a tester has already signed in via the magic-link UI, they can extract a
+            Bearer PAT without re-authenticating. The cookie session is sufficient — useful
+            when the QA flow starts in the browser and then hands off to a CLI script.
+          </p>
+          <ol className="m-0 mt-3 grid gap-2 pl-5 text-sm leading-relaxed text-fg-2">
+            <li>
+              Sign in normally at
+              {' '}
+              <Link href="/login" className="text-accent underline">/login</Link>
+              .
+            </li>
+            <li>
+              In the browser DevTools, copy the
+              {' '}
+              <code>sb-fmbpikzpkafptqximhxn-auth-token</code>
+              {' '}
+              cookie (Application → Cookies). Or use the same browser session via curl with
+              {' '}
+              <code>--cookie</code>
+              .
+            </li>
+            <li>
+              Mint a PAT bound to that session:
+              <pre className="mt-2 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
+                {`curl -X POST https://<host>/api/v1/tokens \\
+  -H 'content-type: application/json' \\
+  --cookie 'sb-fmbpikzpkafptqximhxn-auth-token=<value>' \\
+  -d '{ "name": "browser-hybrid", "scopes": ["atc:read","atc:write"] }'
+
+# 201 Created
+# {
+#   "id":       "<uuid>",
+#   "token":    "bk_pat_<prefix>.<secret>",   <- shown once
+#   "scopes":   ["atc:read","atc:write"],
+#   "warning":  "Store this token now — it cannot be retrieved later."
+# }`}
+              </pre>
+            </li>
+            <li>
+              List existing tokens (no secrets returned):
+              {' '}
+              <code>GET /api/v1/tokens</code>
+              .
+            </li>
+            <li>
+              Revoke / rename a token:
+              {' '}
+              <code>
+                PATCH /api/v1/tokens/
+                {'{id}'}
+              </code>
+              ,
+              {' '}
+              <code>
+                DELETE /api/v1/tokens/
+                {'{id}'}
+              </code>
+              .
+            </li>
+          </ol>
+          <p className="mt-3 text-xs text-fg-4">
+            This path is also the right pick for production users (who only have magic-link,
+            no password) that need to drive Bunkai from an external automation. Magic-link
+            user lifecycle stays unchanged.
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-2 border border-stroke-2 bg-surface-2 p-3 text-xs leading-relaxed text-fg-2">
+          <strong className="text-fg-0">Token hygiene:</strong>
+          {' '}
+          The raw token is returned ONCE. The DB stores only
+          {' '}
+          <code>sha256(secret)</code>
+          {' '}
+          + the first 12 chars of the secret as
+          {' '}
+          <code>token_prefix</code>
+          {' '}
+          (for an O(1) index lookup). If you lose the token, revoke it via
+          {' '}
+          <code>
+            DELETE /api/v1/tokens/
+            {'{id}'}
+          </code>
+          {' '}
+          and mint a new one — there is no recovery path.
+        </div>
       </section>
 
       <section className="mb-8 rounded-3 border border-stroke-2 bg-surface-1 p-5">

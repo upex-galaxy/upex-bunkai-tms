@@ -24,6 +24,10 @@ import { buildOpenApiDocument } from '../lib/openapi/registry';
 
 import '../app/api/v1/auth/magic-link/route.openapi';
 
+import '../app/api/v1/auth/signin/route.openapi';
+
+import '../app/api/v1/auth/signup/route.openapi';
+
 import '../app/api/v1/health/route.openapi';
 
 import '../app/api/v1/route.openapi';
