@@ -14,19 +14,23 @@ A single multi-line comment at the very top of the generated page file. Format i
 
 ```tsx
 /* qa-guide-snapshot
-   skill-version=1.0.0
-   stack=next-15.0.3
+   skill-version=1.1.0
+   stack=next-15.5.4
    ui-kit=shadcn
    icons=lucide-react
-   auth=authjs-5.0.0
+   auth-method=supabase-token+bearer+x-api-key   // DETECTED — never a default path
+   docs-ui=redoc                                  // DETECTED — scalar | redoc | swagger | none
+   docs-route=/api-docu                           // DETECTED route
+   openapi-spec=/api/openapi                      // DETECTED — never assume .json
    db=supabase-postgres
-   orm=drizzle
+   orm=none
+   repos-shape=poly                               // mono | poly
+   mcp-config-files=mcp.json,opencode.jsonc       // which agent configs exist
    language=es
    publisher=jira-epic
    credentials-source=https://upex.atlassian.net/browse/UPEX-321
-   openapi-spec=/api/openapi.json
    default-branch=staging
-   generated=2026-05-15
+   generated=2026-05-28
    content-hash=sha256:8a2f7c…
 */
 ```
@@ -38,16 +42,20 @@ A single multi-line comment at the very top of the generated page file. Format i
 | Field                | Source                                          | Drift triggers…                                                                                                  |
 | -------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `skill-version`      | this skill's own version                        | Major bump → full re-scaffold. Minor → no-op unless other fields drifted.                                        |
-| `stack`              | pre-flight detection (framework + version)      | §4.5 (API testing code), §4.6 (Playwright code), routing file location.                                          |
-| `ui-kit`             | pre-flight detection                            | All component-rendering sections (re-emit Buttons / Cards / Accordions using the new kit).                       |
+| `stack`              | pre-flight detection (framework + version)      | §5 (API testing code), §6 (Playwright code), routing file location.                                              |
+| `ui-kit`             | pre-flight detection                            | All component-rendering sections (re-emit Buttons / Cards / Accordions / Tabs using the new kit).               |
 | `icons`              | pre-flight detection                            | Icon import lines only.                                                                                          |
-| `auth`               | pre-flight detection                            | §4.4 (DB role guidance), §4.5 (login curl, header name, body shape).                                             |
-| `db`                 | pre-flight detection                            | §4.4 (DBHub connection string template).                                                                         |
+| `auth-method`        | pre-flight detection                            | §5 AuthMethods tabs (login curl, header name, body shape) + §6 Playwright login fixture. DETECTED list, never a default path. |
+| `docs-ui`            | pre-flight detection                            | §5 docs link renderer label (scalar/redoc/swagger).                                                              |
+| `docs-route`         | pre-flight detection                            | §5 docs link href.                                                                                              |
+| `db`                 | pre-flight detection                            | §4 (DBHub connection template + the VSCode URI scheme).                                                          |
 | `orm`                | pre-flight detection                            | Architecture table label only. No code drift.                                                                    |
+| `repos-shape`        | `.agents/project.yaml` (`backend_repo`/`frontend_repo`) | §2 architecture diagram Repos block (mono one row vs poly two rows).                                     |
+| `mcp-config-files`   | pre-flight detection                            | Which agent tabs render in §3–§6 (claude/opencode/codex/gemini).                                                 |
 | `language`           | Q5 / pre-flight i18n signal                     | All visible copy. Code identifiers untouched.                                                                    |
 | `publisher`          | Q1                                              | Credentials CTA href + button copy.                                                                              |
 | `credentials-source` | publish step (Phase 6)                          | Credentials CTA href.                                                                                            |
-| `openapi-spec`       | pre-flight detection                            | §4.5 OpenAPI MCP example + Swagger UI link.                                                                      |
+| `openapi-spec`       | pre-flight detection                            | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` + docs UI link. DETECTED route, never assume `.json`.                         |
 | `default-branch`     | pre-flight `git` detection                      | `/git-flow-master` base branch for the patch PR.                                                                 |
 | `generated`          | wall-clock at write time                        | Audit field. Does NOT trigger patch.                                                                             |
 | `content-hash`       | sha256 of the rendered credentials-content body | Drift in the credentials artifact triggers a re-publish (but NOT a page re-render unless the page also drifted). |
@@ -62,7 +70,7 @@ A single multi-line comment at the very top of the generated page file. Format i
 4. Build a fresh field map.
 5. Diff fresh vs snapshot. Categorize:
    - **No-op**: only `generated` and / or `skill-version` drifted (and the version drift is minor).
-   - **Surgical patch**: one or more code-affecting fields drifted (`stack`, `ui-kit`, `auth`, `db`, `language`, `openapi-spec`).
+   - **Surgical patch**: one or more code-affecting fields drifted (`stack`, `ui-kit`, `auth-method`, `docs-ui`, `docs-route`, `db`, `repos-shape`, `mcp-config-files`, `language`, `openapi-spec`).
    - **Re-publish only**: `publisher` or `credentials-source` drifted, code-affecting fields unchanged.
    - **Full re-scaffold**: `skill-version` major bump OR three or more code-affecting fields drifted simultaneously (likely the project was rewritten — safer to ask).
 6. Report the diff to the user before applying anything. Surgical patch is the default; the user can opt for full re-scaffold instead.
@@ -107,14 +115,17 @@ When the diff says surgical patch, regenerate ONLY the sections whose driving fi
 
 | Drifted field                      | Sections to regenerate                                                                           |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `stack`                            | routing file location + §4.5 + §4.6 code blocks + the architecture-table stack label.            |
+| `stack`                            | routing file location + §5 + §6 code blocks + the architecture-table stack label.                |
 | `ui-kit`                           | every component import + JSX primitive (Button, Card, Accordion, Tabs).                          |
 | `icons`                            | icon imports only.                                                                               |
-| `auth`                             | §4.5 (API testing curl, JWT vs cookie header, body shape) and the §4.6 Playwright login fixture. |
-| `db`                               | §4.4 (DBHub connection-string template + smoke-test query).                                      |
+| `auth-method`                      | §5 AuthMethods tabs (API curl, JWT vs cookie vs X-API-Key, body shape) + §6 Playwright login fixture. |
+| `docs-ui` / `docs-route`           | §5 docs link (renderer label + href).                                                            |
+| `db`                               | §4 (DBHub connection template + smoke-test query + the VSCode URI scheme).                        |
+| `repos-shape`                      | §2 architecture diagram Repos block (mono ↔ poly).                                               |
+| `mcp-config-files`                 | which agent tabs render across §3–§6 (claude/opencode/codex/gemini).                             |
 | `language`                         | visible copy only. Code identifiers, `data-testid`s, snapshot fields untouched.                  |
 | `publisher` / `credentials-source` | credentials CTA `href` + button copy. Re-publish the artifact via the new channel adapter.       |
-| `openapi-spec`                     | §4.5 OpenAPI MCP `OPENAPI_SPEC_PATH` + Swagger UI link.                                          |
+| `openapi-spec`                     | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` + docs UI link.                                               |
 
 After the patch:
 

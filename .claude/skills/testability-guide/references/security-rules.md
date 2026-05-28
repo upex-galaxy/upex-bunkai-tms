@@ -24,7 +24,10 @@
 ## Page-side rules (the in-app `/qa` page)
 
 - NEVER inline real DB / API credentials in the page source. The page only points at the credentials artifact.
-- Demo users (the public, shared accounts in the §4.8 quick-reference table) ARE OK on the page. They have intentionally limited scope and shared knowledge — that is the threat model.
+- Demo-user password policy (resolves the page §7 quick-reference table):
+  - **Shared demo accounts with intentionally-public scope** (e.g. a practice/demo platform where the whole point is low-friction access) MAY show their password inline. Their scope is deliberately limited and the knowledge is intentionally shared — that is the threat model.
+  - **Real per-tester credentials** (any account with real-data reach or per-person identity) are NEVER inlined — emails only on the page, passwords gated in the credentials artifact.
+  - When unsure which case applies → default to gated (emails only). Pre-flight + project context (public practice/demo vs internal tool) decides.
 - Private hostnames (e.g. `<random>.upexgalaxy.com`-shaped, customer-specific subdomains) NEVER on the page. They live in the credentials artifact.
 - NEVER add analytics, tracking pixels, or third-party scripts to `/qa`. The page is operational tooling, not a marketing surface.
 - NEVER store the credentials destination URL in `.env`. It goes in the snapshot comment (which is committed) — and that is intentional, because the destination URL itself is access-gated by the destination's permission model.

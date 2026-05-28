@@ -54,7 +54,7 @@ If the host uses ESLint flat config + custom rules that fail on the generated pa
 
 Load `/playwright-cli`. Run:
 
-- Open `/qa` against the local dev server (`{{environments.local.WEB_URL}}/qa`, fallback `http://localhost:3000/qa`).
+- Open `/qa` against the local dev server (`{{environments.local.web_url}}/qa`, fallback `http://localhost:3000/qa`).
 - Assert the page returns 200, the H1 reads `Software Testability Guide for QA`, and `data-testid="qa-page"` is present.
 - Click `data-testid="qa-credentials-button"` → assert it opens the credentials destination URL in a new tab.
 - Expand every accordion / section → assert `data-testid` selectors render their code blocks.

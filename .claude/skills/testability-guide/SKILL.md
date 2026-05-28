@@ -166,9 +166,13 @@ Question text + defaults + tradeoffs: `references/decision-questions.md`.
 
 ### 4. Page codegen — `/qa`
 
-Generate the page in the host framework's idiomatic location (Next App Router, Pages, Remix, Astro, SvelteKit, Vite+RR). Reuse the host UI kit and icon library — never add a new dependency. Apply the host language for visible copy; keep code identifiers + `data-testid`s in English.
+Generate the page in the host framework's idiomatic location (Next App Router, Pages, Remix, Astro, SvelteKit, Vite+RR). Reuse the host UI kit and icon library — never add a new dependency. Apply the host language for visible copy (**Spanish is the default in this ecosystem** — the page is for QA); keep code identifiers + `data-testid`s in English. EVERY endpoint, host, spec URL, docs route, and MCP block comes from Phase-1 detection via the `qaConfig` object — zero hardcode (`pre-flight-discovery.md`).
 
-Section structure, data-testids, accessibility, dark-mode, responsive rules: `references/page-structure.md`.
+Section order + copy: `references/page-structure.md` (§1–§7).
+
+Visual target + golden file (own layout, sticky TOC, RSC split, `qaConfig` bridge, components, color system, dark/light): `references/page-craft.md`.
+
+MCP + env content inside §3–§6 (4-agent config tabs, env-var strategy + activation, 2-ways DB, 2-ways API + auth flow): `references/mcp-and-env-setup.md`.
 
 Routing + redirect-of-old-route per framework: `references/routing-patterns.md`.
 
@@ -254,7 +258,7 @@ On successful completion (all eight verification items pass), the orchestrator r
 
 - **T1.** NEVER hardcode credential values in the in-app `/qa` page or in the credentials artifact body. Reference environment / config slots by name (e.g. `LOCAL_USER_EMAIL`, `STAGING_USER_PASSWORD`); the real values live in `.env` and in the chosen publisher destination, never in source.
 - **T2.** NEVER bypass drift detection. When the host-stack signature changes, respect the snapshot-comment mechanism (`/* qa-guide-snapshot: stack=…, generated=… */`) and propose a surgical patch — do NOT regenerate the page from scratch when a targeted diff suffices.
-- **T3.** NEVER ship the `/qa` route in production without an env-gated guard or kill-switch. The page is operational, not customer-facing; gate it behind the host's standard environment check.
+- **T3.** Gate `/qa` in production ONLY when the host is an internal tool / customer-facing product where an operational page would leak. For a **public practice / demo platform** (where `/qa` IS the teaching surface, e.g. the page that onboards external testers), the page is intentionally public — do NOT gate it. Detect the project type in pre-flight; when unsure, ask. Either way the page NEVER inlines real secrets (T1), so "public" means "public docs", not "public credentials".
 - **T4.** NEVER include PII, real customer data, or production data examples in the testability guide. Demo users and sanitized fixtures only.
 - **T5.** NEVER duplicate the credentials-artifact body across multiple publisher targets. The markdown body in `references/credentials-content-template.md` is the single source of truth; publishers are thin adapters.
 - **T6.** NEVER assume idempotency without re-checking the snapshot comment. Re-runs MUST read the snapshot, diff against current detected stack, and only then decide no-op vs surgical patch vs fresh scaffold.

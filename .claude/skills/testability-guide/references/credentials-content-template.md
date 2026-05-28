@@ -4,187 +4,198 @@
 >
 > **When to read**: Phase 5 of `SKILL.md`. The orchestrator builds this body once, then routes it to the destination chosen in Q1.
 >
-> **Author once, publish anywhere**: the body below is intentionally framework-neutral. Each publisher converts heading / code-block syntax as needed (e.g. Jira wiki markup, Confluence Code Block macro, Notion code block).
+> **Author once, publish anywhere**: the body is framework-neutral. Each publisher converts heading / code-block syntax (Jira wiki, Confluence macro, Notion block).
+>
+> **Zero-hardcode rule**: every endpoint, host, spec URL, and docs route is a DETECTED placeholder filled from `pre-flight-discovery.md`. This file NEVER hardcodes `/api/auth/callback/credentials`, `/api/openapi.json`, or any literal — those were wrong in most projects. If a value is undetected, render `<detected: none — ask lead>`.
 
 ---
 
 ## Required sections (in order)
 
 1. **Title + audience**
-2. **Architecture summary** — one-paragraph mirror of the page's §3, so the artifact stands alone if a tester finds it without the page.
-3. **Environment table** — per environment (staging, production, etc), the web URL, API URL, OpenAPI spec URL, Swagger UI URL. Read from `.agents/project.yaml` `environments`.
-4. **Database access** — connection-string snippet, host, port, database, user, password placeholders, sslmode. ONE snippet per credential so the publisher can render one copy button per value.
-5. **API access** — login endpoint per environment, login body for each demo user, sample `curl`, OpenAPI spec URL.
-6. **UI access** — login URL per environment, each demo user's email and password as separate snippets.
-7. **Footer** — direct link BACK to the in-app `/qa` page so testers know where to find the operational docs.
+2. **Architecture summary** — one-paragraph mirror of the page's §2 (incl. repos shape), so the artifact stands alone.
+3. **Environment table** — per env (local, staging, …): web URL, API URL, OpenAPI spec URL, docs UI URL. From `.agents/project.yaml` `environments`.
+4. **Environment variables** — the `.env` slot names testers must set (NAMES only) + how to activate them (wrapper / direnv).
+5. **Database access — TWO ways**: (a) `dbhub.toml` for the DBHub MCP, (b) connection URI for a VSCode/Cursor SQL extension. One snippet per credential.
+6. **API access — TWO ways + auth**: the detected login endpoint + token shape; (a) OpenAPI MCP config + spec URL, (b) Postman MCP. `bun run api:login` if present.
+7. **UI access** — login URL per env, demo users (emails; passwords gated per `security-rules.md`).
+8. **Footer** — link BACK to the in-app `/qa` page.
 
 ---
 
 ## Snippet rules
 
-- **One credential = one snippet.** Never group two values inside the same code fence — publishers render one copy button per snippet, and a grouped block defeats the UX.
-- Use generic code-fence syntax (```) in the template. Each publisher adapter converts to its native syntax (`{noformat}` for Jira, `Code Block` macro for Confluence, `` ``` `` for Notion).
-- Never put real passwords inside this file. The template is committed; real values are filled at publish-time from `.env` / Supabase / the project's secrets store.
-- Use `<see secrets store>` for any value the AI must not see at all (production passwords).
+- **One credential = one snippet.** Never group two values in one fence — publishers render one copy button per snippet.
+- Generic code-fence (```) in the template; each adapter converts to its native syntax.
+- Never put real passwords here. The template is committed; real values are filled at publish-time inside the access-gated destination.
+- Use `<see secrets store>` for any value the AI must not see (production passwords).
+
+---
+
+## Placeholder sources (publish-time substitution)
+
+| Placeholder | Source |
+| --- | --- |
+| `{{PROJECT_NAME}}` | `.agents/project.yaml` → `project.project_name` |
+| `{{FRONTEND_STACK}}` / `{{BACKEND_STACK}}` / `{{DB_TYPE}}` | `frontend.frontend_stack` / `backend.backend_stack` / `database.db_type` (fallback: pre-flight) |
+| `<<REPOS>>` | `frontend.frontend_repo` + `backend.backend_repo` (mono if same/single, poly if distinct) |
+| `{{environments.<env>.web_url}}` / `{{…api_url}}` | `.agents/project.yaml` → `environments.<env>.*` (**nested, snake_case** — NOT `WEB_URL`) |
+| `<<LOGIN_ENDPOINT>>` | DETECTED login endpoint (pre-flight). NEVER a default path. |
+| `<<TOKEN_RESPONSE_SHAPE>>` | DETECTED token JSON shape (e.g. `{ access_token, token_type, expires_in }`) |
+| `<<AUTH_METHODS>>` | DETECTED list (Supabase token / Bearer / cookie / X-API-Key / custom) |
+| `<<OPENAPI_SPEC_URL>>` | DETECTED spec route (`/api/openapi`, `/api/swagger.json`, …) |
+| `<<DOCS_URL>>` + `<<DOCS_UI>>` | DETECTED docs route + renderer (Scalar / Redoc / Swagger) |
+| `<<API_LOGIN_HELPER>>` | `bun run api:login` or equivalent, if detected (else omit the line) |
+| `<<DB_ENGINE>>` / `<<DB_URI_SCHEME>>` | DETECTED engine + URI scheme (`postgresql` / `sqlserver` / `mysql` / …) |
+| `<host>`, `<db>`, `<see secrets store>`, `<detected: none — ask lead>` | LITERAL placeholders — never substitute with real `.env` values. |
+
+The skill NEVER writes real passwords into the artifact during codegen. The user pastes them into the access-gated destination after publish.
 
 ---
 
 ## Template body (literal — copy into the publisher adapter, then substitute placeholders)
 
-> The placeholders use the project's `{{VAR_NAME}}` / `{{environments.<env>.<var>}}` syntax from `.agents/project.yaml`. The publish step resolves them.
-
 ```markdown
 # {{PROJECT_NAME}} — QA Testing Credentials (DB / API / UI)
 
-> Audience: Manual QA + AI-driven testers (Claude Code, Cursor, etc.) who need to exercise this application at the DB, API, and UI layers.
-> Companion page (in-app): {{WEB_URL}}/qa
+> Audience: Manual QA + AI-driven testers (Claude Code, OpenCode, Codex, Gemini) exercising this app at the DB, API, and UI layers.
+> Companion page (in-app): {{environments.staging.web_url}}/qa
 
 ## Architecture summary
 
-{{PROJECT_NAME}} is a {{FRONTEND_STACK}} client + {{BACKEND_STACK}} API + {{DB_TYPE}} database. Tenant isolation is enforced at the API layer; the DB role exposed below has SELECT-only privileges on the relevant schemas.
+{{PROJECT_NAME}} is a {{FRONTEND_STACK}} client + {{BACKEND_STACK}} API + {{DB_TYPE}} database. Repos: <<REPOS>>. Tenant isolation is enforced at the API layer; the DB role below is read-only.
 
 ## Environments
 
-| Env        | Web URL                             | API URL                             | OpenAPI spec                                         | Swagger UI                                   |
-| ---------- | ----------------------------------- | ----------------------------------- | ---------------------------------------------------- | -------------------------------------------- |
-| Staging    | {{environments.staging.WEB_URL}}    | {{environments.staging.API_URL}}    | {{environments.staging.API_URL}}/api/openapi.json    | {{environments.staging.API_URL}}/api/docs    |
-| Production | {{environments.production.WEB_URL}} | {{environments.production.API_URL}} | {{environments.production.API_URL}}/api/openapi.json | {{environments.production.API_URL}}/api/docs |
+| Env     | Web URL                          | API URL                          | OpenAPI spec        | Docs UI (<<DOCS_UI>>) |
+| ------- | -------------------------------- | -------------------------------- | ------------------- | --------------------- |
+| Local   | {{environments.local.web_url}}   | {{environments.local.api_url}}   | <<OPENAPI_SPEC_URL>> | <<DOCS_URL>>          |
+| Staging | {{environments.staging.web_url}} | {{environments.staging.api_url}} | <<OPENAPI_SPEC_URL>> | <<DOCS_URL>>          |
 
-## Database access (read-only QA role)
+## Environment variables (set in `.env`, then activate)
 
-Connection string (one copy per env — pick the right one):
+Slots to fill (names only — values go in your local `.env`, never committed):
+`TEST_ENV`, `LOCAL_USER_EMAIL`, `LOCAL_USER_PASSWORD`, `STAGING_USER_EMAIL`, `STAGING_USER_PASSWORD`, `API_BASE_URL`, `OPENAPI_SPEC_PATH`, `API_TOKEN`, `POSTMAN_API_KEY`, `DBHUB_TYPE`, `DBHUB_HOST`, `DBHUB_PORT`, `DBHUB_DATABASE`, `DBHUB_USER`, `DBHUB_PASSWORD`.
+
+Activate before launching the agent: `bun run claude` / `bun run opencode` (cross-platform) or `direnv` + `.envrc` (Mac/Linux). If a var doesn't load, the MCP returns 401/403 — fix `.env` and restart the agent.
+
+## Database access (read-only QA role) — TWO ways
+
+### Way 1 — DBHub MCP (`dbhub.toml`, committed; `${VAR}` from `.env`)
+
+Type:
 ```
 
-postgresql://qa_user:<see secrets store>@<host>:5432/<db>?sslmode=require
+<<DB_ENGINE>>
 
 ```
-
 Host:
-
 ```
 
 <host>
-```
 
+```
 Port:
-
-```
-5432
 ```
 
+<port>
+
+```
 Database:
-
 ```
+
 <db>
-```
 
+```
 User:
-
-```
-qa_user
 ```
 
-Password:
-
-```
 <see secrets store>
-```
-
-SSL mode:
 
 ```
-require
+Password:
 ```
 
-## API access
-
-Login endpoint (staging):
+<see secrets store>
 
 ```
-POST {{environments.staging.API_URL}}/api/auth/callback/credentials
+
+> DBHub footgun: a missing `${VAR}` substitutes literally → cryptic auth failure. Verify: `env | grep DBHUB`.
+
+### Way 2 — Connection URI (VSCode / Cursor SQL extension)
+
 ```
 
-Login body for demo user `qa+1@example.com`:
+<<DB_URI_SCHEME>>://<see secrets store>@<host>:<port>/<db>?sslmode=require
 
+```
+
+## API access — auth + TWO ways
+
+Auth methods detected: <<AUTH_METHODS>>.
+
+Login endpoint:
+```
+
+<<LOGIN_ENDPOINT>>
+
+```
+Token response shape:
+```
+
+<<TOKEN_RESPONSE_SHAPE>>
+
+```
+Login body (demo user):
 ```json
-{ "email": "qa+1@example.com", "password": "<see secrets store>" }
+{ "email": "<see secrets store>", "password": "<see secrets store>" }
+```
+Helper (if present): `<<API_LOGIN_HELPER>>` writes `API_TOKEN` into `.env` — restart the terminal/agent after.
+
+### Way 1 — OpenAPI MCP
+
+Spec URL:
 ```
 
-Sample `curl`:
-
-```bash
-curl -sS -X POST {{environments.staging.API_URL}}/api/auth/callback/credentials \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"qa+1@example.com","password":"<see secrets store>"}'
-```
-
-OpenAPI spec URL (staging):
+<<OPENAPI_SPEC_URL>>
 
 ```
-{{environments.staging.API_URL}}/api/openapi.json
+(Configure `@ivotoby/openapi-mcp-server --tools dynamic` with `API_BASE_URL`, `OPENAPI_SPEC_PATH`, `API_TOKEN` — see the in-app /qa page for per-agent blocks.)
+
+### Way 2 — Postman MCP
+
 ```
 
-Swagger UI (staging):
+https://mcp.postman.com/mcp  (Authorization: Bearer ${POSTMAN_API_KEY})
 
-```
-{{environments.staging.API_URL}}/api/docs
 ```
 
 ## UI access — demo users
 
-| Email              | Password              | Notes                   |
-| ------------------ | --------------------- | ----------------------- |
-| `qa+1@example.com` | `<see secrets store>` | Tenant A — default role |
-| `qa+2@example.com` | `<see secrets store>` | Tenant A — admin role   |
-| `qa+3@example.com` | `<see secrets store>` | Tenant B — default role |
+| Email             | Password              | Notes                  |
+| ----------------- | --------------------- | ---------------------- |
+| <see secrets store> | <see secrets store> | Tenant A — default     |
+| <see secrets store> | <see secrets store> | Tenant A — admin       |
 
-Login URL (staging):
-
-```
-{{environments.staging.WEB_URL}}/login
-```
-
-Login URL (production):
-
-```
-{{environments.production.WEB_URL}}/login
-```
+Login URL (staging): {{environments.staging.web_url}}/login
 
 ## Footer
 
-Operational docs (architecture, MCP setup, Playwright snippets) live at the in-app page:
-
-```
-{{WEB_URL}}/qa
+Operational docs (architecture, MCP setup, env activation, Playwright snippets) live at the in-app page:
 ```
 
-If anything in this artifact is out of date, re-run `/testability-guide` against the project repo.
+{{environments.staging.web_url}}/qa
 
 ```
 
----
-
-## Substitution rules (publish-time)
-
-| Placeholder | Source |
-| --- | --- |
-| `{{PROJECT_NAME}}` | `.agents/project.yaml` → `project.name` |
-| `{{FRONTEND_STACK}}` | `.agents/project.yaml` → `project.frontend_stack` (fallback: pre-flight detection) |
-| `{{BACKEND_STACK}}` | `.agents/project.yaml` → `project.backend_stack` |
-| `{{DB_TYPE}}` | `.agents/project.yaml` → `project.db_type` |
-| `{{WEB_URL}}`, `{{API_URL}}` | `.agents/project.yaml` → `environments[active_env]` |
-| `{{environments.staging.*}}` | `.agents/project.yaml` → `environments.staging.*` |
-| `{{environments.production.*}}` | `.agents/project.yaml` → `environments.production.*` |
-| `<host>`, `<db>`, `<see secrets store>` | LITERAL placeholders. Do NOT substitute with real values from `.env`. The user fills these in inside the destination tool (Jira / Confluence / Notion / etc.) where access is gated. |
-
-The skill NEVER writes real passwords into the artifact body during code generation. The user pastes them into the destination tool after publish — that step is access-gated by the destination's permission model.
+If anything here is out of date, re-run `/testability-guide` against the project repo.
+```
 
 ---
 
 ## Why this is the source of truth
 
-- Adding a new publisher = one new file in `publishers/` that wraps this body. No content duplication.
-- Changing a section heading = one edit here. Propagates to every destination on the next re-run.
-- Security audit lives ONCE in `security-rules.md` against this template — not N times per publisher.
-- Idempotency snapshot tracks a hash of this rendered body (after `.agents/project.yaml` substitution but before passwords). Drift triggers a surgical patch.
-```
+- New publisher = one new file in `publishers/` wrapping this body. No content duplication.
+- Change a heading once → propagates to every destination on the next re-run.
+- Security audit runs ONCE in `security-rules.md` against this template.
+- Idempotency `content-hash` tracks a hash of this rendered body (after `.agents/project.yaml` substitution, before passwords). Drift → surgical patch.
