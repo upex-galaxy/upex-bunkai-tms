@@ -448,8 +448,34 @@ curl https://<host>/api/v1/workspaces \\
           </li>
         </ul>
         <p className="m-0 mt-3 text-sm leading-relaxed text-fg-3">
-          Passwords for both roles live in the credentials Epic (BK-29). Connection details
-          (host / port / db name) are environment-specific; see
+          Passwords for both roles live in the credentials Epic (BK-29). Connect via the
+          Supabase
+          {' '}
+          <strong>Session Pooler</strong>
+          {' '}
+          (port 5432) — the direct host
+          {' '}
+          <code>db.&lt;ref&gt;.supabase.co</code>
+          {' '}
+          is deprecated for new projects and DNS-resolves to nothing. The username on the
+          pooler is dotted with the project ref:
+          {' '}
+          <code>&lt;dbuser&gt;.&lt;project-ref&gt;</code>
+          .
+        </p>
+        <pre className="mt-3 overflow-x-auto rounded-2 bg-surface-2 p-3 text-xs text-fg-1">
+          {`# Connection string template (Session Pooler, port 5432, IPv4-friendly)
+postgresql://qa_inspector_ro.fmbpikzpkafptqximhxn:<PWD>@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+
+# psql example
+psql "postgresql://qa_inspector_ro.fmbpikzpkafptqximhxn:<PWD>@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+
+# DBHub MCP / other tools: read QA_INSPECTOR_RO_URL or _RW_URL from .env.
+# Port 5432 = Session pooler (long transactions OK).
+# Port 6543 = Transaction pooler (no prepared statements). Do NOT use for QA.`}
+        </pre>
+        <p className="mt-3 text-sm leading-relaxed text-fg-3">
+          Original direct-host connection details are environment-specific; see
           {' '}
           <code>.env.example</code>
           {' '}
