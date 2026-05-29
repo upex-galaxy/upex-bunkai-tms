@@ -248,6 +248,15 @@
   // =====================
   // ? Workbench Settings
   // =====================
+  // Abre .md directamente en Markdown Preview al seleccionarlo (no en texto raw).
+  // Usar "Reopen With" para volver a la vista de texto.
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
+  },
+  // Mantiene los diffs de .md en el editor de texto (no en preview).
+  "workbench.diffEditorAssociations": {
+    "*.md": "default"
+  },
   "workbench.editor.enablePreview": false, // Siempre abre archivos en nueva tab
   "workbench.editor.closeEmptyGroups": true,
   "workbench.editor.highlightModifiedTabs": true,
