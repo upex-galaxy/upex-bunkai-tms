@@ -282,6 +282,12 @@ See: `.context/SRS/functional-specs.md`.
 
 **Note on FR placement.** At the **epic level**, list the relevant FRs here in the description body. At the **story level**, the `**Source spec:** FR-XXX` line is the FIRST body line of the story description — NEVER embed `FR-XXX —` into the story summary. See `references/description-custom-field-dedup.md` for the description-vs-custom-field boundary.
 
+**Note on titles.** Epic summaries are noun-phrase module titles (no pipe, no verb). Child **story**
+summaries use the `{Feature} | {Action}` format (canonical §Story title format in `SKILL.md`, I20): the
+epic = module, the story prefix = the abbreviated feature inside that module, and the full
+`As a … so that …` sentence lives in the story body `## User story`, never the summary. Domain-entity
+feature prefixes carry the `TMS-` tag (`TMS-US`, `TMS-Module`, …).
+
 ---
 
 ## Technical Considerations

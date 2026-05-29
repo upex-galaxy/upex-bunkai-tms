@@ -51,6 +51,14 @@ Field reads/writes route through `[ISSUE_TRACKER_TOOL]`; the owning tool skill r
 
 ## Summary nomenclature
 
+**Story summary format is `{Feature} | {Action}`** — see the canonical §Story title format in `SKILL.md`
+(anti-pattern I20). The `As a … I want to … so that …` sentence is NEVER the summary; it lives only in the
+description `## User story` section. `{Feature}` is the abbreviated feature noun (shared by sibling stories
+of the same feature); `{Action}` is the `I want to …` clause as a base-form verb phrase (persona + benefit
+dropped). When a feature names a product domain entity that collides with agile/QA vocabulary, prefix it
+with the project-domain tag `TMS-` (`User Story → TMS-US`, `Module → TMS-Module`, `Test → TMS-Test`, etc.);
+cross-cutting features stay plain (`Authentication`, `Jira Import`). English; ≤ ~80 chars.
+
 **NEVER prefix a story summary with `FR-XXX —`.** The Jira issue key is the only identifier that belongs in the summary; the functional-spec reference is methodology metadata and lives in the body.
 
 Place the source-spec reference as the **first line of the story description body**:
@@ -394,8 +402,8 @@ If any criterion fails, split or rewrite the story before creating it. Never pus
 
 - Project: `{PROJECT_KEY}`.
 - Issue type: `Story`.
-- Summary: `As a [persona], I want to [action], so that [benefit]`. **No `FR-XXX —` prefix.**
-- Description body: starts with `**Source spec:** FR-XXX` line (if applicable), then the canonical sections from §"No content duplication" above. No AC / Scope / Out-of-Scope H2 sections.
+- Summary: `{Feature} | {Action}` (see §Summary nomenclature). **No `FR-XXX —` prefix; no `As a … so that …` sentence in the summary.**
+- Description body: starts with `**Source spec:** FR-XXX` line (if applicable), then a `## User story` section holding the full `As a … I want to … so that …` sentence, then the canonical sections from §"No content duplication" above. No AC / Scope / Out-of-Scope H2 sections.
 - Epic Link: the parent epic's real key from Phase 2.1.
 - Priority: `High | Medium | Low`.
 - Labels: `mvp` (plus project-specific).

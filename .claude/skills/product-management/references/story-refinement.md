@@ -141,6 +141,13 @@ Refinement rules for the User Story line:
 - **I want to** — one verb + one object; if you find yourself writing "and", split the story.
 - **So that** — must be a benefit, not a feature restatement. "So I can log in" is not a benefit; "so I can resume my session without re-entering credentials" is.
 
+**Title vs description split.** This `As a … I want to … so that …` triad lives in the description body
+`## User story` block ONLY — it is NEVER the Jira **summary**. The summary uses the `{Feature} | {Action}`
+format (canonical §Story title format in `SKILL.md`, I20), where `{Action}` is exactly the `I want to …`
+clause rewritten as a base-form verb phrase (persona + benefit dropped). When refining a story whose
+summary still holds the full sentence, shorten the summary to `{Feature} | {Action}` and ensure the full
+sentence is present in the body. Domain-entity feature prefixes carry the `TMS-` tag (`TMS-US`, `TMS-Module`, …).
+
 **Scope (In / Out) — custom-field only.** Be explicit. Out-of-scope items are the team's defense against scope creep mid-sprint. Write In-Scope bullets to `{{jira.scope}}` and Out-of-Scope bullets to `{{jira.out_of_scope}}` via `[ISSUE_TRACKER_TOOL]`. Do NOT duplicate into the description body. When writing these rich-text fields, follow `references/jira-publishing-gotchas.md` (per-field-per-call when batching ADF; no inline `code` inside `**bold**`).
 
 **Acceptance Criteria — custom-field only.** Gherkin Scenario format, **minimum 3 scenarios**, written to `{{jira.acceptance_criteria}}` via `[ISSUE_TRACKER_TOOL]`. Pattern per scenario:

@@ -148,6 +148,47 @@ After `plan.md` is written and the user approves, transition `status: draft → 
 
 > **Progress checkpoint**: per-epic-created (A), per-story-added (B), per-section-of-epic decomposed (C). The orchestrator appends an entry to `.session/product-management/<scope>/progress.md` per `agentic-dev-core/references/session-management.md` §7 at each checkpoint.
 
+## Story title format (canonical — applies to every US summary)
+
+The User Story **summary** (Jira title) is NOT the `As a … I want to … so that …` sentence. That full
+sentence is too long for board cards and buries the action between persona and benefit. The summary uses
+this scannable format; the canonical sentence lives in the description `## User story` section instead.
+
+```
+{Feature} | {Action}
+```
+
+- **`{Feature}`** — 1–3 words, Title Case noun phrase. The *abbreviated feature name*, finer-grained than
+  the epic. The epic = the module (holds several features); the prefix = the feature this US belongs to.
+  Sibling stories of the same feature SHARE the prefix. A feature may be one US, a whole epic, or a
+  feature split across several US — the shared prefix is what makes the split traceable.
+- **` | `** — space, pipe, space (literal separator).
+- **`{Action}`** — the `I want to …` clause rewritten as a base-form verb phrase (imperative/infinitive).
+  DROP the persona (`As a …`) and the benefit (`so that …`); KEEP scenario qualifiers (`quickly`,
+  `from a failing run step`, `in a chosen environment`). Sentence case, no trailing period, ~3–9 words.
+
+**`TMS-` domain-collision prefix.** When the product under development is itself a test/issue management
+system (or any tool whose own entities share names with agile/QA vocabulary), a `{Feature}` that names a
+product domain entity collides with the same word at the meta level — a story titled `User Stories | …`
+is ambiguous (the backlog, or the product feature?). Prefix such entity features with the project-domain
+tag `TMS-` (or the project's equivalent short tag): `User Story → TMS-US`, `Acceptance Criteria → TMS-AC`,
+`Module → TMS-Module`, `Workspace → TMS-Workspace`, `Project → TMS-Project`, `ATC → TMS-ATC`,
+`Test → TMS-Test`, `Run → TMS-Run`, `Defect → TMS-Defect`. The sub-feature qualifier stays after the
+entity (`TMS-ATC Builder`, `TMS-Run Execution`). Cross-cutting / non-entity features stay PLAIN
+(`Authentication`, `Markdown Editor`, `Jira Import`).
+
+**Hard rules:** English always (repo artifact). Total summary ≤ ~80 chars (board cards truncate beyond).
+No `FR-`/issue-key/spec prefix (I2). Persona + benefit never in the title — only in the description.
+
+| Example summary | Description (`## User story`) holds |
+|-----------------|-------------------------------------|
+| `TMS-Defect Heatmap \| View count and week-over-week trend per module` | As a QA Lead, I want to view a defect heatmap … so that I can see where quality degrades |
+| `TMS-Run Execution \| Start a manual run in a chosen environment` | As a QA Engineer, I want to start a manual run … so that I get a fresh checklist |
+| `Authentication \| Sign up and sign in via OAuth (GitHub / Google)` | As a visitor, I want to sign in via OAuth … so that I can access the app |
+
+**Epics** keep their own convention: noun-phrase module titles, NO pipe, NO verb (e.g. `Tenancy & Identity`,
+`Bugs & Defect Heatmap`). The epic = module; the US prefix = the abbreviated feature inside that module.
+
 ## Pre-flight — voice & format gate (MANDATORY before every Jira write)
 
 This is a force-function checklist. Run it in working memory immediately before any `[ISSUE_TRACKER_TOOL]` `create` / `edit` that touches `summary`, `description`, `{{jira.acceptance_criteria}}`, `{{jira.scope}}`, `{{jira.out_of_scope}}`, `{{jira.business_rules_specification}}`, `{{jira.workflow}}`, or `{{jira.story_points}}`. If any item fails, fix the draft BEFORE the write — never publish and patch.
@@ -159,6 +200,7 @@ This is a force-function checklist. Run it in working memory immediately before 
 - [ ] **No-duplication (I3)** — the description body contains no `## Acceptance Criteria`, `## Scope`, or `## Out of Scope` H2 sections. Those live exclusively in their custom fields.
 - [ ] **Source spec (I2)** — if the story maps to a single FR, the description body starts with `**Source spec:** FR-XXX` as its first line. If no FR maps cleanly, omit the line — never invent or use `N/A`.
 - [ ] **Summary nomenclature (I2)** — the summary contains no functional-spec or issue-key prefix (e.g. patterns like `FR-NNN` followed by an em-dash, or `<PROJECT>-NNN` followed by an em-dash). The Jira issue key is the only identifier that belongs in the summary.
+- [ ] **Title format (I20)** — the story summary is `{Feature} | {Action}` (see §Story title format). The `As a … I want to … so that …` sentence is NEVER the summary — it lives only in the description `## User story` section. Persona and benefit do not appear in the title; the `Action` is the `I want to …` clause as a base-form verb phrase. Domain-entity prefixes carry the `TMS-` (project-domain) prefix.
 - [ ] **No-invent (I5)** — every AC, Scope item, OOS item, business rule traces back to a concrete source (PRD, SRS, business map, explicit user input). Missing source → report `gap`, halt that field, continue with the rest.
 
 After the write, before moving to the next field/story:
@@ -290,6 +332,7 @@ When PM artifacts are ready, the natural downstream skills are:
 - **I17.** NEVER write `{{jira.acceptance_criteria}}` as plain text. Every scenario MUST be wrapped in a fenced ` ```gherkin ` code block. Applies on initial create AND on every edit/re-format pass. Reason: Jira ADF renders the fenced block as monospaced + syntax-highlighted, which is the only readable shape for Given/When/Then in the Jira UI. When refining EXISTING AC that was written unfenced, rewrite the field in full to apply the fence.
 - **I18.** NEVER create or edit a story (or epic) without first running an **active dependency discovery** pass against the current backlog graph (`.context/PBI/epic-tree.md` + live Jira link graph + `.context/business/business-data-map.md` when present). Default state is "no global/infrastructural dependencies surface as story links" — generic prerequisites (auth exists, DB exists, framework is set up) are filtered out as noise. Only feature-level, observable, explicit dependencies become candidate links. Output: a `(from, to, source-of-decision)` matrix surfaced to the user for confirmation BEFORE writing any Jira link. Passive "only link if obviously needed" is rejected — discovery is an active step.
 - **I19.** NEVER use generic actors ("the user", "the customer", "the system") in the `As a` line of a user story. The persona MUST resolve to a named entity in `.context/PRD/user-personas.md`. If the matching persona is absent → surface as `gap`, ask the user, never invent.
+- **I20.** NEVER write the `As a … I want to … so that …` sentence as the story summary. The summary MUST be `{Feature} | {Action}` (see §Story title format); the full sentence lives ONLY in the description `## User story` section. Persona and benefit NEVER appear in the title. Domain-entity feature prefixes that collide with agile/QA vocabulary carry the `TMS-` (project-domain) tag; cross-cutting features stay plain. Epics keep noun-phrase titles (no pipe, no verb).
 
 ## Variables consumed
 

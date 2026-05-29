@@ -57,6 +57,14 @@ Jira numeric IDs (`customfield_NNNNN`) vary per workspace and DO NOT live in thi
 
 ## Summary nomenclature
 
+**Story summary format is `{Feature} | {Action}`** — see the canonical §Story title format in `SKILL.md`
+(anti-pattern I20). The `As a … I want to … so that …` sentence is NEVER the summary; it lives only in the
+description `## User story` section. `{Feature}` is the abbreviated feature noun (shared across sibling
+stories of the same feature); `{Action}` is the `I want to …` clause as a base-form verb phrase (persona +
+benefit dropped, scenario qualifier kept). When a feature names a product domain entity that collides with
+agile/QA vocabulary, prefix it with the project-domain tag `TMS-` (`User Story → TMS-US`,
+`Module → TMS-Module`, `Defect → TMS-Defect`, etc.); cross-cutting features stay plain. English; ≤ ~80 chars.
+
 **NEVER prefix a story summary with the functional-spec reference** (e.g. pattern `FR-XXX` followed by em-dash and title). The Jira key (`{PROJECT_KEY}-{NUM}`) is the only real identifier; mixing methodology references into the summary pollutes Jira-side search and breaks JQL summary filters.
 
 The spec reference goes in the issue **body** as the first line:
@@ -232,7 +240,7 @@ Before classifying, ask yourself:
 
 - **Project:** PROJECT_KEY resolved from `.agents/project.yaml`.
 - **Issue type:** Story.
-- **Summary:** Pattern "As a [user], I want to [action] so that [benefit]". No functional-spec prefix (see "Summary nomenclature").
+- **Summary:** Pattern `{Feature} | {Action}` (see "Summary nomenclature"). No functional-spec prefix; no `As a … so that …` sentence in the summary — that goes in the body `## User story`.
 - **Description (body):** first line `**Source spec:** FR-XXX` when applicable. Body contains `## User story`, `## Definition of done`, and optional overflow for business rules / workflow / mockups / technical notes. **NEVER** include `## Acceptance Criteria`, `## Scope`, or `## Out of Scope` — those live in custom fields (see "No content duplication").
 - **Epic Link:** Jira key of the parent epic identified in Step 1.
 - **Priority:** High | Medium | Low.
@@ -1076,6 +1084,8 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 
 ### Summary nomenclature (reminder)
 
+- Story summary = `{Feature} | {Action}` (canonical §Story title format / I20). The `As a … so that …` sentence lives in the body `## User story`, never the summary.
+- Domain-entity feature prefixes carry the `TMS-` tag (`TMS-US`, `TMS-Module`, …); cross-cutting features stay plain.
 - **Never** prefix story / epic summaries with the functional-spec reference (e.g. `FR-XXX` followed by em-dash and title).
 - `**Source spec:** FR-XXX` as the first body line, omittable.
 
@@ -1139,6 +1149,7 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 ### Before Creating in Jira
 
 - ✅ Is the story/epic name descriptive and clear?
+- ✅ Is the summary in `{Feature} | {Action}` format (I20), with the `As a … so that …` sentence in the body `## User story` and NOT in the summary?
 - ✅ Is the summary free of the functional-spec prefix (e.g. `FR-XXX` with em-dash and title)?
 - ✅ Are acceptance criteria in Gherkin format **wrapped in a ```gherkin code-fence** (anti-pattern `I17`)?
 - ✅ **Voice gate**: do AC / Scope / Out-of-Scope / Workflow describe persona-observable behavior, with no endpoints, HTTP status codes, table names, framework names, or internal algorithms (anti-pattern `I15`)? Exception: persona = API consumer.
