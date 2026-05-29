@@ -85,6 +85,8 @@ audit:
   rotation-required: false
   manual-fallback: false
   content-hash: sha256:…
+  testability-flags: "UI:weak API:deficient DB:ok"   # from references/testability-assessment.md
+  testability-remediation: "auth has no programmatic token path — recommend password login + token endpoint with expiry"
 ```
 
 The orchestrator can persist this via `mem_save` (Engram) for cross-session continuity, per the boilerplate's PROACTIVE SAVE protocol.

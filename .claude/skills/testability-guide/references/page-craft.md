@@ -438,6 +438,8 @@ export function EnvSetup({ config }: { config: QaConfig }) {
 
 - [ ] `qaConfig` filled entirely from detection; grep the page for literal hosts/endpoints/tokens → must be zero.
 - [ ] UI primitives = the detected host kit (not shadcn if the host uses MUI/Mantine/Chakra).
+- [ ] **Missing primitive ≠ missing dep.** If the golden needs a primitive the host kit has not scaffolded yet (e.g. Tabs, Badge) but the underlying dep already exists (`@radix-ui/*`) or none is needed (`cva`), scaffold the local `components/ui/<x>.tsx` in the host's style. Adding a local component file is NOT "adding a dependency" — it is allowed. The "never add a dep" rule is about `package.json`, not about local files.
+- [ ] **Custom token vocabulary?** The golden is coded against shadcn-neutral tokens (`text-muted-foreground`, `bg-card`, `border`). If the host uses a CUSTOM token system (e.g. `fg-0..4` / `surface-0..2` / `stroke-*` / `accent`), READ an existing host component (`components/ui/card.tsx`, a real page) for the real vocabulary and MAP the golden's classes onto it — do not emit raw shadcn-neutral classes the host app doesn't use. Domain-accent hues (amber/emerald/violet/cyan/pink/slate) come from default Tailwind and are safe regardless. Mirror the host's dark mechanism (`darkMode:'class'` vs `next-themes`); do not add `next-themes` if absent.
 - [ ] Icons = the detected icon lib (lucide here; swap if host differs; inline SVG if none).
 - [ ] Dark/light uses the host mechanism.
 - [ ] Visible copy in `qaConfig.lang` (Spanish default in this ecosystem); identifiers + `data-testid`s stay English.

@@ -9,7 +9,7 @@
     "agents": "c684bc430d49d862644cd1c34954dd26ec095391",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "scripts": "15442c6967e652faf10eace3508b70d72c0f263d",
-    "docs": "c684bc430d49d862644cd1c34954dd26ec095391",
+    "docs": "39ca7312f79eef8e4e294885bb0b06bd2b90a1a9",
     "context": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "context-engineering": "c684bc430d49d862644cd1c34954dd26ec095391",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -18,9 +18,16 @@
     "tooling": "1e22849a1704ce8a11a4416e42251654e14c6b7c"
   },
   "syncedComponents": [],
-  "ignoreFileSync": {},
+  "ignoreFileSync": {
+    ".gitignore": {
+      "lastSyncedSha": "b4799d2e62bc8d9b80e6de9a16b0f1998ccbba6a",
+      "appendedLines": [
+        "dbhub.toml"
+      ]
+    }
+  },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-28T10:32:32.187Z",
+  "lastSyncedAt": "2026-05-29T02:20:43.052Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

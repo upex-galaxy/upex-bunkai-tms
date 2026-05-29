@@ -5,8 +5,10 @@
 # Documentación: https://dbhub.ai/config/toml
 #
 # Este archivo configura las conexiones de base de datos para el MCP de DBHub.
-# IMPORTANTE: No commitear este archivo si contiene credenciales reales.
-# Agregarlo a .gitignore: dbhub.toml
+# IMPORTANTE: dbhub.toml SE COMMITEA — usá expansión ${VAR} (sin secretos en el
+# archivo; los valores reales viven en .env). Es parte de la estrategia de testing,
+# misma convención que .mcp.json / opencode.jsonc. Solo si necesitás pegar
+# credenciales LITERALES, hacelo en dbhub.local.toml (ya gitignored), nunca aquí.
 #
 # ⚠️  AUDIT 2026-05-11: una versión anterior de este template tenía un user/password
 # con apariencia real (qa_team.czuusjchqpgvanvbdrnz / QA_SoloQ_2024_Secure!).

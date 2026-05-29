@@ -402,7 +402,7 @@ password = "{{DB_PASSWORD}}"
 sslmode = "require"
 ```
 
-> **Importante:** Agrega `dbhub.toml` a `.gitignore` si contiene credenciales reales.
+> **Importante:** `dbhub.toml` **se commitea** cuando usa expansión `${VAR}` (sin secretos; los valores reales viven en `.env`) — es parte de la estrategia de testing, misma convención que `.mcp.json`. Solo si pegás credenciales **literales** en el archivo, movelas a `dbhub.local.toml` (ya gitignored) — nunca dejes secretos reales en `dbhub.toml`.
 
 ### Paso 2: Configurar el MCP
 

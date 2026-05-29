@@ -160,7 +160,8 @@ Run your agent and verify with:
 
 - **Templates** (this folder) = Safe for git, uses `{{VAR}}` placeholders
 - **Catalog files** (your copies) = NOT in git, contain real API keys
-- All `*.catalog.json` and `dbhub.toml` are in `.gitignore`
+- `*.catalog.json` (your real-key copies) are in `.gitignore`
+- `dbhub.toml` is **COMMITTED** (`${VAR}` placeholders, no secrets — same convention as `.mcp.json` / `opencode.jsonc`); only `dbhub.local.toml` (literal-secret overrides) is ignored
 
 ## Atlassian MCP (opt-in)
 

@@ -67,6 +67,8 @@ The skill NEVER writes real passwords into the artifact during codegen. The user
 
 ## Environments
 
+`.agents/project.yaml` `environments` is the single source of truth for these URLs — emit one row per env defined there (do not hardcode). On a re-run where the artifact is human-curated, if the live env table has drifted from `project.yaml` (renamed env, changed deploy URL), do NOT silently overwrite — FLAG the drift to the user (per the non-destructive rule in `publishers/jira-epic.md`) and let them reconcile.
+
 | Env     | Web URL                          | API URL                          | OpenAPI spec        | Docs UI (<<DOCS_UI>>) |
 | ------- | -------------------------------- | -------------------------------- | ------------------- | --------------------- |
 | Local   | {{environments.local.web_url}}   | {{environments.local.api_url}}   | <<OPENAPI_SPEC_URL>> | <<DOCS_URL>>          |

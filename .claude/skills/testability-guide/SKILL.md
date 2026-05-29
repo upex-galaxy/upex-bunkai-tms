@@ -152,6 +152,8 @@ Detect the host stack, UI kit, icon library, auth model, DB, existing `/qa` or `
 
 Full checklist: `references/pre-flight-discovery.md`.
 
+**Then score testability (same phase).** Immediately after detection, rate UI / API / DB and emit a `testability:` flag. The page is built regardless of score, but a ⚠️ / ❌ layer surfaces a flag + a concrete remediation the team should act on. The highest-leverage case: when auth has **no programmatic token path** (passwordless / OAuth / SSO only, no PAT issuer), recommend the canonical pattern — **a normal user+password login PLUS an API endpoint that issues a token with expiry**, used to request as the authenticated user. Adapt to what exists; flag what's missing; never implement the remediation here (that is `/project-bootstrap` / `/sprint-development`). Rubric + levels + remediation: `references/testability-assessment.md`.
+
 ### 2. Idempotency check
 
 If `/qa` already exists, read its snapshot comment, re-run discovery, diff. If identical → exit with a no-op report. If drifted → proceed to step 3 but mark the run as a **surgical patch**, not a fresh scaffold.

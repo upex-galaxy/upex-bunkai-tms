@@ -30,8 +30,9 @@ A single multi-line comment at the very top of the generated page file. Format i
    publisher=jira-epic
    credentials-source=https://upex.atlassian.net/browse/UPEX-321
    default-branch=staging
+   testability=UI:weak API:deficient DB:ok           // from testability-assessment.md
    generated=2026-05-28
-   content-hash=sha256:8a2f7c…
+   content-hash=sha256:8a2f7c…                        // or `sha256:… external-maintained` when human-owned
 */
 ```
 
@@ -58,7 +59,20 @@ A single multi-line comment at the very top of the generated page file. Format i
 | `openapi-spec`       | pre-flight detection                            | §5 OpenAPI MCP `OPENAPI_SPEC_PATH` + docs UI link. DETECTED route, never assume `.json`.                         |
 | `default-branch`     | pre-flight `git` detection                      | `/git-flow-master` base branch for the patch PR.                                                                 |
 | `generated`          | wall-clock at write time                        | Audit field. Does NOT trigger patch.                                                                             |
-| `content-hash`       | sha256 of the rendered credentials-content body | Drift in the credentials artifact triggers a re-publish (but NOT a page re-render unless the page also drifted). |
+| `testability`        | `testability-assessment.md` (Phase 1)           | Audit field — compact per-layer score, e.g. `UI:weak API:deficient DB:ok`. A re-run compares it to report "testability improved / regressed". Does NOT trigger a page patch by itself. |
+| `content-hash`       | sha256 of the rendered credentials-content body, OR `external-maintained` (see below) | Drift in the credentials artifact triggers a re-publish (but NOT a page re-render unless the page also drifted). |
+
+---
+
+## content-hash when the artifact is human-maintained (`external-maintained`)
+
+The two-pass hash below assumes the SKILL renders the artifact body. But the common steady state is different: after the first publish, a human fills REAL secrets into the gated destination (`security-rules.md` §artifact-side), so there is no skill-rendered "body before passwords" to hash on re-runs — and the publisher's non-destructive rule means the skill must NOT overwrite that human-curated body (`publishers/jira-epic.md` §Update flow).
+
+Handle it explicitly:
+
+- When a re-run leaves the artifact **human-owned** (user picked "leave untouched"), set `content-hash` to the **sha256 of the CURRENT live destination body** (a drift anchor), and additionally mark the field human-owned by suffixing ` external-maintained` — e.g. `content-hash=sha256:9e9feb… external-maintained`.
+- A re-run that sees the `external-maintained` marker MUST NOT attempt a skill-render-and-overwrite. It re-hashes the live body: same hash → no-op; different hash → report "artifact changed externally" (rotation/edit) and update the anchor, but still do NOT overwrite.
+- Only drop the marker if the user explicitly re-takes skill ownership of the body (full re-publish with their consent).
 
 ---
 

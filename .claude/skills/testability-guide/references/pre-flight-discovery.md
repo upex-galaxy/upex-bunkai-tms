@@ -76,6 +76,18 @@ The `/qa` page is generated against THREE+ wildly different realities (observed 
 
 ---
 
+## Testability assessment (flag deficiencies)
+
+After detection, score the three layers (UI / API / DB) against the rubric in `testability-assessment.md` and emit a `testability:` flag. The page is built regardless of score — but a ⚠️ / ❌ layer fires a flag + a concrete remediation the team should act on. **Adapt to what exists; flag what's missing.**
+
+- **UI** — stable selectors (`data-testid` / role) on critical flows, esp. login? Missing → flag + recommend a selector convention.
+- **API** (highest leverage) — a **programmatic auth path** that yields a token for `Authorization: Bearer …` (a password login endpoint, a PAT issuer, or a service token, with an expiry)? Passwordless- / OAuth- / SSO-only with NO token issuer → ❌ flag + recommend the canonical pattern: **a normal user+password login PLUS an API endpoint that issues a token with expiry**, used to request as the authenticated user.
+- **DB** — a read-only QA role for direct inspection? Only a superuser → STOP per `security-rules.md` §1.
+
+Detect the FULL auth surface BEFORE flagging API: passwordless UI **+** a PAT/token issuer = ✅ (a programmatic path exists), NOT ❌. The deficiency fires only when no programmatic token path exists at all. Full rubric, levels, output format, and the remediation pattern live in `testability-assessment.md`.
+
+---
+
 ## What to NOT do
 
 - Do NOT read `.env` or any `*.local` / `*credentials*` file to discover real values. Pre-flight is read-only against committed code; enumerate env-var NAMES only. Real secrets live in the credentials artifact + the destination tool, never in the page or repo.
@@ -89,6 +101,6 @@ The `/qa` page is generated against THREE+ wildly different realities (observed 
 
 Return ONE short paragraph to the orchestrator. Example:
 
-> Detected: Next.js 15.5 App Router (TS), shadcn/ui + Tailwind + next-themes (dark/light via `dark:`), lucide-react. Auth = **custom JWT login route** `POST /api/auth/login` → `{access_token,token_type,expires_in}` (jose HS256); no Supabase, no api:login script. Docs = **Swagger UI at `/api/docs`**, spec at `/api/swagger.json`. DB = Postgres (Neon) + Drizzle; read-only `qa_student` role exists. MCP config: `.mcp.json` only (no opencode/codex/gemini), no `dbhub.toml` yet → will scaffold from `docs/mcp/dbhub.example.toml` shape. Env activation: Bun auto-loads `.env`, no dotenv-cli wrapper script, no `.envrc`. `.env.example` slots: DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL. Repos: monorepo (single repo, no separate `backend_repo`/`frontend_repo`). Existing `/guide` page found (Q4 redirect defaults yes). Playwright under `tests/e2e/` with `data-testid="login-*"`. Default branch `staging`. `.agents/project.yaml`: absent → flag.
+> Detected: Next.js 15.5 App Router (TS), shadcn/ui + Tailwind + next-themes (dark/light via `dark:`), lucide-react. Auth = **custom JWT login route** `POST /api/auth/login` → `{access_token,token_type,expires_in}` (jose HS256); no Supabase, no api:login script. Docs = **Swagger UI at `/api/docs`**, spec at `/api/swagger.json`. DB = Postgres (Neon) + Drizzle; read-only `qa_student` role exists. MCP config: `.mcp.json` only (no opencode/codex/gemini), no `dbhub.toml` yet → will scaffold from `docs/mcp/dbhub.example.toml` shape. Env activation: Bun auto-loads `.env`, no dotenv-cli wrapper script, no `.envrc`. `.env.example` slots: DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL. Repos: monorepo (single repo, no separate `backend_repo`/`frontend_repo`). Existing `/guide` page found (Q4 redirect defaults yes). Playwright under `tests/e2e/` with `data-testid="login-*"`. Default branch `staging`. `.agents/project.yaml`: absent → flag. **testability: UI ⚠️ (login lacks `data-testid`) · API ❌ (magic-link only, no token endpoint — recommend password login + token issuer with expiry) · DB ✅ (`qa_inspector_ro` present).**
 
 This paragraph plugs straight into the snapshot comment (Phase 4) and the idempotency diff (Phase 2). Every value it states is something a downstream reference will substitute — so if a field reads `<detected: none>`, the corresponding page section renders an explicit "ask your lead" gap, never a fabricated default.

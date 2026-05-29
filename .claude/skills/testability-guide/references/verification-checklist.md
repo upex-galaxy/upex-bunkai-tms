@@ -50,6 +50,8 @@ Expected: clean, OR only pre-existing warnings on files this run did not touch.
 
 If the host uses ESLint flat config + custom rules that fail on the generated page → DO NOT disable the rules. Fix the page to comply.
 
+> **MCP-config JSONC is lint-sensitive.** If this run edited `.mcp.json` / `opencode.jsonc` to wire testing MCPs, the host lint may enforce one-array-item-per-line (e.g. `antfu/consistent-list-newline`) on JSON/JSONC arrays — inline `["a", "b"]` will fail. Run the host's `lint:fix` on the edited config files (and the generated page) BEFORE this check; a pre-push `repo:check` hook will otherwise reject the push.
+
 ## 4. Browser smoke (Playwright CLI)
 
 Load `/playwright-cli`. Run:
