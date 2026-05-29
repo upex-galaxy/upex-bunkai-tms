@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { generateInviteToken, hashInviteToken } from '@lib/api/invite-tokens';
+import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { webUrl } from '@lib/urls';
 
@@ -33,7 +34,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { data, error } = await supabase
     .from('workspace_invites')
     .update({
-      token_hash: newHash,
       expires_at: newExpiresAt,
       revoked_at: null,
       accepted_at: null,
@@ -49,6 +49,16 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
   if (!data) {
     throw new ApiError('not_found', 'Invite not found or you lack permission.');
+  }
+
+  // The RLS-gated update above proved the caller is a workspace admin. Rotate
+  // the secret in the sibling table (service-role; QA/analytics cannot read it).
+  const { error: secretError } = await createAdminClient()
+    .from('workspace_invite_secrets')
+    .upsert({ invite_id: inviteId, token_hash: newHash }, { onConflict: 'invite_id' });
+
+  if (secretError) {
+    throw new ApiError('internal_error', secretError.message);
   }
 
   const acceptUrl = `${webUrl('/invites/accept')}?token=${encodeURIComponent(newToken)}`;

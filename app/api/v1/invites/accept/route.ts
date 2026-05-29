@@ -32,10 +32,25 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const tokenHash = await hashInviteToken(token);
   const admin = createAdminClient();
 
+  // The token hash lives in a sibling table QA/analytics roles cannot read.
+  // Resolve the invite id from the hash, then load the invite metadata.
+  const { data: secret, error: secretError } = await admin
+    .from('workspace_invite_secrets')
+    .select('invite_id')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+
+  if (secretError) {
+    throw new ApiError('internal_error', secretError.message);
+  }
+  if (!secret) {
+    throw new ApiError('not_found', 'Invite token is invalid.');
+  }
+
   const { data: invite, error: lookupError } = await admin
     .from('workspace_invites')
     .select('id, workspace_id, email, role, expires_at, accepted_at, revoked_at')
-    .eq('token_hash', tokenHash)
+    .eq('id', secret.invite_id)
     .maybeSingle();
 
   if (lookupError) {

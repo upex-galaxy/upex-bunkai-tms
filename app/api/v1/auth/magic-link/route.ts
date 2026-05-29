@@ -74,11 +74,22 @@ async function recordIssuance(meta: IssuanceMeta): Promise<void> {
     );
     const ipHash = meta.ip ? await sha256Hex(meta.ip) : null;
     const admin = createAdminClient();
-    await admin.from('magic_link_tokens').insert({
-      email: meta.email,
+    const { data: inserted, error } = await admin
+      .from('magic_link_tokens')
+      .insert({
+        email: meta.email,
+        user_agent: meta.userAgent?.slice(0, 512) ?? null,
+      })
+      .select('id')
+      .single();
+    if (error || !inserted) {
+      return;
+    }
+    // Secret material lives in a sibling table QA/analytics roles cannot read.
+    await admin.from('magic_link_token_secrets').insert({
+      magic_link_token_id: inserted.id,
       token_hash: tokenHash,
       ip_hash: ipHash,
-      user_agent: meta.userAgent?.slice(0, 512) ?? null,
     });
   }
   catch {

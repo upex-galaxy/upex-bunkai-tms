@@ -12,6 +12,8 @@ export type Json
     | Json[];
 
 export interface Database {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: '14.5'
   }
@@ -52,11 +54,34 @@ export interface Database {
           },
         ]
       }
+      access_token_secrets: {
+        Row: {
+          hash: string
+          token_id: string
+        }
+        Insert: {
+          hash: string
+          token_id: string
+        }
+        Update: {
+          hash?: string
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'access_token_secrets_token_id_fkey'
+            columns: ['token_id']
+            isOneToOne: true
+            referencedRelation: 'access_tokens'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       access_tokens: {
         Row: {
           created_at: string
           expires_at: string | null
-          hash: string
+          hash: string | null
           id: string
           last_used_at: string | null
           name: string | null
@@ -69,7 +94,7 @@ export interface Database {
         Insert: {
           created_at?: string
           expires_at?: string | null
-          hash: string
+          hash?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -82,7 +107,7 @@ export interface Database {
         Update: {
           created_at?: string
           expires_at?: string | null
-          hash?: string
+          hash?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -398,6 +423,32 @@ export interface Database {
           },
         ]
       }
+      magic_link_token_secrets: {
+        Row: {
+          ip_hash: string | null
+          magic_link_token_id: string
+          token_hash: string
+        }
+        Insert: {
+          ip_hash?: string | null
+          magic_link_token_id: string
+          token_hash: string
+        }
+        Update: {
+          ip_hash?: string | null
+          magic_link_token_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'magic_link_token_secrets_magic_link_token_id_fkey'
+            columns: ['magic_link_token_id']
+            isOneToOne: true
+            referencedRelation: 'magic_link_tokens'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       magic_link_tokens: {
         Row: {
           consumed_at: string | null
@@ -406,7 +457,7 @@ export interface Database {
           id: string
           ip_hash: string | null
           issued_at: string
-          token_hash: string
+          token_hash: string | null
           user_agent: string | null
         }
         Insert: {
@@ -416,7 +467,7 @@ export interface Database {
           id?: string
           ip_hash?: string | null
           issued_at?: string
-          token_hash: string
+          token_hash?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -426,7 +477,7 @@ export interface Database {
           id?: string
           ip_hash?: string | null
           issued_at?: string
-          token_hash?: string
+          token_hash?: string | null
           user_agent?: string | null
         }
         Relationships: []
@@ -581,6 +632,29 @@ export interface Database {
           },
         ]
       }
+      workspace_invite_secrets: {
+        Row: {
+          invite_id: string
+          token_hash: string
+        }
+        Insert: {
+          invite_id: string
+          token_hash: string
+        }
+        Update: {
+          invite_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_invite_secrets_invite_id_fkey'
+            columns: ['invite_id']
+            isOneToOne: true
+            referencedRelation: 'workspace_invites'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       workspace_invites: {
         Row: {
           accepted_at: string | null
@@ -592,7 +666,7 @@ export interface Database {
           invited_by_user_id: string | null
           revoked_at: string | null
           role: string
-          token_hash: string
+          token_hash: string | null
           workspace_id: string
         }
         Insert: {
@@ -605,7 +679,7 @@ export interface Database {
           invited_by_user_id?: string | null
           revoked_at?: string | null
           role?: string
-          token_hash: string
+          token_hash?: string | null
           workspace_id: string
         }
         Update: {
@@ -618,7 +692,7 @@ export interface Database {
           invited_by_user_id?: string | null
           revoked_at?: string | null
           role?: string
-          token_hash?: string
+          token_hash?: string | null
           workspace_id?: string
         }
         Relationships: [

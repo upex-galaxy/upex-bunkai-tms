@@ -52,7 +52,6 @@ export async function mintPat(args: MintPatArgs): Promise<MintedPat> {
       workspace_id: args.workspaceId ?? null,
       name: args.name ?? null,
       token_prefix: tokenPrefix,
-      hash,
       scopes: args.scopes,
       expires_at: expiresAt,
     })
@@ -61,6 +60,15 @@ export async function mintPat(args: MintPatArgs): Promise<MintedPat> {
 
   if (error || !inserted) {
     throw new ApiError('internal_error', error?.message ?? 'Failed to mint token.');
+  }
+
+  // Secret hash lives in a sibling table that QA/analytics roles cannot read.
+  const { error: secretError } = await args.admin
+    .from('access_token_secrets')
+    .insert({ token_id: inserted.id, hash });
+
+  if (secretError) {
+    throw new ApiError('internal_error', secretError.message);
   }
 
   return {

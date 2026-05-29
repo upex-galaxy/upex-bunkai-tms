@@ -65,7 +65,7 @@ export async function requireBearerToken(request: Request): Promise<BearerContex
   // both tokens out.
   const { data: candidates, error } = await admin
     .from('access_tokens')
-    .select('id, user_id, workspace_id, scopes, hash, expires_at, revoked_at')
+    .select('id, user_id, workspace_id, scopes, expires_at, revoked_at')
     .eq('token_prefix', prefix)
     .limit(5);
 
@@ -73,11 +73,24 @@ export async function requireBearerToken(request: Request): Promise<BearerContex
     throw new ApiError('unauthorized', 'Invalid token.');
   }
 
+  // The hash lives in a sibling table (access_token_secrets) so QA/analytics
+  // roles with read access to access_tokens cannot read it. Fetch the hashes
+  // for the candidate ids and compare in JS.
+  const { data: secrets, error: secretError } = await admin
+    .from('access_token_secrets')
+    .select('token_id, hash')
+    .in('token_id', candidates.map(row => row.id));
+
+  if (secretError || !secrets) {
+    throw new ApiError('unauthorized', 'Invalid token.');
+  }
+
+  const hashByToken = new Map(secrets.map(row => [row.token_id, row.hash]));
   const expectedHash = await sha256Hex(fullSecret);
   const now = Date.now();
 
   const match = candidates.find((row) => {
-    if (row.hash !== expectedHash) { return false; }
+    if (hashByToken.get(row.id) !== expectedHash) { return false; }
     if (row.revoked_at !== null) { return false; }
     if (row.expires_at !== null && Date.parse(row.expires_at) < now) { return false; }
     return true;

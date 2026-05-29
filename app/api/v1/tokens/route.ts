@@ -61,7 +61,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       workspace_id: workspaceId ?? null,
       name: name ?? null,
       token_prefix: tokenPrefix,
-      hash,
       scopes,
       expires_at: expiresAt,
     })
@@ -70,6 +69,15 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   if (error || !inserted) {
     throw new ApiError('internal_error', error?.message ?? 'Failed to create token.');
+  }
+
+  // Secret hash lives in a sibling table that QA/analytics roles cannot read.
+  const { error: secretError } = await admin
+    .from('access_token_secrets')
+    .insert({ token_id: inserted.id, hash });
+
+  if (secretError) {
+    throw new ApiError('internal_error', secretError.message);
   }
 
   return jsonResponse(

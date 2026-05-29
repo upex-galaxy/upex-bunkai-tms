@@ -48,7 +48,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       workspace_id: workspaceId,
       email: email.toLowerCase(),
       role,
-      token_hash: tokenHash,
       invited_by_user_id: user.id,
     })
     .select('id, email, role, expires_at, created_at')
@@ -59,6 +58,17 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       throw new ApiError('forbidden', 'You must be an admin or owner to invite teammates.');
     }
     throw new ApiError('internal_error', error.message);
+  }
+
+  // Token hash lives in a sibling table QA/analytics roles cannot read. The
+  // RLS-gated insert above already proved the caller is a workspace admin, so
+  // the service-role write here is authorization-safe.
+  const { error: secretError } = await createAdminClient()
+    .from('workspace_invite_secrets')
+    .insert({ invite_id: data.id, token_hash: tokenHash });
+
+  if (secretError) {
+    throw new ApiError('internal_error', secretError.message);
   }
 
   const acceptUrl = `${webUrl('/invites/accept')}?token=${encodeURIComponent(rawToken)}`;
