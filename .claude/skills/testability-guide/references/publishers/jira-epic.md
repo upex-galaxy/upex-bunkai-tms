@@ -10,7 +10,7 @@
 
 ## Why Jira Epic is the default
 
-- Native `{noformat}` blocks render a copy button on every snippet — perfect for one-credential-per-block.
+- ADF code blocks (via `md-to-adf.ts`) render a copy button on every snippet — perfect for one-credential-per-block.
 - `[ISSUE_TRACKER_TOOL]` is already wired in this boilerplate. Auth via API token in `.env`.
 - Epic-level permissions can be restricted to the QA group.
 - The Epic ID becomes the snapshot's `credentials-source` value, durable across re-runs.
@@ -106,7 +106,7 @@
 | Symptom                                              | Cause                                         | Fix                                                                                                     |
 | ---------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Tier returns `401`                                   | API token expired or missing in `.env`        | STOP, ask user to set `ATLASSIAN_API_TOKEN`, restart session. CLAUDE.md Rule #11.                       |
-| Epic created but body renders as literal `**`        | `update` step skipped after `create`          | Re-run the update flow. The fix is in the two-step dance, not in the conversion code.                   |
+| Epic created but body renders as literal `**` or `h2.`        | Published as wiki/markdown instead of ADF          | Re-run the ADF path: `md-to-adf.ts` then `acli edit --description-file`. Never hand-author wiki markup.                   |
 | Epic exists with same summary in a different project | Wrong `project_key` in `.agents/project.yaml` | Ask user to confirm key. Do NOT auto-pick.                                                              |
 | View restrictions can't be applied                   | Account lacks permission                      | Surface to user. Continue with publish — the Epic is still less risky than the page inline credentials. |
 
