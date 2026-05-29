@@ -32,7 +32,10 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import * as tui from './lib/tui.ts';
+// `tui` pulls third-party deps (boxen/cli-table3/figures/picocolors). It is
+// imported lazily inside main() so `--preflight` loads only node built-ins and
+// runs safely on a fresh clone before `bun install`.
+let tui!: typeof import('./lib/tui.ts');
 
 // ----------------------------------------------------------------------------
 // Constants
@@ -247,7 +250,7 @@ function parseEnvFile(content: string): Record<string, string> {
     if (line.length === 0 || line.startsWith('#')) { continue; }
     const eq = line.indexOf('=');
     if (eq <= 0) { continue; }
-    const key = line.slice(0, eq).trim();
+    const key = line.slice(0, eq).trim().replace(/^export\s+/, '');
     let value = line.slice(eq + 1).trim();
     if (
       (value.startsWith('"') && value.endsWith('"'))
@@ -265,7 +268,10 @@ async function detectDirenv(): Promise<DirenvState> {
   if (!version.ok) { return { installed: false }; }
 
   const status = tryRun('direnv', ['status']);
-  const envrcAllowed = /Found RC allowed true/.test(status.stdout);
+  // Modern direnv prints `Found RC allowed 0` (0 = Allow); older variants used
+  // `true`. Match the numeric enum and treat 0 (or legacy true) as allowed.
+  const allowMatch = status.stdout.match(/Found RC allowed (\d+|true)/);
+  const envrcAllowed = allowMatch !== null && (allowMatch[1] === '0' || allowMatch[1] === 'true');
 
   const candidates = ['.bashrc', '.zshrc', '.bash_profile', '.profile'];
   let hookInRc = false;
@@ -312,6 +318,14 @@ function shellHookLine(): { line: string, rc: string } {
   }
   if (shell.endsWith('fish')) {
     return { line: 'direnv hook fish | source', rc: '~/.config/fish/config.fish' };
+  }
+  if (shell.endsWith('bash')) {
+    return { line: 'eval "$(direnv hook bash)"', rc: '~/.bashrc' };
+  }
+  // No POSIX $SHELL (typical on native Windows PowerShell) — advise the pwsh hook
+  // instead of mis-instructing the user to edit ~/.bashrc.
+  if (process.platform === 'win32') {
+    return { line: 'Invoke-Expression "$(direnv hook pwsh)"', rc: '$PROFILE' };
   }
   return { line: 'eval "$(direnv hook bash)"', rc: '~/.bashrc' };
 }
@@ -536,14 +550,15 @@ function printHuman(report: DoctorReport): void {
 // ----------------------------------------------------------------------------
 
 function preflightFail(msg: string, fix: string): never {
-  tui.log.error(`Preflight failed: ${msg}`);
-  tui.log.warn(`Fix: ${fix}`);
+  // Dependency-free output — preflight may run before `bun install`, so no TUI.
+  process.stderr.write(`Preflight failed: ${msg}\n`);
+  process.stderr.write(`  Fix: ${fix}\n`);
   process.exit(1);
 }
 
 function runPreflight(): never {
-  // Print a minimal header for preflight — no full logo, just the section banner
-  tui.section('Preflight check');
+  // Dependency-free header — preflight loads no TUI (third-party) modules.
+  process.stdout.write('\nPreflight check\n');
 
   const bunVersion = process.versions.bun;
   if (!bunVersion) {
@@ -565,7 +580,7 @@ function runPreflight(): never {
       'Run `bun install` first, then re-run `bun run setup`.',
     );
   }
-  tui.log.success(`Preflight OK (Bun ${bunVersion}, deps installed)`);
+  process.stdout.write(`Preflight OK (Bun ${bunVersion}, deps installed)\n`);
   process.exit(0);
 }
 
@@ -573,21 +588,40 @@ function runPreflight(): never {
 // Entry
 // ----------------------------------------------------------------------------
 
-if (process.argv.includes('--preflight')) {
-  runPreflight();
+async function main(): Promise<void> {
+  if (process.argv.includes('--preflight')) {
+    runPreflight(); // never returns
+    return;
+  }
+
+  // Full mode needs the TUI (boxen/cli-table3/figures/picocolors). Load it lazily
+  // here — NOT at module top — so `--preflight` stays dependency-free and runs on
+  // a fresh clone before `bun install`.
+  tui = await import('./lib/tui.ts');
+
+  const asJson = process.argv.includes('--json');
+  try {
+    const report = await runDoctor();
+    if (asJson) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    }
+    else {
+      printHuman(report);
+    }
+    process.exit(report.status === 'ok' ? 0 : 1);
+  }
+  catch (err) {
+    const msg = (err as Error).message ?? String(err);
+    // Exit 2 = doctor internal error (distinct from 1 = needs-action). In --json
+    // mode emit a JSON envelope so agent consumers don't choke on a bare string.
+    if (asJson) {
+      process.stdout.write(`${JSON.stringify({ status: 'error', error: msg }, null, 2)}\n`);
+    }
+    else {
+      process.stderr.write(`Doctor failed: ${msg}\n`);
+    }
+    process.exit(2);
+  }
 }
 
-const asJson = process.argv.includes('--json');
-
-runDoctor().then((report) => {
-  if (asJson) {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  }
-  else {
-    printHuman(report);
-  }
-  process.exit(report.status === 'ok' ? 0 : 1);
-}).catch((err) => {
-  process.stderr.write(`Doctor failed: ${(err as Error).message ?? String(err)}\n`);
-  process.exit(2);
-});
+void main();

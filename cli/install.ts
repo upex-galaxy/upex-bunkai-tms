@@ -26,7 +26,7 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -319,7 +319,9 @@ function which(binary: string): string | null {
   const result = spawnSync(probe, [binary], { encoding: 'utf8' });
   if (result.status !== 0) { return null; }
   const out = result.stdout.trim();
-  return out.length > 0 ? out : null;
+  // `where` prints one match per line; take the first.
+  const first = out.split(/\r?\n/)[0]?.trim() ?? '';
+  return first.length > 0 ? first : null;
 }
 
 function tryRun(binary: string, args: string[]): { ok: boolean, stdout: string, stderr: string } {
@@ -735,10 +737,32 @@ async function ensureEnvFileExists(): Promise<void> {
 async function appendVarsToEnv(vars: Record<string, string>): Promise<void> {
   if (Object.keys(vars).length === 0) { return; }
   const existing = await readFile(ENV_PATH, 'utf8');
-  const needsNewline = existing.length > 0 && !existing.endsWith('\n');
-  const header = '\n# ===== Added by `bun run setup` =====\n';
-  const body = `${Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n')}\n`;
-  await writeFile(ENV_PATH, `${existing}${needsNewline ? '\n' : ''}${header}${body}`, 'utf8');
+  // Upsert: replace an existing `KEY=` line in place so re-runs and the acli
+  // retry loop never accumulate duplicate secret lines; append only new keys.
+  const lines = existing.split('\n');
+  const remaining: Record<string, string> = { ...vars };
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trimStart().startsWith('#')) { continue; }
+    const eq = lines[i].indexOf('=');
+    if (eq <= 0) { continue; }
+    const key = lines[i].slice(0, eq).trim();
+    if (Object.prototype.hasOwnProperty.call(remaining, key)) {
+      lines[i] = `${key}=${remaining[key]}`;
+      delete remaining[key];
+    }
+  }
+  let next = lines.join('\n');
+  const toAppend = Object.entries(remaining);
+  if (toAppend.length > 0) {
+    const needsNewline = next.length > 0 && !next.endsWith('\n');
+    const header = '\n# ===== Added by `bun run setup` =====\n';
+    const body = `${toAppend.map(([k, v]) => `${k}=${v}`).join('\n')}\n`;
+    next = `${next}${needsNewline ? '\n' : ''}${header}${body}`;
+  }
+  // .env holds secrets — write 0600 (best effort; mode is a no-op on Windows).
+  await writeFile(ENV_PATH, next, { mode: 0o600 });
+  try { await chmod(ENV_PATH, 0o600); }
+  catch { /* best effort */ }
 }
 
 async function promptForVar(name: string): Promise<string> {
@@ -1346,7 +1370,9 @@ async function setupGithubRemote(state: InstallState): Promise<void> {
   log.success(`Remote created: ${account}/${repoName}`);
 
   // Step 2: push (separate so we can distinguish failure modes)
-  const pushRes = spawnSync('git', ['push', '-u', 'origin', 'main'], {
+  const branchRes = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' });
+  const currentBranch = branchRes.status === 0 ? branchRes.stdout.trim() : 'main';
+  const pushRes = spawnSync('git', ['push', '-u', 'origin', currentBranch], {
     stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
   });
@@ -1355,7 +1381,7 @@ async function setupGithubRemote(state: InstallState): Promise<void> {
     if (pushRes.stderr) { log.dim(`  ${pushRes.stderr.trim()}`); }
     log.dim('  This usually means pre-push hooks rejected the push.');
     log.dim('  Fix the hook errors then retry:');
-    log.dim('    git push -u origin main');
+    log.dim(`    git push -u origin ${currentBranch}`);
     return;
   }
   log.success('Initial push succeeded.');
@@ -1408,8 +1434,14 @@ function reloadDotEnv(): void {
       const eq = line.indexOf('=');
       if (eq < 0) { continue; }
       const k = line.slice(0, eq).trim();
-      const v = line.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
-      if (k) { process.env[k] = v; }
+      let v = line.slice(eq + 1).trim();
+      // Strip only a *matched* surrounding quote pair — a lone quote is part of
+      // the value (e.g. a password) and must not be mangled.
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith('\'') && v.endsWith('\''))) {
+        v = v.slice(1, -1);
+      }
+      // Don't overwrite an already-populated value with an empty one from .env.
+      if (k && (v !== '' || !process.env[k])) { process.env[k] = v; }
     }
   }
   catch {
@@ -1596,6 +1628,7 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
       state.postInstall.acliAuth = 'skipped-non-interactive';
       process.stdout.write(`${tui.statusIcon('fail')} Missing ${missing.join(', ')} in environment / .env. Cannot authenticate acli non-interactively.\n`);
       process.stdout.write(`  Re-run manually: ${acliManualHint}\n`);
+      await writeInstallState(state);
       process.exit(1);
     }
     const probe = acliProbe();
@@ -1617,6 +1650,7 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
         state.postInstall.acliAuth = 'failed';
         process.stdout.write(`${tui.statusIcon('fail')} acli auth login failed (exit ${loginRes.status}).\n`);
         process.stdout.write(`  Re-run manually: ${acliManualHint}\n`);
+        await writeInstallState(state);
         process.exit(1);
       }
     }
@@ -1685,6 +1719,7 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
         state.postInstall.acliAuth = 'failed';
         process.stdout.write(`${tui.statusIcon('fail')} acli authentication failed after 3 attempts.\n`);
         process.stdout.write(`  Re-run manually: ${acliManualHint}\n`);
+        await writeInstallState(state);
         process.exit(1);
       }
     }
