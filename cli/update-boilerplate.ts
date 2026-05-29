@@ -23,7 +23,7 @@ const TEMPLATE_REPO = 'upex-galaxy/agentic-dev-boilerplate';
 const TEMP_DIR = path.join(os.tmpdir(), 'aicode-template-update');
 const VERSION_FILE = '.template/boilerplate.lock.json';
 
-const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.prettierignore'];
+const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.gitattributes'];
 const AGENTS_FRAMEWORK_FILES = ['README.md', 'jira-required.yaml'];
 const AGENTS_BOOTSTRAP_FILES = ['project.yaml', 'jira-fields.json', 'jira-workflows.json', 'jira-link-types.json'];
 const SCRIPTS_FILES = ['lint-vars.ts', 'agents-setup.ts', 'check-jira-setup.ts', 'sync-jira-issues.ts', 'sync-jira-fields.ts', 'sync-jira-workflows.ts'];
@@ -64,13 +64,14 @@ interface ParsedArgs {
   dryRun: boolean
   rollback: boolean
   auto: boolean
+  force: boolean
   updateMcpTemplate: McpAgent | null
 }
 
 const isMcpAgent = (v: string): v is McpAgent => (MCP_TEMPLATE_AGENTS as readonly string[]).includes(v);
 
 function parseArgs(args: string[]): ParsedArgs {
-  const out: ParsedArgs = { commands: [], help: false, dryRun: false, rollback: false, auto: false, updateMcpTemplate: null };
+  const out: ParsedArgs = { commands: [], help: false, dryRun: false, rollback: false, auto: false, force: false, updateMcpTemplate: null };
   const valid = new Set(COMPONENTS.map(c => c.name).concat(['all', 'help', 'rollback']));
   const aliases: Record<string, string> = { prompts: 'claude', books: 'claude', guidelines: 'context' };
   for (let i = 0; i < args.length; i++) {
@@ -79,6 +80,7 @@ function parseArgs(args: string[]): ParsedArgs {
     else if (a === '--auto') { out.auto = true; }
     else if (a === '--dry-run') { out.dryRun = true; }
     else if (a === '--rollback' || a === 'rollback') { out.rollback = true; }
+    else if (a === '--force') { out.force = true; }
     else if (a === '--update-mcp-template') {
       const n = args[i + 1];
       if (!n || !isMcpAgent(n)) {
@@ -90,7 +92,7 @@ function parseArgs(args: string[]): ParsedArgs {
     }
     else if (aliases[a]) { out.commands.push(aliases[a]); }
     else if (valid.has(a)) { out.commands.push(a); }
-    else if (!a.startsWith('-')) { tui.log.warn(`Comando desconocido: ${a}`); }
+    else if (!a.startsWith('-')) { tui.log.error(`Comando/componente desconocido: ${a}. Usa --help para ver los validos.`); process.exit(1); }
   }
   return out;
 }
@@ -352,7 +354,7 @@ function buildSink(): ReportSink {
         if (abortOnCancel<boolean>(openExternal)) {
           const tmp = path.join(os.tmpdir(), `upex-diff-${process.pid}-${Date.now()}.txt`);
           fs.writeFileSync(tmp, plain);
-          const editor = process.env.EDITOR || process.env.VISUAL || 'less';
+          const editor = process.env.EDITOR || process.env.VISUAL || (process.platform === 'win32' ? 'notepad' : 'less');
           try { spawnSync(editor, [tmp], { stdio: 'inherit' }); }
           catch { tui.log.warn(`No se pudo abrir ${editor}. Contenido en: ${tmp}`); return; }
           finally {
@@ -409,6 +411,7 @@ async function main(): Promise<void> {
     auto: parsed.auto,
     dryRun: parsed.dryRun,
     rollback: false,
+    force: parsed.force,
   });
 
   process.stdout.write(`${tui.successBox([

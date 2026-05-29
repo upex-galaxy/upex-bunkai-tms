@@ -440,9 +440,11 @@ export function classifyFile(
   }
 
   // status === 'M' from here
-  // 7. User deleted the file locally — fast-forward applies cleanly
+  // 7. User deleted the file locally. Do NOT silently resurrect it via a
+  // fast-forward write — classify as diverged so it is skipped by default
+  // (auto) or prompted (interactive); the user can opt in to restore it.
   if (!localExists) {
-    return 'clean-fastforward';
+    return 'locally-diverged';
   }
 
   // 8. Byte-compare local vs template-old blob
@@ -1443,7 +1445,11 @@ function collectComponentRelPaths(component: Component, templateDir: string): st
       walk(srcPath);
     }
     else {
-      out.push(componentPath);
+      // Normalize separators so file-list / single-file components produce the same
+      // forward-slash relPaths as the directory-walk branch above. Otherwise path.join's
+      // backslashes on Windows break the git pathspecs used to bootstrap these files,
+      // and they are silently skipped.
+      out.push(componentPath.replace(/\\/g, '/'));
     }
   }
   return out;
@@ -1506,9 +1512,11 @@ function bootstrapEntry(component: string, relPath: string, templateDir: string)
  * applyResolution writes (pre-write backup contract).
  */
 export function createBackupDir(repoRoot: string): string {
-  const dateSegment = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-  const timeSegment = new Date().toTimeString().split(' ')[0].replace(/:/g, '');
-  const backupDir = path.join(repoRoot, '.backups', `update-${dateSegment}-${timeSegment}`);
+  // Full ISO timestamp (incl. milliseconds) + pid so two runs — or the
+  // self-update backup and the apply backup within the same run — never collide
+  // on one directory and overwrite each other's pre-write backups.
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = path.join(repoRoot, '.backups', `update-${stamp}-${process.pid}`);
   fs.mkdirSync(backupDir, { recursive: true });
   return backupDir;
 }
@@ -1586,7 +1594,7 @@ export function cleanupDeprecated(
 export async function runUpdate(
   cfg: UpdaterConfig,
   sink: ReportSink,
-  opts: { auto: boolean, dryRun: boolean, rollback: boolean },
+  opts: { auto: boolean, dryRun: boolean, rollback: boolean, force?: boolean },
 ): Promise<RunSummary> {
   if (opts.rollback) {
     // Wrapper handles rollback; reaching runUpdate with rollback=true is a contract error.
@@ -1616,6 +1624,32 @@ export async function runUpdate(
     componentsAdvanced: [],
     componentsHeldBack: [],
   };
+
+  // --- DIRTY WORKING TREE GUARD (data-loss safety, pre-fetch) ---
+  // Pre-write backups live in .backups/, which is gitignored — so an
+  // uncommitted user who proceeds and later runs `git clean` / `git stash` can
+  // lose both the working copy and the backup. Refuse on a dirty tree unless
+  // --force; interactive mode offers an explicit override.
+  if (!opts.dryRun && !opts.force) {
+    let dirty = '';
+    try {
+      dirty = execSync(`git -C "${repoRoot}" status --porcelain`, { encoding: 'utf8' }).trim();
+    }
+    catch {
+      dirty = ''; // not a git repo / git unavailable — nothing to guard against
+    }
+    if (dirty) {
+      sink.warn('El árbol de trabajo tiene cambios sin commitear. Los backups del updater van a .backups/ (gitignored); un `git clean` posterior podría perderlos. Commitea o haz stash antes de actualizar.');
+      if (opts.auto) {
+        sink.error('Abortado: árbol sucio en modo --auto. Re-ejecuta con --force para forzar.');
+        return emptySummary;
+      }
+      const proceed = await sink.confirm('¿Continuar de todas formas pese a los cambios sin commitear?', false);
+      if (!proceed) {
+        return emptySummary;
+      }
+    }
+  }
 
   // --- STATE LOAD + MIGRATION (pre-Phase 1) ---
   let rawState: SyncState | null;
@@ -1741,6 +1775,17 @@ export async function runUpdate(
       }
       if (stale.length > 0) {
         sink.warn(`Self-update: actualizando ${stale.length} archivo(s) del CLI antes de continuar…`);
+        // A2: confirm before clobbering cli/. A user who customized the updater
+        // gets a chance to bail; files are backed up + restorable via --rollback,
+        // but .backups/ is gitignored, so the explicit OK matters. Auto skips.
+        if (!opts.auto) {
+          const okSelf = await sink.confirm(`Se reemplazarán ${stale.length} archivo(s) de cli/ (backup en .backups/, restaurable con --rollback). ¿Continuar?`, true);
+          if (!okSelf) {
+            sink.warn('Self-update cancelado. Re-ejecuta cuando quieras actualizar el CLI.');
+            cleanupTempDir(cfg.tempDir);
+            return emptySummary;
+          }
+        }
         // Pre-write backup contract: mirror each existing local file into a
         // fresh `.backups/update-<ts>/` before overwriting. Symmetric with
         // applyResolution's backup behavior. `bun run up --rollback` can then
@@ -1760,12 +1805,18 @@ export async function runUpdate(
         }
         sink.step(`Backup en ${path.relative(repoRoot, selfBackupDir)}`);
         sink.step('Re-ejecutando con código actualizado…');
-        const child = spawnSync('bun', [process.argv[1], ...process.argv.slice(2)], {
+        const child = spawnSync(process.execPath, [process.argv[1], ...process.argv.slice(2)], {
           stdio: 'inherit',
           env: { ...process.env, UPEX_UPDATER_REEXEC: '1' },
         });
         cleanupTempDir(cfg.tempDir);
-        process.exit(child.status ?? 0);
+        if (child.error) {
+          sink.error(`Re-exec tras self-update falló: ${child.error.message}`);
+          process.exit(1);
+        }
+        // child.status is null when the child died from a signal — treat as
+        // failure (exit 1) instead of reporting false success with `?? 0`.
+        process.exit(child.status ?? 1);
       }
     }
   }
@@ -2342,7 +2393,9 @@ export async function runUpdate(
   // Compute advancement
   const advancement = computeComponentAdvancement(
     { applied, skipped, failed },
-    bootstrapMode ? [] : [],
+    // Deferred-deletes are already represented in `skipped`, so no separate
+    // deferred list is passed (the old `bootstrapMode ? [] : []` was a no-op).
+    [],
   );
 
   const summary: RunSummary = {
