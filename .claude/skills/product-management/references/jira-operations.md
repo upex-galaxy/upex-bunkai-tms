@@ -37,8 +37,9 @@ Each row names a single Jira operation and the recommended tool tier. Pick the l
 | Update existing ADF custom field       | **`/acli` cannot edit custom fields on existing issues** — escalate immediately | Atlassian MCP, one call per field (see `jira-publishing-gotchas.md` Gotcha 2) | REST `PUT /rest/api/3/issue/{KEY}` per field — canonical workaround documented in `.claude/skills/acli/SKILL.md` §Publishing rich text |
 | Transition issue status                | `/acli` — workitem transition       | Atlassian MCP                        | REST `POST /rest/api/3/issue/{KEY}/transitions`                                   |
 | Create issue link (Dependencies / Blocks / Relates) | `/acli` — workitem link create     | Atlassian MCP                        | REST `POST /rest/api/3/issueLink`                                                 |
-| Get issue with custom fields           | `/acli` — workitem view (`--json`)  | Atlassian MCP                        | REST `GET /rest/api/3/issue/{KEY}?fields=...`                                     |
-| Bulk fetch (search by JQL)             | `/acli` — workitem search (`--paginate --json`, lowest token cost) | Atlassian MCP    | REST `GET /rest/api/3/search?jql=...`                                             |
+| Read issue **with custom fields** (single) | `bun run jira:sync-issues get <KEY>` — materializes per-field files locally (REST under the hood). **`acli view` does NOT return custom fields — never use it to read AC / Scope / OOS / Business Rules / Workflow / plans.** | Atlassian MCP | REST `GET /rest/api/3/issue/{KEY}?fields=...` |
+| Read issues **with custom fields** (batch) | `bun run jira:sync-issues jql "<JQL>"` — materializes every match locally with the same per-field strategy | Atlassian MCP | REST `POST /rest/api/3/search/jql` |
+| Read standard fields / structure only  | `/acli` — workitem view / search (`--json`, lowest token cost) | Atlassian MCP | REST `GET /rest/api/3/issue/{KEY}` |
 
 Cells describe **what the operation is**, not **how to run it**. For literal command shapes, load the owning tool skill.
 
@@ -66,6 +67,35 @@ When the primary tier is unavailable or fails, follow this protocol:
    - Issue-link fallback from `dependencies` to symmetric `relates` — direction is lost. The workflow MUST tell the user this happened and recommend creating the canonical `Dependencies` link type in the workspace.
    - Status transition skipped because the slug resolves to an absent workspace status — workflow MUST report `transition_skipped: <slug>` and continue without halting.
 4. **Halt only on hard failures**, not on tier degradation. A hard failure is: all three tiers exhausted, or a write operation that cannot be retried safely.
+
+---
+
+## Reading & materializing issue state (canonical path)
+
+The methodology reads Jira issue state through the local sync script, NOT through `acli view`:
+
+- **`bun run jira:sync-issues get <KEY>`** — fetch ONE issue (any type) with ALL custom fields and materialize it locally. Hybrid output: `story.md` index + one Markdown file per rich-text field (`acceptance-criteria.md`, `business-rules.md`, `scope.md`, `out-of-scope.md`, `workflow.md`, `mockup.md`, `implementation-plan.md`, `acceptance-test-plan.md`, `acceptance-test-results.md`; epics also get `feature-implementation-plan.md` + `feature-test-plan.md`). A field file is written only when its Jira field is non-empty.
+- **`bun run jira:sync-issues jql "<JQL>"`** — fetch EVERY issue matching a raw JQL and materialize each the same way (batch read).
+
+**Why not `/acli` view:** its default projection omits every `customfield_*`, so reading AC / Scope / etc. through it returns `null` — looking empty even when the field is richly populated. Empirically-confirmed trap (see the `/acli` skill gotchas). Custom-field reads MUST go through the sync script (or REST `GET /rest/api/3/issue/{KEY}?fields=...`).
+
+**No local authoring.** Do NOT hand-write `.context/PBI/**` content (epic.md / story.md / per-field files / sprint-sequence.md). All issue content lives in Jira; the sync script is the one tool that materializes it locally. Author in Jira (create / REST PUT), then `get` / `jql` / `pull` to refresh the local cache.
+
+### Auditing an already-populated story (gap-safe review)
+
+When asked to "review / verify a story's fields are complete" (the story exists and may already be fully populated):
+
+1. `bun run jira:sync-issues get <KEY>` → read the materialized per-field files (NOT `acli view`).
+2. Run the Pre-flight voice & format gate (`SKILL.md`) against each field: persona (I19), business voice (I15), AC fenced per-scenario as ` ```gherkin ` (I17), no description dedup (I3), source-spec format (I2).
+3. Only the violating field gets a surgical rewrite via REST PUT (one field = one PUT). Never rewrite clean fields.
+
+### Batch creation (many stories, many rich fields)
+
+For creating N stories each with M rich-text custom fields, follow the **Batch pattern** in the `acli` skill (`.claude/skills/acli/SKILL.md` → "Publishing rich text → Batch pattern"): a generator converts each field's Markdown to ADF via `scripts/md-to-adf.ts`, writes one `create --from-json` payload per story (custom fields under `additionalAttributes`), and a loop runs `acli create`. Editing custom fields on an EXISTING issue still requires REST PUT — `acli edit` rejects custom fields.
+
+### Not handled here — Sprint assignment is MANUAL
+
+Assigning issues to a Jira **Sprint** object is intentionally NOT automated: `acli` cannot add an issue to a sprint (`JRACLOUD-97107`), and there is often a meaningful wait between sprints that a human decides. The methodology computes **Execution Sprints** (dependency order, see `sprint-sequencing.md`) but a human assigns the Jira Sprint via the board UI (or REST agile API) when ready. Do not attempt to agentically create/assign Sprint objects.
 
 ---
 

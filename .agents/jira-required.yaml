@@ -104,6 +104,17 @@ required:
     used_by:
       - sprint-development/references/feature-plan.md
 
+  feature_test_plan:
+    name: 🧪 Feature Test Plan (QA)
+    type: string
+    description: |
+      Epic-level QA test plan (test strategy + coverage approach for the whole
+      feature/epic). Counterpart to feature_implementation_plan (Dev). Synced to
+      local by `jira:sync-issues` as `feature-test-plan.md` inside the epic folder.
+    used_by:
+      - agentic-qa-boilerplate
+      - sync-jira-issues
+
   spec_implementation_plan:
     name: Spec Implementation Plan (Dev)🛠️
     type: string
