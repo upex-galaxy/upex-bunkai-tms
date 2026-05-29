@@ -81,7 +81,6 @@ export interface Database {
         Row: {
           created_at: string
           expires_at: string | null
-          hash: string | null
           id: string
           last_used_at: string | null
           name: string | null
@@ -94,7 +93,6 @@ export interface Database {
         Insert: {
           created_at?: string
           expires_at?: string | null
-          hash?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -107,7 +105,6 @@ export interface Database {
         Update: {
           created_at?: string
           expires_at?: string | null
-          hash?: string | null
           id?: string
           last_used_at?: string | null
           name?: string | null
@@ -455,9 +452,7 @@ export interface Database {
           email: string
           expires_at: string
           id: string
-          ip_hash: string | null
           issued_at: string
-          token_hash: string | null
           user_agent: string | null
         }
         Insert: {
@@ -465,9 +460,7 @@ export interface Database {
           email: string
           expires_at?: string
           id?: string
-          ip_hash?: string | null
           issued_at?: string
-          token_hash?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -475,9 +468,7 @@ export interface Database {
           email?: string
           expires_at?: string
           id?: string
-          ip_hash?: string | null
           issued_at?: string
-          token_hash?: string | null
           user_agent?: string | null
         }
         Relationships: []
@@ -666,7 +657,6 @@ export interface Database {
           invited_by_user_id: string | null
           revoked_at: string | null
           role: string
-          token_hash: string | null
           workspace_id: string
         }
         Insert: {
@@ -679,7 +669,6 @@ export interface Database {
           invited_by_user_id?: string | null
           revoked_at?: string | null
           role?: string
-          token_hash?: string | null
           workspace_id: string
         }
         Update: {
@@ -692,7 +681,6 @@ export interface Database {
           invited_by_user_id?: string | null
           revoked_at?: string | null
           role?: string
-          token_hash?: string | null
           workspace_id?: string
         }
         Relationships: [
