@@ -325,8 +325,8 @@ export const qaConfig: QaConfig = {
     auth: ['Supabase cookie', 'Bearer PAT'],
   },
   credentialsSource: {
-    label: 'Jira Epic BK-29',
-    url: 'https://upexgalaxy67.atlassian.net/browse/BK-29',
+    label: 'Jira Epic',
+    url: 'https://jira.upexgalaxy.com/browse/BK-29',
   },
   docs: {
     ui: 'scalar',
