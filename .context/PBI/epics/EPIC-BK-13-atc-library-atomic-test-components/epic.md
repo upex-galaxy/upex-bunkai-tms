@@ -3,7 +3,7 @@
 **Jira Key:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 0
+**Total Story Points:** 5
 
 ---
 
@@ -66,7 +66,7 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18) | ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions) | - | Medium | Shift-Left QA |
+| [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18) | ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions) | 5 | Medium | Ready For Dev |
 | [BK-19](https://upexgalaxy67.atlassian.net/browse/BK-19) | ATC creation UI (multi-step builder + assertion builder) | - | Medium | Shift-Left QA |
 | [BK-20](https://upexgalaxy67.atlassian.net/browse/BK-20) | ATC search + autocomplete (FTS + ts_rank + recency decay) | - | Medium | Shift-Left QA |
 | [BK-21](https://upexgalaxy67.atlassian.net/browse/BK-21) | ATC edit propagation (cascade replace, version bump, affected_test_ids) | - | Medium | Shift-Left QA |
@@ -78,7 +78,7 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/21/2026
+- **Updated:** 5/27/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, wave-2
@@ -86,4 +86,4 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-21T05:14:29.686Z_
+_Last sync: 2026-05-29T01:06:50.122Z_
