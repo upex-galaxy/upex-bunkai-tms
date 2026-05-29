@@ -19,4 +19,4 @@
 8. On any failure: redirect to /login with error code + magic-link fallback CTA.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.119Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.078Z_

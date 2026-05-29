@@ -1,9 +1,9 @@
-# As a QA Engineer, I want to open a Test and see every chained ATC expanded in order with its steps and assertions so that I can review exactly what will be validated before running it.
+# TMS-Test View | View a test with all chained ATCs expanded
 
 **Jira Key:** [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32)
 **Epic:** [BK-24](https://upexgalaxy67.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -49,18 +49,18 @@
 
 ### Story (1)
 
-- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): As a QA Engineer I want to assemble a Test by chaining ATCs from my workspace so that I can run the validations together when verifying a User Story _(Shift-Left QA)_
+- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.907Z_
+_Last sync: 2026-05-29T07:23:49.010Z_

@@ -1,4 +1,4 @@
-# Invite a teammate to a Workspace with role assignment
+# TMS-Workspace | Invite a teammate with a role
 
 **Jira Key:** [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5)
 **Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
@@ -77,7 +77,7 @@ Implements ***FR-003***.
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/27/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, shift-left-2026-05-27, shift-left-reviewed, tenancy, wave-1
@@ -85,4 +85,4 @@ Implements ***FR-003***.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.123Z_
+_Last sync: 2026-05-29T07:23:44.080Z_

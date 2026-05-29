@@ -13,4 +13,4 @@
 - Full-text search indexing trigger — covered by FR-011 (search story owns the tsvector column setup)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:50.123Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.905Z_

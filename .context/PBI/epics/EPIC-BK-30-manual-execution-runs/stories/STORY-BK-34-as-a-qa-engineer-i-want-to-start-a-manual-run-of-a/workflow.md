@@ -10,4 +10,4 @@
 6. Teammates viewing the Test see the new run appear in its history, tagged with its executor mode.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.240Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.466Z_

@@ -1,4 +1,4 @@
-# Switch between Workspaces I belong to
+# TMS-Workspace | Switch between workspaces
 
 **Jira Key:** [BK-6](https://upexgalaxy67.atlassian.net/browse/BK-6)
 **Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
@@ -66,7 +66,7 @@ Implements ***FR-004***.
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/27/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** mvp, tenancy, wave-1
@@ -74,4 +74,4 @@ Implements ***FR-004***.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.124Z_
+_Last sync: 2026-05-29T07:23:44.080Z_

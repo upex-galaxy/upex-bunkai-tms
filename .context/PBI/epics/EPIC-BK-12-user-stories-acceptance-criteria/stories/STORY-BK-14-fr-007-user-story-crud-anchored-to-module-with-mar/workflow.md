@@ -9,4 +9,4 @@
 5. Removing a Story archives it — it leaves the active list but is retained.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:48.957Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.778Z_

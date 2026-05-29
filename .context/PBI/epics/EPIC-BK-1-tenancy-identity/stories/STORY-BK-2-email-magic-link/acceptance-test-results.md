@@ -62,4 +62,4 @@ TC-07/12/13 (magic-link TTL boundary at 14:59 / 15:01 / expiry) need a clock-moc
 GO-with-debt. All 10 P1 PASS; no P1 FAIL remains. Transition fired: qa*sign*off (in*test to qa*approved). QA sign-off by Sprint Testing 2026-05-27, against URL override https://upexbunkai.vercel.app.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.117Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.077Z_

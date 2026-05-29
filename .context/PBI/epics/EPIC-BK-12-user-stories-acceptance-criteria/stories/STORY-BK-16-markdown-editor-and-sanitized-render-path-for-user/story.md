@@ -1,4 +1,4 @@
-# Markdown editor and sanitized render path for User Story and Acceptance Criterion bodies
+# Markdown Editor | Write and preview Markdown safely
 
 **Jira Key:** [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16)
 **Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
@@ -43,7 +43,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** markdown, mvp, ux, wave-2
@@ -51,4 +51,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:48.960Z_
+_Last sync: 2026-05-29T07:23:46.780Z_

@@ -65,10 +65,10 @@ MVP runs on the built stack: ***Next.js 15 App Router**** (API routes under `app
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) | User Story CRUD anchored to Module (Markdown body, optional Jira external_id) | - | Medium | Shift-Left QA |
-| [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) | Acceptance Criterion CRUD with position rebalance and ready_to_test gating | - | Medium | Shift-Left QA |
-| [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) | Markdown editor and sanitized render path for User Story and Acceptance Criterion bodies | - | Medium | Shift-Left QA |
-| [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) | Async one-way Jira import by JQL (ADF → Markdown, idempotency on external_id) | - | Medium | Ready For Dev |
+| [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) | TMS-US | Manage user stories anchored to a module | - | Medium | Shift-Left QA |
+| [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) | TMS-AC | Manage criteria under a user story | - | Medium | Shift-Left QA |
+| [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) | Markdown Editor | Write and preview Markdown safely | - | Medium | Shift-Left QA |
+| [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) | Jira Import | Pull Jira issues by JQL | - | Medium | Ready For Dev |
 
 ---
 
@@ -83,4 +83,4 @@ MVP runs on the built stack: ***Next.js 15 App Router**** (API routes under `app
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:48.956Z_
+_Last sync: 2026-05-29T07:23:46.775Z_

@@ -169,4 +169,4 @@ Q4 [BLOCKER - G8]: OAuth callback route strategy — extend app/auth/callback/ro
 Q5 [BLOCKER - G3]: Workspace bootstrap failure behavior — (a) rollback session + redirect to /login?error=WORKSPACE*CREATION*FAILED, (b) persist session + onboarding screen, or (c) lazy workspace creation on first /home load?
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.120Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.078Z_

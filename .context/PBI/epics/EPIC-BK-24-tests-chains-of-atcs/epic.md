@@ -50,10 +50,10 @@ See `.context/SRS/functional-specs.md`.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) | As a QA Engineer I want to assemble a Test by chaining ATCs from my workspace so that I can run the validations together when verifying a User Story | 1 | Medium | Shift-Left QA |
-| [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28) | As a QA Engineer I want to reorder the ATCs inside an existing Test so that I can fix the sequence after seeing it does not match the User Story flow | 1 | Medium | Shift-Left QA |
-| [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32) | As a QA Engineer, I want to open a Test and see every chained ATC expanded in order with its steps and assertions so that I can review exactly what will be validated before running it. | 1 | Medium | Shift-Left QA |
-| [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33) | As a QA Engineer, I want to assign tags to a Test, including the reserved smoke, sanity, and regression tags, so that my Tests are grouped and filtered into the right suites. | 1 | Medium | Shift-Left QA |
+| [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 1 | Medium | Backlog |
+| [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 1 | Medium | Backlog |
+| [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 1 | Medium | Backlog |
+| [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 1 | Medium | Backlog |
 
 ---
 
@@ -68,4 +68,4 @@ See `.context/SRS/functional-specs.md`.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.902Z_
+_Last sync: 2026-05-29T07:23:49.007Z_

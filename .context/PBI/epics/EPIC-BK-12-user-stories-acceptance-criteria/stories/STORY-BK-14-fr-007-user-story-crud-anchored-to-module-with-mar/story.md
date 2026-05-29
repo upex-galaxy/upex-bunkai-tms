@@ -1,4 +1,4 @@
-# User Story CRUD anchored to Module (Markdown body, optional Jira external_id)
+# TMS-US | Manage user stories anchored to a module
 
 **Jira Key:** [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14)
 **Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
@@ -43,7 +43,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Samuel Amonzabel
 - **Labels:** mvp, user-stories, wave-2
@@ -51,4 +51,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:48.957Z_
+_Last sync: 2026-05-29T07:23:46.778Z_

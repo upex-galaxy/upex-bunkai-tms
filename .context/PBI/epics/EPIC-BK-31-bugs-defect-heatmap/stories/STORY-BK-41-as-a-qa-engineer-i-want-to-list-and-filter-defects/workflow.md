@@ -9,4 +9,4 @@
 5. If nothing matches, she sees a clear "no defects match" message and zeroed counts, so she knows the area is clean rather than wondering if the view broke.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:53.838Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.059Z_

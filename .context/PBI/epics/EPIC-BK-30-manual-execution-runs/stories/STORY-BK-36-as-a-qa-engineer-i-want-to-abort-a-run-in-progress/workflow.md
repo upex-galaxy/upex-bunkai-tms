@@ -9,4 +9,4 @@
 5. The aborted run, with its reason, stays in the Test's run history; trying to abort an already-closed run is rejected.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.242Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.467Z_

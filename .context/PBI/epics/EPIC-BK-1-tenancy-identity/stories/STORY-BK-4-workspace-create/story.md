@@ -1,4 +1,4 @@
-# Create a Workspace
+# TMS-Workspace | Create a workspace
 
 **Jira Key:** [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4)
 **Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
@@ -10,6 +10,12 @@
 ---
 
 ## Overview
+
+## User story
+
+***As a*** authenticated user
+***I want to*** create a Workspace, with a slug auto-derived from the name and myself enrolled as its owner
+***So that*** I have a tenant to organize my team's projects and testing work
 
 ## QA Refinements (Shift-Left Analysis) — BK-4
 
@@ -67,7 +73,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/27/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, shift-left-2026-05-27, shift-left-reviewed, tenancy, wave-1
@@ -75,4 +81,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.121Z_
+_Last sync: 2026-05-29T07:23:44.079Z_

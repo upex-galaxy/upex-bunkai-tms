@@ -1,9 +1,9 @@
-# As a QA Engineer, I want to assign tags to a Test, including the reserved smoke, sanity, and regression tags, so that my Tests are grouped and filtered into the right suites.
+# TMS-Test Tags | Assign reserved and custom tags to a test
 
 **Jira Key:** [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33)
 **Epic:** [BK-24](https://upexgalaxy67.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -49,18 +49,18 @@
 
 ### Story (1)
 
-- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): As a QA Engineer I want to assemble a Test by chaining ATCs from my workspace so that I can run the validations together when verifying a User Story _(Shift-Left QA)_
+- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.908Z_
+_Last sync: 2026-05-29T07:23:49.011Z_

@@ -9,4 +9,4 @@
 5. For a long history she loads older runs beyond the first page, then clears the filter to return to the full newest-first list.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.243Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.467Z_

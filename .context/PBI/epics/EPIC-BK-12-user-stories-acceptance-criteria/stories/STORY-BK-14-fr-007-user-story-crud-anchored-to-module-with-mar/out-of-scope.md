@@ -8,4 +8,4 @@
 - Two-way sync of edits back to Jira
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:48.957Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.777Z_

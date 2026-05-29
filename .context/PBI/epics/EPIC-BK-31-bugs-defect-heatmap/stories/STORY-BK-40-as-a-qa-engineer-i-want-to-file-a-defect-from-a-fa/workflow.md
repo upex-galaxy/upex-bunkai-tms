@@ -10,4 +10,4 @@
 6. Alternatively, outside any run she opens the defects area, clicks "New defect", types a title, picks a module and severity, and saves to capture a defect she spotted ad hoc.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:53.836Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.059Z_

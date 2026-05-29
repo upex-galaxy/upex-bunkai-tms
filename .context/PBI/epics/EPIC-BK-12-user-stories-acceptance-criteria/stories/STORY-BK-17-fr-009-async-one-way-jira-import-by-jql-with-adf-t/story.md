@@ -1,4 +1,4 @@
-# Async one-way Jira import by JQL (ADF → Markdown, idempotency on external_id)
+# Jira Import | Pull Jira issues by JQL
 
 **Jira Key:** [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17)
 **Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
@@ -57,7 +57,7 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** integration, jira-import, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2
@@ -65,4 +65,4 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:48.961Z_
+_Last sync: 2026-05-29T07:23:46.781Z_

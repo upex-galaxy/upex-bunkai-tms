@@ -11,4 +11,4 @@
 - Invite list endpoint GET /api/v1/workspaces/{id}/invites (pending invites)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.122Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.079Z_

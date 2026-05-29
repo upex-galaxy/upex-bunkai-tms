@@ -9,4 +9,4 @@
 5. When an AI Test Agent or a CI pipeline finishes a run instead, the same verdict recording and skipped-step handling apply, producing identical run data.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.244Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.468Z_

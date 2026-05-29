@@ -1,9 +1,9 @@
-# As a QA Engineer, I want to list and filter defects by module, status and severity with counts so that I can focus on a given area.
+# TMS-Defect List | List and filter defects by module, status, severity
 
 **Jira Key:** [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41)
 **Epic:** [BK-31](https://upexgalaxy67.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -47,18 +47,18 @@
 
 ### Story (1)
 
-- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): As a QA Engineer, I want to file a defect from a failing run step with module, severity, steps and evidence pre-filled so that the defect is captured without retyping. _(Shift-Left QA)_
+- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:53.838Z_
+_Last sync: 2026-05-29T07:23:52.059Z_

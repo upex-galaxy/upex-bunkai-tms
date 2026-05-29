@@ -51,4 +51,4 @@ Scenario: Removing a User Story archives it
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:48.956Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.777Z_

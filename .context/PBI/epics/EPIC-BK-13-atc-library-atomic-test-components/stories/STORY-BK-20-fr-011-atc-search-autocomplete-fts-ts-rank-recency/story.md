@@ -1,4 +1,4 @@
-# ATC search + autocomplete (FTS + ts_rank + recency decay)
+# TMS-ATC Search | Search and autocomplete ATCs
 
 **Jira Key:** [BK-20](https://upexgalaxy67.atlassian.net/browse/BK-20)
 **Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
@@ -43,7 +43,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** atc, fts, mvp, search, wave-2
@@ -51,4 +51,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.125Z_
+_Last sync: 2026-05-29T07:23:47.909Z_

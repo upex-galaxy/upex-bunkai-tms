@@ -33,4 +33,4 @@ Then a workspace.created event is emitted on the realtime channel for the owner
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.120Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.079Z_

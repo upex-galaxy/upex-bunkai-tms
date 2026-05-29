@@ -1,4 +1,4 @@
-# Rename and soft-delete a Module (with cascade)
+# TMS-Module | Rename and soft-delete a module
 
 **Jira Key:** [BK-10](https://upexgalaxy67.atlassian.net/browse/BK-10)
 **Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
@@ -43,7 +43,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** hierarchy, mvp, wave-1
@@ -51,4 +51,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:47.774Z_
+_Last sync: 2026-05-29T07:23:45.656Z_

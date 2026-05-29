@@ -107,11 +107,11 @@ Per-story acceptance criteria live in Gherkin form on each child story. Edge cas
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2) | Sign up and sign in with email (magic-link) | 5 | Medium | QA Approved |
-| [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3) | Sign up and sign in via OAuth (GitHub / Google) | 8 | Medium | Ready For Dev |
-| [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4) | Create a Workspace | - | Medium | Ready For QA |
-| [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5) | Invite a teammate to a Workspace with role assignment | - | Medium | Ready For QA |
-| [BK-6](https://upexgalaxy67.atlassian.net/browse/BK-6) | Switch between Workspaces I belong to | - | Medium | Ready For QA |
+| [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2) | Authentication | Sign up and sign in with email magic-link | 5 | Medium | QA Approved |
+| [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3) | Authentication | Sign up and sign in via OAuth (GitHub / Google) | 8 | Medium | Ready For Dev |
+| [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4) | TMS-Workspace | Create a workspace | - | Medium | Ready For QA |
+| [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5) | TMS-Workspace | Invite a teammate with a role | - | Medium | Ready For QA |
+| [BK-6](https://upexgalaxy67.atlassian.net/browse/BK-6) | TMS-Workspace | Switch between workspaces | - | Medium | Ready For QA |
 
 ---
 
@@ -126,4 +126,4 @@ Per-story acceptance criteria live in Gherkin form on each child story. Edge cas
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.113Z_
+_Last sync: 2026-05-29T07:23:44.072Z_

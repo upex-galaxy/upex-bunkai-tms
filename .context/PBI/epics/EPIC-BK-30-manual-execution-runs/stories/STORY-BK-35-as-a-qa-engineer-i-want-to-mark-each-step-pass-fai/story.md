@@ -1,9 +1,9 @@
-# As a QA Engineer, I want to mark each step pass, fail, or block with notes and evidence so that ATC verdicts and run progress update as I execute.
+# TMS-Run Execution | Mark each step pass, fail, or block
 
 **Jira Key:** [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35)
 **Epic:** [BK-30](https://upexgalaxy67.atlassian.net/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -47,19 +47,19 @@
 
 ### Storys (2)
 
-- [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34): As a QA Engineer, I want to start a manual run of a Test in a chosen environment so that I get a fresh step-by-step checklist to execute. _(Shift-Left QA)_
-- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): As a QA Engineer, I want to file a defect from a failing run step with module, severity, steps and evidence pre-filled so that the defect is captured without retyping. _(Shift-Left QA)_
+- [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:52.241Z_
+_Last sync: 2026-05-29T07:23:51.467Z_

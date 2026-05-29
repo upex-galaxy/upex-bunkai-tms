@@ -10,4 +10,4 @@
 - Clear all filters to restore the full project-wide list and totals
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.243Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.468Z_

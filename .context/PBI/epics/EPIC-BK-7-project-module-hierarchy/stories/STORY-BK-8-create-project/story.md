@@ -1,4 +1,4 @@
-# Create a Project inside a Workspace
+# TMS-Project | Create a project inside a workspace
 
 **Jira Key:** [BK-8](https://upexgalaxy67.atlassian.net/browse/BK-8)
 **Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
@@ -67,7 +67,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** hierarchy, mvp, shift-left-2026-05-28, shift-left-reviewed, wave-1
@@ -75,4 +75,4 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:47.772Z_
+_Last sync: 2026-05-29T07:23:45.654Z_

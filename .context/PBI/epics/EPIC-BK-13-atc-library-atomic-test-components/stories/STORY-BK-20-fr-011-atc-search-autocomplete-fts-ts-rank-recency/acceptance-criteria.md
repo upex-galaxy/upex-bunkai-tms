@@ -45,4 +45,4 @@ Scenario: Results never include ATCs from another workspace
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:50.125Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.908Z_

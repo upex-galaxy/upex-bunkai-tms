@@ -10,4 +10,4 @@
 6. She repeats to build out the product-area structure before anchoring User Stories and ATCs to it.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:47.773Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:45.655Z_

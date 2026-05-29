@@ -1,4 +1,4 @@
-# ATC edit propagation (cascade replace, version bump, affected_test_ids)
+# TMS-ATC Propagation | Cascade ATC edits to all tests
 
 **Jira Key:** [BK-21](https://upexgalaxy67.atlassian.net/browse/BK-21)
 **Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
@@ -43,7 +43,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** atc, mvp, propagation, wave-2
@@ -51,4 +51,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.126Z_
+_Last sync: 2026-05-29T07:23:47.910Z_

@@ -9,4 +9,4 @@
 - Apply the same finish handling whether a human, an AI Test Agent, or a CI pipeline finishes the run
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:52.244Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.468Z_

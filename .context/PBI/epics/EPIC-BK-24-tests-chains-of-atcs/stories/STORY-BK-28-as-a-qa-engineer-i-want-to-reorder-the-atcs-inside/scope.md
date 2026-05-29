@@ -13,4 +13,4 @@
 - Concurrent-edit safety: if a teammate reordered the same Test in between, Elena's stale save is blocked with a clear message instead of silently overwriting
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:50.904Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:49.009Z_

@@ -25,12 +25,12 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34) | As a QA Engineer, I want to start a manual run of a Test in a chosen environment so that I get a fresh step-by-step checklist to execute. | 1 | Medium | Shift-Left QA |
-| [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35) | As a QA Engineer, I want to mark each step pass, fail, or block with notes and evidence so that ATC verdicts and run progress update as I execute. | 1 | Medium | Shift-Left QA |
-| [BK-36](https://upexgalaxy67.atlassian.net/browse/BK-36) | As a QA Engineer, I want to abort a run in progress with a reason so that remaining steps are skipped and the run is closed as aborted. | 1 | Medium | Shift-Left QA |
-| [BK-37](https://upexgalaxy67.atlassian.net/browse/BK-37) | As a QA Engineer, I want to see a Test's past runs newest first, filterable by outcome so that I can compare results and spot flaky areas. | 1 | Medium | Shift-Left QA |
-| [BK-38](https://upexgalaxy67.atlassian.net/browse/BK-38) | As a QA Lead, I want to filter all project runs by date, module, status, and executor type with pass/fail totals so that I can report what we executed quickly. | 1 | Medium | Shift-Left QA |
-| [BK-39](https://upexgalaxy67.atlassian.net/browse/BK-39) | As a QA Engineer, I want to finish a run with a final passed or failed verdict so that any still-pending steps are clearly marked skipped. | 1 | Medium | Shift-Left QA |
+| [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34) | TMS-Run Execution | Start a manual run in a chosen environment | 1 | Medium | Backlog |
+| [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35) | TMS-Run Execution | Mark each step pass, fail, or block | 1 | Medium | Backlog |
+| [BK-36](https://upexgalaxy67.atlassian.net/browse/BK-36) | TMS-Run Execution | Abort a run in progress with a reason | 1 | Medium | Backlog |
+| [BK-37](https://upexgalaxy67.atlassian.net/browse/BK-37) | TMS-Run History | View a test's past runs, filterable by outcome | 1 | Medium | Backlog |
+| [BK-38](https://upexgalaxy67.atlassian.net/browse/BK-38) | TMS-Run Reporting | Filter project runs with pass/fail totals | 1 | Medium | Backlog |
+| [BK-39](https://upexgalaxy67.atlassian.net/browse/BK-39) | TMS-Run Execution | Finish a run with a final verdict | 1 | Medium | Backlog |
 
 ---
 
@@ -44,4 +44,4 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:52.238Z_
+_Last sync: 2026-05-29T07:23:51.465Z_

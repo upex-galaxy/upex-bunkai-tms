@@ -10,4 +10,4 @@
 6. On save, the ATC is created and becomes available to chain into Tests.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:50.125Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.908Z_

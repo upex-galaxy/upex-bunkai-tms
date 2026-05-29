@@ -1,9 +1,9 @@
-# As a QA Engineer, I want to file a defect from a failing run step with module, severity, steps and evidence pre-filled so that the defect is captured without retyping.
+# TMS-Defect Filing | File a defect from a failing run step
 
 **Jira Key:** [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40)
 **Epic:** [BK-31](https://upexgalaxy67.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -48,21 +48,21 @@
 
 ### Storys (4)
 
-- [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35): As a QA Engineer, I want to mark each step pass, fail, or block with notes and evidence so that ATC verdicts and run progress update as I execute. _(Shift-Left QA)_
-- [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41): As a QA Engineer, I want to list and filter defects by module, status and severity with counts so that I can focus on a given area. _(Shift-Left QA)_
-- [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42): As a QA Lead, I want to view a defect heatmap with count and week-over-week trend per module so that I can see at a glance where quality is degrading. _(Shift-Left QA)_
-- [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43): As a QA Lead, I want defects filed in Bunkai to sync automatically and one-way to the external tracker so that engineering works them in their existing tool. _(Shift-Left QA)_
+- [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
+- [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41): TMS-Defect List | List and filter defects by module, status, severity _(Backlog)_
+- [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42): TMS-Defect Heatmap | View count and week-over-week trend per module _(Backlog)_
+- [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:53.836Z_
+_Last sync: 2026-05-29T07:23:52.059Z_

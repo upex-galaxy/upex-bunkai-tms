@@ -8,4 +8,4 @@
 4. She uses this to judge impact before editing or removing the ATC.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:50.127Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.911Z_

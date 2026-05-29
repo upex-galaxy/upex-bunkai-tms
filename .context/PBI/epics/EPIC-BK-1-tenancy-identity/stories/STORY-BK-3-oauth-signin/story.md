@@ -1,4 +1,4 @@
-# Sign up and sign in via OAuth (GitHub / Google)
+# Authentication | Sign up and sign in via OAuth (GitHub / Google)
 
 **Jira Key:** [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3)
 **Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
@@ -142,7 +142,7 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** auth, mvp, shift-left-2026-05-26, shift-left-reviewed, wave-1
@@ -150,4 +150,4 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.120Z_
+_Last sync: 2026-05-29T07:23:44.079Z_

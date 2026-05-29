@@ -9,4 +9,4 @@
 5. If invalid (for example moving a Module onto its own descendant), she sees the reason and nothing changes.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:47.775Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:45.656Z_

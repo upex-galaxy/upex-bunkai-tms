@@ -8,4 +8,4 @@
 - Workspace logo / branding — Phase 2
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:46.121Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.079Z_

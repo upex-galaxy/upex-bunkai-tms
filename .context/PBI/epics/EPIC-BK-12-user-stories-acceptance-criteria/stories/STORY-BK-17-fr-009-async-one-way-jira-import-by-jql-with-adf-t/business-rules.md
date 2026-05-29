@@ -11,4 +11,4 @@
 - the worker honors Jira rate limits (429 -> exponential backoff, max 5 retries)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:48.960Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.781Z_

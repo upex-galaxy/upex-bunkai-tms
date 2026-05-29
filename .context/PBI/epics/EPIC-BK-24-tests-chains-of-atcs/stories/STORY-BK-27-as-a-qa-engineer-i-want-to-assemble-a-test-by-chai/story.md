@@ -1,9 +1,9 @@
-# As a QA Engineer I want to assemble a Test by chaining ATCs from my workspace so that I can run the validations together when verifying a User Story
+# TMS-Test Builder | Assemble a test by chaining ATCs
 
 **Jira Key:** [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27)
 **Epic:** [BK-24](https://upexgalaxy67.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
 
@@ -46,17 +46,17 @@
 
 ### Storys (4)
 
-- [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28): As a QA Engineer I want to reorder the ATCs inside an existing Test so that I can fix the sequence after seeing it does not match the User Story flow _(Shift-Left QA)_
-- [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32): As a QA Engineer, I want to open a Test and see every chained ATC expanded in order with its steps and assertions so that I can review exactly what will be validated before running it. _(Shift-Left QA)_
-- [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33): As a QA Engineer, I want to assign tags to a Test, including the reserved smoke, sanity, and regression tags, so that my Tests are grouped and filtered into the right suites. _(Shift-Left QA)_
-- [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34): As a QA Engineer, I want to start a manual run of a Test in a chosen environment so that I get a fresh step-by-step checklist to execute. _(Shift-Left QA)_
+- [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28): TMS-Test Builder | Reorder ATCs inside a test _(Backlog)_
+- [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32): TMS-Test View | View a test with all chained ATCs expanded _(Backlog)_
+- [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33): TMS-Test Tags | Assign reserved and custom tags to a test _(Backlog)_
+- [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** master-sprint-4, mvp, tests-epic
@@ -64,4 +64,4 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.903Z_
+_Last sync: 2026-05-29T07:23:49.009Z_

@@ -1,4 +1,4 @@
-# Sign up and sign in with email (magic-link)
+# Authentication | Sign up and sign in with email magic-link
 
 **Jira Key:** [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2)
 **Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
@@ -154,7 +154,7 @@ For Design (2):
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** auth, mvp, shift-left-2026-05-25, shift-left-reviewed, wave-1
@@ -162,4 +162,4 @@ For Design (2):
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:46.118Z_
+_Last sync: 2026-05-29T07:23:44.078Z_

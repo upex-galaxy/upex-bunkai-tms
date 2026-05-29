@@ -1,4 +1,4 @@
-# ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions)
+# TMS-ATC API | Create and edit ATCs with steps and assertions
 
 **Jira Key:** [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18)
 **Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
@@ -81,7 +81,7 @@ Anchors PRD US 4.1 and US 4.2 and implements SRS FR-010 (server surface). The UI
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/28/2026
+- **Updated:** 5/29/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** api, atc, backend, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2
@@ -89,4 +89,4 @@ Anchors PRD US 4.1 and US 4.2 and implements SRS FR-010 (server surface). The UI
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:50.124Z_
+_Last sync: 2026-05-29T07:23:47.906Z_

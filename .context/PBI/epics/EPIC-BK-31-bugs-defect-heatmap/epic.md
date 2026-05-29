@@ -25,10 +25,10 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40) | As a QA Engineer, I want to file a defect from a failing run step with module, severity, steps and evidence pre-filled so that the defect is captured without retyping. | 1 | Medium | Shift-Left QA |
-| [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41) | As a QA Engineer, I want to list and filter defects by module, status and severity with counts so that I can focus on a given area. | 1 | Medium | Shift-Left QA |
-| [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42) | As a QA Lead, I want to view a defect heatmap with count and week-over-week trend per module so that I can see at a glance where quality is degrading. | 1 | Medium | Shift-Left QA |
-| [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43) | As a QA Lead, I want defects filed in Bunkai to sync automatically and one-way to the external tracker so that engineering works them in their existing tool. | 1 | Medium | Shift-Left QA |
+| [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40) | TMS-Defect Filing | File a defect from a failing run step | 1 | Medium | Backlog |
+| [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41) | TMS-Defect List | List and filter defects by module, status, severity | 1 | Medium | Backlog |
+| [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42) | TMS-Defect Heatmap | View count and week-over-week trend per module | 1 | Medium | Backlog |
+| [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43) | TMS-Defect Sync | Sync defects one-way to the external tracker | 1 | Medium | Backlog |
 
 ---
 
@@ -42,4 +42,4 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T01:06:53.836Z_
+_Last sync: 2026-05-29T07:23:52.058Z_

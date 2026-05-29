@@ -11,4 +11,4 @@
 - A defect filed while the integration is disabled is never sent and carries no sync state
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:53.839Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.060Z_

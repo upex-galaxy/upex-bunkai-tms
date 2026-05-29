@@ -9,4 +9,4 @@
 5. If the external tracker was unreachable, the defect is marked "sync-failed" but stays usable; Bunkai retries automatically later, and once it succeeds the state flips to "synced" and the back-link becomes available.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:53.840Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.060Z_

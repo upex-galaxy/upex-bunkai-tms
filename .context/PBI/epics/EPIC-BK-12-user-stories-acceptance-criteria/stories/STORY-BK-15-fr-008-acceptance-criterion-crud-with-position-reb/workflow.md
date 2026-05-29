@@ -8,4 +8,4 @@
 4. When she later tries to mark the Story ***ready to test*** with no criteria, the action is blocked with an explanation.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T01:06:48.959Z_
+_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.779Z_
