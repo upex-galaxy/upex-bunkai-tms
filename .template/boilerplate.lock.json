@@ -4,14 +4,14 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "15e3f146fa35430dace91063493f73763bc0af10",
-    "claude": "15e3f146fa35430dace91063493f73763bc0af10",
+    "claude": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "agents": "15e3f146fa35430dace91063493f73763bc0af10",
+    "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "15e3f146fa35430dace91063493f73763bc0af10",
-    "docs": "39ca7312f79eef8e4e294885bb0b06bd2b90a1a9",
-    "context": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "context-engineering": "c684bc430d49d862644cd1c34954dd26ec095391",
+    "scripts": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "docs": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "context": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "context-engineering": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -24,10 +24,16 @@
       "appendedLines": [
         "dbhub.toml"
       ]
+    },
+    ".prettierignore": {
+      "lastSyncedSha": "0b83b236d173f9f4944890d687004f0ed1498f12",
+      "appendedLines": [
+        ".claude/worktrees/"
+      ]
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-29T09:24:15.651Z",
+  "lastSyncedAt": "2026-05-31T03:32:23.255Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

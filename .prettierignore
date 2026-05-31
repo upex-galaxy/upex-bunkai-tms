@@ -79,3 +79,7 @@ docs/mcp/
 # .template/installer.state.json is regenerated between every installer step,
 # so prettier --check races against the writes. Skip the whole dir.
 .template/
+
+# ===== Synced from boilerplate v7.0 =====
+# ----- 2026-05-31 (sync) -----
+.claude/worktrees/
