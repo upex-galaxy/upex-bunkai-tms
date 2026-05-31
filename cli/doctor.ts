@@ -32,6 +32,8 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { DEPRECATED_VARS, varsFor } from './lib/variables-manifest.ts';
+
 // `tui` pulls third-party deps (boxen/cli-table3/figures/picocolors). It is
 // imported lazily inside main() so `--preflight` loads only node built-ins and
 // runs safely on a fresh clone before `bun install`.
@@ -79,36 +81,27 @@ const DAY_ZERO_VARS = [
   'SUPABASE_ACCESS_TOKEN',
 ] as const;
 
-const PROJECT_BOUND_VARS = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'SUPABASE_PUBLISHABLE_KEY',
-  'SUPABASE_SECRET_KEY',
-  'SUPABASE_JWT_SECRET',
-  'POSTGRES_HOST',
-  'POSTGRES_USER',
-  'POSTGRES_PASSWORD',
-  'POSTGRES_DATABASE',
-  'POSTGRES_URL',
-  'POSTGRES_URL_NON_POOLING',
-  'POSTGRES_PRISMA_URL',
-  'N8N_API_URL',
-  'N8N_API_KEY',
-] as const;
+// Project-bound vars are derived from the canonical VAR_MANIFEST (single source
+// of truth — kills the prior install/doctor drift where doctor knew 13 vars and
+// the installer 5). They are the manifest's NON-critical vars (Supabase /
+// Postgres / app-runtime / n8n). The CRITICAL tool credentials (TAVILY_API_KEY,
+// ATLASSIAN_*, RESEND_API_KEY) also live in the manifest now but are day-zero
+// (prompted at install), so they are excluded here to avoid double-listing with
+// DAY_ZERO_VARS. SUPABASE_ACCESS_TOKEN stays day-zero (not in the manifest).
+const PROJECT_BOUND_VARS: readonly string[] = varsFor('local')
+  .filter(spec => !spec.critical)
+  .map(spec => spec.name);
 
-const REQUIRED_VARS = [...DAY_ZERO_VARS, ...PROJECT_BOUND_VARS] as const;
+const REQUIRED_VARS: readonly string[] = [...DAY_ZERO_VARS, ...PROJECT_BOUND_VARS];
 
 // Legacy credential keys some users may still have in `.env` from before the
 // DRY rename or before the legacy-Supabase-keys removal. Detected so doctor
 // can emit a migration hint — they're harmless (nothing reads them anymore)
 // but signal a stale .env.
-const LEGACY_JIRA_CRED_KEYS = [
-  'JIRA_URL',
-  'JIRA_USERNAME',
-  'JIRA_API_TOKEN',
-  'SUPABASE_ANON_KEY',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-] as const;
+// Derived from the canonical DEPRECATED_VARS registry (same source of truth as
+// the installer + updater migration hints). Covers the legacy JIRA_* credential
+// family (pre-DRY rename) + legacy Supabase keys (anon / service_role).
+const LEGACY_JIRA_CRED_KEYS: readonly string[] = DEPRECATED_VARS.map(d => d.name);
 
 const VAR_HINTS: Record<string, { hint: string, where: string }> = {
   TAVILY_API_KEY: {
@@ -178,6 +171,10 @@ const VAR_HINTS: Record<string, { hint: string, where: string }> = {
   POSTGRES_PRISMA_URL: {
     hint: 'Pooled connection with pgbouncer=true (for Prisma ORM)',
     where: 'Same as POSTGRES_URL with &pgbouncer=true',
+  },
+  NEXT_PUBLIC_APP_URL: {
+    hint: 'Base URL for auth redirects, OAuth callbacks, and email links',
+    where: 'e.g. http://localhost:3000 (local) or your deployed Vercel URL',
   },
   N8N_API_URL: {
     hint: 'n8n instance API URL for the n8n MCP server (project-bound)',

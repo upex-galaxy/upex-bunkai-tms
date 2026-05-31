@@ -32,6 +32,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { checkbox, password } from '@inquirer/prompts';
 import * as tui from './lib/tui.ts';
+import { nextStepsVars, varsFor } from './lib/variables-manifest.ts';
 
 // ============================================================================
 // Types
@@ -702,7 +703,7 @@ async function discoverRequiredEnvVars(agents: AgentId[]): Promise<string[]> {
   return [...seen].sort();
 }
 
-function parseEnvFile(content: string): Record<string, string> {
+export function parseEnvFile(content: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
@@ -722,7 +723,7 @@ function parseEnvFile(content: string): Record<string, string> {
   return out;
 }
 
-async function ensureEnvFileExists(): Promise<void> {
+export async function ensureEnvFileExists(): Promise<void> {
   if (existsSync(ENV_PATH)) { return; }
   if (existsSync(ENV_EXAMPLE_PATH)) {
     const tmpl = await readFile(ENV_EXAMPLE_PATH, 'utf8');
@@ -734,7 +735,7 @@ async function ensureEnvFileExists(): Promise<void> {
   log.warn('.env.example missing; created empty .env.');
 }
 
-async function appendVarsToEnv(vars: Record<string, string>): Promise<void> {
+export async function appendVarsToEnv(vars: Record<string, string>): Promise<void> {
   if (Object.keys(vars).length === 0) { return; }
   const existing = await readFile(ENV_PATH, 'utf8');
   // Upsert: replace an existing `KEY=` line in place so re-runs and the acli
@@ -814,8 +815,11 @@ async function configureMcps(agents: AgentId[], state: InstallState): Promise<vo
       continue;
     }
     if (INSTALLER_DEFERRED_VARS.has(name)) {
-      stillPending.push(name);
-      log.dim(`  ${name}: deferred to \`bun run doctor\` (project-bound — needs Supabase project / n8n instance).`);
+      // Non-critical project-bound / infra var: NOT prompted and NOT a blocking
+      // "pending" warning. Supabase/Postgres/app vars are auto-provisioned and
+      // pulled later via `bun run setup --variables`; n8n vars are optional.
+      // Surfaced only in the closing "Next steps — finish later" section.
+      log.dim(`  ${name}: deferred (non-critical — auto-provisioned / optional; see closing Next steps).`);
       continue;
     }
     if (NON_INTERACTIVE) {
@@ -1948,6 +1952,15 @@ function printClosingSummary(state: InstallState): void {
     stepNum++;
   }
 
+  // Env vars routed to Vercel (manifest-derived; replaces the hand-maintained
+  // deferred-var prose). Surfaces the one command that pushes the values just
+  // collected into .env up to Vercel env (local + remote, idempotent).
+  const vercelVarCount = varsFor('vercel').length;
+  process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Set up environment variables (local .env + Vercel)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.cyan}bun run setup --variables${COLORS.reset}${COLORS.dim}            (add --dry-run to preview, --yes to skip the push confirm)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.dim}Upserts .env and pushes ${vercelVarCount} app-runtime var(s) to Vercel (production/preview/development). Requires: vercel login + vercel link.${COLORS.reset}\n\n`);
+  stepNum++;
+
   process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Open the agent${COLORS.reset}\n`);
   process.stdout.write(`    ${COLORS.cyan}claude${COLORS.reset}                       ${COLORS.dim}(or: bun claude — works without direnv)${COLORS.reset}\n`);
   process.stdout.write(`    ${COLORS.dim}Launches your AI in this project's context.${COLORS.reset}\n\n`);
@@ -1961,6 +1974,20 @@ function printClosingSummary(state: InstallState): void {
   process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Sync project memory${COLORS.reset}\n`);
   process.stdout.write(`    ${COLORS.cyan}/sync-ai-memory${COLORS.reset}\n`);
   process.stdout.write(`    ${COLORS.dim}AFTER foundation + bootstrap exist. Updates README, CLAUDE.md, and other docs from the new project state.${COLORS.reset}\n\n`);
+
+  // 4c.1 — NEXT STEPS (non-critical vars). Critical tool creds (Atlassian,
+  // Resend, Tavily) were prompted above. These are NOT asked at install and NOT
+  // warnings — they're set later, each with a where/how-to-obtain hint. The
+  // auto-provisioned infra vars (Supabase, Postgres, app URL) are NEVER listed
+  // individually here — they're covered by the single `--variables` pull line.
+  tui.section('NEXT STEPS — finish later (non-critical vars, not blocking)');
+  process.stdout.write(`${COLORS.dim}  Critical tool credentials (Atlassian, Resend, Tavily) were already prompted above.${COLORS.reset}\n`);
+  for (const spec of nextStepsVars()) {
+    process.stdout.write(`→  ${COLORS.bold}${spec.name}${COLORS.reset}\n`);
+    process.stdout.write(`    ${COLORS.dim}${spec.obtainHint ?? spec.note}${COLORS.reset}\n`);
+  }
+  process.stdout.write(`→  ${COLORS.bold}App/infra vars (Supabase, Postgres, app URL)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.dim}Auto-provisioned by the Supabase↔Vercel integration. Once your Vercel project exists, run ${COLORS.reset}${COLORS.cyan}bun run setup --variables${COLORS.reset}${COLORS.dim} and choose 'Pull from Vercel'.${COLORS.reset}\n\n`);
 
   // 4d — IN PARALLEL
   tui.section('IN PARALLEL — open another terminal, run while bootstrapping');
@@ -2132,6 +2159,36 @@ async function main(): Promise<void> {
     process.exit(code);
   }
 
+  // --variables: standalone env-var setup (local .env upsert + remote Vercel
+  // push), driven by the canonical VAR_MANIFEST. Runs ONLY runVariablesFlow,
+  // then exits — no detection / install / config steps. All logic lives in the
+  // self-contained cli/lib/variables-flow.ts.
+  if (process.argv.includes('--variables')) {
+    const { runVariablesFlow } = await import('./lib/variables-flow.ts');
+    // Explicit mode flags (scriptable / non-interactive) SKIP the interactive
+    // menu. `--variables-local` / `--variables-remote` are the canonical names;
+    // `--local-only` / `--remote-only` remain as aliases. Passing `--yes` or
+    // `--force` alone also opts out of the menu (clearly scriptable intent).
+    const wantLocal = process.argv.includes('--variables-local') || process.argv.includes('--local-only');
+    const wantRemote = process.argv.includes('--variables-remote') || process.argv.includes('--remote-only');
+    const hasModeFlag
+      = wantLocal
+        || wantRemote
+        || process.argv.includes('--yes')
+        || process.argv.includes('--force');
+    await runVariablesFlow({
+      mode: wantRemote ? 'remote' : wantLocal ? 'local' : 'both',
+      force: process.argv.includes('--force'),
+      dryRun: process.argv.includes('--dry-run'),
+      yes: process.argv.includes('--yes'),
+      nonInteractive: NON_INTERACTIVE,
+      // Show the interactive menu only when no explicit mode flag was given AND
+      // we have a TTY. Non-interactive / scriptable invocations run directly.
+      menu: !hasModeFlag && !NON_INTERACTIVE,
+    });
+    process.exit(0);
+  }
+
   // Logo + headline (printed once at the top)
   process.stdout.write(`${tui.logo()}\n\n`);
   process.stdout.write(`${tui.headline('agentic-dev-boilerplate — installer')}\n\n`);
@@ -2267,16 +2324,21 @@ async function main(): Promise<void> {
   printClosingSummary(state);
 }
 
-main().catch((err) => {
-  // Handle both @inquirer ExitPromptError and our own clack cancel wrappers
-  const name = err && typeof err === 'object' && 'name' in err ? (err as { name: string }).name : '';
-  if (name === 'ExitPromptError' || (err instanceof Error && err.message === 'Aborted by user.')) {
-    log.warn('Aborted by user.');
-    log.dim('Re-run anytime with: bun run setup');
-    process.exit(130);
-  }
-  log.error(`Fatal: ${(err as Error).message ?? String(err)}`);
-  if (err instanceof Error && err.stack) { log.dim(err.stack); }
-  log.dim('After fixing the issue above, re-run: bun run setup  (installer is idempotent — completed steps are skipped)');
-  process.exit(1);
-});
+// Only auto-run when install.ts is the program entry point. Guards the reused
+// `.env` helpers (exported above) from triggering a full install when another
+// module — e.g. cli/lib/variables-flow.ts — imports them.
+if (import.meta.main) {
+  main().catch((err) => {
+    // Handle both @inquirer ExitPromptError and our own clack cancel wrappers
+    const name = err && typeof err === 'object' && 'name' in err ? (err as { name: string }).name : '';
+    if (name === 'ExitPromptError' || (err instanceof Error && err.message === 'Aborted by user.')) {
+      log.warn('Aborted by user.');
+      log.dim('Re-run anytime with: bun run setup');
+      process.exit(130);
+    }
+    log.error(`Fatal: ${(err as Error).message ?? String(err)}`);
+    if (err instanceof Error && err.stack) { log.dim(err.stack); }
+    log.dim('After fixing the issue above, re-run: bun run setup  (installer is idempotent — completed steps are skipped)');
+    process.exit(1);
+  });
+}

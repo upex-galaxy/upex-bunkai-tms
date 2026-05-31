@@ -14,8 +14,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import pc from 'picocolors';
+import { parseEnvFile } from './install';
 import * as tui from './lib/tui';
 import { cleanupTempDir, detectGitVersion, gitVersionMeetsMin, runUpdate } from './lib/updater-core';
+import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifest';
 
 // --- CONFIGURATION ---
 const CLI_VERSION = '7.0';
@@ -55,6 +57,11 @@ const COMPONENTS: Component[] = [
   { name: 'vscode', type: 'directory', paths: ['.vscode'] },
   { name: 'husky', type: 'directory', paths: ['.husky'] },
   { name: 'tooling', type: 'file-list', paths: ['.'], files: TOOLING_FILES },
+  // .env.example carries no secrets (every value is empty / placeholder) so it
+  // fast-forwards safely to targets. Shipping it is the prerequisite for the
+  // env-var drift detection in the afterApply hook — we can only diff a target's
+  // .env against an .env.example we actually delivered.
+  { name: 'env-template', type: 'file-list', paths: ['.'], files: ['.env.example'] },
 ];
 
 // --- ARG PARSE ---
@@ -208,6 +215,85 @@ async function updateMcpTemplateForAgent(agent: McpAgent): Promise<void> {
   fs.cpSync(src, dst);
   tui.log.success(`docs/mcp/${fileName} actualizado.`);
   cleanupTempDir(TEMP_DIR);
+}
+
+// --- ENV-VAR DRIFT DETECTION (afterApply hook) ---
+/**
+ * After a sync, diff the upstream `.env.example` (still sitting in the updater's
+ * tempDir before cleanup) against the target's local `.env` + `.env.example`. If
+ * upstream added keys the target lacks, warn and (interactive only) OFFER to run
+ * `bun run setup --variables` so the user can populate them locally + push the
+ * Vercel-env subset. Deprecated keys lingering in the local `.env` are flagged
+ * (never auto-deleted).
+ *
+ * D3-critical: this only PRINTS + OFFERS — it never auto-runs the remote push,
+ * and the `--variables` flow itself stays gated. In non-interactive / CI mode it
+ * prints the warning only (no prompt, no remote action).
+ */
+async function detectEnvVarDrift(
+  templateDir: string,
+  sink: ReportSink,
+  nonInteractive: boolean,
+): Promise<void> {
+  const upstreamExample = path.join(templateDir, '.env.example');
+  if (!fs.existsSync(upstreamExample)) { return; }
+
+  // Upstream documents these keys (active or commented).
+  const upstreamKeys = parseDotEnvExampleKeys(upstreamExample);
+
+  // What the target already knows: active keys in local `.env` + documented keys
+  // in local `.env.example`. A key absent from BOTH is genuinely new.
+  const localEnvKeys = new Set<string>();
+  const localEnvPath = path.join(process.cwd(), '.env');
+  if (fs.existsSync(localEnvPath)) {
+    for (const k of Object.keys(parseEnvFile(fs.readFileSync(localEnvPath, 'utf-8')))) {
+      localEnvKeys.add(k);
+    }
+  }
+  const localExamplePath = path.join(process.cwd(), '.env.example');
+  if (fs.existsSync(localExamplePath)) {
+    for (const k of parseDotEnvExampleKeys(localExamplePath)) { localEnvKeys.add(k); }
+  }
+
+  const newKeys = upstreamKeys.filter(k => !localEnvKeys.has(k));
+
+  // Deprecated keys still lingering as ACTIVE entries in the local `.env`.
+  const activeEnvKeys = fs.existsSync(localEnvPath)
+    ? new Set(Object.keys(parseEnvFile(fs.readFileSync(localEnvPath, 'utf-8'))))
+    : new Set<string>();
+  const deprecatedPresent = DEPRECATED_VARS.filter(d => activeEnvKeys.has(d.name));
+
+  if (newKeys.length === 0 && deprecatedPresent.length === 0) { return; }
+
+  if (newKeys.length > 0) {
+    sink.warn(`Upstream añadió ${newKeys.length} variable(s) que tu .env no tiene: ${newKeys.join(', ')}`);
+  }
+  for (const d of deprecatedPresent) {
+    sink.warn(`Variable obsoleta en tu .env: ${d.name} — ${d.reason} (no se elimina automáticamente).`);
+  }
+
+  if (newKeys.length === 0) { return; }
+
+  if (nonInteractive) {
+    sink.step('Para configurarlas localmente y subir el subconjunto de Vercel: bun run setup --variables');
+    return;
+  }
+
+  const run = await sink.confirm(
+    'Ejecutar `bun run setup --variables` ahora para configurar estas variables? (local + push opcional a Vercel, ambos gateados)',
+    false,
+  );
+  if (!run) {
+    sink.step('Omitido. Cuando quieras: bun run setup --variables');
+    return;
+  }
+
+  // Hand off to the gated --variables flow. The flow itself owns the remote-push
+  // confirm — we never push from here (D3).
+  const res = spawnSync('bun', ['run', 'setup', '--variables'], { stdio: 'inherit' });
+  if (res.status !== 0) {
+    sink.warn('`bun run setup --variables` terminó con error o fue cancelado.');
+  }
 }
 
 // --- SINK ---
@@ -389,6 +475,8 @@ async function main(): Promise<void> {
     }
   }
 
+  const sink = buildSink();
+
   const cfg: UpdaterConfig = {
     templateRepo: TEMPLATE_REPO,
     cliVersion: CLI_VERSION,
@@ -403,11 +491,19 @@ async function main(): Promise<void> {
     bootstrapOnlyPaths: AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`),
     agentsFrameworkFiles: AGENTS_FRAMEWORK_FILES,
     selfUpdateComponent: 'cli',
+    hooks: {
+      // Runs after files land but before tempDir cleanup → upstream `.env.example`
+      // is still on disk for the diff. Skipped on dry-run (no files were written).
+      afterApply: async () => {
+        if (parsed.dryRun) { return; }
+        await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
+      },
+    },
   };
 
   tui.intro(tui.headline(`UPEX Boilerplate Updater v${CLI_VERSION}`));
 
-  const summary = await runUpdate(cfg, buildSink(), {
+  const summary = await runUpdate(cfg, sink, {
     auto: parsed.auto,
     dryRun: parsed.dryRun,
     rollback: false,

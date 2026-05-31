@@ -3,7 +3,7 @@
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "15e3f146fa35430dace91063493f73763bc0af10",
+    "cli": "4ecd68f8c39b73840ec798b14d48c8de9638ab3e",
     "claude": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
@@ -15,7 +15,8 @@
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "tooling": "15e3f146fa35430dace91063493f73763bc0af10"
+    "tooling": "15e3f146fa35430dace91063493f73763bc0af10",
+    "env-template": "4ecd68f8c39b73840ec798b14d48c8de9638ab3e"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
@@ -33,18 +34,19 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-31T03:32:23.255Z",
+  "lastSyncedAt": "2026-05-31T15:40:26.248Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "0318a02c7804d429be8ef790afe4371cf449edd9",
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
         "appliedKeys": [
-          "jira:sync-link-types"
+          "jira:sync-link-types",
+          "vars:env:check"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "0318a02c7804d429be8ef790afe4371cf449edd9",
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
         "appliedKeys": []
       }
     }

@@ -37,7 +37,8 @@
     "clean": "rm -rf node_modules dist .next",
     "prepare": "husky",
     "claude": "dotenv -e .env -- claude",
-    "opencode": "dotenv -e .env -- opencode"
+    "opencode": "dotenv -e .env -- opencode",
+    "vars:env:check": "bun scripts/check-vars.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
