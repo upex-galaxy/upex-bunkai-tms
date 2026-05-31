@@ -37,5 +37,5 @@ The framework file is the single source of truth for sprint progress.
 
 ## Related
 
-- Ticket-level artifacts (impl-plan, context, evidence) → `.context/PBI/`.
+- Story-level artifacts (implementation-plan, context, evidence) → `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/`.
 - PM-facing sprint snapshot → `/product-management` G workflow (read-only inline render — not persisted; no collision with this file).

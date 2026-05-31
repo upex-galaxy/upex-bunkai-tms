@@ -281,18 +281,20 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 └──────────────────────────────────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  MODULE / EPIC LEVEL                                         │
+│  MODULE / EPIC LEVEL  (Module = Epic, 1:1)                  │
 │  Module context · Roadmap of stories · Cross-story decisions │
-│  Example: .context/PBI/{module}/module-context.md catalogues │
-│  the routes, DB tables, and shared types for that module.    │
+│  Example: .context/PBI/epics/EPIC-<KEY>-<slug>/              │
+│  module-context.md catalogues the routes, DB tables, and     │
+│  shared types for that epic.                                 │
 └──────────────────────────────────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  STORY / TICKET LEVEL                                        │
 │  Acceptance criteria · Implementation plan · Review notes ·  │
 │  Compliance matrix · Bug-fix root cause                      │
-│  Example: .context/PBI/{module}/UPEX-123-add-login/          │
-│  implementation-plan.md is the input contract for coding.    │
+│  Example: .context/PBI/epics/EPIC-<KEY>-<slug>/stories/      │
+│  STORY-<KEY>-add-login/implementation-plan.md is the input   │
+│  contract for coding.                                        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -325,21 +327,31 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │
 ├── master-implementation-plan.md     # High-level roadmap                (/master-implementation-plan)
 │
-└── PBI/                              # Per-epic + per-ticket memory
-    ├── epic-tree.md                 #   Output of /product-management seed
-    └── {module}/
-        ├── module-context.md
+└── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1)
+    ├── epic-tree.md                 #   [SYNC] master index
+    └── epics/EPIC-<KEY>-<slug>/
+        ├── epic.md                  #   [SYNC]
+        ├── feature-implementation-plan.md  # [SYNC ← Jira field / stub]
+        ├── feature-test-plan.md     #   [SYNC ← Jira field / stub]
+        ├── module-context.md        #   Routes, DB tables, shared types (non-Jira)
         ├── ROADMAP.md               #   Stories + dev status
         ├── PROGRESS.md              #   Current progress
         ├── SESSION-PROMPT.md        #   @-loadable session resume
-        └── {TICKET-ID}-{title}/
-            ├── spec.md              #   AC in Gherkin       (/product-management)
-            ├── edge-cases.md        #   Enumeration         (/product-management)
-            ├── implementation-plan.md  # Plan              (/sprint-development Stage 1)
-            ├── review.md            #   Code review notes   (/sprint-development Stage 3)
-            ├── compliance-matrix.md #   AC → code mapping   (/sprint-development Stage 3)
+        └── stories/STORY-<KEY>-<slug>/
+            ├── story.md             #   [SYNC]
+            ├── acceptance-criteria.md  # AC                  (non-Jira)
+            ├── scope.md             #   In-scope
+            ├── out-of-scope.md      #   Out-of-scope
+            ├── business-rules.md    #   Domain rules
+            ├── workflow.md          #   Flow / sequence
+            ├── implementation-plan.md  # Plan               (/sprint-development Stage 1)
+            ├── comments.md          #   [SYNC, --include-comments]
+            ├── context.md           #   Session context     (non-Jira)
+            ├── progress.md          #   Story progress       (non-Jira)
             └── evidence/            #   Screenshots, logs   (gitignored)
 ```
+
+The `PBI/` tree is owned by `scripts/sync-jira-issues.ts`: Jira is the source of truth and the local `[SYNC]` `.md` files are a read-only cache materialized by `bun run jira:sync-issues`. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read.
 
 Plus, at the project root:
 

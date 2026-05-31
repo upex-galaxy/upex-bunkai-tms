@@ -196,7 +196,7 @@ The agent should load only what the current step needs. Use this table to decide
 
 | Task                  | Load First                                  | Load If Needed                                   |
 | --------------------- | ------------------------------------------- | ------------------------------------------------ |
-| **Develop a feature** | `.context/business/business-data-map.md`    | Module `module-context.md` under `.context/PBI/` |
+| **Develop a feature** | `.context/business/business-data-map.md`    | `.context/PBI/epics/EPIC-<KEY>-<slug>/module-context.md` |
 | **Plan a story**      | Story `context.md` + `business-data-map.md` | `PRD/*`, `SRS/*`, relevant skill                 |
 | **Write a unit test** | `/unit-testing` skill                       | Existing tests in repo                           |
 | **Understand system** | `business-data-map.md` + `PRD/*`            | `SRS/*`, `docs/architectures/`                   |
@@ -261,7 +261,7 @@ Exploratory testing runs **before** test automation in the QA sister repo. The t
 
 ### Jira-First workflow
 
-Tickets are **created in Jira first** (via `/acli` or MCP), and the real Jira ID drives the local artifact name (e.g. `.context/PBI/UPEX-277-empty-states/`). No locally-invented IDs, no rename churn later, perfect 1:1 traceability between the repo and the tracker.
+Tickets are **created in Jira first** (via `/acli` or MCP), and the real Jira ID drives the local artifact name (e.g. `.context/PBI/epics/EPIC-UPEX-200-<epic>/stories/STORY-UPEX-277-empty-states/`). No locally-invented IDs, no rename churn later, perfect 1:1 traceability between the repo and the tracker.
 
 ### Spec-Driven Development (SDD) for substantial changes
 
@@ -317,7 +317,7 @@ Use this table to decide what to re-generate after what kind of change.
 | Domain model pivots                       | `.context/business/business-data-map.md`            | `/business-data-map`                          |
 | Feature surface changes                   | `.context/business/business-feature-map.md`         | `/business-feature-map`                       |
 | API auth or topology changes              | `.context/business/business-api-map.md`             | `/business-api-map`                           |
-| New epic / story refinement               | `.context/PBI/<epic-or-ticket>/*`                   | `/product-management`                         |
+| New epic / story refinement               | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/*` (or `.context/PBI/epics/EPIC-<KEY>-<slug>/*` for epic-level) | `/product-management`                         |
 | Major rebrand / new visual identity       | `DESIGN.md` at repo root                            | `/design-system`                              |
 | This file (`CONTEXT.md`) drifts from repo | Update sections that no longer match the filesystem | Edit manually or `/sync-ai-memory` if covered |
 
