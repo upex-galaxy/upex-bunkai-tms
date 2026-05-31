@@ -8,7 +8,7 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 
 **Slugs que este workflow lee** (semántica del campo):
 
-- `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los test cases que la implementación debe cubrir. Solo lectura desde este flujo.
+- `{{jira.acceptance_test_plan}}` — Acceptance Test Plan (Story-level Textarea). Fuente de los test cases que la implementación debe cubrir. Solo lectura desde este flujo, y SIEMPRE vía sync (`bun run jira:sync-issues get <STORY_KEY> --include-comments` → leer `acceptance-test-plan.md`); nunca leer el custom field por `view`.
 
 **Operación → tool layer.** Toda escritura/lectura contra Jira se expresa como `[ISSUE_TRACKER_TOOL]` pseudo-código. El skill consumidor (AI runtime) resuelve la herramienta vía la tabla `CLAUDE.md` §6 (primary `/acli`, fallback Atlassian MCP, last resort REST). Para la matriz operación → capa de herramienta, ver `.claude/skills/product-management/references/jira-operations.md`. Para gotchas de publicación a campos rich-text (ADF), ver `.claude/skills/product-management/references/jira-publishing-gotchas.md`.
 
@@ -96,11 +96,13 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
 .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md
 ```
 
-**Acceptance Test Plan (Test Cases):** Usar el siguiente orden de descubrimiento:
+**Lectura COMPLETA de la carpeta sincronizada:** la sync (`bun run jira:sync-issues get <STORY_KEY> --include-comments`) materializa la carpeta COMPLETA de la Story bajo `.context/PBI/` — cada archivo per-field (`story.md`, `acceptance-criteria.md`, `scope.md`, custom fields, etc.) + `comments.md`. Para implementar la story DEBES leer TODA la carpeta: nunca omitas ACs / scope / custom fields / comentarios.
 
-1. **Jira Comments** (preferido): Buscar en comentarios de la US vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, comment_limit=50)`.
-2. **Jira Custom Field**: Campo `{{jira.acceptance_test_plan}}` ("Acceptance Test Plan"), leído vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, fields=<all>)`.
-3. **Archivo Local** (fallback): `.context/.../stories/.../test-cases.md` o `acceptance-test-plan.md`
+**Acceptance Test Plan (Test Cases):** lectura DETALLADA, **modality-aware**, siempre materializada vía sync, nunca leída por `view`:
+
+1. **jira-native**: ATP = el campo `{{jira.acceptance_test_plan}}` de la Story → `bun run jira:sync-issues get <STORY_KEY> --include-comments`, luego lee `.context/.../stories/.../acceptance-test-plan.md` (cubre también comentarios con "Test Case" / "TC-" / "Scenario:" en `comments.md`).
+2. **jira-xray**: ATP = la `description` de la issue **Test Plan** → `bun run jira:sync-issues get <ATP_KEY>` (la sync soporta ahora Test Plan / Test Execution), luego lee `.context/.../test-plans/TESTPLAN-<KEY>-<slug>.md`; los resultados de run por-TC vienen vía xray-cli.
+3. **Fallback final**: `comments.md` / la descripción de la issue — ahí cae el comentario fallback `## Acceptance Test Plan` cuando el custom field está ausente (per `.agents/jira-required.yaml`).
 
 **Propósito:**
 
@@ -167,7 +169,7 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
    - Entiende el "por qué"
 
 3. **Revisa los Test Cases (Acceptance Test Plan)**
-   - Usar orden de descubrimiento: Jira Comments → Jira `{{jira.acceptance_test_plan}}` → Archivo local
+   - Orden de descubrimiento (modality-aware): sync get `<STORY>`/`<ATP_KEY>` → `acceptance-test-plan.md` (jira-native) o `test-plans/TESTPLAN-<KEY>-<slug>.md` (jira-xray) materializado → fallback final = `comments.md` / la descripción de la issue
    - Entiende qué se espera que funcione
    - Identifica edge cases a considerar
    - Usa los test cases como checklist durante la implementación

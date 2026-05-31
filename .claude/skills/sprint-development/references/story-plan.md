@@ -18,18 +18,18 @@ Las IDs numéricas de Jira (`customfield_NNNNN`) varían por workspace y NO vive
 **Input:**
 
 - Story: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/story.md]
-- **Acceptance Test Plan (artefacto de la fase de planning):** Usar el siguiente orden de descubrimiento:
-  1. **Jira Comments** (preferido): Buscar en comentarios de la US vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, comment_limit=50)`. Buscar comentarios que contengan "Test Case", "TC-", "Scenario:", o tablas de test cases.
-  2. **Jira Custom Field**: Campo `{{jira.acceptance_test_plan}}` ("Acceptance Test Plan"), leído vía `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>, fields=<all>)`.
-  3. **Archivo Local** (fallback): `.context/PBI/epics/.../stories/.../test-cases.md` o `acceptance-test-plan.md`
-- Feature Implementation Plan: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/feature-implementation-plan.md]
+- **Acceptance Test Plan (artefacto de la fase de planning):** Es una lectura DETALLADA, así que SIEMPRE se materializa primero vía sync, nunca se lee por `view`. Ramifica por modalidad (resuelta en planning):
+  1. **Modality jira-native** — ATP vive en el campo `{{jira.acceptance_test_plan}}` de la Story: `bun run jira:sync-issues get <STORY_KEY> --include-comments` materializa el campo + comentarios; lee `.context/PBI/epics/.../stories/.../acceptance-test-plan.md` (si el campo está ausente la sync emite un stub apuntando al comentario fallback) y `comments.md` (para "Test Case", "TC-", "Scenario:", o tablas de test cases).
+  2. **Modality jira-xray** — ATP vive en un issue `Test Plan` enlazado a la Story (su `description` contiene el cuerpo del ATP): `bun run jira:sync-issues get <ATP_KEY>` materializa `.context/PBI/test-plans/TESTPLAN-<ATP_KEY>-<slug>.md`; léelo. El `<ATP_KEY>` sale del enlace "tests" / "is tested by" de la Story (visible en `story.md` / `comments.md`). NUNCA uses `get <STORY_KEY>` para leer un ATP de Xray.
+  3. **Fallback final**: `comments.md` / la descripción de la issue — ahí cae el comentario fallback `## Acceptance Test Plan` cuando el custom field está ausente (per `.agents/jira-required.yaml`).
+- Feature Implementation Plan: [usar .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/feature-implementation-plan.md — materializado por la sync desde el campo `{{jira.feature_implementation_plan}}` del Epic]
 - SRS relevante: [usar secciones relacionadas de .context/SRS/]
 - **Design System:** [usar .context/design-system.md - para decisiones de UI/UX]
 
 **⚠️ IMPORTANTE - Jira es la fuente de verdad para el Acceptance Test Plan:**
 Los escenarios del Acceptance Test Plan (definidos durante la fase de planning) son los que la implementación DEBE cubrir. Cada escenario debe mapearse a un step de implementación para garantizar cobertura completa. NO omitir ninguno.
 
-**Genera archivo: implementation-plan.md** (dentro de .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/)
+**Autor del plan → Jira → sync → lee.** NO escribas a mano `implementation-plan.md`. Es un archivo `[SYNC]` (read-only cache): redacta el plan en sesión, publícalo al campo `{{jira.spec_implementation_plan}}` de la Story (o comentario fallback per `.agents/jira-required.yaml`), corre `bun run jira:sync-issues get <STORY_KEY> --include-comments`, y lee el `implementation-plan.md` materializado en `.context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/`. El cuerpo del plan sigue la estructura de abajo.
 
 ---
 
@@ -436,7 +436,7 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
   - [ ] [Componente específico 2]
 - [ ] Tests de integración pasando
   - [ ] [Escenario específico]
-- [ ] Tests E2E pasando (referencia: Acceptance Test Plan de Jira o test-cases.md)
+- [ ] Tests E2E pasando (referencia: Acceptance Test Plan de Jira — `acceptance-test-plan.md` sincronizado, o el `comments.md` / descripción fallback)
   - [ ] TC-001: [nombre]
   - [ ] TC-002: [nombre]
   - [ ] ...
@@ -453,7 +453,7 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
 
 ---
 
-**Output:** Archivo Markdown listo para .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md
+**Output:** El cuerpo del plan se publica al campo `{{jira.spec_implementation_plan}}` de la Story; tras la sync queda materializado en .context/PBI/epics/EPIC-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}/implementation-plan.md (read-only cache).
 
 **Nota para IA:**
 
@@ -479,39 +479,33 @@ Textos que reflejan el contexto específico del proyecto, usando vocabulario del
 
 ### Instrucciones de Sincronización
 
-**DESPUÉS de generar el archivo `implementation-plan.md` localmente:**
+**Flujo: autor del plan en sesión → publicar al campo Jira → sync → leer el `.md` materializado.** El `implementation-plan.md` NO se escribe a mano; es un archivo `[SYNC]` (read-only cache) que la sync genera desde el campo Jira.
 
 1. **Verificar si la Story tiene el custom field:**
-   - `[ISSUE_TRACKER_TOOL] get_issue(issue_key=<STORY_KEY>)` para obtener la Story.
-   - Verificar si el slug `{{jira.spec_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json`).
+   - Verificar si el slug `{{jira.spec_implementation_plan}}` resuelve a un campo presente en el workspace (vía `.agents/jira-fields.json` / `.agents/jira-required.yaml`).
 
 > Antes de escribir campos rich-text en Jira, leé `.claude/skills/product-management/references/jira-publishing-gotchas.md` para los dos bugs ADF conocidos y sus workarounds.
 
 2. **Si el campo existe:**
-   - Copiar el contenido COMPLETO del `implementation-plan.md` generado.
-   - Actualizar la Story en Jira:
-     ```
-     [ISSUE_TRACKER_TOOL] update_issue_field(
-       issue_key=<STORY_KEY>,
-       field={{jira.spec_implementation_plan}},
-       value=<contenido del implementation-plan.md>
-     )
-     ```
-   - Agregar label: `implementation-plan-ready`
+   - Publicar el cuerpo COMPLETO del plan al campo `{{jira.spec_implementation_plan}}` de la Story vía `[ISSUE_TRACKER_TOOL]` (escritura de custom field).
+   - Agregar label: `implementation-plan-ready`.
 
 3. **Si el campo NO existe en el workspace:**
-   - Resolver fallback declarado en `.agents/jira-required.yaml` para el slug `spec_implementation_plan`.
-   - Si no existe ningún campo equivalente, agregar como **comentario** en la Story vía `[ISSUE_TRACKER_TOOL] add_comment(...)`:
+   - Resolver el fallback declarado en `.agents/jira-required.yaml` para el slug `spec_implementation_plan`.
+   - Si no existe ningún campo equivalente, publicar el plan como **comentario** estructurado en la Story vía `[ISSUE_TRACKER_TOOL]` (crear comentario), encabezado `## Spec Implementation Plan (Dev)`:
 
      ```
-     📋 **Spec Implementation Plan (Dev)**
+     ## Spec Implementation Plan (Dev)
 
-     [contenido del implementation-plan.md]
+     [cuerpo completo del plan]
      ```
+
+4. **Materializar y leer:**
+   - Correr `bun run jira:sync-issues get <STORY_KEY> --include-comments`.
+   - Leer el `implementation-plan.md` generado bajo `.context/PBI/epics/.../stories/.../` (read-only cache). Si el campo estaba ausente, la sync emite un stub apuntando al comentario fallback.
 
 ### Output Esperado
 
-- [ ] Archivo `implementation-plan.md` creado en `.context/PBI/epics/.../stories/.../`
-- [ ] Campo `{{jira.spec_implementation_plan}}` actualizado en la Story (si el slug resuelve a un campo presente)
+- [ ] Cuerpo del plan publicado al campo `{{jira.spec_implementation_plan}}` de la Story (si el slug resuelve a un campo presente) o al comentario fallback `## Spec Implementation Plan (Dev)`
 - [ ] Label `implementation-plan-ready` agregado a la Story
-- [ ] Comentario agregado como fallback (si campo no existe)
+- [ ] `bun run jira:sync-issues get <STORY_KEY> --include-comments` ejecutado; `implementation-plan.md` materializado y leído

@@ -15,7 +15,7 @@
     {
       "name": "should-trigger-resume-work",
       "prompt": "Continue from where I left off on UPEX-100 — I think I had the API done but the UI wasn't wired yet.",
-      "expected_behavior": "Activates sprint-development in continue-implementation mode. Reads continue-implementation.md reference. Loads the .context/PBI/{module}/{UPEX-100}/ folder to recover state (implementation-plan, session notes), inspects git status + recent commits to detect actual progress, summarizes what's done vs pending, asks user OK before resuming the next stage.",
+      "expected_behavior": "Activates sprint-development in continue-implementation mode. Reads continue-implementation.md reference. Loads the .context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-UPEX-100-<slug>/ folder to recover state (synced implementation-plan, local session notes), inspects git status + recent commits to detect actual progress, summarizes what's done vs pending, asks user OK before resuming the next stage.",
       "category": "positive"
     },
     {

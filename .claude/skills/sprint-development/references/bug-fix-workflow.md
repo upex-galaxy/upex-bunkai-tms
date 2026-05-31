@@ -54,26 +54,27 @@ Analyze, triage, and fix bugs/defects reported during exploratory testing or pro
 
 **BEFORE starting, verify available tools:**
 
-### Required: Atlassian MCP
+### Required: Jira reads (sync script) + writes (`[ISSUE_TRACKER_TOOL]`)
 
-**Check if available:** [Verify access to `[ISSUE_TRACKER_TOOL]`]
+This workflow splits Jira access two ways — they resolve to **different tools**:
 
-**If NOT available:**
+- **Detailed READS** (bug custom fields: `actual_result`, `expected_result`, `error_type`, `severity`, `test_environment`, `root_cause`, `fix`; description; comments for context) → **`bun run jira:sync-issues get <BUG-KEY> --include-comments`**, then read the materialized `.md` files under `.context/PBI/`. The sync materializes the FULL synced bug folder (every per-field `.md` + `comments.md`); to fix a bug you MUST read the whole synced bug folder + comments — never omit custom fields, description, or comment context. The sync resolves every slug and converts ADF→Markdown; `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*` and MUST NOT be used to read these.
+- **WRITES** (transition issue status, add documentation comment, set bug custom fields) → `[ISSUE_TRACKER_TOOL]` (primary `/acli`, fallback Atlassian MCP per `CLAUDE.md` §6).
+
+**Check before starting:**
+
+- `bun run jira:sync-issues get <BUG-KEY> --include-comments` succeeds (auth fresh — run `[ISSUE_TRACKER_TOOL]` auth login first if the sync errors).
+- `[ISSUE_TRACKER_TOOL]` resolves (for transitions + comments).
 
 ```
-⚠️ Atlassian MCP Required
+⚠️ Jira access required
 
-This workflow requires Jira integration to:
-- Read bug details and custom fields
-- Read comments for context
-- Transition issue status
-- Add documentation comments
+This workflow needs:
+- READ bug details + custom fields + comments → bun run jira:sync-issues get <BUG-KEY> --include-comments
+- WRITE status transitions + documentation comments → [ISSUE_TRACKER_TOOL]
 
-**How to connect:**
-1. Add Atlassian MCP to your configuration
-2. Restart the chat session
-
-**Cannot proceed without Atlassian MCP.**
+If the sync errors with an auth failure, authenticate via [ISSUE_TRACKER_TOOL] and re-run.
+Cannot proceed without Jira read (sync) + write ([ISSUE_TRACKER_TOOL]) access.
 ```
 
 ### Required: GitHub CLI (gh)
@@ -221,48 +222,26 @@ As last resort:
 
 ### 1. Bug Issue from Jira
 
-> **⚠️ IMPORTANT:** Some `[ISSUE_TRACKER_TOOL]` fallbacks (notably the Atlassian MCP) do not return custom fields with a blanket "all fields" request. Make TWO calls — the second explicitly enumerating the slugs — to ensure complete data.
+> Detailed bug-field READS go through the sync, NOT `[ISSUE_TRACKER_TOOL]` `view` — `view` returns `null` for `customfield_*`.
 
-**Call 1 - Standard fields:**
-
-```
-[ISSUE_TRACKER_TOOL] get_issue(
-  issue_key="PROJ-123",
-  fields=<all>,
-  expand="changelog",
-  comment_limit=50
-)
-```
-
-**Call 2 - Custom fields explicitly (by slug):**
+Materialize the FULL synced bug folder, then read it:
 
 ```
-[ISSUE_TRACKER_TOOL] get_issue(
-  issue_key="PROJ-123",
-  fields=[
-    {{jira.actual_result}},
-    {{jira.expected_result}},
-    {{jira.error_type}},
-    {{jira.severity}},
-    {{jira.test_environment}},
-    {{jira.root_cause}},
-    {{jira.workaround}},
-    {{jira.evidence}},
-    {{jira.fix}}
-  ]
-)
+bun run jira:sync-issues get <BUG-KEY> --include-comments
 ```
 
-**Extract from combined results:**
+Read every materialized file under `.context/PBI/` (the bug's `.md` per-field files + `comments.md`). The sync resolves every slug (`{{jira.actual_result}}`, `{{jira.expected_result}}`, `{{jira.error_type}}`, `{{jira.severity}}`, `{{jira.test_environment}}`, `{{jira.root_cause}}`, `{{jira.workaround}}`, `{{jira.evidence}}`, `{{jira.fix}}`), converts ADF→Markdown, and captures the description + comments in one pass. Read the WHOLE folder — never omit a custom field, the description, or comment context.
+
+**Extract from the synced files:**
 
 - Summary and Description
 - Steps to Reproduce
-- **Actual Result** (`{{jira.actual_result}}`) vs **Expected Result** (`{{jira.expected_result}}`)
-- **Error Type** (`{{jira.error_type}}`) and **Severity** (`{{jira.severity}}`)
-- **Test Environment** (`{{jira.test_environment}}`)
-- **Root Cause** (`{{jira.root_cause}}`) - may be empty initially
-- All comments (context, discussions, prior attempts)
-- Attachments (screenshots, logs)
+- **Actual Result** vs **Expected Result**
+- **Error Type** and **Severity**
+- **Test Environment**
+- **Root Cause** — may be empty initially
+- All comments (context, discussions, prior attempts) from `comments.md`
+- Attachments (screenshots, logs) — linked in the synced fields
 
 ### 2. Linked Issues
 
@@ -300,50 +279,20 @@ Check issue links for:
 
 **Objective:** Understand the bug completely before attempting to fix.
 
-**Step 1: Read the bug issue (TWO CALLS REQUIRED)**
+**Step 1: Read the bug issue (via the sync)**
 
-> **CRITICAL:** Some `[ISSUE_TRACKER_TOOL]` fallbacks (notably the Atlassian MCP) do not return custom fields with a blanket "all fields" request. You MUST make TWO separate calls to ensure you have all information.
-
-**Call 1 - Standard fields and comments:**
+> Detailed bug-field READS go through the sync. `[ISSUE_TRACKER_TOOL]` `view` returns `null` for `customfield_*` and MUST NOT be used to read bug custom fields.
 
 ```
-[ISSUE_TRACKER_TOOL] get_issue(
-  issue_key="[BUG_ID]",
-  fields=<all>,
-  expand="changelog",
-  comment_limit=50
-)
+bun run jira:sync-issues get [BUG_ID] --include-comments
 ```
 
-**Call 2 - Custom fields explicitly by slug (REQUIRED):**
+Then read the materialized files under `.context/PBI/` — every per-field `.md` (Actual / Expected Result, Error Type, Severity, Test Environment, Root Cause, Workaround, Evidence, Fix), the description, and `comments.md`. The sync resolves all slugs and converts ADF→Markdown in one pass, so a single command yields the complete bug context (summary, description, status, changelog-derived fields, comments, custom field VALUES).
 
-```
-[ISSUE_TRACKER_TOOL] get_issue(
-  issue_key="[BUG_ID]",
-  fields=[
-    {{jira.actual_result}},
-    {{jira.expected_result}},
-    {{jira.error_type}},
-    {{jira.severity}},
-    {{jira.test_environment}},
-    {{jira.root_cause}},
-    {{jira.workaround}},
-    {{jira.evidence}},
-    {{jira.fix}}
-  ]
-)
-```
+**If a custom field's `.md` is a stub (field absent on this instance):**
 
-**Why two calls?**
-
-- Call 1: Gets summary, description, status, comments, changelog
-- Call 2: Explicitly retrieves custom field VALUES (Actual/Expected Result, Severity, Error Type, etc.)
-
-**If custom fields return `null` or "field not found":**
-
-1. Use `[ISSUE_TRACKER_TOOL]` to search for fields by keyword to find equivalent fields
-2. Ask user for correct field IDs (see Fallback Strategy section)
-3. Do NOT assume fields are empty without verifying
+1. The stub points at the fallback comment — read it in `comments.md` (per `.agents/jira-required.yaml` → `fallback:`).
+2. Do NOT assume a field is empty without checking `comments.md` and the description.
 
 **Step 2: Extract and present critical information**
 
@@ -772,8 +721,6 @@ Fixes [ISSUE_KEY]: [Bug summary from Jira]
 ---
 
 Fixes: [ISSUE_KEY]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )" \
   --base staging
@@ -866,29 +813,14 @@ Use [ISSUE_TRACKER_TOOL] to update issue:
 
 Before evaluating whether fields are "missing" or "incomplete":
 
-1. **Ensure you made the explicit custom fields call** (Phase 1, Call 2)
-2. **Re-verify if uncertain:** Make another call with explicit slugs
-3. **List found values:** In your feedback, show the ACTUAL values found
-4. **Only mark as "missing" if the explicit call returned `null` or empty**
+1. **Re-run the sync** so you read the current values, not a stale cache:
+   ```
+   bun run jira:sync-issues get [BUG_ID] --include-comments
+   ```
+2. **List found values:** in your feedback, show the ACTUAL values from the synced per-field `.md` files.
+3. **Only mark as "missing" if the synced `.md` is a stub** (field absent on this instance) AND no fallback comment carries the content in `comments.md`.
 
-```
-[ISSUE_TRACKER_TOOL] get_issue(
-  issue_key="[BUG_ID]",
-  fields=[
-    {{jira.actual_result}},
-    {{jira.expected_result}},
-    {{jira.error_type}},
-    {{jira.severity}},
-    {{jira.test_environment}},
-    {{jira.root_cause}},
-    {{jira.workaround}},
-    {{jira.evidence}},
-    {{jira.fix}}
-  ]
-)
-```
-
-**If fields return null after explicit call:** Then it's valid to note as missing in feedback.
+**If a field's `.md` is a stub and `comments.md` has no fallback for it:** then it's valid to note as missing in feedback.
 
 **Evaluation Criteria:**
 
@@ -1407,7 +1339,7 @@ After completing the workflow, present this consolidated report to the user in t
 
 | Acción            | Detalle                                                   |
 | ----------------- | --------------------------------------------------------- |
-| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY] (con comentarios/changelog)  |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` (con comentarios/changelog)  |
 | Jira - Transition | [Status inicial] → In Progress → Ready For QA             |
 | Jira - Fields     | Root Cause, Fix Type actualizados                         |
 | Jira - Comments   | [N] comentarios añadidos (Fix documentation [+ Feedback]) |
@@ -1481,7 +1413,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                        |
 | ----------------- | ------------------------------ |
-| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY]   |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments`   |
 | Jira - Link       | Linked to [EXISTING_ISSUE_KEY] |
 | Jira - Transition | [Status] → Duplicate           |
 | Jira - Comment    | Documented duplicate reasoning |
@@ -1507,7 +1439,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                      |
 | ----------------- | ---------------------------- |
-| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY] |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments` |
 | Jira - Transition | [Status] → Won't Fix         |
 | Jira - Comment    | Documented WAD reasoning     |
 
@@ -1533,7 +1465,7 @@ Add this banner at the top:
 
 | Acción            | Detalle                           |
 | ----------------- | --------------------------------- |
-| Jira - Read       | `[ISSUE_TRACKER_TOOL] get_issue` [ISSUE_KEY]      |
+| Jira - Read       | `bun run jira:sync-issues get` [ISSUE_KEY] `--include-comments`      |
 | Jira - Comment    | Preguntas específicas al reporter |
 | Jira - Transition | [Status] → Need Info              |
 
@@ -1812,50 +1744,40 @@ To continue a previous session, paste this block with updated data:
 
 ### Custom Fields Not Returned (Common Issue)
 
-**Problem:** `[ISSUE_TRACKER_TOOL] get_issue(...)` with `fields=<all>` returns standard fields but custom field values are `null` or missing.
+**Problem:** `[ISSUE_TRACKER_TOOL]` `view` / `get_issue` returns standard fields but custom field values are `null` or missing.
 
-**Root Cause:** Some fallback tiers (notably the Atlassian MCP) do not expand custom fields automatically.
+**Root Cause:** `acli view` (and some MCP tiers) return `null` for `customfield_*` — they are not the read path for custom-field content.
 
-**Solution:** Always make TWO calls:
+**Solution:** Read custom-field content via the sync, never via `view`:
 
-1. **First call:** `fields=<all>` for standard fields + comments.
-2. **Second call:** Explicitly list slugs:
-   ```
-   fields=[
-     {{jira.actual_result}},
-     {{jira.expected_result}},
-     {{jira.error_type}},
-     {{jira.severity}},
-     {{jira.test_environment}},
-     {{jira.root_cause}},
-     {{jira.workaround}},
-     {{jira.evidence}},
-     {{jira.fix}}
-   ]
-   ```
+```
+bun run jira:sync-issues get <BUG-KEY> --include-comments
+```
 
-**If still not found:**
+The sync resolves every slug, converts ADF→Markdown, and writes one `.md` per field under `.context/PBI/`. Read those files plus `comments.md`.
 
-1. Verify field exists: use `[ISSUE_TRACKER_TOOL] search_fields(...)` with keyword.
-2. Update `.agents/jira-required.yaml` mapping for the slug (or ask user).
-3. Check if field is only visible to certain roles/projects.
+**If a field's `.md` is a stub (field absent on this instance):**
 
-**NEVER assume a field is empty without making the explicit call.**
+1. The stub points at the fallback comment — read it in `comments.md` (per `.agents/jira-required.yaml` → `fallback:`).
+2. Verify the slug→ID mapping in `.agents/jira-fields.json` (run `bun run jira:sync-fields` to refresh), or update `.agents/jira-required.yaml`.
+3. Check if the field is only visible to certain roles/projects.
+
+**NEVER assume a field is empty without reading the synced `.md` + `comments.md`.**
 
 ### Incorrect Feedback Due to Missing Fields
 
 **Problem:** AI gives feedback that custom fields are "missing" when they were actually filled.
 
-**Root Cause:** AI only made one call with `fields: "*all"` and assumed empty = not filled.
+**Root Cause:** AI read via `acli view` (which returns `null` for `customfield_*`) or read a stale cache, and assumed empty = not filled.
 
 **Prevention:**
 
-1. Always make the second explicit call for custom fields
-2. Before giving feedback on missing fields, verify with explicit field query
-3. In Phase 8 (Feedback), explicitly list which fields WERE found and their values
+1. Always read custom-field content via `bun run jira:sync-issues get <BUG-KEY> --include-comments`, never `view`.
+2. Before giving feedback on missing fields, re-run the sync and read the per-field `.md` + `comments.md`.
+3. In Phase 8 (Feedback), explicitly list which fields WERE found and their values.
 
 **If you already gave incorrect feedback:**
 
-1. Acknowledge the error to the user
-2. Re-query with explicit field IDs
-3. Provide corrected assessment
+1. Acknowledge the error to the user.
+2. Re-run the sync and read the materialized fields.
+3. Provide corrected assessment.

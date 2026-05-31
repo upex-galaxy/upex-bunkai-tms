@@ -69,8 +69,8 @@ Canonical reading order for any AI starting cold on a sprint-development workflo
 3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for `{{jira.<slug>}}` resolution.
 4. `.agents/jira-workflows.json` — workflow + transition catalog (resolves Ready For Dev → In Progress → In Review → Ready For QA).
 5. `.context/master-implementation-plan.md` — Master Sprint roadmap for the parent feature (priority + dependency context).
-6. `.context/PBI/{module}/{TICKET}-{slug}/context.md` — story-level context: ACs, session notes, open questions.
-7. `.context/PBI/{module}/{TICKET}-{slug}/implementation-plan.md` — canonical story-level technical plan (read before Stage 2 resume).
+6. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md` — story-level context (dev-authored, non-Jira): session notes, open questions.
+7. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` — canonical story-level technical plan, synced from the Jira `spec_implementation_plan` field (read-only cache; read before Stage 2 resume).
 8. `.context/SRS/` architecture-specs — only when the story touches a cross-cutting concern (auth, data model, infra).
 9. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
 
@@ -80,9 +80,9 @@ Canonical reading order for any AI starting cold on a sprint-development workflo
 
 ## Subagent Dispatch Strategy
 
-> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) is NOT optional. Phase 1 plan is delegated to the canonical artifact at `.context/PBI/<JIRA-KEY>/impl-plan.md`; this skill writes only `progress.md`.
+> **Orchestration & Session contracts**: this skill follows `./orchestration-doctrine.md` (mandatory subagent dispatch — main thread is command center) AND `./session-management.md` (Phase 0 resume check, plan-first persistence at `.session/<skill-slug>/<scope>/`, archive on completion). Phase 0 (resume check) is NOT optional. The Phase 1 plan is authored in-session, pushed to the Jira `spec_implementation_plan` field, then read back from the synced canonical artifact at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md`; this skill writes only `progress.md`.
 
-This skill is **per-ticket scope**: `<scope>` = `<JIRA-KEY>` (e.g. `UPEX-123`), resolved from the invocation trigger. Session state lives at `.session/sprint-development/<JIRA-KEY>/progress.md` per `agentic-dev-core/references/session-management.md` §3 + §9. This skill adopts the **progress-only variant** (§5 special cases + §13) — no `plan.md` is written under `.session/`; the canonical plan stays committed at `.context/PBI/<JIRA-KEY>/impl-plan.md`.
+This skill is **per-ticket scope**: `<scope>` = `<JIRA-KEY>` (e.g. `UPEX-123`), resolved from the invocation trigger. Session state lives at `.session/sprint-development/<JIRA-KEY>/progress.md` per `agentic-dev-core/references/session-management.md` §3 + §9. This skill adopts the **progress-only variant** (§5 special cases + §13) — no `plan.md` is written under `.session/`; the canonical plan stays in Jira and is materialized to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` by the sync.
 
 This skill is compliant with the doctrine in `agentic-dev-core/references/orchestration-doctrine.md`. Every dispatch follows the 6-component briefing format defined in `agentic-dev-core/references/briefing-template.md`, and the pattern selected per stage matches the decision guide in `agentic-dev-core/references/dispatch-patterns.md`.
 
@@ -153,7 +153,9 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
    |  - Read story + AC       |
    |  - Discover ATP (if any) |
    |  - Decompose into tasks  |
-   |  - Output: impl-plan.md  |
+   |  - Push plan -> Jira     |
+   |    field; sync; read     |
+   |    implementation-plan.md|
    |  - Jira: -> In Progress  |
    +--------------------------+
        |
@@ -208,18 +210,18 @@ Before Epic precheck and Stage 1 — Planning, run the resume contract from `age
 
 1. Resolve `<scope>` for this invocation: `<JIRA-KEY>` from the trigger (e.g. `UPEX-123`).
 2. Check whether `.session/sprint-development/<JIRA-KEY>/progress.md` exists.
-3. If it does NOT exist → proceed to Epic precheck and Stage 1. The orchestrator creates the directory and writes the first `progress.md` entry once Stage 1 begins. **No `plan.md` is written under `.session/`** — `.context/PBI/<JIRA-KEY>/impl-plan.md` remains canonical.
+3. If it does NOT exist → proceed to Epic precheck and Stage 1. The orchestrator creates the directory and writes the first `progress.md` entry once Stage 1 begins. **No `plan.md` is written under `.session/`** — the synced `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` remains canonical.
 4. If it DOES exist:
    1. Read `.session/sprint-development/<JIRA-KEY>/progress.md` in full (tail of last ~3 entries minimum).
-   2. Read the cross-referenced `.context/PBI/<JIRA-KEY>/impl-plan.md` (canonical plan).
-   3. Surface to the user: ticket Goal (from impl-plan), last completed stage + timestamp, next planned stage, any blocking notes (e.g. "PR opened but CI red — last review note unresolved").
+   2. Read the cross-referenced `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (canonical plan, synced from Jira). To refresh it from the source of truth: `bun run jira:sync-issues get <JIRA-KEY> --include-comments`, then read the materialized file.
+   3. Surface to the user: ticket Goal (from implementation-plan), last completed stage + timestamp, next planned stage, any blocking notes (e.g. "PR opened but CI red — last review note unresolved").
    4. Offer three options and WAIT for input: **resume** (jump to the next planned stage — Stage 2 chunk, Stage 3 fix-iterate, etc.) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-sprint-development-<JIRA-KEY>-aborted/`, then re-enter Epic precheck) / **abort**.
 
 Phase 0 is inline — no subagent dispatch. The check fires even on first invocation so resume-vs-fresh is deterministic.
 
-**`progress.md` Cross-references contract**: when the orchestrator writes the first entry, the file's `## Cross-references` section MUST cite both `.context/PBI/<JIRA-KEY>/impl-plan.md` (canonical plan) and `.context/reports/SPRINT-<N>-DEVELOPMENT.md` (cross-ticket sprint tracker, when batch mode is active). These two pointers replace the `plan.md` that the full variant would write.
+**`progress.md` Cross-references contract**: when the orchestrator writes the first entry, the file's `## Cross-references` section MUST cite both `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (canonical plan, synced from Jira) and `.context/reports/SPRINT-<N>-DEVELOPMENT.md` (cross-ticket sprint tracker, when batch mode is active). These two pointers replace the `plan.md` that the full variant would write.
 
-> **Progress checkpoint**: the orchestrator appends a `progress.md` entry per `agentic-dev-core/references/session-management.md` §7 at each of: Stage 1 done (impl-plan committed + Jira → In Progress), every Stage 2 implementation chunk completed (multi-file edit pass + verification cap=3 green), each Stage 3 review iteration (review pass red → fix-issues loop → re-review), Stage 4 staging merged (Jira → Ready For QA), Stage 5 prod deployed (or rollback). Failed phases emit `status: failed` entries; retries emit fresh entries (append-only mandate, never rewrite).
+> **Progress checkpoint**: the orchestrator appends a `progress.md` entry per `agentic-dev-core/references/session-management.md` §7 at each of: Stage 1 done (plan pushed to Jira `spec_implementation_plan` + synced + Jira → In Progress), every Stage 2 implementation chunk completed (multi-file edit pass + verification cap=3 green), each Stage 3 review iteration (review pass red → fix-issues loop → re-review), Stage 4 staging merged (Jira → Ready For QA), Stage 5 prod deployed (or rollback). Failed phases emit `status: failed` entries; retries emit fresh entries (append-only mandate, never rewrite).
 
 ## Stage walkthroughs
 
@@ -231,22 +233,27 @@ Confirm the parent epic has the macro artifacts: `feature-test-plan.md` (from pr
 
 When to do macro feature plan vs micro story plan: a feature spanning 3+ stories merits a macro `feature-plan.md` first; otherwise jump straight to `story-plan.md`.
 
-The story-level plan must map every Acceptance Test Plan test case to an implementation step. **Source-of-truth order for the ATP**: (1) Jira comments containing "Test Case" / "TC-" / "Scenario:", (2) Jira custom field for the Acceptance Test Plan, (3) local `test-cases.md` / `acceptance-test-plan.md` (fallback only).
+The story-level plan must map every Acceptance Test Plan test case to an implementation step. **Detailed read of the ATP** is **modality-aware**:
+
+- **jira-native**: ATP = the Story field `{{jira.acceptance_test_plan}}` → `bun run jira:sync-issues get <STORY_KEY> --include-comments`, then read the synced `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/acceptance-test-plan.md` (and `comments.md` for inline "Test Case" / "TC-" / "Scenario:" notes).
+- **jira-xray**: ATP = the **Test Plan** issue `description` → `bun run jira:sync-issues get <ATP_KEY>` (the sync now supports Test Plan / Test Execution issue types), then read the synced `.context/PBI/.../test-plans/TESTPLAN-<KEY>-<slug>.md`; per-TC run results come via xray-cli.
+
+Never read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. ATP discovery order: sync get `<STORY>`/`<ATP_KEY>` → synced `acceptance-test-plan.md` (or `test-plans/TESTPLAN-<KEY>-<slug>.md`) → final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
 
 Read for guidance:
 
 - `references/feature-plan.md` — macro plan (epic-level, multiple stories)
 - `references/story-plan.md` — micro plan (single story, recommended starting point)
 
-Output: `implementation-plan.md` per story (or `feature-implementation-plan.md` per feature). Lives alongside the story folder in the project repo. Commit it before Stage 2 starts. Transition Jira `Ready For Dev -> In Progress`.
+Output: the plan is authored in-session, then **pushed to the Jira `spec_implementation_plan` field** (story-level) / `feature_implementation_plan` field (epic-level) via `[ISSUE_TRACKER_TOOL]` — or, if the field is absent, a `## Spec Implementation Plan (Dev)` / `## Feature Implementation Plan (Dev)` fallback comment per `.agents/jira-required.yaml`. Then run `bun run jira:sync-issues get <KEY> --include-comments` and read the materialized `implementation-plan.md` / `feature-implementation-plan.md` under the synced PBI tree (read-only cache). Transition Jira `Ready For Dev -> In Progress`.
 
 **Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Forecast Risk from the Workload Forecast block. See `references/sprint-report.md` §Part 2.
 
-Persistence: story plans persist at `.context/PBI/{ticket}/impl-plan.md` with topic_key `pbi/{ticket}/impl-plan`; macro feature plans use `pbi/{epic-slug}/feature-impl-plan`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
+Persistence: the canonical plan lives in the Jira `spec_implementation_plan` field and is materialized by the sync to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` with topic_key `pbi/{ticket}/implementation-plan`; macro feature plans live in the Jira `feature_implementation_plan` field, materialized to `feature-implementation-plan.md` with topic_key `pbi/{epic}/feature-implementation-plan`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 #### Workload Forecast (required output of Stage 1)
 
-After the impl-plan is written, the planner emits a forecast block at the bottom of `implementation-plan.md` and into the orchestrator turn-summary:
+After the plan is authored, the planner emits a forecast block at the bottom of the plan body (so it lands in the Jira `spec_implementation_plan` field and the synced `implementation-plan.md`) and into the orchestrator turn-summary:
 
 ```
 ## Review Workload Forecast
@@ -261,12 +268,12 @@ Algorithm (per-file multipliers, 20% test+docs buffer), risk thresholds (`<200` 
 
 ### Stage 2: Implementation
 
-**Gate (workload forecast)**: Stage 2 does NOT start if the Stage 1 forecast block reports `risk=High` AND `chain_strategy=pending`. Resolve the strategy by handing off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan), then return: update the forecast block in `implementation-plan.md` with the chosen strategy and proceed. See `references/workload-forecast.md` for full gate behavior.
+**Gate (workload forecast)**: Stage 2 does NOT start if the Stage 1 forecast block reports `risk=High` AND `chain_strategy=pending`. Resolve the strategy by handing off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan), then return: update the forecast block in the Jira `spec_implementation_plan` field with the chosen strategy, re-sync (`bun run jira:sync-issues get <KEY>`) so the synced `implementation-plan.md` reflects it, and proceed. See `references/workload-forecast.md` for full gate behavior.
 
 Pick the right entry point based on ticket type:
 
 - **New story** -> `references/implement-story.md` (main flow). Walk the impl plan step-by-step.
-- **Bug fix** -> `references/bug-fix-workflow.md` (root-cause first; reproduce; fix; regression check). Root-cause notes persist at `.context/PBI/{ticket}/bug-fix.md` with topic_key `pbi/{ticket}/bug-fix`. See `agentic-dev-core/references/topic-key-conventions.md`.
+- **Bug fix** -> `references/bug-fix-workflow.md` (root-cause first; reproduce; fix; regression check). Root-cause notes are dev-authored (non-Jira) and persist at `.context/PBI/bugs/BUG-<KEY>-<slug>/bug-fix.md` with topic_key `pbi/{ticket}/bug-fix`. See `agentic-dev-core/references/topic-key-conventions.md`.
 - **Resuming after interruption** -> `references/continue-implementation.md` (re-orient, identify last completed step, resume).
 - **PR feedback / lint or CI red** -> `references/fix-issues.md` (address comments without rewriting history).
 
@@ -284,7 +291,7 @@ If the work needs TDD on a specific function, hand off to `/unit-testing` mid-im
 
 Push the feature branch and open the PR via the `/git-flow-master` skill (it auto-detects the project's branching strategy — typically `staging` base for the main+integration pattern — and uses title format `feat({{PROJECT_KEY}}-N): <short>`). Jira automation rule should auto-transition the ticket from `In Progress -> In Review` within ~30s of PR creation; if it doesn't, surface a manual-transition warning.
 
-**Sprint report**: update the row: Status IN_PROGRESS → IN_REVIEW; fill PR (#NNN); set Delivery Strategy from the chain decision recorded in the impl-plan forecast block.
+**Sprint report**: update the row: Status IN_PROGRESS → IN_REVIEW; fill PR (#NNN); set Delivery Strategy from the chain decision recorded in the implementation-plan forecast block.
 
 Review checklist (driven by `references/review-pr.md`):
 
@@ -294,7 +301,7 @@ Review checklist (driven by `references/review-pr.md`):
 - Security checks (no secrets in diff, auth handled, input validation)
 - UI/UX adherence to design system (where applicable)
 
-Review notes persist at `.context/PBI/{ticket}/review.md` with topic_key `pbi/{ticket}/review`. Auto-generated review summaries use `capture_prompt: false`; human-prompted architectural decisions use `capture_prompt: true`. See `agentic-dev-core/references/topic-key-conventions.md`.
+Review notes are dev-authored (non-Jira) and persist at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` with topic_key `pbi/{ticket}/review`. Auto-generated review summaries use `capture_prompt: false`; human-prompted architectural decisions use `capture_prompt: true`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 Findings loop back to Stage 2 with `fix-issues.md`. Architectural rework loops back to Stage 1 with a new spec (rare).
 
@@ -316,7 +323,7 @@ After the static code review checklist passes, the reviewer/orchestrator generat
 
 **Gate**: PR cannot merge if any row is `uncovered` without justification. Resolve by adding a test, adding manual evidence, or reclassifying to `exempt:<specific reason>` (vague reasons are rejected). If the scenario truly cannot be verified, loop back to Stage 1 and re-spec the AC.
 
-Algorithm, four `covered_by` shapes with examples, full status legend, the 2FA-login worked example, and persistence (`.context/PBI/{ticket}/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`): see `references/spec-compliance-matrix.md`.
+Algorithm, four `covered_by` shapes with examples, full status legend, the 2FA-login worked example, and persistence (dev-authored, non-Jira: `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`): see `references/spec-compliance-matrix.md`.
 
 ### Stage 4: Staging Deploy
 
@@ -459,7 +466,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 5. **Confirm before push to main**: never push to `main`/`master` without explicit user confirmation. PR flow targets `staging`; production promotions are a separate gated event (Stage 5).
 6. **Docs travel with the PR**: status-report and release-notes updates go in the feature branch, not pushed direct to `staging`.
 7. **Jira automation verification**: after PR open and after merge, wait ~30s and verify the auto-transition fired. If not, transition manually and surface the gap.
-8. **ATP source-of-truth**: Jira comments first, then custom field, then local file fallback. Never assume the local file is authoritative.
+8. **ATP source-of-truth** (modality-aware): jira-native detailed read = `bun run jira:sync-issues get <STORY_KEY> --include-comments`, then read the synced `acceptance-test-plan.md`; jira-xray detailed read = `bun run jira:sync-issues get <ATP_KEY>` (Test Plan issue `description`), then read the synced `test-plans/TESTPLAN-<KEY>-<slug>.md`. Never read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. Final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
 9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers.
 10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
@@ -473,8 +480,8 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Sprint report row updated at each Jira transition (IN_PROGRESS / IN_REVIEW / MERGED / STAGING_DEPLOYED / PROD_DEPLOYED)
 - [ ] Session Log entry appended for any blocking / aborting / sprint-spanning event
 - [ ] Epic precheck: `feature-plan.md` + `feature-implementation-plan.md` exist or user confirmed proceeding without
-- [ ] Stage 1 plan committed; Jira transitioned to `In Progress`
-- [ ] ATP discovered (Jira comments -> custom field -> local fallback) and mapped into the plan
+- [ ] Stage 1 plan pushed to Jira `spec_implementation_plan` (or fallback comment), synced, and read back as `implementation-plan.md`; Jira transitioned to `In Progress`
+- [ ] ATP read via sync (jira-native: synced `acceptance-test-plan.md`; jira-xray: synced `test-plans/TESTPLAN-<KEY>-<slug>.md`; final fallback = `comments.md` / issue description) and mapped into the plan
 - [ ] Stage 2 verification (lint + types + tests) green; commits atomic
 - [ ] Stage 3 PR opened via `/git-flow-master`; Jira auto-transition to `In Review` verified
 - [ ] Stage 3 docs (status-report + release-notes) updated in the PR branch
@@ -487,7 +494,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 ## Anti-patterns — NEVER do these
 
 - **S1.** NEVER push to `main` without explicit user confirmation. PR flow targets `staging`; production is gated Stage 5.
-- **S2.** NEVER skip the Stage 1 impl-plan and jump straight to code. Plan → Code → Review is a hard order; even bug fixes get a one-paragraph root-cause analysis first.
+- **S2.** NEVER skip the Stage 1 implementation plan and jump straight to code. Plan → Code → Review is a hard order; even bug fixes get a one-paragraph root-cause analysis first.
 - **S3.** NEVER declare a story done without verification green across tests + types + lint (parallel cap=3). No "I'll fix the lint after merge".
 - **S4.** NEVER bypass code review on a PR that touches production behavior. Review checklist + Spec Compliance Matrix gate the merge.
 - **S5.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or similar AI-attribution lines in commit messages or PR bodies.
@@ -497,7 +504,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - **S9.** NEVER mark a story `Ready For QA` without verifying the staging deploy succeeded (CI green + smoke passed). A premature transition burns QA cycles.
 - **S10.** NEVER suppress failing pre-commit / pre-push hooks with `--no-verify`. If a hook is wrong, fix the hook in a separate commit; never silence it to ship.
 - **S11.** NEVER hardcode `customfield_NNNNN` IDs in plans, references, or AI output. Resolve every Jira field via `{{jira.<slug>}}` against `.agents/jira-required.yaml`.
-- **S12.** NEVER assume the local `acceptance-test-plan.md` is authoritative. ATP source-of-truth order: Jira comments → Jira custom field → local file fallback.
+- **S12.** NEVER read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. ATP detailed read is modality-aware: jira-native → `bun run jira:sync-issues get <STORY_KEY> --include-comments` → synced `acceptance-test-plan.md`; jira-xray → `bun run jira:sync-issues get <ATP_KEY>` → synced `test-plans/TESTPLAN-<KEY>-<slug>.md`. Final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
 
 ---
 

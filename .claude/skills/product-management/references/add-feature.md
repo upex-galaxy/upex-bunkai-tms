@@ -314,19 +314,25 @@ Anti-pattern `I18` requires an **active** discovery pass before any link is crea
 
 ---
 
-### Step 5: Create Local Story Folder
+### Step 5: Materialize the Local Story Cache (sync, do NOT hand-write)
 
-**Action:** Create the local folder using the Jira Key obtained in Step 2.
+**Action:** The story already lives in Jira (Step 2 created it; Step 4 linked it). The local `.md` is a **read-only cache** — never hand-authored (`CLAUDE.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
 
-**Naming:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+```
+bun run jira:sync-issues get {PROJECT_KEY}-{ISSUE_NUM}
+```
 
-**Location:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{name}/stories/`
+This writes the canonical story folder + `story.md` index + one Markdown file per non-empty rich-text custom field (`acceptance-criteria.md`, `scope.md`, `out-of-scope.md`, `business-rules.md`, `workflow.md`, `mockup.md`, …) under the epic tree. Do NOT use `acli view` to read fields back — it omits every `customfield_*`.
+
+**Canonical location (1:1 Epic = module):**
+
+```
+.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{name}/stories/STORY-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/
+```
 
 **Example:**
 
-If PROJECT_KEY = "MYM", the parent epic is "MYM-13", and Jira assigned issue number = 45, then the full Jira Key is "MYM-45".
-
-Create folder:
+If PROJECT_KEY = "MYM", the parent epic is "MYM-13", and Jira assigned issue number = 45, then the full Jira Key is "MYM-45" and the sync materializes:
 
 ```
 .context/PBI/epics/EPIC-MYM-13-{epic-name}/stories/STORY-MYM-45-{story-name}/
@@ -336,7 +342,9 @@ Create folder:
 
 ---
 
-### Step 6: Create story.md File
+### Step 6: Verify the Synced `story.md` (read-only)
+
+`story.md` is **materialized by the sync in Step 5**, never hand-written. This step is a read-back check: open the synced file and confirm the issue you created in Jira carries clean, INVEST-compliant content. If a field is wrong, fix it **in Jira** (create/REST PUT per `references/jira-operations.md`), then re-run `bun run jira:sync-issues get <KEY>` — do not edit the local file.
 
 **INVEST criteria for User Stories:**
 
@@ -349,7 +357,7 @@ Create folder:
 | **S**mall       | Can be completed in a sprint (max 8 story points)      | Less than 8 SP? If not, split.          |
 | **T**estable    | Acceptance criteria are verifiable                     | Are the scenarios clear and measurable? |
 
-**`story.md` file structure** (local, does NOT mirror Jira description 1:1):
+**Synced `story.md` shape** (what the sync emits — for read-back reference only, NOT an authoring template):
 
 ```markdown
 **Source spec:** FR-XXX  <!-- first line, omit if not applicable -->
@@ -464,45 +472,34 @@ Create folder:
 
 **Important notes:**
 
-- **AC, Scope, Out-of-Scope are NOT replicated in `story.md`** — they live only in their custom fields Jira-side. See `references/description-custom-field-dedup.md`.
-- The local `## Business Rules`, `## Workflow`, `## Mockups` sections are optional mirrors for developers who prefer to read everything in the filesystem; they must be kept in sync with their respective slugs during refinement.
+- **AC, Scope, Out-of-Scope are NOT replicated in `story.md`** — they live only in their custom fields Jira-side and sync into their own per-field files (`acceptance-criteria.md`, `scope.md`, `out-of-scope.md`). See `references/description-custom-field-dedup.md`.
+- `## Business Rules`, `## Workflow`, `## Mockups` are sourced from their Jira slugs and emitted by the sync — they are never edited locally; edit the Jira field and re-sync.
 
-**Expected output:** `.context/PBI/epics/EPIC-[...]/stories/STORY-[...]/story.md`
-
----
-
-### Step 7: Update epic.md
-
-**Action:** Add the new story to the list of user stories in the parent epic's `epic.md`.
-
-**Find the "User Stories" section and add:**
-
-```markdown
-## User Stories
-
-[... existing stories ...]
-X. **{PROJECT_KEY}-{ISSUE_NUM}** - As a [user-type], I want to [action on entities] so that [benefit]
-```
-
-(Where `{PROJECT_KEY}` and `{ISSUE_NUM}` are the ones obtained in Step 2, and `[user-type]`, `[action on entities]`, and `[benefit]` are determined from the analysis of the current project.)
+**Synced output:** `.context/PBI/epics/EPIC-[...]/stories/STORY-[...]/story.md` (+ per-field files).
 
 ---
 
-### Step 8: Update epic-tree.md
+### Step 7: Refresh the Parent `epic.md` (sync, do NOT hand-edit)
 
-**Action:** Add the new story to the backlog's visual tree.
+**Action:** `epic.md` is a Jira-mirrored cache, not a hand-edited file. After the new story is linked to its parent Epic in Jira, refresh the epic's local cache so its child-story list reflects the new key:
 
-**Example:**
-
-```markdown
-EPIC-{PROJECT_KEY}-{NUM}: [Epic Title per domain]
-├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 1]
-├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 2]
-├── STORY-{PROJECT_KEY}-{NUM}: [Existing story 3]
-└── STORY-{PROJECT_KEY}-{ISSUE_NUM}: [New story title] ⭐ NEW
+```
+bun run jira:sync-issues pull --epic {PROJECT_KEY}-{EPIC_NUM}
 ```
 
-(Story and epic names are determined by analyzing the current project's domain.)
+The synced `epic.md` shows the updated User Stories list. If a story is missing from it, the fix is in Jira (confirm the Epic Link / parent), then re-sync — never type the story into `epic.md` by hand.
+
+---
+
+### Step 8: Refresh `epic-tree.md` (sync, do NOT hand-edit)
+
+**Action:** `.context/PBI/epic-tree.md` is regenerated by the sync, not hand-edited. Refresh the backlog tree so the new story appears under its epic:
+
+```
+bun run jira:sync-issues pull
+```
+
+The regenerated tree reflects the live Jira backlog graph (epics → child stories). Do not hand-append the new story to the tree.
 
 ---
 
@@ -513,10 +510,10 @@ EPIC-{PROJECT_KEY}-{NUM}: [Epic Title per domain]
 - ✅ Story created in Jira with real ID
 - ✅ Story transitioned to the default status (`{{jira.statuses.story_default}}`)
 - ✅ Dependencies published as Jira issue links (when applicable)
-- ✅ Local folder created with correct naming
-- ✅ `story.md` file complete (no AC/Scope/OOS duplicated)
-- ✅ epic.md updated
-- ✅ epic-tree.md updated
+- ✅ Local folder materialized via sync (correct canonical naming)
+- ✅ `story.md` + per-field files synced (no AC/Scope/OOS duplicated)
+- ✅ Parent `epic.md` refreshed via sync
+- ✅ `epic-tree.md` regenerated via sync
 
 ---
 
@@ -595,27 +592,17 @@ Create folder:
 
 ---
 
-### Step 5: Create epic.md File
+### Step 5: Materialize the Epic Cache (sync, do NOT hand-write)
 
-**Full structure (same as the `product-backlog-seed.md` prompt)**
+**Action:** The Epic already lives in Jira (Step 2). `epic.md` is a read-only mirror — never hand-authored (`CLAUDE.md` §9; `references/jira-operations.md` → "No local authoring"). Materialize it with the sync script:
 
-Includes every section:
+```
+bun run jira:sync-issues get {PROJECT_KEY}-{EPIC_NUM}
+```
 
-- Epic Description
-- User Stories (with TBD IDs for now)
-- Related Functional Requirements (FR-XXX reference at body level, not in the summary)
-- Technical Considerations
-- Dependencies
-- Success Metrics
-- Risks & Mitigations
-- Testing Strategy (reference to future files)
-- Implementation Plan (reference to future files)
-- Notes
-- Related Documentation
+This emits the canonical `.context/PBI/epics/EPIC-{PROJECT_KEY}-{EPIC_NUM}-{slug}/epic.md` index plus one file per non-empty epic custom field (e.g. `feature-implementation-plan.md`, `feature-test-plan.md`). The child-story list starts empty and is filled once the stories exist (Step 11 re-sync).
 
-**Important:** the LOCAL `epic.md` does not replicate `## Acceptance Criteria (Epic Level)`, `## Scope`, or `## Out of Scope` when those live in epic-side custom fields. If the workspace does not expose them as epic custom fields, they may live in the local `epic.md` — but the decision is documented once per project in `description-custom-field-dedup.md`.
-
-**IMPORTANT:** Clearly mark it as a post-MVP feature.
+**Important:** Epic-level AC / Scope / Out-of-Scope, when present, live in their epic custom fields and sync into their own per-field files — never duplicated into `epic.md`. The mapping of which content lives in which slot is documented once per project in `description-custom-field-dedup.md`. Mark the epic as a post-MVP feature **in Jira** (label / description set in Step 2), not by editing the synced file.
 
 ---
 
@@ -677,7 +664,7 @@ Anti-pattern `I18` requires an **active** discovery pass before any internal lin
 - Explicit sequencing in PRD / SRS / functional-specs.
 - Master Sprint ordering in `.context/master-implementation-plan.md`.
 - Entity-level relations in `.context/business/business-data-map.md`.
-- Explicit `Blocked By` / `Blocks` declarations in each local `story.md` (populated in Step 10).
+- Explicit author-intent `Blocked By` / `Blocks` dependencies surfaced during this session (these become Jira issue links here, then sync back into each `story.md` in Step 11).
 
 **How:**
 
@@ -703,94 +690,64 @@ Anti-pattern `I18` requires an **active** discovery pass before any internal lin
 3. **DO NOT auto-resolve.** Offer the user three explicit options:
    - **(a) Move the bullet** to a single owning story (the bullet is removed from the other).
    - **(b) Extract a shared dependency story** that contains the bullet and that both depend on.
-   - **(c) Accept the duplicate** if it is intentional shared context (rare; document the rationale in both `story.md` files).
+   - **(c) Accept the duplicate** if it is intentional shared context (rare; document the rationale in a comment on both Jira issues — it will then surface in the synced caches).
 
 Conceptual detail of clean slicing and the related anti-pattern (`I4`) → `SKILL.md` Anti-patterns.
 
 ---
 
-### Step 10: Create Local Story Folders
+### Step 10: Materialize Story Caches (sync, do NOT hand-write)
 
-**Action:** For every created story, create its local folder.
+**Action:** Every story already lives in Jira (Step 6) and is linked (Step 8). Materialize the read-only local caches in one pass — the sync creates the canonical folders + `story.md` + per-field files; you never hand-create folders or files.
 
-**Naming:** `STORY-{PROJECT_KEY}-{ISSUE_NUM}-{descriptive-name}/`
+```
+bun run jira:sync-issues pull --epic {PROJECT_KEY}-{EPIC_NUM}
+```
 
-**Location:** `.context/PBI/epics/EPIC-{PROJECT_KEY}-{NUM}-{epic-name}/stories/`
-
-**Example:**
-
-If PROJECT_KEY = "MYM", parent epic = "MYM-50", and stories with issue numbers 51, 52, 53:
+(Or `get <KEY>` per story if you only need a subset.) Canonical layout the sync produces:
 
 ```
 .context/PBI/epics/EPIC-MYM-50-{epic-name}/stories/
-├── STORY-MYM-51-{story-name-1}/
-├── STORY-MYM-52-{story-name-2}/
-└── STORY-MYM-53-{story-name-3}/
+├── STORY-MYM-51-{story-name-1}/story.md (+ acceptance-criteria.md, scope.md, …)
+├── STORY-MYM-52-{story-name-2}/story.md (+ per-field files)
+└── STORY-MYM-53-{story-name-3}/story.md (+ per-field files)
 ```
-
-(Where `{epic-name}` and `{story-name-X}` are inferred from the current project's domain analysis.)
 
 ---
 
-### Step 11: Create story.md Files
+### Step 11: Verify the Synced Story Caches (read-only)
 
-**Action:** Create a `story.md` for each story (same structure as Phase 2A Step 6).
+**Action:** Read back the materialized `story.md` + per-field files and confirm each reflects the Jira issue you created. This is a check, not an authoring step.
 
 **IMPORTANT:**
 
-- Mark them as post-MVP feature stories.
-- `**Source spec:** FR-XXX` as the first line when applicable.
-- DO NOT include `## Acceptance Criteria` / `## Scope` / `## Out of Scope` in the local `story.md` — they live in Jira-side custom fields.
-- `Blocked By` / `Blocks` declarations in every `story.md` must match the issue links created in Step 8.
+- AC / Scope / Out-of-Scope are NOT in `story.md` — they sync into their own per-field files (`acceptance-criteria.md`, `scope.md`, `out-of-scope.md`) from the Jira custom fields.
+- `Blocked By` / `Blocks` in each `story.md` must match the issue links created in Step 8. A mismatch means the link is wrong in Jira — fix the link, then re-sync. Never edit the local file.
+- Wrong content (missing source spec, leaked impl detail) → fix the Jira field (create / REST PUT per `references/jira-operations.md`), then re-run the sync.
 
 ---
 
-### Step 12: Update epic.md With Real IDs
+### Step 12: Refresh `epic.md` With Real Story IDs (sync, do NOT hand-edit)
 
-**Action:** Update the "User Stories" section of `epic.md` with the real Jira keys.
+**Action:** Re-run the epic sync so the materialized `epic.md` User Stories list reflects the real child-story keys now linked under the Epic:
 
-**Example:**
-
-```markdown
-## User Stories
-
-1. **{PROJECT_KEY}-51** - As a [user-type], I want to [action 1] so that [benefit]
-2. **{PROJECT_KEY}-52** - As a [user-type], I want to [action 2] so that [benefit]
-3. **{PROJECT_KEY}-53** - As a [user-type], I want to [action 3] so that [benefit]
+```
+bun run jira:sync-issues pull --epic {PROJECT_KEY}-{EPIC_NUM}
 ```
 
-(Where `{PROJECT_KEY}` is the one from input, the numbers are Jira-assigned, and the user stories are determined by analyzing the current project.)
+If a story is missing from the synced list, the Epic Link / parent is wrong in Jira — fix it there and re-sync. Do not type story keys into `epic.md` by hand.
 
 ---
 
-### Step 13: Update epic-tree.md
+### Step 13: Refresh `epic-tree.md` (sync, do NOT hand-edit)
 
-**Action:** Add the new epic to the backlog's visual tree.
+**Action:** Regenerate the backlog tree so the new epic and its stories appear:
 
-**Example:**
-
-```markdown
-[... existing MVP epics ...]
-
----
-
-## Post-MVP Features
-
-### ⭐ EPIC-{PROJECT_KEY}-{NUM}: [Epic Title per domain]
-
-**Jira Key:** {PROJECT_KEY}-{ISSUE_NUM}
-**Status:** [current status]
-**Priority:** MEDIUM (Post-MVP)
-**Description:** [Description per current project's domain analysis]
-
-**User Stories (X):**
-
-1. **{PROJECT_KEY}-{NUM}** - [Story title 1]
-2. **{PROJECT_KEY}-{NUM}** - [Story title 2]
-3. **{PROJECT_KEY}-{NUM}** - [Story title 3]
-
-**Related Functional Requirements:** [FR list at body level, optional]
 ```
+bun run jira:sync-issues pull
+```
+
+The regenerated `.context/PBI/epic-tree.md` reflects the live Jira backlog graph (epics → child stories, statuses, priorities). Do not hand-append the new epic to the tree.
 
 ---
 

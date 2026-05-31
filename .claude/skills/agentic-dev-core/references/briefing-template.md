@@ -135,7 +135,7 @@ In `sprint-development`, the three stages have a strict data dependency: Impleme
 Stage 1 — Planning agent
 ============================
 
-Goal: Produce an implementation plan for ticket <<ISSUE_KEY>> under .context/PBI/<<ISSUE_KEY>>/impl-plan.md.
+Goal: Produce an implementation plan for ticket <<ISSUE_KEY>> under .context/PBI/epics/EPIC-<<EPIC_KEY>>-<<EPIC_SLUG>>/stories/STORY-<<ISSUE_KEY>>-<<STORY_SLUG>>/implementation-plan.md.
 
 Context docs:
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/business-data-map.md
@@ -143,7 +143,7 @@ Context docs:
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/business-api-map.md
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/business/project-dev-guide.md
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/master-implementation-plan.md
-  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/PBI/<<ISSUE_KEY>>/spec.md
+  - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.context/PBI/epics/EPIC-<<EPIC_KEY>>-<<EPIC_SLUG>>/stories/STORY-<<ISSUE_KEY>>-<<STORY_SLUG>>/context.md
   - /home/sai/Desktop/upex/web-apps/agentic-dev-boilerplate/.claude/skills/sprint-development/references/spec-driven-development.md
 
 Skills to load: /acli (to fetch the ticket if spec.md is missing fields)
@@ -153,11 +153,11 @@ Exact instructions:
   2. Read every doc in Context docs above.
   3. Map each AC to a concrete task (file to touch + change shape).
   4. Identify required new endpoints / schemas / migrations and flag pre-requisites.
-  5. Write impl-plan.md into the PBI folder using the spec-driven-development template.
+  5. Author the implementation plan using the spec-driven-development template, write it to the Jira `spec_implementation_plan` field (fallback: a comment) via [ISSUE_TRACKER_TOOL], then materialize the read-only cache with `bun run jira:sync-issues get <<ISSUE_KEY>>` (produces implementation-plan.md in the story folder).
   6. List any open questions that block coding (ambiguous AC, missing schema, etc.).
 
 Report format:
-  - implPlanPath: absolute path to impl-plan.md
+  - implPlanPath: absolute path to implementation-plan.md (Jira-synced read-only cache)
   - tasksListed: [{ id, ac_id, files_touched, change_shape }]
   - prerequisites: [{ kind, description }]
   - openQuestions: [...]

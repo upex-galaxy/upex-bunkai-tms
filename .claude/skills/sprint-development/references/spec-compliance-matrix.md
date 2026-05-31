@@ -15,7 +15,7 @@ The gate is simple: **no row may sit at `uncovered` when the PR merges**. Anythi
 
 ## When the matrix is generated
 
-At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged to `staging`. The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the PR description or as a comment on the PR; a copy persists at `.context/PBI/{ticket}/compliance-matrix.md` with topic_key `pbi/{ticket}/compliance-matrix`.
+At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged to `staging`. The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the PR description or as a comment on the PR; a copy persists at `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md` with topic_key `pbi/{ticket}/compliance-matrix`.
 
 If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a TODO list (add test, add manual evidence, or reclassify with a real reason). The matrix is never green-lit by hand-waving; the reviewer either edits one of the cells with a real evidence pointer or writes a concrete `exempt:<reason>`.
 
@@ -23,7 +23,7 @@ If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a T
 
 ## Matrix format (verbatim)
 
-One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or `.context/PBI/{ticket}/spec.md` fallback). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
+One row per AC scenario. Scenarios come from the story's Gherkin AC (Jira `acceptance_criteria` field, or `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/spec.md` fallback). The row count of the matrix MUST equal the scenario count of the story; missing rows are themselves a defect.
 
 ```
 | AC scenario (Gherkin)                          | covered_by                          | evidence                              | status           |
@@ -65,8 +65,8 @@ Manual verification was performed and recorded. The path points to a markdown fi
 Examples:
 
 ```
-manual:.context/PBI/UPEX-123/manual-evidence.md#scenario-3
-manual:.context/PBI/UPEX-123/evidence/login-flow.mp4
+manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-123-<slug>/manual-evidence.md#scenario-3
+manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-123-<slug>/evidence/login-flow.mp4
 manual:https://staging.example.com/_test-runs/2026-05-06-login.html
 ```
 
@@ -128,9 +128,9 @@ Five values. Mechanically derived from `covered_by`:
 
 The reviewer subagent walks each AC scenario in order and applies these steps:
 
-1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) `.context/PBI/{ticket}/spec.md`, (3) story description fallback. Every Given/When/Then block is one row.
+1. **Read all AC scenarios** for the story. Source-of-truth order: (1) Jira `acceptance_criteria` custom field, (2) `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/spec.md`, (3) story description fallback. Every Given/When/Then block is one row.
 2. **For each scenario, ask: is there an automated test that exercises it?** Walk the diff + the existing test suite. If yes, mark `covered_by: test:<id>`, `status: covered`. The test must assert the scenario's outcome, not just the same code path.
-3. **If no test exists, ask: is there manual evidence on file?** Look in `.context/PBI/{ticket}/evidence/` and PR comments. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-path>`, `status: manual`.
+3. **If no test exists, ask: is there manual evidence on file?** Look in `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/evidence/` and PR comments. If a markdown / screenshot / video shows the scenario passing, mark `covered_by: manual:<evidence-path>`, `status: manual`.
 4. **If no evidence and the scenario is impractical to test in dev**, write a specific `exempt:<reason>`. Vague reasons are rejected. Mark `status: exempt`. The PR comment should also state how the scenario will be verified post-deploy (synthetic monitor, staging smoke, prod observability, etc.).
 5. **If a human reviewer has read the code and certifies correctness**, mark `covered_by: review-approved:<@reviewer>`, `status: review-approved`. The reviewer handle must be a real person who actually read the diff — not the author.
 6. **Else** mark `status: uncovered`. This is a blocker. Generate a TODO and loop back to Stage 2 to add a test, add manual evidence, or reclassify with a real reason.
@@ -147,7 +147,7 @@ Story `UPEX-512: User can log in with email + 2FA challenge`, with four Gherkin 
 | AC scenario (Gherkin)                                 | covered_by                                                             | evidence                                                            | status            |
 | ----------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------- |
 | User logs in with valid email + password              | test:tests/auth/login.spec.ts::"valid-credentials-yields-2fa-prompt"   | tests/auth/login.spec.ts:42                                         | covered           |
-| Email validation prompts user when format is invalid  | manual:.context/PBI/UPEX-512/manual-evidence.md#email-validation       | screenshot + DOM dump in manual-evidence.md, captured 2026-05-06    | manual            |
+| Email validation prompts user when format is invalid  | manual:.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-512-<slug>/manual-evidence.md#email-validation       | screenshot + DOM dump in manual-evidence.md, captured 2026-05-06    | manual            |
 | Concurrent login attempts are rate-limited (5/min)    | exempt:requires production traffic — verified by post-deploy synthetic monitor `auth-rate-limit-probe` | https://monitors.example.com/auth-rate-limit-probe                  | exempt            |
 | Logout clears session and redirects to /login         | review-approved:@alice (confirmed `clearSession()` wiring + redirect)  | PR #347 comment thread, alice's review block                        | review-approved   |
 ```
@@ -165,7 +165,7 @@ If instead row 4 had read `covered_by: review-approved:@author` (the PR author c
 Acceptable mitigations to clear an `uncovered` row, in priority order:
 
 1. **Add an automated test** that asserts the scenario. This is the strongest mitigation — promotes the row to `covered` and locks in regression protection.
-2. **Add manual evidence** (screenshot, video, session log) and persist it under `.context/PBI/{ticket}/evidence/`. Promotes the row to `manual`.
+2. **Add manual evidence** (screenshot, video, session log) and persist it under `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/evidence/`. Promotes the row to `manual`.
 3. **Reclassify to `exempt:<specific reason>`** if the scenario genuinely cannot be tested in dev. Reason MUST be concrete — name the third-party / infra / scale dependency. Should be paired with a post-deploy verification plan (synthetic monitor, staging smoke, prod observability).
 4. **Get a real human review-approval** from someone other than the author. Promotes the row to `review-approved`. Use sparingly; reserve for trivial diffs.
 
@@ -202,6 +202,6 @@ If the matrix exposes a scenario that nobody can figure out how to verify at all
 The matrix lives in two places:
 
 - **Inline in the PR** (description or top-of-thread comment) so reviewers see it without leaving GitHub.
-- **In the project repo** at `.context/PBI/{ticket}/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
+- **In the project repo** at `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 Both copies must agree at merge time. If they drift, the in-repo copy is canonical.

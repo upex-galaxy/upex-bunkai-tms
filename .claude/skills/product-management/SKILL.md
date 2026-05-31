@@ -212,11 +212,11 @@ After the write, before moving to the next field/story:
 
 ### A. Initial backlog seeding (one-time, from PRD)
 
-When you have a fresh PRD/SRS and zero issues in Jira, generate the initial backlog tree (epics + their foundational stories) and persist it both in Jira and under `.context/PBI/`.
+When you have a fresh PRD/SRS and zero issues in Jira, generate the initial backlog tree (epics + their foundational stories) by creating the issues in Jira, then materialize the local read-only cache under `.context/PBI/` via the sync script.
 
 Read `references/product-backlog-seed.md`.
 
-Output: `.context/PBI/epic-tree.md` + per-epic folders + initial stories created in Jira under `{{PROJECT_KEY}}`. Each epic file persists with topic_key `pbi/{epic-slug}/epic`; per-story files use `pbi/{ticket}/spec`. See `agentic-dev-core/references/topic-key-conventions.md`.
+Output: epics + foundational stories created in Jira under `{{PROJECT_KEY}}`, then `bun run jira:sync-issues pull` materializes `.context/PBI/epic-tree.md` + the canonical `.context/PBI/epics/EPIC-<KEY>-<slug>/` tree (epic + per-story folders). Local `.md` is a read-only cache — never hand-written. Topic_key for memory notes: per-epic `pbi/{epic-slug}/epic`; per-story `pbi/{ticket}/spec`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 ### B. Incremental feature addition (continuous)
 
@@ -232,7 +232,7 @@ When you need to formally structure a new epic — naming, scope boundaries, dec
 
 Read `references/epic-creation.md`.
 
-Output: epic folder under `.context/PBI/{epic-slug}/` + `epic.md` + decomposed child stories. Topic_key: `pbi/{epic-slug}/epic` (UPSERT semantics; see `agentic-dev-core/references/topic-key-conventions.md`).
+Output: Epic created in Jira (with child stories) under `{{PROJECT_KEY}}`, then `bun run jira:sync-issues pull --epic <KEY>` materializes the canonical `.context/PBI/epics/EPIC-<KEY>-<slug>/epic.md` + decomposed child-story folders as a read-only cache. Topic_key for memory notes: `pbi/{epic-slug}/epic` (UPSERT semantics; see `agentic-dev-core/references/topic-key-conventions.md`).
 
 ### D. Story refinement (per story)
 
@@ -248,7 +248,7 @@ When a story has rough acceptance criteria — vague conditions, missing data, n
 
 Read `references/acceptance-criteria.md`.
 
-Output: refined AC in Gherkin with concrete data, error scenarios, and boundary scenarios; ambiguities surfaced as open questions if not resolvable from PRD/SRS. Persists at `.context/PBI/{ticket}/spec.md` with topic_key `pbi/{ticket}/spec`. See `agentic-dev-core/references/topic-key-conventions.md`.
+Output: refined AC in Gherkin with concrete data, error scenarios, and boundary scenarios; ambiguities surfaced as open questions if not resolvable from PRD/SRS. Persists at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md` with topic_key `pbi/{ticket}/spec`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 ### F. Edge-case enumeration (per feature/epic)
 
@@ -256,7 +256,7 @@ When designing or refining a feature and you need to systematically enumerate fa
 
 Read `references/edge-cases-enumeration.md`.
 
-Output: cataloged edge cases with criticality + decision (high-criticality + clearly-defined behavior → promote into AC; otherwise → test-only, hand off to QA). Persists at `.context/PBI/{ticket}/edge-cases.md` with topic_key `pbi/{ticket}/edge-cases`. See `agentic-dev-core/references/topic-key-conventions.md`.
+Output: cataloged edge cases with criticality + decision (high-criticality + clearly-defined behavior → promote into AC; otherwise → test-only, hand off to QA). Persists at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/edge-cases.md` with topic_key `pbi/{ticket}/edge-cases`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 ### G. Sprint reporting (read-only PM snapshot)
 
@@ -296,7 +296,7 @@ On successful completion of workflow A / B / C (Verification checklist from the 
 For projects with concurrent devs on the same feature, compliance/audit requirements, or capabilities that need an explicit history of behavioral change, an opt-in formal change-tracking pattern is available. Instead of editing acceptance criteria in place on each story, you maintain:
 
 - **Source-of-truth specs** at `.context/PBI/specs/{capability}/{feature}.md` (canonical, always-current behavior — RFC 2119 + Gherkin)
-- **Delta specs** per change at `.context/PBI/{ticket}/spec.md` with explicit `## ADDED Requirements`, `## MODIFIED Requirements`, and `## REMOVED Requirements` sections
+- **Delta specs** per change at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md` with explicit `## ADDED Requirements`, `## MODIFIED Requirements`, and `## REMOVED Requirements` sections
 - **Archive process** that merges deltas back into the source-of-truth on story close and moves the change folder under `.context/PBI/archive/YYYY-MM-DD-{ticket}/`
 
 See `references/delta-specs.md` for the full pattern: when to adopt it, requirement format, the **copy-full-then-edit rule** for MODIFIED requirements, the archive protocol, and migration guidance.

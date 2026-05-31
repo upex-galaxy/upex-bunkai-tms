@@ -70,10 +70,10 @@ Multiple `### Requirement:` blocks per feature are normal. Each requirement shou
 A delta spec lives alongside the Jira ticket that introduces the change:
 
 ```
-.context/PBI/{ticket}/spec.md
+.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md
 ```
 
-Where `{ticket}` is the issue tracker key (e.g., `UPEX-277/`, `MYM-103/`).
+Where `{ticket}` is the issue tracker key (e.g., `UPEX-277`, `MYM-103`).
 
 Every delta spec has up to three top-level sections:
 
@@ -187,7 +187,7 @@ The system MUST authenticate users via email and password.
 - And displays "Invalid email or password"
 ```
 
-Ticket `UPEX-512` introduces optional 2FA. The delta spec at `.context/PBI/UPEX-512/spec.md`:
+Ticket `UPEX-512` introduces optional 2FA. The delta spec at `.context/PBI/epics/EPIC-UPEX-100-<epic>/stories/STORY-UPEX-512-<slug>/spec.md`:
 
 ```markdown
 # UPEX-512 — Add optional TOTP-based 2FA to login
@@ -308,7 +308,7 @@ When the story closes (PR merged + verified in staging/prod), the delta is folde
    - Optionally write a one-line entry to a CHANGELOG with the removal reason.
 
 5. **Move the change folder to archive**
-   - Move `.context/PBI/{ticket}/` to `.context/PBI/archive/YYYY-MM-DD-{ticket}/`, where `YYYY-MM-DD` is the close date.
+   - Move `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/` to `.context/PBI/archive/YYYY-MM-DD-{ticket}/`, where `YYYY-MM-DD` is the close date.
    - Add an `archive-report.md` inside the archived folder summarizing: requirements added/modified/removed, target file(s) updated, who archived it, when.
 
 6. **Commit the archive**

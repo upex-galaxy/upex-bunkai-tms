@@ -52,7 +52,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 3. **Detect carryovers** if `previous_sprint_file` was provided. Scan it for tickets whose status is NOT `PROD_DEPLOYED` / `ABORTED`. For each, check whether it appears in the current sprint; if yes, mark as carryover with prior context; if no, note as "dropped from sprint" and inform the user.
 4. **Build Board Summary** counts (Ready For Dev / In Progress / In Review / Ready For QA / Deployed to Prod / Blocked / Total).
 5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Forecast Risk, Status). Status column is the canonical state machine value, not the Jira label.
-6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from impl-plan forecasts).
+6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from implementation-plan forecasts).
 7. **Write the file** using the framework structure below.
 8. **Append Session Log entry** for the setup pass — date, totals, in-flight IDs, assigned/unassigned counts, carryover IDs, "Created SPRINT-{N}-DEVELOPMENT.md tracker".
 9. **Report** a short board summary back to the user: totals, in-flight count, carryovers.
@@ -89,7 +89,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 #### In-Flight Notes
 
-- {Ticket ID}: {context, blockers, impl-plan highlights}
+- {Ticket ID}: {context, blockers, implementation-plan highlights}
 
 #### Dependencies
 
@@ -137,7 +137,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 | Blocked                             | {count}                        |
 | Cancelled                           | {count}                        |
 | Carryovers from Sprint {N-1}        | {count or 0}                   |
-| Estimated total LOC delivered       | {sum from impl-plan forecasts} |
+| Estimated total LOC delivered       | {sum from implementation-plan forecasts} |
 
 ## Session Log
 
@@ -174,8 +174,8 @@ Triggered when sprint-dev transitions Jira `Ready For Dev → In Progress`.
 
 - **Status**: `PENDING` → `IN_PROGRESS`.
 - **Owner**: fill with the dev driving the ticket (defaults to `git config user.name`).
-- **Impl Plan**: link to `.context/PBI/{ticket}/impl-plan.md` (or topic key `pbi/{ticket}/impl-plan`).
-- **Forecast Risk**: `Low` / `Medium` / `High`, read from the Workload Forecast block in the impl-plan.
+- **Impl Plan**: link to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (synced from the Jira `spec_implementation_plan` field; or topic key `pbi/{ticket}/implementation-plan`).
+- **Forecast Risk**: `Low` / `Medium` / `High`, read from the Workload Forecast block in the implementation plan.
 - **Session Log**: append `### {date} — {ticket} IN_PROGRESS` with a one-line note (forecast risk + any salient context).
 
 ### Stage 3 — Code Review (PR open)
@@ -184,7 +184,7 @@ Triggered when sprint-dev opens the PR via `/git-flow-master` and Jira auto-tran
 
 - **Status**: `IN_PROGRESS` → `IN_REVIEW`.
 - **PR**: fill `#NNN`. Construct the link as `<repo-url>/pull/NNN`, where `<repo-url>` is obtained at runtime via `git remote get-url origin` (strip a trailing `.git` if present). Do NOT hardcode the repo URL or read it from `.agents/project.yaml`.
-- **Delivery Strategy**: read from the chain decision recorded in the impl-plan forecast block (`stacked-to-main` / `feature-branch-chain` / `single-pr` / `size-exception`). Normalize to `stacked` / `chain` / `single` / `exception` for the column.
+- **Delivery Strategy**: read from the chain decision recorded in the implementation-plan forecast block (`stacked-to-main` / `feature-branch-chain` / `single-pr` / `size-exception`). Normalize to `stacked` / `chain` / `single` / `exception` for the column.
 - **Session Log**: append `### {date} — {ticket} IN_REVIEW` with PR number + delivery strategy.
 
 ### Stage 4 — Merge + Staging Deploy
@@ -217,7 +217,7 @@ PENDING → IN_PROGRESS → IN_REVIEW → MERGED → STAGING_DEPLOYED → PROD_D
 State definitions:
 
 - **`PENDING`** — Ticket is in the sprint and queued; not yet pulled. Default state for Queue rows.
-- **`IN_PROGRESS`** — Sprint-dev Stage 1 entered; impl-plan being authored or code being written.
+- **`IN_PROGRESS`** — Sprint-dev Stage 1 entered; implementation plan being authored or code being written.
 - **`IN_REVIEW`** — PR opened; reviewer running.
 - **`MERGED`** — PR squash-merged into `staging`; CI not yet green.
 - **`STAGING_DEPLOYED`** — Staging CI smoke passed; staging environment auto-deployed; Jira at `Ready For QA`.
@@ -266,7 +266,7 @@ When the orchestrator is in single-ticket mode:
 
 1. At Stage 1 entry, **read** the latest `SPRINT-{N}-DEVELOPMENT.md` (if present) for queue / dependency context. Look for: same-sprint blocking tickets, related epic threads, prior carryovers from previous sprint.
 2. Do NOT update the report. Single-ticket runs leave no trace in `.context/reports/`.
-3. Per-ticket artifacts still live under `.context/PBI/{module}/{TICKET}-{title}/`.
+3. Per-ticket artifacts still live under `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/` (Module = Epic, 1:1).
 
 This keeps the report a sprint-scoped artifact owned by batch mode and avoids stale half-updates from one-off invocations.
 
