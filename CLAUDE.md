@@ -320,16 +320,57 @@ Variables: `{module-name}` = kebab-case module (`user-management`). `{TICKET-ID}
 
 Git / PR work → `/git-flow-master` auto-loads. Full details in `.claude/skills/git-flow-master/` + `docs/workflows/git-flow.md` if present.
 
-**Protected branches**:
+### Git Strategy
 
-| Branch      | Role                                                               |
-| ----------- | ------------------------------------------------------------------ |
-| `main`      | Production. PRs merged from `staging` or `feature/*` after review. |
-| `staging`   | Integration branch for AI commits + pre-release validation.        |
-| `feature/*` | Task-specific. Use `feature/TICKET-ID-desc`.                       |
-| `fix/*`     | Bug-fix branches. Use `fix/TICKET-ID-desc`.                        |
+<!-- git-flow-master:strategy:main-integration -->
+<!-- git-flow-master:integration-branch:staging -->
 
-**Critical commit rules**:
+This project uses the `main-integration` flow. **One environment per branch**: `localhost` (dev) → `staging` (integration, own Vercel env) → `main` (production, own Vercel env).
+
+**Core invariant**: `main` MUST always be an ancestor of `staging`. This is what allows release promotion to be a clean fast-forward. Anything that lands on `main` without going through `staging` (a hotfix) breaks the invariant and MUST be back-merged into `staging` immediately to restore it.
+
+**Flow**:
+
+```
+localhost ──> feature/fix branch ──(PR, merge commit)──> staging ──(release PR, ff-only)──> main
+                  (branched off staging)                 (Vercel staging env)              (Vercel prod env)
+```
+
+| Branch      | Role                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------- |
+| `main`      | Production (Vercel prod env). Updated ONLY via fast-forward release from `staging`.   |
+| `staging`   | Integration (Vercel staging env). Default base for all work branches + all dev PRs.   |
+| `feature/*` | Task-specific, branched off `staging`. Use `feature/TICKET-ID-desc`.                  |
+| `fix/*`     | Bug-fix branches, branched off `staging`. Use `fix/TICKET-ID-desc`.                   |
+
+**Merge methods (decided, do not improvise)**:
+
+| Transition                         | Method                  | Why                                                                 |
+| ---------------------------------- | ----------------------- | ------------------------------------------------------------------- |
+| `feature/*` / `fix/*` → `staging`  | **Merge commit (`--no-ff`)** | Preserves per-feature history on the integration branch.       |
+| `staging` → `main` (release)       | **Fast-forward only**   | Keeps `main` and `staging` byte-identical (same SHA) at release.    |
+
+**Release promotion** (staging → main) — fast-forward, so do it locally, not via GitHub squash/merge UI (those rewrite SHAs and break the identical-branches goal):
+
+```bash
+git checkout main && git pull
+git merge --ff-only staging   # fails loudly if main is not an ancestor of staging → a hotfix wasn't back-merged
+git push origin main
+```
+
+The release **PR** (`staging` → `main`) still exists for review/visibility; the actual promotion is the local ff push above.
+
+**Hotfix flow** (urgent prod bug that can't wait for the staging cycle):
+
+```bash
+git checkout -b fix/TICKET-desc main   # branch off main, NOT staging
+# ... fix, PR → main, merge ...
+git checkout staging && git merge main && git push origin staging   # back-merge SAME DAY → restores invariant
+```
+
+**Both `main` and `staging` are protected** (GitHub rule: changes via PR). Direct pushes require admin bypass and explicit user confirmation per §1 #4-#5.
+
+### Critical commit rules
 
 - Semantic prefixes: `feat:` / `fix:` / `docs:` / `test:` / `refactor:` / `chore:`
 - One commit = one responsibility. Clear messages.
