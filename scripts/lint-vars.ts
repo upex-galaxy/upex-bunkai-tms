@@ -65,6 +65,7 @@ const SCAN_FILES = [
 const SKIP_DIRS = new Set([
   'node_modules',
   '.git',
+  'worktrees', // git worktrees under .claude/ are another branch's checkout — not this tree
   '.scratch',
   'tests',
   'api',
