@@ -3,8 +3,8 @@
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "4ecd68f8c39b73840ec798b14d48c8de9638ab3e",
-    "claude": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "cli": "928b67d92167cd4e2ba0e38dbc0ea14345d56f53",
+    "claude": "928b67d92167cd4e2ba0e38dbc0ea14345d56f53",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -34,7 +34,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-05-31T15:40:26.248Z",
+  "lastSyncedAt": "2026-06-01T03:50:56.136Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
