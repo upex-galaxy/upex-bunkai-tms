@@ -10,4 +10,4 @@
 - A freshly started run begins in the running state with all steps pending and 0% progress
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.285Z_
+_Synced from Jira by sync-jira-issues_

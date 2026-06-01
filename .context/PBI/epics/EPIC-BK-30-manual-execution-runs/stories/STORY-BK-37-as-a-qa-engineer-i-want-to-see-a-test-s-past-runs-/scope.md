@@ -10,4 +10,4 @@
 - Clear a filter to return to the full newest-first list
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.289Z_
+_Synced from Jira by sync-jira-issues_

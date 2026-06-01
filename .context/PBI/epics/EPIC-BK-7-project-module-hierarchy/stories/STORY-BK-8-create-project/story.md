@@ -75,4 +75,3 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:40.634Z_

@@ -17,4 +17,4 @@
 7. Redirect to /home (Workspace Home).
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.565Z_
+_Synced from Jira by sync-jira-issues_

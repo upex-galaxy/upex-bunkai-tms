@@ -8,4 +8,4 @@
 - Block invalid moves with a clear, human-readable reason
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:40.637Z_
+_Synced from Jira by sync-jira-issues_

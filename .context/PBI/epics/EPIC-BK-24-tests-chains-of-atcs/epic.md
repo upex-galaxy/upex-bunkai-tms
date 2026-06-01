@@ -50,7 +50,7 @@ See `.context/SRS/functional-specs.md`.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 1 | Medium | Backlog |
+| [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 1 | Medium | Shift-Left QA |
 | [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 1 | Medium | Backlog |
 | [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 1 | Medium | Backlog |
 | [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 1 | Medium | Backlog |
@@ -68,4 +68,3 @@ See `.context/SRS/functional-specs.md`.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:44.539Z_

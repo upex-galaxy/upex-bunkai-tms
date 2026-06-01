@@ -8,4 +8,4 @@
 - List the User Stories under a Module, hiding removed (archived) ones by default
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.112Z_
+_Synced from Jira by sync-jira-issues_

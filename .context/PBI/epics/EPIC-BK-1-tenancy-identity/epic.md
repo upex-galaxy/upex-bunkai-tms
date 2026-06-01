@@ -126,4 +126,3 @@ Per-story acceptance criteria live in Gherkin form on each child story. Edge cas
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:39.562Z_

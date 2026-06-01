@@ -8,4 +8,4 @@
 - Project templates (Phase 2)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:40.634Z_
+_Synced from Jira by sync-jira-issues_

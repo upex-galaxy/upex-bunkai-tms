@@ -46,4 +46,3 @@ As a Senior QA Engineer, I want to filter the evidence chain by result, module a
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:49.557Z_

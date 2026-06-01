@@ -48,4 +48,3 @@ As a QA Lead, I want each user story to show how long it took to go from its fir
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:49.557Z_

@@ -9,4 +9,4 @@
 5. He clears all filters to return to the full project-wide picture.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.290Z_
+_Synced from Jira by sync-jira-issues_

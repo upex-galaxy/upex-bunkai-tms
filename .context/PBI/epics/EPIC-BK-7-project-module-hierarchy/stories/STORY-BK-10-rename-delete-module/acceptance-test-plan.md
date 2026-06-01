@@ -63,4 +63,4 @@
 ***Note: *****Parametrization tables, per-outline test-data JSON, numbered steps, and Faker recipes are deferred to /sprint-testing Stage 1 once the feature ships and reaches Ready For QA.**
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:40.636Z_
+_Synced from Jira by sync-jira-issues_

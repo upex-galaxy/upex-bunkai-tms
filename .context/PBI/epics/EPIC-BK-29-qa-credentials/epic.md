@@ -168,4 +168,3 @@ Re-ejecutar `/testability-guide` para sincronizar drift cuando el stack o las mi
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:45.552Z_

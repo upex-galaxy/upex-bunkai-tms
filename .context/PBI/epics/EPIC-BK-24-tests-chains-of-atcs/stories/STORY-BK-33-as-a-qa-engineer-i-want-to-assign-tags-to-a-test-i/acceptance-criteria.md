@@ -56,4 +56,4 @@ Scenario: Filter by a tag no Test carries
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.544Z_
+_Synced from Jira by sync-jira-issues_

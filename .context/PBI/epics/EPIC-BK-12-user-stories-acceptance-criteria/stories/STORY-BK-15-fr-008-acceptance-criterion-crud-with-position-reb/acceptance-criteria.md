@@ -49,4 +49,4 @@ Scenario: Removing the last criterion blocks ready-to-test again
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.113Z_
+_Synced from Jira by sync-jira-issues_

@@ -8,4 +8,4 @@
 - Block a User Story from being marked "ready to test" while it has no Acceptance Criteria
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.113Z_
+_Synced from Jira by sync-jira-issues_

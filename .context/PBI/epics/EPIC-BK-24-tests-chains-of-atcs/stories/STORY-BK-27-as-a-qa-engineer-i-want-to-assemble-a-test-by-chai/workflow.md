@@ -19,4 +19,4 @@
 When an agent (Claude Code, GitHub Copilot, a Playwright CI job) creates a Test using the Bunkai headless surface instead of the UI, the exact same business rules above apply. The agent provides title + ATC chain + a retry-safe identifier; the system applies the same validations and emits the same activity-log entry. There is no parallel "agent-only" Test creation path — one rulebook, three executors.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.541Z_
+_Synced from Jira by sync-jira-issues_

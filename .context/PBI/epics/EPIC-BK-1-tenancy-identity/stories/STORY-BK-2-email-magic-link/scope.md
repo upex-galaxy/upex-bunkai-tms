@@ -9,4 +9,4 @@
 - Magic-link TTL 15 minutes, single-use
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.564Z_
+_Synced from Jira by sync-jira-issues_

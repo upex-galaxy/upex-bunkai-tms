@@ -42,4 +42,3 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:48.467Z_

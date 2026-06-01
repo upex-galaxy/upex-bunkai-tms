@@ -47,7 +47,7 @@
 
 ### Storys (6)
 
-- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Backlog)_
+- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
 - [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
 - [BK-36](https://upexgalaxy67.atlassian.net/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(Backlog)_
 - [BK-37](https://upexgalaxy67.atlassian.net/browse/BK-37): TMS-Run History | View a test's past runs, filterable by outcome _(Backlog)_
@@ -66,4 +66,3 @@
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:47.285Z_

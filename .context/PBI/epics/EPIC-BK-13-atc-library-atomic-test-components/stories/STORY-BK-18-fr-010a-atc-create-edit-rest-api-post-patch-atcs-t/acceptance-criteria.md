@@ -47,4 +47,4 @@ And an atc.updated event is emitted with affected*test*ids
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.312Z_
+_Synced from Jira by sync-jira-issues_

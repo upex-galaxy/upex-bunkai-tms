@@ -121,4 +121,4 @@ Scenario: Session cookie set with secure attributes
 **Copied from Refined AC by QA — Shift-Left pass 2026-05-25. PO ownership of this field returns after Estimation grooming; any further AC edits must go through PO.**
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.564Z_
+_Synced from Jira by sync-jira-issues_

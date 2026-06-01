@@ -150,4 +150,3 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:39.568Z_

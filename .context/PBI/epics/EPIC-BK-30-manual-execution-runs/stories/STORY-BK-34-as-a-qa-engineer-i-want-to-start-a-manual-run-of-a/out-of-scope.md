@@ -10,4 +10,4 @@
 - Editing the Test or its ATC chain
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.285Z_
+_Synced from Jira by sync-jira-issues_

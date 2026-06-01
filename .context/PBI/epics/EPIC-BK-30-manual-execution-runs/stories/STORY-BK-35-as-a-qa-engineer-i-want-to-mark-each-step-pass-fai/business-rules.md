@@ -11,4 +11,4 @@
 - Teammates watching the run see verdict and progress changes without refreshing
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.286Z_
+_Synced from Jira by sync-jira-issues_

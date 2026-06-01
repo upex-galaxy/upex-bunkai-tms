@@ -123,4 +123,3 @@ See per-story `story.md` for Gherkin acceptance criteria.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:40.632Z_

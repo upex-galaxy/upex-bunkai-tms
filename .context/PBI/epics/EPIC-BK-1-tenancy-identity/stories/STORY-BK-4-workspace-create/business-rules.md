@@ -13,4 +13,4 @@
 - Creator inherits role owner; no other roles assignable at create-time.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.569Z_
+_Synced from Jira by sync-jira-issues_

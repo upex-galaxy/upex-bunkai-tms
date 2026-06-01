@@ -38,4 +38,3 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:49.558Z_

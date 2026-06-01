@@ -11,4 +11,4 @@
 - Syncing defect status changes after the initial creation
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.471Z_
+_Synced from Jira by sync-jira-issues_

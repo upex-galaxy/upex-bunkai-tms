@@ -11,4 +11,4 @@
 | Scope | Only members of the owning Workspace can edit |
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.316Z_
+_Synced from Jira by sync-jira-issues_

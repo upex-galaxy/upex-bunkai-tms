@@ -12,4 +12,4 @@
 - Strictly read-only presentation across the whole expanded view
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.543Z_
+_Synced from Jira by sync-jira-issues_

@@ -8,4 +8,4 @@
 4. She sees a summary such as "Updated — affects 7 Tests".
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.316Z_
+_Synced from Jira by sync-jira-issues_

@@ -14,4 +14,4 @@
 - Permission rules: viewer cannot create; member, admin, and owner can
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.541Z_
+_Synced from Jira by sync-jira-issues_

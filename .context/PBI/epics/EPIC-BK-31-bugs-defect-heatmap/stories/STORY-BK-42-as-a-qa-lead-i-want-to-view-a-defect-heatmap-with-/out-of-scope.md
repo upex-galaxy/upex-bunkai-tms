@@ -10,4 +10,4 @@
 - Exporting the heatmap as an image or report
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.470Z_
+_Synced from Jira by sync-jira-issues_

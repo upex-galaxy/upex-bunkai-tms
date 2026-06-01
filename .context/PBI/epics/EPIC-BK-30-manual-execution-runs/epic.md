@@ -44,4 +44,3 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:47.283Z_

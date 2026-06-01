@@ -47,7 +47,7 @@ _Project: BK_
 
 **Status:** Planning | **Stories:** 4 | **Points:** 4
 
-- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) TMS-Test Builder | Assemble a test by chaining ATCs _(1 pts, Backlog)_
+- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27) TMS-Test Builder | Assemble a test by chaining ATCs _(1 pts, Shift-Left QA)_
 - [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28) TMS-Test Builder | Reorder ATCs inside a test _(1 pts, Backlog)_
 - [BK-32](https://upexgalaxy67.atlassian.net/browse/BK-32) TMS-Test View | View a test with all chained ATCs expanded _(1 pts, Backlog)_
 - [BK-33](https://upexgalaxy67.atlassian.net/browse/BK-33) TMS-Test Tags | Assign reserved and custom tags to a test _(1 pts, Backlog)_
@@ -90,4 +90,3 @@ _Project: BK_
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:49.558Z_

@@ -11,4 +11,4 @@
 | Defense in depth | Content is cleaned both when saved and when displayed |
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.114Z_
+_Synced from Jira by sync-jira-issues_

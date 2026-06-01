@@ -386,4 +386,4 @@ Then:
 - Type a 3-level nested list (indented with spaces/tabs). Expected: graceful degradation — either renders at a supported nesting depth or flattens to a single-level list. No crash or layout corruption.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.115Z_
+_Synced from Jira by sync-jira-issues_

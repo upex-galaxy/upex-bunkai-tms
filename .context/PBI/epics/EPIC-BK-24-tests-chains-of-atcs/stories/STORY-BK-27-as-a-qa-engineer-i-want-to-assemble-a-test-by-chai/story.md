@@ -3,7 +3,7 @@
 **Jira Key:** [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27)
 **Epic:** [BK-24](https://upexgalaxy67.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** Backlog
+**Status:** Shift-Left QA
 **Priority:** Medium
 **Story Points:** 1
 
@@ -56,12 +56,11 @@
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Ely
 - **Labels:** master-sprint-4, mvp, tests-epic
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:44.542Z_

@@ -43,4 +43,4 @@ Scenario: A body over the size limit is rejected
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.114Z_
+_Synced from Jira by sync-jira-issues_

@@ -46,4 +46,3 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-06-01T07:51:49.558Z_

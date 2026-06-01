@@ -43,4 +43,4 @@ Scenario: Adding more than the allowed number of tags is prevented
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.314Z_
+_Synced from Jira by sync-jira-issues_

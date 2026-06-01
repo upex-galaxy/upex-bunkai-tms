@@ -9,4 +9,4 @@
 5. When the team files new defects, the heatmap reflects them promptly on his next view, so the picture stays current within the minute he has to read it.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.470Z_
+_Synced from Jira by sync-jira-issues_

@@ -11,4 +11,4 @@
 | Scope | Only members of the owning Workspace can move a Module |
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:40.636Z_
+_Synced from Jira by sync-jira-issues_

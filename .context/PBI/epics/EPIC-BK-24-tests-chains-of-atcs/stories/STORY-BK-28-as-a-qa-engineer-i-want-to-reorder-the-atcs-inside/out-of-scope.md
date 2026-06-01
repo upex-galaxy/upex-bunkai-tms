@@ -16,4 +16,4 @@
 - Diff visualization showing "before vs after" the reorder (nice-to-have, deferred until UX research)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.542Z_
+_Synced from Jira by sync-jira-issues_

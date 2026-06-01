@@ -7,4 +7,4 @@
 - Editing runs or defects.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:49.557Z_
+_Synced from Jira by sync-jira-issues_
