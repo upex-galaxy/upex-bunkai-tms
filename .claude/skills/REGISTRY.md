@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-05-30T09:50:04.650Z`
+> Generated: `2026-05-31T14:16:26.627Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -135,14 +135,14 @@ Skills indexed: 12
 - "este PR va a quedar enorme" → chained-PR planning hand-off
 - "qué estrategia de git usamos en este repo" → strategy detection / persistence
 - "el push fue rechazado" → diagnostic + recovery flow
-- Read `complementary_categories` from this skill's frontmatter.
-- Resolve via local skill-registry script (`scripts/build-skill-registry.ts` → cached at `.claude/skills/REGISTRY.md`). Fallback: scan the session-start `system-reminder` skill list.
-- For each matched skill, classify tier per strategy doc §2.
-- Apply threshold rule per strategy doc §3.2:
-- **T1 / T3** matches → load silently. Cache for the session.
-- **T4** matches → ASK user once: `"Detected <skill> (T4). Apply for these Git operations? Y/N"`. Cache the answer for the session.
-- When dispatching sub-agents (PR creation, conflict resolution, chained-PR planning), inject a `## Composable Skills` block per strategy doc §6.2.
 - Current branch.
+- Dirty / clean working tree (staged / unstaged / untracked counts).
+- Unpushed / unpulled commits (ahead / behind upstream).
+- Upstream status (no upstream, up-to-date, diverged).
+- Remote name(s) — most repos have one (`origin`); some have a fork + upstream.
+- **Marker in `CLAUDE.md`** — search for `<!-- git-flow-master:strategy:VALUE -->` where `VALUE` is one of the seven slugs. If found, use it. This is the persisted decision. Also read the decision markers if present — `<!-- git-flow-master:integration-branch:NAME -->`, `<!-- git-flow-master:promote-method:... -->`, `<!-- git-flow-master:feature-merge:... -->`, `<!-- git-flow-master:hotfix-policy:... -->`. Each marker that resolves a questionnaire answer means Strategy Setup SKIPS that question on re-run (idempotent).
+- **Single-branch heuristic** — `git branch -a` shows only `main` (or `master`) and no integration branch in the remote → `solo-main`.
+- **Two-branch heuristic** — exactly `main` (or `master`) + one of `{staging, dev, develop, integration}` exists upstream → `main-integration` (record the integration branch name).
 - (truncated — read full SKILL.md for the rest)
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
