@@ -1042,7 +1042,7 @@ function renderFieldFile(
     content.trim(),
     '',
     '---',
-    `_Synced from Jira by sync-jira-issues · ${new Date().toISOString()}_`,
+    '_Synced from Jira by sync-jira-issues_',
     '',
   ].join('\n');
 }
@@ -1067,7 +1067,7 @@ function renderFieldStub(
     `> Re-sync with \`--include-comments\` and read \`comments.md\`, or [View in Jira](${config.baseUrl}/browse/${issueKey}).`,
     '',
     '---',
-    `_Synced from Jira by sync-jira-issues · ${new Date().toISOString()}_`,
+    '_Synced from Jira by sync-jira-issues_',
     '',
   ].join('\n');
 }
@@ -1185,7 +1185,7 @@ function generateEpicMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1264,7 +1264,7 @@ function generateStoryMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1296,7 +1296,7 @@ function generateCommentsMarkdown(
     }
   }
 
-  lines.push('', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1407,7 +1407,7 @@ function generateBugMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1511,7 +1511,7 @@ function generateDefectMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1570,7 +1570,7 @@ function generateImprovementMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1628,7 +1628,7 @@ function generateTestMarkdown(
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
 
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1692,7 +1692,7 @@ function generateXrayArtifactMarkdown(
   if (fields.labels && fields.labels.length > 0) {
     lines.push(`- **Labels:** ${fields.labels.join(', ')}`);
   }
-  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('', '---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
@@ -1733,7 +1733,7 @@ function generateEpicTreeMarkdown(
     }
   }
 
-  lines.push('---', '', '_Synced from Jira by sync-jira-issues_', `_Last sync: ${new Date().toISOString()}_`, '');
+  lines.push('---', '', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
 }
