@@ -60,7 +60,7 @@ See `.context/SRS/functional-specs.md`.
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 5/27/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** master-sprint-4, mvp
@@ -68,4 +68,4 @@ See `.context/SRS/functional-specs.md`.
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:49.007Z_
+_Last sync: 2026-06-01T07:51:44.539Z_

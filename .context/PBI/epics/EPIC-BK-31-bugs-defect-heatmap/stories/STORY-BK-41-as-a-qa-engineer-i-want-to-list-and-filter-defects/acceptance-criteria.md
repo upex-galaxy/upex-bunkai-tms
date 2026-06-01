@@ -52,4 +52,4 @@ Scenario: A module with no defects at all shows an empty state
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.059Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.469Z_

@@ -13,4 +13,4 @@
 | Removal | Removal is a soft archive; archived Stories are hidden from default lists |
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:46.777Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:42.111Z_

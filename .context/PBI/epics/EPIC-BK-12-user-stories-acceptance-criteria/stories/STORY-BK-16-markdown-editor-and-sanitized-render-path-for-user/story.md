@@ -3,9 +3,9 @@
 **Jira Key:** [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16)
 **Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 13
 
 ---
 
@@ -37,18 +37,19 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
-- **Labels:** markdown, mvp, ux, wave-2
+- **Assignee:** Facu Barea
+- **Labels:** markdown, mvp, shift-left-2026-06-01, shift-left-reviewed, ux, wave-2
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:46.780Z_
+_Last sync: 2026-06-01T07:51:42.115Z_

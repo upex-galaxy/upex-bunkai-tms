@@ -11,4 +11,4 @@
 - See the newly filed defect appear in the open state in the defects list
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.059Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.469Z_

@@ -61,4 +61,4 @@ Q7: Max slug length?
 Q8 NEW: Complete list of reserved slugs?
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:45.654Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:40.634Z_

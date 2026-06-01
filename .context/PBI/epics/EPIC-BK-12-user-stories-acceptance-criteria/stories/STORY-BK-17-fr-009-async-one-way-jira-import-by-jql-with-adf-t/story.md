@@ -65,4 +65,4 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:46.781Z_
+_Last sync: 2026-06-01T07:51:42.116Z_

@@ -431,4 +431,4 @@ ATR mirror file: [`acceptance-test-results.md`](./acceptance-test-results.md) �
 **Single source of truth: this file. Jira mirror: customfield **`acceptance*test*plan`** on BK-2 + Stage 1 announce comment. Stage 2 reads this; Stage 3 reads the ATR.**
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.077Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.566Z_

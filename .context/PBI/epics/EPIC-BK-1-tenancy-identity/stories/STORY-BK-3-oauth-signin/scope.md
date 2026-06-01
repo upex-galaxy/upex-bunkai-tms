@@ -9,4 +9,4 @@
 - Magic-link fallback surfaced when OAuth callback fails within 30s
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:44.078Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:39.568Z_

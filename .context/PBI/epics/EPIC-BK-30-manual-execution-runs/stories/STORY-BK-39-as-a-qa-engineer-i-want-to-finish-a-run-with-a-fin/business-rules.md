@@ -10,4 +10,4 @@
 - An AI Test Agent or a CI pipeline may also finish a run, and the resulting verdict and skipped-step handling are identical to a human-finished run
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:51.468Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:47.290Z_

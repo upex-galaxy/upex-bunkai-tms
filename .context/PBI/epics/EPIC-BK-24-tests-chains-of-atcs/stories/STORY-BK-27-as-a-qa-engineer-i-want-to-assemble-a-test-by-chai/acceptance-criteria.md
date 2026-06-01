@@ -36,4 +36,4 @@ Scenario: Elena cannot use ATCs from a workspace she does not belong to
 ```
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:49.009Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.541Z_

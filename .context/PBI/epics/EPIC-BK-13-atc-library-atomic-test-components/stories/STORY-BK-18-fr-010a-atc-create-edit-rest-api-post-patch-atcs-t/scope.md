@@ -19,4 +19,4 @@
 - Unit + integration tests (cross-entity rules, transaction rollback on failure)
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.905Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.312Z_

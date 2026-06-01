@@ -3,7 +3,7 @@
 **Jira Key:** [BK-10](https://upexgalaxy67.atlassian.net/browse/BK-10)
 **Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Estimation
 **Priority:** Medium
 **Story Points:** -
 
@@ -37,18 +37,19 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
-- **Labels:** hierarchy, mvp, wave-1
+- **Assignee:** Jorgelina Abdo
+- **Labels:** hierarchy, mvp, shift-left-2026-06-01, shift-left-reviewed, wave-1
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:45.656Z_
+_Last sync: 2026-06-01T07:51:40.636Z_

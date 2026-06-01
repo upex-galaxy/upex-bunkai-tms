@@ -20,16 +20,16 @@ _Project: BK_
 
 - [BK-8](https://upexgalaxy67.atlassian.net/browse/BK-8) TMS-Project | Create a project inside a workspace _(5 pts, Ready For Dev)_
 - [BK-9](https://upexgalaxy67.atlassian.net/browse/BK-9) TMS-Module | Create modules with nested sub-modules _(- pts, Shift-Left QA)_
-- [BK-10](https://upexgalaxy67.atlassian.net/browse/BK-10) TMS-Module | Rename and soft-delete a module _(- pts, Shift-Left QA)_
+- [BK-10](https://upexgalaxy67.atlassian.net/browse/BK-10) TMS-Module | Rename and soft-delete a module _(- pts, Estimation)_
 - [BK-11](https://upexgalaxy67.atlassian.net/browse/BK-11) TMS-Module | Move a module to a different parent _(- pts, Shift-Left QA)_
 
 ## [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) - User Stories & Acceptance Criteria
 
-**Status:** Planning | **Stories:** 4 | **Points:** 0
+**Status:** Planning | **Stories:** 4 | **Points:** 13
 
 - [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) TMS-US | Manage user stories anchored to a module _(- pts, Shift-Left QA)_
 - [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) TMS-AC | Manage criteria under a user story _(- pts, Shift-Left QA)_
-- [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) Markdown Editor | Write and preview Markdown safely _(- pts, Shift-Left QA)_
+- [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) Markdown Editor | Write and preview Markdown safely _(13 pts, Ready For Dev)_
 - [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) Jira Import | Pull Jira issues by JQL _(- pts, Ready For Dev)_
 
 ## [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) - ATC Library (Atomic Test Components)
@@ -76,7 +76,18 @@ _Project: BK_
 - [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42) TMS-Defect Heatmap | View count and week-over-week trend per module _(1 pts, Backlog)_
 - [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43) TMS-Defect Sync | Sync defects one-way to the external tracker _(1 pts, Backlog)_
 
+## [BK-44](https://upexgalaxy67.atlassian.net/browse/BK-44) - Coverage & Traceability
+
+**Status:** Planning | **Stories:** 6 | **Points:** 0
+
+- [BK-45](https://upexgalaxy67.atlassian.net/browse/BK-45) TMS-Traceability | Render full US to bug evidence chain in one read _(- pts, Shift-Left QA)_
+- [BK-46](https://upexgalaxy67.atlassian.net/browse/BK-46) TMS-Coverage | Surface untested ACs and modules with not-run filter _(- pts, Shift-Left QA)_
+- [BK-47](https://upexgalaxy67.atlassian.net/browse/BK-47) TMS-Coverage | Compute time-to-green per user story from run and bug history _(- pts, Shift-Left QA)_
+- [BK-48](https://upexgalaxy67.atlassian.net/browse/BK-48) TMS-Traceability | Filter the chain by verdict, module, and date range _(- pts, Shift-Left QA)_
+- [BK-49](https://upexgalaxy67.atlassian.net/browse/BK-49) TMS-Activity | Stream a read-side feed over the existing activity log _(- pts, Shift-Left QA)_
+- [BK-50](https://upexgalaxy67.atlassian.net/browse/BK-50) TMS-Traceability | Export the assembled chain as a read-only snapshot _(- pts, Shift-Left QA)_
+
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:52.061Z_
+_Last sync: 2026-06-01T07:51:49.558Z_

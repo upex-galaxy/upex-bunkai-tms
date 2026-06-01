@@ -23,4 +23,4 @@
 When an agent reorders a Test through the Bunkai headless surface instead of the UI, the same business rules apply: same permission gate, same no-op detection, same concurrent-edit guard, same activity-log entry. The agent provides the Test identifier + the new chain order + a retry-safe identifier. There is no "agent-only" reorder path.
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:49.010Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:44.543Z_

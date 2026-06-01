@@ -8,4 +8,4 @@
 - Parameterization editors (equivalence partitions, boundary tables) — later phase
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:47.908Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:43.314Z_

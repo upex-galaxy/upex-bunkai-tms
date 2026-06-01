@@ -10,4 +10,4 @@
 - When no defects match the active filters, an explicit empty state is shown instead of a blank list
 
 ---
-_Synced from Jira by sync-jira-issues · 2026-05-29T07:23:52.059Z_
+_Synced from Jira by sync-jira-issues · 2026-06-01T07:51:48.469Z_

@@ -37,11 +37,11 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:51.465Z_
+_Last sync: 2026-06-01T07:51:47.283Z_

@@ -35,11 +35,11 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/28/2026
+- **Updated:** 6/1/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
 ---
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-29T07:23:52.058Z_
+_Last sync: 2026-06-01T07:51:48.467Z_
