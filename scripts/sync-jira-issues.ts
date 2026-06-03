@@ -270,6 +270,11 @@ type ProjectKeySource = 'env' | 'project.yaml';
 
 interface Config {
   baseUrl: string
+  /**
+   * Host-rewritten variant of `baseUrl` used ONLY for human-facing markdown
+   * links (`/browse/...`). The REST API still uses `baseUrl`. See `toDisplayUrl`.
+   */
+  displayUrl: string
   email: string
   apiToken: string
   project: string
@@ -568,6 +573,23 @@ function resolveProjectKey(): ResolvedProjectKey {
   );
 }
 
+/**
+ * Rewrite an upexgalaxy Atlassian host to its public vanity domain for
+ * DISPLAY links only. The REST API must keep hitting the real
+ * `upexgalaxy<N>.atlassian.net` host (the vanity domain does not serve the API),
+ * so this is applied solely to generated markdown `/browse/` links.
+ *
+ *   https://upexgalaxy69.atlassian.net  ->  https://jira.upexgalaxy.com
+ *
+ * Any non-upexgalaxy instance is returned unchanged.
+ */
+function toDisplayUrl(baseUrl: string): string {
+  return baseUrl.replace(
+    /^https?:\/\/upexgalaxy\d+\.atlassian\.net/i,
+    'https://jira.upexgalaxy.com',
+  );
+}
+
 function getConfig(): Config {
   const baseUrl = process.env.ATLASSIAN_URL;
   const email = process.env.ATLASSIAN_EMAIL;
@@ -584,8 +606,10 @@ function getConfig(): Config {
 
   const projectKey = resolveProjectKey();
 
+  const cleanBaseUrl = baseUrl!.replace(/\/$/, ''); // Remove trailing slash
   return {
-    baseUrl: baseUrl!.replace(/\/$/, ''), // Remove trailing slash
+    baseUrl: cleanBaseUrl,
+    displayUrl: toDisplayUrl(cleanBaseUrl),
     email: email!,
     apiToken: apiToken!,
     project: projectKey.key,
@@ -777,7 +801,7 @@ function generateTraceabilitySection(
     lines.push(`### ${pluralType} (${issues.length})`, '');
 
     for (const issue of issues) {
-      lines.push(`- [${issue.key}](${config.baseUrl}/browse/${issue.key}): ${issue.summary} _(${issue.status})_`);
+      lines.push(`- [${issue.key}](${config.displayUrl}/browse/${issue.key}): ${issue.summary} _(${issue.status})_`);
     }
 
     lines.push('');
@@ -1037,7 +1061,7 @@ function renderFieldFile(
   return [
     `# ${issueKey} — ${spec.title}`,
     '',
-    `> Jira field: \`${CUSTOM_FIELDS[spec.key]}\` · [View in Jira](${config.baseUrl}/browse/${issueKey})`,
+    `> Jira field: \`${CUSTOM_FIELDS[spec.key]}\` · [View in Jira](${config.displayUrl}/browse/${issueKey})`,
     '',
     content.trim(),
     '',
@@ -1064,7 +1088,7 @@ function renderFieldStub(
     '',
     `> ⚠️ The Jira custom field for \`${spec.title}\` is **not configured** in this Jira instance.`,
     '> Per the methodology fallback, this field\'s content lives in the issue\'s comments or description.',
-    `> Re-sync with \`--include-comments\` and read \`comments.md\`, or [View in Jira](${config.baseUrl}/browse/${issueKey}).`,
+    `> Re-sync with \`--include-comments\` and read \`comments.md\`, or [View in Jira](${config.displayUrl}/browse/${issueKey}).`,
     '',
     '---',
     '_Synced from Jira by sync-jira-issues_',
@@ -1132,7 +1156,7 @@ function generateEpicMarkdown(
   const lines: string[] = [
     `# EPIC: ${fields.summary}`,
     '',
-    `**Jira Key:** [${epic.key}](${config.baseUrl}/browse/${epic.key})`,
+    `**Jira Key:** [${epic.key}](${config.displayUrl}/browse/${epic.key})`,
     `**Priority:** ${fields.priority?.name || 'Not set'}`,
     `**Status:** ${fields.status?.name || 'Unknown'}`,
     `**Total Story Points:** ${totalPoints}`,
@@ -1153,7 +1177,7 @@ function generateEpicMarkdown(
       const storyFields = story.fields;
       const points = storyFields[CUSTOM_FIELDS.storyPoints] as number | undefined;
       lines.push(
-        `| [${story.key}](${config.baseUrl}/browse/${story.key}) | ${String(storyFields.summary)} | ${points ?? '-'} | ${String(storyFields.priority?.name || '-')} | ${String(storyFields.status?.name || '-')} |`,
+        `| [${story.key}](${config.displayUrl}/browse/${story.key}) | ${String(storyFields.summary)} | ${points ?? '-'} | ${String(storyFields.priority?.name || '-')} | ${String(storyFields.status?.name || '-')} |`,
       );
     }
 
@@ -1206,11 +1230,11 @@ function generateStoryMarkdown(
   const lines: string[] = [
     `# ${fields.summary}`,
     '',
-    `**Jira Key:** [${story.key}](${config.baseUrl}/browse/${story.key})`,
+    `**Jira Key:** [${story.key}](${config.displayUrl}/browse/${story.key})`,
   ];
 
   if (epic) {
-    lines.push(`**Epic:** [${epic.key}](${config.baseUrl}/browse/${epic.key}) (${epic.fields.summary})`);
+    lines.push(`**Epic:** [${epic.key}](${config.displayUrl}/browse/${epic.key}) (${epic.fields.summary})`);
   }
 
   lines.push(
@@ -1277,7 +1301,7 @@ function generateCommentsMarkdown(
   const lines: string[] = [
     `# Comments for ${issueKey}`,
     '',
-    `[View in Jira](${config.baseUrl}/browse/${issueKey})`,
+    `[View in Jira](${config.displayUrl}/browse/${issueKey})`,
     '',
     '---',
     '',
@@ -1338,7 +1362,7 @@ function generateBugMarkdown(
   const lines: string[] = [
     `# BUG: ${fields.summary}`,
     '',
-    `**Jira Key:** [${bug.key}](${config.baseUrl}/browse/${bug.key})`,
+    `**Jira Key:** [${bug.key}](${config.displayUrl}/browse/${bug.key})`,
     `**Priority:** ${fields.priority?.name || 'Not set'}`,
     `**Status:** ${fields.status?.name || 'Unknown'}`,
     `**Components:** ${components}`,
@@ -1382,10 +1406,10 @@ function generateBugMarkdown(
     lines.push('---', '', '## Related Issues', '');
     for (const link of fields.issuelinks) {
       if (link.inwardIssue) {
-        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.baseUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.displayUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
       }
       if (link.outwardIssue) {
-        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.baseUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.displayUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
       }
     }
     lines.push('');
@@ -1435,11 +1459,11 @@ function generateDefectMarkdown(
   const lines: string[] = [
     `# DEFECT: ${fields.summary}`,
     '',
-    `**Jira Key:** [${defect.key}](${config.baseUrl}/browse/${defect.key})`,
+    `**Jira Key:** [${defect.key}](${config.displayUrl}/browse/${defect.key})`,
   ];
 
   if (linkedStory) {
-    lines.push(`**Related Story:** [${linkedStory.key}](${config.baseUrl}/browse/${linkedStory.key}) - ${linkedStory.summary}`);
+    lines.push(`**Related Story:** [${linkedStory.key}](${config.displayUrl}/browse/${linkedStory.key}) - ${linkedStory.summary}`);
   }
 
   lines.push(
@@ -1486,10 +1510,10 @@ function generateDefectMarkdown(
     lines.push('---', '', '## Related Issues', '');
     for (const link of fields.issuelinks) {
       if (link.inwardIssue) {
-        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.baseUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.displayUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
       }
       if (link.outwardIssue) {
-        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.baseUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.displayUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
       }
     }
     lines.push('');
@@ -1527,7 +1551,7 @@ function generateImprovementMarkdown(
   const lines: string[] = [
     `# IMPROVEMENT: ${fields.summary}`,
     '',
-    `**Jira Key:** [${improvement.key}](${config.baseUrl}/browse/${improvement.key})`,
+    `**Jira Key:** [${improvement.key}](${config.displayUrl}/browse/${improvement.key})`,
     `**Priority:** ${fields.priority?.name || 'Not set'}`,
     `**Status:** ${fields.status?.name || 'Unknown'}`,
     `**Components:** ${components}`,
@@ -1545,10 +1569,10 @@ function generateImprovementMarkdown(
     lines.push('---', '', '## Related Issues', '');
     for (const link of fields.issuelinks) {
       if (link.inwardIssue) {
-        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.baseUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.displayUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
       }
       if (link.outwardIssue) {
-        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.baseUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.displayUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
       }
     }
     lines.push('');
@@ -1586,7 +1610,7 @@ function generateTestMarkdown(
   const lines: string[] = [
     `# TEST: ${fields.summary}`,
     '',
-    `**Jira Key:** [${test.key}](${config.baseUrl}/browse/${test.key})`,
+    `**Jira Key:** [${test.key}](${config.displayUrl}/browse/${test.key})`,
     `**Status:** ${fields.status?.name || 'Unknown'}`,
     `**Components:** ${components}`,
     '',
@@ -1603,10 +1627,10 @@ function generateTestMarkdown(
     lines.push('---', '', '## Related Issues', '');
     for (const link of fields.issuelinks) {
       if (link.inwardIssue) {
-        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.baseUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.displayUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
       }
       if (link.outwardIssue) {
-        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.baseUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.displayUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
       }
     }
     lines.push('');
@@ -1652,7 +1676,7 @@ function generateXrayArtifactMarkdown(
   const lines: string[] = [
     `# ${label}: ${fields.summary}`,
     '',
-    `**Jira Key:** [${issue.key}](${config.baseUrl}/browse/${issue.key})`,
+    `**Jira Key:** [${issue.key}](${config.displayUrl}/browse/${issue.key})`,
     `**Status:** ${fields.status?.name || 'Unknown'}`,
     `**Components:** ${components}`,
     '',
@@ -1670,10 +1694,10 @@ function generateXrayArtifactMarkdown(
     lines.push('---', '', '## Related Issues', '');
     for (const link of fields.issuelinks) {
       if (link.inwardIssue) {
-        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.baseUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.inward}: [${link.inwardIssue.key}](${config.displayUrl}/browse/${link.inwardIssue.key}) - ${link.inwardIssue.fields.summary}`);
       }
       if (link.outwardIssue) {
-        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.baseUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
+        lines.push(`- ${link.type.outward}: [${link.outwardIssue.key}](${config.displayUrl}/browse/${link.outwardIssue.key}) - ${link.outwardIssue.fields.summary}`);
       }
     }
     lines.push('');
@@ -1717,7 +1741,7 @@ function generateEpicTreeMarkdown(
     }, 0);
 
     lines.push(
-      `## [${epic.key}](${config.baseUrl}/browse/${epic.key}) - ${epic.fields.summary}`,
+      `## [${epic.key}](${config.displayUrl}/browse/${epic.key}) - ${epic.fields.summary}`,
       '',
       `**Status:** ${epic.fields.status?.name} | **Stories:** ${stories.length} | **Points:** ${totalPoints}`,
       '',
@@ -1727,7 +1751,7 @@ function generateEpicTreeMarkdown(
       for (const story of stories) {
         const points = story.fields[CUSTOM_FIELDS.storyPoints] as number | undefined;
         const status = String(story.fields.status?.name || 'Unknown');
-        lines.push(`- [${story.key}](${config.baseUrl}/browse/${story.key}) ${String(story.fields.summary)} _(${points ?? '-'} pts, ${status})_`);
+        lines.push(`- [${story.key}](${config.displayUrl}/browse/${story.key}) ${String(story.fields.summary)} _(${points ?? '-'} pts, ${status})_`);
       }
       lines.push('');
     }
