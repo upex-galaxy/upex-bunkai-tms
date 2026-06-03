@@ -1,12 +1,12 @@
 # BK-8 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
+> Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
 
-1. ATP DRAFT — [https://upexgalaxy69.atlassian.net/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8): Create a Project inside a Workspace
+1. ATP DRAFT — BK-8: Create a Project inside a Workspace
 
 Date: 2026-05-28 | Risk: HIGH (9/10) | Modality: Jira-native
 
-1.
+1. 
 
 AC-1: Given active member (role>=member) in Workspace W / When POST /api/v1/workspaces/{W.uuid}/projects { name: 'Checkout v2' } / Then HTTP 201 + { project_id, slug: 'checkout-v2' }
 
@@ -30,7 +30,7 @@ AC-10 (new): Same slug in different workspace → 201 (per-workspace scope)
 
 AC-11 (new, from arch comment): Reserved slug ('api','app', etc.) → 400 — NEEDS PO/DEV CONFIRMATION: list of reserved slugs
 
-1.
+1. 
 
 T01 Successful creation valid member → 201 + slug [P1]
 T02 Name 2 chars → 400 NAME*TOO*SHORT [P1]
@@ -48,7 +48,7 @@ T13 Slug derivation (accents, spaces, uppercase) [P2]
 T14 DB integrity post-201 [P1]
 T15 Unauthenticated → 401 [P1]
 
-1.
+1. 
 
 Q1 BLOCKER: Error code separator * vs ** (NAME*TOO_SHORT vs NAME**TOO*SHORT)
 
@@ -56,7 +56,7 @@ Q2 RESOLVED: Path param = workspace UUID (confirmed by arch comment)
 Q3 BLOCKER: Auth mechanism — cookie session or PAT bearer? Which scope?
 Q4: Slug collision — 409 or auto-suffix?
 Q5: Unknown workspace — 404 or 403?
-Q6: UI form in [https://upexgalaxy69.atlassian.net/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) or Phase E?
+Q6: UI form in BK-8 or Phase E?
 Q7: Max slug length?
 Q8 NEW: Complete list of reserved slugs?
 

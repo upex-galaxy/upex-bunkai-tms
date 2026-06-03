@@ -51,6 +51,19 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026

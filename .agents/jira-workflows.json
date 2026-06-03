@@ -1,81 +1,81 @@
 {
   "story": {
     "jira_issue_type": {
-      "id": "10005",
+      "id": "10008",
       "name": "Story"
     },
     "workflow_scheme": {
-      "id": 10100,
+      "id": 10003,
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "25804cae-9971-4e34-a6fe-6cbf7f5d71a1",
+      "id": "0add322e-73b3-4afa-b85f-58a56a9c67f9",
       "name": "UPEX Feature (US) Workflow"
     },
     "statuses": {
-      "aborted": {
-        "id": "10118",
-        "name": "ABORTED",
-        "category": "done"
+      "in_test": {
+        "id": "10041",
+        "name": "In Test",
+        "category": "indeterminate"
       },
       "in_review": {
-        "id": "10126",
+        "id": "10033",
         "name": "In Review",
         "category": "indeterminate"
       },
+      "backlog": {
+        "id": "10038",
+        "name": "Backlog",
+        "category": "new"
+      },
+      "ready_for_dev": {
+        "id": "10012",
+        "name": "Ready For Dev",
+        "category": "new"
+      },
+      "ready_for_release": {
+        "id": "10042",
+        "name": "Ready For Release",
+        "category": "done"
+      },
       "deployed_to_production": {
-        "id": "10136",
+        "id": "10043",
         "name": "Deployed to Production",
         "category": "done"
       },
       "qa_approved": {
-        "id": "10113",
+        "id": "10020",
         "name": "QA Approved",
         "category": "done"
       },
-      "in_test": {
-        "id": "10134",
-        "name": "In Test",
-        "category": "indeterminate"
-      },
-      "ready_for_release": {
-        "id": "10135",
-        "name": "Ready For Release",
-        "category": "done"
-      },
       "ready_for_qa": {
-        "id": "10100",
+        "id": "10007",
         "name": "Ready For QA",
         "category": "new"
       },
-      "blocked": {
-        "id": "10119",
-        "name": "BLOCKED",
-        "category": "new"
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
       },
       "in_progress": {
         "id": "3",
         "name": "In Progress",
         "category": "indeterminate"
       },
-      "estimation": {
-        "id": "10115",
-        "name": "Estimation",
-        "category": "indeterminate"
-      },
-      "ready_for_dev": {
-        "id": "10105",
-        "name": "Ready For Dev",
-        "category": "new"
-      },
       "shift_left_qa": {
-        "id": "10133",
+        "id": "10040",
         "name": "Shift-Left QA",
         "category": "indeterminate"
       },
-      "backlog": {
-        "id": "10131",
-        "name": "Backlog",
+      "estimation": {
+        "id": "10022",
+        "name": "Estimation",
+        "category": "indeterminate"
+      },
+      "blocked": {
+        "id": "10026",
+        "name": "BLOCKED",
         "category": "new"
       }
     },
@@ -84,7 +84,7 @@
         "id": "17",
         "name": "ABORTED",
         "from_status_id": null,
-        "to_status_id": "10118",
+        "to_status_id": "10025",
         "from_canonical": null,
         "to_canonical": "aborted"
       },
@@ -92,7 +92,7 @@
         "id": "23",
         "name": "Ready For QA",
         "from_status_id": null,
-        "to_status_id": "10100",
+        "to_status_id": "10007",
         "from_canonical": null,
         "to_canonical": "ready_for_qa"
       },
@@ -100,7 +100,7 @@
         "id": "24",
         "name": "Ready For Dev",
         "from_status_id": null,
-        "to_status_id": "10105",
+        "to_status_id": "10012",
         "from_canonical": null,
         "to_canonical": "ready_for_dev"
       },
@@ -108,14 +108,14 @@
         "id": "1",
         "name": "Create",
         "from_status_id": null,
-        "to_status_id": "10131",
+        "to_status_id": "10038",
         "from_canonical": null,
         "to_canonical": "backlog"
       },
       "start_working": {
         "id": "6",
         "name": "Start working",
-        "from_status_id": "10105",
+        "from_status_id": "10012",
         "to_status_id": "3",
         "from_canonical": "ready_for_dev",
         "to_canonical": "in_progress"
@@ -123,55 +123,55 @@
       "include_in_release": {
         "id": "19",
         "name": "include in release",
-        "from_status_id": "10113",
-        "to_status_id": "10135",
+        "from_status_id": "10020",
+        "to_status_id": "10042",
         "from_canonical": "qa_approved",
         "to_canonical": "ready_for_release"
       },
       "back_from_qa_approved": {
         "id": "25",
         "name": "back",
-        "from_status_id": "10113",
-        "to_status_id": "10134",
+        "from_status_id": "10020",
+        "to_status_id": "10041",
         "from_canonical": "qa_approved",
         "to_canonical": "in_test"
       },
       "estimated_and_ready_to_work": {
         "id": "4",
         "name": "Estimated and Ready to work",
-        "from_status_id": "10115",
-        "to_status_id": "10105",
+        "from_status_id": "10022",
+        "to_status_id": "10012",
         "from_canonical": "estimation",
         "to_canonical": "ready_for_dev"
       },
       "back_from_estimation": {
         "id": "16",
         "name": "back",
-        "from_status_id": "10115",
-        "to_status_id": "10131",
+        "from_status_id": "10022",
+        "to_status_id": "10038",
         "from_canonical": "estimation",
         "to_canonical": "backlog"
       },
       "needs_quality": {
         "id": "26",
         "name": "needs quality",
-        "from_status_id": "10115",
-        "to_status_id": "10133",
+        "from_status_id": "10022",
+        "to_status_id": "10040",
         "from_canonical": "estimation",
         "to_canonical": "shift_left_qa"
       },
       "back_from_blocked": {
         "id": "21",
         "name": "back",
-        "from_status_id": "10119",
-        "to_status_id": "10134",
+        "from_status_id": "10026",
+        "to_status_id": "10041",
         "from_canonical": "blocked",
         "to_canonical": "in_test"
       },
       "fix_defect": {
         "id": "22",
         "name": "Fix defect",
-        "from_status_id": "10119",
+        "from_status_id": "10026",
         "to_status_id": "3",
         "from_canonical": "blocked",
         "to_canonical": "in_progress"
@@ -179,64 +179,64 @@
       "qa_sign_off": {
         "id": "10",
         "name": "QA Sign-Off",
-        "from_status_id": "10134",
-        "to_status_id": "10113",
+        "from_status_id": "10041",
+        "to_status_id": "10020",
         "from_canonical": "in_test",
         "to_canonical": "qa_approved"
       },
       "back_from_in_test": {
         "id": "12",
         "name": "back",
-        "from_status_id": "10134",
-        "to_status_id": "10100",
+        "from_status_id": "10041",
+        "to_status_id": "10007",
         "from_canonical": "in_test",
         "to_canonical": "ready_for_qa"
       },
       "defect_reported": {
         "id": "13",
         "name": "defect reported",
-        "from_status_id": "10134",
-        "to_status_id": "10119",
+        "from_status_id": "10041",
+        "to_status_id": "10026",
         "from_canonical": "in_test",
         "to_canonical": "blocked"
       },
       "released": {
         "id": "20",
         "name": "released",
-        "from_status_id": "10135",
-        "to_status_id": "10136",
+        "from_status_id": "10042",
+        "to_status_id": "10043",
         "from_canonical": "ready_for_release",
         "to_canonical": "deployed_to_production"
       },
       "recover": {
         "id": "18",
         "name": "Recover",
-        "from_status_id": "10118",
-        "to_status_id": "10105",
+        "from_status_id": "10025",
+        "to_status_id": "10012",
         "from_canonical": "aborted",
         "to_canonical": "ready_for_dev"
       },
       "deployed": {
         "id": "5",
         "name": "Deployed",
-        "from_status_id": "10126",
-        "to_status_id": "10100",
+        "from_status_id": "10033",
+        "to_status_id": "10007",
         "from_canonical": "in_review",
         "to_canonical": "ready_for_qa"
       },
       "analyze": {
         "id": "2",
         "name": "Analyze",
-        "from_status_id": "10131",
-        "to_status_id": "10133",
+        "from_status_id": "10038",
+        "to_status_id": "10040",
         "from_canonical": "backlog",
         "to_canonical": "shift_left_qa"
       },
       "ready_to_estimate": {
         "id": "15",
         "name": "Ready to Estimate",
-        "from_status_id": "10131",
-        "to_status_id": "10115",
+        "from_status_id": "10038",
+        "to_status_id": "10022",
         "from_canonical": "backlog",
         "to_canonical": "estimation"
       },
@@ -244,7 +244,7 @@
         "id": "7",
         "name": "Pull Request",
         "from_status_id": "3",
-        "to_status_id": "10126",
+        "to_status_id": "10033",
         "from_canonical": "in_progress",
         "to_canonical": "in_review"
       },
@@ -252,7 +252,7 @@
         "id": "8",
         "name": "Pushed",
         "from_status_id": "3",
-        "to_status_id": "10100",
+        "to_status_id": "10007",
         "from_canonical": "in_progress",
         "to_canonical": "ready_for_qa"
       },
@@ -260,31 +260,31 @@
         "id": "11",
         "name": "back",
         "from_status_id": "3",
-        "to_status_id": "10105",
+        "to_status_id": "10012",
         "from_canonical": "in_progress",
         "to_canonical": "ready_for_dev"
       },
       "estimate": {
         "id": "3",
         "name": "Estimate",
-        "from_status_id": "10133",
-        "to_status_id": "10115",
+        "from_status_id": "10040",
+        "to_status_id": "10022",
         "from_canonical": "shift_left_qa",
         "to_canonical": "estimation"
       },
       "back_from_shift_left_qa": {
         "id": "14",
         "name": "back",
-        "from_status_id": "10133",
-        "to_status_id": "10131",
+        "from_status_id": "10040",
+        "to_status_id": "10038",
         "from_canonical": "shift_left_qa",
         "to_canonical": "backlog"
       },
       "start_testing": {
         "id": "9",
         "name": "Start Testing",
-        "from_status_id": "10100",
-        "to_status_id": "10134",
+        "from_status_id": "10007",
+        "to_status_id": "10041",
         "from_canonical": "ready_for_qa",
         "to_canonical": "in_test"
       }
@@ -292,46 +292,51 @@
   },
   "bug": {
     "jira_issue_type": {
-      "id": "10107",
+      "id": "10021",
       "name": "Bug"
     },
     "workflow_scheme": {
-      "id": 10100,
+      "id": 10003,
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "f89e5c1f-11a2-4184-a4a6-81d1eeb2d858",
+      "id": "0074dc80-e8f5-4516-9661-39977054bcd4",
       "name": "UPEX BUG/DEFECT LIFE CYCLE"
     },
     "statuses": {
-      "deferred": {
-        "id": "10108",
-        "name": "Deferred",
-        "category": "indeterminate"
-      },
-      "aborted": {
-        "id": "10118",
-        "name": "ABORTED",
-        "category": "done"
-      },
-      "in_review": {
-        "id": "10126",
-        "name": "In Review",
-        "category": "indeterminate"
+      "open": {
+        "id": "1",
+        "name": "Open",
+        "category": "new"
       },
       "duplicated": {
-        "id": "10109",
+        "id": "10016",
         "name": "Duplicated",
         "category": "done"
       },
       "enhancement": {
-        "id": "10116",
+        "id": "10023",
         "name": "Enhancement",
         "category": "done"
       },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "ready_for_qa": {
+        "id": "10007",
+        "name": "Ready For QA",
+        "category": "new"
+      },
       "rejected": {
-        "id": "10112",
+        "id": "10019",
         "name": "REJECTED",
+        "category": "done"
+      },
+      "cannot_reproduce": {
+        "id": "10044",
+        "name": "Cannot Reproduce",
         "category": "done"
       },
       "closed": {
@@ -339,25 +344,20 @@
         "name": "Closed",
         "category": "done"
       },
-      "ready_for_qa": {
-        "id": "10100",
-        "name": "Ready For QA",
-        "category": "new"
-      },
-      "open": {
-        "id": "1",
-        "name": "Open",
-        "category": "new"
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
       },
       "in_progress": {
         "id": "3",
         "name": "In Progress",
         "category": "indeterminate"
       },
-      "cannot_reproduce": {
-        "id": "10137",
-        "name": "Cannot Reproduce",
-        "category": "done"
+      "deferred": {
+        "id": "10015",
+        "name": "Deferred",
+        "category": "indeterminate"
       }
     },
     "transitions": {
@@ -365,7 +365,7 @@
         "id": "3",
         "name": "ABORTED",
         "from_status_id": null,
-        "to_status_id": "10118",
+        "to_status_id": "10025",
         "from_canonical": null,
         "to_canonical": "aborted"
       },
@@ -389,7 +389,7 @@
         "id": "8",
         "name": "is CNR",
         "from_status_id": "1",
-        "to_status_id": "10137",
+        "to_status_id": "10044",
         "from_canonical": "open",
         "to_canonical": "cannot_reproduce"
       },
@@ -397,7 +397,7 @@
         "id": "51",
         "name": "defer",
         "from_status_id": "1",
-        "to_status_id": "10108",
+        "to_status_id": "10015",
         "from_canonical": "open",
         "to_canonical": "deferred"
       },
@@ -405,7 +405,7 @@
         "id": "71",
         "name": "is duplicated",
         "from_status_id": "1",
-        "to_status_id": "10109",
+        "to_status_id": "10016",
         "from_canonical": "open",
         "to_canonical": "duplicated"
       },
@@ -413,7 +413,7 @@
         "id": "111",
         "name": "is WAD",
         "from_status_id": "1",
-        "to_status_id": "10112",
+        "to_status_id": "10019",
         "from_canonical": "open",
         "to_canonical": "rejected"
       },
@@ -429,14 +429,14 @@
         "id": "141",
         "name": "is not a Bug",
         "from_status_id": "1",
-        "to_status_id": "10116",
+        "to_status_id": "10023",
         "from_canonical": "open",
         "to_canonical": "enhancement"
       },
       "resume_fix": {
         "id": "6",
         "name": "resume fix",
-        "from_status_id": "10108",
+        "from_status_id": "10015",
         "to_status_id": "3",
         "from_canonical": "deferred",
         "to_canonical": "in_progress"
@@ -444,8 +444,8 @@
       "fixed_and_deployed": {
         "id": "31",
         "name": "Fixed & Deployed",
-        "from_status_id": "10126",
-        "to_status_id": "10100",
+        "from_status_id": "10033",
+        "to_status_id": "10007",
         "from_canonical": "in_review",
         "to_canonical": "ready_for_qa"
       },
@@ -453,7 +453,7 @@
         "id": "2",
         "name": "Pull Request",
         "from_status_id": "3",
-        "to_status_id": "10126",
+        "to_status_id": "10033",
         "from_canonical": "in_progress",
         "to_canonical": "in_review"
       },
@@ -461,7 +461,7 @@
         "id": "5",
         "name": "Hard pushed",
         "from_status_id": "3",
-        "to_status_id": "10100",
+        "to_status_id": "10007",
         "from_canonical": "in_progress",
         "to_canonical": "ready_for_qa"
       },
@@ -469,14 +469,14 @@
         "id": "7",
         "name": "back",
         "from_status_id": "6",
-        "to_status_id": "10100",
+        "to_status_id": "10007",
         "from_canonical": "closed",
         "to_canonical": "ready_for_qa"
       },
       "retest_passed": {
         "id": "41",
         "name": "ReTest Passed",
-        "from_status_id": "10100",
+        "from_status_id": "10007",
         "to_status_id": "6",
         "from_canonical": "ready_for_qa",
         "to_canonical": "closed"
@@ -485,67 +485,67 @@
   },
   "test_case": {
     "jira_issue_type": {
-      "id": "10100",
+      "id": "10009",
       "name": "Test"
     },
     "workflow_scheme": {
-      "id": 10100,
+      "id": 10003,
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "32825823-1646-40c1-baa0-f7d3b23a7608",
+      "id": "deb9c959-fe3f-4aef-8233-365a6b001c0b",
       "name": "UPEX Test (TC) Workflow"
     },
     "statuses": {
-      "in_design": {
-        "id": "10110",
-        "name": "In Design",
-        "category": "indeterminate"
-      },
       "in_review": {
-        "id": "10126",
+        "id": "10033",
         "name": "In Review",
         "category": "indeterminate"
       },
-      "in_automation": {
-        "id": "10127",
-        "name": "In Automation",
-        "category": "indeterminate"
-      },
-      "candidate": {
-        "id": "10123",
-        "name": "Candidate",
-        "category": "new"
-      },
       "manual": {
-        "id": "10129",
+        "id": "10036",
         "name": "MANUAL",
         "category": "done"
       },
-      "automated": {
-        "id": "10122",
-        "name": "AUTOMATED",
-        "category": "done"
-      },
-      "pull_request": {
-        "id": "10128",
-        "name": "Pull Request",
-        "category": "indeterminate"
-      },
-      "ready": {
-        "id": "10106",
-        "name": "READY",
-        "category": "done"
-      },
       "draft": {
-        "id": "10125",
+        "id": "10032",
         "name": "Draft",
         "category": "new"
       },
+      "pull_request": {
+        "id": "10035",
+        "name": "Pull Request",
+        "category": "indeterminate"
+      },
       "deprecated": {
-        "id": "10130",
+        "id": "10037",
         "name": "DEPRECATED",
         "category": "done"
+      },
+      "automated": {
+        "id": "10029",
+        "name": "AUTOMATED",
+        "category": "done"
+      },
+      "ready": {
+        "id": "10013",
+        "name": "READY",
+        "category": "done"
+      },
+      "in_design": {
+        "id": "10017",
+        "name": "In Design",
+        "category": "indeterminate"
+      },
+      "candidate": {
+        "id": "10030",
+        "name": "Candidate",
+        "category": "new"
+      },
+      "in_automation": {
+        "id": "10034",
+        "name": "In Automation",
+        "category": "indeterminate"
       }
     },
     "transitions": {
@@ -553,7 +553,7 @@
         "id": "231",
         "name": "Deprecated",
         "from_status_id": null,
-        "to_status_id": "10130",
+        "to_status_id": "10037",
         "from_canonical": null,
         "to_canonical": "deprecated"
       },
@@ -561,191 +561,191 @@
         "id": "1",
         "name": "Create",
         "from_status_id": null,
-        "to_status_id": "10125",
+        "to_status_id": "10032",
         "from_canonical": null,
         "to_canonical": "draft"
       },
       "automation_review_from_draft": {
         "id": "101",
         "name": "automation review",
-        "from_status_id": "10125",
-        "to_status_id": "10126",
+        "from_status_id": "10032",
+        "to_status_id": "10033",
         "from_canonical": "draft",
         "to_canonical": "in_review"
       },
       "start_design": {
         "id": "221",
         "name": "start design",
-        "from_status_id": "10125",
-        "to_status_id": "10110",
+        "from_status_id": "10032",
+        "to_status_id": "10017",
         "from_canonical": "draft",
         "to_canonical": "in_design"
       },
       "ready_to_run": {
         "id": "241",
         "name": "ready to run",
-        "from_status_id": "10110",
-        "to_status_id": "10106",
+        "from_status_id": "10017",
+        "to_status_id": "10013",
         "from_canonical": "in_design",
         "to_canonical": "ready"
       },
       "back_from_in_design": {
         "id": "301",
         "name": "back",
-        "from_status_id": "10110",
-        "to_status_id": "10125",
+        "from_status_id": "10017",
+        "to_status_id": "10032",
         "from_canonical": "in_design",
         "to_canonical": "draft"
       },
       "automation_review_from_ready": {
         "id": "251",
         "name": "automation review",
-        "from_status_id": "10106",
-        "to_status_id": "10126",
+        "from_status_id": "10013",
+        "to_status_id": "10033",
         "from_canonical": "ready",
         "to_canonical": "in_review"
       },
       "for_manual": {
         "id": "281",
         "name": "for manual",
-        "from_status_id": "10106",
-        "to_status_id": "10129",
+        "from_status_id": "10013",
+        "to_status_id": "10036",
         "from_canonical": "ready",
         "to_canonical": "manual"
       },
       "back_from_ready": {
         "id": "311",
         "name": "back",
-        "from_status_id": "10106",
-        "to_status_id": "10110",
+        "from_status_id": "10013",
+        "to_status_id": "10017",
         "from_canonical": "ready",
         "to_canonical": "in_design"
       },
       "merged": {
         "id": "151",
         "name": "merged",
-        "from_status_id": "10128",
-        "to_status_id": "10122",
+        "from_status_id": "10035",
+        "to_status_id": "10029",
         "from_canonical": "pull_request",
         "to_canonical": "automated"
       },
       "back_from_pull_request": {
         "id": "351",
         "name": "back",
-        "from_status_id": "10128",
-        "to_status_id": "10127",
+        "from_status_id": "10035",
+        "to_status_id": "10034",
         "from_canonical": "pull_request",
         "to_canonical": "in_automation"
       },
       "approve_to_automate": {
         "id": "111",
         "name": "approve to automate",
-        "from_status_id": "10126",
-        "to_status_id": "10123",
+        "from_status_id": "10033",
+        "to_status_id": "10030",
         "from_canonical": "in_review",
         "to_canonical": "candidate"
       },
       "back_from_in_review": {
         "id": "321",
         "name": "back",
-        "from_status_id": "10126",
-        "to_status_id": "10106",
+        "from_status_id": "10033",
+        "to_status_id": "10013",
         "from_canonical": "in_review",
         "to_canonical": "ready"
       },
       "start_automation": {
         "id": "121",
         "name": "start automation",
-        "from_status_id": "10123",
-        "to_status_id": "10127",
+        "from_status_id": "10030",
+        "to_status_id": "10034",
         "from_canonical": "candidate",
         "to_canonical": "in_automation"
       },
       "manual_execution_from_candidate": {
         "id": "131",
         "name": "manual execution",
-        "from_status_id": "10123",
-        "to_status_id": "10129",
+        "from_status_id": "10030",
+        "to_status_id": "10036",
         "from_canonical": "candidate",
         "to_canonical": "manual"
       },
       "back_from_candidate": {
         "id": "331",
         "name": "back",
-        "from_status_id": "10123",
-        "to_status_id": "10126",
+        "from_status_id": "10030",
+        "to_status_id": "10033",
         "from_canonical": "candidate",
         "to_canonical": "in_review"
       },
       "manual_execution_from_automated": {
         "id": "161",
         "name": "manual execution",
-        "from_status_id": "10122",
-        "to_status_id": "10129",
+        "from_status_id": "10029",
+        "to_status_id": "10036",
         "from_canonical": "automated",
         "to_canonical": "manual"
       },
       "fix": {
         "id": "361",
         "name": "Fix",
-        "from_status_id": "10122",
-        "to_status_id": "10128",
+        "from_status_id": "10029",
+        "to_status_id": "10035",
         "from_canonical": "automated",
         "to_canonical": "pull_request"
       },
       "automation_review_from_manual": {
         "id": "2",
         "name": "automation review",
-        "from_status_id": "10129",
-        "to_status_id": "10126",
+        "from_status_id": "10036",
+        "to_status_id": "10033",
         "from_canonical": "manual",
         "to_canonical": "in_review"
       },
       "automated": {
         "id": "3",
         "name": "automated",
-        "from_status_id": "10129",
-        "to_status_id": "10122",
+        "from_status_id": "10036",
+        "to_status_id": "10029",
         "from_canonical": "manual",
         "to_canonical": "automated"
       },
       "for_automation": {
         "id": "291",
         "name": "for automation",
-        "from_status_id": "10129",
-        "to_status_id": "10123",
+        "from_status_id": "10036",
+        "to_status_id": "10030",
         "from_canonical": "manual",
         "to_canonical": "candidate"
       },
       "recover": {
         "id": "271",
         "name": "recover",
-        "from_status_id": "10130",
-        "to_status_id": "10125",
+        "from_status_id": "10037",
+        "to_status_id": "10032",
         "from_canonical": "deprecated",
         "to_canonical": "draft"
       },
       "create_pr": {
         "id": "141",
         "name": "create PR",
-        "from_status_id": "10127",
-        "to_status_id": "10128",
+        "from_status_id": "10034",
+        "to_status_id": "10035",
         "from_canonical": "in_automation",
         "to_canonical": "pull_request"
       },
       "back_from_in_automation": {
         "id": "341",
         "name": "back",
-        "from_status_id": "10127",
-        "to_status_id": "10123",
+        "from_status_id": "10034",
+        "to_status_id": "10030",
         "from_canonical": "in_automation",
         "to_canonical": "candidate"
       },
       "automated_from_manual": {
         "id": "3",
         "name": "automated",
-        "from_status_id": "10129",
-        "to_status_id": "10122",
+        "from_status_id": "10036",
+        "to_status_id": "10029",
         "from_canonical": "manual",
         "to_canonical": "automated"
       }
