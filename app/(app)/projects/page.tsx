@@ -10,8 +10,8 @@ import { CreateProjectForm } from './create-project-form';
 //   * Otherwise            → render the Create-Project form alongside the
 //     active workspace's existing projects (each links to its detail page).
 //
-// Phase E adds the real Create-Project UI here; the multi-workspace picker
-// lives in the Topbar `WorkspaceSwitcher` on the project pages.
+// The Create-Project form lives here; the multi-workspace picker lives in the
+// Topbar `WorkspaceSwitcher` on the project pages.
 export default async function ProjectsIndexPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

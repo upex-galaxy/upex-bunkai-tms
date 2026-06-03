@@ -49,7 +49,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       details: { reason: 'name_too_long' },
     });
   }
-  if (!hasAlphanumeric(name)) {
+  if (!hasAlphanumeric(trimmedName)) {
     throw new ApiError('validation_failed', 'Name must contain at least one alphanumeric character.', {
       details: { reason: 'name_no_alphanumeric' },
     });

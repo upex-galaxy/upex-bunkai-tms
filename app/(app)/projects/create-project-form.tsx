@@ -83,9 +83,9 @@ export function CreateProjectForm({ workspaceId }: CreateProjectFormProps) {
         setSubmitting(false);
         return;
       }
-      // 201 — the new project now exists. Refresh the Server Component so the
-      // list below picks it up. No project-detail navigation here: the index
-      // route already redirects to the first project on the next render.
+      // 201 — the new project now exists. Clear the form and refresh the
+      // Server Component so the project list below picks it up; the user stays
+      // on /projects (each list item links through to the project detail page).
       setName('');
       setDescription('');
       toast.success('Project created');
