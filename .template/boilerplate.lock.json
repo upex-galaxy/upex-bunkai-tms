@@ -3,7 +3,7 @@
   "templateRepo": "upex-galaxy/agentic-dev-boilerplate",
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
-    "cli": "928b67d92167cd4e2ba0e38dbc0ea14345d56f53",
+    "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
     "claude": "928b67d92167cd4e2ba0e38dbc0ea14345d56f53",
     "claude-config": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
@@ -27,14 +27,18 @@
       ]
     },
     ".prettierignore": {
-      "lastSyncedSha": "0b83b236d173f9f4944890d687004f0ed1498f12",
+      "lastSyncedSha": "14f83e941a8d7d4efb7c4463590bfefd87c1c10a",
       "appendedLines": [
-        ".claude/worktrees/"
+        ".claude/worktrees/",
+        "api/openapi*",
+        "api/.openapi-config.json",
+        ".claude/settings.local.json",
+        ".playwright-mcp/"
       ]
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-01T17:02:56.917Z",
+  "lastSyncedAt": "2026-06-03T07:52:06.977Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
