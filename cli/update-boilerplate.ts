@@ -513,12 +513,28 @@ async function main(): Promise<void> {
     deprecatedFiles: DEPRECATED_FILES,
     bootstrapOnlyPaths: AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`),
     agentsFrameworkFiles: AGENTS_FRAMEWORK_FILES,
+    // Generated, per-repo file inside the `claude` component (which owns
+    // .claude/skills) — never synced; each repo rebuilds it from its own
+    // installed skill set (regenerated in afterApply below).
+    excludePaths: ['.claude/skills/REGISTRY.md'],
     selfUpdateComponent: 'cli',
     hooks: {
       // Runs after files land but before tempDir cleanup → upstream `.env.example`
       // is still on disk for the diff. Skipped on dry-run (no files were written).
-      afterApply: async () => {
+      afterApply: async (summary) => {
         if (parsed.dryRun) { return; }
+        // REGISTRY.md is excluded from the sync (generated, per-repo). When skills
+        // changed this run, regenerate it locally so it reflects the actual skill
+        // set — newly synced framework skills PLUS any local community skills the
+        // boilerplate never ships. Otherwise skills:registry:check (pre-push)
+        // would flag it stale after a sync that added or changed skills.
+        if (summary.applied.some(a => a.entry.path.startsWith('.claude/skills/'))) {
+          sink.step('Regenerando `.claude/skills/REGISTRY.md` (skills cambiaron)…');
+          const res = spawnSync('bun', ['run', 'skills:registry'], { stdio: 'inherit' });
+          if (res.status !== 0) {
+            sink.warn('No se pudo regenerar REGISTRY.md. Ejecuta `bun run skills:registry` manualmente.');
+          }
+        }
         await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
       },
     },
