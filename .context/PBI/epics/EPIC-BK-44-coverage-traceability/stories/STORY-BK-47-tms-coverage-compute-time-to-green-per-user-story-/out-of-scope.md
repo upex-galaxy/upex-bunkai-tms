@@ -1,6 +1,6 @@
 # BK-47 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-47)
+> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-47)
 
 - Per-test or per-step flakiness scoring.
 - Configurable dashboards or charts.

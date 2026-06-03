@@ -1,7 +1,7 @@
 # Authentication | Sign up and sign in via OAuth (GitHub / Google)
 
-**Jira Key:** [BK-3](https://upexgalaxy67.atlassian.net/browse/BK-3)
-**Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3)
+**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium
@@ -49,19 +49,19 @@ Implements ***FR-001**** partially — OAuth side only. Email magic-link is cove
 
 ## QA Refinements (Shift-Left Analysis)
 
-***Refined on****: 2026-05-26 | ****QA mode***: Shift-Left pre-sprint batch  
+***Refined on****: 2026-05-26 | ****QA mode***: Shift-Left pre-sprint batch
 ***Verdict***: Needs Improvement — 7 AC gaps, 5 ambiguities, 2 contradictions found
 
 ---
 
 ### Story Quality Summary
 
-| Axis | Rating |
-|---|---|
-| Business logic | High |
-| Integration complexity | High |
-| Data validation | Medium |
-| UI complexity | Low |
+| Axis                   | Rating |
+| ---------------------- | ------ |
+| Business logic         | High   |
+| Integration complexity | High   |
+| Data validation        | Medium |
+| UI complexity          | Low    |
 
 ***Test effort estimate***: High — 20 test outlines (5 positive, 7 negative, 3 boundary, 5 integration)
 
@@ -75,36 +75,36 @@ Implements ***FR-001**** partially — OAuth side only. Email magic-link is cove
 
 ### Ambiguities Found (5)
 
-| # | Question | Impact |
-|---|---|---|
-| A1 | Who validates OAuth state token — Supabase SDK or custom middleware? | Scope of state-tampering test |
-| A2 | Is `provider` upserted to `auth.users.raw*app*meta_data` or a separate Bunkai table? | Determines DB assertions |
-| A3 | Is first-login workspace bootstrap synchronous (rollback on fail) or fire-and-forget? | Two different test paths |
-| A4 | Canonical post-OAuth redirect: `/home` (story) vs `/projects` (code)? | Success-path assertion target |
-| A5 | Is magic-link fallback CTA always visible or dynamically rendered on error? | CTA visibility assertion |
+| #   | Question                                                                              | Impact                        |
+| --- | ------------------------------------------------------------------------------------- | ----------------------------- |
+| A1  | Who validates OAuth state token — Supabase SDK or custom middleware?                  | Scope of state-tampering test |
+| A2  | Is `provider` upserted to `auth.users.raw*app*meta_data` or a separate Bunkai table?  | Determines DB assertions      |
+| A3  | Is first-login workspace bootstrap synchronous (rollback on fail) or fire-and-forget? | Two different test paths      |
+| A4  | Canonical post-OAuth redirect: `/home` (story) vs `/projects` (code)?                 | Success-path assertion target |
+| A5  | Is magic-link fallback CTA always visible or dynamically rendered on error?           | CTA visibility assertion      |
 
 ---
 
 ### AC Gaps Found (7)
 
-| # | Missing AC | Risk if omitted |
-|---|---|---|
-| G1 | State token mismatch → 403 + redirect to `/login?error=state_mismatch` | CSRF/session fixation — pre-release checklist item #1 |
-| G2 | Provider returns error param (user denies consent) → graceful error redirect | Callback crashes with 500 |
-| G3 | Workspace bootstrap fails after token exchange → session NOT set | Ghost user: valid JWT, no workspace, all API calls 403 |
-| G4 | Returning user (not first login) → no duplicate workspace created | Workspace duplication on every sign-in |
-| G5 | OAuth redirect URI must be documented in spec or `.env.example` | Misconfigured OAuth app = all sign-ins fail silently |
-| G6 | `EMAIL_EXISTS`: HTTP status, user-visible message, error URL not specified | Silent failure or account-existence information leak |
-| G7 | Rate-limit policy for OAuth initiation not specified | Credential-stuffing via OAuth provider |
+| #   | Missing AC                                                                   | Risk if omitted                                        |
+| --- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| G1  | State token mismatch → 403 + redirect to `/login?error=state_mismatch`       | CSRF/session fixation — pre-release checklist item #1  |
+| G2  | Provider returns error param (user denies consent) → graceful error redirect | Callback crashes with 500                              |
+| G3  | Workspace bootstrap fails after token exchange → session NOT set             | Ghost user: valid JWT, no workspace, all API calls 403 |
+| G4  | Returning user (not first login) → no duplicate workspace created            | Workspace duplication on every sign-in                 |
+| G5  | OAuth redirect URI must be documented in spec or `.env.example`              | Misconfigured OAuth app = all sign-ins fail silently   |
+| G6  | `EMAIL_EXISTS`: HTTP status, user-visible message, error URL not specified   | Silent failure or account-existence information leak   |
+| G7  | Rate-limit policy for OAuth initiation not specified                         | Credential-stuffing via OAuth provider                 |
 
 ---
 
 ### Contradictions Found (2)
 
-| # | Contradiction |
-|---|---|
-| C1 | Story workflow says redirect to `/home`; callback route code defaults to `/projects`. Must reconcile before Dev implements. |
-| C2 | `login/page.tsx` comment says "OAuth ships next sprint" — if BK-3 is the OAuth ticket, UI copy AND button enable are in-scope. |
+| #   | Contradiction                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ |
+| C1  | Story workflow says redirect to `/home`; callback route code defaults to `/projects`. Must reconcile before Dev implements.    |
+| C2  | `login/page.tsx` comment says "OAuth ships next sprint" — if BK-3 is the OAuth ticket, UI copy AND button enable are in-scope. |
 
 ---
 

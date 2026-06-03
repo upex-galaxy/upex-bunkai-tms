@@ -1,7 +1,7 @@
 # TMS-ATC Builder | Build an ATC with ordered steps and assertions
 
-**Jira Key:** [BK-19](https://upexgalaxy67.atlassian.net/browse/BK-19)
-**Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
+**Jira Key:** [BK-19](https://upexgalaxy69.atlassian.net/browse/BK-19)
+**Epic:** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

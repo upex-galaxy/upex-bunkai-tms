@@ -1,6 +1,6 @@
 # BK-37 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-37)
+> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-37)
 
 1. Elena opens a Test and switches to its run history.
 2. She sees its past runs newest first, each showing outcome, environment, executor mode, and when it ran.

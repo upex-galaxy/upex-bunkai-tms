@@ -1,6 +1,6 @@
 # BK-39 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-39)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-39)
 
 ```gherkin
 Scenario: Finish a fully executed run as passed

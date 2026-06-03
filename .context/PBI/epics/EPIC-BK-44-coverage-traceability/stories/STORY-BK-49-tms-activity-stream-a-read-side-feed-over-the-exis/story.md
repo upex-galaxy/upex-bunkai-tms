@@ -1,7 +1,7 @@
 # TMS-Activity | Stream a read-side feed over the existing activity log
 
-**Jira Key:** [BK-49](https://upexgalaxy67.atlassian.net/browse/BK-49)
-**Epic:** [BK-44](https://upexgalaxy67.atlassian.net/browse/BK-44) (Coverage & Traceability)
+**Jira Key:** [BK-49](https://upexgalaxy69.atlassian.net/browse/BK-49)
+**Epic:** [BK-44](https://upexgalaxy69.atlassian.net/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

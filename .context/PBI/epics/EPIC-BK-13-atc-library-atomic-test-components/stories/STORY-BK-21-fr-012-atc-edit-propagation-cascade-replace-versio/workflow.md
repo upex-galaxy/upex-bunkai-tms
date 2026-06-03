@@ -1,6 +1,6 @@
 # BK-21 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-21)
+> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-21)
 
 1. Elena opens an existing ATC and edits its steps, assertions or details.
 2. On save, the ATC gets a new version.

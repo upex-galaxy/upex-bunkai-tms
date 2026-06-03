@@ -1,7 +1,7 @@
 # TMS-Workspace | Invite a teammate with a role
 
-**Jira Key:** [BK-5](https://upexgalaxy67.atlassian.net/browse/BK-5)
-**Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-5](https://upexgalaxy69.atlassian.net/browse/BK-5)
+**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium

@@ -1,6 +1,6 @@
 # BK-32 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-32)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-32)
 
 - Open a single Test and view all of its chained ATCs expanded inline in one screen
 - Show each ATC's ordered steps and its assertions within the expanded view

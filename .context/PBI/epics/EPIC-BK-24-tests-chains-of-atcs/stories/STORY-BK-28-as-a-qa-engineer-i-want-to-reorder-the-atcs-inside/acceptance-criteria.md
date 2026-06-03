@@ -1,6 +1,6 @@
 # BK-28 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-28)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-28)
 
 ```gherkin
 Scenario: Elena drags an ATC into a new position and saves

@@ -1,6 +1,6 @@
 # BK-17 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-17)
+> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-17)
 
 - Two-way sync (Bunkai -> Jira) - not in MVP, requires bidirectional reconciliation
 - Webhook-driven live updates - Phase 2

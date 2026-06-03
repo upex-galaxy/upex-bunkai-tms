@@ -1,6 +1,6 @@
 # EPIC: Bunkai TMS — Credenciales de Acceso para Testing (DB / API / UI)
 
-**Jira Key:** [BK-29](https://upexgalaxy67.atlassian.net/browse/BK-29)
+**Jira Key:** [BK-29](https://upexgalaxy69.atlassian.net/browse/BK-29)
 **Priority:** Medium
 **Status:** Backlog
 **Total Story Points:** 0
@@ -21,11 +21,11 @@ Este Epic concentra las credenciales y conexiones que usa el equipo de QA para e
 
 ## Entornos
 
-| ***Entorno**** | ****URL web**** | ****API base**** | ****OpenAPI**** | ****Estado*** |
-| --- | --- | --- | --- | --- |
-| local | `http://localhost:3000` | `http://localhost:3000/api/v1` | `http://localhost:3000/api/openapi` | dev |
-| staging | `https://staging-upexbunkai.vercel.app` | `https://staging-upexbunkai.vercel.app/api/v1` | `https://staging-upexbunkai.vercel.app/api/openapi` | Sprint Testing (principal) |
-| production | `https://upexbunkai.vercel.app` | `https://upexbunkai.vercel.app/api/v1` | `https://upexbunkai.vercel.app/api/openapi` | live (rama `main`) |
+| ***Entorno**** | ****URL web****                         | ****API base****                               | ****OpenAPI****                                     | ****Estado***              |
+| -------------- | --------------------------------------- | ---------------------------------------------- | --------------------------------------------------- | -------------------------- |
+| local          | `http://localhost:3000`                 | `http://localhost:3000/api/v1`                 | `http://localhost:3000/api/openapi`                 | dev                        |
+| staging        | `https://staging-upexbunkai.vercel.app` | `https://staging-upexbunkai.vercel.app/api/v1` | `https://staging-upexbunkai.vercel.app/api/openapi` | Sprint Testing (principal) |
+| production     | `https://upexbunkai.vercel.app`         | `https://upexbunkai.vercel.app/api/v1`         | `https://upexbunkai.vercel.app/api/openapi`         | live (rama `main`)         |
 
 ***Nota Vercel Deployment Protection***: si los endpoints devuelven HTML "Authentication Required", el proyecto Vercel tiene SSO Protection activa. Para QA externo, deshabilitar en Project Settings → Deployment Protection.
 
@@ -37,9 +37,9 @@ Dos roles dedicados, ambos con LOGIN + BYPASSRLS.
 
 ***Pooler****: Supabase deprecó el host directo `db.<ref>.supabase.co` para proyectos nuevos. La conexión correcta es via ****Session Pooler*** (puerto 5432) con el username en formato `<dbuser>.<project-ref>` (concatenado con punto).
 
-| ***Role**** | ****Privileges**** | ****Pooler username**** | ****Password*** |
-| --- | --- | --- | --- |
-| `qa*inspector*ro` | SELECT on public.* | `qa*inspector*ro.fmbpikzpkafptqximhxn` | `Bunk4i-QA-Read-9zKpM7xL` |
+| ***Role****       | ****Privileges****                                             | ****Pooler username****                | ****Password***            |
+| ----------------- | -------------------------------------------------------------- | -------------------------------------- | -------------------------- |
+| `qa*inspector*ro` | SELECT on public.*                                             | `qa*inspector*ro.fmbpikzpkafptqximhxn` | `Bunk4i-QA-Read-9zKpM7xL`  |
 | `qa*inspector*rw` | SELECT + INSERT + UPDATE + DELETE on public.* + sequence usage | `qa*inspector*rw.fmbpikzpkafptqximhxn` | `Bunk4i-QA-Write-8mNqR3yT` |
 
 Connection strings (Session Pooler, puerto 5432):
@@ -120,11 +120,11 @@ PAT scopes válidos: `atc:read`, `atc:write`, `run:execute`, `workspace:admin`.
 
 Magic-link sigue funcionando para sign-in browser. Para QA scripts headless, usar el password flow.
 
-| ***Slot**** | ****Rol esperado**** | ****Variable fuente*** |
-| --- | --- | --- |
-| owner | owner (creador del workspace) | `LOCAL*USER*OWNER*EMAIL / **PASSWORD` |
-| admin | admin (invitado) | `LOCAL*USER*ADMIN*EMAIL / **PASSWORD` |
-| member | member (invitado) | `LOCAL*USER*MEMBER*EMAIL / **PASSWORD` |
+| ***Slot**** | ****Rol esperado****          | ****Variable fuente***                 |
+| ----------- | ----------------------------- | -------------------------------------- |
+| owner       | owner (creador del workspace) | `LOCAL*USER*OWNER*EMAIL / **PASSWORD`  |
+| admin       | admin (invitado)              | `LOCAL*USER*ADMIN*EMAIL / **PASSWORD`  |
+| member      | member (invitado)             | `LOCAL*USER*MEMBER*EMAIL / **PASSWORD` |
 
 ## Flujos críticos para QA
 
@@ -143,16 +143,16 @@ Magic-link sigue funcionando para sign-in browser. Para QA scripts headless, usa
 
 ## Snapshot meta (no editar manual)
 
-| ***Key**** | ****Value*** |
-| --- | --- |
-| stack | `next-supabase-scalar` |
-| generated | 2026-05-27 |
-| epic | BK-29 |
-| migrations | 0001..0010 applied |
-| endpoints | 14 paths / 19 operations |
-| bearer_fix | `7c56670` |
+| ***Key****  | ****Value***                          |
+| ----------- | ------------------------------------- |
+| stack       | `next-supabase-scalar`                |
+| generated   | 2026-05-27                            |
+| epic        | BK-29                                 |
+| migrations  | 0001..0010 applied                    |
+| endpoints   | 14 paths / 19 operations              |
+| bearer_fix  | `7c56670`                             |
 | pooler_host | `aws-1-us-east-1.pooler.supabase.com` |
-| pooler_port | 5432 (session) |
+| pooler_port | 5432 (session)                        |
 
 Re-ejecutar `/testability-guide` para sincronizar drift cuando el stack o las migrations cambien.
 

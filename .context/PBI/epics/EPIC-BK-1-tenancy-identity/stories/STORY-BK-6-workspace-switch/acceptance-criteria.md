@@ -1,6 +1,6 @@
 # BK-6 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-6)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-6)
 
 ```gherkin
 Scenario: Successful workspace switch

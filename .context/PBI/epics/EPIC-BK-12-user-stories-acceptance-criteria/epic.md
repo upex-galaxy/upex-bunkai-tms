@@ -1,6 +1,6 @@
 # EPIC: User Stories & Acceptance Criteria
 
-**Jira Key:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12)
+**Jira Key:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12)
 **Priority:** Medium
 **Status:** Planning
 **Total Story Points:** 13
@@ -63,12 +63,12 @@ MVP runs on the built stack: ***Next.js 15 App Router**** (API routes under `app
 
 ## User Stories
 
-| Key | Story | Points | Priority | Status |
-| --- | ----- | ------ | -------- | ------ |
-| [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14) | TMS-US | Manage user stories anchored to a module | - | Medium | Shift-Left QA |
-| [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15) | TMS-AC | Manage criteria under a user story | - | Medium | Shift-Left QA |
-| [BK-16](https://upexgalaxy67.atlassian.net/browse/BK-16) | Markdown Editor | Write and preview Markdown safely | 13 | Medium | Ready For Dev |
-| [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17) | Jira Import | Pull Jira issues by JQL | - | Medium | Ready For Dev |
+| Key                                                      | Story           | Points                                   | Priority | Status |
+| -------------------------------------------------------- | --------------- | ---------------------------------------- | -------- | ------ |
+| [BK-14](https://upexgalaxy69.atlassian.net/browse/BK-14) | TMS-US          | Manage user stories anchored to a module | -        | Medium | Shift-Left QA |
+| [BK-15](https://upexgalaxy69.atlassian.net/browse/BK-15) | TMS-AC          | Manage criteria under a user story       | -        | Medium | Shift-Left QA |
+| [BK-16](https://upexgalaxy69.atlassian.net/browse/BK-16) | Markdown Editor | Write and preview Markdown safely        | 13       | Medium | Ready For Dev |
+| [BK-17](https://upexgalaxy69.atlassian.net/browse/BK-17) | Jira Import     | Pull Jira issues by JQL                  | -        | Medium | Ready For Dev |
 
 ---
 

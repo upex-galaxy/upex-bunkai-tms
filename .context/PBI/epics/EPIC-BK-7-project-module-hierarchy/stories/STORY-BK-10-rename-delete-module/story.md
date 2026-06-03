@@ -1,7 +1,7 @@
 # TMS-Module | Rename and soft-delete a module
 
-**Jira Key:** [BK-10](https://upexgalaxy67.atlassian.net/browse/BK-10)
-**Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-10](https://upexgalaxy69.atlassian.net/browse/BK-10)
+**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Estimation
 **Priority:** Medium

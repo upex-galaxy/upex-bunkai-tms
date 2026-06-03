@@ -1,6 +1,6 @@
 # BK-14 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-14)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-14)
 
 - Create a User Story under a Module with a title and a Markdown description
 - View, edit and remove a User Story

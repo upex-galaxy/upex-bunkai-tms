@@ -1,6 +1,6 @@
 # BK-47 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-47)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-47)
 
 ```gherkin
 Scenario: Cycle time for a recovered user story

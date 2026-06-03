@@ -1,6 +1,6 @@
 # BK-41 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-41)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-41)
 
 - List defects scoped to a chosen module
 - Include defects from all nested sub-modules of the chosen module

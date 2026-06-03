@@ -1,6 +1,6 @@
 # BK-42 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-42)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-42)
 
 ```gherkin
 Scenario: See defect counts and trend per module over a 30-day window

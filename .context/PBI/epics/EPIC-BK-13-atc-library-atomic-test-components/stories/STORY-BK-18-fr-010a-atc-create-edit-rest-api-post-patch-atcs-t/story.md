@@ -1,7 +1,7 @@
 # TMS-ATC API | Create and edit ATCs with steps and assertions
 
-**Jira Key:** [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18)
-**Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
+**Jira Key:** [BK-18](https://upexgalaxy69.atlassian.net/browse/BK-18)
+**Epic:** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium

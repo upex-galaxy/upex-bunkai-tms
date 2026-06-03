@@ -1,7 +1,7 @@
 # TMS-ATC Search | Search and autocomplete ATCs
 
-**Jira Key:** [BK-20](https://upexgalaxy67.atlassian.net/browse/BK-20)
-**Epic:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
+**Jira Key:** [BK-20](https://upexgalaxy69.atlassian.net/browse/BK-20)
+**Epic:** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

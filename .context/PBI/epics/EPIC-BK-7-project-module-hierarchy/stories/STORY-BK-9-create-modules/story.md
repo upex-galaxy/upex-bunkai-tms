@@ -1,7 +1,7 @@
 # TMS-Module | Create modules with nested sub-modules
 
-**Jira Key:** [BK-9](https://upexgalaxy67.atlassian.net/browse/BK-9)
-**Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-9](https://upexgalaxy69.atlassian.net/browse/BK-9)
+**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

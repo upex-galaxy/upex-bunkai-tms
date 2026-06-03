@@ -1,6 +1,6 @@
 # BK-32 — Business Rules
 
-> Jira field: `customfield_10134` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-32)
+> Jira field: `customfield_10134` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-32)
 
 - The expanded view is read-only; it never offers any control to change, add, remove, or reorder content
 - ATCs are always shown in the Test's saved running order, never alphabetically or by creation date

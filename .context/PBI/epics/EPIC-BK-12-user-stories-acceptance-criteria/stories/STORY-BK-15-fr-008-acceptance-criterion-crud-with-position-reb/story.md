@@ -1,7 +1,7 @@
 # TMS-AC | Manage criteria under a user story
 
-**Jira Key:** [BK-15](https://upexgalaxy67.atlassian.net/browse/BK-15)
-**Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-15](https://upexgalaxy69.atlassian.net/browse/BK-15)
+**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

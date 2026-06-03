@@ -1,6 +1,6 @@
 # BK-41 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-41)
+> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-41)
 
 1. Elena opens the defects view and picks the module she cares about, for example "Checkout".
 2. The list shows every defect under that module and all of its sub-modules, with summary counts by severity and by status.

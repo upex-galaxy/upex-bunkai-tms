@@ -1,6 +1,6 @@
 # Comments for BK-17
 
-[View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-17)
+[View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-17)
 
 ---
 

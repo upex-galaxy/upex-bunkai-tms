@@ -1,6 +1,6 @@
 # BK-11 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-11)
+> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-11)
 
 1. Elena selects a Module and chooses ***Move***.
 2. She picks the new parent — another Module, or the Project root.

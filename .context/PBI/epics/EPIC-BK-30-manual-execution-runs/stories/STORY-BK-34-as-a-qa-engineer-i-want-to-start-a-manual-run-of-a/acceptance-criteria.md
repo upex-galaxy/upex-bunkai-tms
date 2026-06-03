@@ -1,6 +1,6 @@
 # BK-34 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-34)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-34)
 
 ```gherkin
 Scenario: Start a run with every step pending

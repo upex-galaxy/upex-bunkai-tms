@@ -1,7 +1,7 @@
 # TMS-Defect Filing | File a defect from a failing run step
 
-**Jira Key:** [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40)
-**Epic:** [BK-31](https://upexgalaxy67.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
+**Jira Key:** [BK-40](https://upexgalaxy69.atlassian.net/browse/BK-40)
+**Epic:** [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -48,10 +48,10 @@
 
 ### Storys (4)
 
-- [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
-- [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41): TMS-Defect List | List and filter defects by module, status, severity _(Backlog)_
-- [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42): TMS-Defect Heatmap | View count and week-over-week trend per module _(Backlog)_
-- [BK-43](https://upexgalaxy67.atlassian.net/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(Backlog)_
+- [BK-35](https://upexgalaxy69.atlassian.net/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
+- [BK-41](https://upexgalaxy69.atlassian.net/browse/BK-41): TMS-Defect List | List and filter defects by module, status, severity _(Backlog)_
+- [BK-42](https://upexgalaxy69.atlassian.net/browse/BK-42): TMS-Defect Heatmap | View count and week-over-week trend per module _(Backlog)_
+- [BK-43](https://upexgalaxy69.atlassian.net/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(Backlog)_
 
 ---
 

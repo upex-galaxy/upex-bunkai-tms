@@ -1,6 +1,6 @@
 # BK-38 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-38)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-38)
 
 - Review every Run across the Project in a single list
 - Filter by date range, module, status, and executor type, combinable together

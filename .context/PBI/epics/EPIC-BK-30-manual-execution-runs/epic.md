@@ -1,6 +1,6 @@
 # EPIC: Manual Execution & Runs
 
-**Jira Key:** [BK-30](https://upexgalaxy67.atlassian.net/browse/BK-30)
+**Jira Key:** [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30)
 **Priority:** Medium
 **Status:** Planning
 **Total Story Points:** 6
@@ -23,14 +23,14 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 
 ## User Stories
 
-| Key | Story | Points | Priority | Status |
-| --- | ----- | ------ | -------- | ------ |
-| [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34) | TMS-Run Execution | Start a manual run in a chosen environment | 1 | Medium | Backlog |
-| [BK-35](https://upexgalaxy67.atlassian.net/browse/BK-35) | TMS-Run Execution | Mark each step pass, fail, or block | 1 | Medium | Backlog |
-| [BK-36](https://upexgalaxy67.atlassian.net/browse/BK-36) | TMS-Run Execution | Abort a run in progress with a reason | 1 | Medium | Backlog |
-| [BK-37](https://upexgalaxy67.atlassian.net/browse/BK-37) | TMS-Run History | View a test's past runs, filterable by outcome | 1 | Medium | Backlog |
-| [BK-38](https://upexgalaxy67.atlassian.net/browse/BK-38) | TMS-Run Reporting | Filter project runs with pass/fail totals | 1 | Medium | Backlog |
-| [BK-39](https://upexgalaxy67.atlassian.net/browse/BK-39) | TMS-Run Execution | Finish a run with a final verdict | 1 | Medium | Backlog |
+| Key                                                      | Story             | Points                                         | Priority | Status |
+| -------------------------------------------------------- | ----------------- | ---------------------------------------------- | -------- | ------ |
+| [BK-34](https://upexgalaxy69.atlassian.net/browse/BK-34) | TMS-Run Execution | Start a manual run in a chosen environment     | 1        | Medium | Backlog |
+| [BK-35](https://upexgalaxy69.atlassian.net/browse/BK-35) | TMS-Run Execution | Mark each step pass, fail, or block            | 1        | Medium | Backlog |
+| [BK-36](https://upexgalaxy69.atlassian.net/browse/BK-36) | TMS-Run Execution | Abort a run in progress with a reason          | 1        | Medium | Backlog |
+| [BK-37](https://upexgalaxy69.atlassian.net/browse/BK-37) | TMS-Run History   | View a test's past runs, filterable by outcome | 1        | Medium | Backlog |
+| [BK-38](https://upexgalaxy69.atlassian.net/browse/BK-38) | TMS-Run Reporting | Filter project runs with pass/fail totals      | 1        | Medium | Backlog |
+| [BK-39](https://upexgalaxy69.atlassian.net/browse/BK-39) | TMS-Run Execution | Finish a run with a final verdict              | 1        | Medium | Backlog |
 
 ---
 

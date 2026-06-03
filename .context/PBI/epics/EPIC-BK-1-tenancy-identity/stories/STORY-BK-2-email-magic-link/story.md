@@ -1,7 +1,7 @@
 # Authentication | Sign up and sign in with email magic-link
 
-**Jira Key:** [BK-2](https://upexgalaxy67.atlassian.net/browse/BK-2)
-**Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-2](https://upexgalaxy69.atlassian.net/browse/BK-2)
+**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** QA Approved
 **Priority:** Medium

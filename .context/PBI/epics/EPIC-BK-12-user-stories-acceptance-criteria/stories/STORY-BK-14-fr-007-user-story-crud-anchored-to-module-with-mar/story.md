@@ -1,7 +1,7 @@
 # TMS-US | Manage user stories anchored to a module
 
-**Jira Key:** [BK-14](https://upexgalaxy67.atlassian.net/browse/BK-14)
-**Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-14](https://upexgalaxy69.atlassian.net/browse/BK-14)
+**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
