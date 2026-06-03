@@ -1,6 +1,6 @@
 # BK-40 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-40)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-40)
 
 ```gherkin
 Scenario: File a defect from a failing step with everything pre-filled

@@ -1,6 +1,6 @@
 # BK-33 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-33)
+> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-33)
 
 - Defining, renaming, or deleting tags as standalone, reusable objects independent of any Test
 - Bulk-tagging or bulk-untagging many Tests at once in a single action

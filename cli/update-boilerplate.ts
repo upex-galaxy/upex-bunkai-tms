@@ -115,7 +115,14 @@ COMPONENTES: ${COMPONENTS.map(c => c.name).join(', ')}
 ATAJOS:      all, rollback, help
 
 FLAGS:
-  --auto                          Modo no-interactivo (CI)
+  --auto                          Modo no-interactivo: sincroniza TODO el
+                                  boilerplate (copia archivos nuevos +
+                                  sobreescribe divergencias con la versión
+                                  upstream). NO borra archivos que upstream
+                                  eliminó. El boilerplate es canónico (match 1:1).
+  --force                         Como --auto pero TAMBIÉN borra archivos que el
+                                  upstream eliminó. Hay backup + --rollback de
+                                  respaldo.
   --dry-run                       Preview, sin escribir
   --rollback                      Restaura backup mas reciente
   --update-mcp-template <agent>   Refresca docs/mcp/<agent>.template.*
@@ -126,7 +133,8 @@ EJEMPLOS:
   bun up                                    # Flujo interactivo (5 fases)
   bun up scripts                            # Un solo componente
   bun up claude agents                      # Multiples componentes
-  bun up --auto                             # CI mode
+  bun up --auto                             # CI mode (seguro, preserva lo tuyo)
+  bun up --force                            # Forzar todo del upstream (sin preguntar)
   bun up --dry-run                          # Preview
   bun up --rollback                         # Restaurar backup
   bun up --update-mcp-template claude       # Refrescar MCP template
@@ -369,6 +377,21 @@ function buildSink(): ReportSink {
         required: false,
       });
       return abortOnCancel<string[]>(r);
+    },
+
+    resolvePackageJsonKey: async (file, section, key, drift) => {
+      const body = `=== Tu versión (local) ===\n${drift.localValue}\n\n=== Versión del boilerplate (upstream) ===\n${drift.upstreamValue}`;
+      tui.note(body, `${file} → ${section}.${key}`);
+      const r = await tui.select({
+        message: `${section}.${key} difiere — ¿qué hacemos?`,
+        options: [
+          { value: 'mine', label: 'Mantener la mía (predeterminado)' },
+          { value: 'theirs', label: 'Actualizar a la del boilerplate' },
+          { value: 'skip', label: 'Decidir después (preguntar de nuevo)' },
+        ],
+        initialValue: 'mine',
+      });
+      return abortOnCancel<string>(r) as 'theirs' | 'mine' | 'skip';
     },
 
     resolveDiverged: async (entry, diff) => {

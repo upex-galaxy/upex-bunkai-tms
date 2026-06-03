@@ -1,6 +1,6 @@
 # BK-40 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-40)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-40)
 
 - File a defect directly from a failing step during a run, with the module, executed steps, failing test component and captured evidence pre-filled
 - File a standalone defect from the defects area when no run is involved

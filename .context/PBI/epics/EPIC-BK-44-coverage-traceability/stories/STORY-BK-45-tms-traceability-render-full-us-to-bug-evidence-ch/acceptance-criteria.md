@@ -1,6 +1,6 @@
 # BK-45 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-45)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-45)
 
 ```gherkin
 Scenario: Open the evidence chain for a covered user story

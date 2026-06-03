@@ -53,7 +53,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { applyIgnoreAppend, computeBlobSha, detectIgnoreDelta } from './updater-ignore';
-import { applyPackageJsonAppend, detectPackageJsonDelta } from './updater-package';
+import { applyPackageJsonAppend, applyPackageJsonOverride, detectPackageJsonDelta } from './updater-package';
 import { ComponentOverlapError, CorruptStateError } from './updater-types';
 
 // ============================================================================
@@ -683,6 +683,160 @@ export function computeDelta(
   return dedupeDeltaByPath(delta, components, componentIndex, logger);
 }
 
+// ============================================================================
+// CONTENT RECONCILE (Profundidad B — full 1:1 sync, cursor-independent)
+// ============================================================================
+
+/**
+ * Batch-resolve the HEAD blob SHA of every file under `pathspecs` in the
+ * template clone. One `git ls-tree -r HEAD` call (cheap) → map relPath → sha.
+ */
+function batchUpstreamShas(templateDir: string, pathspecs: string[]): Map<string, string> {
+  const map = new Map<string, string>();
+  if (pathspecs.length === 0) { return map; }
+  try {
+    const args = pathspecs.map(p => `"${p}"`).join(' ');
+    const out = execSync(
+      `git -C "${templateDir}" ls-tree -r HEAD -- ${args}`,
+      { stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 * 64 },
+    ).toString();
+    for (const line of out.split('\n')) {
+      // <mode> blob <sha>\t<path>
+      const m = /^\S+\s+blob\s+([0-9a-f]{40})\t(.+)$/.exec(line);
+      if (m) { map.set(m[2].replace(/\\/g, '/'), m[1]); }
+    }
+  }
+  catch {
+    // empty map → caller treats every file as new (safe — copies wholesale)
+  }
+  return map;
+}
+
+/**
+ * Batch-compute the git blob SHA of the given local files. Uses
+ * `git hash-object --stdin-paths` (one call) and falls back to per-file
+ * `computeBlobSha` if the batch call fails. Missing files are omitted.
+ */
+function batchLocalShas(repoRoot: string, relPaths: string[]): Map<string, string> {
+  const map = new Map<string, string>();
+  if (relPaths.length === 0) { return map; }
+  try {
+    const out = execSync('git hash-object --stdin-paths', {
+      cwd: repoRoot,
+      input: relPaths.join('\n'),
+      stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: 1024 * 1024 * 64,
+    }).toString().trim();
+    const shas = out.split('\n');
+    relPaths.forEach((p, i) => {
+      const sha = shas[i]?.trim();
+      if (sha && /^[0-9a-f]{40}$/.test(sha)) { map.set(p, sha); }
+    });
+  }
+  catch {
+    for (const p of relPaths) {
+      const sha = computeBlobSha(path.join(repoRoot, p));
+      if (sha) { map.set(p, sha); }
+    }
+  }
+  return map;
+}
+
+/**
+ * Full content reconcile for regular framework components (Profundidad B).
+ *
+ * Unlike `computeDelta` (which only sees files touched in the git-log range
+ * cursor..HEAD), this walks the ENTIRE upstream component tree and compares
+ * each file's content against the local copy by git blob SHA — independent of
+ * the stored SHA cursor. This guarantees a 1:1 match with the boilerplate: a
+ * file missing locally OR locally edited while upstream stayed the same is
+ * still detected and re-synced.
+ *
+ * Emits per file:
+ *   - 'new-upstream'      → missing locally (copy)
+ *   - 'locally-diverged'  → present but bytes differ (overwritten with 'theirs')
+ *   - (nothing)           → bytes identical
+ *   - binary extensions   → skipped (mirrors classifyFile rule 1)
+ *
+ * Bootstrap-only files keep their preserve-if-present / copy-if-missing rule
+ * (project-owned — never overwritten). Deleted-upstream files are NOT detected
+ * here (a removed-upstream file can't appear in an upstream tree walk); that
+ * stays with `computeDelta`'s git-log `D` entries, which safely flag only files
+ * the boilerplate explicitly removed (never project-local-only files).
+ */
+export function reconcileComponentsByContent(
+  templateDir: string,
+  components: readonly Component[],
+  localRepoRoot: string,
+  agentsBootstrapFiles: readonly string[],
+): DeltaEntry[] {
+  const out: DeltaEntry[] = [];
+
+  for (const component of components) {
+    const relPaths = collectComponentRelPaths(component, templateDir);
+    if (relPaths.length === 0) { continue; }
+
+    const pathspecs = component.type === 'file-list'
+      ? relPaths
+      : component.paths;
+    const upstreamShas = batchUpstreamShas(templateDir, pathspecs);
+
+    // Decide each file's fate; collect the present ones for a batched local hash.
+    const present: string[] = [];
+    const missing: string[] = [];
+    const bootstrapMissing: string[] = [];
+    for (const relPath of relPaths) {
+      const ext = path.extname(relPath).toLowerCase();
+      if (BINARY_EXTENSIONS.has(ext)) { continue; } // mirror classifyFile rule 1
+
+      const basename = path.basename(relPath);
+      const isFrameworkExempt = component.bootstrapOnly === true
+        && component.frameworkFiles?.includes(basename) === true;
+      const isBootstrapFile = !isFrameworkExempt && (
+        component.bootstrapOnly === true
+        || (component.name === 'agents' && agentsBootstrapFiles.includes(basename))
+      );
+
+      const localExists = fs.existsSync(path.join(localRepoRoot, relPath));
+      if (isBootstrapFile) {
+        // project-owned: copy only if missing, never overwrite
+        if (!localExists) { bootstrapMissing.push(relPath); }
+        continue;
+      }
+      if (!localExists) { missing.push(relPath); }
+      else { present.push(relPath); }
+    }
+
+    for (const relPath of [...missing, ...bootstrapMissing]) {
+      out.push(bootstrapEntry(component.name, relPath, templateDir));
+    }
+
+    const localShas = batchLocalShas(localRepoRoot, present);
+    for (const relPath of present) {
+      const upstreamSha = upstreamShas.get(relPath);
+      if (!upstreamSha) { continue; } // not tracked upstream — leave alone
+      const localSha = localShas.get(relPath);
+      if (localSha && localSha === upstreamSha) { continue; } // identical → nothing
+
+      out.push({
+        component: component.name,
+        path: relPath,
+        status: 'M',
+        fromSha: '',
+        toSha: upstreamSha,
+        added: 0,
+        removed: 0,
+        isBinary: false,
+        templateOldSha: null,
+        templateNewSha: upstreamSha,
+        classification: 'locally-diverged',
+      });
+    }
+  }
+
+  return out;
+}
+
 /**
  * Internal helper for the Level 2 dedupe pass at the end of `computeDelta`.
  *
@@ -1087,17 +1241,29 @@ export function renderLocalDiff(entry: DeltaEntry, repoDir: string, localRepoRoo
 // ============================================================================
 
 /**
- * Build the auto-mode apply plan from a set of delta entries.
+ * Build the non-interactive apply plan from a set of delta entries.
  *
- * Rules:
+ * Upstream is canonical for framework files: new + diverged files are ALWAYS
+ * applied with 'theirs' (full overwrite), regardless of mode. `forceMode` only
+ * controls the one destructive edge — deleting files upstream removed:
+ *
+ * Both modes:
  *   - clean-fastforward → apply 'theirs'
- *   - new-upstream      → apply 'theirs'
- *   - locally-diverged  → skip (not a CI error)
- *   - deleted-upstream  → deferred (NEVER delete in auto mode)
+ *   - new-upstream      → apply 'theirs' (copy)
+ *   - locally-diverged  → apply 'theirs' (OVERWRITE local with upstream)
  *   - binary-skip       → skip
- *   - unchanged         → excluded (filtered upstream)
+ *
+ * `--auto` (forceMode = false):  deleted-upstream → deferred (never delete)
+ * `--force` (forceMode = true):  deleted-upstream → apply 'delete'
+ *
+ * `unchanged` is excluded in both modes (filtered upstream). A backup is taken
+ * before any destructive write, so every overwrite/delete is reversible via
+ * --rollback.
  */
-export function planAuto(entries: DeltaEntry[]): { plan: AppliedFile[], deferred: DeltaEntry[] } {
+export function planAuto(
+  entries: DeltaEntry[],
+  forceMode = false,
+): { plan: AppliedFile[], deferred: DeltaEntry[] } {
   const plan: AppliedFile[] = [];
   const deferred: DeltaEntry[] = [];
 
@@ -1108,10 +1274,12 @@ export function planAuto(entries: DeltaEntry[]): { plan: AppliedFile[], deferred
         plan.push({ entry, resolution: 'theirs' });
         break;
       case 'locally-diverged':
-        plan.push({ entry, resolution: 'skip' });
+        // Upstream canonical — overwrite local divergence in every mode.
+        plan.push({ entry, resolution: 'theirs' });
         break;
       case 'deleted-upstream':
-        deferred.push(entry);
+        if (forceMode) { plan.push({ entry, resolution: 'delete' }); }
+        else { deferred.push(entry); }
         break;
       case 'binary-skip':
         plan.push({ entry, resolution: 'skip' });
@@ -1888,6 +2056,22 @@ export async function runUpdate(
       const agentsBootstrapBasenames = cfg.bootstrapOnlyPaths
         .filter(p => p.startsWith('.agents/'))
         .map(p => path.basename(p));
+
+      // Content reconcile (Profundidad B) is the authoritative source for
+      // new + diverged files: it walks the FULL upstream tree and compares by
+      // blob SHA, independent of the cursor — so missing files and local edits
+      // are always caught (a git-log delta keyed on the cursor misses both).
+      const reconciled = reconcileComponentsByContent(
+        templateDir,
+        deltaComponents,
+        repoRoot,
+        agentsBootstrapBasenames,
+      );
+
+      // computeDelta is still run, but ONLY its deleted-upstream entries are
+      // kept — those flag files the boilerplate explicitly removed (a tree walk
+      // cannot detect a deletion). Its A/M entries are superseded by the
+      // content reconcile above (which also catches cursor-passed drift).
       const deltaEntries = computeDelta(
         templateDir,
         deltaComponents,
@@ -1896,7 +2080,19 @@ export async function runUpdate(
         agentsBootstrapBasenames,
         makeCoreLoggerFromSink(sink),
       );
-      entries.push(...deltaEntries);
+      const deletes = deltaEntries.filter(e => e.classification === 'deleted-upstream');
+
+      // Merge + dedupe by path (reconcile wins; deletes never overlap since a
+      // removed-upstream file is absent from the reconcile tree walk).
+      const componentIndex = new Map<string, number>();
+      cfg.components.forEach((c, idx) => { componentIndex.set(c.name, idx); });
+      const merged = dedupeDeltaByPath(
+        [...reconciled, ...deletes],
+        cfg.components,
+        componentIndex,
+        makeCoreLoggerFromSink(sink),
+      );
+      entries.push(...merged);
     }
   }
 
@@ -1963,13 +2159,18 @@ export async function runUpdate(
     sink.step(`Sin cambios de archivos — solo keys nuevas en ${pkgJsonDeltasPre.length} package.json.`);
   }
 
+  // Non-interactive when EITHER --auto (CI-safe) OR --force (upstream wins).
+  // Both skip every prompt; they differ only in the apply policy (planAuto's
+  // forceMode flag and the package.json divergence resolution below).
+  const nonInteractive = opts.auto || opts.force === true;
+
   // --- PHASE 3 — SCOPE ---
   let chosenScopes: string[] = [];
   const AUTO_COLLAPSE_THRESHOLD = 10;
   if (visible.length > 0) {
-    if (opts.auto || visible.length < AUTO_COLLAPSE_THRESHOLD) {
+    if (nonInteractive || visible.length < AUTO_COLLAPSE_THRESHOLD) {
       chosenScopes = [...perComp.keys()];
-      if (!opts.auto) {
+      if (!nonInteractive) {
         sink.phase(3, 'SCOPE');
         sink.step(`Solo ${visible.length} archivo(s) — saltando selección de scope.`);
       }
@@ -2011,9 +2212,11 @@ export async function runUpdate(
     if (scopeFiles.length === 0) { continue; }
 
     let selected: DeltaEntry[];
-    if (opts.auto) {
-      // auto path: apply planAuto to the scope's entries
-      const { plan, deferred } = planAuto(scopeFiles);
+    if (nonInteractive) {
+      // non-interactive path: apply planAuto to the scope's entries.
+      // --force (opts.force) flips planAuto to overwrite diverged + delete
+      // upstream-removed files; --auto keeps the CI-safe policy.
+      const { plan, deferred } = planAuto(scopeFiles, opts.force === true);
       // Deferred (deleted-upstream) is held back; mark as skipped
       for (const d of deferred) { skipped.push(d); }
       // Plan items that resolve to 'skip' are skipped; others apply
@@ -2090,31 +2293,27 @@ export async function runUpdate(
 
     // Per-file handling
     for (const entry of selected) {
-      const paired = buildPairedDiff(entry, templateDir, repoRoot);
-
       if (entry.classification === 'locally-diverged') {
-        // Auto-show paired diff via sink.resolveDiverged
-        const resolution = await sink.resolveDiverged(entry, paired);
-        if (resolution === 'skip') {
-          skipped.push(entry);
-          continue;
-        }
+        // Upstream is canonical for framework files — no skip/mine prompt.
+        // The user already controls inclusion via scope/file selection above;
+        // a SELECTED diverged file is overwritten wholesale ('theirs'). Backup
+        // is taken inside applyResolution, so --rollback restores it.
         if (opts.dryRun) {
-          sink.step(`[dry-run] resolvería como ${resolution}: ${entry.path}`);
-          applied.push({ entry, resolution });
+          sink.step(`[dry-run] sobreescribiría con upstream: ${entry.path}`);
+          applied.push({ entry, resolution: 'theirs' });
           continue;
         }
         try {
           await applyResolution(
             entry,
-            resolution,
+            'theirs',
             templateDir,
             repoRoot,
             ensureBackup(),
             false,
             makeCoreLoggerFromSink(sink),
           );
-          applied.push({ entry, resolution });
+          applied.push({ entry, resolution: 'theirs' });
         }
         catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -2157,6 +2356,7 @@ export async function runUpdate(
       // Only ask when user explicitly chose 'pick' (audit mode); 'all' means
       // blanket accept — no preview prompts.
       if (sink.showDiff && strategy === 'pick') {
+        const paired = buildPairedDiff(entry, templateDir, repoRoot);
         await sink.showDiff(entry, paired);
       }
       if (opts.dryRun) {
@@ -2193,8 +2393,8 @@ export async function runUpdate(
     sink.subphase('IGNORE LINES');
     for (const delta of ignoreDeltasPre) {
       let selected: string[];
-      if (opts.auto) {
-        // Auto mode: accept ALL upstream-only lines (append-only is safe).
+      if (nonInteractive) {
+        // auto/force: accept ALL upstream-only lines (append-only is safe).
         selected = delta.upstreamOnlyLines.slice();
         sink.step(`[auto] ${delta.file}: aceptando ${selected.length} línea(s)`);
       }
@@ -2213,31 +2413,67 @@ export async function runUpdate(
   }
 
   // --- PHASE 4.5b — PACKAGE.JSON KEYS ---
-  // Append-only sync for configured sections (default: scripts + devDependencies).
-  // Same shape as Phase 4.5: pre-detected deltas → per-section selection →
-  // applied later in Phase 5 before state write. localOverrideKeys (drift) is
-  // surfaced as FYI warn — NEVER overwritten.
-  const pkgJsonSelections = new Map<string, { selectedKeys: Record<string, string[]>, values: Record<string, Record<string, string>> }>();
+  // Two flows per configured section:
+  //   1. upstream-only keys → append-only (default: scripts + devDependencies).
+  //   2. diverged keys (same key, different value) → resolved per policy:
+  //        --force       → 'theirs' (overwrite local with upstream)
+  //        --auto        → 'skip'   (keep local, CI-safe, re-surface next run)
+  //        interactive   → ask sink.resolvePackageJsonKey (theirs/mine/skip)
+  //      'mine' is recorded in state.keptKeys so it stops re-prompting until the
+  //      upstream value changes again; 'skip' is never recorded.
+  const pkgJsonSelections = new Map<string, {
+    selectedKeys: Record<string, string[]>
+    values: Record<string, Record<string, string>>
+    overrides: Record<string, Record<string, string>>
+    kept: Record<string, Record<string, string>>
+  }>();
   if (pkgJsonDeltasPre.length > 0) {
     sink.subphase('PACKAGE.JSON KEYS');
     for (const delta of pkgJsonDeltasPre) {
-      // Surface drift first (FYI only — never written)
+      const selectedKeys: Record<string, string[]> = {};
+      const values: Record<string, Record<string, string>> = {};
+      const overrides: Record<string, Record<string, string>> = {};
+      const kept: Record<string, Record<string, string>> = {};
+
+      // --- Diverged keys (same key, different value) ---
       for (const [section, secDelta] of Object.entries(delta.sections)) {
         for (const [key, drift] of Object.entries(secDelta.localOverrideKeys)) {
-          const truncL = drift.localValue.length > 60 ? `${drift.localValue.slice(0, 60)}…` : drift.localValue;
-          const truncU = drift.upstreamValue.length > 60 ? `${drift.upstreamValue.slice(0, 60)}…` : drift.upstreamValue;
-          sink.warn(`${delta.file} ${section}.${key}: divergencia local (local: ${truncL}, upstream: ${truncU}) — se mantiene local`);
+          let resolution: 'theirs' | 'mine' | 'skip';
+          if (opts.force === true) {
+            resolution = 'theirs';
+            sink.step(`[force] ${delta.file} ${section}.${key}: usando versión upstream`);
+          }
+          else if (opts.auto || !sink.resolvePackageJsonKey) {
+            // CI-safe default (and fallback when the sink has no resolver):
+            // keep local and re-surface next run.
+            resolution = 'skip';
+            sink.warn(
+              `${delta.file} ${section}.${key}: divergencia local — se mantiene tu versión\n`
+              + `  local:    ${drift.localValue}\n`
+              + `  upstream: ${drift.upstreamValue}`,
+            );
+          }
+          else {
+            resolution = await sink.resolvePackageJsonKey(delta.file, section, key, drift);
+          }
+
+          if (resolution === 'theirs') {
+            (overrides[section] ??= {})[key] = drift.upstreamValue;
+          }
+          else if (resolution === 'mine') {
+            (kept[section] ??= {})[key] = drift.upstreamValue;
+          }
+          // 'skip' → record nothing (re-prompts next run by design)
         }
       }
 
-      const selectedKeys: Record<string, string[]> = {};
-      const values: Record<string, Record<string, string>> = {};
+      // --- New keys (upstream-only) — append-only ---
       for (const [section, secDelta] of Object.entries(delta.sections)) {
         const upstreamOnly = Object.entries(secDelta.upstreamOnlyKeys);
         if (upstreamOnly.length === 0) { continue; }
 
         let selected: string[];
-        if (opts.auto) {
+        if (nonInteractive) {
           selected = upstreamOnly.map(([k]) => k);
           sink.step(`[auto] ${delta.file} ${section}: aceptando ${selected.length} key(s)`);
         }
@@ -2261,8 +2497,11 @@ export async function runUpdate(
         }
       }
 
-      if (Object.keys(selectedKeys).length > 0) {
-        pkgJsonSelections.set(delta.file, { selectedKeys, values });
+      const hasWork = Object.keys(selectedKeys).length > 0
+        || Object.keys(overrides).length > 0
+        || Object.keys(kept).length > 0;
+      if (hasWork) {
+        pkgJsonSelections.set(delta.file, { selectedKeys, values, overrides, kept });
       }
     }
   }
@@ -2310,14 +2549,18 @@ export async function runUpdate(
     };
   }
 
-  // Apply package.json appends BEFORE state write (mirror of ignore-append above).
+  // Apply package.json appends + overrides BEFORE state write (mirror of ignore-append above).
   for (const spec of cfg.packageJsonSpecs ?? []) {
     const selection = pkgJsonSelections.get(spec.path);
-    if (!selection || Object.keys(selection.selectedKeys).length === 0) { continue; }
+    if (!selection) { continue; }
+    const hasAppends = Object.keys(selection.selectedKeys).length > 0;
+    const hasOverrides = Object.keys(selection.overrides).length > 0;
+    const hasKept = Object.keys(selection.kept).length > 0;
+    if (!hasAppends && !hasOverrides && !hasKept) { continue; }
 
     // Back up the local file BEFORE write (pre-write backup contract).
     const localPath = path.join(repoRoot, spec.path);
-    if (!opts.dryRun && fs.existsSync(localPath)) {
+    if (!opts.dryRun && (hasAppends || hasOverrides) && fs.existsSync(localPath)) {
       const dir = ensureBackup();
       const backupPath = path.join(dir, spec.path);
       fs.mkdirSync(path.dirname(backupPath), { recursive: true });
@@ -2330,11 +2573,21 @@ export async function runUpdate(
       for (const [section, keys] of Object.entries(writtenBySection)) {
         sink.step(`Append a ${spec.path} ${section}: ${keys.length} key(s)`);
       }
+      // Overwrite diverged keys resolved as 'theirs' (use upstream value).
+      if (hasOverrides) {
+        const overwritten = applyPackageJsonOverride(spec, selection.overrides, repoRoot);
+        for (const [section, keys] of Object.entries(overwritten)) {
+          sink.step(`Actualizado a upstream en ${spec.path} ${section}: ${keys.length} key(s)`);
+        }
+      }
     }
     else {
       writtenBySection = selection.selectedKeys;
       for (const [section, keys] of Object.entries(writtenBySection)) {
         sink.step(`[dry-run] aplicaría a ${spec.path} ${section}: ${keys.length} key(s)`);
+      }
+      for (const [section, kv] of Object.entries(selection.overrides)) {
+        sink.step(`[dry-run] actualizaría a upstream en ${spec.path} ${section}: ${Object.keys(kv).length} key(s)`);
       }
     }
 
@@ -2356,13 +2609,25 @@ export async function runUpdate(
 
     const upstreamBlobSha = computeBlobSha(path.join(templateDir, spec.path));
     const fileState = v7State.packageJsonSync?.[spec.path] ?? {};
-    const newFileState: Record<string, { lastSyncedSha: string, appliedKeys: string[] }> = {};
+    const newFileState: Record<string, { lastSyncedSha: string, appliedKeys: string[], keptKeys?: Record<string, string> }> = {};
     for (const section of spec.sections) {
       const prevKeys = fileState[section]?.appliedKeys ?? [];
       const writtenForSection = writtenBySection[section] ?? [];
+      // Carry forward prior kept-mine decisions; drop any key now overwritten to
+      // upstream ('theirs'), then merge in this run's new kept-mine decisions.
+      const prevKept = fileState[section]?.keptKeys ?? {};
+      const overriddenThisRun = selection.overrides[section] ?? {};
+      const mergedKept: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prevKept)) {
+        if (!(k in overriddenThisRun)) { mergedKept[k] = v; }
+      }
+      for (const [k, v] of Object.entries(selection.kept[section] ?? {})) {
+        mergedKept[k] = v;
+      }
       newFileState[section] = {
         lastSyncedSha: upstreamBlobSha,
         appliedKeys: Array.from(new Set([...prevKeys, ...writtenForSection])),
+        ...(Object.keys(mergedKept).length > 0 ? { keptKeys: mergedKept } : {}),
       };
     }
     v7State.packageJsonSync = {

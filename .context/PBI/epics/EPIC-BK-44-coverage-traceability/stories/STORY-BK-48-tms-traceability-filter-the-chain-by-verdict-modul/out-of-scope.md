@@ -1,6 +1,6 @@
 # BK-48 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-48)
+> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-48)
 
 - Saving filter presets.
 - Building the underlying chain (separate story).

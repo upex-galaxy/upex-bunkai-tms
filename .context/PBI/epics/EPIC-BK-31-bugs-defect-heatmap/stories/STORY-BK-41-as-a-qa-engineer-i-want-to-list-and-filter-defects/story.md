@@ -1,7 +1,7 @@
 # TMS-Defect List | List and filter defects by module, status, severity
 
-**Jira Key:** [BK-41](https://upexgalaxy67.atlassian.net/browse/BK-41)
-**Epic:** [BK-31](https://upexgalaxy67.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
+**Jira Key:** [BK-41](https://upexgalaxy69.atlassian.net/browse/BK-41)
+**Epic:** [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -47,7 +47,7 @@
 
 ### Story (1)
 
-- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
+- [BK-40](https://upexgalaxy69.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 

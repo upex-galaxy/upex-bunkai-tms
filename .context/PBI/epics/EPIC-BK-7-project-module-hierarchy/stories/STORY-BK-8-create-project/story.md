@@ -1,7 +1,7 @@
 # TMS-Project | Create a project inside a workspace
 
-**Jira Key:** [BK-8](https://upexgalaxy67.atlassian.net/browse/BK-8)
-**Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-8](https://upexgalaxy69.atlassian.net/browse/BK-8)
+**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium

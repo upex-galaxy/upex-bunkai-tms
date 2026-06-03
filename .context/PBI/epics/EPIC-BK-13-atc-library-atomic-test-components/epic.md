@@ -1,6 +1,6 @@
 # EPIC: ATC Library (Atomic Test Components)
 
-**Jira Key:** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13)
+**Jira Key:** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13)
 **Priority:** Medium
 **Status:** Planning
 **Total Story Points:** 5
@@ -64,14 +64,14 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 
 ## User Stories
 
-| Key | Story | Points | Priority | Status |
-| --- | ----- | ------ | -------- | ------ |
-| [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18) | TMS-ATC API | Create and edit ATCs with steps and assertions | 5 | Medium | Ready For Dev |
-| [BK-19](https://upexgalaxy67.atlassian.net/browse/BK-19) | TMS-ATC Builder | Build an ATC with ordered steps and assertions | - | Medium | Shift-Left QA |
-| [BK-20](https://upexgalaxy67.atlassian.net/browse/BK-20) | TMS-ATC Search | Search and autocomplete ATCs | - | Medium | Shift-Left QA |
-| [BK-21](https://upexgalaxy67.atlassian.net/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests | - | Medium | Shift-Left QA |
-| [BK-22](https://upexgalaxy67.atlassian.net/browse/BK-22) | TMS-ATC Usage | See a "Used in N tests" report | - | Medium | Shift-Left QA |
-| [BK-23](https://upexgalaxy67.atlassian.net/browse/BK-23) | TMS-ATC Duplicate | Duplicate an ATC with steps and assertions | - | Medium | Shift-Left QA |
+| Key                                                      | Story               | Points                                         | Priority | Status |
+| -------------------------------------------------------- | ------------------- | ---------------------------------------------- | -------- | ------ |
+| [BK-18](https://upexgalaxy69.atlassian.net/browse/BK-18) | TMS-ATC API         | Create and edit ATCs with steps and assertions | 5        | Medium | Ready For Dev |
+| [BK-19](https://upexgalaxy69.atlassian.net/browse/BK-19) | TMS-ATC Builder     | Build an ATC with ordered steps and assertions | -        | Medium | Shift-Left QA |
+| [BK-20](https://upexgalaxy69.atlassian.net/browse/BK-20) | TMS-ATC Search      | Search and autocomplete ATCs                   | -        | Medium | Shift-Left QA |
+| [BK-21](https://upexgalaxy69.atlassian.net/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests                 | -        | Medium | Shift-Left QA |
+| [BK-22](https://upexgalaxy69.atlassian.net/browse/BK-22) | TMS-ATC Usage       | See a "Used in N tests" report                 | -        | Medium | Shift-Left QA |
+| [BK-23](https://upexgalaxy69.atlassian.net/browse/BK-23) | TMS-ATC Duplicate   | Duplicate an ATC with steps and assertions     | -        | Medium | Shift-Left QA |
 
 ---
 

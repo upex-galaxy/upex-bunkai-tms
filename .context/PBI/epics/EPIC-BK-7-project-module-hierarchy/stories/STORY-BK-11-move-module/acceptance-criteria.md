@@ -1,6 +1,6 @@
 # BK-11 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-11)
+> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-11)
 
 ```gherkin
 Scenario: Move a Module to a new parent

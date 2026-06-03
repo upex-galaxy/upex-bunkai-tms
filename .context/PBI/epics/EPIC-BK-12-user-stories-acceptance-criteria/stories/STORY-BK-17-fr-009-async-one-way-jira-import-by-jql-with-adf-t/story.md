@@ -1,7 +1,7 @@
 # Jira Import | Pull Jira issues by JQL
 
-**Jira Key:** [BK-17](https://upexgalaxy67.atlassian.net/browse/BK-17)
-**Epic:** [BK-12](https://upexgalaxy67.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-17](https://upexgalaxy69.atlassian.net/browse/BK-17)
+**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium

@@ -1,7 +1,7 @@
 # TMS-Defect Heatmap | View count and week-over-week trend per module
 
-**Jira Key:** [BK-42](https://upexgalaxy67.atlassian.net/browse/BK-42)
-**Epic:** [BK-31](https://upexgalaxy67.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
+**Jira Key:** [BK-42](https://upexgalaxy69.atlassian.net/browse/BK-42)
+**Epic:** [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -47,7 +47,7 @@
 
 ### Story (1)
 
-- [BK-40](https://upexgalaxy67.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
+- [BK-40](https://upexgalaxy69.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 

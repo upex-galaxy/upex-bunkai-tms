@@ -1,7 +1,7 @@
 # TMS-Test Builder | Reorder ATCs inside a test
 
-**Jira Key:** [BK-28](https://upexgalaxy67.atlassian.net/browse/BK-28)
-**Epic:** [BK-24](https://upexgalaxy67.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
+**Jira Key:** [BK-28](https://upexgalaxy69.atlassian.net/browse/BK-28)
+**Epic:** [BK-24](https://upexgalaxy69.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -46,7 +46,7 @@
 
 ### Story (1)
 
-- [BK-27](https://upexgalaxy67.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
+- [BK-27](https://upexgalaxy69.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
 
 ---
 

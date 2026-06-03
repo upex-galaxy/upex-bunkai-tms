@@ -1,7 +1,7 @@
 # TMS-Run Execution | Finish a run with a final verdict
 
-**Jira Key:** [BK-39](https://upexgalaxy67.atlassian.net/browse/BK-39)
-**Epic:** [BK-30](https://upexgalaxy67.atlassian.net/browse/BK-30) (Manual Execution & Runs)
+**Jira Key:** [BK-39](https://upexgalaxy69.atlassian.net/browse/BK-39)
+**Epic:** [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -47,7 +47,7 @@
 
 ### Story (1)
 
-- [BK-34](https://upexgalaxy67.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-34](https://upexgalaxy69.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
 
 ---
 

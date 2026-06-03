@@ -1,6 +1,6 @@
 # BK-35 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-35)
+> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-35)
 
 - Starting the run and creating the pending checklist (covered by BK-019)
 - Aborting the run mid-flight (covered by BK-021)

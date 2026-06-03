@@ -1,7 +1,7 @@
 # TMS-Workspace | Create a workspace
 
-**Jira Key:** [BK-4](https://upexgalaxy67.atlassian.net/browse/BK-4)
-**Epic:** [BK-1](https://upexgalaxy67.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-4](https://upexgalaxy69.atlassian.net/browse/BK-4)
+**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium

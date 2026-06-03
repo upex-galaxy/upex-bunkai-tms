@@ -1,6 +1,6 @@
 # BK-9 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-9)
+> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-9)
 
 - Create a Module to mirror a product area:
 - See the new Module appear in its correct place in the Project tree right after saving

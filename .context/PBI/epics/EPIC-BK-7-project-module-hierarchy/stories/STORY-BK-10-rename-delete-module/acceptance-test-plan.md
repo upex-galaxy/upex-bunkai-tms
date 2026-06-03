@@ -1,6 +1,6 @@
 # BK-10 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-10)
+> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-10)
 
 ## ATP DRAFT — BK-10 | Module Rename & Soft-Delete
 
@@ -8,14 +8,14 @@
 
 ***PO answers confirmed: ***min role = member+ (viewer → 403) · error messages specified · archived URL → 404 · sibling uniqueness → 409
 
-| ***Type**** | ****Count**** | ****Focus*** |
-| --- | --- | --- |
-| Positive | 7 | Happy path rename, leaf delete, cascade delete, listing exclusion, breadcrumb |
-| Negative | 8 | Name too short/long/empty/whitespace, viewer denied (403), 404 non-existent, 409 already-archived, sibling collision |
-| Boundary | 4 | Name = 2 chars (min), 1 char (min−1), 80 chars (max), 81 chars (max+1) |
-| Integration | 5 | 4-deep cascade transaction, rollback on failure, ATC listing filter, full-text search filter, PAT bearer auth |
-| API | 4 | PATCH 200, PATCH 422, DELETE 200/204, DELETE 404 |
-| ***Total**** | ****28**** | ****HIGH effort — cascade complexity + auth matrix + transaction state machine*** |
+| ***Type****  | ****Count**** | ****Focus***                                                                                                         |
+| ------------ | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Positive     | 7             | Happy path rename, leaf delete, cascade delete, listing exclusion, breadcrumb                                        |
+| Negative     | 8             | Name too short/long/empty/whitespace, viewer denied (403), 404 non-existent, 409 already-archived, sibling collision |
+| Boundary     | 4             | Name = 2 chars (min), 1 char (min−1), 80 chars (max), 81 chars (max+1)                                               |
+| Integration  | 5             | 4-deep cascade transaction, rollback on failure, ATC listing filter, full-text search filter, PAT bearer auth        |
+| API          | 4             | PATCH 200, PATCH 422, DELETE 200/204, DELETE 404                                                                     |
+| ***Total**** | ****28****    | ****HIGH effort — cascade complexity + auth matrix + transaction state machine***                                    |
 
 ### Positive — 7 outlines
 

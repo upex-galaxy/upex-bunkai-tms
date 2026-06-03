@@ -1,7 +1,7 @@
 # TMS-Module | Move a module to a different parent
 
-**Jira Key:** [BK-11](https://upexgalaxy67.atlassian.net/browse/BK-11)
-**Epic:** [BK-7](https://upexgalaxy67.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-11](https://upexgalaxy69.atlassian.net/browse/BK-11)
+**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium

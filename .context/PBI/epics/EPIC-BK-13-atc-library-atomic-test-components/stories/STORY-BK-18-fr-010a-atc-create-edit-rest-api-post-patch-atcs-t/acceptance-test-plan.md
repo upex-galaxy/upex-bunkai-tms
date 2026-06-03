@@ -1,11 +1,11 @@
 # BK-18 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-18)
+> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-18)
 
 # ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions)
 
-***Jira Key:*** [BK-18](https://upexgalaxy67.atlassian.net/browse/BK-18)
-***Epic:*** [BK-13](https://upexgalaxy67.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
+***Jira Key:*** [BK-18](https://upexgalaxy69.atlassian.net/browse/BK-18)
+***Epic:*** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
 ***Priority:*** Medium
 ***Story Points:*** -
 ***Status:*** Shift-Left QA
@@ -68,37 +68,37 @@ And an atc.updated event is emitted with affected*test*ids
 
 ***13 Gherkin scenarios produced*** (Happy 2 / Negative 7 / Boundary 2 / Integration 2). Key contract decisions:
 
-| # | Decision | Rationale | Source |
-|---|----------|-----------|--------|
-| 1 | ***Slug format***: `{module-slug}/atc-{id-first-8-chars}` (lowercase UUID prefix) | uuid prefix is deterministic (no sequence dependency), unique, and readable. 8 chars balances collision safety vs brevity. Matches architect recommendation on BK-2 comment. | Senior DEV |
-| 2 | ***PATCH semantics***: Full-replace body (PUT-like), NOT partial merge. `ATCCreate` schema reused. Omitted fields are NOT preserved — they are cleared. | Existing `bunkai*save*atc` RPC replaces children wholesale (no diff). Partial merge would require field-level tracking across 4 tables with no existing infra. If client wants partial, they GET→modify→PATCH. | Senior DEV |
-| 3 | ***Version conflict***: Optimistic locking via `If-Match: <version>` header. No version in body. 409 on mismatch. | Industry standard (RFC 7232). Prevents lost updates. The existing RPC unconditionally bumps version; the route handler checks the header before calling the RPC. | Senior DEV |
-| 4 | ***Error codes***: Add `ac*outside*user*story`, `module*outside*project*subtree`, `steps*position*invalid`, `layer*invalid`, `slug*collision` to `API*ERROR*CODES` map. Wrapped via `ApiError('validation*failed', 422, { code: 'ac*outside*user*story' })`. | The existing 422 flow in `withApiHandler` catches ZodError but NOT semantic validation errors. Semantic errors need explicit `ApiError` throws with domain-specific codes. | Senior QA |
-| 5 | ***Auth***: `requireBearerToken` + `requireScope(ctx, 'atc:write')` on both endpoints. `atc:read` tokens are rejected with 403. | Established pattern from tokens routes. Consistent with existing scope model. | Senior QA |
-| 6 | `bunkai*create*atc`*** RPC***: CREATE path needs a NEW RPC that returns the new `atc*id` (unlike `bunkai*save*atc` which is void). Signature: `bunkai*create*atc(p*project*id, p*module*id, p*user*story*id, p*title, p*layer, p*tags, p*steps, p*assertions, p*ac*ids) returns uuid`. | `bunkai*save*atc` takes `p*atc*id` (UPDATE only). INSERT needs a different signature — no pre-existing id, needs project*id for RLS + slug. Adding a `p*create*flag` parameter would create an ugly dual-path RPC. A dedicated RPC is cleaner. | Senior DEV |
-| 7 | `affected*test*ids`*** (PATCH event)***: Query `test*steps` table joining `atc*id`. Empty array = event still fires (consumers filter by `affected*test*ids.length === 0` if they only care about dependency impact). | The SRS shows `used*in` field on ATC response → `test*steps` links. This is the canonical source. | Senior DEV |
-| 8 | ***PATCH ****`user*story*id`**** mutability***: Immutable on PATCH. If client sends `user*story*id`, it is silently ignored (or 422 if different). ACs are bound to the ATC's original user story. | Re-assigning user*story*id would break AC validation (ACs belong to original US). Cascade re-validation is expensive and adds risk. The architect annotation confirms this. | Senior PO + Senior DEV |
+| #   | Decision                                                                                                                                                                                                                                                                               | Rationale                                                                                                                                                                                                                                      | Source                 |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1   | ***Slug format***: `{module-slug}/atc-{id-first-8-chars}` (lowercase UUID prefix)                                                                                                                                                                                                      | uuid prefix is deterministic (no sequence dependency), unique, and readable. 8 chars balances collision safety vs brevity. Matches architect recommendation on BK-2 comment.                                                                   | Senior DEV             |
+| 2   | ***PATCH semantics***: Full-replace body (PUT-like), NOT partial merge. `ATCCreate` schema reused. Omitted fields are NOT preserved — they are cleared.                                                                                                                                | Existing `bunkai*save*atc` RPC replaces children wholesale (no diff). Partial merge would require field-level tracking across 4 tables with no existing infra. If client wants partial, they GET→modify→PATCH.                                 | Senior DEV             |
+| 3   | ***Version conflict***: Optimistic locking via `If-Match: <version>` header. No version in body. 409 on mismatch.                                                                                                                                                                      | Industry standard (RFC 7232). Prevents lost updates. The existing RPC unconditionally bumps version; the route handler checks the header before calling the RPC.                                                                               | Senior DEV             |
+| 4   | ***Error codes***: Add `ac*outside*user*story`, `module*outside*project*subtree`, `steps*position*invalid`, `layer*invalid`, `slug*collision` to `API*ERROR*CODES` map. Wrapped via `ApiError('validation*failed', 422, { code: 'ac*outside*user*story' })`.                           | The existing 422 flow in `withApiHandler` catches ZodError but NOT semantic validation errors. Semantic errors need explicit `ApiError` throws with domain-specific codes.                                                                     | Senior QA              |
+| 5   | ***Auth***: `requireBearerToken` + `requireScope(ctx, 'atc:write')` on both endpoints. `atc:read` tokens are rejected with 403.                                                                                                                                                        | Established pattern from tokens routes. Consistent with existing scope model.                                                                                                                                                                  | Senior QA              |
+| 6   | `bunkai*create*atc`*** RPC***: CREATE path needs a NEW RPC that returns the new `atc*id` (unlike `bunkai*save*atc` which is void). Signature: `bunkai*create*atc(p*project*id, p*module*id, p*user*story*id, p*title, p*layer, p*tags, p*steps, p*assertions, p*ac*ids) returns uuid`. | `bunkai*save*atc` takes `p*atc*id` (UPDATE only). INSERT needs a different signature — no pre-existing id, needs project*id for RLS + slug. Adding a `p*create*flag` parameter would create an ugly dual-path RPC. A dedicated RPC is cleaner. | Senior DEV             |
+| 7   | `affected*test*ids`*** (PATCH event)***: Query `test*steps` table joining `atc*id`. Empty array = event still fires (consumers filter by `affected*test*ids.length === 0` if they only care about dependency impact).                                                                  | The SRS shows `used*in` field on ATC response → `test*steps` links. This is the canonical source.                                                                                                                                              | Senior DEV             |
+| 8   | ***PATCH ****`user*story*id`**** mutability***: Immutable on PATCH. If client sends `user*story*id`, it is silently ignored (or 422 if different). ACs are bound to the ATC's original user story.                                                                                     | Re-assigning user*story*id would break AC validation (ACs belong to original US). Cascade re-validation is expensive and adds risk. The architect annotation confirms this.                                                                    | Senior PO + Senior DEV |
 
 ### ⚠️ Edge Cases Identified
 
 ***14 edge cases catalogued*** (6 High, 5 Medium, 3 Low):
 
-| Sev | Edge Case | Mitigation / Decision |
-|-----|-----------|----------------------|
-| 🔴 High | POST with invalid PAT (malformed, expired, revoked) | Auth middleware returns 401 `unauthorized` — already tested in tokens routes. |
-| 🔴 High | POST with `atc:read` scope (insufficient) | `requireScope` returns 403 `forbidden` — established pattern. |
-| 🔴 High | PATCH to non-existent ATC id | 404 `not_found` — same pattern as tokens. |
-| 🔴 High | Concurrent PATCH — version conflict (two clients at version 1) | First wins (200 v2), second gets 409 `conflict`. |
-| 🔴 High | Slug collision (same project, same slug) | DB UNIQUE `(project*id, slug)` constraint. INSERT raises unique violation → map to 409 `slug*collision`. |
-| 🔴 High | POST with `module*id` belonging to different project than `user*story*id` | AC3 covers the positive case. Reject with 422 `module*outside*project*subtree`. |
-| 🟡 Medium | POST with empty `steps[]` array | `ATCCreate` schema requires `minItems: 1`. Zod rejects → 422 `validation_failed`. |
-| 🟡 Medium | POST with layer value outside enum `{UI, API, Unit}` | Zod enum rejects → 422 `validation_failed`. |
-| 🟡 Medium | POST with 11 tags (exceeds max 10) | Zod `maxItems: 10` rejects → 422. |
-| 🟡 Medium | PATCH with empty body (no fields changed) | ***Decision***: Accept empty PATCH as no-op → 200 with same version (no bump). RPC not called. | Senior DEV |
-| 🟡 Medium | POST with `acceptance*criterion*ids` that are valid UUIDs but don't exist in DB | 422 `ac*outside*user_story` (same code — the query returns empty for non-existent IDs too). |
-| 🟢 Low | Title with Unicode/emoji | Existing DB `text` type handles UTF-8. Zod string accepts it. No special handling needed. |
-| 🟢 Low | Step content > 2KB | Zod `maxLength: 2048` on step content. |
-| 🟢 Low | POST with `acceptance*criterion*ids: []` (empty array) | Zod `minItems: 1` rejects → 422. |
+| Sev      | Edge Case                                                                       | Mitigation / Decision                                                                                    |
+| -------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 🔴 High   | POST with invalid PAT (malformed, expired, revoked)                             | Auth middleware returns 401 `unauthorized` — already tested in tokens routes.                            |
+| 🔴 High   | POST with `atc:read` scope (insufficient)                                       | `requireScope` returns 403 `forbidden` — established pattern.                                            |
+| 🔴 High   | PATCH to non-existent ATC id                                                    | 404 `not_found` — same pattern as tokens.                                                                |
+| 🔴 High   | Concurrent PATCH — version conflict (two clients at version 1)                  | First wins (200 v2), second gets 409 `conflict`.                                                         |
+| 🔴 High   | Slug collision (same project, same slug)                                        | DB UNIQUE `(project*id, slug)` constraint. INSERT raises unique violation → map to 409 `slug*collision`. |
+| 🔴 High   | POST with `module*id` belonging to different project than `user*story*id`       | AC3 covers the positive case. Reject with 422 `module*outside*project*subtree`.                          |
+| 🟡 Medium | POST with empty `steps[]` array                                                 | `ATCCreate` schema requires `minItems: 1`. Zod rejects → 422 `validation_failed`.                        |
+| 🟡 Medium | POST with layer value outside enum `{UI, API, Unit}`                            | Zod enum rejects → 422 `validation_failed`.                                                              |
+| 🟡 Medium | POST with 11 tags (exceeds max 10)                                              | Zod `maxItems: 10` rejects → 422.                                                                        |
+| 🟡 Medium | PATCH with empty body (no fields changed)                                       | ***Decision***: Accept empty PATCH as no-op → 200 with same version (no bump). RPC not called.           | Senior DEV |
+| 🟡 Medium | POST with `acceptance*criterion*ids` that are valid UUIDs but don't exist in DB | 422 `ac*outside*user_story` (same code — the query returns empty for non-existent IDs too).              |
+| 🟢 Low    | Title with Unicode/emoji                                                        | Existing DB `text` type handles UTF-8. Zod string accepts it. No special handling needed.                |
+| 🟢 Low    | Step content > 2KB                                                              | Zod `maxLength: 2048` on step content.                                                                   |
+| 🟢 Low    | POST with `acceptance*criterion*ids: []` (empty array)                          | Zod `minItems: 1` rejects → 422.                                                                         |
 
 ### 📋 Clarified Business Rules
 
@@ -357,8 +357,8 @@ A member calls POST /atcs with a fully-formed payload (title, module*id, user*st
 
 ## References
 
-- [SRS API Contract — ATC paths](https://github.com/upexgalaxy67/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
-- [Architect Annotation — BK-2 comment](https://upexgalaxy67.atlassian.net/browse/BK-2?focusedCommentId=12473)
+- [SRS API Contract — ATC paths](https://github.com/upexgalaxy69/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
+- [Architect Annotation — BK-2 comment](https://upexgalaxy69.atlassian.net/browse/BK-2?focusedCommentId=12473)
 
 ---
 

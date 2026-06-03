@@ -1,6 +1,6 @@
 # BK-16 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy67.atlassian.net/browse/BK-16)
+> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-16)
 
 # Acceptance Test Plan — BK-16: Markdown Editor | Write and Preview Markdown Safely
 
@@ -8,16 +8,16 @@
 
 ***Risk Score: 13 — HIGH***
 
-| Factor | Score |
-|---|---|
-| New feature | +3 |
-| Dynamic data (API/DB) | +3 |
-| Explicit ACs | +2 |
-| User-facing UI | +2 |
-| High effort (security + multi-layer sanitization) | +2 |
-| Multi-component (editor + sanitizer + renderer) | +1 |
-| Priority Medium | +0 |
-| ***Total**** | ****13 — HIGH*** |
+| Factor                                            | Score            |
+| ------------------------------------------------- | ---------------- |
+| New feature                                       | +3               |
+| Dynamic data (API/DB)                             | +3               |
+| Explicit ACs                                      | +2               |
+| User-facing UI                                    | +2               |
+| High effort (security + multi-layer sanitization) | +2               |
+| Multi-component (editor + sanitizer + renderer)   | +1               |
+| Priority Medium                                   | +0               |
+| ***Total****                                      | ****13 — HIGH*** |
 
 Full ATP required. No veto applies (user-facing feature with explicit security ACs).
 
@@ -96,7 +96,7 @@ When the user types the following Markdown table:
 
 ```
 | Column A | Column B |
-|----------|----------|
+| -------- | -------- |
 | Cell 1   | Cell 2   |
 ```
 
@@ -198,7 +198,7 @@ Then:
 
    `
    | Column A | Column B |
-   |----------|----------|
+   | -------- | -------- |
    | Cell 1   | Cell 2   |
    `
 
