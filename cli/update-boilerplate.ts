@@ -28,7 +28,6 @@ const VERSION_FILE = '.template/boilerplate.lock.json';
 const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.gitattributes'];
 const AGENTS_FRAMEWORK_FILES = ['README.md', 'jira-required.yaml'];
 const AGENTS_BOOTSTRAP_FILES = ['project.yaml', 'jira-fields.json', 'jira-workflows.json', 'jira-link-types.json'];
-const SCRIPTS_FILES = ['lint-vars.ts', 'agents-setup.ts', 'check-jira-setup.ts', 'sync-jira-issues.ts', 'sync-jira-fields.ts', 'sync-jira-workflows.ts'];
 const CLAUDE_CONFIG_FILES = ['settings.json'];
 
 const MCP_TEMPLATE_AGENTS = ['claude', 'opencode', 'codex', 'gemini'] as const;
@@ -49,7 +48,7 @@ const COMPONENTS: Component[] = [
   { name: 'claude', type: 'directory', paths: ['.claude/skills', '.claude/commands'] },
   { name: 'claude-config', type: 'file-list', paths: ['.claude'], files: CLAUDE_CONFIG_FILES },
   { name: 'agents', type: 'mixed', paths: ['.agents'], bootstrapOnly: false },
-  { name: 'scripts', type: 'file-list', paths: ['scripts'], files: SCRIPTS_FILES },
+  { name: 'scripts', type: 'directory', paths: ['scripts'] },
   { name: 'cli', type: 'directory', paths: ['cli'] },
   { name: 'docs', type: 'directory', paths: ['docs'] },
   { name: 'context', type: 'directory', paths: ['.context'], bootstrapOnly: true, frameworkFiles: ['README.md'] },

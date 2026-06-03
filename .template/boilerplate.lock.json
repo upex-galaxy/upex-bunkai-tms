@@ -8,7 +8,7 @@
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
+    "scripts": "1570ee01486cef2c3156cbe0d39b8f0cc928f693",
     "docs": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "context": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "context-engineering": "324e930e59a67694dcd392a7e1fe89dc28d77429",
@@ -38,7 +38,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-03T15:59:38.582Z",
+  "lastSyncedAt": "2026-06-03T16:29:33.323Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
