@@ -40,6 +40,7 @@
       "Bash(diff *)",
       "Bash(jq *)",
       "Bash(curl *)",
+      "Bash(playwright-cli *)",
       "Bash(acli *)",
       "Bash(resend *)",
       "Bash(supabase *)",
