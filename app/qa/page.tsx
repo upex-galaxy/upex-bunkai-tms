@@ -13,7 +13,7 @@
    mcp-config-files=mcp.json,opencode.jsonc
    language=es
    publisher=jira-epic
-   credentials-source=https://upexgalaxy69.atlassian.net/browse/BK-29
+   credentials-source=https://jira.upexgalaxy.com/browse/BK-29
    default-branch=main
    generated=2026-05-28
    content-hash=sha256:9e9feb18046fdb3b22b18493f71d1032e7d24f91aa2d8df1487ffad91ee6f61b
