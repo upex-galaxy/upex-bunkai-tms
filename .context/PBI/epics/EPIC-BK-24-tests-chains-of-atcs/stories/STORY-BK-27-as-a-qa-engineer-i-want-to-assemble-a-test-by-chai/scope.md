@@ -1,6 +1,6 @@
 # BK-27 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-27)
+> Jira field: `customfield_10142` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-27)
 
 ## In scope
 

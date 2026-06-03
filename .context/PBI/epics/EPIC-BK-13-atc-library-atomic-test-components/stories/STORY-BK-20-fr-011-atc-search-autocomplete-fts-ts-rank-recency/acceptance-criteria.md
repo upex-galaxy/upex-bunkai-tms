@@ -1,6 +1,6 @@
 # BK-20 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-20)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
 
 ```gherkin
 Scenario: Find an ATC by a word in its title

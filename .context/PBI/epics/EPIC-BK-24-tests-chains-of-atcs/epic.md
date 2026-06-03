@@ -1,6 +1,6 @@
 # EPIC: Tests (chains of ATCs)
 
-**Jira Key:** [BK-24](https://upexgalaxy69.atlassian.net/browse/BK-24)
+**Jira Key:** [BK-24](https://jira.upexgalaxy.com/browse/BK-24)
 **Priority:** Medium
 **Status:** Planning
 **Total Story Points:** 4
@@ -26,7 +26,7 @@ Master Sprint 4 of `.context/master-implementation-plan.md` §5 — the first sp
 ## Source FRs
 
 - ***BK-015*** — `POST /tests` transactional creation (header + step skeleton)
-- ***BK-016*** — `PATCH /tests/{id}` chain reorder with rebalanced position integers
+- ***BK-016*** — `PATCH /tests/{id`} chain reorder with rebalanced position integers
 - ***BK-017*** — `GET /tests/{id}?expand=atcs.steps,atcs.assertions` single-roundtrip expanded read
 - ***BK-018*** — Chain reorder step integer rebalance algorithm
 
@@ -48,12 +48,12 @@ See `.context/SRS/functional-specs.md`.
 
 ## User Stories
 
-| Key                                                      | Story            | Points                                     | Priority | Status |
-| -------------------------------------------------------- | ---------------- | ------------------------------------------ | -------- | ------ |
-| [BK-27](https://upexgalaxy69.atlassian.net/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs           | 1        | Medium | Shift-Left QA |
-| [BK-28](https://upexgalaxy69.atlassian.net/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test                 | 1        | Medium | Backlog       |
-| [BK-32](https://upexgalaxy69.atlassian.net/browse/BK-32) | TMS-Test View    | View a test with all chained ATCs expanded | 1        | Medium | Backlog       |
-| [BK-33](https://upexgalaxy69.atlassian.net/browse/BK-33) | TMS-Test Tags    | Assign reserved and custom tags to a test  | 1        | Medium | Backlog       |
+| Key | Story | Points | Priority | Status |
+| --- | ----- | ------ | -------- | ------ |
+| [BK-27](https://jira.upexgalaxy.com/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 1 | Medium | Shift-Left QA |
+| [BK-28](https://jira.upexgalaxy.com/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 1 | Medium | Backlog |
+| [BK-32](https://jira.upexgalaxy.com/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 1 | Medium | Backlog |
+| [BK-33](https://jira.upexgalaxy.com/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 1 | Medium | Backlog |
 
 ---
 

@@ -1,7 +1,7 @@
 # TMS-Run Execution | Start a manual run in a chosen environment
 
-**Jira Key:** [BK-34](https://upexgalaxy69.atlassian.net/browse/BK-34)
-**Epic:** [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30) (Manual Execution & Runs)
+**Jira Key:** [BK-34](https://jira.upexgalaxy.com/browse/BK-34)
+**Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -31,28 +31,16 @@
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-
----
-
 ## Traceability
 
 ### Storys (6)
 
-- [BK-27](https://upexgalaxy69.atlassian.net/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
-- [BK-35](https://upexgalaxy69.atlassian.net/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
-- [BK-36](https://upexgalaxy69.atlassian.net/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(Backlog)_
-- [BK-37](https://upexgalaxy69.atlassian.net/browse/BK-37): TMS-Run History | View a test's past runs, filterable by outcome _(Backlog)_
-- [BK-38](https://upexgalaxy69.atlassian.net/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Backlog)_
-- [BK-39](https://upexgalaxy69.atlassian.net/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Backlog)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
+- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
+- [BK-37](https://jira.upexgalaxy.com/browse/BK-37): TMS-Run History | View a test's past runs, filterable by outcome _(Backlog)_
+- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Backlog)_
+- [BK-39](https://jira.upexgalaxy.com/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Backlog)_
+- [BK-36](https://jira.upexgalaxy.com/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(Backlog)_
 
 ---
 

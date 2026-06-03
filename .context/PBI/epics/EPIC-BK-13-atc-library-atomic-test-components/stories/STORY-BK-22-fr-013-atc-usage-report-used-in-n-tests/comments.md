@@ -1,6 +1,6 @@
 # Comments for BK-22
 
-[View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-22)
+[View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
 
 ---
 

@@ -1,7 +1,7 @@
 # TMS-Traceability | Render full US to bug evidence chain in one read
 
-**Jira Key:** [BK-45](https://upexgalaxy69.atlassian.net/browse/BK-45)
-**Epic:** [BK-44](https://upexgalaxy69.atlassian.net/browse/BK-44) (Coverage & Traceability)
+**Jira Key:** [BK-45](https://jira.upexgalaxy.com/browse/BK-45)
+**Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
@@ -17,27 +17,17 @@ As a QA Lead, I want to open any user story and see its full evidence chain — 
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-
----
-
 ## Traceability
 
 ### Story (1)
 
-- [BK-50](https://upexgalaxy69.atlassian.net/browse/BK-50): TMS-Traceability | Export the assembled chain as a read-only snapshot _(Shift-Left QA)_
+- [BK-50](https://jira.upexgalaxy.com/browse/BK-50): TMS-Traceability | Export the assembled chain as a read-only snapshot _(Shift-Left QA)_
 
 ### Epics (3)
 
-- [BK-24](https://upexgalaxy69.atlassian.net/browse/BK-24): Tests (chains of ATCs) _(Planning)_
-- [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30): Manual Execution & Runs _(Planning)_
-- [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31): Bugs & Defect Heatmap _(Planning)_
+- [BK-24](https://jira.upexgalaxy.com/browse/BK-24): Tests (chains of ATCs) _(Planning)_
+- [BK-30](https://jira.upexgalaxy.com/browse/BK-30): Manual Execution & Runs _(Planning)_
+- [BK-31](https://jira.upexgalaxy.com/browse/BK-31): Bugs & Defect Heatmap _(Planning)_
 
 ---
 

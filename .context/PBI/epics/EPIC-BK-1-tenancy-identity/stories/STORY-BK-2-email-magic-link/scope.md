@@ -1,6 +1,6 @@
 # BK-2 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-2)
+> Jira field: `customfield_10142` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 - Email magic-link sign-up (new account creation)
 - Email magic-link sign-in (returning user)

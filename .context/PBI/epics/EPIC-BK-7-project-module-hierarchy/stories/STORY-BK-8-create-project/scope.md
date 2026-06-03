@@ -1,6 +1,6 @@
 # BK-8 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-8)
+> Jira field: `customfield_10142` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
 
 - POST /api/v1/workspaces/{id}/projects endpoint
 - Name validation: 3-80 chars

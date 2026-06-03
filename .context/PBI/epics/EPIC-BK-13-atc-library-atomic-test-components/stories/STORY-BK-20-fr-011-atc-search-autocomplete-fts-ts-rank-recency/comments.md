@@ -1,6 +1,6 @@
 # Comments for BK-20
 
-[View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-20)
+[View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
 
 ---
 

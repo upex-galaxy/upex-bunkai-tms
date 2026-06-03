@@ -1,7 +1,7 @@
 # Markdown Editor | Write and preview Markdown safely
 
-**Jira Key:** [BK-16](https://upexgalaxy69.atlassian.net/browse/BK-16)
-**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-16](https://jira.upexgalaxy.com/browse/BK-16)
+**Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium
@@ -25,19 +25,6 @@
 - [ ] Covered by an ATC chain anchored to a User Story + Acceptance Criterion
 - [ ] Acceptance Criteria verified by QA
 - [ ] Demoed to the team
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 

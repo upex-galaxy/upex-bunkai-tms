@@ -1,6 +1,6 @@
 # BK-9 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-9)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
 
 ```gherkin
 Scenario: Create a top-level Module inside a Project

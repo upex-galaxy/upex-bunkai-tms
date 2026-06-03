@@ -1,6 +1,6 @@
 # BK-10 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-10)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
 
 ## ATP DRAFT — BK-10 | Module Rename & Soft-Delete
 

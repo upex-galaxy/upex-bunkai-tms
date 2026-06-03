@@ -1,6 +1,6 @@
 # BK-41 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-41)
+> Jira field: `customfield_10135` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
 - Filing or editing defects (BK-025)
 - The per-module defect heatmap and week-over-week trend (BK-027)

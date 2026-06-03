@@ -1,12 +1,12 @@
 # BK-2 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-2)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 # Acceptance Test Plan — BK-2
 
 ***Story:*** Sign up and sign in with email (magic-link)
-***Jira:*** [BK-2](https://upexgalaxy69.atlassian.net/browse/BK-2)
-***Epic:*** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) — Tenancy & Identity
+***Jira:*** [BK-2](https://jira.upexgalaxy.com/browse/BK-2)
+***Epic:*** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) — Tenancy & Identity
 ***Sprint:*** Bunkai (67) Sprint 1 (active, 2026-05-11 → 2026-06-08)
 ***TMS Modality:*** `jira-native` (no Xray) — user-confirmed 2026-05-27
 ***Environment:*** `staging`

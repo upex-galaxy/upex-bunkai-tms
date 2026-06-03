@@ -1,6 +1,6 @@
 # BK-18 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-18)
+> Jira field: `customfield_10142` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
 - POST /atcs endpoint with full body validation (title, module*id, user*story_id, AC ids, layer, steps[], assertions[], tags[])
 

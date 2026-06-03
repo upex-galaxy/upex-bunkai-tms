@@ -1,9 +1,9 @@
 # EPIC: Project & Module Hierarchy
 
-**Jira Key:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7)
+**Jira Key:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 5
+**Total Story Points:** 18
 
 ---
 
@@ -103,12 +103,12 @@ See per-story `story.md` for Gherkin acceptance criteria.
 
 ## User Stories
 
-| Key                                                      | Story       | Points                                 | Priority | Status |
-| -------------------------------------------------------- | ----------- | -------------------------------------- | -------- | ------ |
-| [BK-8](https://upexgalaxy69.atlassian.net/browse/BK-8)   | TMS-Project | Create a project inside a workspace    | 5        | Medium | Ready For Dev |
-| [BK-9](https://upexgalaxy69.atlassian.net/browse/BK-9)   | TMS-Module  | Create modules with nested sub-modules | -        | Medium | Shift-Left QA |
-| [BK-10](https://upexgalaxy69.atlassian.net/browse/BK-10) | TMS-Module  | Rename and soft-delete a module        | -        | Medium | Estimation    |
-| [BK-11](https://upexgalaxy69.atlassian.net/browse/BK-11) | TMS-Module  | Move a module to a different parent    | -        | Medium | Shift-Left QA |
+| Key | Story | Points | Priority | Status |
+| --- | ----- | ------ | -------- | ------ |
+| [BK-8](https://jira.upexgalaxy.com/browse/BK-8) | TMS-Project | Create a project inside a workspace | 5 | Medium | Ready For Dev |
+| [BK-9](https://jira.upexgalaxy.com/browse/BK-9) | TMS-Module | Create modules with nested sub-modules | 13 | Medium | Ready For Dev |
+| [BK-10](https://jira.upexgalaxy.com/browse/BK-10) | TMS-Module | Rename and soft-delete a module | - | Medium | Estimation |
+| [BK-11](https://jira.upexgalaxy.com/browse/BK-11) | TMS-Module | Move a module to a different parent | - | Medium | Shift-Left QA |
 
 ---
 

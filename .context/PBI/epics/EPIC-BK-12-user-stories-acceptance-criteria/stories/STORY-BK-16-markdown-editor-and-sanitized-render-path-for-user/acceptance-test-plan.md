@@ -1,6 +1,6 @@
 # BK-16 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-16)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
 # Acceptance Test Plan — BK-16: Markdown Editor | Write and Preview Markdown Safely
 

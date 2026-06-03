@@ -1,9 +1,9 @@
 # EPIC: ATC Library (Atomic Test Components)
 
-**Jira Key:** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13)
+**Jira Key:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 5
+**Total Story Points:** 13
 
 ---
 
@@ -38,10 +38,10 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 - ATC MUST be anchored to one `user*story*id` AND have ≥1 `acceptance*criterion*id`.
 - All `acceptance*criterion*ids` MUST belong to the same `user*story*id` (no cross-US AC binding).
 - `module_id` of an ATC MUST be the US's module OR a descendant module of the same Project.
-- ATC `layer` ∈ {`UI`, `API`, `Unit`} — strict enum.
+- ATC `layer` ∈ `{UI`, `API`, `Unit`} — strict enum.
 - Step `position` strictly increasing from 1; assertion `position` same rule.
 - ATC edit increments `version` integer; Tests referencing it auto-reflect changes (no copy-on-write).
-- ATC slug format: `{module-slug}/{atc-id-padded}` — stable across renames.
+- ATC slug format: `{module-slug}/{atc-id-padded`} — stable across renames.
 - Duplicate creates new ATC row with title suffix `(copy)` unless override provided.
 
 ## Stories
@@ -64,14 +64,14 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 
 ## User Stories
 
-| Key                                                      | Story               | Points                                         | Priority | Status |
-| -------------------------------------------------------- | ------------------- | ---------------------------------------------- | -------- | ------ |
-| [BK-18](https://upexgalaxy69.atlassian.net/browse/BK-18) | TMS-ATC API         | Create and edit ATCs with steps and assertions | 5        | Medium | Ready For Dev |
-| [BK-19](https://upexgalaxy69.atlassian.net/browse/BK-19) | TMS-ATC Builder     | Build an ATC with ordered steps and assertions | -        | Medium | Shift-Left QA |
-| [BK-20](https://upexgalaxy69.atlassian.net/browse/BK-20) | TMS-ATC Search      | Search and autocomplete ATCs                   | -        | Medium | Shift-Left QA |
-| [BK-21](https://upexgalaxy69.atlassian.net/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests                 | -        | Medium | Shift-Left QA |
-| [BK-22](https://upexgalaxy69.atlassian.net/browse/BK-22) | TMS-ATC Usage       | See a "Used in N tests" report                 | -        | Medium | Shift-Left QA |
-| [BK-23](https://upexgalaxy69.atlassian.net/browse/BK-23) | TMS-ATC Duplicate   | Duplicate an ATC with steps and assertions     | -        | Medium | Shift-Left QA |
+| Key | Story | Points | Priority | Status |
+| --- | ----- | ------ | -------- | ------ |
+| [BK-18](https://jira.upexgalaxy.com/browse/BK-18) | TMS-ATC API | Create and edit ATCs with steps and assertions | 5 | Medium | Ready For Dev |
+| [BK-19](https://jira.upexgalaxy.com/browse/BK-19) | TMS-ATC Builder | Build an ATC with ordered steps and assertions | - | Medium | Shift-Left QA |
+| [BK-20](https://jira.upexgalaxy.com/browse/BK-20) | TMS-ATC Search | Search and autocomplete ATCs | 5 | Medium | Ready For Dev |
+| [BK-21](https://jira.upexgalaxy.com/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests | - | Medium | Shift-Left QA |
+| [BK-22](https://jira.upexgalaxy.com/browse/BK-22) | TMS-ATC Usage | See a "Used in N tests" report | 3 | Medium | Ready For Dev |
+| [BK-23](https://jira.upexgalaxy.com/browse/BK-23) | TMS-ATC Duplicate | Duplicate an ATC with steps and assertions | - | Medium | Shift-Left QA |
 
 ---
 

@@ -1,7 +1,7 @@
 # TMS-Defect Sync | Sync defects one-way to the external tracker
 
-**Jira Key:** [BK-43](https://upexgalaxy69.atlassian.net/browse/BK-43)
-**Epic:** [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31) (Bugs & Defect Heatmap)
+**Jira Key:** [BK-43](https://jira.upexgalaxy.com/browse/BK-43)
+**Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -31,23 +31,11 @@
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-
----
-
 ## Traceability
 
 ### Story (1)
 
-- [BK-40](https://upexgalaxy69.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
+- [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 

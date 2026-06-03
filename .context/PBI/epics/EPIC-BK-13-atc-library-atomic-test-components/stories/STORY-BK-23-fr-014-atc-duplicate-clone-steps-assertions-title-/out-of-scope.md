@@ -1,6 +1,6 @@
 # BK-23 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-23)
+> Jira field: `customfield_10135` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
 
 - Creating an ATC from scratch (BK-19)
 - Editing and propagation (BK-21)

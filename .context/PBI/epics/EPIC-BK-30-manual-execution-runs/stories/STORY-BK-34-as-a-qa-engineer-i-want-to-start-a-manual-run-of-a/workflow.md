@@ -1,6 +1,6 @@
 # BK-34 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-34)
+> Jira field: `customfield_10161` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-34)
 
 1. Elena opens the Test she wants to execute and clicks "Start Run".
 2. She picks an environment from the Project's configured list.

@@ -1,7 +1,7 @@
 # TMS-US | Manage user stories anchored to a module
 
-**Jira Key:** [BK-14](https://upexgalaxy69.atlassian.net/browse/BK-14)
-**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-14](https://jira.upexgalaxy.com/browse/BK-14)
+**Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
@@ -25,18 +25,6 @@
 - [ ] Covered by an ATC chain anchored to a User Story + Acceptance Criterion
 - [ ] Acceptance Criteria verified by QA
 - [ ] Demoed to the team
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 
 ---
 

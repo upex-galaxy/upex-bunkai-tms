@@ -1,7 +1,7 @@
 # TMS-Workspace | Invite a teammate with a role
 
-**Jira Key:** [BK-5](https://upexgalaxy69.atlassian.net/browse/BK-5)
-**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-5](https://jira.upexgalaxy.com/browse/BK-5)
+**Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
@@ -33,7 +33,7 @@ Implements ***FR-003***.
 
 1. Owner or admin clicks "Invite teammate".
 2. UI shows email + role dropdown (filtered to ≤ caller's role).
-3. `POST /api/v1/workspaces/{id}/invites` with `{ email, role }`.
+3. `POST /api/v1/workspaces/{id}/invites` with {{{ email, role }}}.
 4. Server validates caller role + role-hierarchy + uniqueness.
 5. Server generates signed token + inserts `workspace_invites` row.
 6. Server dispatches email with link `/accept-invite?token=...`.
@@ -59,18 +59,6 @@ Implements ***FR-003***.
 ## Labels
 
 `mvp`, `tenancy`, `wave-1`
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 
 ---
 

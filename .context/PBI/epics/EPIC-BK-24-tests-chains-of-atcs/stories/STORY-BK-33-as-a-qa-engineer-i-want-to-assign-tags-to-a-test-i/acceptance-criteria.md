@@ -1,6 +1,6 @@
 # BK-33 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-33)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
 
 ```gherkin
 Scenario: Assign a mix of reserved and custom tags to a Test

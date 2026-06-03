@@ -1,6 +1,6 @@
 # BK-49 — Scope
 
-> Jira field: `customfield_10142` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-49)
+> Jira field: `customfield_10142` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-49)
 
 - A reverse-chronological, paged feed of workspace activity.
 - Each entry shows the actor, the action, the item, and the timestamp.

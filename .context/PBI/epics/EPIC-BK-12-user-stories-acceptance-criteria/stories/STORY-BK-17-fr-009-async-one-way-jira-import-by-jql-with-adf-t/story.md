@@ -1,7 +1,7 @@
 # Jira Import | Pull Jira issues by JQL
 
-**Jira Key:** [BK-17](https://upexgalaxy69.atlassian.net/browse/BK-17)
-**Epic:** [BK-12](https://upexgalaxy69.atlassian.net/browse/BK-12) (User Stories & Acceptance Criteria)
+**Jira Key:** [BK-17](https://jira.upexgalaxy.com/browse/BK-17)
+**Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium
@@ -39,18 +39,6 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 - Unit tests written
 - Code reviewed
 - Documentation updated
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 
 ---
 

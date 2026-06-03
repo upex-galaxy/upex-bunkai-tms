@@ -1,12 +1,11 @@
 # Authentication | Sign up and sign in with email magic-link
 
-**Jira Key:** [BK-2](https://upexgalaxy69.atlassian.net/browse/BK-2)
-**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-2](https://jira.upexgalaxy.com/browse/BK-2)
+**Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
-**Web Link:** https://upexbunkai.vercel.app
 
 ---
 
@@ -126,28 +125,13 @@ For Design (2):
 
 - OAuth → BK-3
 - Invite acceptance + bypass branch → BK-5
-- Workspace switching → BK-6
+- Workspace switching → [https://upexgalaxy69.atlassian.net/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6)
 - UX 5.2, 5.4, 5.6, 5.9, branded email template → "Auth UX Polish" follow-up Story
 - Token-invalidation-on-resend → separate security Story (if PO greenlights)
 
 ---
 
-**See custom field 🧪 Acceptance Test Plan (ATP) + Shift-Left comment for the complete refinement (****~****17 test outlines, full Gherkin scenarios, AC↔code reconciliation per divergence).**
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
+**See custom field 🧪 Acceptance Test Plan (ATP) + Shift-Left comment for the complete refinement (~17 test outlines, full Gherkin scenarios, AC↔code reconciliation per divergence).**
 
 ---
 

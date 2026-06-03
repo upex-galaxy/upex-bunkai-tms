@@ -1,7 +1,7 @@
 # TMS-Test Builder | Assemble a test by chaining ATCs
 
-**Jira Key:** [BK-27](https://upexgalaxy69.atlassian.net/browse/BK-27)
-**Epic:** [BK-24](https://upexgalaxy69.atlassian.net/browse/BK-24) (Tests (chains of ATCs))
+**Jira Key:** [BK-27](https://jira.upexgalaxy.com/browse/BK-27)
+**Epic:** [BK-24](https://jira.upexgalaxy.com/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
@@ -30,26 +30,14 @@
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-
----
-
 ## Traceability
 
 ### Storys (4)
 
-- [BK-28](https://upexgalaxy69.atlassian.net/browse/BK-28): TMS-Test Builder | Reorder ATCs inside a test _(Backlog)_
-- [BK-32](https://upexgalaxy69.atlassian.net/browse/BK-32): TMS-Test View | View a test with all chained ATCs expanded _(Backlog)_
-- [BK-33](https://upexgalaxy69.atlassian.net/browse/BK-33): TMS-Test Tags | Assign reserved and custom tags to a test _(Backlog)_
-- [BK-34](https://upexgalaxy69.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-33](https://jira.upexgalaxy.com/browse/BK-33): TMS-Test Tags | Assign reserved and custom tags to a test _(Backlog)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-32](https://jira.upexgalaxy.com/browse/BK-32): TMS-Test View | View a test with all chained ATCs expanded _(Backlog)_
+- [BK-28](https://jira.upexgalaxy.com/browse/BK-28): TMS-Test Builder | Reorder ATCs inside a test _(Backlog)_
 
 ---
 

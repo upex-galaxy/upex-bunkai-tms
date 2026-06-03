@@ -1,7 +1,7 @@
 # TMS-Workspace | Create a workspace
 
-**Jira Key:** [BK-4](https://upexgalaxy69.atlassian.net/browse/BK-4)
-**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-4](https://jira.upexgalaxy.com/browse/BK-4)
+**Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
@@ -55,18 +55,6 @@
 ***Negative (8)***: Name too short/long, duplicate slug, reserved slug, no alphanumeric, empty name, unauthenticated, emoji-only, Unicode boundary
 ***Boundary (4)***: Exact 3/60 char name, slug approaching 60 char limit, accented boundary
 ***API (2)***: GET /workspaces/{id} returns workspace, 404 for non-existent
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 
 ---
 

@@ -1,7 +1,7 @@
 # TMS-Coverage | Compute time-to-green per user story from run and bug history
 
-**Jira Key:** [BK-47](https://upexgalaxy69.atlassian.net/browse/BK-47)
-**Epic:** [BK-44](https://upexgalaxy69.atlassian.net/browse/BK-44) (Coverage & Traceability)
+**Jira Key:** [BK-47](https://jira.upexgalaxy.com/browse/BK-47)
+**Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
@@ -17,23 +17,12 @@ As a QA Lead, I want each user story to show how long it took to go from its fir
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-
----
-
 ## Traceability
 
 ### Epics (2)
 
-- [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30): Manual Execution & Runs _(Planning)_
-- [BK-31](https://upexgalaxy69.atlassian.net/browse/BK-31): Bugs & Defect Heatmap _(Planning)_
+- [BK-30](https://jira.upexgalaxy.com/browse/BK-30): Manual Execution & Runs _(Planning)_
+- [BK-31](https://jira.upexgalaxy.com/browse/BK-31): Bugs & Defect Heatmap _(Planning)_
 
 ---
 

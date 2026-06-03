@@ -1,7 +1,7 @@
 # TMS-Project | Create a project inside a workspace
 
-**Jira Key:** [BK-8](https://upexgalaxy69.atlassian.net/browse/BK-8)
-**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-8](https://jira.upexgalaxy.com/browse/BK-8)
+**Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium
@@ -25,7 +25,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 
 ### Ambiguities Found
 
-- ***A1 — Error code separator****: ACs write NAME**TOO*SHORT but codebase standard is NAME*TOO*SHORT (underscore). Likely typo.
+- ***A1 — Error code separator***: ACs write NAME*TOO*SHORT but codebase standard is NAME*TOO*SHORT (underscore). Likely typo.
 - ***A2 — Workspace param***: URL says /workspaces/W/projects but Workflow step 9 uses ws-slug. UUID or slug?
 - ***A3 — Auth mechanism***: Cookie session or PAT bearer? If PAT, what scope? No existing scope covers project creation.
 - ***A4 — Slug derivation***: Accent handling, max length, consecutive hyphens, and collision behavior (409 vs auto-suffix) unspecified.
@@ -48,19 +48,6 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 - Q5: Unknown workspace — 404 or 403?
 - Q6: UI form in BK-8 scope or Phase E?
 - Q7: Max slug length (DNS label = 63 chars)?
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 

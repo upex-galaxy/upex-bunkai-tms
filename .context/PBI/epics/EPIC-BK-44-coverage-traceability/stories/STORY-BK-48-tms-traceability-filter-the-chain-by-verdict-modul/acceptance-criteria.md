@@ -1,6 +1,6 @@
 # BK-48 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-48)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-48)
 
 ```gherkin
 Scenario: Filter the chain to failures only

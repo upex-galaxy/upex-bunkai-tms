@@ -1,6 +1,6 @@
 # BK-16 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-16)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
 ```gherkin
 Scenario: Write and preview a Markdown description

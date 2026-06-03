@@ -1,11 +1,11 @@
 # BK-18 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-18)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
 # ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions)
 
-***Jira Key:*** [BK-18](https://upexgalaxy69.atlassian.net/browse/BK-18)
-***Epic:*** [BK-13](https://upexgalaxy69.atlassian.net/browse/BK-13) (ATC Library (Atomic Test Components))
+***Jira Key:*** [BK-18](https://jira.upexgalaxy.com/browse/BK-18)
+***Epic:*** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
 ***Priority:*** Medium
 ***Story Points:*** -
 ***Status:*** Shift-Left QA
@@ -358,7 +358,7 @@ A member calls POST /atcs with a fully-formed payload (title, module*id, user*st
 ## References
 
 - [SRS API Contract — ATC paths](https://github.com/upexgalaxy69/upex-bunkai-tms/blob/main/.context/SRS/api-contracts.yaml#L268)
-- [Architect Annotation — BK-2 comment](https://upexgalaxy69.atlassian.net/browse/BK-2?focusedCommentId=12473)
+- [Architect Annotation — BK-2 comment](https://jira.upexgalaxy.com/browse/BK-2?focusedCommentId=12473)
 
 ---
 

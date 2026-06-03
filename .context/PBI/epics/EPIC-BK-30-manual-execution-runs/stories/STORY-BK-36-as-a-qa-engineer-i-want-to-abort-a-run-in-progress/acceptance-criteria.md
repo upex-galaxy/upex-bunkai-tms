@@ -1,6 +1,6 @@
 # BK-36 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-36)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
 
 ```gherkin
 Scenario: Abort a run mid-flight and skip the rest

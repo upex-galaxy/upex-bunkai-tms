@@ -1,7 +1,7 @@
 # TMS-Module | Rename and soft-delete a module
 
-**Jira Key:** [BK-10](https://upexgalaxy69.atlassian.net/browse/BK-10)
-**Epic:** [BK-7](https://upexgalaxy69.atlassian.net/browse/BK-7) (Project & Module Hierarchy)
+**Jira Key:** [BK-10](https://jira.upexgalaxy.com/browse/BK-10)
+**Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
 **Status:** Estimation
 **Priority:** Medium
@@ -25,19 +25,6 @@
 - [ ] Covered by an ATC chain anchored to a User Story + Acceptance Criterion
 - [ ] Acceptance Criteria verified by QA
 - [ ] Demoed to the team
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 

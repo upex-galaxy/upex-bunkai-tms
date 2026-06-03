@@ -1,6 +1,6 @@
 # Comments for BK-14
 
-[View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-14)
+[View in Jira](https://jira.upexgalaxy.com/browse/BK-14)
 
 ---
 

@@ -1,6 +1,6 @@
 # BK-17 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-17)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
 
 ```gherkin
 Feature: Async one-way Jira import by JQL

@@ -1,6 +1,6 @@
 # BK-21 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-21)
+> Jira field: `customfield_10135` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
 
 - Creating ATCs (BK-19) and the underlying edit capability (BK-18)
 - The detailed "Used in N tests" report page (BK-22) — this story only summarizes the affected count on save

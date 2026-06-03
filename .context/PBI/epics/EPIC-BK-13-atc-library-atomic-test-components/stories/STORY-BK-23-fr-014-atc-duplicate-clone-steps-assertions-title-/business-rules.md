@@ -1,6 +1,6 @@
 # BK-23 — Business Rules
 
-> Jira field: `customfield_10134` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-23)
+> Jira field: `customfield_10134` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
 
 | Rule           | Constraint                                                                       |
 | -------------- | -------------------------------------------------------------------------------- |

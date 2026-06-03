@@ -1,7 +1,7 @@
 # TMS-Workspace | Switch between workspaces
 
-**Jira Key:** [BK-6](https://upexgalaxy69.atlassian.net/browse/BK-6)
-**Epic:** [BK-1](https://upexgalaxy69.atlassian.net/browse/BK-1) (Tenancy & Identity)
+**Jira Key:** [BK-6](https://jira.upexgalaxy.com/browse/BK-6)
+**Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
@@ -31,7 +31,7 @@ Implements ***FR-004***.
 1. User clicks the workspace switcher in the header.
 2. Dropdown shows the list from `GET /api/v1/me/workspaces`.
 3. User clicks Workspace B.
-4. UI POSTs `/api/v1/me/active-workspace` with `{ workspace_id: "B" }`.
+4. UI POSTs `/api/v1/me/active-workspace` with {{{ workspace_id: "B" }}}.
 5. Server validates membership + status.
 6. Server rotates session's `active*workspace*id`.
 7. Returns 200 with the new workspace context.
@@ -48,18 +48,6 @@ Implements ***FR-004***.
 ## Labels
 
 `mvp`, `tenancy`, `wave-1`
-
----
-
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 
 ---
 

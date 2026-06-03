@@ -1,7 +1,7 @@
 # TMS-Activity | Stream a read-side feed over the existing activity log
 
-**Jira Key:** [BK-49](https://upexgalaxy69.atlassian.net/browse/BK-49)
-**Epic:** [BK-44](https://upexgalaxy69.atlassian.net/browse/BK-44) (Coverage & Traceability)
+**Jira Key:** [BK-49](https://jira.upexgalaxy.com/browse/BK-49)
+**Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
@@ -17,22 +17,12 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-
----
-
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/2/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** José Andrés Lorca
 - **Labels:** new-feature
 
 ---

@@ -1,7 +1,7 @@
 # TMS-Run Execution | Mark each step pass, fail, or block
 
-**Jira Key:** [BK-35](https://upexgalaxy69.atlassian.net/browse/BK-35)
-**Epic:** [BK-30](https://upexgalaxy69.atlassian.net/browse/BK-30) (Manual Execution & Runs)
+**Jira Key:** [BK-35](https://jira.upexgalaxy.com/browse/BK-35)
+**Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
 **Status:** Backlog
 **Priority:** Medium
@@ -31,24 +31,12 @@
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-
----
-
 ## Traceability
 
 ### Storys (2)
 
-- [BK-34](https://upexgalaxy69.atlassian.net/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
-- [BK-40](https://upexgalaxy69.atlassian.net/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
 

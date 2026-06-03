@@ -1,6 +1,6 @@
 # BK-2 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10284` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-2)
+> Jira field: `customfield_10284` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 ## Acceptance Test Results — BK-2 (condensed mirror)
 

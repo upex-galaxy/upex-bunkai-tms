@@ -1,13 +1,13 @@
 # BK-3 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-3)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
-SHIFT-LEFT REFINEMENT: [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3)
+SHIFT-LEFT REFINEMENT: [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3)
 Refined on: 2026-05-26 | Risk: HIGH | Source: FR-001 (OAuth portion)
 
 == CRITICAL ANALYSIS ==
 
-[https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3) is a COMPLETE GREENFIELD — zero OAuth code in codebase. All 3 layers missing:
+[https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) is a COMPLETE GREENFIELD — zero OAuth code in codebase. All 3 layers missing:
 
 - UI: Both OAuth buttons disabled=true, cursor-not-allowed, title='OAuth ships next sprint' (login/page.tsx:136-155)
 - Client: auth-context.tsx has only signInWithMagicLink+signOut. No signInWithOAuth anywhere.
@@ -22,7 +22,7 @@ G10: app/(auth)/login/page.tsx lines 136-155 — buttons disabled, no onClick ha
 == CONTRADICTIONS ==
 
 C1: Story says redirect to /home; callback route defaults to /projects. Must align before Dev starts.
-C2: Login copy says 'OAuth ships next sprint' + buttons disabled — button enable + copy update are IN SCOPE for [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3).
+C2: Login copy says 'OAuth ships next sprint' + buttons disabled — button enable + copy update are IN SCOPE for [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3).
 
 == AC GAPS (10 total: 7 original + 3 from codebase) ==
 
@@ -112,7 +112,7 @@ Then error message shown on login screen
 And retry option or magic-link alternative presented
 
 AC-10 [UI buttons enabled] NEEDS PO/DEV CONFIRMATION
-Given Sign-in screen after [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3) ships
+Given Sign-in screen after [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) ships
 Then Continue with GitHub button is enabled and clickable
 And Continue with Google button is enabled and clickable
 And login page no longer contains 'OAuth and SSO ship next sprint'
@@ -124,7 +124,7 @@ POSITIVE (5):
 2. Google OAuth first-time sign-up — user+workspace created, redirect /home
 3. GitHub OAuth returning user — no duplicate user or workspace
 4. Google OAuth returning user — session refreshed, workspace unchanged
-5. OAuth buttons enabled + login copy updated after [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3) ships
+5. OAuth buttons enabled + login copy updated after [https://upexgalaxy69.atlassian.net/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) ships
 
 NEGATIVE (7):
 6. Consent denied GitHub — OAUTH_DENIED at /login, magic-link CTA visible

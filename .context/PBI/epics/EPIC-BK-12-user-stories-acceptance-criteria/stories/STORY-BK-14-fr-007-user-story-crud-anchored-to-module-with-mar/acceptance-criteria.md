@@ -1,6 +1,6 @@
 # BK-14 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://upexgalaxy69.atlassian.net/browse/BK-14)
+> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-14)
 
 ```gherkin
 Scenario: Create a User Story under a Module
