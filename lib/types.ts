@@ -46,6 +46,7 @@ export interface Module {
   path: string
   name: string
   position: number
+  description: string | null
   created_at: Timestamp
 }
 
