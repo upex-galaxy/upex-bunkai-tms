@@ -1,7 +1,6 @@
 import type { Atc, Module, UserStory, Workspace } from '@lib/types';
 import { AtcTable } from '@components/atcs/AtcTable';
 import { CommandPalette } from '@components/layout/CommandPalette';
-import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { WorkspaceSwitcher } from '@components/layout/WorkspaceSwitcher';
 import { Button } from '@components/ui/button';
@@ -9,6 +8,7 @@ import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
 import { Plus } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { ProjectExplorer } from './project-explorer';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
@@ -39,6 +39,23 @@ export default async function ProjectPage({ params }: PageProps) {
     .single();
 
   if (!workspace) { notFound(); }
+
+  // Resolve the caller's workspace role to gate the create-module affordances.
+  // A `viewer` can read the tree but not create; `member`/`admin`/`owner` can.
+  // The API enforces this server-side (403 not_a_member); this is a UX hint so
+  // viewers do not see a control that would only fail. If the role can't be
+  // resolved we default to hiding the affordance.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canCreate = false;
+  if (user) {
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', project.workspace_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    canCreate = membership != null && membership.role !== 'viewer';
+  }
 
   const { data: modulesData } = await supabase
     .from('modules')
@@ -106,10 +123,12 @@ export default async function ProjectPage({ params }: PageProps) {
         )}
       />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
+        <ProjectExplorer
+          projectId={project.id}
           projectSlug={project.slug}
           projectName={project.name}
           tree={tree}
+          canCreate={canCreate}
         />
         <main className="flex flex-1 flex-col overflow-hidden bg-surface-0">
           <AtcTable atcs={rows} projectSlug={project.slug} />
