@@ -1,8 +1,21 @@
+import { hasAlphanumeric } from '@lib/utils/slug';
+
 // Framework-agnostic module-tree helpers. No React/Next/Bun/Supabase imports —
 // safe to import from server routes and unit tests alike. The `modules` table
 // stores a materialized, slash-separated `path` (NO leading slash) and a
 // per-sibling `position`; these pure helpers centralise the path/depth/position
 // math so the route stays thin and the rules are unit-testable without a DB.
+
+// Granular failure reasons for a module name, in the hybrid-error
+// `details.reason` vocabulary shared with the create route.
+export type ModuleNameError
+  = | 'name_required'
+    | 'name_too_short'
+    | 'name_too_long'
+    | 'name_no_alphanumeric';
+
+export const MIN_MODULE_NAME = 2;
+export const MAX_MODULE_NAME = 80;
 
 // Build a child module's materialized path from its parent path and own slug.
 // Root modules (empty parent path) get just their own segment — never a leading
@@ -27,3 +40,39 @@ export function nextPosition(siblingPositions: number[]): number {
 // Maximum module nesting depth (inclusive). The DB enforces the same bound via
 // a CHECK constraint as a safety net; the app layer fails fast before insert.
 export const MAX_MODULE_DEPTH = 6;
+
+// Validate a module name against the BK-10 rules (the server trims first).
+// Returns the granular failure reason, or null when the trimmed name is
+// acceptable. Adds `name_required` for the empty / whitespace-only case on top
+// of the create route's length + alphanumeric rules.
+export function moduleNameError(name: string): ModuleNameError | null {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return 'name_required';
+  }
+  if (trimmed.length < MIN_MODULE_NAME) {
+    return 'name_too_short';
+  }
+  if (trimmed.length > MAX_MODULE_NAME) {
+    return 'name_too_long';
+  }
+  if (!hasAlphanumeric(trimmed)) {
+    return 'name_no_alphanumeric';
+  }
+  return null;
+}
+
+// Re-base a descendant's materialized path when an ancestor's slug changes.
+// Pure mirror of the SQL `bunkai_update_module` rebuild: a path equal to the old
+// prefix becomes the new prefix; a path under `${oldPrefix}/` has its prefix
+// swapped; any unrelated path passes through unchanged. Centralises the rule so
+// the trickiest part of rename is unit-testable without a database.
+export function rebuildModulePath(oldPrefix: string, newPrefix: string, path: string): string {
+  if (path === oldPrefix) {
+    return newPrefix;
+  }
+  if (path.startsWith(`${oldPrefix}/`)) {
+    return newPrefix + path.slice(oldPrefix.length);
+  }
+  return path;
+}

@@ -1,4 +1,4 @@
-import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
+import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, moduleNameError, nextPosition, rebuildModulePath } from '@lib/modules/path';
 import { describe, expect, test } from 'bun:test';
 
 describe('buildModulePath', () => {
@@ -62,5 +62,53 @@ describe('nextPosition', () => {
     expect(nextPosition([0, 1, 2])).toBe(3);
     expect(nextPosition([2, 0, 1])).toBe(3);
     expect(nextPosition([0, 5, 2])).toBe(6);
+  });
+});
+
+describe('moduleNameError', () => {
+  test('accepts a normal name (returns null)', () => {
+    expect(moduleNameError('Payments & Billing')).toBeNull();
+  });
+
+  test('empty or whitespace-only is name_required (server trims)', () => {
+    expect(moduleNameError('')).toBe('name_required');
+    expect(moduleNameError('   ')).toBe('name_required');
+  });
+
+  test('one character is name_too_short; two characters is accepted (min boundary)', () => {
+    expect(moduleNameError('P')).toBe('name_too_short');
+    expect(moduleNameError('Pa')).toBeNull();
+  });
+
+  test('80 characters accepted, 81 rejected (max boundary)', () => {
+    expect(moduleNameError('a'.repeat(80))).toBeNull();
+    expect(moduleNameError('a'.repeat(81))).toBe('name_too_long');
+  });
+
+  test('a name with no alphanumeric is name_no_alphanumeric', () => {
+    expect(moduleNameError('---')).toBe('name_no_alphanumeric');
+  });
+});
+
+describe('rebuildModulePath', () => {
+  test('the renamed module itself takes the new prefix', () => {
+    expect(rebuildModulePath('payment', 'payments-billing', 'payment')).toBe('payments-billing');
+  });
+
+  test('a direct child is re-based onto the new prefix', () => {
+    expect(rebuildModulePath('payment', 'payments-billing', 'payment/refunds')).toBe('payments-billing/refunds');
+  });
+
+  test('a deep descendant keeps its tail under the new prefix', () => {
+    expect(rebuildModulePath('a/b', 'a/z', 'a/b/c/d')).toBe('a/z/c/d');
+  });
+
+  test('a sibling sharing a string prefix but not the path is untouched', () => {
+    // 'payments' must NOT match the 'payment' prefix (the slash guards it).
+    expect(rebuildModulePath('payment', 'pay', 'payments')).toBe('payments');
+  });
+
+  test('an unrelated path passes through unchanged', () => {
+    expect(rebuildModulePath('payment', 'pay', 'checkout/cart')).toBe('checkout/cart');
   });
 });
