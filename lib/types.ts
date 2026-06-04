@@ -48,6 +48,7 @@ export interface Module {
   position: number
   description: string | null
   created_at: Timestamp
+  archived_at: Timestamp | null
 }
 
 export interface UserStory {
@@ -58,6 +59,7 @@ export interface UserStory {
   external_id: string | null
   external_url: string | null
   created_at: Timestamp
+  archived_at: Timestamp | null
 }
 
 export interface AcceptanceCriterion {
@@ -67,6 +69,7 @@ export interface AcceptanceCriterion {
   description: string | null
   position: number
   created_at: Timestamp
+  archived_at: Timestamp | null
 }
 
 export type AtcLayer = 'UI' | 'API' | 'Unit';
@@ -85,6 +88,7 @@ export interface Atc {
   tags: string[]
   created_at: Timestamp
   updated_at: Timestamp
+  archived_at: Timestamp | null
 }
 
 export interface AtcStep {
