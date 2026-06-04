@@ -114,3 +114,38 @@ export function buildModuleTree(input: BuildModuleTreeInput): ModuleTreeNode[] {
 
   return roots;
 }
+
+// Minimal shape needed to walk the parent chain. Accepts full `Module[]` or any
+// projection carrying these three fields, so callers can pass query rows
+// directly without widening to the full row type.
+type ModuleChainNode = Pick<Module, 'id' | 'parent_module_id' | 'name'>;
+
+// Builds the display-name breadcrumb for a module by walking `parent_module_id`
+// up to the root, returning names ordered root→module (e.g. ['Payment',
+// 'Refunds']). The materialized `path` column stores SLUGS, so it cannot be used
+// for a human-readable breadcrumb — this composes from `name` instead.
+//
+// Pure + framework-agnostic. Guards against missing parents (stops the walk) and
+// cycles (bounded by the node count via a visited set), returning whatever
+// prefix was resolved. Unknown `moduleId` yields an empty array.
+export function moduleBreadcrumb(
+  modules: ModuleChainNode[],
+  moduleId: string,
+): string[] {
+  const byId = new Map<string, ModuleChainNode>();
+  for (const mod of modules) { byId.set(mod.id, mod); }
+
+  const names: string[] = [];
+  const visited = new Set<string>();
+  let current = byId.get(moduleId) ?? null;
+
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    names.push(current.name);
+    current = current.parent_module_id
+      ? byId.get(current.parent_module_id) ?? null
+      : null;
+  }
+
+  return names.reverse();
+}

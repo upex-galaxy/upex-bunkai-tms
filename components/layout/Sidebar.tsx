@@ -11,6 +11,9 @@ interface SidebarProps {
   projectName: string
   tree: ModuleTreeNode[]
   selectedAtcId?: string | null
+  // Id of the currently selected module row, used to drive the breadcrumb and
+  // highlight the active node. Optional so non-explorer callers stay unaffected.
+  selectedModuleId?: string | null
   // True when the caller may create modules (workspace role >= member). When
   // false the create affordances are hidden. The API is the authority; this is
   // only a UX hint.
@@ -19,6 +22,9 @@ interface SidebarProps {
   onNewModule?: () => void
   // Opens the create form with the given node as parent.
   onAddSubModule?: (node: ModuleTreeNode) => void
+  // Fires when a module row is clicked. Optional (default no-op) so existing
+  // callers that don't track selection keep working unchanged.
+  onSelect?: (moduleId: string) => void
 }
 
 export function Sidebar({
@@ -26,9 +32,11 @@ export function Sidebar({
   projectName,
   tree,
   selectedAtcId,
+  selectedModuleId,
   canCreate = false,
   onNewModule,
   onAddSubModule,
+  onSelect,
 }: SidebarProps) {
   return (
     <aside className="flex w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
@@ -59,8 +67,10 @@ export function Sidebar({
             depth={0}
             projectSlug={projectSlug}
             selectedAtcId={selectedAtcId}
+            selectedModuleId={selectedModuleId}
             canCreate={canCreate}
             onAddSubModule={onAddSubModule}
+            onSelect={onSelect}
           />
         ))}
       </nav>
@@ -73,8 +83,10 @@ interface ModuleNodeProps {
   depth: number
   projectSlug: string
   selectedAtcId?: string | null
+  selectedModuleId?: string | null
   canCreate?: boolean
   onAddSubModule?: (node: ModuleTreeNode) => void
+  onSelect?: (moduleId: string) => void
 }
 
 function ModuleNode({
@@ -82,22 +94,33 @@ function ModuleNode({
   depth,
   projectSlug,
   selectedAtcId,
+  selectedModuleId,
   canCreate = false,
   onAddSubModule,
+  onSelect,
 }: ModuleNodeProps) {
   const hasChildren
     = node.children.length > 0 || node.user_stories.length > 0 || node.atcs.length > 0;
   const [open, setOpen] = useState(depth < 2);
   const indent = 8 + depth * 12;
+  const selected = node.id === selectedModuleId;
 
   return (
     <div>
       <div
-        className="group relative flex h-6 w-full items-center hover:bg-surface-2"
+        className={cn(
+          'group relative flex h-6 w-full items-center hover:bg-surface-2',
+          selected && 'bg-surface-2',
+        )}
       >
         <button
           type="button"
-          onClick={() => setOpen(o => !o)}
+          data-testid={`module-row-${node.id}`}
+          aria-current={selected ? 'true' : undefined}
+          onClick={() => {
+            setOpen(o => !o);
+            onSelect?.(node.id);
+          }}
           className="flex h-6 min-w-0 flex-1 items-center gap-1.5 text-left text-sm text-fg-1"
           style={{ paddingLeft: indent, paddingRight: 8 }}
         >
@@ -135,8 +158,10 @@ function ModuleNode({
               depth={depth + 1}
               projectSlug={projectSlug}
               selectedAtcId={selectedAtcId}
+              selectedModuleId={selectedModuleId}
               canCreate={canCreate}
               onAddSubModule={onAddSubModule}
+              onSelect={onSelect}
             />
           ))}
           {node.user_stories.map(story => (
