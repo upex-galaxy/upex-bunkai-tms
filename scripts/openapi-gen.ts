@@ -52,6 +52,8 @@ import '../app/api/v1/workspaces/[id]/invites/[inviteId]/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/projects/route.openapi';
 
+import '../app/api/v1/projects/[id]/modules/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });

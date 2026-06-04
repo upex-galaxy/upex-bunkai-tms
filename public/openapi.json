@@ -920,6 +920,81 @@
           }
         },
         "required": ["name"]
+      },
+      "ModuleCreateResponse": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "$ref": "#/components/schemas/Module"
+          },
+          "warning": {
+            "type": "string",
+            "description": "Present only when the resulting nesting depth is >= 5."
+          }
+        },
+        "required": ["module"]
+      },
+      "Module": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent_module_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_module_id",
+          "path",
+          "name",
+          "position",
+          "description",
+          "created_at"
+        ]
+      },
+      "ModuleCreateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "2–80 chars, at least one alphanumeric. Path segment is auto-derived."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional Markdown, max 500 chars."
+          },
+          "parent_module_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Parent module id; omit for a root module. Must belong to the same project."
+          }
+        },
+        "required": ["name"]
       }
     },
     "parameters": {}
@@ -2034,6 +2109,104 @@
           },
           "422": {
             "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/modules": {
+      "post": {
+        "tags": ["Modules"],
+        "summary": "Create a module in a project",
+        "description": "Member-only (role >= member). Auto-derives a per-parent-unique path segment from the name. Modules nest up to 6 levels; depth >= 5 returns a soft warning, depth > 6 is rejected. Duplicate sibling path returns 409; non-members return 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Module created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not a member of the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A module with this name already exists under the same parent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name, description, depth, or parent).",
             "content": {
               "application/json": {
                 "schema": {
