@@ -6,6 +6,8 @@ import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { useMemo, useState } from 'react';
 import { CreateModuleForm } from './create-module-form';
+import { DeleteModuleDialog } from './delete-module-dialog';
+import { RenameModuleForm } from './rename-module-form';
 
 interface ProjectExplorerProps {
   projectId: string
@@ -39,6 +41,20 @@ function flattenChain(nodes: ModuleTreeNode[], acc: ChainNode[] = []): ChainNode
   return acc;
 }
 
+// Count what a soft-delete would cascade-archive beneath a node: descendant
+// modules (excluding the node itself) and every ATC in the subtree. Drives the
+// delete confirmation's blast-radius copy.
+function countSubtree(node: ModuleTreeNode): { modules: number, atcs: number } {
+  let modules = 0;
+  let atcs = node.atcs.length;
+  for (const child of node.children) {
+    const sub = countSubtree(child);
+    modules += 1 + sub.modules;
+    atcs += sub.atcs;
+  }
+  return { modules, atcs };
+}
+
 // Client shell around the existing Sidebar tree. Owns the create-module modal
 // state so the Server Component page can stay free of client hooks, and so the
 // Sidebar (in components/) does not import an app-route form. The tree itself is
@@ -51,7 +67,11 @@ export function ProjectExplorer({
   canCreate,
 }: ProjectExplorerProps) {
   const [target, setTarget] = useState<CreateTarget | null>(null);
+  const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ModuleTreeNode | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+
+  const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
 
   const chain = useMemo(() => flattenChain(tree), [tree]);
   const breadcrumb = selectedModuleId
@@ -82,6 +102,8 @@ export function ProjectExplorer({
             onNewModule={() => setTarget({ parentModuleId: null })}
             onAddSubModule={node =>
               setTarget({ parentModuleId: node.id, parentLabel: node.name })}
+            onRenameModule={setRenameTarget}
+            onDeleteModule={setDeleteTarget}
             onSelect={setSelectedModuleId}
           />
         </div>
@@ -103,6 +125,46 @@ export function ProjectExplorer({
               parentLabel={target.parentLabel}
               onCreated={() => setTarget(null)}
               onCancel={() => setTarget(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {renameTarget && (
+        <div
+          data-testid="rename-module-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setRenameTarget(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <RenameModuleForm
+              moduleId={renameTarget.id}
+              initialName={renameTarget.name}
+              initialDescription={renameTarget.description}
+              onUpdated={() => setRenameTarget(null)}
+              onCancel={() => setRenameTarget(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && deleteCounts && (
+        <div
+          data-testid="delete-module-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <DeleteModuleDialog
+              moduleId={deleteTarget.id}
+              moduleName={deleteTarget.name}
+              subModuleCount={deleteCounts.modules}
+              atcCount={deleteCounts.atcs}
+              onDeleted={() => {
+                if (selectedModuleId === deleteTarget.id) { setSelectedModuleId(null); }
+                setDeleteTarget(null);
+              }}
+              onCancel={() => setDeleteTarget(null)}
             />
           </div>
         </div>

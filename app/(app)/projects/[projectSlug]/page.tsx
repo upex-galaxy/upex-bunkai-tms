@@ -57,28 +57,31 @@ export default async function ProjectPage({ params }: PageProps) {
     canCreate = membership != null && membership.role !== 'viewer';
   }
 
+  // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
+  // out of the active tree and every downstream listing.
   const { data: modulesData } = await supabase
     .from('modules')
     .select('*')
     .eq('project_id', project.id)
+    .is('archived_at', null)
     .order('position', { ascending: true });
 
   const moduleIds = (modulesData ?? []).map(m => m.id);
 
   const [{ data: storiesData }, { data: atcsData }] = await Promise.all([
     moduleIds.length > 0
-      ? supabase.from('user_stories').select('*').in('module_id', moduleIds)
+      ? supabase.from('user_stories').select('*').in('module_id', moduleIds).is('archived_at', null)
       : Promise.resolve({ data: [] as UserStory[] }),
-    supabase.from('atcs').select('*').eq('project_id', project.id),
+    supabase.from('atcs').select('*').eq('project_id', project.id).is('archived_at', null),
   ]);
 
   const storyIds = (storiesData ?? []).map(s => s.id);
   const { data: acsData } = storyIds.length > 0
-    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds)
+    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds).is('archived_at', null)
     : { data: [] };
 
   const modules = (modulesData ?? []) as Module[];
-  const stories = (storiesData ?? []) as UserStory[];
+  const stories = (storiesData ?? []);
   const atcs = (atcsData ?? []) as Atc[];
 
   const tree = buildModuleTree({

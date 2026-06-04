@@ -2,7 +2,7 @@
 
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import { cn } from '@lib/utils';
-import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen, ListChecks, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -22,6 +22,10 @@ interface SidebarProps {
   onNewModule?: () => void
   // Opens the create form with the given node as parent.
   onAddSubModule?: (node: ModuleTreeNode) => void
+  // Opens the rename form for the given node.
+  onRenameModule?: (node: ModuleTreeNode) => void
+  // Opens the delete confirmation for the given node.
+  onDeleteModule?: (node: ModuleTreeNode) => void
   // Fires when a module row is clicked. Optional (default no-op) so existing
   // callers that don't track selection keep working unchanged.
   onSelect?: (moduleId: string) => void
@@ -36,6 +40,8 @@ export function Sidebar({
   canCreate = false,
   onNewModule,
   onAddSubModule,
+  onRenameModule,
+  onDeleteModule,
   onSelect,
 }: SidebarProps) {
   return (
@@ -70,6 +76,8 @@ export function Sidebar({
             selectedModuleId={selectedModuleId}
             canCreate={canCreate}
             onAddSubModule={onAddSubModule}
+            onRenameModule={onRenameModule}
+            onDeleteModule={onDeleteModule}
             onSelect={onSelect}
           />
         ))}
@@ -86,6 +94,8 @@ interface ModuleNodeProps {
   selectedModuleId?: string | null
   canCreate?: boolean
   onAddSubModule?: (node: ModuleTreeNode) => void
+  onRenameModule?: (node: ModuleTreeNode) => void
+  onDeleteModule?: (node: ModuleTreeNode) => void
   onSelect?: (moduleId: string) => void
 }
 
@@ -97,6 +107,8 @@ function ModuleNode({
   selectedModuleId,
   canCreate = false,
   onAddSubModule,
+  onRenameModule,
+  onDeleteModule,
   onSelect,
 }: ModuleNodeProps) {
   const hasChildren
@@ -137,16 +149,42 @@ function ModuleNode({
           <span className="truncate font-semibold text-fg-0">{node.name}</span>
           <span className="ml-auto font-mono text-xs text-fg-4">{countAtcs(node)}</span>
         </button>
-        {canCreate && onAddSubModule && (
-          <button
-            type="button"
-            data-testid={`module-add-sub-${node.id}`}
-            onClick={() => onAddSubModule(node)}
-            title="Add sub-module"
-            className="absolute right-1 hidden h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1 group-hover:flex"
-          >
-            <Plus size={11} />
-          </button>
+        {canCreate && (onAddSubModule || onRenameModule || onDeleteModule) && (
+          <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
+            {onAddSubModule && (
+              <button
+                type="button"
+                data-testid={`module-add-sub-${node.id}`}
+                onClick={() => onAddSubModule(node)}
+                title="Add sub-module"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <Plus size={11} />
+              </button>
+            )}
+            {onRenameModule && (
+              <button
+                type="button"
+                data-testid={`module-rename-${node.id}`}
+                onClick={() => onRenameModule(node)}
+                title="Rename module"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <Pencil size={11} />
+              </button>
+            )}
+            {onDeleteModule && (
+              <button
+                type="button"
+                data-testid={`module-delete-${node.id}`}
+                onClick={() => onDeleteModule(node)}
+                title="Delete module"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
+              >
+                <Trash2 size={11} />
+              </button>
+            )}
+          </div>
         )}
       </div>
       {open && (
@@ -161,6 +199,8 @@ function ModuleNode({
               selectedModuleId={selectedModuleId}
               canCreate={canCreate}
               onAddSubModule={onAddSubModule}
+              onRenameModule={onRenameModule}
+              onDeleteModule={onDeleteModule}
               onSelect={onSelect}
             />
           ))}
