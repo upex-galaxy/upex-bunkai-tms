@@ -100,8 +100,8 @@ export function DeleteModuleDialog({
         {cascades
           ? (
               <>
-                This also archives
-                {' '}
+                This also archives everything beneath it
+                {' — '}
                 {subModuleCount > 0 && (
                   <span className="text-fg-2">
                     {subModuleCount}
@@ -110,7 +110,7 @@ export function DeleteModuleDialog({
                     {subModuleCount === 1 ? '' : 's'}
                   </span>
                 )}
-                {subModuleCount > 0 && atcCount > 0 ? ' and ' : ''}
+                {subModuleCount > 0 && atcCount > 0 ? ', ' : ''}
                 {atcCount > 0 && (
                   <span className="text-fg-2">
                     {atcCount}
@@ -119,9 +119,8 @@ export function DeleteModuleDialog({
                     {atcCount === 1 ? '' : 's'}
                   </span>
                 )}
-                {' '}
-                beneath it. Archived items are retained, not destroyed — they just
-                leave the active tree.
+                , and any user stories and criteria anchored to them. Archived
+                items are retained, not destroyed — they just leave the active tree.
               </>
             )
           : 'It is retained, not destroyed — it just leaves the active tree.'}

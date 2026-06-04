@@ -83,6 +83,12 @@ begin
   end if;
 
   if p_name is not null then
+    -- Defend against a direct RPC call that sends a name without its slug; the
+    -- route always pairs them, but the function must not build a NULL/empty path.
+    if p_new_slug is null or length(p_new_slug) < 1 then
+      raise exception 'name_no_slug' using errcode = '22023';
+    end if;
+
     -- Parent prefix = old path minus its last segment ('' for a root module).
     v_parent_prefix := regexp_replace(v_old_path, '/?[^/]+$', '');
     v_new_path := case
