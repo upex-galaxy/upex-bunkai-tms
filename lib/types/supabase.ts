@@ -476,6 +476,7 @@ export interface Database {
       modules: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
           parent_module_id: string | null
@@ -485,6 +486,7 @@ export interface Database {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           parent_module_id?: string | null
@@ -494,6 +496,7 @@ export interface Database {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           parent_module_id?: string | null
