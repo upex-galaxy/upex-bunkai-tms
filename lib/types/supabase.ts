@@ -799,11 +799,11 @@ export interface Database {
       }
       bunkai_update_module: {
         Args: {
-          p_description: string
+          p_description?: string
           p_module_id: string
-          p_name: string
-          p_new_slug: string
-          p_update_description: boolean
+          p_name?: string
+          p_new_slug?: string
+          p_update_description?: boolean
         }
         Returns: Json
       }

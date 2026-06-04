@@ -44,12 +44,15 @@ create index if not exists modules_project_active_idx
 -- p_update_description : when true, description is set to p_description; when
 --                        false, description is left untouched.
 
+-- Text params default to NULL and p_update_description to false so the caller can
+-- omit whatever it is not changing (Supabase typegen then marks them optional,
+-- avoiding a null-vs-string mismatch in the route).
 create or replace function public.bunkai_update_module(
   p_module_id          uuid,
-  p_name               text,
-  p_new_slug           text,
-  p_description        text,
-  p_update_description boolean
+  p_name               text    default null,
+  p_new_slug           text    default null,
+  p_description        text    default null,
+  p_update_description boolean default false
 )
 returns jsonb
 language plpgsql
