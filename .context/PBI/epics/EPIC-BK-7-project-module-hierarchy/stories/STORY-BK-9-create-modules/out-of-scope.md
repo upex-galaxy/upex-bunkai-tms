@@ -1,6 +1,6 @@
 # BK-9 — Out Of Scope
 
-> Jira field: `customfield_10135` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
+> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
 
 - Renaming, moving or deleting a Module (covered by BK-10 and BK-11)
 - Bulk creation or import of Modules from Jira or CSV
