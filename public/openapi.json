@@ -995,6 +995,101 @@
           }
         },
         "required": ["name"]
+      },
+      "ModuleUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "$ref": "#/components/schemas/ModuleDetail"
+          }
+        },
+        "required": ["module"]
+      },
+      "ModuleDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent_module_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_module_id",
+          "path",
+          "name",
+          "position",
+          "description",
+          "created_at",
+          "archived_at"
+        ]
+      },
+      "ModuleUpdateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New name, 2–80 chars, at least one alphanumeric. Renaming rebuilds the module path and every descendant path."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "New description (max 500 chars). Pass null to clear it; omit to leave it unchanged."
+          }
+        }
+      },
+      "ModuleArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "object",
+            "properties": {
+              "modules": {
+                "type": "integer"
+              },
+              "user_stories": {
+                "type": "integer"
+              },
+              "acceptance_criteria": {
+                "type": "integer"
+              },
+              "atcs": {
+                "type": "integer"
+              }
+            },
+            "required": ["modules", "user_stories", "acceptance_criteria", "atcs"],
+            "description": "Per-table counts of rows archived by the cascade."
+          }
+        },
+        "required": ["archived"]
       }
     },
     "parameters": {}
@@ -2207,6 +2302,200 @@
           },
           "422": {
             "description": "Validation failed (name, description, depth, or parent).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{id}": {
+      "patch": {
+        "tags": ["Modules"],
+        "summary": "Rename a module or edit its description",
+        "description": "Member-only (role >= member). Renaming rebuilds the module path and every descendant path; a sibling slug collision returns 409. An archived module reads as 404. Viewers/non-members return 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Module updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed module id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not a member of the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Module not found or archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The new name collides with a sibling module.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name or description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Modules"],
+        "summary": "Soft-delete (archive) a module and its subtree",
+        "description": "Member-only (role >= member). Archives the module, its descendant modules, and the linked user stories, acceptance criteria, and ATCs in one transaction. Returns per-table counts. Archiving an already-archived module returns 409; viewers/non-members return 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Module and its subtree archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleArchiveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed module id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not a member of the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Module not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Module is already archived.",
             "content": {
               "application/json": {
                 "schema": {

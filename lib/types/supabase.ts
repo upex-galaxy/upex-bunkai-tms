@@ -21,6 +21,7 @@ export interface Database {
     Tables: {
       acceptance_criteria: {
         Row: {
+          archived_at: string | null
           created_at: string
           description: string | null
           id: string
@@ -29,6 +30,7 @@ export interface Database {
           user_story_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -37,6 +39,7 @@ export interface Database {
           user_story_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -261,6 +264,7 @@ export interface Database {
       }
       atcs: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           layer: string
@@ -276,6 +280,7 @@ export interface Database {
           version: number
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           layer: string
@@ -291,6 +296,7 @@ export interface Database {
           version?: number
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           layer?: string
@@ -475,6 +481,7 @@ export interface Database {
       }
       modules: {
         Row: {
+          archived_at: string | null
           created_at: string
           description: string | null
           id: string
@@ -485,6 +492,7 @@ export interface Database {
           project_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -495,6 +503,7 @@ export interface Database {
           project_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -558,6 +567,7 @@ export interface Database {
       }
       user_stories: {
         Row: {
+          archived_at: string | null
           created_at: string
           description: string | null
           external_id: string | null
@@ -567,6 +577,7 @@ export interface Database {
           title: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           external_id?: string | null
@@ -576,6 +587,7 @@ export interface Database {
           title: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           external_id?: string | null
@@ -760,6 +772,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      bunkai_archive_module_subtree: {
+        Args: { p_module_id: string }
+        Returns: Json
+      }
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
         Returns: string
@@ -780,6 +796,16 @@ export interface Database {
           p_user_story_id: string
         }
         Returns: undefined
+      }
+      bunkai_update_module: {
+        Args: {
+          p_description?: string
+          p_module_id: string
+          p_name?: string
+          p_new_slug?: string
+          p_update_description?: boolean
+        }
+        Returns: Json
       }
     }
     Enums: {
