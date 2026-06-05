@@ -64,6 +64,10 @@ import '../app/api/v1/user-stories/[id]/acceptance-criteria/route.openapi';
 
 import '../app/api/v1/acceptance-criteria/[id]/route.openapi';
 
+import '../app/api/v1/imports/route.openapi';
+
+import '../app/api/v1/imports/[id]/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });
