@@ -148,10 +148,14 @@ async function backupEnv(): Promise<void> {
 // ----------------------------------------------------------------------------
 
 /**
- * Upsert every `destinations ∋ 'local'` manifest var into `.env`. Idempotent:
- * an already-set var is skipped unless `force`. Only vars with a non-empty value
- * already in `.env` are (re-)written — the flow never invents values; it routes
- * what the installer / user already collected.
+ * Set every `destinations ∋ 'local'` manifest var into `.env`. Mirrors the QA
+ * sibling for parity (the `--variables-local` flag path):
+ *   - INTERACTIVE (TTY, not dry-run): prompt each var. An already-set var is
+ *     skipped unless `force`; a missing var is prompted (Enter skips). Secrets
+ *     are masked; values are never printed.
+ *   - NON-INTERACTIVE / DRY-RUN: never prompt — route/mark only the values that
+ *     already exist in `.env` (the original append-only behavior, low blast radius).
+ * Idempotent: re-running only (re-)writes what changed.
  */
 async function runLocal(
   opts: VariablesFlowOptions,
@@ -161,45 +165,42 @@ async function runLocal(
 
   const localVars = varsFor('local');
   const env = await readEnvValues();
-  const toWrite: Record<string, string> = {};
 
-  for (const spec of localVars) {
-    const current = env[spec.name];
-    const hasValue = current !== undefined && current.trim().length > 0;
-
-    if (!hasValue) {
-      // Nothing to route — the var has no value in .env yet. Not a failure;
-      // `ensureEnvFileExists` already seeded the (empty) key from .env.example.
-      results[spec.name] = 'skipped';
-      continue;
+  // --- Non-interactive / dry-run: route existing values only (never prompt). ---
+  if (opts.nonInteractive || opts.dryRun) {
+    const toWrite: Record<string, string> = {};
+    for (const spec of localVars) {
+      const current = env[spec.name];
+      const hasValue = current !== undefined && current.trim().length > 0;
+      if (!hasValue || !opts.force) {
+        // Missing → nothing to route; already-set without --force → idempotent no-op.
+        results[spec.name] = 'skipped';
+        continue;
+      }
+      toWrite[spec.name] = current;
+      results[spec.name] = 'set';
     }
-    if (!opts.force) {
-      // Already set and not forcing → idempotent no-op.
-      results[spec.name] = 'skipped';
-      continue;
+    if (opts.dryRun) {
+      for (const name of Object.keys(toWrite)) {
+        process.stdout.write(`${C.dim}  would write ${name} → .env${C.reset}\n`);
+      }
+      if (Object.keys(toWrite).length === 0) {
+        process.stdout.write(`${C.dim}  (no local writes — all tracked vars already set; pass --force to re-write)${C.reset}\n`);
+      }
+      return;
     }
-    // Forcing a re-write of an already-set value (in-place upsert).
-    toWrite[spec.name] = current;
-    results[spec.name] = 'set';
-  }
-
-  if (opts.dryRun) {
-    for (const name of Object.keys(toWrite)) {
-      process.stdout.write(`${C.dim}  would write ${name} → .env${C.reset}\n`);
+    if (Object.keys(toWrite).length > 0) {
+      await appendVarsToEnv(toWrite);
+      tui.log.success(`Upserted ${Object.keys(toWrite).length} var(s) into .env.`);
     }
-    if (Object.keys(toWrite).length === 0) {
-      process.stdout.write(`${C.dim}  (no local writes — all tracked vars already set; pass --force to re-write)${C.reset}\n`);
+    else {
+      tui.log.info('No local writes — all tracked vars already set (pass --force to re-write).');
     }
     return;
   }
 
-  if (Object.keys(toWrite).length > 0) {
-    await appendVarsToEnv(toWrite);
-    tui.log.success(`Upserted ${Object.keys(toWrite).length} var(s) into .env.`);
-  }
-  else {
-    tui.log.info('No local writes — all tracked vars already set (pass --force to re-write).');
-  }
+  // --- Interactive: prompt each var (QA parity). Skip already-set unless --force. ---
+  await promptVarsInto(localVars, opts, results, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -207,55 +208,85 @@ async function runLocal(
 // ----------------------------------------------------------------------------
 
 /**
- * Prompt for the CRITICAL tool credentials (ATLASSIAN_URL/EMAIL/API_TOKEN,
- * RESEND_API_KEY, TAVILY_API_KEY) and upsert them into `.env`. IDEMPOTENT: an
- * already-set var is shown and left untouched unless the user opts to overwrite
- * it. Secrets are masked at the prompt; their values are never printed.
+ * Prompt for each spec in `specs` and upsert non-empty answers into `.env`.
+ * Shared engine behind the critical-set path AND the var-by-var walk (and the
+ * interactive `--variables-local` flag path). Secrets are masked; their values
+ * are never printed; Enter skips a var.
  *
- * Only reachable from the interactive menu (option a) — the normal installer
- * prompts these on a fresh clone; this is the "set / reset" power-tool path.
+ * `confirmOverwrite` controls already-set behavior (when `--force` is NOT set):
+ *   - `true`  (walk / critical menu): ask "Overwrite it?" per already-set var.
+ *   - `false` (flag path, QA parity): silently skip already-set vars; only
+ *     `--force` re-prompts them.
  */
-async function setCriticalVars(): Promise<void> {
-  tui.section('CRITICAL — tool credentials (Atlassian, Resend, Tavily)');
-
+async function promptVarsInto(
+  specs: VarSpec[],
+  opts: VariablesFlowOptions,
+  results?: Record<string, LocalResult>,
+  confirmOverwrite = true,
+): Promise<void> {
   const env = await readEnvValues();
   const toWrite: Record<string, string> = {};
 
-  for (const spec of criticalVars()) {
+  for (const spec of specs) {
     const current = (env[spec.name] ?? '').trim();
-    if (current.length > 0) {
-      // Already set → idempotent: skip unless the user explicitly overwrites.
+    const alreadySet = current.length > 0;
+
+    if (alreadySet && !opts.force) {
+      if (!confirmOverwrite) {
+        // Flag-path parity: idempotent skip (only --force re-prompts).
+        if (results) { results[spec.name] = 'skipped'; }
+        continue;
+      }
       const overwrite = await tui.confirm({
         message: `${spec.name} is already set. Overwrite it?`,
         initialValue: false,
       });
       if (tui.isCancel(overwrite) || !overwrite) {
         process.stdout.write(`  ${C.dim}${spec.name}: kept existing value.${C.reset}\n`);
+        if (results) { results[spec.name] = 'skipped'; }
         continue;
       }
     }
+
     const entered = spec.secret
       ? await password({ message: `${spec.name} (Enter to skip):`, mask: '*' })
       : await tui.text({ message: `${spec.name} (Enter to skip):` });
     if (tui.isCancel(entered)) {
       process.stdout.write(`  ${C.dim}${spec.name}: skipped.${C.reset}\n`);
+      if (results) { results[spec.name] = 'skipped'; }
       continue;
     }
     const value = (entered ?? '').trim();
     if (value.length === 0) {
       process.stdout.write(`  ${C.dim}${spec.name}: skipped (empty).${C.reset}\n`);
+      if (results) { results[spec.name] = 'skipped'; }
       continue;
     }
     toWrite[spec.name] = value;
+    if (results) { results[spec.name] = 'set'; }
   }
 
   if (Object.keys(toWrite).length > 0) {
     await appendVarsToEnv(toWrite);
-    tui.log.success(`Upserted ${Object.keys(toWrite).length} critical var(s) into .env.`);
+    tui.log.success(`Upserted ${Object.keys(toWrite).length} var(s) into .env.`);
   }
   else {
-    tui.log.info('No critical vars changed.');
+    tui.log.info('No vars changed.');
   }
+}
+
+/**
+ * Prompt for the CRITICAL tool credentials (ATLASSIAN_URL/EMAIL/API_TOKEN,
+ * RESEND_API_KEY, TAVILY_API_KEY) and upsert them into `.env`. IDEMPOTENT: an
+ * already-set var is shown and left untouched unless the user opts to overwrite
+ * it. Secrets are masked at the prompt; their values are never printed.
+ *
+ * Reachable from the interactive menu (option "critical") — the normal installer
+ * prompts these on a fresh clone; this is the "set / reset" power-tool path.
+ */
+async function setCriticalVars(opts: VariablesFlowOptions): Promise<void> {
+  tui.section('CRITICAL — tool credentials (Atlassian, Resend, Tavily)');
+  await promptVarsInto(criticalVars(), opts);
 }
 
 // ----------------------------------------------------------------------------
@@ -615,19 +646,22 @@ function printResultsTable(
 // Interactive menu (no explicit mode flag)
 // ----------------------------------------------------------------------------
 
-/** One of the four menu actions, or `cancel` if the user aborts. */
-type MenuChoice = 'critical' | 'push' | 'pull' | 'everything' | 'cancel';
+/** One of the menu actions, or `cancel` if the user aborts. */
+type MenuChoice = 'walk' | 'critical' | 'push' | 'pull' | 'everything' | 'cancel';
 
 /**
  * Show the interactive menu and run the chosen action. Returns the choice so the
  * caller can decide whether to print the local/remote results table (only the
- * push/everything paths populate it).
+ * walk/push/everything paths populate it).
  *
  * Actions:
- *   (a) critical   — set / reset the 5 CRITICAL vars (idempotent prompt).
- *   (b) push       — push local .env → Vercel env (the existing REMOTE half).
- *   (c) pull       — pull auto-provisioned infra vars from Vercel into .env.
- *   (d) everything — critical, then push, then leave the rest as-is.
+ *   (a) walk       — set EVERY local var one by one (Enter skips; overwrite-confirm
+ *                    on already-set). The flag-free human path; `--variables-local`
+ *                    is now purely a scripting alias.
+ *   (b) critical   — set / reset just the 5 CRITICAL vars (idempotent prompt).
+ *   (c) push       — push local .env → Vercel env (the existing REMOTE half).
+ *   (d) pull       — pull auto-provisioned infra vars from Vercel into .env.
+ *   (e) everything — critical, then push, then leave the rest as-is.
  */
 async function runMenu(
   opts: VariablesFlowOptions,
@@ -637,21 +671,27 @@ async function runMenu(
   const selected = await tui.select({
     message: 'What do you want to do?',
     options: [
+      { value: 'walk', label: 'Set variables one by one (walk all local vars)' },
       { value: 'critical', label: 'Set / reset the critical variables (Atlassian, Resend, Tavily)' },
       { value: 'push', label: 'Push local .env → Vercel env (production / preview / development)' },
       { value: 'pull', label: 'Pull infra vars from Vercel (Supabase / Postgres / app URL) into .env' },
       { value: 'everything', label: 'Everything (set critical, then push to Vercel)' },
     ],
-    initialValue: 'critical',
+    initialValue: 'walk',
   });
 
   if (tui.isCancel(selected)) { return 'cancel'; }
   const choice = selected as MenuChoice;
 
   switch (choice) {
+    case 'walk':
+      if (!opts.dryRun) { await backupEnv(); }
+      tui.section('WALK — set every local var one by one');
+      await promptVarsInto(varsFor('local'), opts, localResults);
+      break;
     case 'critical':
       if (!opts.dryRun) { await backupEnv(); }
-      await setCriticalVars();
+      await setCriticalVars(opts);
       break;
     case 'push':
       await runRemote(opts, remoteResults);
@@ -662,8 +702,7 @@ async function runMenu(
       break;
     case 'everything':
       if (!opts.dryRun) { await backupEnv(); }
-      await setCriticalVars();
-      await runLocal(opts, localResults);
+      await setCriticalVars(opts);
       await runRemote(opts, remoteResults);
       break;
   }
@@ -708,7 +747,10 @@ export async function runVariablesFlow(opts: VariablesFlowOptions = {}): Promise
       return;
     }
     await warnDeprecated();
-    if (choice === 'push' || choice === 'everything') {
+    if (choice === 'walk') {
+      printResultsTable(localResults, remoteResults, 'local');
+    }
+    else if (choice === 'push' || choice === 'everything') {
       printResultsTable(localResults, remoteResults, 'both');
     }
   }
