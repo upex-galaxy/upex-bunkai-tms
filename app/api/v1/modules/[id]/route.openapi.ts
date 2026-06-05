@@ -25,6 +25,12 @@ const UpdateBodySchema = z
       .nullable()
       .optional()
       .describe('New description (max 500 chars). Pass null to clear it; omit to leave it unchanged.'),
+    parent_module_id: z
+      .string()
+      .uuid()
+      .nullable()
+      .optional()
+      .describe('Move the module: a UUID re-parents it under that module (carrying its subtree); null moves it to the project root; omit to leave the parent unchanged. Rejects cycles, depth > 6, and cross-project targets.'),
   })
   .openapi('ModuleUpdateBody');
 
@@ -56,9 +62,9 @@ registry.registerPath({
   method: 'patch',
   path: '/api/v1/modules/{id}',
   tags: ['Modules'],
-  summary: 'Rename a module or edit its description',
+  summary: 'Rename, edit, or move a module',
   description:
-    'Member-only (role >= member). Renaming rebuilds the module path and every descendant path; a sibling slug collision returns 409. An archived module reads as 404. Viewers/non-members return 403.',
+    'Member-only (role >= member). Renaming rebuilds the module path and every descendant path; `parent_module_id` moves the module (and its subtree) to a new parent or the project root. A sibling/destination slug collision returns 409; a cycle, depth-overflow, or invalid target returns 422. An archived module reads as 404. Viewers/non-members return 403.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: {
@@ -76,8 +82,8 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Caller is not a member of the project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Module not found or archived.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'The new name collides with a sibling module.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (name or description).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The new name or move destination collides with a sibling module.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (name, description, or move: cycle / depth / invalid parent).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

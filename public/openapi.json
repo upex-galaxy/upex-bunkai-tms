@@ -1063,6 +1063,11 @@
           "description": {
             "type": ["string", "null"],
             "description": "New description (max 500 chars). Pass null to clear it; omit to leave it unchanged."
+          },
+          "parent_module_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Move the module: a UUID re-parents it under that module (carrying its subtree); null moves it to the project root; omit to leave the parent unchanged. Rejects cycles, depth > 6, and cross-project targets."
           }
         }
       },
@@ -2316,8 +2321,8 @@
     "/api/v1/modules/{id}": {
       "patch": {
         "tags": ["Modules"],
-        "summary": "Rename a module or edit its description",
-        "description": "Member-only (role >= member). Renaming rebuilds the module path and every descendant path; a sibling slug collision returns 409. An archived module reads as 404. Viewers/non-members return 403.",
+        "summary": "Rename, edit, or move a module",
+        "description": "Member-only (role >= member). Renaming rebuilds the module path and every descendant path; `parent_module_id` moves the module (and its subtree) to a new parent or the project root. A sibling/destination slug collision returns 409; a cycle, depth-overflow, or invalid target returns 422. An archived module reads as 404. Viewers/non-members return 403.",
         "security": [
           {
             "cookieAuth": []
@@ -2399,7 +2404,7 @@
             }
           },
           "409": {
-            "description": "The new name collides with a sibling module.",
+            "description": "The new name or move destination collides with a sibling module.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2409,7 +2414,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (name or description).",
+            "description": "Validation failed (name, description, or move: cycle / depth / invalid parent).",
             "content": {
               "application/json": {
                 "schema": {
