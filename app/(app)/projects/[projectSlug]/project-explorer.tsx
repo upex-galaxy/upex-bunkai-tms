@@ -7,6 +7,7 @@ import { moduleBreadcrumb } from '@lib/tree';
 import { useMemo, useState } from 'react';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
+import { MoveModuleDialog } from './move-module-dialog';
 import { RenameModuleForm } from './rename-module-form';
 
 interface ProjectExplorerProps {
@@ -41,6 +42,23 @@ function flattenChain(nodes: ModuleTreeNode[], acc: ChainNode[] = []): ChainNode
   return acc;
 }
 
+// Flat projection of the tree for the move dialog, which needs each module's
+// `path` (to compute valid destinations) alongside id / name / parent.
+interface ModuleLite {
+  id: string
+  name: string
+  path: string
+  parent_module_id: string | null
+}
+
+function flattenModules(nodes: ModuleTreeNode[], acc: ModuleLite[] = []): ModuleLite[] {
+  for (const n of nodes) {
+    acc.push({ id: n.id, name: n.name, path: n.path, parent_module_id: n.parent_module_id });
+    flattenModules(n.children, acc);
+  }
+  return acc;
+}
+
 // Count what a soft-delete would cascade-archive beneath a node: descendant
 // modules (excluding the node itself) and every ATC in the subtree. Drives the
 // delete confirmation's blast-radius copy.
@@ -68,10 +86,12 @@ export function ProjectExplorer({
 }: ProjectExplorerProps) {
   const [target, setTarget] = useState<CreateTarget | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
+  const [moveTarget, setMoveTarget] = useState<ModuleTreeNode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTreeNode | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
+  const flatModules = useMemo(() => flattenModules(tree), [tree]);
 
   const chain = useMemo(() => flattenChain(tree), [tree]);
   const breadcrumb = selectedModuleId
@@ -103,6 +123,7 @@ export function ProjectExplorer({
             onAddSubModule={node =>
               setTarget({ parentModuleId: node.id, parentLabel: node.name })}
             onRenameModule={setRenameTarget}
+            onMoveModule={setMoveTarget}
             onDeleteModule={setDeleteTarget}
             onSelect={setSelectedModuleId}
           />
@@ -143,6 +164,28 @@ export function ProjectExplorer({
               initialDescription={renameTarget.description}
               onUpdated={() => setRenameTarget(null)}
               onCancel={() => setRenameTarget(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {moveTarget && (
+        <div
+          data-testid="move-module-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setMoveTarget(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <MoveModuleDialog
+              source={{
+                id: moveTarget.id,
+                name: moveTarget.name,
+                path: moveTarget.path,
+                parent_module_id: moveTarget.parent_module_id,
+              }}
+              modules={flatModules}
+              onMoved={() => setMoveTarget(null)}
+              onCancel={() => setMoveTarget(null)}
             />
           </div>
         </div>

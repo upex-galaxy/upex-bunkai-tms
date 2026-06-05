@@ -2,7 +2,7 @@
 
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import { cn } from '@lib/utils';
-import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -24,6 +24,8 @@ interface SidebarProps {
   onAddSubModule?: (node: ModuleTreeNode) => void
   // Opens the rename form for the given node.
   onRenameModule?: (node: ModuleTreeNode) => void
+  // Opens the move dialog for the given node.
+  onMoveModule?: (node: ModuleTreeNode) => void
   // Opens the delete confirmation for the given node.
   onDeleteModule?: (node: ModuleTreeNode) => void
   // Fires when a module row is clicked. Optional (default no-op) so existing
@@ -41,6 +43,7 @@ export function Sidebar({
   onNewModule,
   onAddSubModule,
   onRenameModule,
+  onMoveModule,
   onDeleteModule,
   onSelect,
 }: SidebarProps) {
@@ -77,6 +80,7 @@ export function Sidebar({
             canCreate={canCreate}
             onAddSubModule={onAddSubModule}
             onRenameModule={onRenameModule}
+            onMoveModule={onMoveModule}
             onDeleteModule={onDeleteModule}
             onSelect={onSelect}
           />
@@ -95,6 +99,7 @@ interface ModuleNodeProps {
   canCreate?: boolean
   onAddSubModule?: (node: ModuleTreeNode) => void
   onRenameModule?: (node: ModuleTreeNode) => void
+  onMoveModule?: (node: ModuleTreeNode) => void
   onDeleteModule?: (node: ModuleTreeNode) => void
   onSelect?: (moduleId: string) => void
 }
@@ -108,6 +113,7 @@ function ModuleNode({
   canCreate = false,
   onAddSubModule,
   onRenameModule,
+  onMoveModule,
   onDeleteModule,
   onSelect,
 }: ModuleNodeProps) {
@@ -149,7 +155,7 @@ function ModuleNode({
           <span className="truncate font-semibold text-fg-0">{node.name}</span>
           <span className="ml-auto font-mono text-xs text-fg-4">{countAtcs(node)}</span>
         </button>
-        {canCreate && (onAddSubModule || onRenameModule || onDeleteModule) && (
+        {canCreate && (onAddSubModule || onRenameModule || onMoveModule || onDeleteModule) && (
           <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
             {onAddSubModule && (
               <button
@@ -160,6 +166,17 @@ function ModuleNode({
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
               >
                 <Plus size={11} />
+              </button>
+            )}
+            {onMoveModule && (
+              <button
+                type="button"
+                data-testid={`module-move-${node.id}`}
+                onClick={() => onMoveModule(node)}
+                title="Move module"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <FolderInput size={11} />
               </button>
             )}
             {onRenameModule && (
@@ -200,6 +217,7 @@ function ModuleNode({
               canCreate={canCreate}
               onAddSubModule={onAddSubModule}
               onRenameModule={onRenameModule}
+              onMoveModule={onMoveModule}
               onDeleteModule={onDeleteModule}
               onSelect={onSelect}
             />
