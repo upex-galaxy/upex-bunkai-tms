@@ -34,6 +34,8 @@ interface SidebarProps {
   onEditUserStory?: (story: UserStoryWithChildren) => void
   // Opens the remove confirmation for a user story.
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
+  // Opens the acceptance-criteria management panel for a user story (BK-15).
+  onManageCriteria?: (story: UserStoryWithChildren) => void
   // Fires when a module row is clicked. Optional (default no-op) so existing
   // callers that don't track selection keep working unchanged.
   onSelect?: (moduleId: string) => void
@@ -54,6 +56,7 @@ export function Sidebar({
   onNewUserStory,
   onEditUserStory,
   onDeleteUserStory,
+  onManageCriteria,
   onSelect,
 }: SidebarProps) {
   return (
@@ -94,6 +97,7 @@ export function Sidebar({
             onNewUserStory={onNewUserStory}
             onEditUserStory={onEditUserStory}
             onDeleteUserStory={onDeleteUserStory}
+            onManageCriteria={onManageCriteria}
             onSelect={onSelect}
           />
         ))}
@@ -116,6 +120,7 @@ interface ModuleNodeProps {
   onNewUserStory?: (node: ModuleTreeNode) => void
   onEditUserStory?: (story: UserStoryWithChildren) => void
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
+  onManageCriteria?: (story: UserStoryWithChildren) => void
   onSelect?: (moduleId: string) => void
 }
 
@@ -133,6 +138,7 @@ function ModuleNode({
   onNewUserStory,
   onEditUserStory,
   onDeleteUserStory,
+  onManageCriteria,
   onSelect,
 }: ModuleNodeProps) {
   const hasChildren
@@ -251,6 +257,7 @@ function ModuleNode({
               onNewUserStory={onNewUserStory}
               onEditUserStory={onEditUserStory}
               onDeleteUserStory={onDeleteUserStory}
+              onManageCriteria={onManageCriteria}
               onSelect={onSelect}
             />
           ))}
@@ -265,8 +272,27 @@ function ModuleNode({
                   <span className="font-mono text-xs text-accent">{story.external_id}</span>
                 )}
                 <span className="truncate text-fg-2">{story.title}</span>
-                {canCreate && (onEditUserStory || onDeleteUserStory) && (
+                {story.status === 'ready_to_test' && (
+                  <span
+                    data-testid={`story-status-${story.id}`}
+                    className="flex-shrink-0 rounded-1 bg-accent-soft px-1 font-mono text-[10px] font-semibold text-accent"
+                  >
+                    ready
+                  </span>
+                )}
+                {canCreate && (onManageCriteria || onEditUserStory || onDeleteUserStory) && (
                   <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
+                    {onManageCriteria && (
+                      <button
+                        type="button"
+                        data-testid={`story-criteria-${story.id}`}
+                        onClick={() => onManageCriteria(story)}
+                        title="Manage acceptance criteria"
+                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+                      >
+                        <ListChecks size={10} />
+                      </button>
+                    )}
                     {onEditUserStory && (
                       <button
                         type="button"
