@@ -831,6 +831,10 @@ export interface Database {
         }
         Returns: undefined
       }
+      bunkai_set_user_story_status: {
+        Args: { p_id: string, p_status: string }
+        Returns: Json
+      }
       bunkai_update_module: {
         Args: {
           p_description?: string

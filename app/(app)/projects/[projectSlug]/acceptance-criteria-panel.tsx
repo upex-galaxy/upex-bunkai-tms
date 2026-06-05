@@ -2,6 +2,7 @@
 
 import type { AcceptanceCriterion, UserStoryStatus } from '@lib/types';
 import { MarkdownEditor } from '@components/markdown/markdown-editor';
+import { MarkdownRenderer } from '@components/markdown/markdown-renderer';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { byteLength } from '@lib/markdown/format';
@@ -293,51 +294,58 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
                             </div>
                           )
                         : (
-                            <div className="flex items-center gap-2 px-3 py-2">
-                              <span className="w-5 flex-shrink-0 text-right font-mono text-xs text-fg-4">{index + 1}</span>
-                              <span className="min-w-0 flex-1 truncate text-sm text-fg-1" title={ac.title}>{ac.title}</span>
-                              <div className="flex flex-shrink-0 items-center gap-0.5">
-                                <button
-                                  type="button"
-                                  data-testid={`ac-up-${ac.id}`}
-                                  onClick={() => { void moveCriterion(ac, -1); }}
-                                  disabled={busy || index === 0}
-                                  title="Move up"
-                                  className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
-                                >
-                                  <ArrowUp size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  data-testid={`ac-down-${ac.id}`}
-                                  onClick={() => { void moveCriterion(ac, 1); }}
-                                  disabled={busy || index === criteria.length - 1}
-                                  title="Move down"
-                                  className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
-                                >
-                                  <ArrowDown size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  data-testid={`ac-edit-${ac.id}`}
-                                  onClick={() => startEdit(ac)}
-                                  disabled={busy}
-                                  title="Edit criterion"
-                                  className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:opacity-30"
-                                >
-                                  <Pencil size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  data-testid={`ac-remove-${ac.id}`}
-                                  onClick={() => { void removeCriterion(ac); }}
-                                  disabled={busy}
-                                  title="Remove criterion"
-                                  className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-signal-fail disabled:opacity-30"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                            <div className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 flex-shrink-0 text-right font-mono text-xs text-fg-4">{index + 1}</span>
+                                <span className="min-w-0 flex-1 truncate text-sm text-fg-1" title={ac.title}>{ac.title}</span>
+                                <div className="flex flex-shrink-0 items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    data-testid={`ac-up-${ac.id}`}
+                                    onClick={() => { void moveCriterion(ac, -1); }}
+                                    disabled={busy || index === 0}
+                                    title="Move up"
+                                    className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    data-testid={`ac-down-${ac.id}`}
+                                    onClick={() => { void moveCriterion(ac, 1); }}
+                                    disabled={busy || index === criteria.length - 1}
+                                    title="Move down"
+                                    className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    data-testid={`ac-edit-${ac.id}`}
+                                    onClick={() => startEdit(ac)}
+                                    disabled={busy}
+                                    title="Edit criterion"
+                                    className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:opacity-30"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    data-testid={`ac-remove-${ac.id}`}
+                                    onClick={() => { void removeCriterion(ac); }}
+                                    disabled={busy}
+                                    title="Remove criterion"
+                                    className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-signal-fail disabled:opacity-30"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </div>
+                              {ac.description != null && ac.description.trim().length > 0 && (
+                                <div className="mt-1.5 pl-7">
+                                  <MarkdownRenderer content={ac.description} className="text-xs text-fg-3" />
+                                </div>
+                              )}
                             </div>
                           )}
                     </li>
