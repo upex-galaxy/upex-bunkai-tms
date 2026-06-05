@@ -784,6 +784,10 @@ export interface Database {
       bunkai_is_workspace_admin: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_member: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_owner: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_move_module: {
+        Args: { p_module_id: string, p_new_parent_id?: string }
+        Returns: Json
+      }
       bunkai_save_atc: {
         Args: {
           p_ac_ids: string[]
