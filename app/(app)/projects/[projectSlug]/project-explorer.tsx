@@ -1,14 +1,16 @@
 'use client';
 
-import type { ModuleTreeNode } from '@lib/types';
+import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { useMemo, useState } from 'react';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
+import { DeleteUserStoryDialog } from './delete-user-story-dialog';
 import { MoveModuleDialog } from './move-module-dialog';
 import { RenameModuleForm } from './rename-module-form';
+import { UserStoryForm } from './user-story-form';
 
 interface ProjectExplorerProps {
   projectId: string
@@ -88,6 +90,9 @@ export function ProjectExplorer({
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<ModuleTreeNode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTreeNode | null>(null);
+  const [newStoryModule, setNewStoryModule] = useState<ModuleTreeNode | null>(null);
+  const [editStory, setEditStory] = useState<UserStoryWithChildren | null>(null);
+  const [deleteStory, setDeleteStory] = useState<UserStoryWithChildren | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
@@ -125,6 +130,9 @@ export function ProjectExplorer({
             onRenameModule={setRenameTarget}
             onMoveModule={setMoveTarget}
             onDeleteModule={setDeleteTarget}
+            onNewUserStory={setNewStoryModule}
+            onEditUserStory={setEditStory}
+            onDeleteUserStory={setDeleteStory}
             onSelect={setSelectedModuleId}
           />
         </div>
@@ -208,6 +216,60 @@ export function ProjectExplorer({
                 setDeleteTarget(null);
               }}
               onCancel={() => setDeleteTarget(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {newStoryModule && (
+        <div
+          data-testid="new-user-story-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setNewStoryModule(null)}
+        >
+          <div className="w-full max-w-[520px]" onClick={e => e.stopPropagation()}>
+            <UserStoryForm
+              moduleId={newStoryModule.id}
+              onSaved={() => setNewStoryModule(null)}
+              onCancel={() => setNewStoryModule(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editStory && (
+        <div
+          data-testid="edit-user-story-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setEditStory(null)}
+        >
+          <div className="w-full max-w-[520px]" onClick={e => e.stopPropagation()}>
+            <UserStoryForm
+              story={{
+                id: editStory.id,
+                title: editStory.title,
+                description: editStory.description,
+                external_id: editStory.external_id,
+              }}
+              onSaved={() => setEditStory(null)}
+              onCancel={() => setEditStory(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {deleteStory && (
+        <div
+          data-testid="delete-user-story-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setDeleteStory(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <DeleteUserStoryDialog
+              storyId={deleteStory.id}
+              storyTitle={deleteStory.title}
+              onDeleted={() => setDeleteStory(null)}
+              onCancel={() => setDeleteStory(null)}
             />
           </div>
         </div>

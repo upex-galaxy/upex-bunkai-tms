@@ -54,6 +54,7 @@ export interface Module {
 export interface UserStory {
   id: Uuid
   module_id: Uuid
+  project_id: Uuid | null
   title: string
   description: string | null
   external_id: string | null

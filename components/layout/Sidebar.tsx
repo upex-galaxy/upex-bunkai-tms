@@ -1,8 +1,8 @@
 'use client';
 
-import type { Atc, ModuleTreeNode } from '@lib/types';
+import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { cn } from '@lib/utils';
-import { ChevronDown, ChevronRight, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FilePlus, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -28,6 +28,12 @@ interface SidebarProps {
   onMoveModule?: (node: ModuleTreeNode) => void
   // Opens the delete confirmation for the given node.
   onDeleteModule?: (node: ModuleTreeNode) => void
+  // Opens the new-user-story form anchored to the given module.
+  onNewUserStory?: (node: ModuleTreeNode) => void
+  // Opens the edit form for a user story.
+  onEditUserStory?: (story: UserStoryWithChildren) => void
+  // Opens the remove confirmation for a user story.
+  onDeleteUserStory?: (story: UserStoryWithChildren) => void
   // Fires when a module row is clicked. Optional (default no-op) so existing
   // callers that don't track selection keep working unchanged.
   onSelect?: (moduleId: string) => void
@@ -45,6 +51,9 @@ export function Sidebar({
   onRenameModule,
   onMoveModule,
   onDeleteModule,
+  onNewUserStory,
+  onEditUserStory,
+  onDeleteUserStory,
   onSelect,
 }: SidebarProps) {
   return (
@@ -82,6 +91,9 @@ export function Sidebar({
             onRenameModule={onRenameModule}
             onMoveModule={onMoveModule}
             onDeleteModule={onDeleteModule}
+            onNewUserStory={onNewUserStory}
+            onEditUserStory={onEditUserStory}
+            onDeleteUserStory={onDeleteUserStory}
             onSelect={onSelect}
           />
         ))}
@@ -101,6 +113,9 @@ interface ModuleNodeProps {
   onRenameModule?: (node: ModuleTreeNode) => void
   onMoveModule?: (node: ModuleTreeNode) => void
   onDeleteModule?: (node: ModuleTreeNode) => void
+  onNewUserStory?: (node: ModuleTreeNode) => void
+  onEditUserStory?: (story: UserStoryWithChildren) => void
+  onDeleteUserStory?: (story: UserStoryWithChildren) => void
   onSelect?: (moduleId: string) => void
 }
 
@@ -115,6 +130,9 @@ function ModuleNode({
   onRenameModule,
   onMoveModule,
   onDeleteModule,
+  onNewUserStory,
+  onEditUserStory,
+  onDeleteUserStory,
   onSelect,
 }: ModuleNodeProps) {
   const hasChildren
@@ -168,6 +186,17 @@ function ModuleNode({
                 <Plus size={11} />
               </button>
             )}
+            {onNewUserStory && (
+              <button
+                type="button"
+                data-testid={`module-new-story-${node.id}`}
+                onClick={() => onNewUserStory(node)}
+                title="New user story"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <FilePlus size={11} />
+              </button>
+            )}
             {onMoveModule && (
               <button
                 type="button"
@@ -219,18 +248,49 @@ function ModuleNode({
               onRenameModule={onRenameModule}
               onMoveModule={onMoveModule}
               onDeleteModule={onDeleteModule}
+              onNewUserStory={onNewUserStory}
+              onEditUserStory={onEditUserStory}
+              onDeleteUserStory={onDeleteUserStory}
               onSelect={onSelect}
             />
           ))}
           {node.user_stories.map(story => (
             <div key={story.id}>
               <div
-                className="flex h-6 items-center gap-1.5 text-sm text-fg-2"
+                className="group relative flex h-6 items-center gap-1.5 text-sm text-fg-2 hover:bg-surface-2"
                 style={{ paddingLeft: indent + 18, paddingRight: 8 }}
               >
                 <FileText size={11} className="text-fg-3" />
-                <span className="font-mono text-xs text-accent">{story.external_id}</span>
+                {story.external_id && (
+                  <span className="font-mono text-xs text-accent">{story.external_id}</span>
+                )}
                 <span className="truncate text-fg-2">{story.title}</span>
+                {canCreate && (onEditUserStory || onDeleteUserStory) && (
+                  <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
+                    {onEditUserStory && (
+                      <button
+                        type="button"
+                        data-testid={`story-edit-${story.id}`}
+                        onClick={() => onEditUserStory(story)}
+                        title="Edit story"
+                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+                      >
+                        <Pencil size={10} />
+                      </button>
+                    )}
+                    {onDeleteUserStory && (
+                      <button
+                        type="button"
+                        data-testid={`story-delete-${story.id}`}
+                        onClick={() => onDeleteUserStory(story)}
+                        title="Remove story"
+                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               {story.acceptance_criteria.map(ac => (
                 <div
