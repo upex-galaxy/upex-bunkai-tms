@@ -81,7 +81,7 @@ export default async function ProjectPage({ params }: PageProps) {
     : { data: [] };
 
   const modules = (modulesData ?? []) as Module[];
-  const stories = (storiesData ?? []);
+  const stories = (storiesData ?? []) as UserStory[];
   const atcs = (atcsData ?? []) as Atc[];
 
   const tree = buildModuleTree({

@@ -575,6 +575,7 @@ export interface Database {
           id: string
           module_id: string
           project_id: string | null
+          status: string
           title: string
         }
         Insert: {
@@ -586,6 +587,7 @@ export interface Database {
           id?: string
           module_id: string
           project_id?: string | null
+          status?: string
           title: string
         }
         Update: {
@@ -597,6 +599,7 @@ export interface Database {
           id?: string
           module_id?: string
           project_id?: string | null
+          status?: string
           title?: string
         }
         Relationships: [
@@ -782,6 +785,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      bunkai_archive_acceptance_criterion: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       bunkai_archive_module_subtree: {
         Args: { p_module_id: string }
         Returns: Json
@@ -791,9 +798,22 @@ export interface Database {
         Returns: string
       }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_insert_acceptance_criterion: {
+        Args: {
+          p_description?: string
+          p_position?: number
+          p_title: string
+          p_user_story_id: string
+        }
+        Returns: Json
+      }
       bunkai_is_workspace_admin: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_member: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_owner: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_move_acceptance_criterion: {
+        Args: { p_id: string, p_new_position: number }
+        Returns: Json
+      }
       bunkai_move_module: {
         Args: { p_module_id: string, p_new_parent_id?: string }
         Returns: Json
@@ -810,6 +830,10 @@ export interface Database {
           p_user_story_id: string
         }
         Returns: undefined
+      }
+      bunkai_set_user_story_status: {
+        Args: { p_id: string, p_status: string }
+        Returns: Json
       }
       bunkai_update_module: {
         Args: {

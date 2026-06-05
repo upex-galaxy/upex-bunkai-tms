@@ -5,6 +5,7 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { useMemo, useState } from 'react';
+import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
 import { DeleteUserStoryDialog } from './delete-user-story-dialog';
@@ -93,6 +94,7 @@ export function ProjectExplorer({
   const [newStoryModule, setNewStoryModule] = useState<ModuleTreeNode | null>(null);
   const [editStory, setEditStory] = useState<UserStoryWithChildren | null>(null);
   const [deleteStory, setDeleteStory] = useState<UserStoryWithChildren | null>(null);
+  const [manageStory, setManageStory] = useState<UserStoryWithChildren | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
@@ -133,6 +135,7 @@ export function ProjectExplorer({
             onNewUserStory={setNewStoryModule}
             onEditUserStory={setEditStory}
             onDeleteUserStory={setDeleteStory}
+            onManageCriteria={setManageStory}
             onSelect={setSelectedModuleId}
           />
         </div>
@@ -270,6 +273,23 @@ export function ProjectExplorer({
               storyTitle={deleteStory.title}
               onDeleted={() => setDeleteStory(null)}
               onCancel={() => setDeleteStory(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {manageStory && (
+        <div
+          data-testid="acceptance-criteria-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setManageStory(null)}
+        >
+          <div className="w-full max-w-[560px]" onClick={e => e.stopPropagation()}>
+            <AcceptanceCriteriaPanel
+              storyId={manageStory.id}
+              storyTitle={manageStory.title}
+              initialStatus={manageStory.status}
+              onCancel={() => setManageStory(null)}
             />
           </div>
         </div>

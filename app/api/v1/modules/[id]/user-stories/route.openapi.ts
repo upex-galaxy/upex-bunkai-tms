@@ -9,6 +9,7 @@ const UserStorySchema = z
     description: z.string().nullable(),
     external_id: z.string().nullable(),
     external_url: z.string().nullable(),
+    status: z.enum(['draft', 'ready_to_test']).describe('Ready-to-test gate (BK-15).'),
     created_at: z.string().datetime(),
     archived_at: z.string().datetime().nullable(),
   })

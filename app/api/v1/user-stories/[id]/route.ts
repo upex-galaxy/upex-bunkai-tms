@@ -16,12 +16,15 @@ import { z } from 'zod';
 // the existing user_stories RLS policies; the Markdown description is sanitized
 // on save (BK-16).
 
-const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, created_at, archived_at';
+const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, status, created_at, archived_at';
 
 const UpdateBodySchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
   external_id: z.string().nullable().optional(),
+  // BK-15 ready-to-test gate: ready_to_test is blocked while the story has zero
+  // active acceptance criteria.
+  status: z.enum(['draft', 'ready_to_test']).optional(),
 });
 
 export const GET = withApiHandler(async (request: NextRequest) => {
@@ -71,7 +74,8 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   const hasTitle = body.title !== undefined;
   const hasDescription = Object.prototype.hasOwnProperty.call(body, 'description');
   const hasExternalId = Object.prototype.hasOwnProperty.call(body, 'external_id');
-  if (!hasTitle && !hasDescription && !hasExternalId) {
+  const hasStatus = body.status !== undefined;
+  if (!hasTitle && !hasDescription && !hasExternalId && !hasStatus) {
     throw new ApiError('validation_failed', 'Provide a field to update.', {
       details: { reason: 'no_fields' },
     });
@@ -132,10 +136,61 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     }
   }
 
-  // An update that resolved to no changes (e.g. resubmitting an identical, locked
-  // Jira key) must not issue an empty UPDATE whose 0-row result would be mistaken
-  // for an RLS denial — return the current row instead.
-  if (Object.keys(update).length === 0) {
+  let resultRow: unknown = null;
+
+  // Field edits (title / description / Jira key) ride the RLS-scoped update.
+  if (Object.keys(update).length > 0) {
+    const { data, error } = await supabase
+      .from('user_stories')
+      .update(update)
+      .eq('id', storyId)
+      .is('archived_at', null)
+      .select(STORY_COLUMNS)
+      .maybeSingle();
+    if (error) {
+      mapStoryWriteError(error);
+    }
+    if (!data) {
+      // The row exists (we read it) but the RLS-scoped update touched no rows ->
+      // the caller is a viewer / non-member.
+      throw new ApiError('forbidden', 'You must be a member of this project.', {
+        details: { reason: 'not_a_member' },
+      });
+    }
+    resultRow = data;
+  }
+
+  // Status transition (BK-15) runs through a serialized SECURITY DEFINER setter
+  // that locks the story row and re-counts active criteria under that lock, so a
+  // concurrent last-criterion archive cannot strand the story in ready_to_test
+  // with zero criteria. 45010 = the ready-to-test gate failed.
+  if (hasStatus) {
+    const { data, error } = await supabase.rpc('bunkai_set_user_story_status', {
+      p_id: storyId,
+      p_status: body.status as 'draft' | 'ready_to_test',
+    });
+    if (error) {
+      if (error.code === '42501') {
+        throw new ApiError('forbidden', 'You must be a member of this project.', {
+          details: { reason: 'not_a_member' },
+        });
+      }
+      if (error.code === 'P0002') {
+        throw new ApiError('not_found', 'Story not found.');
+      }
+      if (error.code === '45010') {
+        throw new ApiError('conflict', 'Add at least one acceptance criterion before marking the story ready to test.', {
+          details: { reason: 'ac_required_for_ready_to_test' },
+        });
+      }
+      throw new ApiError('internal_error', error.message);
+    }
+    resultRow = data;
+  }
+
+  // Nothing actually changed (e.g. resubmitting an identical, locked Jira key) ->
+  // return the current row so the 0-row result is not mistaken for a denial.
+  if (resultRow === null) {
     const { data: current, error: currentError } = await supabase
       .from('user_stories')
       .select(STORY_COLUMNS)
@@ -145,28 +200,10 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     if (currentError) {
       throw new ApiError('internal_error', currentError.message);
     }
-    return jsonResponse({ user_story: current }, { status: 200 });
+    resultRow = current;
   }
 
-  const { data, error } = await supabase
-    .from('user_stories')
-    .update(update)
-    .eq('id', storyId)
-    .is('archived_at', null)
-    .select(STORY_COLUMNS)
-    .maybeSingle();
-  if (error) {
-    mapStoryWriteError(error);
-  }
-  if (!data) {
-    // The row exists (we read it) but the RLS-scoped update touched no rows -> the
-    // caller is a viewer / non-member.
-    throw new ApiError('forbidden', 'You must be a member of this project.', {
-      details: { reason: 'not_a_member' },
-    });
-  }
-
-  return jsonResponse({ user_story: data }, { status: 200 });
+  return jsonResponse({ user_story: resultRow }, { status: 200 });
 });
 
 export const DELETE = withApiHandler(async (request: NextRequest) => {
