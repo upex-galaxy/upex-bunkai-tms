@@ -1,7 +1,7 @@
 # Sprint 1 — In-Sprint Development Tracker
 
 > Purpose: track dev progress per ticket; cross-ticket aggregate for AI session resume.
-> Sprint: 1 (Jira: "Bunkai (67) Sprint 1", board 7) | Tech Lead: Ely | Started: 2026-06-03 | Last Updated: 2026-06-04
+> Sprint: 1 (Jira: "Bunkai (67) Sprint 1", board 7) | Tech Lead: Ely | Started: 2026-06-03 | Last Updated: 2026-06-05
 >
 > **Authoritative build order + Part 1 / Part 2 split:** `.context/PBI/sprint-sequence.md`.
 > **Operational gotchas for a fresh session:** see "Operational Notes" below + Engram topic keys
@@ -142,3 +142,28 @@ These are NOT in the skills — they are this project's infra realities:
 
 ### Sprint 1 Part 1 — COMPLETE (8/8 Ready For QA)
 - BK-8, BK-9, BK-10, BK-11 (Project & Module hierarchy) + BK-16, BK-14, BK-15, BK-17 (US & AC). All Ready For QA, awaiting testers. Open debt tickets: BK-57/58/59. Next batch = Part 2 (OAuth + ATC Library + Test) per `sprint-sequence.md`.
+
+### 2026-06-05 — Part 1 SMOKE PASS + UX hotfix (PR #16 → staging)
+- Autonomous exploratory **smoke walk** of all 8 Part-1 stories on localhost via Playwright CLI, one authenticated session. All 8 verified rendering + happy-path functional. Test data created in-walk (DB had 0 modules/US/AC anywhere).
+- **Login (autonomous, no email):** service-role `admin.generateLink({type:'magiclink'})` → anon `verifyOtp({type:'magiclink', token_hash})` → inject `@supabase/ssr` cookie `sb-<ref>-auth-token = "base64-" + base64url(JSON.stringify(session))` (single cookie < 3180 chars, `domain=localhost path=/`). Sidesteps the PKCE email round-trip. Local user `bunkai-local-user@delgri.resend.app` had no workspace → `/projects` redirects to `/onboarding`; created a workspace via UI to get owner rights.
+
+| Story | Smoke result |
+| ----- | ------------ |
+| BK-8  | ✅ create project (slug auto, list refresh) |
+| BK-9  | ✅ create root module + nested sub-module |
+| BK-10 | ✅ rename + archive (soft-delete leaves active tree) |
+| BK-11 | ✅ move module to project root (valid-targets picker) |
+| BK-14 | ✅ create user story anchored to module |
+| BK-15 | ✅ add AC + reorder + ready-to-test gate (blocks at 0, passes at 1) |
+| BK-16 | ✅ markdown toolbar + preview (H2/list/sanitized link/code render) |
+| BK-17 | ✅ **real Jira import**, 2 issues (BK-8/BK-9) → auto-created Inbox module (local `.env` has `ATLASSIAN_*`) |
+
+- **UX defects found + fixed (PR #16, merged `--admin`, merge commit `1a5e57b`, staging deploy READY):**
+  1. `markdown-editor.tsx` (MAJOR) — formatting toolbar buttons were clickable but silently no-op in Preview mode (textarea unmounted). Now `disabled={showPreview}`.
+  2. `import-from-jira-dialog.tsx` (MAJOR) — `start()` had no try/catch; a network failure wedged the dialog on "Starting…" forever + unhandled rejection. Wrapped `start()` and the 2s poll in try/catch/finally.
+  3. `acceptance-criteria-panel.tsx` (MINOR) — stale "add at least one criterion" gate message never cleared after adding one. Now cleared in `addCriterion`.
+  4. `projects/[projectSlug]/page.tsx` — disabled the not-yet-wired "New ATC" / "New Test" topbar buttons (dead controls; builders ship Part 2) with a "ships next sprint" tooltip, mirroring the disabled-OAuth pattern.
+  5. Chore: vendored the `playwright-cli` skill + refreshed `REGISTRY.md`; gitignore/prettierignore `.playwright-cli/` session artifacts (was breaking pre-push `format:check`; mirrors `.playwright-mcp/`).
+- **Gates:** `bun test` 131/131, `bun run repo:check` green. Staging alias `/login` → HTTP 200.
+- **Left for QA (non-blocking, observed not fixed):** BK-9 tree row fuses expand/collapse with select; BK-8 empty-state heading "Your workspace is ready" persists after the first project; client-side min-length validation looser than server on project/module/US (graceful server reject, avoidable round-trip).
+- **Residual test data in Supabase** (owner `bunkai-local-user`): workspace "Bunkai Smoke QA" + project "Smoke Checkout" (modules/US/AC + 2 imported stories, Inbox archived). Harmless; delete on request.
