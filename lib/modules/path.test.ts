@@ -1,4 +1,4 @@
-import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, moduleNameError, nextPosition, rebuildModulePath } from '@lib/modules/path';
+import { buildModulePath, computeDepth, isDescendantPath, MAX_MODULE_DEPTH, moduleNameError, movedSubtreeMaxDepth, nextPosition, rebuildModulePath } from '@lib/modules/path';
 import { describe, expect, test } from 'bun:test';
 
 describe('buildModulePath', () => {
@@ -110,5 +110,46 @@ describe('rebuildModulePath', () => {
 
   test('an unrelated path passes through unchanged', () => {
     expect(rebuildModulePath('payment', 'pay', 'checkout/cart')).toBe('checkout/cart');
+  });
+});
+
+describe('isDescendantPath', () => {
+  test('the node itself counts (cannot move under itself)', () => {
+    expect(isDescendantPath('payment', 'payment')).toBe(true);
+  });
+
+  test('a direct or deep descendant is detected', () => {
+    expect(isDescendantPath('payment', 'payment/refunds')).toBe(true);
+    expect(isDescendantPath('payment', 'payment/refunds/partial')).toBe(true);
+  });
+
+  test('a string-prefix sibling is NOT a descendant (slash guards it)', () => {
+    expect(isDescendantPath('payment', 'payments')).toBe(false);
+  });
+
+  test('an unrelated path is not a descendant', () => {
+    expect(isDescendantPath('payment', 'checkout/cart')).toBe(false);
+  });
+});
+
+describe('movedSubtreeMaxDepth', () => {
+  test('moving a depth-1 leaf under a depth-2 parent → depth 3', () => {
+    // source 'payment' (depth 1), subtree max 1, new parent 'a/b' (depth 2).
+    expect(movedSubtreeMaxDepth('payment', 1, 'a/b')).toBe(3);
+  });
+
+  test('moving a branch keeps relative height (deepest stays within budget)', () => {
+    // source 'payment' depth 1 with a child → subtree max 2; under 'a/b/c/d' (depth 4)
+    // → new source depth 5, deepest 6 (== MAX, allowed).
+    expect(movedSubtreeMaxDepth('payment', 2, 'a/b/c/d')).toBe(MAX_MODULE_DEPTH);
+  });
+
+  test('one level too deep is detectable (> MAX)', () => {
+    expect(movedSubtreeMaxDepth('payment', 2, 'a/b/c/d/e')).toBe(MAX_MODULE_DEPTH + 1);
+  });
+
+  test('moving to the project root lands the source at depth 1', () => {
+    // nested source 'a/b/payment' (depth 3) with subtree max 4 → to root: shift -2 → max 2.
+    expect(movedSubtreeMaxDepth('a/b/payment', 4, null)).toBe(2);
   });
 });

@@ -27,6 +27,9 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const UpdateBodySchema = z.object({
   name: z.string().optional(),
   description: z.string().nullable().optional(),
+  // BK-11 move: a UUID re-parents under that module; null moves to the project
+  // root; the key absent means "no move". Processed by bunkai_move_module.
+  parent_module_id: z.string().uuid().nullable().optional(),
 });
 
 export const PATCH = withApiHandler(async (request: NextRequest) => {
@@ -50,8 +53,9 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   // not truthiness — decides whether description is touched.
   const hasName = body.name !== undefined;
   const hasDescription = Object.prototype.hasOwnProperty.call(body, 'description');
-  if (!hasName && !hasDescription) {
-    throw new ApiError('validation_failed', 'Provide a new name or description.', {
+  const hasParent = Object.prototype.hasOwnProperty.call(body, 'parent_module_id');
+  if (!hasName && !hasDescription && !hasParent) {
+    throw new ApiError('validation_failed', 'Provide a new name, description, or parent.', {
       details: { reason: 'no_fields' },
     });
   }
@@ -83,31 +87,53 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   // archived module is filtered out here so an archived id reads as 404.
   await assertActiveModule(supabase, moduleId);
 
-  // Omit the args we are not changing — the SQL params default to NULL / false,
-  // so the function leaves the path/name (or description) untouched accordingly.
-  // Clearing the description is "touch it (p_update_description) but send no
-  // value", which the NULL default turns into `description = NULL`.
-  const rpcArgs: {
-    p_module_id: string
-    p_update_description: boolean
-    p_name?: string
-    p_new_slug?: string
-    p_description?: string
-  } = { p_module_id: moduleId, p_update_description: hasDescription };
-  if (trimmedName !== null && slug !== null) {
-    rpcArgs.p_name = trimmedName;
-    rpcArgs.p_new_slug = slug;
-  }
-  if (description !== null) {
-    rpcArgs.p_description = description;
+  let result: unknown = null;
+
+  // Rename / description edit. Omit the args we are not changing — the SQL
+  // params default to NULL / false, so the function leaves name/path (or
+  // description) untouched. Clearing the description is "touch it
+  // (p_update_description) but send no value", which the NULL default applies.
+  if (hasName || hasDescription) {
+    const rpcArgs: {
+      p_module_id: string
+      p_update_description: boolean
+      p_name?: string
+      p_new_slug?: string
+      p_description?: string
+    } = { p_module_id: moduleId, p_update_description: hasDescription };
+    if (trimmedName !== null && slug !== null) {
+      rpcArgs.p_name = trimmedName;
+      rpcArgs.p_new_slug = slug;
+    }
+    if (description !== null) {
+      rpcArgs.p_description = description;
+    }
+
+    const { data, error } = await supabase.rpc('bunkai_update_module', rpcArgs);
+    if (error) {
+      mapRpcError(error);
+    }
+    result = data;
   }
 
-  const { data, error } = await supabase.rpc('bunkai_update_module', rpcArgs);
-  if (error) {
-    mapRpcError(error);
+  // Move (BK-11). A UUID re-parents under that module; omitting p_new_parent_id
+  // (null) moves to the project root. The function is atomic and re-bases every
+  // descendant path; cycles/depth/cross-project are rejected with reason codes.
+  if (hasParent) {
+    const newParentId = body.parent_module_id ?? null;
+    const moveArgs: { p_module_id: string, p_new_parent_id?: string } = { p_module_id: moduleId };
+    if (newParentId !== null) {
+      moveArgs.p_new_parent_id = newParentId;
+    }
+
+    const { data, error } = await supabase.rpc('bunkai_move_module', moveArgs);
+    if (error) {
+      mapRpcError(error);
+    }
+    result = data;
   }
 
-  return jsonResponse({ module: data }, { status: 200 });
+  return jsonResponse({ module: result }, { status: 200 });
 });
 
 export const DELETE = withApiHandler(async (request: NextRequest) => {
@@ -172,7 +198,9 @@ async function assertActiveModule(
 
 // Maps a Postgres/PostgREST error from an rpc() call to the house envelope. The
 // SECURITY DEFINER functions raise 42501 for a viewer and P0002 for a missing
-// module; a sibling slug collision trips unique(project_id, path) → 23505.
+// module; a sibling/destination slug collision trips unique(project_id, path) →
+// 23505; the move function raises 45001/45002/45003 (with the reason as the
+// message) for cycle / depth / invalid-parent.
 function mapRpcError(error: { code?: string, message: string }): never {
   if (error.code === '42501') {
     throw new ApiError('forbidden', 'You must be a member of this project to edit a module.', {
@@ -187,7 +215,41 @@ function mapRpcError(error: { code?: string, message: string }): never {
   if (error.code === 'P0002') {
     throw new ApiError('not_found', 'Module not found.');
   }
+  const moveReason = moveReasonFromError(error);
+  if (moveReason) {
+    throw new ApiError('validation_failed', moveMessage(moveReason), {
+      details: { reason: moveReason },
+    });
+  }
   throw new ApiError('internal_error', error.message);
+}
+
+type MoveReason = 'move_cycle' | 'depth_exceeded' | 'parent_invalid';
+
+// Resolve a move-validation reason from the rpc error — by SQLSTATE primarily,
+// falling back to the message (the function RAISEs the reason as its message).
+function moveReasonFromError(error: { code?: string, message: string }): MoveReason | null {
+  if (error.code === '45001' || error.message.includes('move_cycle')) {
+    return 'move_cycle';
+  }
+  if (error.code === '45002' || error.message.includes('depth_exceeded')) {
+    return 'depth_exceeded';
+  }
+  if (error.code === '45003' || error.message.includes('parent_invalid')) {
+    return 'parent_invalid';
+  }
+  return null;
+}
+
+function moveMessage(reason: MoveReason): string {
+  switch (reason) {
+    case 'move_cycle':
+      return 'A module cannot be moved under itself or one of its own sub-modules.';
+    case 'depth_exceeded':
+      return 'The maximum nesting depth is 6 levels.';
+    case 'parent_invalid':
+      return 'The target parent is not a valid module in this project.';
+  }
 }
 
 function nameMessage(reason: string): string {

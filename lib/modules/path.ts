@@ -62,6 +62,27 @@ export function moduleNameError(name: string): ModuleNameError | null {
   return null;
 }
 
+// True when `candidatePath` is the ancestor itself or sits under it. Used to
+// exclude a module and its whole subtree from the valid move-target set (you
+// cannot move a module under itself or its own descendant).
+export function isDescendantPath(ancestorPath: string, candidatePath: string): boolean {
+  return candidatePath === ancestorPath || candidatePath.startsWith(`${ancestorPath}/`);
+}
+
+// Resulting max depth after moving a subtree: every node's depth shifts by
+// (newSourceDepth - oldSourceDepth). `newParentPath === null` moves to the root
+// (the source lands at depth 1). The caller passes the subtree's current max
+// depth; a result > MAX_MODULE_DEPTH means the move is rejected.
+export function movedSubtreeMaxDepth(
+  sourcePath: string,
+  subtreeMaxDepth: number,
+  newParentPath: string | null,
+): number {
+  const oldSourceDepth = computeDepth(sourcePath);
+  const newSourceDepth = newParentPath === null ? 1 : computeDepth(newParentPath) + 1;
+  return subtreeMaxDepth + (newSourceDepth - oldSourceDepth);
+}
+
 // Re-base a descendant's materialized path when an ancestor's slug changes.
 // Pure mirror of the SQL `bunkai_update_module` rebuild: a path equal to the old
 // prefix becomes the new prefix; a path under `${oldPrefix}/` has its prefix
