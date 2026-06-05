@@ -1123,6 +1123,11 @@
           "external_url": {
             "type": ["string", "null"]
           },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "ready_to_test"],
+            "description": "Ready-to-test gate (BK-15)."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -1140,6 +1145,7 @@
           "description",
           "external_id",
           "external_url",
+          "status",
           "created_at",
           "archived_at"
         ]
@@ -1176,6 +1182,87 @@
           "external_id": {
             "type": ["string", "null"],
             "description": "Jira key. Immutable once set — a change returns 409."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "ready_to_test"],
+            "description": "Ready-to-test gate: moving to ready_to_test with zero active acceptance criteria returns 409 (BK-15)."
+          }
+        }
+      },
+      "AcceptanceCriterion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user_story_id",
+          "title",
+          "description",
+          "position",
+          "created_at",
+          "archived_at"
+        ]
+      },
+      "AcceptanceCriterionCreateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "3–200 chars."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional Markdown, up to 50 KB. Sanitized on save."
+          },
+          "position": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "1-based insert position; appended at the tail when omitted. Active siblings shift down atomically."
+          }
+        },
+        "required": ["title"]
+      },
+      "AcceptanceCriterionUpdateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "3–200 chars."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Markdown, up to 50 KB; null clears it."
+          },
+          "position": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "1-based target position. The active set is re-numbered contiguously around it (no gaps)."
           }
         }
       }
@@ -2917,7 +3004,7 @@
             }
           },
           "409": {
-            "description": "Duplicate or immutable Jira key.",
+            "description": "Duplicate/immutable Jira key, or ready-to-test gate (no active acceptance criteria).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2973,6 +3060,415 @@
                     }
                   },
                   "required": ["user_story"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user-stories/{id}/acceptance-criteria": {
+      "post": {
+        "tags": ["Acceptance Criteria"],
+        "summary": "Add an acceptance criterion to a user story",
+        "description": "Member-only. Inserts at the given position (or the tail), atomically shifting active siblings down so positions stay gap-free.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceCriterionCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criterion created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "acceptance_criterion": {
+                      "$ref": "#/components/schemas/AcceptanceCriterion"
+                    }
+                  },
+                  "required": ["acceptance_criterion"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User story not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (title or detail size).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Acceptance Criteria"],
+        "summary": "List a story's active acceptance criteria",
+        "description": "Member-only. Returns active (non-archived) criteria in position order.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Criteria.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "acceptance_criteria": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AcceptanceCriterion"
+                      }
+                    }
+                  },
+                  "required": ["acceptance_criteria"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/acceptance-criteria/{id}": {
+      "get": {
+        "tags": ["Acceptance Criteria"],
+        "summary": "Read an acceptance criterion",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Criterion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "acceptance_criterion": {
+                      "$ref": "#/components/schemas/AcceptanceCriterion"
+                    }
+                  },
+                  "required": ["acceptance_criterion"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Acceptance Criteria"],
+        "summary": "Edit or reorder an acceptance criterion",
+        "description": "Member-only. Edits title/detail (direct update) and/or moves position (atomic, gap-free re-number).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceCriterionUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "acceptance_criterion": {
+                      "$ref": "#/components/schemas/AcceptanceCriterion"
+                    }
+                  },
+                  "required": ["acceptance_criterion"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Acceptance Criteria"],
+        "summary": "Soft-delete (archive) an acceptance criterion",
+        "description": "Member-only. Archives the criterion, closes the position gap, and drops the parent story out of ready_to_test when it was the last active criterion (user_story_reverted).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "acceptance_criterion": {
+                      "$ref": "#/components/schemas/AcceptanceCriterion"
+                    },
+                    "user_story_reverted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["acceptance_criterion", "user_story_reverted"]
                 }
               }
             }
