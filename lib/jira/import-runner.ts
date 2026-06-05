@@ -25,50 +25,57 @@ type Admin = SupabaseClient<Database>;
 const MAX_DESCRIPTION_BYTES = 50 * 1024;
 const TRUNCATION_MARKER = '\n\n> _[Truncated on import — the original Jira description exceeded 50 KB.]_';
 const PAGE_SIZE = 100;
+// Hard ceiling on pages per run — a backstop against a non-terminating cursor.
+const MAX_PAGES = 1000;
 
 interface IssueOutcome {
   created: boolean
 }
 
+export type SearchFn = typeof searchIssues;
+
+// Public entry: build the real dependencies and run. Invoked from the enqueue
+// route's Vercel `after()` background slot.
 export async function runImportJob(jobId: string): Promise<void> {
-  const supabase = createAdminClient();
+  await executeImport(createAdminClient(), searchIssues, jobId);
+}
 
-  const { data: job, error: jobError } = await supabase
+// Testable core. Atomically claims a QUEUED job (so a retried/duplicate
+// background trigger, or the serialize race, cannot spawn a second worker that
+// double-counts), then pages through Jira. Any throw AFTER the claim lands the
+// job in `failed` — it is never left stuck in `running`.
+export async function executeImport(supabase: Admin, search: SearchFn, jobId: string): Promise<void> {
+  const { data: claimed } = await supabase
     .from('import_jobs')
-    .select('*')
+    .update({ status: 'running', started_at: new Date().toISOString() })
     .eq('id', jobId)
+    .eq('status', 'queued')
+    .select('id, project_id, jql')
     .maybeSingle();
-  if (jobError || !job) {
-    return;
-  }
-  if (job.status === 'completed' || job.status === 'failed') {
+  if (!claimed) {
+    // Not a queued job — already claimed, completed, failed, or missing.
     return;
   }
 
-  await supabase
-    .from('import_jobs')
-    .update({ status: 'running', started_at: job.started_at ?? new Date().toISOString() })
-    .eq('id', jobId);
-
-  let created = job.created_count;
-  let updated = job.updated_count;
-  let skipped = job.skipped_count;
-  const errors: ImportJobError[] = Array.isArray(job.errors) ? [...(job.errors as unknown as ImportJobError[])] : [];
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  const errors: ImportJobError[] = [];
 
   // Preload the project's active modules (name -> id, case-insensitive). The
   // Inbox is created lazily on first unmatched issue.
-  const moduleByName = await loadModules(supabase, job.project_id);
+  const moduleByName = await loadModules(supabase, claimed.project_id);
   const inbox = { id: moduleByName.get('inbox') ?? null };
 
-  let pageToken: string | null = job.next_page_token;
-
   try {
+    let pageToken: string | null = null;
+    let pages = 0;
     for (;;) {
-      const page = await searchIssues({ jql: job.jql, pageToken, maxResults: PAGE_SIZE });
+      const page = await search({ jql: claimed.jql, pageToken, maxResults: PAGE_SIZE });
 
       for (const issue of page.issues) {
         try {
-          const outcome = await importIssue(supabase, job.project_id, issue, moduleByName, inbox);
+          const outcome = await importIssue(supabase, claimed.project_id, issue, moduleByName, inbox);
           if (outcome.created) {
             created += 1;
           }
@@ -86,7 +93,7 @@ export async function runImportJob(jobId: string): Promise<void> {
         }
       }
 
-      pageToken = page.nextPageToken;
+      const next = page.nextPageToken;
       await supabase
         .from('import_jobs')
         .update({
@@ -95,13 +102,16 @@ export async function runImportJob(jobId: string): Promise<void> {
           updated_count: updated,
           skipped_count: skipped,
           errors: errors as unknown as Json,
-          next_page_token: pageToken,
+          next_page_token: next,
         })
         .eq('id', jobId);
 
-      if (page.isLast) {
+      pages += 1;
+      // Stop on the last page, a null or stuck cursor, or the page ceiling.
+      if (page.isLast || next === null || next === pageToken || pages >= MAX_PAGES) {
         break;
       }
+      pageToken = next;
     }
 
     await supabase

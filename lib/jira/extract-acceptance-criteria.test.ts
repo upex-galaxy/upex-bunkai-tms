@@ -123,4 +123,9 @@ describe('extractAcceptanceCriteria', () => {
     const md = ['Criteria', '-    ', '- Real item'].join('\n');
     expect(extractAcceptanceCriteria(md)).toEqual(['Real item']);
   });
+
+  test('skips a horizontal rule or blockquote inside the AC block (does not truncate)', () => {
+    const md = ['## Acceptance Criteria', '- One', '---', '> a note', '- Two', '## Next'].join('\n');
+    expect(extractAcceptanceCriteria(md)).toEqual(['One', 'Two']);
+  });
 });

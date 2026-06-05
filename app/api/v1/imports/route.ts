@@ -44,12 +44,14 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('not_found', 'Project not found.');
   }
 
-  // Serialize: at most one active (queued/running) import per project.
+  // Serialize: at most one active (queued/running) import per project. A partial
+  // unique index (0020) is the race-proof guard; this is the fast-path 409.
   const { data: active, error: activeError } = await supabase
     .from('import_jobs')
     .select('id')
     .eq('project_id', project_id)
     .in('status', ['queued', 'running'])
+    .limit(1)
     .maybeSingle();
   if (activeError) {
     throw new ApiError('internal_error', activeError.message);
@@ -70,6 +72,12 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
       throw new ApiError('forbidden', 'You must be a member of this project to import.', {
         details: { reason: 'not_a_member' },
+      });
+    }
+    // The one-active-per-project unique index (0020) — lost the enqueue race.
+    if (error.code === '23505') {
+      throw new ApiError('conflict', 'An import is already running for this project.', {
+        details: { reason: 'import_in_progress' },
       });
     }
     throw new ApiError('internal_error', error.message);

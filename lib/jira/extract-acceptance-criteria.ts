@@ -12,6 +12,10 @@ const ANCHOR = /^(?:acceptance criteria|acceptance criterion|ac|criteria)\s*:?$/
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s(.*)$/;
 // Any ATX heading line (`#` .. `######` followed by a space) — ends the section.
 const HEADING = /^\s*#{1,6}\s/;
+// A horizontal rule or a blockquote line — these can sit inside a real AC block
+// (ADF emits `---` for `rule` and `> ` for `blockquote`), so skip rather than
+// stop on them.
+const SKIPPABLE = /^\s*(?:-{3,}|>)/;
 
 // Strip leading `#` characters and surrounding whitespace so heading-style and
 // emphasis-style anchors (`## Acceptance Criteria`, `**AC:**` once `*` trimmed)
@@ -46,6 +50,9 @@ export function extractAcceptanceCriteria(markdown: string): string[] {
     }
     if (HEADING.test(line)) {
       break;
+    }
+    if (SKIPPABLE.test(line)) {
+      continue;
     }
     const match = line.match(LIST_ITEM);
     if (!match) {
