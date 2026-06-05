@@ -426,6 +426,72 @@ export interface Database {
           },
         ]
       }
+      import_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_count: number
+          errors: Json
+          id: string
+          imported_count: number
+          jql: string
+          next_page_token: string | null
+          project_id: string
+          skipped_count: number
+          started_at: string | null
+          status: string
+          updated_count: number
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_count?: number
+          errors?: Json
+          id?: string
+          imported_count?: number
+          jql: string
+          next_page_token?: string | null
+          project_id: string
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          updated_count?: number
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_count?: number
+          errors?: Json
+          id?: string
+          imported_count?: number
+          jql?: string
+          next_page_token?: string | null
+          project_id?: string
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          updated_count?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'import_jobs_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'import_jobs_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       magic_link_token_secrets: {
         Row: {
           ip_hash: string | null

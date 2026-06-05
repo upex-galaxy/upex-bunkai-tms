@@ -76,6 +76,31 @@ export interface AcceptanceCriterion {
   archived_at: Timestamp | null
 }
 
+export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+export interface ImportJobError {
+  jira_key?: string
+  code: string
+  message?: string
+}
+
+export interface ImportJob {
+  id: Uuid
+  workspace_id: Uuid
+  project_id: Uuid
+  jql: string
+  status: ImportJobStatus
+  next_page_token: string | null
+  imported_count: number
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  errors: ImportJobError[]
+  started_at: Timestamp | null
+  completed_at: Timestamp | null
+  created_at: Timestamp
+}
+
 export type AtcLayer = 'UI' | 'API' | 'Unit';
 export type AtcStatus = 'pass' | 'fail' | 'blocked' | 'skipped' | 'running' | 'unrun';
 
