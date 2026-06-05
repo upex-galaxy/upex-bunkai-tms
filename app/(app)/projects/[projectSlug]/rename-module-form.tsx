@@ -1,5 +1,6 @@
 'use client';
 
+import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { slugify } from '@lib/utils/slug';
@@ -156,14 +157,13 @@ export function RenameModuleForm({
           Description
           <span className="ml-2 font-normal text-fg-4">optional</span>
         </span>
-        <textarea
-          data-testid="rename-module-description"
+        <MarkdownEditor
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={setDescription}
           maxLength={MAX_DESCRIPTION_LENGTH}
           placeholder="What this module covers."
           rows={3}
-          className="flex w-full resize-y rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-sm text-fg-1 transition-colors duration-token ease-token placeholder:text-fg-4 hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          testId="rename-module-description"
         />
       </label>
 

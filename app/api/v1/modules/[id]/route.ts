@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { moduleNameError } from '@lib/modules/path';
 import { createClient } from '@lib/supabase/server';
 import { slugify } from '@lib/utils/slug';
@@ -106,7 +107,9 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
       rpcArgs.p_new_slug = slug;
     }
     if (description !== null) {
-      rpcArgs.p_description = description;
+      // Sanitize on save (BK-16) — strip dangerous raw HTML + unsafe link schemes
+      // before persisting; the renderer re-sanitizes on display.
+      rpcArgs.p_description = sanitizeMarkdown(description);
     }
 
     const { data, error } = await supabase.rpc('bunkai_update_module', rpcArgs);

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
 import { createClient } from '@lib/supabase/server';
 import { hasAlphanumeric, slugify } from '@lib/utils/slug';
@@ -133,7 +134,9 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       path,
       name: trimmedName,
       position,
-      description: description ?? null,
+      // Sanitize on save (BK-16 defense-in-depth): strip dangerous raw HTML and
+      // unsafe link schemes from the stored Markdown. The renderer re-sanitizes.
+      description: description !== undefined ? sanitizeMarkdown(description) : null,
     })
     .select('id, project_id, parent_module_id, path, name, position, description, created_at')
     .single();
