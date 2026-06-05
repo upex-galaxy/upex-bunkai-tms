@@ -19,8 +19,8 @@ import { z } from 'zod';
 
 const CreateBodySchema = z.object({
   title: z.string(),
-  description: z.string().optional(),
-  external_id: z.string().optional(),
+  description: z.string().nullable().optional(),
+  external_id: z.string().nullable().optional(),
 });
 
 const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, created_at, archived_at';
@@ -47,14 +47,14 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('validation_failed', titleMessage(titleReason), { details: { reason: titleReason } });
   }
 
-  if (description !== undefined && byteLength(description) > MAX_STORY_DESCRIPTION_BYTES) {
+  if (description != null && byteLength(description) > MAX_STORY_DESCRIPTION_BYTES) {
     throw new ApiError('validation_failed', 'Description must be at most 50 KB.', {
       details: { reason: 'description_too_long' },
     });
   }
 
   let normalizedKey: string | null = null;
-  if (external_id !== undefined && external_id.trim().length > 0) {
+  if (external_id != null && external_id.trim().length > 0) {
     const keyReason = jiraKeyError(external_id);
     if (keyReason) {
       throw new ApiError('validation_failed', 'The Jira key must read as LETTERS-NUMBER, e.g. BK-42.', {
@@ -85,7 +85,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
       module_id: moduleId,
       project_id: module.project_id,
       title: title.trim(),
-      description: description !== undefined ? sanitizeMarkdown(description) : null,
+      description: description != null ? sanitizeMarkdown(description) : null,
       external_id: normalizedKey,
     })
     .select(STORY_COLUMNS)

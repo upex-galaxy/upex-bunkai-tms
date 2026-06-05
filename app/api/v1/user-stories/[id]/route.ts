@@ -132,6 +132,22 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     }
   }
 
+  // An update that resolved to no changes (e.g. resubmitting an identical, locked
+  // Jira key) must not issue an empty UPDATE whose 0-row result would be mistaken
+  // for an RLS denial — return the current row instead.
+  if (Object.keys(update).length === 0) {
+    const { data: current, error: currentError } = await supabase
+      .from('user_stories')
+      .select(STORY_COLUMNS)
+      .eq('id', storyId)
+      .is('archived_at', null)
+      .maybeSingle();
+    if (currentError) {
+      throw new ApiError('internal_error', currentError.message);
+    }
+    return jsonResponse({ user_story: current }, { status: 200 });
+  }
+
   const { data, error } = await supabase
     .from('user_stories')
     .update(update)
