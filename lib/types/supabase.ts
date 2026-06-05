@@ -574,6 +574,7 @@ export interface Database {
           external_url: string | null
           id: string
           module_id: string
+          project_id: string | null
           title: string
         }
         Insert: {
@@ -584,6 +585,7 @@ export interface Database {
           external_url?: string | null
           id?: string
           module_id: string
+          project_id?: string | null
           title: string
         }
         Update: {
@@ -594,6 +596,7 @@ export interface Database {
           external_url?: string | null
           id?: string
           module_id?: string
+          project_id?: string | null
           title?: string
         }
         Relationships: [
@@ -602,6 +605,13 @@ export interface Database {
             columns: ['module_id']
             isOneToOne: false
             referencedRelation: 'modules'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'user_stories_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
             referencedColumns: ['id']
           },
         ]
