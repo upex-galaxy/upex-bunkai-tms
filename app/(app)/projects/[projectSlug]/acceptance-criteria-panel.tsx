@@ -97,6 +97,9 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
     if (!canAdd) { return; }
     setBusy(true);
     setError(null);
+    // Adding the first criterion resolves the ready-to-test gate, so clear any
+    // stale gate message left over from a prior blocked toggle attempt.
+    setGateMessage(null);
     const detail = newDetail.trim();
     const res = await fetch(`/api/v1/user-stories/${storyId}/acceptance-criteria`, {
       method: 'POST',

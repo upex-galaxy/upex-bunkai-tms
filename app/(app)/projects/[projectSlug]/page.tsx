@@ -111,13 +111,13 @@ export default async function ProjectPage({ params }: PageProps) {
         right={(
           <>
             <CommandPalette />
-            <Button size="sm">
+            <Button size="sm" disabled title="ATC builder ships next sprint" className="cursor-not-allowed opacity-60">
               <Plus size={11} />
               {' '}
               New ATC
               <span className="kbd ml-1">N</span>
             </Button>
-            <Button variant="primary" size="sm">
+            <Button variant="primary" size="sm" disabled title="Test builder ships next sprint" className="cursor-not-allowed opacity-60">
               <Plus size={11} />
               {' '}
               New Test

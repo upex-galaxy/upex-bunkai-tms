@@ -105,7 +105,11 @@ export function MarkdownEditor({
             data-testid={`md-tool-${t.key}`}
             title={t.title}
             onClick={t.run}
-            className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+            disabled={showPreview}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-1 text-fg-3',
+              showPreview ? 'cursor-not-allowed opacity-40' : 'hover:bg-surface-3 hover:text-fg-1',
+            )}
           >
             {t.icon}
           </button>
