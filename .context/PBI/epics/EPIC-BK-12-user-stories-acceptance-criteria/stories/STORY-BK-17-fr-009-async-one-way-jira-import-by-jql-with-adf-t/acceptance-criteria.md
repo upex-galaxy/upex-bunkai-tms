@@ -1,8 +1,8 @@
 # BK-17 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
 
-```gherkin
+```
 Feature: Async one-way Jira import by JQL
 
 Scenario: Start an import job with a valid JQL
@@ -13,7 +13,7 @@ Scenario: Start an import job with a valid JQL
   And polling /api/imports/{id} eventually returns { status: "completed", imported_count: 12, errors: [] }
 ```
 
-```gherkin
+```
 Scenario: Re-running the same import is idempotent
   Given an import previously created User Stories with external_id ACME-1..ACME-12
   When the user starts a new import with the same JQL
@@ -21,7 +21,7 @@ Scenario: Re-running the same import is idempotent
   And no duplicate user*stories rows exist for external*id ACME-1..ACME-12
 ```
 
-```gherkin
+```
 Scenario: Issues whose Jira component matches a Module name route to that Module
   Given Bunkai has Modules named "Auth", "Billing" under Project P
   And Jira issue ACME-5 has component "Auth"
@@ -29,7 +29,7 @@ Scenario: Issues whose Jira component matches a Module name route to that Module
   Then the created User Story has module_id pointing to the "Auth" Module
 ```
 
-```gherkin
+```
 Scenario: Issues with no matching component fall into the Inbox Module
   Given Jira issue ACME-9 has no component or a component name not present as Module in P
   When the import processes ACME-9
@@ -37,7 +37,7 @@ Scenario: Issues with no matching component fall into the Inbox Module
   And errors[] contains no entry for ACME-9 (Inbox routing is not an error)
 ```
 
-```gherkin
+```
 Scenario: JQL above the 500-issue ceiling is chunked
   Given a JQL that returns 1200 Jira issues
   When the import job runs
@@ -46,7 +46,7 @@ Scenario: JQL above the 500-issue ceiling is chunked
   And status is "completed"
 ```
 
-```gherkin
+```
 Scenario: Invalid Jira credentials fail the job
   Given the Workspace Jira credentials are revoked
   When a user starts an import

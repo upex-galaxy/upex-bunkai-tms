@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Estimation
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 2
 
 ---
 
@@ -28,10 +28,24 @@
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/4/2026
 - **Reporter:** Ely
 - **Assignee:** Jorgelina Abdo
 - **Labels:** hierarchy, mvp, shift-left-2026-06-01, shift-left-reviewed, wave-1

@@ -1,8 +1,8 @@
 # BK-10 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
 
-```gherkin
+```
 Scenario: Rename a Module
   Given a Module named "Payment" exists
   When I rename it to "Payments & Billing"
@@ -10,7 +10,7 @@ Scenario: Rename a Module
   And every breadcrumb under it reflects the new name
 ```
 
-```gherkin
+```
 Scenario: Rename is rejected when the name is too short
   Given a Module named "Payment" exists
   When I rename it to "P"
@@ -18,7 +18,7 @@ Scenario: Rename is rejected when the name is too short
   And I see a message that the name must be at least 2 characters
 ```
 
-```gherkin
+```
 Scenario: Soft-delete removes a Module from the active tree
   Given a Module "Legacy" with no sub-modules
   When I delete "Legacy" and confirm
@@ -26,7 +26,7 @@ Scenario: Soft-delete removes a Module from the active tree
   And it is retained as archived rather than destroyed
 ```
 
-```gherkin
+```
 Scenario: Deleting a parent Module cascades to its sub-tree and linked work
   Given a Module "Payment" with a sub-module "Refunds" and ATCs anchored under both
   When I delete "Payment" and confirm
@@ -34,7 +34,7 @@ Scenario: Deleting a parent Module cascades to its sub-tree and linked work
   And none of that work is left orphaned in the tree
 ```
 
-```gherkin
+```
 Scenario: A deleted Module's content is excluded from default listings
   Given a Module "Payment" has been deleted
   When I open the Project's default Module and ATC listings

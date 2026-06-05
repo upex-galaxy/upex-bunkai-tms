@@ -6,37 +6,36 @@
 
 ### Ely - 5/19/2026, 9:05:50 PM
 
-🧱 **Architect Annotation**
+🧱 ****Architect Annotation****
 
-*Posted by repo automation. Sections below are the architecture-grade complement to the user-facing fields (description / AC / Scope / Business Rules / Workflow). Source-of-truth on dev-side concerns — synced to local `comments.md` by `sync-jira-issues`.*
+**Posted by repo automation. Sections below are the architecture-grade complement to the user-facing fields (description / AC / Scope / Business Rules / Workflow). Source-of-truth on dev-side concerns — synced to local `comments.md` by `sync-jira-issues`.**
 
-## Technical Notes
-### Frontend
+1. 
 
 - Module context menu: `<ModuleMoveDialog />` with target-parent picker (recursive tree, with disallowed nodes greyed).
 - Pre-flight client check (cycle / depth) for instant UX feedback; server still authoritative.
 
-### Backend
+1. 
 
-- Same PATCH route as rename (BK-10), but the handler branches on whether `parent_module_id` is present.
+- Same PATCH route as rename ([https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10)), but the handler branches on whether `parent*module*id` is present.
 - Cycle detection: walk ancestors of target, fail if any equals `m_source.id`.
-- Depth check: `max_descendant_depth_of(m_source) + depth_of(new_parent) + 1 ≤ 6`.
+- Depth check: `max*descendant*depth*of(m*source) + depth*of(new*parent) + 1 ≤ 6`.
 
-### Database
+1. 
 
 - Single transaction with two UPDATEs: parent reassignment + recursive path rebuild.
 
-## Dependencies
-### Blocked By
+1. 
 
-- BK-9 (need existing modules).
-- BK-10 (the rename PATCH route is shared; merge ordering may matter).
+- [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9) (need existing modules).
+- [https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10) (the rename PATCH route is shared; merge ordering may matter).
 
-### Blocks
+1. 
 
 - EPIC-BK-008 (drag-and-drop reorder UI is built on top of this endpoint in Phase 2).
 
-## Definition of Done
+1. 
+
 - [ ] All 6 AC scenarios pass on staging.
 - [ ] Cycle-detection tested with ancestor / descendant / self-as-parent attempts.
 - [ ] Post-move depth check tested at the boundary (depth = 6 succeeds, depth = 7 rejects).
@@ -47,4 +46,3 @@
 
 
 _Synced from Jira by sync-jira-issues_
-_Last sync: 2026-05-20T00:58:03.667Z_

@@ -1,8 +1,8 @@
 # BK-16 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
-```gherkin
+```
 Scenario: Write and preview a Markdown description
   Given I am editing a User Story description
   When I type "## Steps" followed by a bullet list
@@ -10,7 +10,7 @@ Scenario: Write and preview a Markdown description
   And saving keeps that formatting when the Story is reopened
 ```
 
-```gherkin
+```
 Scenario: A table renders in preview and in the saved content
   Given I am editing a description
   When I write a Markdown table
@@ -18,7 +18,7 @@ Scenario: A table renders in preview and in the saved content
   And the saved content renders the same table later
 ```
 
-```gherkin
+```
 Scenario: A pasted script is stripped on save
   Given I paste a description that contains a script snippet
   When I save the description
@@ -26,7 +26,7 @@ Scenario: A pasted script is stripped on save
   And the surrounding text is preserved
 ```
 
-```gherkin
+```
 Scenario: Unsafe links are dropped while safe links are kept
   Given a description containing one mailto link and one javascript link
   When I save and view the description
@@ -34,7 +34,7 @@ Scenario: Unsafe links are dropped while safe links are kept
   And the javascript link has been removed
 ```
 
-```gherkin
+```
 Scenario: A body over the size limit is rejected
   Given I am editing a description
   When I submit a body larger than 50 KB

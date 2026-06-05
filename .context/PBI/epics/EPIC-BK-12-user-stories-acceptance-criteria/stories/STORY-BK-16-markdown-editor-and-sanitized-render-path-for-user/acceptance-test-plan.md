@@ -1,6 +1,6 @@
 # BK-16 — Acceptance Test Plan (QA)
 
-> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
+> Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
 # Acceptance Test Plan — BK-16: Markdown Editor | Write and Preview Markdown Safely
 
@@ -8,16 +8,17 @@
 
 ***Risk Score: 13 — HIGH***
 
-| Factor                                            | Score            |
-| ------------------------------------------------- | ---------------- |
-| New feature                                       | +3               |
-| Dynamic data (API/DB)                             | +3               |
-| Explicit ACs                                      | +2               |
-| User-facing UI                                    | +2               |
-| High effort (security + multi-layer sanitization) | +2               |
-| Multi-component (editor + sanitizer + renderer)   | +1               |
-| Priority Medium                                   | +0               |
-| ***Total****                                      | ****13 — HIGH*** |
+| Factor  | Score  |
+| --- | --- |
+| --- | --- |
+| New feature  | +3  |
+| Dynamic data (API/DB)  | +3  |
+| Explicit ACs  | +2  |
+| User-facing UI  | +2  |
+| High effort (security + multi-layer sanitization)  | +2  |
+| Multi-component (editor + sanitizer + renderer)  | +1  |
+| Priority Medium  | +0  |
+| ***Total****  | ****13 — HIGH***  |
 
 Full ATP required. No veto applies (user-facing feature with explicit security ACs).
 
@@ -53,7 +54,7 @@ Full ATP required. No veto applies (user-facing feature with explicit security A
 - AC1 does not specify which type of record opens the editor (User Story vs. Acceptance Criteria form). Both should surface the same component per the architect annotation referencing BK-14 and BK-15.
 - The story does not define behavior for an empty description save (zero-length body). Is an empty description permitted?
 - AC3 specifies "surrounding text preserved" but does not clarify multi-vector payloads (multiple script tags in one body).
-- AC4 specifies two link types (mailto, javascript:) but does not address other unsafe schemes (data:, vbscript:, ftp:). The architect annotation confirms only http/https/mailto are kept; all others are dropped — this should be verified.
+- AC4 specifies two link types (mailto, javascript:slight*smile: but does not address other unsafe schemes (data:, vbscript:, ftp:slight*smile:. The architect annotation confirms only http/https/mailto are kept; all others are dropped — this should be verified.
 - AC5 defines the error message text only partially. The exact UI copy should be confirmed against implementation.
 
 ***Edge cases not covered by story ACs:***
@@ -63,7 +64,7 @@ Full ATP required. No veto applies (user-facing feature with explicit security A
 - Empty save: is a zero-length description saved without error, or rejected?
 - Unicode/emoji in headings: does `## Hello 🔥` render and persist correctly?
 - Deeply nested lists: does a 3-level nested list degrade gracefully or corrupt?
-- Inline code in headings: does `## Install \`npm\ survive sanitization?
+- Inline code in headings: does {{## Install }}npm\ survive sanitization?
 - Consecutive unsafe tags: multiple script blocks in one paste — all must be stripped.
 - `data:` URI scheme in links: should be stripped per architect allowlist.
 - Event handlers on allowed tags: `<p onclick="alert()">text</p>` — onclick must be stripped.
@@ -96,7 +97,7 @@ When the user types the following Markdown table:
 
 ```
 | Column A | Column B |
-| -------- | -------- |
+|----------|----------|
 | Cell 1   | Cell 2   |
 ```
 
@@ -196,11 +197,14 @@ Then:
 
 1. Type the following into the description textarea:
 
-   `
-   | Column A | Column B |
-   | -------- | -------- |
-   | Cell 1   | Cell 2   |
-   `
+{{
+
+| Column A  | Column B  |
+| --- | --- |
+| ---------- | ---------- |
+| Cell 1    | Cell 2    |
+
+}}
 
 1. Observe the live preview pane.
 2. Save the record. Navigate away and reopen it.
@@ -219,11 +223,12 @@ Then:
 
 1. In the description textarea, type or paste:
 
-   `
-   Normal intro text.
-   <script>alert('xss')</script>
-   More content after the script.
-   `
+{{
+
+Normal intro text.
+<script>alert('xss')</script>
+More content after the script.
+}}
 
 1. Save the description.
 2. View the saved record in read-only mode.
@@ -248,9 +253,10 @@ Then:
 
 1. Type or paste:
 
-   `
-   Contact us at [email us](mailto:test@example.com) or [click here](javascript:alert('xss')).
-   `
+{{
+
+Contact us at [email us]([test@example.com](mailto:test@example.com)) or [click here](javascript:alert('xss')).
+}}
 
 1. Save the description.
 2. View the saved record. Inspect rendered HTML links.
@@ -311,15 +317,16 @@ Then:
 
 1. Type the following in the description textarea:
 
-   `
-   Run `npm install` to get started.
+{{
 
-   Then execute:
+Run }}npm install` to get started.
 
-   \`bash
-   npm run dev
-   \`
-   `
+Then execute:
+
+{{bash
+npm run dev
+}}
+`
 
 1. Save the description. Reopen the record.
 
@@ -341,10 +348,11 @@ Then:
 
 1. Paste the following raw HTML into the description textarea:
 
-   `
-   <p onclick="alert('xss')">Paragraph with handler</p>
-   <a onmouseover="alert('hover')">Hover link</a>
-   `
+{{
+
+<p onclick="alert('xss')">Paragraph with handler</p>
+<a onmouseover="alert('hover')">Hover link</a>
+}}
 
 1. Save the description.
 2. Inspect the rendered HTML in browser DevTools.
@@ -377,7 +385,7 @@ Then:
 
 - Paste a body containing three separate `<script>alert(n)</script>` blocks. Expected: all three are stripped. No partial survival of any script block.
 
-`data:`*** URI scheme in links:***
+`data:` ***URI scheme in links:***
 
 - Paste `[image](data:text/html,<script>alert()</script>)`. Expected: the `data:` href is stripped because it is not on the http|https|mailto allowlist. No executable content survives in the rendered link.
 

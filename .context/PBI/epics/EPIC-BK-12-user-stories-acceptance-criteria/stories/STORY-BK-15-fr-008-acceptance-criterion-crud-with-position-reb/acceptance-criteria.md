@@ -1,22 +1,22 @@
 # BK-15 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
-```gherkin
+```
 Scenario: Add an Acceptance Criterion to a User Story
   Given a User Story "Refund a paid order" with no criteria yet
   When I add an Acceptance Criterion titled "Full refund within 30 days"
   Then it appears as the first criterion under the Story
 ```
 
-```gherkin
+```
 Scenario: Inserting a criterion preserves the order of the others
   Given a Story with criteria ordered "A", "B", "C"
   When I insert "X" between "A" and "B"
   Then the order reads "A", "X", "B", "C"
 ```
 
-```gherkin
+```
 Scenario: Reordering re-numbers the criteria with no gaps
   Given a Story with criteria ordered "A", "B", "C"
   When I move "C" to the top
@@ -24,7 +24,7 @@ Scenario: Reordering re-numbers the criteria with no gaps
   And the criteria are numbered consecutively with no gaps
 ```
 
-```gherkin
+```
 Scenario: A Story with no Acceptance Criteria cannot be marked ready to test
   Given a User Story with zero Acceptance Criteria
   When I try to mark it "ready to test"
@@ -32,7 +32,7 @@ Scenario: A Story with no Acceptance Criteria cannot be marked ready to test
   And I see a message that at least one Acceptance Criterion is required
 ```
 
-```gherkin
+```
 Scenario: A criterion title shorter than the minimum is rejected
   Given I am adding an Acceptance Criterion
   When I submit the title "OK"
@@ -40,7 +40,7 @@ Scenario: A criterion title shorter than the minimum is rejected
   And I see a message that the title must be at least 3 characters
 ```
 
-```gherkin
+```
 Scenario: Removing the last criterion blocks ready-to-test again
   Given a Story marked ready to test with exactly one Acceptance Criterion
   When I remove that criterion
