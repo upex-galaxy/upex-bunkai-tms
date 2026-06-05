@@ -79,6 +79,7 @@ Thumbs.db
 .gemini/
 .claude/settings.local.json
 .playwright-mcp
+.playwright-cli
 .backups/
 
 # ===== MCP Configuration =====
