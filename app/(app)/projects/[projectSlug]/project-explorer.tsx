@@ -4,11 +4,13 @@ import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
+import { DownloadCloud } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
 import { DeleteUserStoryDialog } from './delete-user-story-dialog';
+import { ImportFromJiraDialog } from './import-from-jira-dialog';
 import { MoveModuleDialog } from './move-module-dialog';
 import { RenameModuleForm } from './rename-module-form';
 import { UserStoryForm } from './user-story-form';
@@ -95,6 +97,7 @@ export function ProjectExplorer({
   const [editStory, setEditStory] = useState<UserStoryWithChildren | null>(null);
   const [deleteStory, setDeleteStory] = useState<UserStoryWithChildren | null>(null);
   const [manageStory, setManageStory] = useState<UserStoryWithChildren | null>(null);
+  const [importing, setImporting] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
@@ -108,7 +111,7 @@ export function ProjectExplorer({
   return (
     <>
       <div className="flex flex-shrink-0 flex-col overflow-hidden">
-        <div className="flex h-8 flex-shrink-0 items-center border-b border-stroke-1 bg-surface-1 px-3">
+        <div className="flex h-8 flex-shrink-0 items-center justify-between border-b border-stroke-1 bg-surface-1 px-3">
           {breadcrumb.length > 0
             ? (
                 <span data-testid="module-breadcrumb">
@@ -118,6 +121,18 @@ export function ProjectExplorer({
             : (
                 <span className="text-xs text-fg-4">Select a module</span>
               )}
+          {canCreate && (
+            <button
+              type="button"
+              data-testid="import-from-jira"
+              onClick={() => setImporting(true)}
+              title="Import issues from Jira"
+              className="inline-flex h-5 items-center gap-1 rounded-1 px-1.5 text-xs text-fg-3 hover:bg-surface-2 hover:text-fg-1"
+            >
+              <DownloadCloud size={11} />
+              Import
+            </button>
+          )}
         </div>
         <div className="flex min-h-0 flex-1">
           <Sidebar
@@ -290,6 +305,21 @@ export function ProjectExplorer({
               storyTitle={manageStory.title}
               initialStatus={manageStory.status}
               onCancel={() => setManageStory(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {importing && (
+        <div
+          data-testid="import-from-jira-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setImporting(false)}
+        >
+          <div className="w-full max-w-[520px]" onClick={e => e.stopPropagation()}>
+            <ImportFromJiraDialog
+              projectId={projectId}
+              onClose={() => setImporting(false)}
             />
           </div>
         </div>

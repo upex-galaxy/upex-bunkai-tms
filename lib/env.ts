@@ -29,6 +29,13 @@ const EnvSchema = z.object({
   // Public app URL used for auth redirects, invite links, and OAuth callbacks.
   // Defaults to localhost in dev; must be set in every deployed env.
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+
+  // Atlassian / Jira REST — server-only. Used by the Jira import worker (BK-17).
+  // Optional: missing or invalid credentials surface as a failed import job
+  // (errors[].code = jira_unauthorized), not an app-boot error.
+  ATLASSIAN_URL: z.string().url().optional(),
+  ATLASSIAN_EMAIL: z.string().optional(),
+  ATLASSIAN_API_TOKEN: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -37,6 +44,9 @@ const parsed = EnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  ATLASSIAN_URL: process.env.ATLASSIAN_URL,
+  ATLASSIAN_EMAIL: process.env.ATLASSIAN_EMAIL,
+  ATLASSIAN_API_TOKEN: process.env.ATLASSIAN_API_TOKEN,
 });
 
 if (!parsed.success) {
