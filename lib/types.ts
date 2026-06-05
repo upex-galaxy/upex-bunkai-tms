@@ -51,6 +51,8 @@ export interface Module {
   archived_at: Timestamp | null
 }
 
+export type UserStoryStatus = 'draft' | 'ready_to_test';
+
 export interface UserStory {
   id: Uuid
   module_id: Uuid
@@ -59,6 +61,7 @@ export interface UserStory {
   description: string | null
   external_id: string | null
   external_url: string | null
+  status: UserStoryStatus
   created_at: Timestamp
   archived_at: Timestamp | null
 }
