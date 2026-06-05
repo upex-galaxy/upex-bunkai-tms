@@ -28,11 +28,14 @@ export default async function AtcEditorPage({ params }: PageProps) {
 
   if (!project) { notFound(); }
 
+  // A soft-deleted (archived) ATC must 404 on its deep-link, matching its
+  // absence from the listings (BK-10 soft-delete cascade).
   const { data: atc } = await supabase
     .from('atcs')
     .select('*')
     .eq('id', atcId)
     .eq('project_id', project.id)
+    .is('archived_at', null)
     .maybeSingle();
 
   if (!atc) { notFound(); }
@@ -44,21 +47,24 @@ export default async function AtcEditorPage({ params }: PageProps) {
     supabase.from('modules').select('*').eq('id', atc.module_id).maybeSingle(),
   ]);
 
-  // For the anchoring picker we need every story in the project + their ACs.
+  // For the anchoring picker we need every story in the project + their ACs —
+  // archived (soft-deleted) modules/stories/criteria are excluded so an ATC can
+  // never be re-anchored to retired content.
   const { data: projectModules } = await supabase
     .from('modules')
     .select('id')
-    .eq('project_id', project.id);
+    .eq('project_id', project.id)
+    .is('archived_at', null);
 
   const moduleIds = (projectModules ?? []).map(m => m.id);
 
   const { data: storiesData } = moduleIds.length > 0
-    ? await supabase.from('user_stories').select('*').in('module_id', moduleIds)
+    ? await supabase.from('user_stories').select('*').in('module_id', moduleIds).is('archived_at', null)
     : { data: [] };
 
   const storyIds = (storiesData ?? []).map(s => s.id);
   const { data: acsData } = storyIds.length > 0
-    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds).order('position', { ascending: true })
+    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds).is('archived_at', null).order('position', { ascending: true })
     : { data: [] };
 
   const stories = (storiesData ?? []) as UserStory[];
