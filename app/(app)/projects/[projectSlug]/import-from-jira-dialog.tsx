@@ -60,18 +60,23 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
     let cancelled = false;
     const timer = setInterval(() => {
       void (async () => {
-        const res = await fetch(`/api/v1/imports/${jobId}`);
-        if (!res.ok || cancelled) {
-          return;
+        try {
+          const res = await fetch(`/api/v1/imports/${jobId}`);
+          if (!res.ok || cancelled) {
+            return;
+          }
+          const body = (await res.json()) as { import_job: ImportJob };
+          setJob(body.import_job);
+          if (body.import_job.status === 'completed') {
+            router.refresh();
+            toast.success('Import completed');
+          }
+          else if (body.import_job.status === 'failed') {
+            toast.error('Import failed');
+          }
         }
-        const body = (await res.json()) as { import_job: ImportJob };
-        setJob(body.import_job);
-        if (body.import_job.status === 'completed') {
-          router.refresh();
-          toast.success('Import completed');
-        }
-        else if (body.import_job.status === 'failed') {
-          toast.error('Import failed');
+        catch {
+          // Transient network error on a poll tick — ignore; the next tick retries.
         }
       })();
     }, 2000);
@@ -87,20 +92,26 @@ export function ImportFromJiraDialog({ projectId, onClose }: ImportFromJiraDialo
     }
     setSubmitting(true);
     setError(null);
-    const res = await fetch('/api/v1/imports', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, jql: jql.trim() }),
-    });
-    if (!res.ok) {
-      setError(friendlyError((await res.json().catch(() => ({}))) as ApiErrorBody));
-      setSubmitting(false);
-      return;
+    try {
+      const res = await fetch('/api/v1/imports', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId, jql: jql.trim() }),
+      });
+      if (!res.ok) {
+        setError(friendlyError((await res.json().catch(() => ({}))) as ApiErrorBody));
+        return;
+      }
+      const body = (await res.json()) as { import_job_id: string, status: ImportJob['status'] };
+      setJobId(body.import_job_id);
+      setJob(null);
     }
-    const body = (await res.json()) as { import_job_id: string, status: ImportJob['status'] };
-    setJobId(body.import_job_id);
-    setJob(null);
-    setSubmitting(false);
+    catch {
+      setError('Could not reach the server — check your connection and try again.');
+    }
+    finally {
+      setSubmitting(false);
+    }
   }
 
   const errors: ImportJobError[] = job?.errors ?? [];
