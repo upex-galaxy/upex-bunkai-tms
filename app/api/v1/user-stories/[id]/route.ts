@@ -16,12 +16,15 @@ import { z } from 'zod';
 // the existing user_stories RLS policies; the Markdown description is sanitized
 // on save (BK-16).
 
-const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, created_at, archived_at';
+const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, status, created_at, archived_at';
 
 const UpdateBodySchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
   external_id: z.string().nullable().optional(),
+  // BK-15 ready-to-test gate: ready_to_test is blocked while the story has zero
+  // active acceptance criteria.
+  status: z.enum(['draft', 'ready_to_test']).optional(),
 });
 
 export const GET = withApiHandler(async (request: NextRequest) => {
@@ -71,7 +74,8 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   const hasTitle = body.title !== undefined;
   const hasDescription = Object.prototype.hasOwnProperty.call(body, 'description');
   const hasExternalId = Object.prototype.hasOwnProperty.call(body, 'external_id');
-  if (!hasTitle && !hasDescription && !hasExternalId) {
+  const hasStatus = body.status !== undefined;
+  if (!hasTitle && !hasDescription && !hasExternalId && !hasStatus) {
     throw new ApiError('validation_failed', 'Provide a field to update.', {
       details: { reason: 'no_fields' },
     });
@@ -90,7 +94,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('not_found', 'Story not found.');
   }
 
-  const update: { title?: string, description?: string | null, external_id?: string } = {};
+  const update: { title?: string, description?: string | null, external_id?: string, status?: 'draft' | 'ready_to_test' } = {};
 
   if (hasTitle) {
     const titleReason = storyTitleError(body.title ?? '');
@@ -130,6 +134,27 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
       }
       update.external_id = requested;
     }
+  }
+
+  if (hasStatus) {
+    // Ready-to-test gate (BK-15 AC4): a story cannot move to ready_to_test while
+    // it has zero active acceptance criteria.
+    if (body.status === 'ready_to_test') {
+      const { count, error: countError } = await supabase
+        .from('acceptance_criteria')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_story_id', storyId)
+        .is('archived_at', null);
+      if (countError) {
+        throw new ApiError('internal_error', countError.message);
+      }
+      if ((count ?? 0) === 0) {
+        throw new ApiError('conflict', 'Add at least one acceptance criterion before marking the story ready to test.', {
+          details: { reason: 'ac_required_for_ready_to_test' },
+        });
+      }
+    }
+    update.status = body.status;
   }
 
   // An update that resolved to no changes (e.g. resubmitting an identical, locked
