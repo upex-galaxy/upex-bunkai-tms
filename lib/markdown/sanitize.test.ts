@@ -66,6 +66,13 @@ describe('sanitizeMarkdown — Markdown links by scheme', () => {
     expect(out).toContain('b');
     expect(out).not.toContain('javascript:');
   });
+
+  test('a whitespace-smuggled scheme in an angle-bracket URL is dropped', () => {
+    // Angle-bracket URLs may contain whitespace, so a space inside the scheme is
+    // a real evasion vector here (the bare form is not a valid link at all).
+    const out = sanitizeMarkdown('[x](<java script:alert(1)>)');
+    expect(out).toBe('x');
+  });
 });
 
 describe('sanitizeMarkdown — does not corrupt legitimate Markdown', () => {
