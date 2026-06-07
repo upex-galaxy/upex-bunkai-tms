@@ -24,6 +24,7 @@
     - **Why over alternatives**: `AskUserQuestion` capped ~4×4, no rich free-text, can't show reference content while answering; inline prose questionnaires produce unanchored replies AI must guess-map.
     - **Mechanics**: skill `wokitoki` user-level (auto-loads every session); binary global; output lands in `~/.toki/` — **zero repo footprint**. Flow: write spec JSON → `toki <specPath>` (blocking) → parse stdout Result JSON same turn.
     - **Keep it cheap**: `AskUserQuestion` for 1-2 simple picks / single yes-no; plain chat for short answers; plain output when non-interactive (CI / no human).
+14. **NEVER RUN `build`**: NEVER run `next build` / `bun run build` / any production build. It writes `.next/` — the SAME dir a running `next dev` uses — and clobbers the dev server's chunks (CSS/JS 404, unstyled app). For local verification use `dev` (`bun run dev`) ONLY. The single exception: an explicit, important justification AND user approval first — STOP, state why a build (not dev) is required, ASK, wait for yes. Type-safety checks use `bun run types:check` (tsc, no build). Deploy builds run on Vercel, never locally.
 
 ---
 
