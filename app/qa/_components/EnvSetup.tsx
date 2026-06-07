@@ -3,15 +3,15 @@ import { Badge } from '@components/ui/badge';
 import { AlertTriangle, Database } from 'lucide-react';
 import { CodeBlock } from './CodeBlock';
 
-// Activation snippet — wrapper scripts, the `bun env` subshell, and direnv.
+// Activation snippet — wrapper scripts, source-into-current-shell, and direnv.
 const wrapperBlock = `# Wrapper dotenv-cli (cross-platform) — lanza el agente con .env ya cargado:
 bun run claude       # = dotenv -e .env -- claude
 bun run opencode     # = dotenv -e .env -- opencode`;
 
-const envShellBlock = `# bun env — abre un SUBSHELL con .env cargado para TODA la sesión.
-# Útil para que 'claude' / 'opencode' "pelados" tengan las vars sin wrapper.
-bun run env          # = dotenv -e .env -- $SHELL
-# Los MCP cachean el env al spawnear → lanzá el agente DESDE este subshell.`;
+const envShellBlock = `# Cargar .env en tu shell ACTUAL — corré esto directo en la terminal (Mac/Linux/Git Bash):
+set -a; source .env; set +a
+# Después corré 'claude' / 'opencode' pelados, con las vars ya exportadas.
+# Ojo: tiene que SER sourceado en tu shell; 'bun run' lo correría en subshell y no persiste.`;
 
 const direnvBlock = `# direnv + .envrc (Mac/Linux) — autocarga al entrar al directorio:
 direnv allow         # una vez; luego cada cd al repo exporta .env solo`;
@@ -48,7 +48,7 @@ export async function EnvSetup({ config }: { config: QaConfig }) {
           antes de lanzar el agente — tres caminos:
         </p>
         {hasWrapper && <CodeBlock language="bash" code={wrapperBlock} title="wrapper" />}
-        <CodeBlock language="bash" code={envShellBlock} title="bun env (subshell)" />
+        <CodeBlock language="bash" code={envShellBlock} title="source .env (shell actual)" />
         {hasDirenv && <CodeBlock language="bash" code={direnvBlock} title="direnv" />}
         {hasAuto && (
           <p className="text-sm text-fg-2">
