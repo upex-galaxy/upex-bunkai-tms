@@ -4,7 +4,7 @@ import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -25,29 +25,77 @@ interface ApiErrorBody {
 
 export function OnboardingForm({ userEmail }: { userEmail: string }) {
   const router = useRouter();
+  const nameRef = useRef<HTMLInputElement>(null);
+  const slugRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Browser autofill / password managers set the input DOM values WITHOUT
+  // firing React's onChange, so controlled state stays empty and the form
+  // looks invalid even though the user sees filled fields. Re-read the refs on
+  // mount (and on the next frame + a short delay, since autofill can land just
+  // after hydration) to pull those values back into state.
+  useEffect(() => {
+    const syncFromDom = () => {
+      const domName = nameRef.current?.value ?? '';
+      const domSlug = slugRef.current?.value ?? '';
+      if (domName) { setName(prev => (prev === domName ? prev : domName)); }
+      if (domSlug) {
+        setSlug(prev => (prev === domSlug ? prev : domSlug));
+        setSlugTouched(true);
+      }
+    };
+    syncFromDom();
+    const raf = requestAnimationFrame(syncFromDom);
+    const timer = setTimeout(syncFromDom, 300);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, []);
+
   const effectiveSlug = slugTouched ? slug : slugify(name);
-  const isValid = SLUG_REGEX.test(effectiveSlug) && name.trim().length > 0;
+  const normalizedSlug = slugify(effectiveSlug);
+  const isValid = SLUG_REGEX.test(normalizedSlug) && name.trim().length > 0;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid || submitting) { return; }
+    if (submitting) { return; }
+
+    // Read the live DOM values as the source of truth — this is what makes the
+    // form robust against autofill that never reached React state.
+    const rawName = (nameRef.current?.value ?? name).trim();
+    const rawSlug = slugRef.current?.value ?? slug;
+    // Honour whatever slug is in the field (typed OR autofilled) and fall back
+    // to the name only when it is empty. Reading the DOM, not slugTouched,
+    // keeps this correct when autofill never fired React's onChange.
+    const finalSlug = slugify(rawSlug.trim() || rawName);
+
+    if (!rawName) {
+      toast.error('Enter a workspace name.');
+      nameRef.current?.focus();
+      return;
+    }
+    if (!SLUG_REGEX.test(finalSlug)) {
+      toast.error('Use at least 3 letters or digits — they become the URL slug.');
+      slugRef.current?.focus();
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await fetch('/api/v1/workspaces', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slug: effectiveSlug, name: name.trim() }),
+        body: JSON.stringify({ slug: finalSlug, name: rawName }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
         const code = body.error?.code;
         const friendly = code === 'conflict'
-          ? `Slug "${effectiveSlug}" is taken — try another.`
+          ? `Slug "${finalSlug}" is taken — try another.`
           : body.error?.message ?? 'Could not create workspace.';
         toast.error(friendly);
         setSubmitting(false);
@@ -88,6 +136,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
           Workspace name
         </span>
         <Input
+          ref={nameRef}
           autoFocus
           value={name}
           onChange={e => setName(e.target.value)}
@@ -104,6 +153,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
           </span>
         </span>
         <Input
+          ref={slugRef}
           value={effectiveSlug}
           onChange={(e) => {
             setSlug(e.target.value);
@@ -112,9 +162,11 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
           placeholder="acme-qa"
           className="h-10 font-mono text-md"
         />
-        {!isValid && effectiveSlug.length > 0 && (
+        {!isValid && (name.trim().length > 0 || effectiveSlug.length > 0) && (
           <span className="mt-1 block text-xs text-accent">
-            Slug must start and end with a letter or digit, 3–40 chars.
+            {normalizedSlug.length === 0
+              ? 'Add a URL slug — lowercase letters, digits or hyphens, 3–40 chars.'
+              : 'Slug must start and end with a letter or digit, 3–40 chars.'}
           </span>
         )}
       </label>
@@ -123,7 +175,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
         type="submit"
         variant="primary"
         size="lg"
-        disabled={!isValid || submitting}
+        disabled={submitting}
         className="w-full justify-center"
       >
         {submitting ? 'Creating…' : 'Create workspace'}
