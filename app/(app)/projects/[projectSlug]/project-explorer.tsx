@@ -5,7 +5,7 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { DownloadCloud } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
@@ -99,6 +99,26 @@ export function ProjectExplorer({
   const [manageStory, setManageStory] = useState<UserStoryWithChildren | null>(null);
   const [importing, setImporting] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+
+  // Close any open modal on Escape — mirrors the CommandPalette behaviour and
+  // matches the backdrop-click dismissal each modal already has. Only one of
+  // these is ever open at a time, so clearing all close handlers is safe.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') { return; }
+      setTarget(null);
+      setRenameTarget(null);
+      setMoveTarget(null);
+      setDeleteTarget(null);
+      setNewStoryModule(null);
+      setEditStory(null);
+      setDeleteStory(null);
+      setManageStory(null);
+      setImporting(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
   const flatModules = useMemo(() => flattenModules(tree), [tree]);
