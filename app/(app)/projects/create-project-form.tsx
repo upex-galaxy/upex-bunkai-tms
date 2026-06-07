@@ -20,6 +20,10 @@ interface CreateProjectFormProps {
   // The active workspace UUID, resolved server-side and passed down so the
   // form never has to guess which workspace it is operating in.
   workspaceId: string
+  // Whether the active workspace already has projects. Switches the heading
+  // from the first-time "workspace is ready" welcome to a plain create-another
+  // register, so it doesn't keep greeting a populated workspace.
+  hasProjects: boolean
 }
 
 // Maps the backend's hybrid error model (house `code` + granular
@@ -51,7 +55,7 @@ function friendlyError(body: ApiErrorBody): string {
   }
 }
 
-export function CreateProjectForm({ workspaceId }: CreateProjectFormProps) {
+export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFormProps) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -110,11 +114,12 @@ export function CreateProjectForm({ workspaceId }: CreateProjectFormProps) {
           Create project
         </div>
         <h1 className="m-0 text-xl font-bold tracking-tight text-fg-0">
-          Your workspace is ready
+          {hasProjects ? 'Create a project' : 'Your workspace is ready'}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-fg-3">
-          A project groups the modules, user stories, and ATCs you author.
-          Name it — the URL slug is derived automatically.
+          {hasProjects
+            ? 'Add another project to this workspace — the URL slug is derived from the name.'
+            : 'A project groups the modules, user stories, and ATCs you author. Name it — the URL slug is derived automatically.'}
         </p>
       </div>
 
