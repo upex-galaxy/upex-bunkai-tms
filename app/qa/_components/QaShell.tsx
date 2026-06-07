@@ -1,5 +1,3 @@
-'use client';
-
 import type { QaConfig } from '../qa-config';
 import { Badge } from '@components/ui/badge';
 import { buttonVariants } from '@components/ui/button';
@@ -15,12 +13,13 @@ import {
   Plug,
   ShieldCheck,
 } from 'lucide-react';
+import { prepareQa } from '../_lib/prepare';
 import { ArchDiagram } from './ArchDiagram';
-import { AuthMethods } from './AuthMethods';
-import { AgentCodeBlock, CodeBlock } from './CodeBlock';
+import { CodeBlock } from './CodeBlock';
 import { EnvSetup } from './EnvSetup';
+import { RequestCards } from './RequestCards';
 import { Toc } from './Toc';
-import { TwoWayTabs } from './TwoWayTabs';
+import { TwoWayTabsApi, TwoWayTabsDb } from './TwoWayTabs';
 
 // ---------------------------------------------------------------------------
 // Section accent system. Literal class maps per hue so Tailwind's JIT keeps them.
@@ -138,8 +137,9 @@ const es = {
   docsCta: 'Abrir docs',
 };
 
-export function QaShell({ config }: { config: QaConfig }) {
+export async function QaShell({ config }: { config: QaConfig }) {
   const t = es; // config.lang === 'es' — Spanish is the locked language.
+  const prepared = await prepareQa(config);
 
   return (
     <div data-testid="qa-page" className="mx-auto max-w-7xl px-4 py-10">
@@ -263,7 +263,12 @@ export function QaShell({ config }: { config: QaConfig }) {
               </p>
             </Callout>
 
-            <TwoWayTabs config={config} domain="db" />
+            <TwoWayTabsDb
+              agents={config.mcp.agents}
+              dbhub={prepared.mcp.dbhub}
+              tomlBlock={prepared.db.tomlBlock}
+              uriBlock={prepared.db.uriBlock}
+            />
 
             <Callout hue="emerald" title="Session Pooler — qué puerto usar">
               <p>{config.db.poolerNote}</p>
@@ -284,8 +289,8 @@ export function QaShell({ config }: { config: QaConfig }) {
             accent="violet"
           >
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Métodos de auth detectados</p>
-              <AuthMethods config={config} />
+              <p className="text-sm font-semibold text-fg-1">Requests de auth (vista Postman / curl)</p>
+              <RequestCards requests={prepared.requests} />
             </div>
 
             <Callout hue="amber" title="magic-link es passwordless">
@@ -313,15 +318,20 @@ export function QaShell({ config }: { config: QaConfig }) {
               </p>
             </Callout>
 
-            {config.api.cookieMintSnippet && (
-              <div className="space-y-2">
-                <p className="flex items-center gap-2 text-sm font-semibold text-fg-1">
-                  <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                  Camino híbrido — extraer un PAT de una sesión de browser
-                </p>
-                <CodeBlock language="bash" code={config.api.cookieMintSnippet} />
-              </div>
-            )}
+            <Callout hue="violet" title="Camino híbrido — PAT desde una sesión de browser">
+              <p>
+                Ya logueado vía magic-link, reusás la cookie de sesión para mintear un PAT
+                sin re-autenticar — es el request
+                {' '}
+                <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens (hybrid)</code>
+                {' '}
+                de arriba (
+                <ShieldCheck className="inline h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                {' '}
+                tab). Es también el camino correcto para usuarios de producción (solo
+                magic-link) que automatizan Bunkai.
+              </p>
+            </Callout>
 
             <Callout hue="violet" title="Higiene de tokens">
               <p>
@@ -359,7 +369,11 @@ export function QaShell({ config }: { config: QaConfig }) {
               </ul>
             </div>
 
-            <TwoWayTabs config={config} domain="api" />
+            <TwoWayTabsApi
+              agents={config.mcp.agents}
+              openapi={prepared.mcp.openapi}
+              postman={prepared.mcp.postman}
+            />
 
             {config.docs.route && (
               <a
@@ -404,12 +418,12 @@ export function QaShell({ config }: { config: QaConfig }) {
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-fg-1">(a) Fixture híbrido — cookie → PAT → Bearer</p>
-              <CodeBlock language="typescript" code={config.playwright.hybridBridge} />
+              <CodeBlock language="typescript" code={config.playwright.hybridBridge} title="auth.fixture.ts" />
             </div>
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-fg-1">Regresión scripteada — UI de magic-link (passwordless)</p>
-              <CodeBlock language="typescript" code={config.playwright.scriptedFixture} />
+              <CodeBlock language="typescript" code={config.playwright.scriptedFixture} title="magic-link.spec.ts" />
             </div>
 
             <div className="space-y-2">
@@ -441,14 +455,19 @@ export function QaShell({ config }: { config: QaConfig }) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">(b) Agéntico — Playwright MCP + /playwright-cli</p>
+              <p className="text-sm font-semibold text-fg-1">(b) Agéntico — playwright-cli (CLI + skill)</p>
               <p className="text-sm text-fg-2">
-                Instalá los browsers:
+                No usamos el MCP de Playwright: el agente maneja el browser con el binario
                 {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">bunx playwright install</code>
-                . Bloque de config del MCP por agente:
+                <code className="rounded bg-surface-2 px-1 text-fg-1">playwright-cli</code>
+                . Es lo más eficiente en modo agéntico — menos tokens que el MCP, comandos
+                directos — y la skill
+                {' '}
+                <code className="rounded bg-surface-2 px-1 text-fg-1">/playwright-cli</code>
+                {' '}
+                se auto-carga al detectar esas llamadas.
               </p>
-              <AgentCodeBlock agents={config.mcp.agents} blocks={config.mcp.playwright} />
+              <CodeBlock language="bash" code={config.playwright.cliExample} title="playwright-cli" />
               <p className="mt-2 text-sm text-fg-2">Prompts de ejemplo que un agente puede correr:</p>
               <ul className="grid gap-1 text-sm text-fg-2">
                 {config.playwright.agenticPrompts.map(p => (
@@ -467,7 +486,7 @@ export function QaShell({ config }: { config: QaConfig }) {
                 {' '}
                 <strong className="text-fg-0">agéntico</strong>
                 {' '}
-                (CLI / MCP) para exploración, caza de bugs y onboarding.
+                (playwright-cli) para exploración, caza de bugs y onboarding.
               </p>
             </Callout>
           </Section>
@@ -553,10 +572,19 @@ export function QaShell({ config }: { config: QaConfig }) {
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">DBHUB_*</code>
                   {' '}
-                  falta (sustituye el literal). Verificá:
+                  falta (sustituye el literal). Verificá la inyección con
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">dotenv -e .env -- env | grep DBHUB</code>
+                  {' '}
+                  (un
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">env | grep DBHUB</code>
-                  .
+                  {' '}
+                  pelado sale vacío: el
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">.env</code>
+                  {' '}
+                  se inyecta solo en el proceso del agente, no en tu terminal).
                 </li>
               </ul>
             </Callout>

@@ -38,6 +38,7 @@
     "prepare": "husky",
     "claude": "dotenv -e .env -- claude",
     "opencode": "dotenv -e .env -- opencode",
+    "env": "dotenv -e .env -- $SHELL",
     "vars:env:check": "bun scripts/check-vars.ts"
   },
   "dependencies": {
@@ -67,6 +68,7 @@
     "react-markdown": "^10.1.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "shiki": "^4.2.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "yaml": "^2.8.2",

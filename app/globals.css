@@ -128,6 +128,32 @@
 }
 
 @layer components {
+  /* Shiki — dual-theme code blocks (defaultColor:false → CSS-var driven).
+     Light theme vars are the default; html.dark flips token + bg colors to the
+     dark theme set. The chrome (terminal/editor frames) is drawn by the React
+     component; here we only tame the inner <pre>/<code>. */
+  .shiki {
+    @apply m-0 overflow-x-auto bg-transparent p-4 font-mono text-xs leading-relaxed;
+    color: var(--shiki-light);
+    background-color: var(--shiki-light-bg);
+  }
+  .shiki span {
+    color: var(--shiki-light);
+  }
+  html.dark .shiki {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+  }
+  html.dark .shiki span {
+    color: var(--shiki-dark);
+  }
+  /* The frame owns the background; let the <pre> sit transparent on it so the
+     terminal/editor surface tokens (set per-variant) show through. */
+  .qa-code-surface .shiki,
+  .qa-code-surface .shiki span {
+    background-color: transparent;
+  }
+
   /* Status dot */
   .dot {
     @apply inline-block size-2 rounded-full;

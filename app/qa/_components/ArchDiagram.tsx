@@ -88,7 +88,7 @@ export function ArchDiagram({ config }: { config: QaConfig }) {
       <div className="mt-8 flex flex-col items-center justify-center gap-3 border-t border-dashed border-stroke-2 pt-6 md:flex-row md:gap-6">
         <Badge variant="outline">DBHub MCP → DB</Badge>
         <Badge variant="outline">OpenAPI / Postman MCP → API</Badge>
-        <Badge variant="outline">Playwright MCP → UI</Badge>
+        <Badge variant="outline">playwright-cli → UI</Badge>
       </div>
 
       {/* Repos (mono vs poly) */}

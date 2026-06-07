@@ -24,6 +24,29 @@ export interface ApiEndpoint {
   purpose: string
 }
 
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+export interface RequestHeader {
+  key: string
+  value: string
+}
+
+// Structured, Postman-style description of a single API request. Mirrors the
+// raw curl snippets — no new endpoints, only placeholders (never a literal
+// host/secret). `body`/`response` are JSON strings (highlighted server-side);
+// `curl` is the equivalent shell command.
+export interface ApiRequest {
+  id: string
+  label: string
+  method: HttpMethod
+  url: string
+  description?: string
+  headers: RequestHeader[]
+  body: string | null
+  response: string | null
+  curl: string
+}
+
 export interface DbRole {
   name: string
   access: string
@@ -65,11 +88,18 @@ export interface QaConfig {
     cookieMintSnippet: string | null
     patScopes: { scope: string, purpose: string }[]
     endpoints: ApiEndpoint[]
+    // Postman-style structured view of the auth requests (restructure of the
+    // curl snippets above — same info, no new endpoints, placeholders only).
+    apiRequests: ApiRequest[]
   }
   db: {
     engine: 'postgres' | 'sqlserver' | 'mysql' | 'sqlite' | 'mariadb'
     tomlPath: string
     uriScheme: string
+    // Teaching snippets for the DBHub `[[sources]]` block vs a raw SQL-extension
+    // URI (placeholders only — every value is a .env slot NAME, never a literal).
+    tomlBlock: string
+    uriBlock: string
     // QA roles + isolation invariant — all referenced by .env slot name only.
     roles: DbRole[]
     revokedColumns: string[]
@@ -81,7 +111,6 @@ export interface QaConfig {
     dbhub: Record<string, string>
     openapi: Record<string, string>
     postman: Record<string, string>
-    playwright: Record<string, string>
   }
   env: {
     strategy: 'expansion' | 'literal'
@@ -94,6 +123,7 @@ export interface QaConfig {
     loginTestIds: { id: string, purpose: string }[]
     scriptedFixture: string
     hybridBridge: string
+    cliExample: string
     agenticPrompts: string[]
   }
 }
@@ -155,31 +185,20 @@ const postmanOpencode = `// OpenCode → opencode.jsonc
   "enabled": true
 }`;
 
-const playwrightClaude = `// Claude Code → .mcp.json
-"playwright": {
-  "command": "bunx",
-  "args": [
-    "@playwright/mcp@latest",
-    "--caps", "vision,pdf,testing,tracing,tabs",
-    "--timeout-action", "10000",
-    "--timeout-navigation", "30000",
-    "--viewport-size", "1920x1080"
-  ]
-}`;
+// Agentic UI driving uses the playwright-cli binary (NOT the Playwright MCP).
+// The /playwright-cli skill auto-loads when the agent runs `playwright-cli`.
+const playwrightCli = `# 1. Instalá el CLI (una vez) + los browsers
+npm i -g @playwright/cli@latest    # o usá: npx playwright-cli <cmd>
+bunx playwright install            # chromium / firefox / webkit
 
-const playwrightOpencode = `// OpenCode → opencode.jsonc
-"playwright": {
-  "type": "local",
-  "command": [
-    "bunx",
-    "@playwright/mcp@latest",
-    "--caps", "vision,pdf,testing,tracing,tabs",
-    "--timeout-action", "10000",
-    "--timeout-navigation", "30000",
-    "--viewport-size", "1920x1080"
-  ],
-  "enabled": true
-}`;
+# 2. La skill /playwright-cli se auto-carga al detectar llamadas a 'playwright-cli'.
+# 3. El agente maneja el browser por comandos directos:
+playwright-cli open http://localhost:3000/login
+playwright-cli snapshot                              # árbol con refs (e1, e2, ...)
+playwright-cli fill e5 "qa.bot@bunkai-test.dev" --submit
+playwright-cli click e7
+playwright-cli screenshot --filename=login.png
+playwright-cli close`;
 
 // ---------------------------------------------------------------------------
 // §5 auth-method snippets. Hosts/endpoints come from the slots below; the
@@ -308,6 +327,196 @@ authedTest('el PAt minteado desde la sesión sirve la API', async ({ authApi }) 
 });`;
 
 // ---------------------------------------------------------------------------
+// §4 DB snippets — DBHub `[[sources]]` (split fields, \${VAR} expansion) vs a
+// raw SQL-extension URI. `\${...}` is LITERAL teaching text, never evaluated.
+// IMPORTANT (teaching note): DBHub does NOT accept a DSN / connection string —
+// only the split `[[sources]]` fields. The URI form is ONLY for a VSCode/Cursor
+// SQL extension.
+// ---------------------------------------------------------------------------
+
+const dbTomlBlock = `# dbhub.toml — committed, \${VAR} expansion, sin secretos.
+# DBHub SOLO acepta estos campos separados — NO un DSN / connection string.
+[[sources]]
+id = "primary"
+type = "\${DBHUB_TYPE}"        # postgres
+host = "\${DBHUB_HOST}"
+port = "\${DBHUB_PORT}"        # 5432 (Session Pooler)
+database = "\${DBHUB_DATABASE}"
+user = "\${DBHUB_USER}"        # <DBHUB_USER>.<project-ref> en el pooler
+password = "\${DBHUB_PASSWORD}"
+sslmode = "require"`;
+
+const dbUriBlock = `# Connection string CRUDA para una extensión SQL de VSCode/Cursor.
+# Esto SOLO sirve para clientes SQL — DBHub NO lo acepta (usá el [[sources]] de arriba).
+# Session Pooler, puerto 5432, IPv4-friendly. Host/user/ref viven en el .env.
+postgresql://<DBHUB_USER>.<project-ref>:<DBHUB_PASSWORD>@<DBHUB_HOST>:5432/<DBHUB_DATABASE>?sslmode=require
+
+# Ejemplos de queries (mismas credenciales read-only de QA):
+#   "Mostrame todas las tablas"
+#   "Contá las tasks del usuario <email>"`;
+
+// ---------------------------------------------------------------------------
+// §5 structured API requests — a Postman-style restructure of the curl
+// snippets above. Same endpoints, same shapes, placeholders only. The
+// RequestCard renders these; the `curl` field is the toggle's raw view.
+// ---------------------------------------------------------------------------
+
+const apiRequests: ApiRequest[] = [
+  {
+    id: 'cookie-me',
+    label: 'GET /me (cookie)',
+    method: 'GET',
+    url: '<API_BASE_URL>/me',
+    description:
+      'Cookie de sesión (browser) — magic-link es PASSWORDLESS. Logueate en /login, '
+      + 'el navegador guarda sb-<project-ref>-auth-token y reusás esa cookie desde curl. '
+      + 'La respuesta trae auth.source = "cookie".',
+    headers: [
+      { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor-de-DevTools>' },
+    ],
+    body: null,
+    response: `{
+  "auth": { "source": "cookie" },
+  "user": { "id": "<uuid>", "email": "<email>" },
+  "workspaces": [ /* ... */ ]
+}`,
+    curl: `curl '<API_BASE_URL>/me' \\
+  --cookie 'sb-<project-ref>-auth-token=<valor-de-DevTools>'
+# → la respuesta trae auth.source = "cookie"`,
+  },
+  {
+    id: 'bearer-me',
+    label: 'GET /me (Bearer PAT)',
+    method: 'GET',
+    url: '<API_BASE_URL>/me',
+    description:
+      'Bearer PAT (headless) — sin navegador, ideal para CLI / CI / agentes. El token '
+      + 'tiene forma bk_pat_<prefix>.<secret> y va en cada request. Endpoints que ya '
+      + 'aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).',
+    headers: [
+      { key: 'Authorization', value: 'Bearer bk_pat_<prefix>.<secret>' },
+    ],
+    body: null,
+    response: `{
+  "auth": { "source": "bearer", "scopes": ["atc:read", "atc:write"] },
+  "user": { "id": "<uuid>", "email": "<email>" }
+}`,
+    curl: `curl '<API_BASE_URL>/me' \\
+  -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
+# → auth.source = "bearer", auth.scopes = [...]`,
+  },
+  {
+    id: 'signup',
+    label: 'POST /auth/signup',
+    method: 'POST',
+    url: '<API_BASE_URL>/auth/signup',
+    description:
+      'Provisionar QA bot (una vez por entorno). Los usuarios de magic-link NO tienen '
+      + 'password, así que se provisiona uno dedicado de QA. El password vive en el Epic, '
+      + 'no acá. 201 Created → el campo pat.token se muestra UNA sola vez. 409 → el user '
+      + 'ya existe; saltá al signin.',
+    headers: [
+      { key: 'content-type', value: 'application/json' },
+    ],
+    body: `{
+  "email": "<see credentials source>",
+  "password": "<see credentials source>",
+  "pat_name": "qa-bot-primary",
+  "pat_scopes": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+}`,
+    response: `{
+  "user": { "id": "<uuid>", "email": "<email>" },
+  "session": { /* ... */ },
+  "pat": {
+    "token": "bk_pat_<prefix>.<secret>",
+    "scopes": ["atc:read", "atc:write", "run:execute", "workspace:admin"],
+    "expires_at": "<iso-8601>"
+  }
+}`,
+    curl: `curl -X POST '<API_BASE_URL>/auth/signup' \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "<see credentials source>",
+    "password": "<see credentials source>",
+    "pat_name": "qa-bot-primary",
+    "pat_scopes": ["atc:read","atc:write","run:execute","workspace:admin"]
+  }'
+# 201 Created → { user, session, pat:{ token, scopes, expires_at } }
+# El campo pat.token se muestra UNA sola vez — guardalo.
+# 409 → el user ya existe; saltá al signin.`,
+  },
+  {
+    id: 'signin',
+    label: 'POST /auth/signin',
+    method: 'POST',
+    url: '<API_BASE_URL>/auth/signin',
+    description:
+      'Signin para mintear un PAT fresco (cada corrida de CI / sesión de test). '
+      + '200 OK → misma forma que el signup. 401 → credenciales mal (o usuario '
+      + 'solo-magic-link sin password).',
+    headers: [
+      { key: 'content-type', value: 'application/json' },
+    ],
+    body: `{
+  "email": "<see credentials source>",
+  "password": "<see credentials source>",
+  "pat_name": "ci-run",
+  "pat_expires_in_days": 7
+}`,
+    response: `{
+  "user": { "id": "<uuid>", "email": "<email>" },
+  "session": { /* ... */ },
+  "pat": {
+    "token": "bk_pat_<prefix>.<secret>",
+    "scopes": ["atc:read", "atc:write"],
+    "expires_at": "<iso-8601>"
+  }
+}`,
+    curl: `curl -X POST '<API_BASE_URL>/auth/signin' \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "<see credentials source>",
+    "password": "<see credentials source>",
+    "pat_name": "ci-run",
+    "pat_expires_in_days": 7
+  }'
+# 200 OK → misma forma que el signup.
+# 401 → credenciales mal (o usuario solo-magic-link sin password).`,
+  },
+  {
+    id: 'tokens-mint',
+    label: 'POST /tokens (hybrid)',
+    method: 'POST',
+    url: '<API_BASE_URL>/tokens',
+    description:
+      'UI → API BRIDGE (hybrid): ya logueado en el navegador vía magic-link, reusá la '
+      + 'cookie de sesión para mintear un PAT sin re-autenticar. 201 Created → token se '
+      + 'muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}. Este es el '
+      + 'camino correcto también para usuarios de producción (solo magic-link).',
+    headers: [
+      { key: 'content-type', value: 'application/json' },
+      { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor>' },
+    ],
+    body: `{
+  "name": "browser-hybrid",
+  "scopes": ["atc:read", "atc:write"]
+}`,
+    response: `{
+  "id": "<uuid>",
+  "token": "bk_pat_<prefix>.<secret>",
+  "scopes": ["atc:read", "atc:write"],
+  "warning": "token se muestra UNA vez"
+}`,
+    curl: `curl -X POST '<API_BASE_URL>/tokens' \\
+  -H 'content-type: application/json' \\
+  --cookie 'sb-<project-ref>-auth-token=<valor>' \\
+  -d '{ "name": "browser-hybrid", "scopes": ["atc:read","atc:write"] }'
+# 201 Created → { id, token:"bk_pat_<prefix>.<secret>", scopes, warning }
+# token se muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}.`,
+  },
+];
+
+// ---------------------------------------------------------------------------
 
 export const qaConfig: QaConfig = {
   lang: 'es',
@@ -347,6 +556,7 @@ export const qaConfig: QaConfig = {
       { id: 'bearer', label: 'Bearer PAT (headless)', snippet: bearerSnippet },
       { id: 'signin', label: 'Signup / Signin (mint PAT)', snippet: signinSnippet },
     ],
+    apiRequests,
     patScopes: [
       { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC.' },
       { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs.' },
@@ -374,6 +584,8 @@ export const qaConfig: QaConfig = {
     engine: 'postgres',
     tomlPath: 'dbhub.toml',
     uriScheme: 'postgresql',
+    tomlBlock: dbTomlBlock,
+    uriBlock: dbUriBlock,
     roles: [
       { name: 'qa_inspector_ro', access: 'Solo lectura (SELECT en public.*). BYPASSRLS.' },
       { name: 'qa_inspector_rw', access: 'Lectura + escritura (SELECT/INSERT/UPDATE/DELETE en public.*). BYPASSRLS.' },
@@ -387,7 +599,6 @@ export const qaConfig: QaConfig = {
     dbhub: { claude: dbhubClaude, opencode: dbhubOpencode },
     openapi: { claude: openapiClaude, opencode: openapiOpencode },
     postman: { claude: postmanClaude, opencode: postmanOpencode },
-    playwright: { claude: playwrightClaude, opencode: playwrightOpencode },
   },
   env: {
     strategy: 'expansion',
@@ -418,6 +629,7 @@ export const qaConfig: QaConfig = {
     ],
     scriptedFixture,
     hybridBridge,
+    cliExample: playwrightCli,
     agenticPrompts: [
       'abrí /login, mandá un magic-link a qa.bot@bunkai-test.dev y sacá un screenshot del estado "Check your inbox"',
       'listá todos los empty states de la home',
