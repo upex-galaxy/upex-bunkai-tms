@@ -68,7 +68,10 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
     // form robust against autofill that never reached React state.
     const rawName = (nameRef.current?.value ?? name).trim();
     const rawSlug = slugRef.current?.value ?? slug;
-    const finalSlug = slugify(slugTouched && rawSlug.trim() ? rawSlug : rawName);
+    // Honour whatever slug is in the field (typed OR autofilled) and fall back
+    // to the name only when it is empty. Reading the DOM, not slugTouched,
+    // keeps this correct when autofill never fired React's onChange.
+    const finalSlug = slugify(rawSlug.trim() || rawName);
 
     if (!rawName) {
       toast.error('Enter a workspace name.');
