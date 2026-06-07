@@ -48,7 +48,10 @@ export default async function ProjectsIndexPage() {
 
   return (
     <div className="flex h-screen items-center justify-center gap-6 bg-surface-0 px-6">
-      <CreateProjectForm workspaceId={activeWorkspaceId} />
+      <CreateProjectForm
+        workspaceId={activeWorkspaceId}
+        hasProjects={Boolean(projects && projects.length > 0)}
+      />
 
       {projects && projects.length > 0 && (
         <div
