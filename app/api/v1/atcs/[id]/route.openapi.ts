@@ -30,12 +30,13 @@ const IdParam = {
   schema: { type: 'string' as const, format: 'uuid' as const },
 };
 
-const IfMatchParam = {
-  name: 'If-Match',
+const VersionParam = {
+  name: 'X-If-Match',
   in: 'header' as const,
   required: false,
   schema: { type: 'string' as const },
-  description: 'Current version for optimistic locking (RFC 7232). A mismatch returns 409.',
+  description:
+    'Current version for optimistic locking. A mismatch returns 409. Uses a custom header instead of RFC 7232 `If-Match` because the Vercel edge intercepts `If-Match` and rewrites the response to 412 (BK-96); `If-Match` is still accepted as a fallback on non-Vercel deployments.',
 };
 
 registry.registerPath({
@@ -45,11 +46,11 @@ registry.registerPath({
   summary: 'Edit an ATC (full replace of steps and assertions)',
   description: 'Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. Emits an `atc.updated` event with `affected_test_ids` (empty in the MVP).',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam, IfMatchParam],
+  parameters: [IdParam, VersionParam],
   request: { body: { required: false, content: { 'application/json': { schema: UpdateBodySchema } } } },
   responses: {
     200: { description: 'ATC updated (or no-op for an empty body).', content: { 'application/json': { schema: z.object({ atc: AtcSchema }) } } },
-    400: { description: 'Malformed id, body, or If-Match.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: 'Malformed id, body, or X-If-Match.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'ATC not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

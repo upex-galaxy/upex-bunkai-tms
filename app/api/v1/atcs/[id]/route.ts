@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { mapAtcRpcError } from '@lib/atcs/errors';
+import { readVersionPrecondition } from '@lib/atcs/optimistic-lock';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { AtcUpdateBodySchema, stepPositionsError } from '@lib/atcs/validation';
 import { createAdminClient } from '@lib/supabase/admin';
@@ -9,9 +10,11 @@ import { getAtc, updateAtc } from '@lib/supabase/rpc';
 
 // PATCH /api/v1/atcs/{id} — edit an ATC (BK-18). PUT-style full replace: omitted
 // children are cleared, not merged. An empty body is a 200 no-op (no version
-// bump, no event). Optimistic locking via `If-Match: <version>` (409 on
-// mismatch). user_story_id / module_id / slug are immutable. Auth: Bearer
-// `atc:write` (or cookie).
+// bump, no event). Optimistic locking via `X-If-Match: <version>` (409 on
+// mismatch); the reserved `If-Match` header cannot be used on Vercel (the edge
+// rewrites it to 412 — BK-96) but is read as an off-Vercel fallback.
+// user_story_id / module_id / slug are immutable. Auth: Bearer `atc:write`
+// (or cookie).
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const atcId = extractAtcId(request);
@@ -57,8 +60,13 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     });
   }
 
-  // Optimistic lock (RFC 7232). If-Match value is the current version integer.
-  const ifMatch = parseIfMatch(request.headers.get('if-match'));
+  // Optimistic lock. The version token rides `X-If-Match` (custom header) so the
+  // Vercel edge does not intercept it as an RFC 7232 precondition (BK-96).
+  const precondition = readVersionPrecondition(request.headers);
+  if (!precondition.ok) {
+    throw new ApiError('bad_request', 'X-If-Match must be a decimal integer version.');
+  }
+  const ifMatch = precondition.version;
 
   const { data, error } = await updateAtc(supabase, {
     actorUserId: principal.userId,
@@ -77,21 +85,6 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
 
   return jsonResponse({ atc: data }, { status: 200 });
 }, { auth: 'required', requires: ['atc:write'] });
-
-function parseIfMatch(header: string | null): number | null {
-  // Absent header → skip the optimistic-lock check. A present header must be a
-  // plain decimal version (strip the RFC 7232 weak prefix + quotes first):
-  // empty, hex/octal/exponential, etc. are rejected with 400 rather than
-  // silently coerced (`Number('')` is 0, `Number('0x1F')` is 31).
-  if (header === null) {
-    return null;
-  }
-  const cleaned = header.trim().replace(/^W\//, '').replace(/^"|"$/g, '').trim();
-  if (!/^\d+$/.test(cleaned)) {
-    throw new ApiError('bad_request', 'If-Match must be a decimal integer version.');
-  }
-  return Number(cleaned);
-}
 
 function extractAtcId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);
