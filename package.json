@@ -38,7 +38,7 @@
     "prepare": "husky",
     "claude": "dotenv -e .env -- claude",
     "opencode": "dotenv -e .env -- opencode",
-    "env": "dotenv -e .env -- $SHELL",
+    "env": "set -a; source .env; set +a",
     "vars:env:check": "bun scripts/check-vars.ts"
   },
   "dependencies": {
