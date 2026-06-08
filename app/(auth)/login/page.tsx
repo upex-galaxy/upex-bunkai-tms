@@ -1,5 +1,7 @@
 import { Button } from '@components/ui/button';
+import { createClient } from '@lib/supabase/server';
 import { ArrowRight, Terminal } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { MagicLinkForm } from './magic-link-form';
 
@@ -11,7 +13,15 @@ const FEATURE_TICKS: Array<[string, string]> = [
   ['OSS', 'Apache-2.0. Self-host with one docker compose, or use Cloud.'],
 ];
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Signed-in users should never see the login form. Bounce them into the app
+  // (/projects redirects on to /onboarding when they have no workspace).
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    redirect('/projects');
+  }
+
   return (
     <div className="grid h-screen grid-cols-1 bg-surface-0 lg:grid-cols-[1fr_460px]">
       {/* LEFT — brand / etymology panel */}
