@@ -75,7 +75,11 @@ export function UserStoryForm({ moduleId, story, onSaved, onCancel }: UserStoryF
   const [error, setError] = useState<string | null>(null);
 
   const overCap = byteLength(description) > MAX_BYTES;
-  const isValid = title.trim().length > 0 && !overCap && !submitting;
+  // Mirror the server minimum (>= 3) so the button doesn't enable for a title
+  // the API will reject — avoids a submit-and-fail round-trip.
+  const trimmedTitle = title.trim();
+  const titleTooShort = trimmedTitle.length > 0 && trimmedTitle.length < 3;
+  const isValid = trimmedTitle.length >= 3 && !overCap && !submitting;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +142,11 @@ export function UserStoryForm({ moduleId, story, onSaved, onCancel }: UserStoryF
           placeholder="Refund a paid order"
           className="h-9 text-sm"
         />
+        {titleTooShort && (
+          <span className="mt-1 block text-xs text-signal-fail" data-testid="user-story-title-hint">
+            Title must be at least 3 characters.
+          </span>
+        )}
       </label>
 
       <label className="mb-3 block">

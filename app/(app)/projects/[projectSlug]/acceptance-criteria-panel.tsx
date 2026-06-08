@@ -89,9 +89,12 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
   useEffect(() => { void load(); }, [load]);
 
   const newOverCap = byteLength(newDetail) > MAX_BYTES;
-  const canAdd = newTitle.trim().length > 0 && !newOverCap && !busy;
+  // Mirror the server minimum (>= 3) so Add / Save don't enable for a title the
+  // API will reject.
+  const newTitleTooShort = newTitle.trim().length > 0 && newTitle.trim().length < 3;
+  const canAdd = newTitle.trim().length >= 3 && !newOverCap && !busy;
   const editOverCap = byteLength(editDetail) > MAX_BYTES;
-  const canSaveEdit = editTitle.trim().length > 0 && !editOverCap && !busy;
+  const canSaveEdit = editTitle.trim().length >= 3 && !editOverCap && !busy;
 
   async function addCriterion() {
     if (!canAdd) { return; }
@@ -367,6 +370,11 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
           placeholder="Full refund within 30 days"
           className="mb-2 h-9 text-sm"
         />
+        {newTitleTooShort && (
+          <span className="mb-2 block text-xs text-signal-fail" data-testid="ac-new-title-hint">
+            Title must be at least 3 characters.
+          </span>
+        )}
         <MarkdownEditor
           value={newDetail}
           onChange={setNewDetail}

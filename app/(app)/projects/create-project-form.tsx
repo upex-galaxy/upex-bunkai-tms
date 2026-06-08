@@ -65,7 +65,11 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
   // Live slug preview uses the SAME helper the server derives the slug with,
   // so what the user sees is what gets stored.
   const slugPreview = slugify(name);
-  const isValid = name.trim().length > 0 && !submitting;
+  // Mirror the server minimum (>= 3) so the button doesn't enable for input the
+  // API will reject — avoids a submit-and-fail round-trip.
+  const trimmedName = name.trim();
+  const nameTooShort = trimmedName.length > 0 && trimmedName.length < 3;
+  const isValid = trimmedName.length >= 3 && !submitting;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +149,11 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
             {slugPreview || '—'}
           </span>
         </span>
+        {nameTooShort && (
+          <span className="mt-1 block text-xs text-signal-fail" data-testid="create-project-name-hint">
+            Name must be at least 3 characters.
+          </span>
+        )}
       </label>
 
       <label className="mb-5 block">
