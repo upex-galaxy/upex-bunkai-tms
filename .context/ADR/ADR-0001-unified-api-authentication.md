@@ -27,11 +27,13 @@ A valid PAT returns `200` on `GET /me` and `GET /workspaces` but `401` on `POST 
 
 Root cause is **not** a regression in `requireAuth`. `requireAuth` works correctly. The failing handlers **never called it**. Bearer support was wired into a handful of handlers and never extended to the rest. The disease is structural: *authenticating is a per-handler choice instead of a project invariant.* Left as-is, this class of bug recurs every time a new route is added.
 
-### Two findings from the full grep of `app/api/**` (2026-06-08)
+### Three findings from the full grep of `app/api/**` (2026-06-08)
 
 **Finding A — the real scope is the whole API, not 4 routes.** Of all authenticated handlers, **only 4 accept a PAT**; **~29 handler entries across 18 route files** are cookie-only and reject PATs — including read (`GET`) endpoints, so the API can barely *read*, let alone write. BK-17 surfaced 4 of them; the gap is system-wide.
 
 **Finding B — the single-gateway infrastructure already exists.** Every route is already wrapped by `withApiHandler` (`lib/api/handler.ts:27`), which centralises request-id propagation, structured logging, and error→envelope mapping — but does **not** touch auth. Auth is still hand-rolled inside each handler. This means the proposed gateway is **half-built**: we extend an established, already-universal wrapper rather than introduce a new one. Large de-risk and cost reduction.
+
+**Finding C — the cookie-only routes delegate *authorization* to Postgres RLS, not just authentication.** They build a session-scoped client (`createClient()` from `lib/supabase/server.ts`) and let RLS policies keyed on `auth.uid()` (present in 9 migrations) decide what each query returns — e.g. `imports/route.ts:33,65` ("RLS scopes the read… an outsider reads as not found"; "RLS INSERT policy gates to member+"). A PAT caller has no session, so `auth.uid()` is null and RLS denies everything; the service-role admin client, conversely, **bypasses RLS entirely**. Therefore **unifying authentication is necessary but not sufficient** — the migration must also keep each route's RLS-based authorization working for PAT callers. This corrects an earlier optimistic framing of the migration as purely "mechanical": it is mechanical **only** once authorization parity is solved structurally (see Decision, Authorization model → Path B).
 
 ### Latent second defect (worse than BK-17)
 
@@ -136,9 +138,20 @@ A lint/CI rule forbids `createClient().auth.getUser()` (and equivalent raw sessi
 
 A parameterized test drives the route catalog with **both** a cookie and a PAT and asserts equivalent results, except for the explicit exception list (public + token-mint + invite-accept). Living proof that parity holds today and a regression alarm for tomorrow.
 
-### Authorization model
+### Authorization model — Path B: impersonating client (chosen)
 
-Capabilities are modelled **once** and enforced in a layer **both** methods cross. A UI user is the bearer of their full capability set (not an empty array); RLS is defense-in-depth on data, **not** the sole API authorization guard. The current cookie-unscoped / bearer-scoped asymmetry is removed.
+The core problem (Finding C): cookie routes delegate authorization to Postgres RLS via `auth.uid()`; a PAT has no `auth.uid()`. Three options were weighed — (A) rewrite each route's data access as `SECURITY DEFINER` RPCs with an explicit actor (the BK-18 pattern), (B) give the PAT caller an RLS-scoped client by **impersonating** its user at the Postgres layer, or (C) a hybrid. **Path B was chosen** (ratified with the user).
+
+Mechanism: `resolveIdentity` returns `principal.db`, an RLS-scoped Supabase client authenticated **as** the resolved user, for both methods:
+
+- **Cookie** → the existing SSR client (the session already carries `auth.uid()`).
+- **Bearer PAT** → an anon client carrying a **short-lived (60s), user-scoped JWT** (`sub = userId`, `role = authenticated`) signed with `SUPABASE_JWT_SECRET` (`lib/api/user-jwt.ts`). PostgREST resolves `auth.uid()` to that user, so **every existing RLS policy applies to the PAT caller exactly as to the browser** — no per-route authorization rewrite, no hand-rolled checks in TypeScript (which is where cross-tenant leaks hide).
+
+Why Path B over A: RLS stays the **single source of authorization truth**; the migration of ~25 handlers becomes a near-mechanical swap (drop `createClient()` + `getUser()`; use `ctx.db` + `ctx.principal`) instead of ~9 new migrations plus 25 SQL rewrites. The service-role key is never handed to PostgREST — we authenticate as the user, never as a god-mode service.
+
+Capability gating is separate from RLS and modelled **once**: a cookie session holds the full capability set (`ALL_CAPABILITIES`); a PAT holds its `access_tokens.scopes` subset; `requireCapability` enforces uniformly. This removes the old cookie-`scopes:[]` / bearer-scoped asymmetry (`lib/api/auth.ts:45` vs `:53-60`).
+
+**Security proof (2026-06-08):** a live round-trip against the real DB confirmed the impersonating client is RLS-scoped — an impersonated user sees only its own `workspaces`, leaks **zero** foreign-tenant rows, and an anon client (no JWT) sees nothing. Unit tests (`lib/api/user-jwt.test.ts`, 6/6) guard the token's shape, minimal claims, and signature. A committed parity/cross-tenant test (Phase 6) will lock this in for regression.
 
 ### Security exceptions (non-negotiable)
 
@@ -179,6 +192,7 @@ Capabilities are modelled **once** and enforced in a layer **both** methods cros
 | **Process-only guardrail** (DoD checklist, docs) | Necessary but never sufficient for security. Any defense whose only enforcement is "the developer remembers" has already failed. Kept as layer 0, not the mechanism. |
 | **External API gateway / OAuth server / policy engine** (Casbin, OPA) | Over-engineering for a fixed scope catalog and two auth methods. Adds operational complexity without paying rent. |
 | **Make cookie sessions carry every scope implicitly** | Hides the authorization model instead of unifying it; pretends a session has scopes it was never granted. Replaced by modelling capabilities once for both methods. |
+| **Path A — `SECURITY DEFINER` RPC per route** (authz fork) | Correct and proven (BK-18) but heavy: ~9 new migrations + ~25 handler rewrites moving authz into SQL. Path B reaches the same parity by impersonation with one signed-JWT helper and keeps RLS as the single authz source. Path A stays valid where transactional integrity already demands an RPC (e.g. atcs). |
 
 ---
 
