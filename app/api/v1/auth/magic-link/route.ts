@@ -59,7 +59,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   });
 
   return jsonResponse({ ok: true });
-});
+}, { auth: 'public' });
 
 interface IssuanceMeta {
   email: string

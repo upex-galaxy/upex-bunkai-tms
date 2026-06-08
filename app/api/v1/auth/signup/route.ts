@@ -86,4 +86,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     },
     { status: 201 },
   );
-});
+}, { auth: 'public' });

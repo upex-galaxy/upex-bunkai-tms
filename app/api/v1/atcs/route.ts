@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { requireAuth, requireScopeOrCookie } from '@lib/api/auth';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { mapAtcRpcError } from '@lib/atcs/errors';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { AtcCreateBodySchema, stepPositionsError } from '@lib/atcs/validation';
@@ -14,9 +13,8 @@ import { createAtc } from '@lib/supabase/rpc';
 // the cross-entity rules (AC ∈ US, module ∈ US's project subtree), computes the
 // immutable slug, writes atcs + children, and emits atc.created.
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const auth = await requireAuth(request);
-  requireScopeOrCookie(auth, 'atc:write');
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -33,7 +31,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   const supabase = createAdminClient();
   const { data, error } = await createAtc(supabase, {
-    actorUserId: auth.userId,
+    actorUserId: principal.userId,
     moduleId: body.module_id,
     userStoryId: body.user_story_id,
     title: body.title.trim(),
@@ -48,4 +46,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ atc: data }, { status: 201 });
-});
+}, { auth: 'required', requires: ['atc:write'] });

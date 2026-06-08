@@ -92,4 +92,21 @@ export default antfu({
   name: 'next/core-web-vitals',
   plugins: { '@next/next': nextPlugin },
   rules: nextPlugin.configs['core-web-vitals'].rules,
+}).append({
+  // ADR-0001: API routes must authenticate through the unified gateway
+  // (withApiHandler + getAuth(ctx)), never by reading the session cookie
+  // directly. Banning `auth.getUser()` here makes the cookie/PAT parity
+  // guarantee mechanical — a route that bypasses the gateway fails the build.
+  // `auth.admin.getUserById(...)` is unaffected (different method name).
+  name: 'bunkai/api-auth-gateway',
+  files: ['app/api/**/*.ts'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: 'CallExpression[callee.property.name=\'getUser\'][callee.object.property.name=\'auth\']',
+        message: 'Do not call auth.getUser() in API routes. Authenticate via the gateway: withApiHandler(handler, { auth: \'required\' }) and read identity with getAuth(ctx). See ADR-0001.',
+      },
+    ],
+  },
 });

@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { withApiHandler } from '@lib/api/handler';
-import { createClient } from '@lib/supabase/server';
+import { getAuth, withApiHandler } from '@lib/api/handler';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -15,16 +14,12 @@ import { z } from 'zod';
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
-export const DELETE = withApiHandler(async (
-  request: NextRequest,
-  // The dynamic-segment `[id]` lives outside the (request, ctx) signature
-  // because withApiHandler wraps the standard Route Handler shape. We read
-  // the id from the URL pathname.
-) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in to revoke a token.');
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal, db } = getAuth(ctx);
+  // A PAT must not revoke tokens — token management is a browser-session-only
+  // operation (ADR-0001 exception).
+  if (principal.via === 'bearer') {
+    throw new ApiError('forbidden', 'Personal access tokens cannot revoke tokens. Use a browser session.');
   }
 
   // Extract the [id] segment from the pathname. Shape: /api/v1/tokens/<uuid>.
@@ -32,7 +27,7 @@ export const DELETE = withApiHandler(async (
   const rawId = segments.at(-1) ?? '';
   const { id } = ParamsSchema.parse({ id: rawId });
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('access_tokens')
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', id)
@@ -49,4 +44,4 @@ export const DELETE = withApiHandler(async (
   }
 
   return new NextResponse(null, { status: 204 });
-});
+}, { auth: 'required' });

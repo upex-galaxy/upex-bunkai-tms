@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { hashInviteToken } from '@lib/api/invite-tokens';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
 // POST /api/v1/invites/accept — invitee redeems a raw token. The caller must
@@ -17,10 +16,16 @@ const BodySchema = z.object({
   token: z.string().min(8).max(256),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal } = getAuth(ctx);
+  const admin = createAdminClient();
+
+  // Email-gated redemption: the caller's auth email must equal the invite's
+  // email. Email lives in auth.users, so resolve it via the admin auth API
+  // (works for cookie and PAT callers alike).
+  const { data: caller, error: callerError } = await admin.auth.admin.getUserById(principal.userId);
+  const callerEmail = caller?.user?.email ?? null;
+  if (callerError || !callerEmail) {
     throw new ApiError('unauthorized', 'You must be signed in to accept an invite.');
   }
 
@@ -30,7 +35,6 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { token } = BodySchema.parse(payload);
 
   const tokenHash = await hashInviteToken(token);
-  const admin = createAdminClient();
 
   // The token hash lives in a sibling table QA/analytics roles cannot read.
   // Resolve the invite id from the hash, then load the invite metadata.
@@ -68,7 +72,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   if (new Date(invite.expires_at) < new Date()) {
     throw new ApiError('conflict', 'Invite has expired.');
   }
-  if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
+  if (invite.email.toLowerCase() !== callerEmail.toLowerCase()) {
     throw new ApiError('forbidden', 'This invite was sent to a different email address.');
   }
 
@@ -79,7 +83,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     .upsert(
       {
         workspace_id: invite.workspace_id,
-        user_id: user.id,
+        user_id: principal.userId,
         role: invite.role,
         status: 'active',
       },
@@ -94,7 +98,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     .from('workspace_invites')
     .update({
       accepted_at: new Date().toISOString(),
-      accepted_by_user_id: user.id,
+      accepted_by_user_id: principal.userId,
     })
     .eq('id', invite.id);
 
@@ -107,4 +111,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     workspace_id: invite.workspace_id,
     role: invite.role,
   });
-});
+}, { auth: 'required' });

@@ -10,4 +10,4 @@ export const GET = withApiHandler(async () => {
     env: getEnvironment(),
     ts: new Date().toISOString(),
   });
-});
+}, { auth: 'public' });

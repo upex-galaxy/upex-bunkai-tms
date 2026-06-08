@@ -26,7 +26,7 @@ import { NextResponse } from 'next/server';
 
 export interface ApiHandlerContext {
   requestId: string
-  // Present only when the route opted into auth (`auth: 'required'`). Use
+  // Present for every route except those marked `auth: 'public'`. Use
   // `getAuth(ctx)` from an authed handler to read these without null checks.
   principal?: Principal
   db?: SupabaseClient<Database>
@@ -38,13 +38,13 @@ export type ApiHandler = (
 ) => Promise<Response> | Response;
 
 export interface WithApiHandlerOptions {
-  // 'required' → resolve identity + inject principal/db before the handler.
-  // 'public'   → no auth resolution (health, openapi, sign-in, etc.).
-  // Omitted    → transitional legacy passthrough: behaves like 'public' while
-  //              routes migrate onto the gateway (ADR-0001 Phase 3). Phase 4
-  //              flips the default to 'required' once every route is migrated.
+  // 'required' (DEFAULT) → resolve identity + inject principal/db before the
+  //              handler. Secure by default: a route is authenticated unless it
+  //              explicitly opts out.
+  // 'public'   → no auth resolution. Must be set EXPLICITLY (health, openapi,
+  //              the API index, sign-in/sign-up/magic-link).
   auth?: 'required' | 'public'
-  // Capabilities the caller must hold (enforced only when auth === 'required').
+  // Capabilities the caller must hold (enforced only when auth is required).
   requires?: string[]
 }
 
@@ -70,7 +70,9 @@ export function withApiHandler(
 
     try {
       const ctx: ApiHandlerContext = { requestId };
-      if (options.auth === 'required') {
+      // Secure by default: anything not explicitly marked `auth: 'public'`
+      // requires an authenticated principal.
+      if (options.auth !== 'public') {
         const principal = await resolveIdentity(request);
         for (const capability of options.requires ?? []) {
           requireCapability(principal, capability);

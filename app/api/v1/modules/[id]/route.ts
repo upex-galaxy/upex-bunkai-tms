@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { moduleNameError } from '@lib/modules/path';
-import { createClient } from '@lib/supabase/server';
 import { slugify } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -33,17 +32,13 @@ const UpdateBodySchema = z.object({
   parent_module_id: z.string().uuid().nullable().optional(),
 });
 
-export const PATCH = withApiHandler(async (request: NextRequest) => {
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const moduleId = extractModuleId(request);
   if (!isUuid(moduleId)) {
     throw new ApiError('bad_request', 'Module id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -86,7 +81,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
 
   // Existence (404). RLS scopes the read to modules the caller can see; an
   // archived module is filtered out here so an archived id reads as 404.
-  await assertActiveModule(supabase, moduleId);
+  await assertActiveModule(db, moduleId);
 
   let result: unknown = null;
 
@@ -112,7 +107,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
       rpcArgs.p_description = sanitizeMarkdown(description);
     }
 
-    const { data, error } = await supabase.rpc('bunkai_update_module', rpcArgs);
+    const { data, error } = await db.rpc('bunkai_update_module', rpcArgs);
     if (error) {
       mapRpcError(error);
     }
@@ -129,7 +124,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
       moveArgs.p_new_parent_id = newParentId;
     }
 
-    const { data, error } = await supabase.rpc('bunkai_move_module', moveArgs);
+    const { data, error } = await db.rpc('bunkai_move_module', moveArgs);
     if (error) {
       mapRpcError(error);
     }
@@ -137,23 +132,19 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ module: result }, { status: 200 });
-});
+}, { auth: 'required' });
 
-export const DELETE = withApiHandler(async (request: NextRequest) => {
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const moduleId = extractModuleId(request);
   if (!isUuid(moduleId)) {
     throw new ApiError('bad_request', 'Module id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   // Split 404 (not found) from 409 (already archived) before the cascade. RLS
   // scopes the read; a non-visible module reads as 404.
-  const { data: existing, error: selError } = await supabase
+  const { data: existing, error: selError } = await db
     .from('modules')
     .select('id, archived_at')
     .eq('id', moduleId)
@@ -170,7 +161,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
     });
   }
 
-  const { data, error } = await supabase.rpc('bunkai_archive_module_subtree', {
+  const { data, error } = await db.rpc('bunkai_archive_module_subtree', {
     p_module_id: moduleId,
   });
   if (error) {
@@ -178,14 +169,14 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ archived: data }, { status: 200 });
-});
+}, { auth: 'required' });
 
 // Reads the module by id (RLS-scoped, active only) and throws 404 when absent.
 async function assertActiveModule(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  db: ReturnType<typeof getAuth>['db'],
   moduleId: string,
 ): Promise<void> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('modules')
     .select('id')
     .eq('id', moduleId)

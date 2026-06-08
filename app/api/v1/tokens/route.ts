@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
 // POST /api/v1/tokens — issue a new personal access token (PAT).
@@ -29,11 +28,12 @@ const CreateBodySchema = z.object({
   expires_in_days: z.number().int().positive().max(365).optional(),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in to issue a token.');
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal } = getAuth(ctx);
+  // A PAT must not mint another PAT — privilege escalation / persistence risk.
+  // Token issuance is a browser-session-only operation (ADR-0001 exception).
+  if (principal.via === 'bearer') {
+    throw new ApiError('forbidden', 'Personal access tokens cannot issue tokens. Use a browser session.');
   }
 
   const payload: unknown = await request.json().catch(() => {
@@ -57,7 +57,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { data: inserted, error } = await admin
     .from('access_tokens')
     .insert({
-      user_id: user.id,
+      user_id: principal.userId,
       workspace_id: workspaceId ?? null,
       name: name ?? null,
       token_prefix: tokenPrefix,
@@ -93,18 +93,16 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     },
     { status: 201 },
   );
-});
+}, { auth: 'required' });
 
-export const GET = withApiHandler(async () => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in to list tokens.');
-  }
+// Listing is read-only and RLS-scoped to the caller's own tokens, so it is safe
+// over either auth method (cookie or PAT).
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
 
   // RLS enforces ownership (auth.uid() = user_id) so we do not need an
-  // explicit `.eq('user_id', user.id)`. Selecting every column except `hash`.
-  const { data, error } = await supabase
+  // explicit `.eq('user_id', ...)`. Selecting every column except `hash`.
+  const { data, error } = await db
     .from('access_tokens')
     .select(
       'id, name, scopes, workspace_id, token_prefix, expires_at, revoked_at, last_used_at, created_at',
@@ -116,7 +114,7 @@ export const GET = withApiHandler(async () => {
   }
 
   return jsonResponse({ tokens: data ?? [] });
-});
+}, { auth: 'required' });
 
 function generateSecret(bytes: number): string {
   const buf = new Uint8Array(bytes);

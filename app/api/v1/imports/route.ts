@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { runImportJob } from '@lib/jira/import-runner';
-import { createClient } from '@lib/supabase/server';
 import { after } from 'next/server';
 import { z } from 'zod';
 
@@ -18,12 +17,8 @@ const CreateBodySchema = z.object({
   jql: z.string().trim().min(1).max(2000),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -32,7 +27,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // Existence + workspace resolution. RLS scopes the read to projects the caller
   // can see, so an outsider reads as not found.
-  const { data: project, error: projectError } = await supabase
+  const { data: project, error: projectError } = await db
     .from('projects')
     .select('id, workspace_id')
     .eq('id', project_id)
@@ -46,7 +41,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // Serialize: at most one active (queued/running) import per project. A partial
   // unique index (0020) is the race-proof guard; this is the fast-path 409.
-  const { data: active, error: activeError } = await supabase
+  const { data: active, error: activeError } = await db
     .from('import_jobs')
     .select('id')
     .eq('project_id', project_id)
@@ -63,7 +58,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
 
   // RLS INSERT policy gates to member+; a viewer's insert is rejected (42501).
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('import_jobs')
     .insert({ workspace_id: project.workspace_id, project_id, jql })
     .select('id, status')
@@ -87,4 +82,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   after(async () => runImportJob(data.id));
 
   return jsonResponse({ import_job_id: data.id, status: data.status }, { status: 202 });
-});
+}, { auth: 'required' });

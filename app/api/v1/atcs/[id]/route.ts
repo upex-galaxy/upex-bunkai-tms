@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { requireAuth, requireScopeOrCookie } from '@lib/api/auth';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { mapAtcRpcError } from '@lib/atcs/errors';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { AtcUpdateBodySchema, stepPositionsError } from '@lib/atcs/validation';
@@ -14,21 +13,20 @@ import { getAtc, updateAtc } from '@lib/supabase/rpc';
 // mismatch). user_story_id / module_id / slug are immutable. Auth: Bearer
 // `atc:write` (or cookie).
 
-export const PATCH = withApiHandler(async (request: NextRequest) => {
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const atcId = extractAtcId(request);
   if (!isUuid(atcId)) {
     throw new ApiError('bad_request', 'ATC id must be a UUID.');
   }
 
-  const auth = await requireAuth(request);
-  requireScopeOrCookie(auth, 'atc:write');
+  const { principal } = getAuth(ctx);
 
   const raw = (await request.text()).trim();
   const supabase = createAdminClient();
 
   // Empty body = no-op: return the current ATC (membership-gated), no bump, no event.
   if (raw === '' || raw === '{}') {
-    const { data, error } = await getAtc(supabase, { actorUserId: auth.userId, atcId });
+    const { data, error } = await getAtc(supabase, { actorUserId: principal.userId, atcId });
     if (error) {
       mapAtcRpcError(error);
     }
@@ -43,7 +41,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   }
   if (parsed !== null && typeof parsed === 'object' && Object.keys(parsed).length === 0) {
-    const { data, error } = await getAtc(supabase, { actorUserId: auth.userId, atcId });
+    const { data, error } = await getAtc(supabase, { actorUserId: principal.userId, atcId });
     if (error) {
       mapAtcRpcError(error);
     }
@@ -63,7 +61,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   const ifMatch = parseIfMatch(request.headers.get('if-match'));
 
   const { data, error } = await updateAtc(supabase, {
-    actorUserId: auth.userId,
+    actorUserId: principal.userId,
     atcId,
     ifMatch,
     title: body.title.trim(),
@@ -78,7 +76,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ atc: data }, { status: 200 });
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 function parseIfMatch(header: string | null): number | null {
   // Absent header → skip the optimistic-lock check. A present header must be a

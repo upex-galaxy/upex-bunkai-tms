@@ -1,9 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { requireAuth } from '@lib/api/auth';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { z } from 'zod';
 
 // POST /api/v1/workspaces — create a workspace and auto-enrol the caller as
@@ -52,19 +49,15 @@ const CreateBodySchema = z.object({
     }),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in to create a workspace.');
-  }
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { name, slug } = CreateBodySchema.parse(payload);
 
-  const { data: workspaceId, error } = await supabase.rpc(
+  const { data: workspaceId, error } = await db.rpc(
     'bunkai_bootstrap_workspace',
     { p_slug: slug, p_name: name },
   );
@@ -83,7 +76,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('internal_error', error.message);
   }
 
-  const { data: workspace, error: fetchError } = await supabase
+  const { data: workspace, error: fetchError } = await db
     .from('workspaces')
     .select('id, slug, name, owner_user_id, plan, created_at')
     .eq('id', workspaceId)
@@ -94,44 +87,18 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ workspace }, { status: 201 });
-});
+}, { auth: 'required' });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
-  const auth = await requireAuth(request);
-
-  if (auth.source === 'cookie') {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('workspaces')
-      .select('id, slug, name, owner_user_id, plan, created_at')
-      .order('created_at', { ascending: true });
-    if (error) {
-      throw new ApiError('internal_error', error.message);
-    }
-    return jsonResponse({ workspaces: data ?? [] });
-  }
-
-  // Bearer path — admin client bypasses RLS; we join on workspace_members
-  // ourselves so the caller only sees workspaces they actually belong to.
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('workspace_members')
-    .select('workspace_id, status, workspaces!inner(id, slug, name, owner_user_id, plan, created_at)')
-    .eq('user_id', auth.userId)
-    .eq('status', 'active');
+// RLS filters to workspaces the caller is an active member of, so the same
+// query serves cookie and Bearer-PAT callers — no per-method branching.
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
+  const { data, error } = await db
+    .from('workspaces')
+    .select('id, slug, name, owner_user_id, plan, created_at')
+    .order('created_at', { ascending: true });
   if (error) {
     throw new ApiError('internal_error', error.message);
   }
-  const workspaces = (data ?? [])
-    .map(r => r.workspaces as unknown as {
-      id: string
-      slug: string
-      name: string
-      owner_user_id: string
-      plan: string
-      created_at: string
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
-  return jsonResponse({ workspaces });
-});
+  return jsonResponse({ workspaces: data ?? [] });
+}, { auth: 'required' });
