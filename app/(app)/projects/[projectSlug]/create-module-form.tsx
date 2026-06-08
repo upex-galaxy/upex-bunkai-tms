@@ -87,7 +87,11 @@ export function CreateModuleForm({
   // Live slug preview uses the SAME helper the server derives the path segment
   // with, so what the user sees is what gets stored.
   const slugPreview = slugify(name);
-  const isValid = name.trim().length > 0 && !submitting;
+  // Mirror the server minimum (>= 2) so the button doesn't enable for input the
+  // API will reject — avoids a submit-and-fail round-trip.
+  const trimmedName = name.trim();
+  const nameTooShort = trimmedName.length > 0 && trimmedName.length < 2;
+  const isValid = trimmedName.length >= 2 && !submitting;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +176,11 @@ export function CreateModuleForm({
             {slugPreview || '—'}
           </span>
         </span>
+        {nameTooShort && (
+          <span className="mt-1 block text-xs text-signal-fail" data-testid="create-module-name-hint">
+            Name must be at least 2 characters.
+          </span>
+        )}
       </label>
 
       <label className="mb-4 block">
