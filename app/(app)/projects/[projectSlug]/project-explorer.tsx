@@ -139,7 +139,7 @@ export function ProjectExplorer({
                 </span>
               )
             : (
-                <span className="text-xs text-fg-4">Select a module</span>
+                <span className="text-xs text-fg-4">Select a module to view its ATCs</span>
               )}
           {canCreate && (
             <button

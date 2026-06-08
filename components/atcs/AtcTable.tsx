@@ -108,7 +108,9 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
           <span className="text-fg-2">ATCs in project</span>
         </div>
         <div className="text-xs text-fg-3">
-          Click a row title to open the ATC editor
+          {atcs.length > 0
+            ? 'Click a row title to open the ATC editor'
+            : 'ATCs arrive with the builder next sprint'}
         </div>
       </div>
       <div className="flex-1 overflow-auto">
@@ -144,21 +146,34 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr
-                key={row.id}
-                className="border-b border-stroke-1 transition-colors hover:bg-surface-2"
-              >
-                {row.getVisibleCells().map(cell => (
-                  <td
-                    key={cell.id}
-                    className="px-3 py-2.5 align-middle"
+            {table.getRowModel().rows.length === 0
+              ? (
+                  <tr>
+                    <td colSpan={columns.length} className="px-4 py-12 text-center">
+                      <div className="mx-auto flex max-w-[380px] flex-col items-center gap-1.5">
+                        <p className="text-sm font-medium text-fg-2">No ATCs yet</p>
+                        <p className="text-xs leading-relaxed text-fg-4">
+                          Acceptance Test Cases are assembled in the ATC builder, which ships next sprint. For now, capture expected behaviour as acceptance criteria inside your user stories.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              : table.getRowModel().rows.map(row => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-stroke-1 transition-colors hover:bg-surface-2"
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
+                    {row.getVisibleCells().map(cell => (
+                      <td
+                        key={cell.id}
+                        className="px-3 py-2.5 align-middle"
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
