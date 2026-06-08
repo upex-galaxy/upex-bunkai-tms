@@ -1,4 +1,3 @@
-import { UserMenu } from '@components/layout/UserMenu';
 import { createClient } from '@lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { OnboardingForm } from './onboarding-form';
@@ -26,9 +25,6 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-surface-0 px-6">
-      <div className="fixed right-3 top-3 z-50">
-        <UserMenu />
-      </div>
       <OnboardingForm userEmail={user.email ?? ''} />
     </div>
   );
