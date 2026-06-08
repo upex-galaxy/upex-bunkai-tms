@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { generateInviteToken, hashInviteToken } from '@lib/api/invite-tokens';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
 import { webUrl } from '@lib/urls';
 
 // POST   /api/v1/workspaces/{id}/invites/{inviteId} — rotate the token
@@ -15,23 +14,19 @@ import { webUrl } from '@lib/urls';
 // service-role client is NOT used here so the policy is the source of truth
 // for permission.
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { workspaceId, inviteId } = extractIds(request);
   if (!isUuid(workspaceId) || !isUuid(inviteId)) {
     throw new ApiError('bad_request', 'workspace id and invite id must be UUIDs.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const newToken = generateInviteToken();
   const newHash = await hashInviteToken(newToken);
   const newExpiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspace_invites')
     .update({
       expires_at: newExpiresAt,
@@ -69,21 +64,17 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     accept_url: acceptUrl,
     warning: 'Copy this URL now — the token cannot be retrieved later.',
   });
-});
+}, { auth: 'required' });
 
-export const DELETE = withApiHandler(async (request: NextRequest) => {
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const { workspaceId, inviteId } = extractIds(request);
   if (!isUuid(workspaceId) || !isUuid(inviteId)) {
     throw new ApiError('bad_request', 'workspace id and invite id must be UUIDs.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspace_invites')
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', inviteId)
@@ -99,7 +90,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ ok: true });
-});
+}, { auth: 'required' });
 
 function extractIds(request: NextRequest): { workspaceId: string, inviteId: string } {
   const segments = new URL(request.url).pathname.split('/');

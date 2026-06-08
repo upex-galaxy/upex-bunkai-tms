@@ -16,7 +16,7 @@ export const GET = withApiHandler(async () => {
     docs: '/api/docs',
     status: 'live',
   });
-});
+}, { auth: 'public' });
 
 export function OPTIONS(): NextResponse {
   return new NextResponse(null, {

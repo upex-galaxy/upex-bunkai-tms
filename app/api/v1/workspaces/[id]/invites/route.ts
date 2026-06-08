@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { generateInviteToken, hashInviteToken } from '@lib/api/invite-tokens';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
 import { webUrl } from '@lib/urls';
 import { z } from 'zod';
 
@@ -20,17 +19,13 @@ const CreateBodySchema = z.object({
   role: z.enum(['viewer', 'member', 'admin']).default('member'),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const workspaceId = extractWorkspaceId(request);
   if (!isUuid(workspaceId)) {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -42,13 +37,13 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // RLS gates the insert to workspace admins/owners; non-admins receive a
   // permission error from Postgrest that we map to 403.
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspace_invites')
     .insert({
       workspace_id: workspaceId,
       email: email.toLowerCase(),
       role,
-      invited_by_user_id: user.id,
+      invited_by_user_id: principal.userId,
     })
     .select('id, email, role, expires_at, created_at')
     .single();
@@ -93,21 +88,17 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     },
     { status: 201 },
   );
-});
+}, { auth: 'required' });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const workspaceId = extractWorkspaceId(request);
   if (!isUuid(workspaceId)) {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspace_invites')
     .select('id, email, role, expires_at, accepted_at, revoked_at, created_at')
     .eq('workspace_id', workspaceId)
@@ -123,7 +114,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   }));
 
   return jsonResponse({ invites });
-});
+}, { auth: 'required' });
 
 // Members list for the same workspace lives here for convenience because the
 // /members page wants both invites and members in the same request burst.

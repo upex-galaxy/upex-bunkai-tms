@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { createClient } from '@lib/supabase/server';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { z } from 'zod';
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
@@ -14,19 +13,15 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-export const GET = withApiHandler(async (request: NextRequest, _ctx) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
   const id = extractId(request);
   const parsed = ParamsSchema.safeParse({ id });
   if (!parsed.success) {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspaces')
     .select('id, slug, name, owner_user_id, plan, created_at')
     .eq('id', parsed.data.id)
@@ -40,14 +35,10 @@ export const GET = withApiHandler(async (request: NextRequest, _ctx) => {
   }
 
   return jsonResponse({ workspace: data });
-});
+}, { auth: 'required' });
 
-export const PATCH = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
   const id = extractId(request);
   const parsed = ParamsSchema.safeParse({ id });
   if (!parsed.success) {
@@ -64,7 +55,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   // RLS gates the update to workspace owners; non-owners get zero rows back.
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('workspaces')
     .update({ name: patch.name })
     .eq('id', parsed.data.id)
@@ -79,7 +70,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ workspace: data });
-});
+}, { auth: 'required' });
 
 function extractId(request: NextRequest): string {
   // App Router exposes route params via context, but withApiHandler is generic

@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { createClient } from '@lib/supabase/server';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { hasAlphanumeric, slugify } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -21,17 +20,13 @@ const CreateBodySchema = z.object({
   description: z.string().optional(),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const workspaceId = extractWorkspaceId(request);
   if (!isUuid(workspaceId)) {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -69,7 +64,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // RLS gates the insert to members with role >= member; non-members receive a
   // permission error from Postgrest that we map to 403.
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('projects')
     .insert({
       workspace_id: workspaceId,
@@ -96,7 +91,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ project: data }, { status: 201 });
-});
+}, { auth: 'required' });
 
 function extractWorkspaceId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

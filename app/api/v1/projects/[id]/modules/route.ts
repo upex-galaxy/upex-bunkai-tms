@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
-import { createClient } from '@lib/supabase/server';
 import { hasAlphanumeric, slugify } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -31,17 +30,13 @@ const CreateBodySchema = z.object({
   parent_module_id: z.string().uuid().optional(),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const projectId = extractProjectId(request);
   if (!isUuid(projectId)) {
     throw new ApiError('bad_request', 'Project id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -75,7 +70,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   // is NOT enforced by RLS, so we check `parent.project_id` in the app layer.
   let parentPath = '';
   if (parent_module_id !== undefined) {
-    const { data: parent, error: parentError } = await supabase
+    const { data: parent, error: parentError } = await db
       .from('modules')
       .select('id, path, project_id')
       .eq('id', parent_module_id)
@@ -110,7 +105,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // Position = max sibling position + 1 within the (project_id, parent) set.
   // Best-effort; RLS scopes the read to siblings the caller can see.
-  let siblingQuery = supabase
+  let siblingQuery = db
     .from('modules')
     .select('position')
     .eq('project_id', projectId);
@@ -126,7 +121,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // RLS gates the insert to members with role >= member; non-members receive a
   // permission error from Postgrest that we map to 403.
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('modules')
     .insert({
       project_id: projectId,
@@ -166,7 +161,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     { module: data, ...(warning ? { warning: DEEP_NESTING_WARNING } : {}) },
     { status: 201 },
   );
-});
+}, { auth: 'required' });
 
 function extractProjectId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

@@ -1,11 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import {
   ACTIVE_WORKSPACE_COOKIE,
   ACTIVE_WORKSPACE_COOKIE_DEFAULTS,
 } from '@lib/api/workspace-cookie';
-import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
 // POST /api/v1/me/active-workspace — rotate the caller's active workspace.
@@ -19,12 +18,8 @@ const BodySchema = z.object({
   workspace_id: z.string().uuid(),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -32,7 +27,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { workspace_id } = BodySchema.parse(payload);
 
   // RLS filters the select to workspaces the caller belongs to.
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error } = await db
     .from('workspaces')
     .select('id')
     .eq('id', workspace_id)
@@ -48,4 +43,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const response = jsonResponse({ ok: true, active_workspace_id: workspace_id });
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace_id, ACTIVE_WORKSPACE_COOKIE_DEFAULTS);
   return response;
-});
+}, { auth: 'required' });

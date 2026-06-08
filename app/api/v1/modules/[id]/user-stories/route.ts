@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
-import { createClient } from '@lib/supabase/server';
 import { mapStoryWriteError, titleMessage } from '@lib/user-stories/errors';
 import { jiraKeyError, MAX_STORY_DESCRIPTION_BYTES, normalizeJiraKey, storyTitleError } from '@lib/user-stories/validation';
 import { z } from 'zod';
@@ -25,17 +24,13 @@ const CreateBodySchema = z.object({
 
 const STORY_COLUMNS = 'id, module_id, project_id, title, description, external_id, external_url, created_at, archived_at';
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const moduleId = extractModuleId(request);
   if (!isUuid(moduleId)) {
     throw new ApiError('bad_request', 'Module id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -66,7 +61,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
 
   // The module supplies the denormalized project_id and confirms existence; RLS
   // scopes the read so a non-visible module reads as not found.
-  const { data: module, error: moduleError } = await supabase
+  const { data: module, error: moduleError } = await db
     .from('modules')
     .select('id, project_id')
     .eq('id', moduleId)
@@ -79,7 +74,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('not_found', 'Module not found.');
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_stories')
     .insert({
       module_id: moduleId,
@@ -96,21 +91,17 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ user_story: data }, { status: 201 });
-});
+}, { auth: 'required' });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const moduleId = extractModuleId(request);
   if (!isUuid(moduleId)) {
     throw new ApiError('bad_request', 'Module id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_stories')
     .select(STORY_COLUMNS)
     .eq('module_id', moduleId)
@@ -122,7 +113,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ user_stories: data ?? [] }, { status: 200 });
-});
+}, { auth: 'required' });
 
 function extractModuleId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

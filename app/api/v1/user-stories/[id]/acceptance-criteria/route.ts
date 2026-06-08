@@ -2,10 +2,9 @@ import type { NextRequest } from 'next/server';
 import { criterionTitleMessage, mapCriterionRpcError } from '@lib/acceptance-criteria/errors';
 import { criterionTitleError, MAX_CRITERION_DESCRIPTION_BYTES } from '@lib/acceptance-criteria/validation';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
-import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
 // POST /api/v1/user-stories/{id}/acceptance-criteria — add a criterion to the
@@ -28,17 +27,13 @@ const CreateBodySchema = z.object({
   position: z.number().int().positive().optional(),
 });
 
-export const POST = withApiHandler(async (request: NextRequest) => {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const userStoryId = extractUserStoryId(request);
   if (!isUuid(userStoryId)) {
     throw new ApiError('bad_request', 'User story id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -61,7 +56,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   // Existence (404). RLS scopes the read to stories the caller can see, so an
   // outsider reads as not found; an in-workspace viewer passes here and is
   // stopped by the function's role gate (403) instead.
-  const { data: story, error: storyError } = await supabase
+  const { data: story, error: storyError } = await db
     .from('user_stories')
     .select('id')
     .eq('id', userStoryId)
@@ -89,27 +84,23 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     rpcArgs.p_position = position;
   }
 
-  const { data, error } = await supabase.rpc('bunkai_insert_acceptance_criterion', rpcArgs);
+  const { data, error } = await db.rpc('bunkai_insert_acceptance_criterion', rpcArgs);
   if (error) {
     mapCriterionRpcError(error, 'User story not found.');
   }
 
   return jsonResponse({ acceptance_criterion: data }, { status: 201 });
-});
+}, { auth: 'required' });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const userStoryId = extractUserStoryId(request);
   if (!isUuid(userStoryId)) {
     throw new ApiError('bad_request', 'User story id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('acceptance_criteria')
     .select(AC_COLUMNS)
     .eq('user_story_id', userStoryId)
@@ -121,7 +112,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ acceptance_criteria: data ?? [] }, { status: 200 });
-});
+}, { auth: 'required' });
 
 function extractUserStoryId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
-import { createClient } from '@lib/supabase/server';
 import { mapStoryWriteError, titleMessage } from '@lib/user-stories/errors';
 import { jiraKeyError, MAX_STORY_DESCRIPTION_BYTES, normalizeJiraKey, storyTitleError } from '@lib/user-stories/validation';
 import { z } from 'zod';
@@ -27,19 +26,15 @@ const UpdateBodySchema = z.object({
   status: z.enum(['draft', 'ready_to_test']).optional(),
 });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const storyId = extractStoryId(request);
   if (!isUuid(storyId)) {
     throw new ApiError('bad_request', 'Story id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_stories')
     .select(STORY_COLUMNS)
     .eq('id', storyId)
@@ -53,19 +48,15 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ user_story: data }, { status: 200 });
-});
+}, { auth: 'required' });
 
-export const PATCH = withApiHandler(async (request: NextRequest) => {
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const storyId = extractStoryId(request);
   if (!isUuid(storyId)) {
     throw new ApiError('bad_request', 'Story id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -81,7 +72,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
     });
   }
 
-  const { data: existing, error: readError } = await supabase
+  const { data: existing, error: readError } = await db
     .from('user_stories')
     .select('id, external_id')
     .eq('id', storyId)
@@ -140,7 +131,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
 
   // Field edits (title / description / Jira key) ride the RLS-scoped update.
   if (Object.keys(update).length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('user_stories')
       .update(update)
       .eq('id', storyId)
@@ -165,7 +156,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   // concurrent last-criterion archive cannot strand the story in ready_to_test
   // with zero criteria. 45010 = the ready-to-test gate failed.
   if (hasStatus) {
-    const { data, error } = await supabase.rpc('bunkai_set_user_story_status', {
+    const { data, error } = await db.rpc('bunkai_set_user_story_status', {
       p_id: storyId,
       p_status: body.status as 'draft' | 'ready_to_test',
     });
@@ -191,7 +182,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   // Nothing actually changed (e.g. resubmitting an identical, locked Jira key) ->
   // return the current row so the 0-row result is not mistaken for a denial.
   if (resultRow === null) {
-    const { data: current, error: currentError } = await supabase
+    const { data: current, error: currentError } = await db
       .from('user_stories')
       .select(STORY_COLUMNS)
       .eq('id', storyId)
@@ -204,21 +195,17 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ user_story: resultRow }, { status: 200 });
-});
+}, { auth: 'required' });
 
-export const DELETE = withApiHandler(async (request: NextRequest) => {
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const storyId = extractStoryId(request);
   if (!isUuid(storyId)) {
     throw new ApiError('bad_request', 'Story id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data: existing, error: readError } = await supabase
+  const { data: existing, error: readError } = await db
     .from('user_stories')
     .select('id, archived_at')
     .eq('id', storyId)
@@ -235,7 +222,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
     });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_stories')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', storyId)
@@ -252,7 +239,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ user_story: data }, { status: 200 });
-});
+}, { auth: 'required' });
 
 function extractStoryId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

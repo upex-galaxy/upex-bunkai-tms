@@ -2,10 +2,9 @@ import type { NextRequest } from 'next/server';
 import { criterionTitleMessage, mapCriterionRpcError, mapCriterionWriteError } from '@lib/acceptance-criteria/errors';
 import { criterionTitleError, MAX_CRITERION_DESCRIPTION_BYTES } from '@lib/acceptance-criteria/validation';
 import { ApiError } from '@lib/api/error-envelope';
-import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
-import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
 // GET    /api/v1/acceptance-criteria/{id} — read one active criterion.
@@ -28,19 +27,15 @@ const UpdateBodySchema = z.object({
   position: z.number().int().positive().optional(),
 });
 
-export const GET = withApiHandler(async (request: NextRequest) => {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const id = extractId(request);
   if (!isUuid(id)) {
     throw new ApiError('bad_request', 'Acceptance criterion id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('acceptance_criteria')
     .select(AC_COLUMNS)
     .eq('id', id)
@@ -54,19 +49,15 @@ export const GET = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ acceptance_criterion: data }, { status: 200 });
-});
+}, { auth: 'required' });
 
-export const PATCH = withApiHandler(async (request: NextRequest) => {
+export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const id = extractId(request);
   if (!isUuid(id)) {
     throw new ApiError('bad_request', 'Acceptance criterion id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -82,7 +73,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   // Existence (404) before any write — RLS scopes the read, so an outsider is 404.
-  const { data: existing, error: readError } = await supabase
+  const { data: existing, error: readError } = await db
     .from('acceptance_criteria')
     .select('id')
     .eq('id', id)
@@ -121,7 +112,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
       update.description = description !== null ? sanitizeMarkdown(description) : null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('acceptance_criteria')
       .update(update)
       .eq('id', id)
@@ -142,7 +133,7 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
 
   // Reorder — atomic re-number via the SECURITY DEFINER move function.
   if (hasPosition) {
-    const { data, error } = await supabase.rpc('bunkai_move_acceptance_criterion', {
+    const { data, error } = await db.rpc('bunkai_move_acceptance_criterion', {
       p_id: id,
       p_new_position: body.position as number,
     });
@@ -153,22 +144,18 @@ export const PATCH = withApiHandler(async (request: NextRequest) => {
   }
 
   return jsonResponse({ acceptance_criterion: result }, { status: 200 });
-});
+}, { auth: 'required' });
 
-export const DELETE = withApiHandler(async (request: NextRequest) => {
+export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const id = extractId(request);
   if (!isUuid(id)) {
     throw new ApiError('bad_request', 'Acceptance criterion id must be a UUID.');
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    throw new ApiError('unauthorized', 'You must be signed in.');
-  }
+  const { db } = getAuth(ctx);
 
   // Split 404 (not found) from 409 (already archived). RLS scopes the read.
-  const { data: existing, error: readError } = await supabase
+  const { data: existing, error: readError } = await db
     .from('acceptance_criteria')
     .select('id, archived_at')
     .eq('id', id)
@@ -185,7 +172,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
     });
   }
 
-  const { data, error } = await supabase.rpc('bunkai_archive_acceptance_criterion', {
+  const { data, error } = await db.rpc('bunkai_archive_acceptance_criterion', {
     p_id: id,
   });
   if (error) {
@@ -200,7 +187,7 @@ export const DELETE = withApiHandler(async (request: NextRequest) => {
     },
     { status: 200 },
   );
-});
+}, { auth: 'required' });
 
 function extractId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

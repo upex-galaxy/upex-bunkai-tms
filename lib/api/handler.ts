@@ -1,7 +1,11 @@
+import type { Principal } from '@lib/api/principal';
+import type { Database } from '@lib/types/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import type { z } from 'zod';
 import { ApiError, errorResponse } from '@lib/api/error-envelope';
 import { logRequest } from '@lib/api/logging';
+import { requireCapability, resolveIdentity } from '@lib/api/principal';
 import { getRequestId, REQUEST_ID_HEADER } from '@lib/api/request-id';
 import { NextResponse } from 'next/server';
 
@@ -10,6 +14,11 @@ import { NextResponse } from 'next/server';
 //   - structured JSON access log on stdout (Vercel-indexable)
 //   - centralised error mapping: ApiError → envelope, ZodError → 422, anything
 //     else → 500 with the request_id so users can quote it in a bug report
+//   - unified authentication (ADR-0001): pass `{ auth: 'required' }` and the
+//     wrapper resolves the caller (cookie OR Bearer PAT) into a single
+//     `Principal` injected on the context, enforcing any required capabilities
+//     BEFORE the handler runs. This is the single gateway that makes the
+//     cookie/PAT parity guarantee structural instead of per-route.
 //
 // Handlers stay focused on business logic. They throw ApiError for expected
 // failures (validation, auth, conflict) and return a Response/NextResponse for
@@ -17,6 +26,10 @@ import { NextResponse } from 'next/server';
 
 export interface ApiHandlerContext {
   requestId: string
+  // Present for every route except those marked `auth: 'public'`. Use
+  // `getAuth(ctx)` from an authed handler to read these without null checks.
+  principal?: Principal
+  db?: SupabaseClient<Database>
 }
 
 export type ApiHandler = (
@@ -24,7 +37,31 @@ export type ApiHandler = (
   ctx: ApiHandlerContext,
 ) => Promise<Response> | Response;
 
-export function withApiHandler(handler: ApiHandler): (request: NextRequest) => Promise<Response> {
+export interface WithApiHandlerOptions {
+  // 'required' (DEFAULT) → resolve identity + inject principal/db before the
+  //              handler. Secure by default: a route is authenticated unless it
+  //              explicitly opts out.
+  // 'public'   → no auth resolution. Must be set EXPLICITLY (health, openapi,
+  //              the API index, sign-in/sign-up/magic-link).
+  auth?: 'required' | 'public'
+  // Capabilities the caller must hold (enforced only when auth is required).
+  requires?: string[]
+}
+
+// Read the authenticated context from a handler that opted into `auth:
+// 'required'`. Throws if called from a route that did not — a programming error,
+// not a runtime auth failure.
+export function getAuth(ctx: ApiHandlerContext): { principal: Principal, db: SupabaseClient<Database> } {
+  if (!ctx.principal || !ctx.db) {
+    throw new ApiError('internal_error', 'Auth context missing — route did not opt into auth.');
+  }
+  return { principal: ctx.principal, db: ctx.db };
+}
+
+export function withApiHandler(
+  handler: ApiHandler,
+  options: WithApiHandlerOptions = {},
+): (request: NextRequest) => Promise<Response> {
   return async (request: NextRequest): Promise<Response> => {
     const requestId = getRequestId(request.headers);
     const startedAt = Date.now();
@@ -32,7 +69,18 @@ export function withApiHandler(handler: ApiHandler): (request: NextRequest) => P
     const method = request.method;
 
     try {
-      const response = await handler(request, { requestId });
+      const ctx: ApiHandlerContext = { requestId };
+      // Secure by default: anything not explicitly marked `auth: 'public'`
+      // requires an authenticated principal.
+      if (options.auth !== 'public') {
+        const principal = await resolveIdentity(request);
+        for (const capability of options.requires ?? []) {
+          requireCapability(principal, capability);
+        }
+        ctx.principal = principal;
+        ctx.db = principal.db;
+      }
+      const response = await handler(request, ctx);
       response.headers.set(REQUEST_ID_HEADER, requestId);
       logRequest('info', {
         request_id: requestId,

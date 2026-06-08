@@ -60,4 +60,4 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     },
     warning: 'Store the PAT token now — it cannot be retrieved later.',
   });
-});
+}, { auth: 'public' });
