@@ -156,7 +156,11 @@
 
   /* Status dot */
   .dot {
-    @apply inline-block size-2 rounded-full;
+    @apply inline-block shrink-0 rounded-full;
+    width: 7px;
+    height: 7px;
+    background: var(--skipped);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0);
   }
   .dot[data-status='pass'] {
     background: var(--pass);
@@ -172,61 +176,94 @@
   }
   .dot[data-status='running'] {
     background: var(--running);
-    box-shadow: 0 0 0 4px var(--running-bg);
-    animation: pulse 1.6s ease-in-out infinite;
+    box-shadow: 0 0 0 3px rgba(79, 140, 247, 0.18);
+    animation: dot-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dot-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px rgba(79, 140, 247, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(79, 140, 247, 0.04);
+    }
   }
 
   /* Keyboard hint */
   .kbd {
-    @apply inline-flex items-center justify-center px-[5px] py-[1px] font-mono text-xs font-medium text-fg-2;
-    background: var(--bg-3);
+    @apply inline-flex items-center justify-center font-mono font-medium text-fg-2;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--stroke-2);
     border-bottom-width: 2px;
     border-radius: var(--r-1);
-    min-width: 18px;
   }
 
   /* Layer chip */
   .layer-chip {
-    @apply inline-flex items-center px-[5px] py-[1px] font-mono text-xs font-medium uppercase tracking-wider;
+    @apply inline-flex items-center whitespace-nowrap font-sans font-medium;
+    gap: 5px;
+    height: 18px;
+    padding: 0 6px;
+    font-size: 10.5px;
+    line-height: 1;
+    border: 1px solid var(--stroke-2);
     border-radius: var(--r-1);
   }
   .layer-chip[data-layer='ui'] {
     color: var(--layer-ui);
     background: rgba(139, 109, 240, 0.1);
+    border-color: rgba(139, 109, 240, 0.22);
   }
   .layer-chip[data-layer='api'] {
     color: var(--layer-api);
     background: rgba(79, 140, 247, 0.1);
+    border-color: rgba(79, 140, 247, 0.22);
   }
   .layer-chip[data-layer='unit'] {
     color: var(--layer-unit);
     background: rgba(47, 182, 115, 0.1);
+    border-color: rgba(47, 182, 115, 0.22);
   }
 
   /* Status chip */
   .status-chip {
-    @apply inline-flex items-center gap-1 px-[6px] py-[2px] text-xs font-medium;
+    @apply inline-flex items-center whitespace-nowrap font-sans font-medium;
+    gap: 5px;
+    height: 18px;
+    padding: 0 6px;
+    font-size: 10.5px;
+    line-height: 1;
+    border: 1px solid var(--stroke-2);
     border-radius: var(--r-1);
   }
   .status-chip[data-status='pass'] {
     color: var(--pass);
     background: var(--pass-bg);
+    border-color: rgba(47, 182, 115, 0.25);
   }
   .status-chip[data-status='fail'] {
     color: var(--fail);
     background: var(--fail-bg);
+    border-color: rgba(229, 72, 77, 0.25);
   }
   .status-chip[data-status='blocked'] {
     color: var(--blocked);
     background: var(--blocked-bg);
+    border-color: rgba(232, 168, 56, 0.25);
   }
   .status-chip[data-status='skipped'] {
     color: var(--skipped);
     background: var(--skipped-bg);
+    border-color: rgba(138, 145, 160, 0.18);
   }
   .status-chip[data-status='running'] {
     color: var(--running);
     background: var(--running-bg);
+    border-color: rgba(79, 140, 247, 0.25);
   }
 }
