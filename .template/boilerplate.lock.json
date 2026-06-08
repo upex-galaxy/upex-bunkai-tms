@@ -4,12 +4,12 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "928b67d92167cd4e2ba0e38dbc0ea14345d56f53",
+    "claude": "df8affc3350d43897ee0500b393cc81a0268364a",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "scripts": "1570ee01486cef2c3156cbe0d39b8f0cc928f693",
-    "docs": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "docs": "df8affc3350d43897ee0500b393cc81a0268364a",
     "context": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "context-engineering": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -38,19 +38,19 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-03T16:29:33.323Z",
+  "lastSyncedAt": "2026-06-08T06:05:01.475Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
+        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
         "appliedKeys": [
           "jira:sync-link-types",
           "vars:env:check"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
+        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
         "appliedKeys": []
       }
     }

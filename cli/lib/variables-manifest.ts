@@ -331,18 +331,14 @@ export const DEPRECATED_VARS: DeprecatedVar[] = [
     name: 'JIRA_API_TOKEN',
     reason: 'Replaced by ATLASSIAN_API_TOKEN (DRY Atlassian credential family). Nothing reads JIRA_API_TOKEN anymore.',
   },
-  {
-    name: 'SUPABASE_ANON_KEY',
-    reason: 'Replaced by SUPABASE_PUBLISHABLE_KEY (new-style Supabase keys). Legacy anon key no longer tracked.',
-  },
-  {
-    name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    reason: 'Replaced by SUPABASE_PUBLISHABLE_KEY (new-style Supabase keys). Legacy anon key no longer tracked.',
-  },
-  {
-    name: 'SUPABASE_SERVICE_ROLE_KEY',
-    reason: 'Replaced by SUPABASE_SECRET_KEY (new-style Supabase keys). Legacy service_role key no longer tracked.',
-  },
+  // NOTE: the legacy Supabase keys (SUPABASE_ANON_KEY,
+  // NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) are deliberately
+  // NOT listed here. Unlike the JIRA_* rename above (dead — nothing reads them),
+  // the legacy anon / service_role keys are a VENDOR coexistence pair: Supabase
+  // still provisions them alongside the new sb_publishable / sb_secret keys, both
+  // work simultaneously, and the legacy ones stay valid until the end of 2026.
+  // The Supabase↔Vercel integration ships both, so a fresh, correct .env has both
+  // — flagging them as "obsolete / replaced" alarmed users about a valid setup.
 ];
 
 // ----------------------------------------------------------------------------

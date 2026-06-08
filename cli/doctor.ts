@@ -100,7 +100,9 @@ const REQUIRED_VARS: readonly string[] = [...DAY_ZERO_VARS, ...PROJECT_BOUND_VAR
 // but signal a stale .env.
 // Derived from the canonical DEPRECATED_VARS registry (same source of truth as
 // the installer + updater migration hints). Covers the legacy JIRA_* credential
-// family (pre-DRY rename) + legacy Supabase keys (anon / service_role).
+// family (pre-DRY rename). NOT the legacy Supabase anon / service_role keys —
+// those coexist with the new sb_publishable / sb_secret keys (valid until end of
+// 2026, still provisioned by Supabase↔Vercel), so they are not "deprecated".
 const LEGACY_JIRA_CRED_KEYS: readonly string[] = DEPRECATED_VARS.map(d => d.name);
 
 const VAR_HINTS: Record<string, { hint: string, where: string }> = {
