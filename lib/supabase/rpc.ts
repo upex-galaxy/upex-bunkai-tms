@@ -53,3 +53,80 @@ export async function saveAtc(supabase: Client, args: SaveAtcArgs) {
     p_ac_ids: args.acIds,
   });
 }
+
+// BK-18 — ATC create/edit via the SECURITY DEFINER RPCs. These take the
+// resolved actor user id explicitly (PAT callers have no auth.uid()) and the
+// RPC gates workspace membership against it. They return the composed ATC json
+// (header + ordered steps/assertions + acceptance_criterion_ids).
+
+export interface AtcStepInput {
+  position?: number
+  content: string
+  input_data?: string | null
+  expected?: string | null
+}
+
+export interface AtcAssertionInput {
+  content: string
+}
+
+export interface CreateAtcArgs {
+  actorUserId: string
+  moduleId: string
+  userStoryId: string
+  title: string
+  layer: string
+  tags: string[]
+  steps: AtcStepInput[]
+  assertions: AtcAssertionInput[]
+  acIds: string[]
+}
+
+export async function createAtc(supabase: Client, args: CreateAtcArgs) {
+  return supabase.rpc('bunkai_create_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_module_id: args.moduleId,
+    p_user_story_id: args.userStoryId,
+    p_title: args.title,
+    p_layer: args.layer,
+    p_tags: args.tags,
+    p_steps: args.steps as unknown as Json,
+    p_assertions: args.assertions as unknown as Json,
+    p_ac_ids: args.acIds,
+  });
+}
+
+export interface UpdateAtcArgs {
+  actorUserId: string
+  atcId: string
+  ifMatch: number | null
+  title: string
+  layer: string
+  tags: string[]
+  steps: AtcStepInput[]
+  assertions: AtcAssertionInput[]
+  acIds: string[]
+}
+
+export async function updateAtc(supabase: Client, args: UpdateAtcArgs) {
+  return supabase.rpc('bunkai_update_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_atc_id: args.atcId,
+    // The RPC param is `int` (typed non-null) but accepts NULL to skip the
+    // If-Match version guard. supabase-js serializes null → SQL NULL.
+    p_if_match: args.ifMatch as number,
+    p_title: args.title,
+    p_layer: args.layer,
+    p_tags: args.tags,
+    p_steps: args.steps as unknown as Json,
+    p_assertions: args.assertions as unknown as Json,
+    p_ac_ids: args.acIds,
+  });
+}
+
+export async function getAtc(supabase: Client, args: { actorUserId: string, atcId: string }) {
+  return supabase.rpc('bunkai_get_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_atc_id: args.atcId,
+  });
+}

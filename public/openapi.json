@@ -1363,6 +1363,298 @@
           }
         },
         "required": ["code"]
+      },
+      "Atc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string",
+            "description": "`<module-slug>/atc-<8 hex>`. Computed once at creation, immutable across edits."
+          },
+          "title": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "version": {
+            "type": "integer",
+            "description": "Monotonic per ATC. Starts at 1, +1 per edit."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "blocked", "skipped", "running", "unrun"]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtcStep"
+            }
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtcAssertion"
+            }
+          },
+          "acceptance_criterion_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "module_id",
+          "user_story_id",
+          "slug",
+          "title",
+          "layer",
+          "version",
+          "status",
+          "tags",
+          "created_at",
+          "updated_at",
+          "archived_at",
+          "steps",
+          "assertions",
+          "acceptance_criterion_ids"
+        ]
+      },
+      "AtcStep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "input_data": {
+            "type": ["string", "null"]
+          },
+          "expected": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "position", "content", "input_data", "expected"]
+      },
+      "AtcAssertion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "position", "content"]
+      },
+      "AtcCreateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "acceptance_criterion_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "description": "≥1; all must belong to user_story_id."
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "description": "Integer, strictly increasing from 1."
+                },
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "description": "Up to 2 KB Markdown."
+                },
+                "input_data": {
+                  "type": ["string", "null"],
+                  "maxLength": 2048
+                },
+                "expected": {
+                  "type": ["string", "null"],
+                  "maxLength": 2048
+                }
+              },
+              "required": ["position", "content"]
+            },
+            "minItems": 1
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": ["content"]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "module_id",
+          "user_story_id",
+          "acceptance_criterion_ids",
+          "layer",
+          "steps"
+        ]
+      },
+      "AtcUpdateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "description": "Integer, strictly increasing from 1."
+                },
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "input_data": {
+                  "type": ["string", "null"],
+                  "maxLength": 2048
+                },
+                "expected": {
+                  "type": ["string", "null"],
+                  "maxLength": 2048
+                }
+              },
+              "required": ["position", "content"]
+            },
+            "minItems": 1
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": ["content"]
+            }
+          },
+          "acceptance_criterion_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["title", "layer", "steps", "acceptance_criterion_ids"]
       }
     },
     "parameters": {}
@@ -3764,6 +4056,232 @@
           },
           "404": {
             "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs": {
+      "post": {
+        "tags": ["ATCs"],
+        "summary": "Create an ATC with steps and assertions",
+        "description": "Bearer `atc:write` (or cookie session). Transactional create across atcs + steps + assertions + AC links. Validates that every acceptance criterion belongs to the user story and the module is the user story's module or a descendant in the same project. Emits an `atc.created` event.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtcCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "ATC created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atc": {
+                      "$ref": "#/components/schemas/Atc"
+                    }
+                  },
+                  "required": ["atc"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User story or module not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slug collision (`slug_collision`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/{id}": {
+      "patch": {
+        "tags": ["ATCs"],
+        "summary": "Edit an ATC (full replace of steps and assertions)",
+        "description": "Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. Emits an `atc.updated` event with `affected_test_ids` (empty in the MVP).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Current version for optimistic locking (RFC 7232). A mismatch returns 409."
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtcUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ATC updated (or no-op for an empty body).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atc": {
+                      "$ref": "#/components/schemas/Atc"
+                    }
+                  },
+                  "required": ["atc"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, body, or If-Match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATC not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict (code `conflict`, `details.reason: version_conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits).",
             "content": {
               "application/json": {
                 "schema": {
