@@ -311,6 +311,7 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
                                     onClick={() => { void moveCriterion(ac, -1); }}
                                     disabled={busy || index === 0}
                                     title="Move up"
+                                    aria-label="Move up"
                                     className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
                                   >
                                     <ArrowUp size={12} />
@@ -321,6 +322,7 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
                                     onClick={() => { void moveCriterion(ac, 1); }}
                                     disabled={busy || index === criteria.length - 1}
                                     title="Move down"
+                                    aria-label="Move down"
                                     className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:cursor-not-allowed disabled:opacity-30"
                                   >
                                     <ArrowDown size={12} />
@@ -331,6 +333,7 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
                                     onClick={() => startEdit(ac)}
                                     disabled={busy}
                                     title="Edit criterion"
+                                    aria-label="Edit criterion"
                                     className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1 disabled:opacity-30"
                                   >
                                     <Pencil size={12} />
@@ -341,6 +344,7 @@ export function AcceptanceCriteriaPanel({ storyId, storyTitle, initialStatus, on
                                     onClick={() => { void removeCriterion(ac); }}
                                     disabled={busy}
                                     title="Remove criterion"
+                                    aria-label="Remove criterion"
                                     className="flex h-6 w-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-signal-fail disabled:opacity-30"
                                   >
                                     <Trash2 size={12} />

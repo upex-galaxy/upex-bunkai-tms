@@ -221,6 +221,7 @@ function ModuleNode({
                 data-testid={`module-add-sub-${node.id}`}
                 onClick={() => onAddSubModule(node)}
                 title="Add sub-module"
+                aria-label="Add sub-module"
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
               >
                 <Plus size={11} />
@@ -232,6 +233,7 @@ function ModuleNode({
                 data-testid={`module-new-story-${node.id}`}
                 onClick={() => onNewUserStory(node)}
                 title="New user story"
+                aria-label="New user story"
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
               >
                 <FilePlus size={11} />
@@ -243,6 +245,7 @@ function ModuleNode({
                 data-testid={`module-move-${node.id}`}
                 onClick={() => onMoveModule(node)}
                 title="Move module"
+                aria-label="Move module"
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
               >
                 <FolderInput size={11} />
@@ -254,6 +257,7 @@ function ModuleNode({
                 data-testid={`module-rename-${node.id}`}
                 onClick={() => onRenameModule(node)}
                 title="Rename module"
+                aria-label="Rename module"
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
               >
                 <Pencil size={11} />
@@ -265,6 +269,7 @@ function ModuleNode({
                 data-testid={`module-delete-${node.id}`}
                 onClick={() => onDeleteModule(node)}
                 title="Delete module"
+                aria-label="Delete module"
                 className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
               >
                 <Trash2 size={11} />
@@ -322,6 +327,7 @@ function ModuleNode({
                         data-testid={`story-criteria-${story.id}`}
                         onClick={() => onManageCriteria(story)}
                         title="Manage acceptance criteria"
+                        aria-label="Manage acceptance criteria"
                         className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
                       >
                         <ListChecks size={10} />
@@ -333,6 +339,7 @@ function ModuleNode({
                         data-testid={`story-edit-${story.id}`}
                         onClick={() => onEditUserStory(story)}
                         title="Edit story"
+                        aria-label="Edit story"
                         className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
                       >
                         <Pencil size={10} />
@@ -344,6 +351,7 @@ function ModuleNode({
                         data-testid={`story-delete-${story.id}`}
                         onClick={() => onDeleteUserStory(story)}
                         title="Remove story"
+                        aria-label="Remove story"
                         className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
                       >
                         <Trash2 size={10} />
