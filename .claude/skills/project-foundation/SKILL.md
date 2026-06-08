@@ -35,6 +35,7 @@ Requires `agentic-dev-core`. Loads on demand:
 - `agentic-dev-core/references/skill-composition-strategy.md` — composition contract consumed by the step below.
 - `agentic-dev-core/references/orchestration-doctrine.md` — mandatory subagent dispatch (main thread is command center).
 - `agentic-dev-core/references/session-management.md` — Phase 0 resume contract, plan-first persistence at `.session/project-foundation/`, archive on completion.
+- `agentic-dev-core/references/adr-doctrine.md` — Phase 3 only: which architectural decisions earn an ADR + how to seed the first batch into `.context/ADR/`.
 
 ---
 
@@ -172,7 +173,9 @@ The SRS turns the PRD into a technical contract: formal functional requirements,
 - Read `references/srs-architecture.md` for system architecture diagram, tech stack rationale, data model, deployment topology.
 - Read `references/srs-api-contracts.md` for OpenAPI endpoint definitions per domain.
 
-Output: `.context/SRS/*.md` files.
+**Seed the first ADRs.** The architecture phase is where the most hard-to-reverse decisions are made (auth model, data-access pattern, error/response contract, tenancy, deployment topology, framework choices with lock-in). After `srs-architecture.md` is drafted, promote each decision that passes the two-gate test (architectural **and** hard to reverse) into a standalone `ADR-NNNN-<slug>.md` under `.context/ADR/`, then reference them from the architecture doc. Follow `agentic-dev-core/references/adr-doctrine.md` (detection + authoring) and `.context/ADR/README.md` (template + lifecycle). AI drafts as `Proposed`; the human accepts.
+
+Output: `.context/SRS/*.md` files, plus the seeded `.context/ADR/ADR-NNNN-*.md` records and an updated `.context/ADR/README.md` index.
 
 ### 4. Discovery (Codify the system mental model)
 
@@ -239,6 +242,7 @@ On successful completion of Phase 4 (Verification checklist from `plan.md` passe
 | "functional requirements" / "SRS funcional" / "FR formales"      | `references/srs-functional.md`                                           |
 | "NFR" / "performance/security/scalability" / "no funcional"      | `references/srs-non-functional.md`                                       |
 | "system architecture" / "tech stack" / "diagrama de sistema"     | `references/srs-architecture.md`                                         |
+| "record an ADR" / "architecture decision record" / "decisión de arquitectura" | `agentic-dev-core/references/adr-doctrine.md` + `.context/ADR/README.md` |
 | "API contracts" / "OpenAPI" / "endpoints definition"             | `references/srs-api-contracts.md`                                        |
 | "business data map" / "entity model" / "mapa de negocio"         | invoke `/business-data-map` (pointer: `references/business-data-map.md`) |
 | "business feature map" / "feature inventory" / "CRUD matrix"     | invoke `/business-feature-map`                                           |
@@ -298,6 +302,7 @@ If a section is left as `[PLACEHOLDER]` because the user could not yet answer (e
 - **F5.** NEVER hardcode tool choices (DB engine, hosting provider, auth vendor, framework) in the Constitution. Tool selection lives in SRS architecture — Constitution stays vendor-agnostic so the SRS can change without invalidating the strategic anchor.
 - **F6.** NEVER define personas, problem statements, or KPIs without quoting evidence (user interview, analytics snapshot, stakeholder ask, market data citation). Evidence-free claims look authoritative and mislead the PRD downstream.
 - **F7.** NEVER produce a PRD without an explicit out-of-scope section. Implicit scope boundaries always leak; missing out-of-scope is the #1 source of mid-sprint argumentation.
+- **F8.** NEVER leave the SRS architecture's hard-to-reverse decisions undocumented. Seed the foundational ones as ADRs in `.context/ADR/` (per `agentic-dev-core/references/adr-doctrine.md`) so later sessions don't re-litigate or silently violate them. Draft as `Proposed`; never mark `Accepted` without human sign-off.
 
 ---
 

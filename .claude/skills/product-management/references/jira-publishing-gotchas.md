@@ -3,6 +3,7 @@
 > **Purpose**: When methodology workflows write to Jira rich-text fields (description, AC, Scope, Out-of-Scope, Business rules, Workflow), they pass through Markdown → ADF (Atlassian Document Format) conversion. Two converter / API bugs cost the downstream project real cycles. Pre-empt both so future workflows do not hit the same wall.
 > **Use when**: Any methodology workflow is about to publish to a Jira rich-text field, or when an HTTP 400 surfaces during publish.
 > **Companion references**: `epic-creation.md`, `add-feature.md`, `product-backlog-seed.md`, `story-refinement.md`, `acceptance-criteria.md`, `jira-operations.md`, `description-custom-field-dedup.md`.
+> **Scope boundary**: this file is **what BREAKS** at publish (HTTP 400 edges). For **what READS WELL** — when to use a table / panel / nested list so field content is scannable instead of flat prose, including the now-supported GFM tables — see `../../acli/references/adf-authoring-style.md`.
 
 ---
 

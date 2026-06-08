@@ -50,6 +50,8 @@ Esta feature implementa [descripción high-level de la feature].
 
 ## Technical Decisions
 
+> **Regla de promoción a ADR.** Las decisiones a nivel feature son más propensas a ser **arquitectónicas y difíciles de revertir** que las de una story suelta. Por cada decisión de esta sección que pase el **doble filtro** (arquitectónica Y difícil de revertir — modelo de auth, patrón de data-access, contrato de error, tenancy, elección de framework con lock-in), registrala como `ADR-NNNN-<slug>.md` en `.context/ADR/` y dejá un backlink (`See ADR-NNNN`) acá. Las que son solo decisiones de implementación de la feature quedan en este plan. Detección + procedimiento: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle: `.context/ADR/README.md`. La IA redacta como `Proposed`; el humano aprueba.
+
 **⚠️ IMPORTANTE - MCPs para Decisión Técnica:**
 
 Antes de tomar decisiones técnicas críticas a nivel feature, DEBES:

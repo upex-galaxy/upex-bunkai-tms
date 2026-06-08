@@ -82,3 +82,17 @@ Incluir:
 - Diagramas Mermaid válidos y renderizables
 - Arquitectura escalable para MVP
 - Decisiones justificadas (no solo "porque sí")
+
+---
+
+## 6. Seed the first ADRs (Architecture Decision Records)
+
+Esta es la fase donde se toman las decisiones más difíciles de revertir. Después de redactar `architecture-specs.md`, promové cada decisión que pase el **doble filtro** (es **arquitectónica** Y **difícil de revertir**) a un registro permanente `ADR-NNNN-<slug>.md` bajo `.context/ADR/`, y referenciá esos ADRs desde este documento.
+
+Candidatos típicos en esta fase: modelo de auth/authorization, patrón de data-access, contrato de error/response, modelo de tenancy, topología de deployment, y elecciones de framework/librería con lock-in real (lo mismo que la sección **Tech Stack Justification** documenta con sus trade-offs).
+
+- **Detección + procedimiento de autoría**: `agentic-dev-core/references/adr-doctrine.md` (los dos filtros, regla de promoción, paso a paso).
+- **Template + lifecycle + índice**: `.context/ADR/README.md`.
+- **Lo que NO es un ADR**: trade-offs locales de una story (van en su `implementation-plan.md`), bugfixes, refactors locales, naming.
+- **Append-only**: un ADR Accepted no se reescribe; se **supersede** con uno nuevo que enlaza de vuelta.
+- La IA redacta como `Proposed`; el humano lo pasa a `Accepted`. Persistí la decisión en engram (`mem_save`, type `architecture`).

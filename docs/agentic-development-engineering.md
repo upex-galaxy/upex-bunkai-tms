@@ -317,6 +317,11 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │   ├── architecture.md              #   Stack, data model, deploy topology
 │   └── api-contracts.md             #   OpenAPI endpoint definitions
 │
+├── ADR/                              # Architecture Decision Records (append-only, never regenerated)
+│   ├── README.md                    #   When-to-write (two-gate) + lifecycle + index
+│   ├── ADR-NNNN-template.md         #   Template to copy
+│   └── ADR-NNNN-<slug>.md           #   One per hard-to-reverse decision (/project-foundation SRS, /sprint-development Stage 1)
+│
 ├── business/                         # Single source of business knowledge (Constitution + Maps)
 │   ├── business-model.md            #   Problem, solution, monetization, segments  (/project-foundation Phase 1)
 │   ├── market-context.md            #   Industry, competitors, trends              (/project-foundation Phase 1)

@@ -107,6 +107,13 @@ This workflow requires GitHub CLI for:
 
 **Examples:** Playwright MCP, browser automation tools
 
+> **Attaching a screenshot as inline evidence** (to the bug, or to `{{jira.evidence}}`): `![](path)` does NOT embed in Jira ADF. Use the bundled helper, which uploads the file and posts it inline as a real image so a reviewer sees the before/after state without opening the Attachments panel:
+> ```bash
+> bun .claude/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./before.png --caption "Before fix" --publish
+> bun .claude/skills/acli/scripts/jira-attach-media.ts <BUG-KEY> ./after.png  --caption "After fix"  --publish
+> ```
+> One call per image. Recipe + when-to-use → `.claude/skills/acli/references/adf-authoring-style.md` §media.
+
 **If NOT available:**
 
 - Manual reproduction steps will be provided

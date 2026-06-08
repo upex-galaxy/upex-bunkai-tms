@@ -71,7 +71,7 @@ Canonical reading order for any AI starting cold on a sprint-development workflo
 5. `.context/master-implementation-plan.md` — Master Sprint roadmap for the parent feature (priority + dependency context).
 6. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md` — story-level context (dev-authored, non-Jira): session notes, open questions.
 7. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` — canonical story-level technical plan, synced from the Jira `spec_implementation_plan` field (read-only cache; read before Stage 2 resume).
-8. `.context/SRS/` architecture-specs — only when the story touches a cross-cutting concern (auth, data model, infra).
+8. `.context/SRS/` architecture-specs and `.context/ADR/` — only when the story touches a cross-cutting concern (auth, data model, infra). Read existing ADRs so the plan honors a settled architectural decision instead of silently violating it.
 9. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
 
 **Optional inputs.** Business maps (9) frequently arrive after `/business-*-map` runs and may be absent. Proceed without them when missing; surface a `missing_input` note in the Stage 1 plan so a later pass can fill the gap.
@@ -245,6 +245,8 @@ Read for guidance:
 - `references/feature-plan.md` — macro plan (epic-level, multiple stories)
 - `references/story-plan.md` — micro plan (single story, recommended starting point)
 
+**ADR promotion (inline).** Story-local technical decisions stay in the plan's `## Technical Decisions` section. If a decision passes the two-gate test — **architectural** AND **hard to reverse** — promote it to a standalone `ADR-NNNN-<slug>.md` in `.context/ADR/` before coding, and leave a `See ADR-NNNN` backlink in the plan. Detection + authoring: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle + index: `.context/ADR/README.md`. AI drafts as `Proposed`; the human accepts. (Architectural rework surfaced during Stage 3 review loops back here to record/supersede the ADR.)
+
 Output: the plan is authored in-session, then **pushed to the Jira `spec_implementation_plan` field** (story-level) / `feature_implementation_plan` field (epic-level) via `[ISSUE_TRACKER_TOOL]` — or, if the field is absent, a `## Spec Implementation Plan (Dev)` / `## Feature Implementation Plan (Dev)` fallback comment per `.agents/jira-required.yaml`. Then run `bun run jira:sync-issues get <KEY> --include-comments` and read the materialized `implementation-plan.md` / `feature-implementation-plan.md` under the synced PBI tree (read-only cache). Transition Jira `Ready For Dev -> In Progress`.
 
 **Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Forecast Risk from the Workload Forecast block. See `references/sprint-report.md` §Part 2.
@@ -394,6 +396,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 | ---------------------------------------------------- | --------------------------------------- |
 | "plan this feature (epic-level)"                     | `references/feature-plan.md`            |
 | "plan this story"                                    | `references/story-plan.md`              |
+| "record an ADR" / "promote this to an architecture decision" | `agentic-dev-core/references/adr-doctrine.md` + `.context/ADR/README.md` |
 | "implement this story"                               | `references/implement-story.md`         |
 | "fix this bug"                                       | `references/bug-fix-workflow.md`        |
 | "continue where I left off"                          | `references/continue-implementation.md` |
@@ -470,6 +473,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers.
 10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
+12. **ADR-worthy decisions get recorded**: a decision that is architectural AND hard to reverse goes to `.context/ADR/` (append-only), not buried in the impl plan. Story-local trade-offs stay in the plan. Read existing ADRs before planning a cross-cutting story so you don't violate one. See `agentic-dev-core/references/adr-doctrine.md`.
 
 ---
 
@@ -505,6 +509,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - **S10.** NEVER suppress failing pre-commit / pre-push hooks with `--no-verify`. If a hook is wrong, fix the hook in a separate commit; never silence it to ship.
 - **S11.** NEVER hardcode `customfield_NNNNN` IDs in plans, references, or AI output. Resolve every Jira field via `{{jira.<slug>}}` against `.agents/jira-required.yaml`.
 - **S12.** NEVER read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. ATP detailed read is modality-aware: jira-native → `bun run jira:sync-issues get <STORY_KEY> --include-comments` → synced `acceptance-test-plan.md`; jira-xray → `bun run jira:sync-issues get <ATP_KEY>` → synced `test-plans/TESTPLAN-<KEY>-<slug>.md`. Final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
+- **S13.** NEVER rewrite or delete an existing ADR in `.context/ADR/` to change course, and NEVER mark an AI-drafted ADR `Accepted` without human sign-off. ADRs are append-only: supersede with a new `ADR-NNNN` that links back, and flip the old one's `Status` line only. See `agentic-dev-core/references/adr-doctrine.md`.
 
 ---
 
