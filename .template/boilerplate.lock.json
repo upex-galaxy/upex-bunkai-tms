@@ -4,14 +4,14 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "df8affc3350d43897ee0500b393cc81a0268364a",
+    "claude": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "324e930e59a67694dcd392a7e1fe89dc28d77429",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "scripts": "1570ee01486cef2c3156cbe0d39b8f0cc928f693",
-    "docs": "df8affc3350d43897ee0500b393cc81a0268364a",
-    "context": "324e930e59a67694dcd392a7e1fe89dc28d77429",
-    "context-engineering": "324e930e59a67694dcd392a7e1fe89dc28d77429",
+    "docs": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
+    "context": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
+    "context-engineering": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -21,9 +21,10 @@
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "b4799d2e62bc8d9b80e6de9a16b0f1998ccbba6a",
+      "lastSyncedSha": "db424a5e2f64e406bf5074222d538d2be1c48e73",
       "appendedLines": [
-        "dbhub.toml"
+        "dbhub.toml",
+        ".claude/scheduled_tasks.lock"
       ]
     },
     ".prettierignore": {
@@ -38,7 +39,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-08T06:05:01.475Z",
+  "lastSyncedAt": "2026-06-08T10:44:23.605Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
