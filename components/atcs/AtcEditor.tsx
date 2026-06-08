@@ -143,7 +143,13 @@ export function AtcEditor({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="ghost">Cancel</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => router.push(`/projects/${projectSlug}`)}
+          >
+            Cancel
+          </Button>
           <Button
             size="sm"
             variant="primary"
