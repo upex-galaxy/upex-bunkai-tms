@@ -1,14 +1,14 @@
 # BK-18 — Business Rules
 
-> Jira field: `customfield_10134` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
+> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
-- acceptance*criterion*ids[] must all belong to the supplied user*story*id (cross-entity check)
-- module_id must equal the user story's module OR be a descendant module within the same project (subtree check)
-- layer must be one of {UI, API, Unit} — enum constraint at DB and API level
-- steps[] positions must be integers, strictly increasing, starting at 1
-- tags[] max length is 10; title length 3..200 chars; step content max 2KB Markdown
-- slug is computed once on create and is immutable across edits (renames do not change slug)
-- version integer is monotonically increasing per ATC; PATCH increments by 1
+- acceptance*criterion*ids[] deben pertenecer todos al user*story*id provisto (cross-entity check)
+- module_id debe ser igual al module de la user story O ser un module descendiente dentro del mismo project (subtree check)
+- layer debe ser uno de {UI, API, Unit} — enum constraint a nivel de DB y de API
+- las posiciones de steps[] deben ser enteros, estrictamente crecientes, comenzando en 1
+- tags[] tiene longitud máxima 10; el title mide entre 3 y 200 caracteres; el contenido de step máximo 2KB Markdown
+- el slug se computa una sola vez en la creación y es inmutable a través de las ediciones (los renombres no cambian el slug)
+- el entero de version es monotónicamente creciente por ATC; el PATCH lo incrementa en 1
 
 ---
 _Synced from Jira by sync-jira-issues_

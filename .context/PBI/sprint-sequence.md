@@ -1,66 +1,67 @@
 # Execution Sprint Sequence — Bunkai (67) Sprint 1
 
-_Last computed: 2026-06-03 · Scope: **active sprint** (20 stories · board 7 · site `upexgalaxy69`) · Supersedes the prior BK-44-only run._
+_Last computed: 2026-06-08 · Scope: **active sprint** (sprint id 6 · board 7 · site `upexgalaxy69`) · Recomputed after 17 `Dependencies` links were created (ATC chain + Test + skeleton backfill)._
 
-> **Why ordering is plan-driven, not link-driven.** The in-sprint Jira `Dependencies` graph is effectively EMPTY: only BK-27 carries hard links, and all its dependents (BK-28 / BK-32 / BK-33 / BK-34) are OUT of the active sprint. A pure topological sort would drop all 20 stories into one parallel batch. The ordering below is therefore driven by the **architectural dependency cascade** in `.context/master-implementation-plan.md` (Auth → Workspace → Project → Module → US → AC → ATC → Test), not by Jira links. To make this machine-derivable, add proper `Dependencies` links via `references/dependency-linking.md`, then re-run sprint sequencing.
+> **Ordering is now LINK-DRIVEN (machine-derivable).** Previously the in-sprint `Dependencies` graph was empty (only BK-27 carried links, all dependents out-of-sprint), so ordering was driven by the architectural cascade in `.context/master-implementation-plan.md`. As of 2026-06-08 the graph is populated: every skeleton + ATC + Test edge now exists as a real Jira `Dependencies` link and the topological sort below is derived from Jira, not from the plan. The cascade and the link graph agree.
 
-## Dev scope: 16 of 20 (4 already dev-done)
+## Dependency graph (in-sprint `Dependencies` edges, `X depends on Y`)
 
-Excluded from development (dev complete, awaiting QA): **BK-2** (QA Approved), **BK-4 / BK-5 / BK-6** (Ready For QA).
-
-Story-point scale: **AI-rapid-dev** (Fibonacci 1·2·3·5·8), not human scale. `✓` kept (already defined) · `✦` newly assigned (was empty) · `⟳` re-scaled from 1.
-
----
-
-## Part 1 — "The Skeleton" (Project · Module · US · AC) — THIS SESSION
-
-Structural substrate. Build order follows dependency cascade; one story at a time via `/sprint-development`.
-
-| # | Key | Story | Epic | Status | SP |
-|---|-----|-------|------|--------|----|
-| 1 | BK-8 | TMS-Project \| Create a project inside a workspace | BK-7 | Ready For Dev | 5 ✓ |
-| 2 | BK-9 | TMS-Module \| Create modules with nested sub-modules | BK-7 | Ready For Dev | 13 ✓ ⚠ |
-| 3 | BK-10 | TMS-Module \| Rename and soft-delete a module | BK-7 | Estimation | 2 ✦ |
-| 4 | BK-11 | TMS-Module \| Move a module to a different parent | BK-7 | Shift-Left QA | 3 ✦ |
-| 5 | BK-16 | Markdown Editor \| Write and preview Markdown safely | BK-12 | Ready For Dev | 13 ✓ ⚠ |
-| 6 | BK-14 | TMS-US \| Manage user stories anchored to a module | BK-12 | Shift-Left QA | 3 ✦ |
-| 7 | BK-15 | TMS-AC \| Manage criteria under a user story | BK-12 | Shift-Left QA | 3 ✦ |
-| 8 | BK-17 | Jira Import \| Pull Jira issues by JQL | BK-12 | Ready For Dev | 5 ✦ |
-
-**Part 1 total:** 8 stories · 47 SP. ⚠ BK-9 and BK-16 are human-scale 13s (split-smell); kept per user instruction (do not touch already-defined SP).
+```
+Skeleton:  BK-8→BK-4 · BK-9→BK-8 · BK-10→BK-9 · BK-11→BK-9 · BK-14→BK-9
+           BK-15→BK-14 · BK-17→BK-14 · BK-17→BK-15
+ATC/Test:  BK-18→BK-15 · BK-19→BK-18 · BK-20→BK-18 · BK-23→BK-18 · BK-27→BK-18
+           BK-21→BK-18 · BK-21→BK-27 · BK-22→BK-18 · BK-22→BK-27
+Account:   BK-87→BK-86 · BK-88→BK-87 · BK-89→BK-87 · BK-90→BK-89   (pre-existing, well-refined)
+Blocked:   BK-6→BK-83 (bug)   — BK-6 BLOCKED until bug BK-83 closes
+Downstream (out-of-sprint): BK-28/32/33/34 → BK-27 (future Tests epic; do not delay in-sprint work)
+```
 
 ---
 
-## Part 2 — "The Muscle" (OAuth · ATC Library · Test) — NEXT SESSION
+## Execution Sprints (Kahn topological sort over the full in-sprint story set)
 
-The differentiator (one-edit-many-tests cascade) + test assembly. Depends on the Part 1 skeleton.
+| Execution Sprint | Parallel-safe | Story keys | Notes |
+|---|---|---|---|
+| ES1 | 6 | BK-2, BK-3, BK-4, BK-5, BK-16, BK-86 | No inbound deps — start here. (BK-6 excluded: blocked by bug BK-83.) |
+| ES2 | 2 | BK-8 (dep BK-4), BK-87 (dep BK-86) | |
+| ES3 | 3 | BK-9 (dep BK-8), BK-88 (dep BK-87), BK-89 (dep BK-87) | |
+| ES4 | 4 | BK-10 (dep BK-9), BK-11 (dep BK-9), BK-14 (dep BK-9), BK-90 (dep BK-89) | |
+| ES5 | 1 | BK-15 (dep BK-14) | |
+| ES6 | 2 | BK-17 (dep BK-14, BK-15), **BK-18 (dep BK-15)** | BK-18 = head of ATC chain |
+| ES7 | 4 | BK-19, BK-20, BK-23, BK-27 (all dep BK-18) | Parallel once BK-18 done |
+| ES8 | 2 | BK-21 (dep BK-18, BK-27), BK-22 (dep BK-18, BK-27) | ATC↔Test cross-deps |
 
-| # | Key | Story | Epic | Status | SP |
-|---|-----|-------|------|--------|----|
-| 1 | BK-3 | Authentication \| Sign up and sign in via OAuth (GitHub / Google) | BK-1 | Ready For Dev | 8 ✓ |
-| 2 | BK-18 | TMS-ATC API \| Create and edit ATCs with steps and assertions | BK-13 | Ready For Dev | 5 ✓ |
-| 3 | BK-19 | TMS-ATC Builder \| Build an ATC with ordered steps and assertions | BK-13 | Shift-Left QA | 5 ✦ |
-| 4 | BK-20 | TMS-ATC Search \| Search and autocomplete ATCs | BK-13 | Ready For Dev | 5 ✓ |
-| 5 | BK-21 | TMS-ATC Propagation \| Cascade ATC edits to all tests ★differentiator | BK-13 | Shift-Left QA | 5 ✦ |
-| 6 | BK-22 | TMS-ATC Usage \| See a "Used in N tests" report | BK-13 | Ready For Dev | 3 ✓ |
-| 7 | BK-23 | TMS-ATC Duplicate \| Duplicate an ATC with steps and assertions | BK-13 | Shift-Left QA | 2 ✦ |
-| 8 | BK-27 | TMS-Test Builder \| Assemble a test by chaining ATCs | BK-24 | Shift-Left QA | 3 ⟳ |
+---
 
-**Part 2 total:** 8 stories · 36 SP.
+## Dev-REMAINING frontier (what's actually left to build)
+
+Everything ES1–ES5 is **dev-done** (merged + staging-deployed / QA). The remaining work, in order:
+
+| Order | Key | Story | Status | Blockers remaining |
+|---|---|---|---|---|
+| 1 | **BK-18** | TMS-ATC API — create/edit ATCs | Ready For Dev | **NONE — implement now** |
+| 1 | BK-3 | Authentication — OAuth (GitHub/Google) | Ready For Dev | NONE (independent; auth substrate exists) |
+| 2 | BK-19 | TMS-ATC Builder | Estimation | BK-18 |
+| 2 | BK-20 | TMS-ATC Search | Ready For Dev | BK-18 |
+| 2 | BK-23 | TMS-ATC Duplicate | Estimation | BK-18 |
+| 2 | BK-27 | TMS-Test Builder | Ready For Dev | BK-18 |
+| 3 | BK-21 | TMS-ATC Propagation ★differentiator | Shift-Left QA | BK-18 + BK-27 |
+| 3 | BK-22 | TMS-ATC Usage report | Ready For Dev | BK-18 + BK-27 |
+
+> **BK-18 verdict:** all prerequisites (BK-4→BK-8→BK-9→BK-14→BK-15) are dev-complete. BK-18 is the next thing to build — no story precedes it in the remaining work.
+
+Account/Settings cluster (BK-86→87→88/89→90) is independently sequenced and already linked; build alongside per capacity.
 
 ---
 
 ## Cycle warnings
-- none
+- none (sort completed; graph is a DAG)
 
 ## Soft dependencies (Relates To)
-- none — no `Relates` links exist on any of the 20 in-sprint stories.
+- none — no `Relates` links exist on any in-sprint story.
 
-## Hard links present (all dependents out-of-sprint — do not delay in-sprint work)
-- BK-28, BK-32, BK-33, BK-34 → `depend on` → **BK-27** (BK-27 is the in-sprint prerequisite; its dependents are future Tests-epic work outside this sprint).
-
-## Downstream (separate scope, not in active sprint)
-- **EPIC BK-44 — Coverage & Traceability**: read-side capstone, gated on BK-24/BK-30/BK-31 being Done. Its intra-epic topological order was computed in a prior run (see git history of this file). Re-run after the execution layer lands.
+## Blocked
+- **BK-6** (Switch workspaces) — blocked by bug **BK-83** (active-workspace response missing fields). Resolve BK-83 to unblock.
 
 ---
-_Sequencing authored by `/product-management` workflow H against the active sprint. Story points written to Jira (site upexgalaxy69) on 2026-06-03._
+_Sequencing authored by `/product-management` workflow H against the active sprint. 17 `Dependencies` links created + direction-verified via REST on 2026-06-08 (site upexgalaxy69)._
