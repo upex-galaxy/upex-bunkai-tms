@@ -12,6 +12,9 @@ interface AnchoringPanelProps {
   selectedAcIds: string[]
   onSelectStory: (id: string) => void
   onToggleAc: (id: string) => void
+  // When embedded inside the compose column (not a full-height aside), drop the
+  // fixed height + padding so the panel flows with the surrounding form.
+  embedded?: boolean
 }
 
 export function AnchoringPanel({
@@ -21,6 +24,7 @@ export function AnchoringPanel({
   selectedAcIds,
   onSelectStory,
   onToggleAc,
+  embedded = false,
 }: AnchoringPanelProps) {
   const [query, setQuery] = useState('');
 
@@ -37,7 +41,7 @@ export function AnchoringPanel({
   const acs = selectedStoryId ? storyAcs[selectedStoryId] ?? [] : [];
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-auto p-4">
+    <div className={cn('flex flex-col gap-3', embedded ? '' : 'h-full overflow-auto p-4')}>
       <Section
         title="Linked User Story"
         hint={selectedStoryId ? '1 selected · required' : 'required'}

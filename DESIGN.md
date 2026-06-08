@@ -3,6 +3,16 @@
 > **Status**: Authored (LLM-authored custom path — option 5 from `/design-system`). Source mockup at `.context/designs/bunkai-test-management-tool/`.
 > **Spec**: Google Labs DESIGN.md format (https://github.com/google-labs-code/design.md).
 > **Source**: tokens extracted from the Claude Design handoff CSS (`.context/designs/bunkai-test-management-tool/project/styles.css`). Iteration cycle: regenerate this file whenever the mockup is updated or rebranding occurs.
+>
+> **Token fidelity (verified 2026-06-08)**: every token table below is byte-exact with the live implementation (`app/globals.css` + `tailwind.config.ts`). Treat them as the **frozen design contract**.
+>
+> ### How this relates to the Master Design Plan
+> | Doc | Owns |
+> |---|---|
+> | **DESIGN.md** (this file) | The design **system** — tokens, component vocabulary, typography, motion, a11y. The *what things are made of*. |
+> | **`.context/design/master-design-plan.md`** | The design **plan** — per-screen fidelity specs (9 screens), divergence register, US→Screen map, refactor backlog, engagement rule. The *how each screen must look + what's still off*. |
+>
+> When implementing UI: read the Master Design Plan first (it routes you to the right screen + cites this file for tokens). **CLAUDE.md Rule #15** makes following both mandatory. Tokens here are canonical; the plan tracks where the build has drifted from them.
 
 ---
 
@@ -182,6 +192,7 @@ Bunkai uses an implicit 4-px grid. Common gaps: 4, 6, 8, 10, 12, 16, 20, 24. Pad
 | `.context/designs/bunkai-test-management-tool/project/screens/*.jsx` | React-prototype implementations of each screen (login, home, project, editor, run) |
 | `.context/designs/bunkai-test-management-tool/project/icons.jsx` | Icon set used in the mockup |
 | `.context/designs/bunkai-test-management-tool/chats/chat1.md` | Original Claude Design conversation transcript — read for intent |
+| `.context/design/master-design-plan.md` | Per-screen fidelity specs, divergence register, US→Screen map, refactor backlog — the screen-level design contract that consumes this file's tokens |
 
 ## 12. Regeneration triggers
 
@@ -195,4 +206,4 @@ Re-run `/design-system` or hand-edit this file when:
 
 ---
 
-**Related files**: `README.md`, `CLAUDE.md`, `CONTEXT.md`, `.context/designs/`.
+**Related files**: `README.md`, `CLAUDE.md` (Rule #15 — design fidelity gate), `CONTEXT.md`, `.context/designs/`, `.context/design/master-design-plan.md`.

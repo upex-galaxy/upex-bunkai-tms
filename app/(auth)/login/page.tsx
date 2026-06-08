@@ -29,6 +29,22 @@ export default async function LoginPage() {
         className="relative hidden flex-col justify-between overflow-hidden border-r border-stroke-1 px-12 py-8 lg:flex"
         style={{ background: 'linear-gradient(180deg, #0c0e12 0%, #0a0b0d 100%)' }}
       >
+        {/* drifting light glows */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="aurora aurora-1"
+            style={{ top: '-12%', left: '-8%', width: 520, height: 520, background: 'radial-gradient(circle, rgba(217,84,63,0.28), transparent 70%)' }}
+          />
+          <div
+            className="aurora aurora-2"
+            style={{ bottom: '-18%', right: '-6%', width: 560, height: 560, background: 'radial-gradient(circle, rgba(79,140,247,0.20), transparent 70%)' }}
+          />
+          <div
+            className="aurora aurora-3"
+            style={{ top: '38%', left: '30%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(139,109,240,0.16), transparent 70%)' }}
+          />
+        </div>
+
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -50,9 +66,14 @@ export default async function LoginPage() {
         </header>
 
         <div className="relative max-w-[580px]">
-          <div className="mb-7 flex flex-wrap-reverse items-end gap-x-9 gap-y-4">
+          <div className="fade-up mb-7 flex flex-wrap-reverse items-end gap-x-9 gap-y-4">
             <div className="font-jp inline-flex flex-shrink-0 items-end whitespace-nowrap font-bold leading-none text-fg-0" style={{ fontSize: 'clamp(110px, 17vw, 196px)', letterSpacing: '0.04em' }}>
               <span className="relative inline-block">
+                <span
+                  aria-hidden
+                  className="glow-halo pointer-events-none absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2"
+                  style={{ width: '1.2em', height: '1.2em', background: 'radial-gradient(circle, var(--accent-glow), transparent 70%)', filter: 'blur(24px)' }}
+                />
                 分
                 <span
                   aria-hidden
@@ -75,7 +96,7 @@ export default async function LoginPage() {
             </div>
           </div>
 
-          <h1 className="m-0 max-w-[540px] text-2xl font-bold leading-tight tracking-tight text-fg-0">
+          <h1 className="fade-up m-0 max-w-[540px] text-[30px] font-bold leading-[1.15] tracking-tight text-fg-0" style={{ animationDelay: '0.08s' }}>
             A test management system that
             <br />
             <span className="text-fg-2">decomposes user stories into</span>
@@ -83,7 +104,7 @@ export default async function LoginPage() {
             executable Acceptance Test Cases.
           </h1>
 
-          <p className="mt-4 max-w-[480px] text-md leading-relaxed text-fg-2">
+          <p className="fade-up mt-4 max-w-[480px] text-md leading-relaxed text-fg-2" style={{ animationDelay: '0.16s' }}>
             Built around the
             {' '}
             <strong className="font-semibold text-fg-0">IQL</strong>
@@ -95,7 +116,7 @@ export default async function LoginPage() {
             architecture — for QA engineers who think in reusable test cases, not freeform steps. Manual, agentic, and CI execution converge on the same source of truth.
           </p>
 
-          <ul className="mt-6 grid max-w-[520px] grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 p-0">
+          <ul className="fade-up mt-6 grid max-w-[520px] grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 p-0" style={{ animationDelay: '0.24s' }}>
             {FEATURE_TICKS.map(([k, v]) => (
               <li key={k} className="contents">
                 <span className="self-center font-mono text-xs font-semibold text-accent">{k}</span>
@@ -118,8 +139,29 @@ export default async function LoginPage() {
       </section>
 
       {/* RIGHT — auth panel */}
-      <section className="flex flex-col justify-center bg-surface-1 px-11 py-12">
-        <div className="mx-auto w-full max-w-[360px]">
+      <section className="relative flex flex-col justify-center overflow-hidden bg-surface-1 px-6 py-12 sm:px-11">
+        {/* ambient glow — carries the brand life onto mobile, where the left panel is hidden */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="aurora aurora-2"
+            style={{ top: '-20%', right: '-25%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(217,84,63,0.16), transparent 70%)' }}
+          />
+          <div
+            className="aurora aurora-3 lg:hidden"
+            style={{ bottom: '-25%', left: '-20%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(79,140,247,0.14), transparent 70%)' }}
+          />
+        </div>
+
+        <div className="fade-up relative mx-auto w-full max-w-[360px]">
+          {/* mobile-only brand mark (left panel is hidden < lg) */}
+          <div className="mb-8 flex items-center gap-3 lg:hidden">
+            <span className="font-jp text-3xl font-bold leading-none text-fg-0">分解</span>
+            <div className="leading-tight">
+              <div className="text-sm font-bold tracking-tight text-fg-0">Bunkai</div>
+              <div className="font-mono text-2xs uppercase tracking-widest text-fg-3">Test Management</div>
+            </div>
+          </div>
+
           <div className="mb-6">
             <div className="mb-2 font-mono text-xs font-semibold uppercase tracking-widest text-accent">
               Sign in

@@ -1,4 +1,3 @@
-import { UserMenu } from '@components/layout/UserMenu';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
 import { cookies } from 'next/headers';
@@ -49,9 +48,6 @@ export default async function ProjectsIndexPage() {
 
   return (
     <div className="flex h-screen items-center justify-center gap-6 bg-surface-0 px-6">
-      <div className="fixed right-3 top-3 z-50">
-        <UserMenu />
-      </div>
       <CreateProjectForm
         workspaceId={activeWorkspaceId}
         hasProjects={Boolean(projects && projects.length > 0)}
