@@ -1,8 +1,17 @@
 # ADR-0001 — Unified API Authentication (Single Identity Gateway)
 
-- **Status:** Accepted
-- **Date:** 2026-06-08 (proposed) · 2026-06-08 (accepted)
+- **Status:** Accepted — Implemented
+- **Date:** 2026-06-08 (proposed) · 2026-06-08 (accepted) · 2026-06-08 (implemented)
 - **Deciders:** Project architect + auth owner (ratified after external AI cross-judgment)
+
+> **Implementation status (2026-06-08), branch `feature/api-auth-gateway`:** all six phases done.
+> Phase 1-2 — `lib/api/principal.ts`, `lib/api/user-jwt.ts`, auth-aware `lib/api/handler.ts`.
+> Phase 3 — all ~29 cookie-only handlers migrated onto the gateway (`getAuth(ctx)` + `ctx.db`); the old `lib/api/auth.ts` (requireAuth/requireScopeOrCookie) deleted as orphaned.
+> Phase 4 — `withApiHandler` default flipped to secure-by-default; public routes (health, API index, sign-in/up/magic-link) marked `auth: 'public'`; `app/api/openapi` already bypasses the wrapper.
+> Phase 5 — ESLint `no-restricted-syntax` ban on `auth.getUser()` in `app/api/**` (`eslint.config.js`).
+> Phase 6 — committed cross-tenant test `lib/api/rls-parity.test.ts` (env-guarded) + `lib/api/user-jwt.test.ts`.
+> Exceptions enforced: `tokens` POST/DELETE reject Bearer (PAT cannot mint/revoke a PAT); `invites/accept` resolves caller email via the admin auth API. Gates green: 161 tests, types:check, eslint (whole repo).
+> KNOWN LIMITATION (follow-up): non-ATC routes migrate with `requires: []` — they enforce authentication + RLS membership but do NOT yet map to a capability, so a narrowly-scoped PAT gets full member access on those routes. Tighten when the capability vocabulary is extended beyond the current four scopes.
 - **Tags:** authentication, authorization, api, security, cross-cutting-invariant
 
 ---
