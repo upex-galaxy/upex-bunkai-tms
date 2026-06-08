@@ -28,6 +28,8 @@ model_preferences:
 1. **A public `/qa` page inside the app** titled _"Software Testability Guide for QA"_ — explains the architecture, demo users, DB-level testing via DBHub MCP, API-level testing via OpenAPI MCP, UI-level testing via Playwright (scripted and agentic). The page links out to the real credentials but never inlines them.
 2. **A tool-agnostic credentials artifact** (a markdown body) that holds the real DB connection, API login, demo passwords, OpenAPI spec URL, and Swagger UI link. The user picks where this artifact gets published: a Jira Epic (default), a Confluence page, a Notion page, any tool reachable via an MCP or a CLI, or — as a last resort — manual paste.
 
+> **Division of labor**: the credentials artifact (the Epic/page) holds the **real values** + a copy-paste `.env` block; the `/qa` page holds **placeholders + how-it-works** and never inlines a secret. Each artifact links to the other — the page's CTA opens the credentials destination, and the credentials body links back to `/qa`.
+
 The skill is idempotent. On re-run it reads a snapshot comment at the top of the generated page (`/* qa-guide-snapshot: stack=…, generated=… */`), diffs against the current detected stack, and proposes a **surgical patch** only when something drifted. Identical stack → no-op + report.
 
 ---
@@ -131,10 +133,10 @@ Phase 0 is inline — no subagent dispatch.
 
 ## Phase 1 — Write `plan.md` (after Phase 3 batched decisions)
 
-Phase 3 below collects the user's batched answers to Q1–Q5 (credentials destination, DB role policy, page route, redirect of old route, language). Immediately after those answers land, write `.session/testability-guide/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6:
+Phase 3 below collects the user's batched answers to Q1–Q8 (credentials destination, DB role policy, page route, redirect of old route, language, and the detection-pre-answered page-craft trio: highlighter, agentic UI driver, request viewer). Immediately after those answers land, write `.session/testability-guide/plan.md` per the schema in `agentic-dev-core/references/session-management.md` §6:
 
 - Frontmatter: `topic_key: session/testability-guide/project/plan`, `skill: testability-guide`, `scope: project`, `status: draft`, `capture_prompt: true`.
-- Body sections (fixed H2 order): `## Goal` · `## Inputs` (host stack from Phase 1 discovery, snapshot diff from Phase 2 idempotency check, Q1–Q5 answers from Phase 3) · `## Approach` · `## Phase breakdown` (Phase 4 page codegen, Phase 5 credentials content build, Phase 6 publish via chosen channel, Phase 7 security audit, Phase 8 verification, Phase 9 commit / PR — with dispatch pattern per row, Single / Parallel / inline as documented in §"Subagent dispatch") · `## Risks & open questions` · `## Verification checklist` (mirrors `references/verification-checklist.md`) · `## Cross-references` (target `/qa` page path, chosen credentials destination URL, branch name handed to `/git-flow-master`).
+- Body sections (fixed H2 order): `## Goal` · `## Inputs` (host stack from Phase 1 discovery, snapshot diff from Phase 2 idempotency check, Q1–Q8 answers from Phase 3) · `## Approach` · `## Phase breakdown` (Phase 4 page codegen, Phase 5 credentials content build, Phase 6 publish via chosen channel, Phase 7 security audit, Phase 8 verification, Phase 9 commit / PR — with dispatch pattern per row, Single / Parallel / inline as documented in §"Subagent dispatch") · `## Risks & open questions` · `## Verification checklist` (mirrors `references/verification-checklist.md`) · `## Cross-references` (target `/qa` page path, chosen credentials destination URL, branch name handed to `/git-flow-master`).
 
 Dispatch: inline draft is normal — the Phase 3 answers are the deciding inputs and they are short.
 
@@ -162,7 +164,7 @@ Rules + snapshot format: `references/idempotency-snapshot.md`.
 
 ### 3. Batched decisions (ONE message, wait for answers)
 
-Ask Q1 through Q5 in a single message: credentials destination, DB role policy, page route, redirect of old route, language. Defaults documented + tradeoffs explained.
+Ask Q1 through Q5 in a single message: credentials destination, DB role policy, page route, redirect of old route, language. Defaults documented + tradeoffs explained. Q6–Q8 (highlighter, agentic UI driver, request viewer) are **detection-pre-answered** — resolve them from the repo and only ask if detection is ambiguous.
 
 Question text + defaults + tradeoffs: `references/decision-questions.md`.
 
@@ -272,4 +274,4 @@ On successful completion (all eight verification items pass), the orchestrator r
 - Security non-negotiables live in `references/security-rules.md`. Read it before any publish.
 - MCP credentials are cached at MCP-spawn time (CLAUDE.md Rule #11). If a publish path fails on `401` / `403`, stop, point the user at the right `.env` variable, and ask them to restart the agent session. Do NOT work around.
 - This skill assumes English visible copy by default. Switch to the host language whenever the host app exposes a clear signal (root `lang` attribute, i18n config, copy already in another language). Code identifiers + `data-testid`s stay English regardless.
-- The skill never adds new dependencies. If the host UI kit lacks a `<CodeBlock>` component, create a minimal local one with a copy button — do not pull in a library for it.
+- **One sanctioned dependency — the syntax highlighter (the ONLY exception).** The skill adds **no other** dependencies. If the host UI kit lacks a `<CodeBlock>` component, create a minimal local one with a copy button — do not pull in a library for it. The single exception is a **server-only syntax highlighter (Shiki, or the host's existing equivalent)**: when the host has no highlighter, the skill MAY add Shiki because it runs server-side (build/request time), emits static dual-theme HTML, and ships **zero client JavaScript**. This is gated by Q6 (`decision-questions.md`) and detection — reuse the host's highlighter if one exists, and skip it entirely if the host has an explicit "no new deps" policy. Everything else still follows "no new deps": tabs, badges, request cards, and the highlight pipeline's framing components are local files in the host's style, not packages.

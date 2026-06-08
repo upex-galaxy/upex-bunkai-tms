@@ -78,6 +78,62 @@
 
 ---
 
+## Tables: the converter can't build them
+
+The credentials body has tables (Environments; and the demo-users table in UI Variant B). **`md-to-adf.ts` will NOT produce them.** Its parser lists markdown tables as out-of-scope (so a `| col | col |` markdown table is emitted as literal text, never an ADF table node), while its validator allowlist DOES include `table` / `tableRow` / `tableHeader` / `tableCell` — i.e. hand-built table nodes pass validation, but the converter never authors them. So you hand-build the table nodes and interleave them with the converted prose.
+
+Recipe (generalized — adapt cell contents from detection, never hardcode the example values):
+
+1. Author each prose section as a markdown string. Author each TABLE as a 2-D array of strings (first row = header).
+2. Hand-build ADF `table` nodes with these two compact helpers:
+
+   ```ts
+   type Node = Record<string, any>;
+
+   function cellText(text: string, header: boolean): Node {
+     const type = header ? "tableHeader" : "tableCell";
+     const content = text.length
+       ? [{ type: "paragraph", content: [{ type: "text", text }] }]
+       : [{ type: "paragraph", content: [] }];
+     return { type, attrs: {}, content };
+   }
+
+   function table(rows: string[][]): Node {
+     return {
+       type: "table",
+       attrs: { isNumberColumnEnabled: false, layout: "default" },
+       content: rows.map((cells, i) => ({
+         type: "tableRow",
+         content: cells.map((c) => cellText(c, i === 0)),
+       })),
+     };
+   }
+   ```
+
+3. Interleave the hand-built tables with the converted prose, splicing `mdToAdf(prose).content` around each table node:
+
+   ```ts
+   const md = (s: string): Node[] => mdToAdf(s).content;
+   const content: Node[] = [
+     ...md(intro), envTable, ...md(dbBody), ...md(api), ...md(footer),
+   ];
+   const doc = { type: "doc", version: 1, content };
+   ```
+
+4. **Gate with a PROBE validation that filters out the table nodes** before publishing — the validator allowlist accepts table nodes, but validate the prose nodes explicitly so structural errors in your authored prose still fail fast:
+
+   ```ts
+   const probe = { type: "doc", version: 1, content: content.filter((n) => n.type !== "table") };
+   const { valid, errors } = validateAdf(probe);
+   if (!valid) { console.error(errors); process.exit(1); }
+   ```
+
+5. Publish via `--description-file`, then **GET the Epic back** (view the work item as JSON via `[ISSUE_TRACKER_TOOL]`) and confirm the table nodes survived the round-trip — the round-trip is the real proof, since the probe skipped them.
+
+> Why a generator script and not the plain `md-to-adf.ts <in> <out>` one-liner: the one-liner can't inject table nodes. When the body has tables, build a small project-local generator (the helpers above + your authored sections) that writes the ADF JSON, then feed that JSON to `acli edit --description-file`. Keep zero real secrets in the generator — placeholders only; real values are filled in the gated Epic after publish.
+
+---
+
 ## Wiki markup gotchas
 
 > **LEGACY — not used by the `acli` ADF path above.** This table applies ONLY if you publish through a wiki-markup channel (some Atlassian MCP / raw REST wiki flows). The default `acli` adapter uses `md-to-adf.ts` + `--description-file` (ADF JSON), which sidesteps every gotcha below. Keep this for the fallback case; do not convert to wiki markup when `acli` is the publisher.
@@ -107,6 +163,7 @@
 | ---------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Tier returns `401`                                   | API token expired or missing in `.env`        | STOP, ask user to set `ATLASSIAN_API_TOKEN`, restart session. CLAUDE.md Rule #11.                       |
 | Epic created but body renders as literal `**` or `h2.`        | Published as wiki/markdown instead of ADF          | Re-run the ADF path: `md-to-adf.ts` then `acli edit --description-file`. Never hand-author wiki markup.                   |
+| Table renders as literal `| col | col |`            | Passed a markdown table to the converter      | Hand-build ADF table nodes (`table` / `tableRow` / `tableHeader` / `tableCell`) and interleave with the converted prose — see §"Tables: the converter can't build them". The converter never emits table nodes. |
 | Epic exists with same summary in a different project | Wrong `project_key` in `.agents/project.yaml` | Ask user to confirm key. Do NOT auto-pick.                                                              |
 | View restrictions can't be applied                   | Account lacks permission                      | Surface to user. Continue with publish — the Epic is still less risky than the page inline credentials. |
 

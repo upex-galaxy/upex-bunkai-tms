@@ -1,8 +1,10 @@
-# Decision Questions (Q1–Q5)
+# Decision Questions (Q1–Q8)
 
 > **Purpose**: One batched message to the user. Defaults documented. Tradeoffs explained briefly. Wait for answers before scaffolding.
 >
 > **When to read**: Phase 3 of `SKILL.md`. Skip Q3 / Q4 on a surgical-patch run (the route + redirect are locked by the existing page); ask Q1, Q2, Q5 again only if the snapshot shows their values changed.
+>
+> **Page-craft questions (Q6–Q8)** are detection-pre-answered: the skill detects the right default from the repo and only asks if detection is ambiguous. They control how good the page LOOKS + reads — syntax highlighting, the agentic UI driver, and the request viewer.
 
 ---
 
@@ -32,6 +34,9 @@ How to detect pre-answers:
 | "/qa", "/qa/testing", "/internal/qa", any explicit route                             | Q3         |
 | "redirect from /guide", "replace /docs", or "no redirect needed"                     | Q4         |
 | "Spanish", "English", "en español", "in English", `lang="es"` in the host app        | Q5         |
+| "syntax highlighting", "Shiki", "no highlighter", "plain pre", "highlight the code"   | Q6         |
+| "playwright-cli", "Playwright MCP", "@playwright/mcp", "agentic browser driver"       | Q7         |
+| "Postman-style", "request cards", "plain curl blocks", "request viewer"               | Q8         |
 
 ---
 
@@ -110,8 +115,56 @@ What language should the page's visible copy use? Code identifiers + `data-testi
 
 ---
 
+## Q6 — Syntax highlighting
+
+How should the page's code blocks be rendered? Every QA snippet (curl, MCP config per agent, Playwright fixtures, `dbhub.toml`) is more readable with real syntax colors.
+
+| Option                                  | When to pick                                                                                                  | Cost                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Server-side highlighter** (default)   | The host has no highlighter yet. Adds ONE server-only dependency (Shiki, or the host's chosen equivalent). | **+1 dep**, but **zero client JS** — highlighting runs at build/request time and ships static HTML strings. |
+| Reuse the host's existing highlighter   | The host already ships a highlighter (Shiki, Prism, highlight.js, `rehype-pretty-code`, a Code component).    | None — adapt the golden's pipeline onto the existing one.                                                  |
+| Plain `<pre>` (no highlighter)          | The host forbids any new dep AND has none, or the page must stay byte-minimal.                                | None, but the page reads worse — monochrome code walls.                                                    |
+
+**Pre-answer (detection)**: in Phase 1, grep `package.json` for a highlighter (`shiki`, `prismjs`, `react-syntax-highlighter`, `highlight.js`, `rehype-pretty-code`, `@shikijs/*`). If one exists → reuse it (no question). If none → default to **Shiki, server-only** (it is the single dependency this skill is allowed to add — see `SKILL.md` Notes) and proceed; only ask if the host has an explicit "no new deps" policy detected (e.g. a `renovate`/CI gate or an CLAUDE.md rule).
+
+**Recommendation**: Shiki when the host has none. It is server-only (runs in a React Server Component / build step), emits dual-theme CSS-variable HTML for dark/light, and adds zero client-side JavaScript. The highlight pipeline is in `page-craft.md` ("Server highlight pipeline").
+
+---
+
+## Q7 — Agentic UI driver
+
+How does an AI agent drive the browser for the page's §6(b) "agentic" examples?
+
+| Option                              | When to pick                                                                                            | Tradeoff                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| **`playwright-cli` binary** (default) | A `playwright-cli` skill is installed and/or the team drives the browser by direct CLI commands.        | Fewer tokens, direct commands (`open` / `snapshot` / `fill` / `click` / `screenshot` / `close`). |
+| Playwright MCP (`@playwright/mcp`)  | The project already wires `@playwright/mcp` in `.mcp.json` and the team prefers the MCP tool surface.   | Heavier token cost; richer caps flags. Keep as the explicit fallback line.                        |
+
+**Pre-answer (detection)**: in Phase 1, check `.mcp.json` (+ `opencode.jsonc` / `codex.toml` / `.gemini/settings.json`) for a `playwright` MCP entry, AND check whether a `/playwright-cli` skill is present in the session skill list / registry. If a `playwright-cli` skill exists → default **playwright-cli**. If `@playwright/mcp` is wired and no CLI skill → default **Playwright MCP**. If both exist → default **playwright-cli** (cheaper) and mention the MCP as fallback. Only ask if neither is detectable.
+
+**Recommendation**: `playwright-cli` when its skill is available — it is the cheaper, direct-command path and the §6(b) cookbook + ArchDiagram UI badge ("playwright-cli → UI") assume it. The command cookbook is in `mcp-and-env-setup.md` §6.
+
+---
+
+## Q8 — Request viewer
+
+How should §5's API auth requests be presented?
+
+| Option                                       | When to pick                                                                                           | Tradeoff                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Postman-style request cards** (default)    | The page documents 2+ auth requests / endpoints a tester will exercise.                                | Richer: METHOD badge, URL+copy, Headers table, Body/Response panels, Visual/curl toggle. |
+| Plain curl blocks                            | Only one trivial auth call exists, or the host kit cannot render tabs/tables cheaply.                  | Simpler — a single highlighted curl block per method. Keep as the fallback.          |
+
+**Pre-answer (detection)**: default to **request cards** whenever the detected auth surface has ≥1 structured request to render (almost always). Fall back to plain curl blocks only when the host UI kit cannot scaffold the needed primitives (tabs/table) AND adding them is disallowed. No question unless that fallback condition is hit.
+
+**Recommendation**: request cards. They REPLACE the old curl-wall `AuthMethods` as the §5 default (`page-craft.md` "Request viewer"). The card model is detection-driven — the skill reads the project's REAL auth requests into the `ApiRequest[]` model; it never bakes in signup/signin/token endpoints.
+
+---
+
 ## Skip rules on re-run
 
 On a surgical-patch run (idempotency detected drift), only ask the questions whose snapshot values changed. Example: if only `auth=` and `db=` changed, do not re-ask Q1 / Q3 / Q4 — re-use the cached answers stored in the snapshot comment.
+
+Q6–Q8 are recorded in the snapshot `page-features=` field (see `idempotency-snapshot.md`). On re-run, re-use the cached page-craft choices unless the user asks to upgrade an older flat page — then offer the detected defaults (e.g. add `shiki`, switch to `request-cards`, swap Playwright MCP → `playwright-cli`).
 
 If the user wants to **override** a cached answer mid-run, they can interrupt — the skill respects the latest user instruction over the cached snapshot.

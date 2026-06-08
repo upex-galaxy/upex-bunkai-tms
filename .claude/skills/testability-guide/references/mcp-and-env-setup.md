@@ -24,7 +24,7 @@ UI (Playwright) + API (OpenAPI / Postman) + DB (DBHub) = Testing Completo
 
 | Layer | MCP / tool | What it's for | Needs |
 | --- | --- | --- | --- |
-| **UI** | `@playwright/mcp` + the `/playwright-cli` skill | Drive the browser: scripted regression + agentic exploration | login `data-testid`s + a demo user |
+| **UI** | **`playwright-cli` binary + the `/playwright-cli` skill** (default, Q7) | Drive the browser: scripted regression + agentic exploration | login `data-testid`s + a demo user |
 | **API** | OpenAPI MCP (`@ivotoby/openapi-mcp-server`) | Invoke endpoints directly from the agent | Bearer token + spec URL |
 | **API (formal)** | Postman MCP (`https://mcp.postman.com/mcp`) | Manage collections, run formal test suites | Postman API key |
 | **DB** | DBHub MCP (`@bytebase/dbhub`) | Verify data directly in the database | read-only connection (`dbhub.toml`) |
@@ -65,16 +65,29 @@ MCP config files are **committed to git** and contain **no secrets** — they re
 
 ### Activating `.env` in the terminal (only if the project uses strategy B)
 
-The agent process must have the vars at **spawn time**. Two ways:
+The agent process must have the vars at **spawn time**. Three ways:
 
 - **A) Cross-platform wrapper** (default — Windows/Mac/Linux): the project's `package.json` ships `bun run claude` / `bun run opencode` (a `dotenv-cli` wrapper). Launch the agent through it.
-- **B) direnv** (Mac/Linux, optional): a committed `.envrc` auto-loads `.env` on `cd` into the repo. One-time setup: `brew install direnv` (or distro pkg) → add `eval "$(direnv hook zsh)"` to `~/.zshrc` → `direnv allow`. Then launch `claude` / `opencode` directly.
+- **B) Source into the current shell** (Mac/Linux/Git Bash): `set -a; source .env; set +a` exports every `.env` var into your CURRENT shell, then you launch a bare `claude` / `opencode`. **Must be SOURCED** — a `bun run` wrapper runs in a subshell and the exports won't persist to your terminal. Useful when you also want to inspect the vars yourself.
+- **C) direnv** (Mac/Linux, optional): a committed `.envrc` auto-loads `.env` on `cd` into the repo. One-time setup: `brew install direnv` (or distro pkg) → add `eval "$(direnv hook zsh)"` to `~/.zshrc` → `direnv allow`. Then launch `claude` / `opencode` directly.
 
-> Only render the mechanisms the project actually ships (detected in Phase 1: `claude`/`opencode` scripts, `.envrc`). If the project's runtime auto-loads `.env` (e.g. Bun), say so but note the agent process still needs the vars exported for the MCP launcher.
+> Only render the mechanisms the project actually ships (detected in Phase 1: `claude`/`opencode` scripts, `.envrc`; `source .env` always applies on a POSIX shell). If the project's runtime auto-loads `.env` (e.g. Bun), say so but note the agent process still needs the vars exported for the MCP launcher.
 
 ### CRITICAL rule (render as a warning callout)
 
 > If an MCP server fails to start or returns **401 / 403**, an env var almost certainly isn't loaded. **Exit the agent, fix `.env`, and re-enter** — env vars are read once when the MCP is spawned. Do not work around it.
+
+### Verifying a var loaded — the bare `env | grep` is MISLEADING
+
+A naked `env | grep <PREFIX>` comes back **EMPTY even when everything is correct**: the `dotenv-cli` wrapper (path A) injects vars into the agent **CHILD process**, not your parent shell — so your terminal's `env` never had them. Testers waste hours here. Use the trio instead (`<PREFIX>` = the project's detected MCP env prefix, e.g. `DBHUB`):
+
+```bash
+grep <PREFIX> .env                       # (a) is the var present in the file?
+dotenv -e .env -- env | grep <PREFIX>    # (b) what the MCP actually sees at spawn (the truth)
+set -a; source .env; set +a              # (c) load .env into THIS shell, then inspect freely
+```
+
+Render this trio everywhere the page tells a tester to "verify the env var" — never the bare `env | grep` alone.
 
 ---
 
@@ -98,7 +111,9 @@ sslmode = "require"
 
 Declare in `.env` (render the slots, never values): `DBHUB_TYPE`, `DBHUB_HOST`, `DBHUB_PORT`, `DBHUB_DATABASE`, `DBHUB_USER`, `DBHUB_PASSWORD`.
 
-> **DBHub footgun (warning callout)**: DBHub substitutes the literal string `${VAR}` when a var is missing — producing a cryptic auth failure instead of a startup error. Verify before launching: `env | grep DBHUB`.
+> **DBHub footgun (warning callout)**: DBHub substitutes the literal string `${VAR}` when a var is missing — producing a cryptic auth failure instead of a startup error. Verify before launching with the trio above — a bare `env | grep DBHUB` is misleading (the wrapper injects into the agent child process, not your shell): use `grep DBHUB .env` (in file), `dotenv -e .env -- env | grep DBHUB` (what the MCP sees), and `set -a; source .env; set +a` (load into your shell).
+>
+> **DBHub takes `[[sources]]`, not a DSN**: DBHub does NOT accept a raw connection string — only the split `[[sources]]` fields (`host` / `port` / `user` / `password` / `database` / `sslmode`), each from its own slot. A raw `postgresql://…` URI is ONLY for a VSCode/Cursor SQL extension (Way 2 below).
 
 MCP config block, per agent (substitute the detected `dbhub.toml` path; values shown are the real package + flags from the canonical config):
 
@@ -155,9 +170,13 @@ curl -X POST '<LOGIN_ENDPOINT>' \
 curl '<API_BASE_URL>/<endpoint>' -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
-If the project ships `bun run api:login` (or equivalent), document it: it performs the login and writes `API_TOKEN` into `.env`; **restart the terminal/agent afterward** so MCP servers pick up the new token.
+**RECOMMENDED API-auth bootstrap — the `api-login`-style mini-CLI.** When the project ships (or can ship) a small CLI like `bun run api:login` — or a headless signup/signin endpoint that mints a Personal Access Token — promote it as the FIRST-CLASS path for API auth, above hand-running curl. It logs in and writes the token into `.env` (e.g. `API_TOKEN`), so the OpenAPI MCP can authenticate. Key properties to document (all adaptive — the script name + shape are per-project):
 
-Render the AuthMethods tabs for every method detected (Supabase token / Bearer / cookie `sb-<ref>-auth-token` / `X-API-Key` / custom JWT). Only render methods the project actually exposes.
+- **Per-tester token**: each tester mints their OWN token into their OWN `.env` — no shared secret on the page, no token in git. The credentials artifact holds the login it bootstraps from; the minted token never leaves the tester's machine.
+- **Restart after write**: env vars are cached at MCP spawn time — after the CLI writes the token, **exit and re-enter the agent** so the MCP picks it up (same rule as any `.env` change).
+- **Adaptive shape**: if the project has no such CLI but DOES have a headless token issuer (a signup/signin or `POST …/tokens` endpoint), document that as the bootstrap and recommend wrapping it in a one-command script. If the project has NO programmatic token path at all, fall back to the detected manual login + raise the API testability flag (`testability-assessment.md`) — never fabricate a token endpoint.
+
+Render the auth requests as Postman-style RequestCards (default — `page-structure.md` §5; plain-curl `AuthMethods` only as the Q8 fallback) for every method detected (Supabase token / Bearer / cookie `sb-<ref>-auth-token` / `X-API-Key` / custom JWT). Only render methods the project actually exposes.
 
 ### Way 1 — OpenAPI MCP (agentic, invoke endpoints)
 
@@ -248,19 +267,28 @@ Link to the project's docs UI at its DETECTED route (`/api/docs`, `/api-docu`, �
 
 ---
 
-## §6 — UI testing (Playwright) — see `page-structure.md` §6
+## §6 — UI testing (playwright-cli, default — Q7) — see `page-structure.md` §6
 
-The Playwright MCP block (detected from `.mcp.json`), the scripted JWT-interception fixture, and the agentic `/playwright-cli` prompts live in `page-structure.md` §6 + `page-craft.md`. The decision rule: **scripted** for regression/CI, **agentic CLI** for exploratory / bug-hunting / onboarding.
+The agentic UI driver is the **`playwright-cli` binary**, NOT the Playwright MCP. It is cheaper (fewer tokens, direct commands) and the `/playwright-cli` skill **auto-loads on `playwright-cli` calls**. The scripted fixture (regression over the detected login) + the agentic prompts live in `page-structure.md` §6 + `page-craft.md`. Decision rule: **scripted** Playwright for regression/CI, **agentic `playwright-cli`** for exploratory / bug-hunting / onboarding.
 
-```jsonc
-// Playwright MCP (from the canonical .mcp.json — render the detected caps)
-"playwright": {
-  "command": "bunx",
-  "args": ["@playwright/mcp@latest", "--caps", "vision,pdf,testing,tracing,tabs",
-           "--timeout-action", "10000", "--timeout-navigation", "30000",
-           "--viewport-size", "1920x1080"]
-}
+Command cookbook (render this; install browsers once with `bunx playwright install`):
+
+```bash
+# The /playwright-cli skill auto-loads when the agent calls 'playwright-cli'.
+playwright-cli open http://localhost:3000/login
+playwright-cli snapshot                       # accessibility tree with refs (e1, e2, ...)
+playwright-cli fill e5 "<demo user email>" --submit
+playwright-cli click e7
+playwright-cli screenshot --filename=login.png
+playwright-cli close
 ```
+
+> **Fallback only — Playwright MCP.** Render an `@playwright/mcp` block ONLY when Q7 detection shows the project wires it (a `playwright` entry in `.mcp.json` / `opencode.jsonc` and no `playwright-cli` skill). In that case use the project's committed caps, e.g.:
+>
+> ```jsonc
+> // Playwright MCP (ONLY if detected in the canonical .mcp.json — render its real caps)
+> "playwright": { "command": "bunx", "args": ["@playwright/mcp@latest", "--caps", "<detected caps>"] }
+> ```
 
 ---
 
@@ -270,4 +298,7 @@ The Playwright MCP block (detected from `.mcp.json`), the scripted JWT-intercept
 - [ ] `API_BASE_URL`, `OPENAPI_SPEC_PATH`, docs route, spec route = DETECTED values, not the examples above.
 - [ ] DBHub `type` matches the detected engine; both `dbhub.toml` and the URI use the same engine.
 - [ ] Only agent tabs the project supports are rendered (don't show Gemini if the project has no Gemini story — but the 4-tab reference is fine as documentation).
+- [ ] UI driver = `playwright-cli` cookbook (Q7 default); a `@playwright/mcp` block appears ONLY when detection says the project wires the MCP.
+- [ ] Env-verify guidance is the TRIO (`grep <PREFIX> .env` · `dotenv -e .env -- env | grep <PREFIX>` · `set -a; source .env; set +a`) — never a bare `env | grep` alone.
+- [ ] Activation lists only DETECTED paths (wrapper / source-into-shell / direnv); `source .env` is the universal POSIX fallback.
 - [ ] No real password, token, or private host anywhere — only `.env` slot names + `<see credentials source>`.

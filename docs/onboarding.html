@@ -3095,6 +3095,14 @@ bun run vars:check           # validate placeholders</code></pre>
                     <td><code>/git-flow-master</code></td>
                   </tr>
                   <tr>
+                    <td>Bootstrap a branching strategy on a fresh repo</td>
+                    <td><code>/git-flow-master</code> ("set up our git strategy")</td>
+                  </tr>
+                  <tr>
+                    <td>Set / reset env vars or sync them with Vercel (no reinstall)</td>
+                    <td><code>bun run setup --variables</code></td>
+                  </tr>
+                  <tr>
                     <td>Audit + sync all AI-consumed docs after drift</td>
                     <td><code>/sync-ai-memory</code></td>
                   </tr>
@@ -3322,7 +3330,11 @@ bun run vars:check           # validate placeholders</code></pre>
                 <p class="skill-card-desc">
                   End-to-end git operator — auto-detects the project's branching strategy
                   (solo-main, main+staging, GitFlow, GitHub Flow, ...) and adapts every commit /
-                  push / PR / conflict-fix / chained-PR plan to it.
+                  push / PR / conflict-fix / chained-PR plan to it. A sixth
+                  <em>Strategy Setup</em> operation ("set up our git strategy", "bootstrap
+                  branching") bootstraps a flow on a fresh repo: runs a decision questionnaire,
+                  materializes only the long-lived branches that flow needs (ff-sync, never force),
+                  and writes a runbook into <code>CLAUDE.md</code>.
                 </p>
               </article>
 
@@ -3374,7 +3386,8 @@ bun run vars:check           # validate placeholders</code></pre>
               <code>next-upgrade</code>, <code>shadcn</code>,
               <code>supabase-postgres-best-practices</code>, <code>playwright-cli</code>,
               <code>skill-creator</code>, <code>find-skills</code>, <code>gh-cli</code>,
-              <code>brainstorming</code>, and more.
+              <code>brainstorming</code>, <code>wokitoki</code> (the <code>toki</code>
+              human-in-the-loop feedback CLI, installed user-level), and more.
             </p>
 
             <p class="small muted">
@@ -3521,6 +3534,27 @@ bun run vars:check           # validate placeholders</code></pre>
                     >
                   </li>
                   <li>
+                    <code>bun run setup --variables</code>
+                    <span class="muted"
+                      >Interactive env-setup menu (no reinstall) — set / reset the critical tool
+                      credentials, walk every local var one-by-one, push <code>.env</code> to Vercel
+                      (<code>vercel env add</code>), or pull infra-provisioned vars from Vercel
+                      (<code>vercel env pull</code>). Scriptable via
+                      <code>--variables-local</code> / <code>--variables-remote</code> /
+                      <code>--yes</code> / <code>--force</code>.</span
+                    >
+                  </li>
+                  <li>
+                    <code>bun run env</code>
+                    <span class="muted"
+                      >Canonical <code>set -a; source .env; set +a</code> snippet. Run it
+                      <strong>inline</strong> in your terminal (not via <code>bun run</code>, which
+                      uses a child subshell) to export every <code>.env</code> key into the current
+                      shell — then bare <code>claude</code> / <code>opencode</code> /
+                      <code>acli</code> all inherit the vars with no wrapper.</span
+                    >
+                  </li>
+                  <li>
                     <code>bun run agents:setup</code>
                     <span class="muted"
                       >Interactive walkthrough that fills <code>.agents/project.yaml</code>.</span
@@ -3544,9 +3578,13 @@ bun run vars:check           # validate placeholders</code></pre>
                   <li>
                     <code>bun run jira:sync-issues</code>
                     <span class="muted"
-                      >Sync Jira issues (Story / Bug / Task / Epic) with their
-                      <code>acceptance_criteria_gherkin</code> field and other custom data into
-                      local context.</span
+                      >Canonical detailed-read path for Jira (custom fields, ACs, ATP/ATR, comments)
+                      — <code>acli view</code> omits custom fields, so reads route through this
+                      script. Each rich-text field lands in its own <code>.md</code> under
+                      <code>.context/PBI/</code> (acceptance-criteria, business-rules, scope,
+                      out-of-scope, workflow, implementation-plan, …). Read one issue with
+                      <code>get &lt;KEY&gt;</code> or a batch with <code>jql "&lt;query&gt;"</code>;
+                      <code>pull</code> syncs whole Epics / Stories.</span
                     >
                   </li>
                   <li>
@@ -3567,7 +3605,10 @@ bun run vars:check           # validate placeholders</code></pre>
                     <code>bun run up</code>
                     <span class="muted"
                       >Update the boilerplate from upstream — pulls latest skills, scripts, and
-                      conventions while preserving local edits.</span
+                      conventions while preserving local edits. <code>--force</code> is a
+                      non-interactive aggressive mode that overwrites diverged files / scripts with
+                      upstream and deletes files upstream removed (backups taken, so
+                      <code>--rollback</code> still works).</span
                     >
                   </li>
                   <li>

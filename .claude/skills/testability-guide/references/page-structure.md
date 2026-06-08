@@ -37,7 +37,7 @@
 `data-testid="qa-architecture-card"`, diagram `data-testid="qa-architecture-diagram"`, repos `data-testid="qa-repos"`. Slate/blue accent.
 
 - Boxes-and-arrows: Frontend → API → Database, labels from the **detected** stack.
-- MCP layer below a dashed divider: `DBHub MCP → DB`, `OpenAPI / Postman MCP → API`, `Playwright MCP → UI`.
+- MCP layer below a dashed divider: `DBHub MCP → DB`, `OpenAPI / Postman MCP → API`, `playwright-cli → UI` (the UI badge is the CLI binary, not `@playwright/mcp` — Q7).
 - **Repos block** (req #5): read `backend.backend_repo` / `frontend.frontend_repo` from `.agents/project.yaml`. Same URL or single repo → **monorepo** (one row). Different → **polyrepo** (Frontend + Backend rows + the boundary). Missing → "preguntá a tu lead" gap.
 - Optional 2-column table: Tech Stack | data-isolation / multi-tenancy invariant (pre-flight discovers it).
 - Mobile: diagram arrows flip to vertical under `md`.
@@ -56,14 +56,23 @@
 - **Way 1 — DBHub MCP**: the committed `dbhub.toml` (`${VAR}` interpolation), the `.env` `DBHUB_*` slots, the silent-substitution warning + `env | grep DBHUB`, and the MCP config block per agent (4-agent tabs). All from `mcp-and-env-setup.md` §4.
 - **Way 2 — Connection URI (VSCode/Cursor extension)**: the `postgresql://…` / `sqlserver://…` string shape for the detected engine, credentials by name. Same read-only QA role as Way 1.
 - A callout: `Host, user, password viven en <destination>. Nunca en esta página.`
-- Short generic example queries: `Mostrame todas las tablas`, `Contá las tasks del usuario <email>`.
+- Short generic example queries: `Mostrame todas las tablas`, `Contá las <rows> del usuario <email>`.
+
+**DB-roles depth (ALL adaptive — render ONLY what the project actually has)**:
+
+The connection-string-vs-`[[sources]]` distinction is generic. The concrete format below (Supabase pooler) is an EXAMPLE; let detection decide what to project. Read `db.roles` / `db.revokedColumns` / `db.poolerNote` / `db.rlsProbe` from the config — each `null`/empty omits its block, never fabricates one.
+
+- **Role table** (`db.roles[]`): one row per detected QA role with its access summary — e.g. a read-only role (`SELECT` only) and, if it exists, a read-write role. Note `BYPASSRLS` per-role ONLY when the detected role actually has it (some QA roles intentionally run UNDER RLS). If the project has just one shared role, render one row.
+- **Column-level REVOKE callout** (`db.revokedColumns[]`): when the schema REVOKEs specific sensitive columns from the QA role (e.g. `*.token_hash`, `*.encrypted_password`), state that those columns stay opaque **even with `BYPASSRLS`** — column grants are independent of row-level security. Omit if no such REVOKEs exist.
+- **Pooler-port note** (`db.poolerNote`): when the DB sits behind a connection pooler (Supabase, PgBouncer, RDS Proxy), document which port to use — session pooler (e.g. 5432, supports long transactions + prepared statements) vs transaction pooler (e.g. 6543, no prepared statements). Host/user/ref come from `.env` slot names, never literals. Omit when there is no pooler.
+- **Cross-tenant RLS probe** (`db.rlsProbe`): when the app is multi-tenant with row-level security, give a concrete negative test — "log in as user B, `SELECT` a row scoped to user A's tenant → expect 0 rows". This is the highest-value DB test a QA can run. Omit when the app is single-tenant / has no RLS.
 
 ### §5 — Backend testing: API (TWO ways) + auth + docs
 
 `data-testid="qa-section-api"`. Violet accent.
 
-- **Auth methods** (`data-testid="qa-auth-methods"`): one tab per DETECTED method (Supabase token / Bearer `access_token` / cookie `sb-<ref>-auth-token` / `X-API-Key` / custom JWT route). NEVER assume Auth.js `/api/auth/callback/credentials` — that path is the internal provider callback; if pre-flight only finds it, surface the warning from `pre-flight-discovery.md`. If the ONLY auth is passwordless / OAuth / SSO with no programmatic token issuer, raise the API testability flag (`testability-assessment.md`), render the honest "no headless token path" gap + the remediation, and NEVER fabricate a token endpoint.
-- **Auth flow**: a small diagram + a `curl` using the **detected** `loginEndpoint` + `tokenShape`. If `bun run api:login` (or equivalent) exists, document it (writes `API_TOKEN` to `.env`; restart terminal/agent after).
+- **Auth requests — Postman-style RequestCards (default, Q8)** (`data-testid="qa-auth-methods"`, cards `qa-request-card`, toggle `qa-request-toggle`): one tab per DETECTED auth request, each a read-only `RequestCard` with a METHOD badge (verb-colored), URL+copy, Headers table, Body/Response panels, and a **Visual/curl toggle**. Cards are filled from `api.apiRequests[]` — a structured restructure of the project's REAL auth calls (`<METHOD> <path>` placeholders, `<API_BASE_URL>`, `<see credentials source>`), never invented endpoints. **Plain-curl `AuthMethods` is the Q8 fallback** (host kit can't render tabs/tables). Detection rules unchanged: this maps to the DETECTED methods (Supabase token / Bearer `access_token` / cookie `sb-<ref>-auth-token` / `X-API-Key` / custom JWT route). NEVER assume Auth.js `/api/auth/callback/credentials` — that path is the internal provider callback; if pre-flight only finds it, surface the warning from `pre-flight-discovery.md`. If the ONLY auth is passwordless / OAuth / SSO with no programmatic token issuer, raise the API testability flag (`testability-assessment.md`), render the honest "no headless token path" gap + the remediation, and NEVER fabricate a token endpoint.
+- **Auth flow**: the cards already show the **detected** `loginEndpoint` + `tokenShape` (Visual + curl per request). If `bun run api:login` (or an equivalent PAT-bootstrap CLI) exists, promote it as the RECOMMENDED API-auth bootstrap — see `mcp-and-env-setup.md` §5 (it mints the tester's own per-tester token into `.env`; restart terminal/agent after so MCPs pick it up).
 - Two-way tabs (`data-testid="qa-api-ways"`):
   - **Way 1 — OpenAPI MCP**: `--tools dynamic` (mandatory), env `API_BASE_URL`/`OPENAPI_SPEC_PATH`/`API_TOKEN`, config per agent. Tools: `list-api-endpoints`, `get-api-endpoint-schema`, `invoke-api-endpoint`. From `mcp-and-env-setup.md` §5.
   - **Way 2 — Postman MCP**: formal collection-based testing; remote MCP, `POSTMAN_API_KEY`, config per agent.
@@ -87,13 +96,13 @@ After the code, a small table of the login page's `data-testid` selectors.
 
 > **Login selectors missing?** If the detected login flow has NO stable `data-testid`s, the fixture cannot reference real selectors. Either (A) add minimal selectors to the host login component (`login-email`, `login-password`/`login-otp`, `login-submit`) as a surgical, **opt-in host edit** and tell the user you did it — OR (B) render the fixture with placeholder selectors + an explicit "add `data-testid`s to the login first" gap and raise the UI testability flag. Editing host code outside `app/qa/` is allowed ONLY for this narrow selector case, and only when surfaced to the user — never silently.
 
-**(b) Agentic — Playwright CLI / MCP**
-The `@playwright/mcp` config block (detected caps) + the `/playwright-cli` skill. Install: `bunx playwright install`. Example prompts an AI can run:
+**(b) Agentic — playwright-cli (default, Q7)**
+The `playwright-cli` command cookbook (`open` / `snapshot` / `fill` / `click` / `screenshot` / `close`) + the `/playwright-cli` skill, which **auto-loads on `playwright-cli` calls**. This is the default agentic driver — fewer tokens, direct commands — NOT the Playwright MCP. Render the `@playwright/mcp` config block ONLY when Q7 detection says the project uses the MCP (see `mcp-and-env-setup.md` §"UI testing" for the cookbook + the explicit MCP fallback line). Install: `bunx playwright install`. Example prompts an AI can run:
 - `abrí /login, logueate como <demo user>, sacá un screenshot del dashboard`
 - `listá todos los empty states de la home`
 - `reportá un bug si algún texto visible desborda su contenedor`
 
-**Decision rule**: scripted Playwright for regression / CI; agentic Playwright CLI for exploratory + bug-hunting + onboarding.
+**Decision rule**: scripted Playwright for regression / CI; agentic `playwright-cli` for exploratory + bug-hunting + onboarding.
 
 ### §7 — Quick reference (collapsed by default)
 
@@ -107,13 +116,13 @@ The `@playwright/mcp` config block (detected caps) + the `/playwright-cli` skill
 
 ## RSC vs client-component boundary (Next.js App Router, React 19, similar)
 
-The page is a Server Component by default. Anything using `useState`/`useEffect`/`onClick` (CodeBlock copy, Tabs, TOC active-section) lives in a `'use client'` sibling under `app/qa/_components/` and is imported into the Server `page.tsx`. shadcn/ui Tabs/Accordion ship `'use client'` already, so they can be imported directly. See `page-craft.md` for the exact file split. For Remix/Astro/SvelteKit/Vite+RR this RSC rule does not apply — use the framework's normal interactivity pattern.
+The page is a Server Component by default. `QaShell` is an **async Server Component** that runs `prepareQa(config)` once to highlight every snippet server-side (Shiki is server-only — see `page-craft.md` "Server highlight pipeline"; NEVER import the highlighter from a `'use client'` module). The only `'use client'` leaves are the interactive bits: `CopyButton` (clipboard), `AgentCodeBlock` / `RequestCards` / `RequestCard` (tabs + Visual/curl toggle), `Toc` (active-section). `CodeFrame` and the async `CodeBlock` are presentational/server. shadcn/ui Tabs ship `'use client'` already. See `page-craft.md` for the exact file split. For Remix/Astro/SvelteKit/Vite+RR this RSC rule does not apply — run the highlighter at build / in the route loader and pass html strings down; keep the "highlight server / copy client" split.
 
 ---
 
 ## Implementation rules
 
-- Reuse host UI kit + icon library. Never add a dep. No host `<CodeBlock>` → write the minimal local one in `page-craft.md` (copy button → check icon for 2 s).
+- Reuse host UI kit + icon library. **No new deps EXCEPT the one sanctioned highlighter** (Shiki, server-only, zero client JS) when the host has none — `SKILL.md` Notes + Q6. No host `<CodeBlock>` → write the local server CodeBlock + CodeFrame + CopyButton split in `page-craft.md`.
 - Every interactive element gets a `data-testid` (`qa-<section>` / `qa-<element>`), ONE per node.
 - Dark/light: mirror the host (CSS vars, `dark:` variants, theme provider). Per-domain accent hues all have `dark:` variants.
 - Responsive: mobile-first. TOC rail, diagram, two-way/agent tabs, demo-user table all degrade gracefully under `md`/`lg`.
