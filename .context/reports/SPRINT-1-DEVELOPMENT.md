@@ -45,7 +45,6 @@ Dev scope = 16 of 20 (4 already dev-done: BK-2 QA Approved; BK-4/5/6 Ready For Q
 | Ticket | Title | Jira Status | SP |
 | ------ | ----- | ----------- | -- |
 | BK-3  | Authentication \| Sign up/sign in via OAuth (GitHub/Google) | Ready For Dev | 8 |
-| BK-18 | TMS-ATC API \| Create and edit ATCs with steps and assertions | Ready For Dev | 5 |
 | BK-19 | TMS-ATC Builder \| Build an ATC with ordered steps and assertions | Shift-Left QA | 5 |
 | BK-20 | TMS-ATC Search \| Search and autocomplete ATCs | Ready For Dev | 5 |
 | BK-21 | TMS-ATC Propagation \| Cascade ATC edits to all tests | Shift-Left QA | 5 |
@@ -64,6 +63,7 @@ Dev scope = 16 of 20 (4 already dev-done: BK-2 QA Approved; BK-4/5/6 Ready For Q
 | BK-16 | Markdown editor + safe render | Ely | #12 | 2026-06-04 | 2026-06-04 | —   | Ready For QA. Reusable MarkdownEditor + MarkdownRenderer (react-markdown+remark-gfm+rehype-sanitize, no rehype-raw) + save-path sanitizer; mounted on module description. Deviated from sanitize-html (corrupts MD) — render is the XSS wall. Security review: 0 render-exploitable XSS. No DB. |
 | BK-14 | Manage user stories anchored to a module | Ely | #13 | 2026-06-04 | 2026-06-04 | —   | Ready For QA. Migration 0016 (denorm project_id + partial unique index on (project_id, upper(external_id))). Scoped create/list + flat mutate API; Jira-key validation/immutability/uniqueness; soft-delete; reuses MarkdownEditor 50KB. Review caught + fixed a create-schema BLOCKER (null fields). |
 | BK-15 | Manage acceptance criteria under a user story | Ely | #14 | 2026-06-05 | 2026-06-05 | —   | Ready For QA. Migrations 0017 (US.status + partial unique pos index + insert/move/archive SECURITY DEFINER fns, collision-free negative-parking rebalance) + 0018 (serialized ready-to-test gate setter, review fix). Scoped create/list + flat GET/PATCH/DELETE AC API; ready-to-test gate (409); live AcceptanceCriteriaPanel (up/down reorder, edit, remove, status toggle). Adversarial review GO-WITH-FIXES → fixed MAJOR TOCTOU race + 2 MINORs. Ordering+gate proven end-to-end vs live DB. |
+| BK-18 | TMS-ATC API — create/edit ATCs (POST/PATCH /atcs) | Ely | #27 | 2026-06-08 | 2026-06-08 | —   | Ready For QA. **Opens Part 2 (ATC chain head).** Migration 0021 (bunkai_create_atc + bunkai_update_atc + bunkai_get_atc, all SECURITY DEFINER w/ explicit actor — PAT path has no auth.uid()). Transactional steps+assertions, cross-entity validation (AC∈US, module∈project subtree), immutable `<module-slug>/atc-<8hex>` slug, If-Match optimistic lock, events→activity_log (affected_test_ids:[] until EPIC-BK-5). Adversarial review GO-WITH-FIXES → 6 findings fixed (sanitize-on-save, byteLength cap, strict If-Match parse, position preservation, dead export). Live RPC smoke vs real DB green (happy/rollback/conflict/forbidden), unit tests 22/22. |
 | BK-17 | Jira Import — pull issues by JQL | Ely | #15 | 2026-06-05 | 2026-06-05 | —   | Ready For QA. **Closes Part 1.** Migrations 0019 (import_jobs + RLS) + 0020 (one-active-per-project unique index). lib/jira: adf-to-markdown + extract-acceptance-criteria + client (v3 /search/jql + nextPageToken + 429 backoff) + import-runner (service-role worker, atomic claim, ADF→MD 50KB truncate, component→Module/Inbox, idempotent US upsert, AC reconcile). POST/GET imports routes (after() background, serialize 409). Import dialog + poll. 3 pure libs built in PARALLEL via Workflow. Adversarial review GO-WITH-FIXES → fixed MAJOR stuck-running/double-count (atomic claim+unique index) + DI'd worker test (AC2-6). Live read smoke vs real Jira green. NOTE: staging needs ATLASSIAN_* env for live import. |
 
 ### Blocked
@@ -85,13 +85,14 @@ Dev scope = 16 of 20 (4 already dev-done: BK-2 QA Approved; BK-4/5/6 Ready For Q
 | Total Sprint Tickets                | 20    |
 | Dev scope (this + next batch)       | 16    |
 | In-Flight (In Progress + In Review) | 0     |
-| Merged this sprint                  | 8 (BK-8, BK-9, BK-10, BK-11, BK-16, BK-14, BK-15, BK-17) |
-| Staging-deployed                    | 8 (BK-8, BK-9, BK-10, BK-11, BK-16, BK-14, BK-15, BK-17) |
+| Merged this sprint                  | 9 (BK-8, BK-9, BK-10, BK-11, BK-16, BK-14, BK-15, BK-17, BK-18) |
+| Staging-deployed                    | 9 (BK-8, BK-9, BK-10, BK-11, BK-16, BK-14, BK-15, BK-17, BK-18) |
 | Prod-deployed                       | 0     |
 | Blocked                             | 0     |
 | Cancelled                           | 0     |
 | Part 1 progress                     | **8 / 8 — COMPLETE** |
-| Estimated LOC delivered so far      | ~230 (BK-8) + ~600 (BK-9) + ~1435 (BK-10) + ~555 (BK-11) + ~900 (BK-16) + ~900 (BK-14) + ~1050 (BK-15) + ~1750 (BK-17) |
+| Part 2 progress                     | **1 / 8 — BK-18 (ATC API) Ready For QA** |
+| Estimated LOC delivered so far      | ~230 (BK-8) + ~600 (BK-9) + ~1435 (BK-10) + ~555 (BK-11) + ~900 (BK-16) + ~900 (BK-14) + ~1050 (BK-15) + ~1750 (BK-17) + ~990 (BK-18) |
 
 ## Operational Notes (session-learned — honor these; also in Engram)
 
@@ -167,3 +168,9 @@ These are NOT in the skills — they are this project's infra realities:
 - **Gates:** `bun test` 131/131, `bun run repo:check` green. Staging alias `/login` → HTTP 200.
 - **Left for QA (non-blocking, observed not fixed):** BK-9 tree row fuses expand/collapse with select; BK-8 empty-state heading "Your workspace is ready" persists after the first project; client-side min-length validation looser than server on project/module/US (graceful server reject, avoidable round-trip).
 - **Residual test data in Supabase** (owner `bunkai-local-user`): workspace "Bunkai Smoke QA" + project "Smoke Checkout" (modules/US/AC + 2 imported stories, Inbox archived). Harmless; delete on request.
+
+### 2026-06-08 — BK-18 IN_PROGRESS → STAGING_DEPLOYED (Part 2 head)
+- TMS-ATC API (POST /api/v1/atcs + PATCH /api/v1/atcs/{id}). Migration 0021: `bunkai_create_atc` + `bunkai_update_atc` + `bunkai_get_atc` (all SECURITY DEFINER taking an explicit `p_actor_user_id` — the PAT/bearer path has no `auth.uid()`, so the existing INVOKER `bunkai_save_atc` could not authorize; retained for the cookie/UI path). Cross-entity validation (AC∈US, module∈project subtree via materialized path), immutable `<module-slug>/atc-<8hex>` slug, If-Match optimistic lock (FOR UPDATE), events→`activity_log` (no `event_log` table; `affected_test_ids:[]` until EPIC-BK-5). Routes use `requireAuth` + `requireScopeOrCookie('atc:write')` + admin client; +4 error codes; save-path Markdown sanitize; OpenAPI 23→25 paths.
+- Investigation + review run as parallel Workflows (7 readers; 4 review dims × verify). Adversarial review GO-WITH-FIXES → 6 confirmed findings ALL fixed (sanitize-on-save, byteLength cap, strict If-Match parse rejecting empty/hex, RPC preserves submitted step position, dead export removed).
+- Verification: unit tests 22/22, repo:check green. Live RPC smoke vs real Supabase (seed→assert→cleanup, DB back to 0): happy create/PATCH, ac_outside_user_story 45020 + rollback, module_outside_project_subtree 45021, version_conflict 45022, atc_not_found P0002, forbidden 42501, position preservation [1,2,5]. Staging smoke: /login 200, openapi exposes both paths, POST unauth/bad-bearer → 401.
+- PR #27, merged `--admin --merge` (merge commit `54fcd8b`), Vercel staging deploy success. **Jira auto-transition CONFIRMED**: PR-open fired In Progress→In Review, PR-merge fired In Review→Ready For QA (both automatic — supersedes the earlier "Jira does NOT auto-transition" note for the Story workflow). Spanish QA hand-off comment posted (id 11430).
