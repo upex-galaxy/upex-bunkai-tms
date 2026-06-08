@@ -2,6 +2,7 @@
 
 import type { AcceptanceCriterion, AtcLayer, UserStory } from '@lib/types';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
+import { AtcPreview } from '@components/atcs/AtcPreview';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
@@ -122,6 +123,19 @@ export function NewAtcEditor({
       && titleValid(title)
       && hasMinimumSteps(stepCount)
       && !submitting;
+
+  const selectedStory = useMemo(
+    () => stories.find(s => s.id === storyId) ?? null,
+    [stories, storyId],
+  );
+  const selectedAcs = useMemo(() => {
+    const all = storyId ? storyAcs[storyId] ?? [] : [];
+    return all.filter(ac => acIds.includes(ac.id));
+  }, [storyId, storyAcs, acIds]);
+  const moduleSegments = useMemo(() => {
+    const m = modules.find(x => x.id === moduleId);
+    return m ? m.path.split('/') : [];
+  }, [modules, moduleId]);
 
   const addTag = () => {
     const normalized = tagInput.trim().toLowerCase();
@@ -345,6 +359,40 @@ export function NewAtcEditor({
             <section>
               <div className="mb-1.5 flex items-baseline justify-between">
                 <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Anchoring
+                  <span className="ml-1 font-normal text-fg-3">required</span>
+                </span>
+                <span className={cn(
+                  'font-mono text-xs',
+                  anchored ? 'text-signal-pass' : 'text-accent',
+                )}
+                >
+                  Moat:
+                  {' '}
+                  {anchored ? 'ENFORCED' : 'BLOCKED'}
+                </span>
+              </div>
+              <div className="rounded-3 border border-stroke-2 bg-surface-2 p-3">
+                <AnchoringPanel
+                  embedded
+                  stories={stories}
+                  storyAcs={storyAcs}
+                  selectedStoryId={storyId}
+                  selectedAcIds={acIds}
+                  onSelectStory={onSelectStory}
+                  onToggleAc={(id) => {
+                    setAcIds(prev =>
+                      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+                    );
+                    if (error) { setError(null); }
+                  }}
+                />
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Steps
                   <span className="ml-1 font-normal text-fg-3">required</span>
                 </span>
@@ -432,48 +480,20 @@ export function NewAtcEditor({
           </div>
         </div>
 
-        {/* anchoring column */}
-        <aside className="flex flex-col overflow-hidden bg-surface-1">
-          <div className="flex h-9 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
-            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-0">
-              Anchoring
-            </span>
-            <span className={cn(
-              'text-xs',
-              anchored ? 'text-signal-pass' : 'text-accent',
-            )}
-            >
-              {anchored ? 'valid' : 'missing'}
-            </span>
-          </div>
-          <AnchoringPanel
-            stories={stories}
-            storyAcs={storyAcs}
-            selectedStoryId={storyId}
-            selectedAcIds={acIds}
-            onSelectStory={onSelectStory}
-            onToggleAc={(id) => {
-              setAcIds(prev =>
-                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
-              );
-              if (error) { setError(null); }
-            }}
-          />
-          <div className="flex flex-shrink-0 items-center justify-between border-t border-stroke-1 bg-surface-0 px-3 py-2 text-xs">
-            <span className="text-fg-3">
-              Moat:
-              {' '}
-              <span className={cn(
-                'font-mono',
-                anchored ? 'text-signal-pass' : 'text-accent',
-              )}
-              >
-                {anchored ? 'ENFORCED' : 'BLOCKED'}
-              </span>
-            </span>
-            <span className="text-fg-4">schema · atc.v1</span>
-          </div>
-        </aside>
+        {/* live preview column */}
+        <AtcPreview
+          id={null}
+          status={null}
+          layer={layer}
+          breadcrumb={moduleSegments}
+          title={title}
+          story={selectedStory}
+          acs={selectedAcs}
+          stepsMd={stepsMd}
+          assertionsYaml={assertionsYaml}
+          tags={tags}
+          draft
+        />
       </div>
     </div>
   );

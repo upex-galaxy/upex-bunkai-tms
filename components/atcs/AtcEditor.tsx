@@ -2,6 +2,7 @@
 
 import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcStep, Module, UserStory } from '@lib/types';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
+import { AtcPreview } from '@components/atcs/AtcPreview';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
@@ -82,6 +83,16 @@ export function AtcEditor({
 
   const isAnchored = !!storyId && acIds.length >= 1;
   const canSave = isAnchored && title.trim().length > 0 && !isPending;
+
+  const selectedStory = useMemo(
+    () => stories.find(s => s.id === storyId) ?? null,
+    [stories, storyId],
+  );
+  const selectedAcs = useMemo(() => {
+    const all = storyId ? storyAcs[storyId] ?? [] : [];
+    return all.filter(ac => acIds.includes(ac.id));
+  }, [storyId, storyAcs, acIds]);
+  const moduleSegments = useMemo(() => modulePath.split('/'), [modulePath]);
 
   const addTag = () => {
     const t = tagInput.trim().toLowerCase();
@@ -243,6 +254,42 @@ export function AtcEditor({
             <section>
               <div className="mb-1.5 flex items-baseline justify-between">
                 <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Anchoring
+                  <span className="ml-1 font-normal text-fg-3">required</span>
+                </span>
+                <span className={cn(
+                  'font-mono text-xs',
+                  isAnchored ? 'text-signal-pass' : 'text-accent',
+                )}
+                >
+                  Moat:
+                  {' '}
+                  {isAnchored ? 'ENFORCED' : 'BLOCKED'}
+                </span>
+              </div>
+              <div className="rounded-3 border border-stroke-2 bg-surface-2 p-3">
+                <AnchoringPanel
+                  embedded
+                  stories={stories}
+                  storyAcs={storyAcs}
+                  selectedStoryId={storyId}
+                  selectedAcIds={acIds}
+                  onSelectStory={(id) => {
+                    setStoryId(id);
+                    setAcIds([]);
+                  }}
+                  onToggleAc={(id) => {
+                    setAcIds(prev =>
+                      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+                    );
+                  }}
+                />
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Steps
                 </span>
                 <span className="text-xs text-fg-3">
@@ -314,51 +361,19 @@ export function AtcEditor({
           </div>
         </div>
 
-        {/* anchoring column */}
-        <aside className="flex flex-col overflow-hidden bg-surface-1">
-          <div className="flex h-9 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
-            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-0">
-              Anchoring
-            </span>
-            <span className={cn(
-              'text-xs',
-              isAnchored ? 'text-signal-pass' : 'text-accent',
-            )}
-            >
-              {isAnchored ? 'valid' : 'missing'}
-            </span>
-          </div>
-          <AnchoringPanel
-            stories={stories}
-            storyAcs={storyAcs}
-            selectedStoryId={storyId}
-            selectedAcIds={acIds}
-            onSelectStory={(id) => {
-              setStoryId(id);
-              // Reset AC selection when story changes
-              setAcIds([]);
-            }}
-            onToggleAc={(id) => {
-              setAcIds(prev =>
-                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
-              );
-            }}
-          />
-          <div className="flex flex-shrink-0 items-center justify-between border-t border-stroke-1 bg-surface-0 px-3 py-2 text-xs">
-            <span className="text-fg-3">
-              Moat:
-              {' '}
-              <span className={cn(
-                'font-mono',
-                isAnchored ? 'text-signal-pass' : 'text-accent',
-              )}
-              >
-                {isAnchored ? 'ENFORCED' : 'BLOCKED'}
-              </span>
-            </span>
-            <span className="text-fg-4">schema · atc.v1</span>
-          </div>
-        </aside>
+        {/* live preview column */}
+        <AtcPreview
+          id={atc.id}
+          status={atc.status}
+          layer={layer}
+          breadcrumb={moduleSegments}
+          title={title}
+          story={selectedStory}
+          acs={selectedAcs}
+          stepsMd={stepsMd}
+          assertionsYaml={assertionsYaml}
+          tags={tags}
+        />
       </div>
     </div>
   );
