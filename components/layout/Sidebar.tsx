@@ -71,36 +71,61 @@ export function Sidebar({
                 type="button"
                 data-testid="module-new-root"
                 onClick={onNewModule}
-                title="New module"
-                className="inline-flex h-5 items-center gap-1 rounded-1 px-1.5 text-xs text-fg-3 hover:bg-surface-2 hover:text-fg-1"
+                title="Create a new module"
+                className="inline-flex h-5 items-center gap-1 rounded-1 px-1.5 text-xs font-medium text-fg-2 hover:bg-surface-2 hover:text-fg-0"
               >
-                <Plus size={11} />
-                New
+                <Plus size={12} />
+                New module
               </button>
             )
           : <span className="text-xs text-fg-3">{projectName}</span>}
       </div>
       <nav className="flex-1 overflow-auto py-1.5">
-        {tree.map(node => (
-          <ModuleNode
-            key={node.id}
-            node={node}
-            depth={0}
-            projectSlug={projectSlug}
-            selectedAtcId={selectedAtcId}
-            selectedModuleId={selectedModuleId}
-            canCreate={canCreate}
-            onAddSubModule={onAddSubModule}
-            onRenameModule={onRenameModule}
-            onMoveModule={onMoveModule}
-            onDeleteModule={onDeleteModule}
-            onNewUserStory={onNewUserStory}
-            onEditUserStory={onEditUserStory}
-            onDeleteUserStory={onDeleteUserStory}
-            onManageCriteria={onManageCriteria}
-            onSelect={onSelect}
-          />
-        ))}
+        {tree.length === 0
+          ? (
+              <div
+                data-testid="modules-empty-state"
+                className="flex flex-col items-center gap-2 px-4 py-8 text-center"
+              >
+                <FolderClosed size={20} className="text-fg-4" />
+                <p className="text-sm text-fg-3">No modules yet</p>
+                {canCreate && onNewModule
+                  ? (
+                      <button
+                        type="button"
+                        data-testid="module-empty-cta"
+                        onClick={onNewModule}
+                        className="mt-1 inline-flex items-center gap-1.5 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1.5 text-sm text-fg-1 hover:border-stroke-3 hover:bg-surface-3"
+                      >
+                        <Plus size={13} />
+                        Create your first module
+                      </button>
+                    )
+                  : (
+                      <p className="text-xs text-fg-4">Ask a workspace member to add one.</p>
+                    )}
+              </div>
+            )
+          : tree.map(node => (
+              <ModuleNode
+                key={node.id}
+                node={node}
+                depth={0}
+                projectSlug={projectSlug}
+                selectedAtcId={selectedAtcId}
+                selectedModuleId={selectedModuleId}
+                canCreate={canCreate}
+                onAddSubModule={onAddSubModule}
+                onRenameModule={onRenameModule}
+                onMoveModule={onMoveModule}
+                onDeleteModule={onDeleteModule}
+                onNewUserStory={onNewUserStory}
+                onEditUserStory={onEditUserStory}
+                onDeleteUserStory={onDeleteUserStory}
+                onManageCriteria={onManageCriteria}
+                onSelect={onSelect}
+              />
+            ))}
       </nav>
     </aside>
   );
@@ -157,22 +182,31 @@ function ModuleNode({
       >
         <button
           type="button"
+          data-testid={`module-toggle-${node.id}`}
+          onClick={() => setOpen(o => !o)}
+          disabled={!hasChildren}
+          aria-label={hasChildren ? (open ? 'Collapse module' : 'Expand module') : undefined}
+          aria-expanded={hasChildren ? open : undefined}
+          className="inline-flex h-6 w-4 flex-shrink-0 items-center justify-center disabled:cursor-default"
+          style={{ marginLeft: indent }}
+        >
+          {hasChildren
+            ? open
+              ? <ChevronDown size={10} className="text-fg-3" />
+              : <ChevronRight size={10} className="text-fg-3" />
+            : null}
+        </button>
+        <button
+          type="button"
           data-testid={`module-row-${node.id}`}
           aria-current={selected ? 'true' : undefined}
           onClick={() => {
-            setOpen(o => !o);
             onSelect?.(node.id);
+            setOpen(true);
           }}
           className="flex h-6 min-w-0 flex-1 items-center gap-1.5 text-left text-sm text-fg-1"
-          style={{ paddingLeft: indent, paddingRight: 8 }}
+          style={{ paddingRight: 8 }}
         >
-          <span className="inline-flex w-3 items-center justify-center">
-            {hasChildren
-              ? open
-                ? <ChevronDown size={10} className="text-fg-3" />
-                : <ChevronRight size={10} className="text-fg-3" />
-              : null}
-          </span>
           {open
             ? <FolderOpen size={12} className="text-fg-2" />
             : <FolderClosed size={12} className="text-fg-2" />}
@@ -339,6 +373,16 @@ function ModuleNode({
               selected={atc.id === selectedAtcId}
             />
           ))}
+          {node.children.length === 0
+            && node.user_stories.length === 0
+            && node.atcs.length === 0 && (
+            <div
+              className="flex h-5 items-center text-xs italic text-fg-4"
+              style={{ paddingLeft: indent + 30, paddingRight: 8 }}
+            >
+              Empty — hover this module to add a story
+            </div>
+          )}
         </div>
       )}
     </div>
