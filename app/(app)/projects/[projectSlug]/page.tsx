@@ -2,6 +2,7 @@ import type { Atc, Module, UserStory, Workspace } from '@lib/types';
 import { AtcTable } from '@components/atcs/AtcTable';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
+import { UserMenu } from '@components/layout/UserMenu';
 import { WorkspaceSwitcher } from '@components/layout/WorkspaceSwitcher';
 import { Button } from '@components/ui/button';
 import { createClient } from '@lib/supabase/server';
@@ -122,6 +123,7 @@ export default async function ProjectPage({ params }: PageProps) {
               {' '}
               New Test
             </Button>
+            <UserMenu />
           </>
         )}
       />
