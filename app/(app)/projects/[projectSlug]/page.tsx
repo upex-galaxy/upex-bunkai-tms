@@ -4,10 +4,11 @@ import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { UserMenu } from '@components/layout/UserMenu';
 import { WorkspaceSwitcher } from '@components/layout/WorkspaceSwitcher';
-import { Button } from '@components/ui/button';
+import { Button, buttonVariants } from '@components/ui/button';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
 import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProjectExplorer } from './project-explorer';
 
@@ -112,12 +113,15 @@ export default async function ProjectPage({ params }: PageProps) {
         right={(
           <>
             <CommandPalette />
-            <Button size="sm" disabled title="ATC builder ships next sprint" className="cursor-not-allowed opacity-60">
+            <Link
+              href={`/projects/${project.slug}/atcs/new`}
+              className={buttonVariants({ size: 'sm' })}
+              data-testid="project-new-atc"
+            >
               <Plus size={11} />
               {' '}
               New ATC
-              <span className="kbd ml-1">N</span>
-            </Button>
+            </Link>
             <Button variant="primary" size="sm" disabled title="Test builder ships next sprint" className="cursor-not-allowed opacity-60">
               <Plus size={11} />
               {' '}
