@@ -26,6 +26,13 @@ export const API_ERROR_CODES = {
   IDEMPOTENCY_KEY_INVALID: 'idempotency_key_invalid',
   RATE_LIMITED: 'rate_limited',
 
+  // ATC domain (BK-18) — semantic cross-entity failures that the generic
+  // validation_failed/conflict codes cannot disambiguate for API consumers.
+  AC_OUTSIDE_USER_STORY: 'ac_outside_user_story',
+  MODULE_OUTSIDE_PROJECT_SUBTREE: 'module_outside_project_subtree',
+  STEPS_POSITION_INVALID: 'steps_position_invalid',
+  SLUG_COLLISION: 'slug_collision',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -44,6 +51,10 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   idempotency_key_required: 400,
   idempotency_key_invalid: 400,
   rate_limited: 429,
+  ac_outside_user_story: 422,
+  module_outside_project_subtree: 422,
+  steps_position_invalid: 422,
+  slug_collision: 409,
   internal_error: 500,
   upstream_error: 502,
 };

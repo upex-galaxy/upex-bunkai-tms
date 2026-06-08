@@ -859,11 +859,34 @@ export interface Database {
         Args: { p_module_id: string }
         Returns: Json
       }
+      bunkai_assert_actor_can_write_project: {
+        Args: { p_actor_user_id: string, p_project_id: string }
+        Returns: string
+      }
+      bunkai_atc_json: { Args: { p_atc_id: string }, Returns: Json }
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
         Returns: string
       }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_create_atc: {
+        Args: {
+          p_ac_ids: string[]
+          p_actor_user_id: string
+          p_assertions: Json
+          p_layer: string
+          p_module_id: string
+          p_steps: Json
+          p_tags: string[]
+          p_title: string
+          p_user_story_id: string
+        }
+        Returns: Json
+      }
+      bunkai_get_atc: {
+        Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
       bunkai_insert_acceptance_criterion: {
         Args: {
           p_description?: string
@@ -899,6 +922,20 @@ export interface Database {
       }
       bunkai_set_user_story_status: {
         Args: { p_id: string, p_status: string }
+        Returns: Json
+      }
+      bunkai_update_atc: {
+        Args: {
+          p_ac_ids: string[]
+          p_actor_user_id: string
+          p_assertions: Json
+          p_atc_id: string
+          p_if_match: number
+          p_layer: string
+          p_steps: Json
+          p_tags: string[]
+          p_title: string
+        }
         Returns: Json
       }
       bunkai_update_module: {
