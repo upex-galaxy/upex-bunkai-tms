@@ -145,6 +145,7 @@ Example (same work, different register):
 
 - `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — system maps (refresh via `/business-*-map`)
 - `.context/master-implementation-plan.md` — prioritized roadmap
+- `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`. NOT for bug fixes, local refactors, or naming tweaks.
 - `.context/reports/SPRINT-{N}-DEVELOPMENT.md` — cross-ticket dev tracker per sprint (generated/updated by `/sprint-development` batch mode)
 - `.context/PBI/{module}/` — module-level (ROADMAP, PROGRESS, SESSION-PROMPT)
 - `.context/PBI/{module}/{TICKET}-{title}/` — story-level (context.md, implementation-plan.md, evidence/)
