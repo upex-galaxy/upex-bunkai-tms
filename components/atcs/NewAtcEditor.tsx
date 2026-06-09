@@ -49,6 +49,12 @@ interface NewAtcEditorProps {
   modules: ModuleOption[]
   stories: UserStory[]
   storyAcs: Record<string, AcceptanceCriterion[]>
+  // Optional pre-anchoring, set when arriving from the explorer's "Create ATC"
+  // shortcut (`/atcs/new?story=…&ac=…`). The module defaults to the story's own
+  // module so the form lands ready to fill.
+  initialStoryId?: string | null
+  initialAcIds?: string[]
+  initialModuleId?: string | null
 }
 
 interface ApiErrorBody {
@@ -99,15 +105,18 @@ export function NewAtcEditor({
   modules,
   stories,
   storyAcs,
+  initialStoryId = null,
+  initialAcIds = [],
+  initialModuleId = null,
 }: NewAtcEditorProps) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [layer, setLayer] = useState<AtcLayer>('UI');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [moduleId, setModuleId] = useState<string | null>(null);
-  const [storyId, setStoryId] = useState<string | null>(null);
-  const [acIds, setAcIds] = useState<string[]>([]);
+  const [moduleId, setModuleId] = useState<string | null>(initialModuleId);
+  const [storyId, setStoryId] = useState<string | null>(initialStoryId);
+  const [acIds, setAcIds] = useState<string[]>(initialAcIds);
   const [stepsMd, setStepsMd] = useState('01. ');
   const [assertionsYaml, setAssertionsYaml] = useState('- ');
   const [error, setError] = useState<string | null>(null);

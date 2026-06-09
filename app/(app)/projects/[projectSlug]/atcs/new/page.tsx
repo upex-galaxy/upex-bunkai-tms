@@ -6,10 +6,12 @@ import { notFound } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
+  searchParams: Promise<{ story?: string, ac?: string }>
 }
 
-export default async function NewAtcPage({ params }: PageProps) {
+export default async function NewAtcPage({ params, searchParams }: PageProps) {
   const { projectSlug } = await params;
+  const { story: storyParam, ac: acParam } = await searchParams;
   const supabase = await createClient();
 
   // RLS narrows visible projects to workspaces the caller is a member of.
@@ -52,12 +54,30 @@ export default async function NewAtcPage({ params }: PageProps) {
     storyAcs[s.id] = acceptanceCriteria.filter(ac => ac.user_story_id === s.id);
   }
 
+  // Resolve the explorer "Create ATC" deep-link (`?story=…&ac=…`). Only honour
+  // params that point at material visible in THIS project (RLS-narrowed above),
+  // so a stale or hand-edited URL can never pre-anchor to foreign content. The
+  // module defaults to the story's own module.
+  const initialStory = storyParam
+    ? stories.find(s => s.id === storyParam) ?? null
+    : null;
+  const initialStoryId = initialStory?.id ?? null;
+  const initialModuleId = initialStory?.module_id ?? null;
+  const initialAcIds
+    = initialStoryId && acParam
+      && (storyAcs[initialStoryId] ?? []).some(ac => ac.id === acParam)
+      ? [acParam]
+      : [];
+
   return (
     <NewAtcEditor
       projectSlug={project.slug}
       modules={modules}
       stories={stories}
       storyAcs={storyAcs}
+      initialStoryId={initialStoryId}
+      initialAcIds={initialAcIds}
+      initialModuleId={initialModuleId}
     />
   );
 }

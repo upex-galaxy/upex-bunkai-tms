@@ -3,7 +3,7 @@
 import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@lib/utils';
-import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -264,7 +264,13 @@ function ModuleNode({
   const [open, setOpen] = useState(depth < 2);
   const indent = 8 + depth * 12;
   const selected = node.id === selectedModuleId;
-  const visibleAtcs = node.atcs.filter(atc => atcMatches(atc.status, filter));
+  // ATCs that belong to a user story in this module are rendered nested under
+  // that story (StoryNode). Only render genuinely module-level / orphan ATCs
+  // flat here, so a story-linked ATC isn't drawn twice.
+  const storyIds = new Set(node.user_stories.map(s => s.id));
+  const visibleAtcs = node.atcs.filter(
+    atc => !storyIds.has(atc.user_story_id) && atcMatches(atc.status, filter),
+  );
 
   return (
     <div>
@@ -398,77 +404,19 @@ function ModuleNode({
             />
           ))}
           {node.user_stories.map(story => (
-            <div key={story.id}>
-              <div
-                onContextMenu={e => onContextMenu(e, { kind: 'story', story })}
-                className="group relative flex h-6 items-center gap-1.5 text-sm text-fg-2 hover:bg-surface-2"
-                style={{ paddingLeft: indent + 18, paddingRight: 8 }}
-              >
-                <FileText size={11} className="text-fg-3" />
-                {story.external_id && (
-                  <span className="font-mono text-xs text-accent">{story.external_id}</span>
-                )}
-                <span className="truncate text-fg-2">{story.title}</span>
-                {story.status === 'ready_to_test' && (
-                  <span
-                    data-testid={`story-status-${story.id}`}
-                    className="flex-shrink-0 rounded-1 bg-accent-soft px-1 font-mono text-[10px] font-semibold text-accent"
-                  >
-                    ready
-                  </span>
-                )}
-                {canCreate && (onManageCriteria || onEditUserStory || onDeleteUserStory) && (
-                  <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
-                    {onManageCriteria && (
-                      <button
-                        type="button"
-                        data-testid={`story-criteria-${story.id}`}
-                        onClick={() => onManageCriteria(story)}
-                        title="Manage acceptance criteria"
-                        aria-label="Manage acceptance criteria"
-                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
-                      >
-                        <ListChecks size={10} />
-                      </button>
-                    )}
-                    {onEditUserStory && (
-                      <button
-                        type="button"
-                        data-testid={`story-edit-${story.id}`}
-                        onClick={() => onEditUserStory(story)}
-                        title="Edit story"
-                        aria-label="Edit story"
-                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
-                      >
-                        <Pencil size={10} />
-                      </button>
-                    )}
-                    {onDeleteUserStory && (
-                      <button
-                        type="button"
-                        data-testid={`story-delete-${story.id}`}
-                        onClick={() => onDeleteUserStory(story)}
-                        title="Remove story"
-                        aria-label="Remove story"
-                        className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-              {story.acceptance_criteria.map(ac => (
-                <div
-                  key={ac.id}
-                  className="flex h-5 items-center gap-1.5 text-xs text-fg-3"
-                  style={{ paddingLeft: indent + 36, paddingRight: 8 }}
-                >
-                  <ListChecks size={10} className="text-fg-4" />
-                  <span className="truncate">{ac.title}</span>
-                </div>
-              ))}
-            </div>
+            <StoryNode
+              key={story.id}
+              story={story}
+              indent={indent + 12}
+              projectSlug={projectSlug}
+              canCreate={canCreate}
+              filter={filter}
+              selectedAtcId={selectedAtcId}
+              onEditUserStory={onEditUserStory}
+              onDeleteUserStory={onDeleteUserStory}
+              onManageCriteria={onManageCriteria}
+              onContextMenu={onContextMenu}
+            />
           ))}
           {visibleAtcs.map(atc => (
             <AtcLink
@@ -487,7 +435,189 @@ function ModuleNode({
               className="flex h-5 items-center text-xs italic text-fg-4"
               style={{ paddingLeft: indent + 30, paddingRight: 8 }}
             >
-              Empty — right-click or hover this module to add a story
+              No stories yet
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A user story renders as an accordion: the AC + ATC children stay collapsed
+// until the row is toggled, so a module with many stories doesn't explode into
+// a 200-line flat list. ATCs linked to the story nest here (not flat under the
+// module). Clicking an AC opens the criteria panel; hover exposes a Create-ATC
+// shortcut anchored to this story.
+function StoryNode({
+  story,
+  indent,
+  projectSlug,
+  canCreate,
+  filter,
+  selectedAtcId,
+  onEditUserStory,
+  onDeleteUserStory,
+  onManageCriteria,
+  onContextMenu,
+}: {
+  story: UserStoryWithChildren
+  indent: number
+  projectSlug: string
+  canCreate: boolean
+  filter: ExplorerFilter
+  selectedAtcId?: string | null
+  onEditUserStory?: (story: UserStoryWithChildren) => void
+  onDeleteUserStory?: (story: UserStoryWithChildren) => void
+  onManageCriteria?: (story: UserStoryWithChildren) => void
+  onContextMenu: OpenCtx
+}) {
+  const [open, setOpen] = useState(false);
+  const acs = story.acceptance_criteria;
+  const storyAtcs = story.atcs.filter(atc => atcMatches(atc.status, filter));
+  const hasChildren = acs.length > 0 || story.atcs.length > 0;
+  const newAtcHref = `/projects/${projectSlug}/atcs/new?story=${story.id}`;
+
+  return (
+    <div>
+      <div
+        onContextMenu={e => onContextMenu(e, { kind: 'story', story })}
+        className="group relative flex h-6 items-center hover:bg-surface-2"
+        style={{ paddingLeft: indent, paddingRight: 8 }}
+      >
+        <button
+          type="button"
+          data-testid={`story-toggle-${story.id}`}
+          onClick={() => setOpen(o => !o)}
+          disabled={!hasChildren}
+          aria-label={hasChildren ? (open ? 'Collapse story' : 'Expand story') : undefined}
+          aria-expanded={hasChildren ? open : undefined}
+          className="inline-flex h-6 w-4 flex-shrink-0 items-center justify-center disabled:cursor-default"
+        >
+          {hasChildren
+            ? open
+              ? <ChevronDown size={10} className="text-fg-3" />
+              : <ChevronRight size={10} className="text-fg-3" />
+            : null}
+        </button>
+        <button
+          type="button"
+          data-testid={`story-row-${story.id}`}
+          aria-expanded={hasChildren ? open : undefined}
+          onClick={() => setOpen(o => !o)}
+          className="flex h-6 min-w-0 flex-1 items-center gap-1.5 text-left text-sm"
+        >
+          <FileText size={11} className="shrink-0 text-fg-3" />
+          {story.external_id && (
+            <span className="shrink-0 whitespace-nowrap font-mono text-xs text-accent">{story.external_id}</span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-fg-2">{story.title}</span>
+          {story.status === 'ready_to_test' && (
+            <span
+              data-testid={`story-status-${story.id}`}
+              className="shrink-0 rounded-1 bg-accent-soft px-1 font-mono text-[10px] font-semibold text-accent"
+            >
+              ready
+            </span>
+          )}
+        </button>
+        {canCreate && (
+          <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
+            <Link
+              href={newAtcHref}
+              data-testid={`story-new-atc-${story.id}`}
+              title="Create ATC for this story"
+              aria-label="Create ATC for this story"
+              className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-accent"
+            >
+              <FlaskConical size={10} />
+            </Link>
+            {onManageCriteria && (
+              <button
+                type="button"
+                data-testid={`story-criteria-${story.id}`}
+                onClick={() => onManageCriteria(story)}
+                title="Manage acceptance criteria"
+                aria-label="Manage acceptance criteria"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <ListChecks size={10} />
+              </button>
+            )}
+            {onEditUserStory && (
+              <button
+                type="button"
+                data-testid={`story-edit-${story.id}`}
+                onClick={() => onEditUserStory(story)}
+                title="Edit story"
+                aria-label="Edit story"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+              >
+                <Pencil size={10} />
+              </button>
+            )}
+            {onDeleteUserStory && (
+              <button
+                type="button"
+                data-testid={`story-delete-${story.id}`}
+                onClick={() => onDeleteUserStory(story)}
+                title="Remove story"
+                aria-label="Remove story"
+                className="flex h-5 w-5 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-signal-fail"
+              >
+                <Trash2 size={10} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {open && (
+        <div>
+          {acs.map(ac => (
+            <div
+              key={ac.id}
+              className="group/ac relative flex h-5 items-center hover:bg-surface-2"
+              style={{ paddingLeft: indent + 22, paddingRight: 8 }}
+            >
+              <button
+                type="button"
+                data-testid={`ac-row-${ac.id}`}
+                onClick={() => onManageCriteria?.(story)}
+                title="View acceptance criteria"
+                className="flex h-5 min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-fg-3"
+              >
+                <ListChecks size={10} className="shrink-0 text-fg-4" />
+                <span className="min-w-0 flex-1 truncate">{ac.title}</span>
+              </button>
+              {canCreate && (
+                <Link
+                  href={`${newAtcHref}&ac=${ac.id}`}
+                  data-testid={`ac-new-atc-${ac.id}`}
+                  title="Create ATC from this criterion"
+                  aria-label="Create ATC from this criterion"
+                  className="absolute right-1 hidden h-4 w-4 items-center justify-center rounded-1 bg-surface-2 text-fg-3 hover:bg-surface-3 hover:text-accent group-hover/ac:flex"
+                >
+                  <Plus size={10} />
+                </Link>
+              )}
+            </div>
+          ))}
+          {storyAtcs.map(atc => (
+            <AtcLink
+              key={atc.id}
+              atc={atc}
+              indent={indent + 22}
+              projectSlug={projectSlug}
+              selected={atc.id === selectedAtcId}
+              onContextMenu={onContextMenu}
+            />
+          ))}
+          {!hasChildren && (
+            <div
+              className="flex h-5 items-center text-2xs italic text-fg-4"
+              style={{ paddingLeft: indent + 22, paddingRight: 8 }}
+            >
+              No criteria yet
             </div>
           )}
         </div>
@@ -521,11 +651,11 @@ function AtcLink({
       )}
       style={{ paddingLeft: indent, paddingRight: 8 }}
     >
-      <span className="dot" data-status={atc.status} />
-      <span className="font-mono text-xs text-fg-3">{atc.id}</span>
-      <span className="truncate">{atc.title}</span>
+      <span className="dot shrink-0" data-status={atc.status} />
+      <span className="shrink-0 font-mono text-xs text-fg-3">{atc.slug}</span>
+      <span className="min-w-0 flex-1 truncate">{atc.title}</span>
       <span
-        className="layer-chip ml-auto"
+        className="layer-chip shrink-0"
         data-layer={atc.layer.toLowerCase()}
       >
         {atc.layer}
