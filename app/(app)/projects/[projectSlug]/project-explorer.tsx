@@ -4,8 +4,9 @@ import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
-import { DownloadCloud } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { cn } from '@lib/utils';
+import { ChevronLeft, ChevronRight, DownloadCloud } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
@@ -100,6 +101,35 @@ export function ProjectExplorer({
   const [importing, setImporting] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
 
+  // Explorer panel chrome: collapse to a thin rail (Jira-style) and drag-resize
+  // the width. Bounds keep the tree usable. Width is not persisted — a session
+  // affordance, reset on reload.
+  const [collapsed, setCollapsed] = useState(false);
+  const [width, setWidth] = useState(280);
+  const resizingRef = useRef(false);
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    const startX = e.clientX;
+    const startW = width;
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) { return; }
+      setWidth(Math.min(520, Math.max(220, startW + (ev.clientX - startX))));
+    };
+    const onUp = () => {
+      resizingRef.current = false;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   // Close any open modal on Escape — mirrors the CommandPalette behaviour and
   // matches the backdrop-click dismissal each modal already has. Only one of
   // these is ever open at a time, so clearing all close handlers is safe.
@@ -130,50 +160,85 @@ export function ProjectExplorer({
 
   return (
     <>
-      <div className="flex flex-shrink-0 flex-col overflow-hidden">
-        <div className="flex h-8 flex-shrink-0 items-center justify-between border-b border-stroke-1 bg-surface-1 px-3">
-          {breadcrumb.length > 0
-            ? (
-                <span data-testid="module-breadcrumb">
-                  <Breadcrumb items={breadcrumb} />
-                </span>
-              )
-            : (
-                <span className="text-xs text-fg-4">Select a module to view its ATCs</span>
+      <div
+        data-testid="explorer-panel"
+        className="relative flex flex-shrink-0 flex-col overflow-hidden bg-surface-1"
+        style={{ width: collapsed ? 0 : width }}
+      >
+        {!collapsed && (
+          <>
+            <div className="flex h-9 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
+              {breadcrumb.length > 0
+                ? (
+                    <span data-testid="module-breadcrumb" className="min-w-0 truncate">
+                      <Breadcrumb items={breadcrumb} />
+                    </span>
+                  )
+                : (
+                    <span className="truncate text-xs text-fg-4">Select a module to view its ATCs</span>
+                  )}
+              {canCreate && (
+                <button
+                  type="button"
+                  data-testid="import-from-jira"
+                  onClick={() => setImporting(true)}
+                  title="Import issues from Jira"
+                  className="ml-2 inline-flex h-5 flex-shrink-0 items-center gap-1 rounded-1 px-1.5 text-xs text-fg-3 hover:bg-surface-2 hover:text-fg-1"
+                >
+                  <DownloadCloud size={11} />
+                  Import
+                </button>
               )}
-          {canCreate && (
-            <button
-              type="button"
-              data-testid="import-from-jira"
-              onClick={() => setImporting(true)}
-              title="Import issues from Jira"
-              className="inline-flex h-5 items-center gap-1 rounded-1 px-1.5 text-xs text-fg-3 hover:bg-surface-2 hover:text-fg-1"
-            >
-              <DownloadCloud size={11} />
-              Import
-            </button>
-          )}
-        </div>
-        <div className="flex min-h-0 flex-1">
-          <Sidebar
-            projectSlug={projectSlug}
-            projectName={projectName}
-            tree={tree}
-            canCreate={canCreate}
-            selectedModuleId={selectedModuleId}
-            onNewModule={() => setTarget({ parentModuleId: null })}
-            onAddSubModule={node =>
-              setTarget({ parentModuleId: node.id, parentLabel: node.name })}
-            onRenameModule={setRenameTarget}
-            onMoveModule={setMoveTarget}
-            onDeleteModule={setDeleteTarget}
-            onNewUserStory={setNewStoryModule}
-            onEditUserStory={setEditStory}
-            onDeleteUserStory={setDeleteStory}
-            onManageCriteria={setManageStory}
-            onSelect={setSelectedModuleId}
+            </div>
+            <div className="flex min-h-0 flex-1">
+              <Sidebar
+                projectSlug={projectSlug}
+                projectName={projectName}
+                tree={tree}
+                canCreate={canCreate}
+                selectedModuleId={selectedModuleId}
+                onNewModule={() => setTarget({ parentModuleId: null })}
+                onAddSubModule={node =>
+                  setTarget({ parentModuleId: node.id, parentLabel: node.name })}
+                onRenameModule={setRenameTarget}
+                onMoveModule={setMoveTarget}
+                onDeleteModule={setDeleteTarget}
+                onNewUserStory={setNewStoryModule}
+                onEditUserStory={setEditStory}
+                onDeleteUserStory={setDeleteStory}
+                onManageCriteria={setManageStory}
+                onSelect={setSelectedModuleId}
+              />
+            </div>
+          </>
+        )}
+      </div>
+      {/* Jira-style divider: drag the hit-area to resize, click the pill to
+          collapse/expand the explorer panel. */}
+      <div className="group/divider relative w-px flex-shrink-0 bg-stroke-1">
+        {!collapsed && (
+          <div
+            onMouseDown={startResize}
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize"
+            className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize transition-colors hover:bg-accent/30"
           />
-        </div>
+        )}
+        <button
+          type="button"
+          data-testid="explorer-collapse-toggle"
+          onClick={() => setCollapsed(c => !c)}
+          title={collapsed ? 'Expand panel' : 'Collapse panel'}
+          aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+          aria-expanded={!collapsed}
+          className={cn(
+            'absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-stroke-3 bg-surface-3 text-fg-2 shadow-pop hover:text-fg-0 active:scale-95',
+            collapsed ? 'flex' : 'hidden group-hover/divider:flex',
+          )}
+        >
+          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+        </button>
       </div>
 
       {target && (

@@ -102,7 +102,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="flex w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
+    <aside className="flex h-full w-full flex-col overflow-hidden bg-surface-1">
       <div className="flex h-10 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
         <span className="font-mono text-xs font-semibold uppercase tracking-widest text-fg-3">
           Explorer
