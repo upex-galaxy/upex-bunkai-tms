@@ -61,16 +61,18 @@ references/data-testid-standards.md
 - Reglas de manejo de errores
 - Estándares de data-testid para identidad de componentes
 
-### 3. Design System (si hay UI):
+### 3. Design System + Screen Design (si hay UI):
 
 ```
-.context/design-system.md
+DESIGN.md                              # token + component-system authority
+.context/design/master-design-plan.md  # per-screen fidelity specs + US→Screen map (if present)
 ```
 
 **Propósito:**
 
-- Validar que usa componentes correctos
-- Validar paleta de colores aplicada
+- Look up the story's screen (master design plan US→Screen map, when present) and validate the UI matches that screen's fidelity spec plus the `DESIGN.md` frozen tokens — not just "uses some component".
+- Validate against the agreed design/mockup for that screen, not intuition or a partial implementation.
+- Flag any unratified divergence from the agreed design as a review defect.
 
 ### 4. Código implementado:
 

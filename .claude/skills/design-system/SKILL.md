@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (docker), Claude Design (claude.ai/design premium), LLM-authored custom. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
+description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (docker), Claude Design (claude.ai/design premium), LLM-authored custom. OPCIONAL (siempre opt-in, post-DESIGN.md): mapea screen mockups externos (Claude Design / Open Design) en `.context/design/master-design-plan.md` con specs por-screen + US→screen map que `/sprint-development` consume. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`, `mapear screens`, `master design plan`, `screen design`, `US to screen map`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation
@@ -23,6 +23,14 @@ model_preferences:
 `/design-system` produces a portable `DESIGN.md` at the project root following the official Apache-2.0 spec from Google Labs (`google-labs-code/design.md`). This artefact persists the product's visual identity in a format that every AI agent (Claude Code, Cursor, Antigravity, OpenCode, etc.) reads automatically and consumes as the canonical design system.
 
 The skill is invoked **once per project** (post-PRD, pre-SRS) as part of `/project-foundation`, and re-invoked on-demand when the business pivots or wants a rebrand without re-scaffolding. The output is committed and downstream scaffolds (`/project-bootstrap` frontend-setup) consume it as declarative input — replacing the legacy interactive Q&A for palette/typography/components.
+
+Optionally, the skill also produces a **second artefact — `master-design-plan.md`** — that maps
+externally-produced **screen mockups** (Claude Design / Open Design / any prototyper) to user
+stories so `/sprint-development` builds each UI story against its agreed screen. This is the design
+SYSTEM (`DESIGN.md` = tokens/components) vs SCREEN design (`master-design-plan.md` = per-screen specs
++ US→Screen map) split. The screen phase is **always opt-in** — the AI asks every time and never
+auto-runs it — and is **gated on the user supplying mockups** (the AI delegates their creation to the
+external tool; it does not generate screens itself). Full procedure: `references/screen-design-mapping.md`.
 
 ---
 
@@ -94,6 +102,9 @@ Do NOT use this skill to:
 - Eight prescribed sections (order matters, sections may be omitted but never reordered): Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts.
 - Validated with `npx @google/design.md lint <path>` before exit (WCAG AA contrast included).
 - If `DESIGN.md` already exists, the skill offers: **skip** (keep current) / **overwrite** (replace) / **variant** (write `DESIGN.<slug>.md` alongside, e.g. for light/dark or A/B branding).
+- **(Optional, opt-in)** `master-design-plan.md` at `.context/design/` — per-screen fidelity specs + a
+  User-Story→Screen map, built from screen mockups in `.context/designs/<project>/`. Only produced
+  when the user opts in AND mockups are present. See `references/screen-design-mapping.md`.
 
 ---
 
@@ -192,6 +203,26 @@ Matching (Path B) and validation (lint) stay inline — both are cheap and fast.
 
 ---
 
+## Optional — Screen design & master design plan (always opt-in)
+
+After `DESIGN.md` is ready (or when re-invoked standalone), the skill **always asks** whether to also
+map per-screen designs into a `master-design-plan.md`. It never auto-runs this and never generates
+screens itself — screen mockups come from an external tool (Claude Design / Open Design / any
+prototyper) that the user supplies into `.context/designs/<project>/`. Full procedure, gating, drop
+zone, US→Screen mapping, the plan's section layout, and the external-tool delegation contract live in
+**`references/screen-design-mapping.md`**.
+
+Quick shape:
+
+1. **Ask** (AskUserQuestion): map screens into a master design plan? Yes / No / Not now. No → skip.
+2. **Delegate + wait** if `.context/designs/<project>/` is empty — instruct Claude Design / Open
+   Design, PAUSE with session-resume (mirrors Paths C/D).
+3. **Build** `.context/design/master-design-plan.md` from the mockups + backlog: per-screen specs,
+   a frozen-token reference to `DESIGN.md`, a US→Screen map, a divergence register.
+4. **Confirm** with the user before writing; re-runs UPSERT (incremental / just-in-time per feature).
+
+---
+
 ## Hand-offs
 
 After `DESIGN.md` is generated:
@@ -199,6 +230,7 @@ After `DESIGN.md` is generated:
 - **Return to `/project-foundation`** if the invocation came from there (Phase 2.5). Foundation continues with Phase 3 (SRS), which now can consume the design system as input to architecture decisions (e.g. richness of visuals informs stack choices like Framer Motion vs. plain Tailwind).
 - **Available for `/project-bootstrap` frontend-setup**: the bootstrap pre-flight detects `DESIGN.md` and skips the legacy interactive Q&A for palette/typography. Emits `tailwind.config.js` + `globals.css` directly from the frontmatter tokens.
 - **Consumable by any downstream agent** (Claude Code, Cursor, Antigravity, OpenCode, etc.) — by sitting at the root with the standard filename, every agent reads it automatically as design-system context.
+- **(When the optional screen phase ran) feeds `/sprint-development`**: the produced `master-design-plan.md` is a mandatory input for any UI story — sprint-dev looks the story up in the US→Screen map, opens its screen spec, and builds against the mockup + `DESIGN.md` tokens. Absent it, sprint-dev falls back to `DESIGN.md`-only fidelity.
 
 ---
 
@@ -226,6 +258,7 @@ On successful completion (all verification items pass), the orchestrator runs Ar
 - **D4.** NEVER ship a token rename without a migration path for component consumers — silent rename breaks every downstream import + `tailwind.config.js` reference.
 - **D5.** NEVER override design tokens inline (`style={{ color: '#fff' }}`, `className="text-[#1A1C1E]"`) in components — the escape hatch becomes the rule and the token system rots.
 - **D6.** NEVER let a designer hand off a Figma URL alone — require the exported token JSON or a built `DESIGN.md`; design intent must be machine-readable for downstream scaffolds.
+- **D7.** NEVER auto-run the optional screen phase or generate screen mockups yourself — it is always an explicit user opt-in, and the mockups always come from an external tool the user supplies into `.context/designs/<project>/` (see `references/screen-design-mapping.md`).
 
 ---
 
