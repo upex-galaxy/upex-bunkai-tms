@@ -158,8 +158,8 @@ Mockup: `screens/editor.jsx` (Compose LEFT + **Live Preview RIGHT**) · Impl: `c
 | Compose | Module field | 🔶 | edit=read-only, new=`<select>`; mockup=dropdown both |
 | Compose | User story autocomplete (inline, ⌘N new) | 🔶 | moved to right AnchoringPanel → restore inline search |
 | Compose | AC multi-select chips "N selected from M" | 🔶 | in right panel → restore inline chips + counter |
-| Compose | **Steps: drag-reorder numbered rows + Add + delete X** | 🔶 | currently Monaco markdown → restore structured rows |
-| Compose | **Assertions: type-and-enter list + delete X** | 🔶 | currently Monaco YAML → restore enter-to-add list |
+| Compose | Steps authoring | ✅ | **Monaco markdown code-editor kept (D3 reversed — product decision)** + inline format hint. Mockup's structured rows intentionally not restored. |
+| Compose | Assertions authoring | ✅ | **Monaco YAML code-editor kept (D3 reversed)** + inline format hint. |
 | Preview | **ENTIRE Live Preview pane** (read-only badge, "what runners/agents see", rendered card: id+layer+draft+breadcrumb, title, story, ✓ACs, steps, assertions code block, tags, "schema · atc.v1", "Updated live as you edit") | ❌ | **build** — right column is AnchoringPanel instead |
 
 **Priority: P1.** Live-preview is the screen's defining feature; its absence is the single biggest editor gap. Note: anchoring-enforcement model is the impl's addition — reconcile in §5 (keep enforcement, but restore preview as the right pane; anchoring controls move/inline).
@@ -199,14 +199,14 @@ Decision rule per divergence:
 |---|------------|-------|---------------------|
 | D1 | Auth: magic-link only vs mockup OAuth GitHub+Google | **Backend** | Do NOT refactor auth now. Restore the **visual** OAuth buttons + layout to mockup fidelity; keep them disabled/"soon" until OAuth infra is sequenced separately. UI looks faithful, backend untouched. |
 | D2 | ATC Editor: AnchoringPanel right pane vs Live Preview pane | **UI** | Correct → restore Live Preview as the right pane. Keep anchoring **enforcement logic** (backend-backed) but move its controls inline into the compose column. No API change. |
-| D3 | Steps/Assertions: Monaco free-text vs structured numbered rows / enter-to-add list | **UI** | Correct → structured editors. Serialize to the same stored format (markdown/YAML) on save → no schema change. |
+| D3 | Steps/Assertions: Monaco code-authoring vs mockup's structured numbered rows / enter-to-add list | **UI (product decision)** | **REVERSED 2026-06-09 — KEEP the Monaco code editors.** Product decision: the user prefers code-authoring (type the markdown/YAML format → live preview renders it). The mockup's structured rows are intentionally NOT restored. Mitigation shipped: an inline format hint (`AuthoringFormatHint`) under each editor shows the exact syntax with a real example, so the box isn't mistaken for a free textarea. |
 | D4 | Explorer tree: real `module→story→AC→atc` vs mockup `module→folder→atc/test` | **Backend if reverted** | **Keep the DB.** Render `folder`/`test`/tab nodes as a **presentation layer** over the existing model (mockup already embraces stories+ACs — US-742 / AC-742-3). Zero schema/API change. |
 | D5 | App shell: per-page chrome vs global persistent Sidebar+nav | **UI** | Correct → build global shell (§3). Nav badges can read live counts from existing APIs; missing-domain badges render `0`/hidden until those domains exist. |
 | D6 | Projects: routed multi-page vs single-page workbench w/ tabs | **UI** | Correct → add open-ATC tabs as a client-side layer over current routes. No backend change. |
 | D7 | Login left panel hidden `<lg` | **UI** | Correct → restore always-visible (or ratify responsive hide via ADR). |
 | D8 | Explorer additions beyond mockup: **US accordion**, **panel collapse/drag-resize**, **Create-ATC shortcut from story/AC** | **UI (additive)** | **Ratified ADD** (2026-06-09 UX review). Mockup's flat tree becomes unusable at scale (20 US × ~10 AC = 200 flat rows), so stories collapse their AC/ATC children; the panel gains a Jira-style collapse/resize divider; story/AC rows deep-link to the pre-anchored ATC editor. All UI-only over the existing model — zero schema/API change, consistent with D4. |
 
-> **Net:** D2, D3, D5, D6, D7 are pure UI — close them for full fidelity. D1 and D4 carry backend cost — make them **look** faithful now, defer the backend (OAuth infra / never revert schema) to separate, explicitly-sequenced work. D8 is an additive UI enhancement (no mockup equivalent) ratified from the 2026-06-09 UX review. This honors both rules: design fidelity up, backend churn zero.
+> **Net:** D2, D5, D6, D7 are pure UI — close them for full fidelity. D1 and D4 carry backend cost — make them **look** faithful now, defer the backend (OAuth infra / never revert schema) to separate, explicitly-sequenced work. D3 is a **ratified product divergence** (keep the code editors, do not restore the mockup's structured rows). D8 is an additive UI enhancement (no mockup equivalent) ratified from the 2026-06-09 UX review. This honors both rules: design fidelity up, backend churn zero.
 
 ---
 

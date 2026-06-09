@@ -3,6 +3,7 @@
 import type { AcceptanceCriterion, AtcLayer, UserStory } from '@lib/types';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
+import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
@@ -409,6 +410,7 @@ export function NewAtcEditor({
                   markdown · one step per numbered line
                 </span>
               </div>
+              <AuthoringFormatHint kind="steps" />
               <StepEditor
                 language="markdown"
                 value={stepsMd}
@@ -429,6 +431,7 @@ export function NewAtcEditor({
                   YAML list · checked by every executor
                 </span>
               </div>
+              <AuthoringFormatHint kind="assertions" />
               <StepEditor
                 language="yaml"
                 value={assertionsYaml}
