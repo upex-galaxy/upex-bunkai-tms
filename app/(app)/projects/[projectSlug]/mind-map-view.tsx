@@ -1,7 +1,7 @@
 'use client';
 
 import type { ModuleTreeNode } from '@lib/types';
-import { cn } from '@lib/utils';
+import { cn, shortSlug } from '@lib/utils';
 import { Minus, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -76,7 +76,7 @@ function buildGraph(roots: ModuleTreeNode[]) {
 
   const placeAtc = (atc: ModuleTreeNode['atcs'][number], depth: number): string =>
     place(
-      { id: `a:${atc.id}`, atcId: atc.id, label: atc.slug, sub: atc.title, kind: 'atc', status: atc.status, layer: atc.layer },
+      { id: `a:${atc.id}`, atcId: atc.id, label: shortSlug(atc.slug), sub: atc.title, kind: 'atc', status: atc.status, layer: atc.layer },
       depth,
       [],
     );

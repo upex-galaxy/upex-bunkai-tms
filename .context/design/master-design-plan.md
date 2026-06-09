@@ -31,7 +31,7 @@ Every user story that touches UI MUST:
 | Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~30% | ⚠️ Only 4 of ~13 ported |
 | App Shell (global sidebar + nav) | ~10% | ❌ No global nav exists |
 | Login | ~70% marketing / auth divergent | 🔶 |
-| Projects (Tree/Table/Mindmap + detail) | ~55% | 🔶 Explorer hardened (BK-9 filter chips, BK-10 context menu, US accordion, collapse/resize panel); Table/Mindmap + tabs still pending |
+| Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
@@ -136,14 +136,14 @@ Mockup: `screens/project.jsx` · Impl: `app/(app)/projects/[projectSlug]/` + `pr
 | Explorer | Context menu (Open/Run/Edit/Rename/Duplicate/Copy ID/Link/Deps/Delete) | ✅ | **done (BK-10)** — custom right-click popover; Duplicate/Run render `soon`; hover icons kept as touch fallback |
 | Explorer | **Panel collapse + drag-resize** (Jira-style divider) | ✅ | **added** (UX review) — collapse to rail, resize 220–520px. Beyond mockup; ratified §5 D8 |
 | Explorer | **Create-ATC shortcut from story/AC** (deep-link `/atcs/new?story&ac`) | ✅ | **added** (UX review) — pre-anchors module+story+AC in the editor. Ratified §5 D8 |
-| Tabs | Open-ATC tabs row (dot+id+layer+close, active accent top-border) | ❌ | build (or ratify route-per-ATC in §5) |
-| Detail | Status badge + last-run-failed banner + Run btn + Used-by-tests | ❌ | needs runs data; build when available |
-| Detail | Linked story card US-742 | ⚠️ | picker vs read-only card |
+| Tabs | Open-ATC tabs row (dot+id+layer+close, active accent top-border) | ✅ | **done** — Tree view opens ATCs in closeable in-pane tabs (BK-98) |
+| Detail | Status badge + last-run-failed banner + Run btn + Used-by-tests | 🔶 | **status badge done** (read-only detail pane); last-run banner + Run + Used-by deferred — need runs/tests data (§7) |
+| Detail | Linked story card US-742 | ✅ | **done** — read-only card + AC checkboxes in the Tree detail pane |
 | Detail | AC checkboxes | ✅ | keep — matches |
-| Detail | Steps / Assertions read-only render | 🔶 | currently Monaco editors (see ATC Editor §4.4) |
-| Views | Tree / Table / **Mind map** | ⚠️/⚠️/❌ | mindmap (SVG topology + legend + zoom + Topology/Coverage/Bug-density modes) fully missing |
+| Detail | Steps / Assertions read-only render | ✅ | **done** — read-only render in the Tree detail pane (full editor stays at `/atcs/{id}` §4.4) |
+| Views | Tree / Table / **Mind map** | ✅/✅/🔶 | **toggle + Table + Topology mind map done (BK-98)**; mindmap Coverage/Bug-density modes deferred (need coverage/bug data §7) |
 
-**Priority: P1** (toggle, filter chips, tabs) / P2 (mindmap, run surfaces).
+**Priority: P1 done** (toggle ✅, filter chips ✅, tabs ✅, Tree detail pane ✅). Remaining P2: mindmap Coverage/Bug-density + run surfaces (banner/Run/Used-by), inline toolbar filter (BK-20).
 
 ### 4.4 ATC Editor — 🔶 (~40%, reconceived anchoring-first)
 Mockup: `screens/editor.jsx` (Compose LEFT + **Live Preview RIGHT**) · Impl: `components/atcs/AtcEditor.tsx` + `NewAtcEditor.tsx` + `StepEditor.tsx` + `AnchoringPanel.tsx`

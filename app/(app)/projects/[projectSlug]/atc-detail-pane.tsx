@@ -2,6 +2,7 @@
 
 import type { Atc } from '@lib/types';
 import type { AtcDetail } from './atc-detail-action';
+import { shortSlug } from '@lib/utils';
 import { Check, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -42,7 +43,7 @@ export function AtcDetailPane({ projectSlug, atc }: { projectSlug: string, atc: 
       <header className="mb-1 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="whitespace-nowrap font-mono text-xs text-fg-3">{atc.slug}</span>
+            <span className="whitespace-nowrap font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
             <span className="status-chip" data-status={atc.status}>
               <span className="dot" data-status={atc.status} />
               {atc.status === 'fail' ? 'failed' : atc.status}

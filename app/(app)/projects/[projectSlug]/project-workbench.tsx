@@ -5,7 +5,7 @@ import { AtcTable } from '@components/atcs/AtcTable';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { Button, buttonVariants } from '@components/ui/button';
-import { cn } from '@lib/utils';
+import { cn, shortSlug } from '@lib/utils';
 import { ListTree, Network, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -155,7 +155,7 @@ export function ProjectWorkbench({
                       )}
                     >
                       <span className="dot" data-status={t.status} />
-                      <span className="font-mono text-xs">{t.slug}</span>
+                      <span className="font-mono text-xs" title={t.slug}>{shortSlug(t.slug)}</span>
                       <span className="layer-chip" data-layer={t.layer.toLowerCase()}>{t.layer}</span>
                       <button
                         type="button"

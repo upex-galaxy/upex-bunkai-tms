@@ -2,7 +2,7 @@
 
 import type { Atc } from '@lib/types';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { cn } from '@lib/utils';
+import { cn, shortSlug } from '@lib/utils';
 import {
   flexRender,
   getCoreRowModel,
@@ -27,10 +27,12 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
 
   const columns = useMemo<ColumnDef<AtcTableRow>[]>(() => [
     {
-      accessorKey: 'id',
+      accessorKey: 'slug',
       header: 'ID',
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-fg-0">{row.original.id}</span>
+        <span className="font-mono text-xs text-fg-0" title={row.original.slug}>
+          {shortSlug(row.original.slug)}
+        </span>
       ),
     },
     {

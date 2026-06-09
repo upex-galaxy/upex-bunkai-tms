@@ -2,7 +2,7 @@
 
 import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@lib/utils';
+import { cn, shortSlug } from '@lib/utils';
 import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FlaskConical, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -676,7 +676,7 @@ function AtcLink({
       style={{ paddingLeft: indent, paddingRight: 8 }}
     >
       <span className="dot shrink-0" data-status={atc.status} />
-      <span className="shrink-0 font-mono text-xs text-fg-3">{atc.slug}</span>
+      <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>{shortSlug(atc.slug)}</span>
       <span className="min-w-0 flex-1 truncate">{atc.title}</span>
       <span
         className="layer-chip shrink-0"
