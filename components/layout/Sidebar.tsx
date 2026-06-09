@@ -68,6 +68,9 @@ interface SidebarProps {
   // Fires when a module row is clicked. Optional (default no-op) so existing
   // callers that don't track selection keep working unchanged.
   onSelect?: (moduleId: string) => void
+  // When provided, a plain click on an ATC opens it in the Tree workbench's
+  // in-pane tab instead of navigating to the full editor.
+  onOpenAtc?: (atc: Atc) => void
 }
 
 export function Sidebar({
@@ -87,6 +90,7 @@ export function Sidebar({
   onDeleteUserStory,
   onManageCriteria,
   onSelect,
+  onOpenAtc,
 }: SidebarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<ExplorerFilter>('all');
@@ -195,6 +199,7 @@ export function Sidebar({
                 onManageCriteria={onManageCriteria}
                 onSelect={onSelect}
                 onContextMenu={openCtx}
+                onOpenAtc={onOpenAtc}
               />
             ))}
       </nav>
@@ -238,6 +243,7 @@ interface ModuleNodeProps {
   onManageCriteria?: (story: UserStoryWithChildren) => void
   onSelect?: (moduleId: string) => void
   onContextMenu: OpenCtx
+  onOpenAtc?: (atc: Atc) => void
 }
 
 function ModuleNode({
@@ -258,6 +264,7 @@ function ModuleNode({
   onManageCriteria,
   onSelect,
   onContextMenu,
+  onOpenAtc,
 }: ModuleNodeProps) {
   const hasChildren
     = node.children.length > 0 || node.user_stories.length > 0 || node.atcs.length > 0;
@@ -401,6 +408,7 @@ function ModuleNode({
               onManageCriteria={onManageCriteria}
               onSelect={onSelect}
               onContextMenu={onContextMenu}
+              onOpenAtc={onOpenAtc}
             />
           ))}
           {node.user_stories.map(story => (
@@ -416,6 +424,7 @@ function ModuleNode({
               onDeleteUserStory={onDeleteUserStory}
               onManageCriteria={onManageCriteria}
               onContextMenu={onContextMenu}
+              onOpenAtc={onOpenAtc}
             />
           ))}
           {visibleAtcs.map(atc => (
@@ -426,6 +435,7 @@ function ModuleNode({
               projectSlug={projectSlug}
               selected={atc.id === selectedAtcId}
               onContextMenu={onContextMenu}
+              onOpenAtc={onOpenAtc}
             />
           ))}
           {node.children.length === 0
@@ -460,6 +470,7 @@ function StoryNode({
   onDeleteUserStory,
   onManageCriteria,
   onContextMenu,
+  onOpenAtc,
 }: {
   story: UserStoryWithChildren
   indent: number
@@ -471,6 +482,7 @@ function StoryNode({
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
   onManageCriteria?: (story: UserStoryWithChildren) => void
   onContextMenu: OpenCtx
+  onOpenAtc?: (atc: Atc) => void
 }) {
   const [open, setOpen] = useState(false);
   const acs = story.acceptance_criteria;
@@ -610,6 +622,7 @@ function StoryNode({
               projectSlug={projectSlug}
               selected={atc.id === selectedAtcId}
               onContextMenu={onContextMenu}
+              onOpenAtc={onOpenAtc}
             />
           ))}
           {!hasChildren && (
@@ -632,17 +645,28 @@ function AtcLink({
   projectSlug,
   selected,
   onContextMenu,
+  onOpenAtc,
 }: {
   atc: Atc
   indent: number
   projectSlug: string
   selected: boolean
   onContextMenu: OpenCtx
+  onOpenAtc?: (atc: Atc) => void
 }) {
   return (
     <Link
       href={`/projects/${projectSlug}/atcs/${atc.id}`}
       onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
+      onClick={(e) => {
+        // In the Tree workbench, a plain click opens the ATC in an in-pane tab
+        // instead of navigating to the full editor. Modifier/middle clicks keep
+        // the native link behaviour (open the editor in a new tab).
+        if (onOpenAtc && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+          e.preventDefault();
+          onOpenAtc(atc);
+        }
+      }}
       className={cn(
         'flex h-6 items-center gap-1.5 text-sm transition-colors',
         selected

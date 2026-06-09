@@ -1,6 +1,6 @@
 'use client';
 
-import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
@@ -24,6 +24,11 @@ interface ProjectExplorerProps {
   // True when the caller's workspace role is >= member. Gates the create
   // affordances; the API remains the authority and rejects unauthorized writes.
   canCreate: boolean
+  // Tree-workbench wiring: a plain ATC click opens an in-pane tab (handled by
+  // the parent workbench) instead of navigating to the editor. `selectedAtcId`
+  // highlights the active tab's row in the tree.
+  onOpenAtc?: (atc: Atc) => void
+  selectedAtcId?: string | null
 }
 
 interface CreateTarget {
@@ -89,6 +94,8 @@ export function ProjectExplorer({
   projectName,
   tree,
   canCreate,
+  onOpenAtc,
+  selectedAtcId,
 }: ProjectExplorerProps) {
   const [target, setTarget] = useState<CreateTarget | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
@@ -197,6 +204,8 @@ export function ProjectExplorer({
                 tree={tree}
                 canCreate={canCreate}
                 selectedModuleId={selectedModuleId}
+                selectedAtcId={selectedAtcId}
+                onOpenAtc={onOpenAtc}
                 onNewModule={() => setTarget({ parentModuleId: null })}
                 onAddSubModule={node =>
                   setTarget({ parentModuleId: node.id, parentLabel: node.name })}

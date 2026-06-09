@@ -6,9 +6,10 @@ import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { Button, buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
-import { ListTree, Network, Plus, Table2 } from 'lucide-react';
+import { ListTree, Network, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { AtcDetailPane } from './atc-detail-pane';
 import { MindMapView } from './mind-map-view';
 import { ProjectExplorer } from './project-explorer';
 
@@ -43,6 +44,29 @@ export function ProjectWorkbench({
   canCreate,
 }: ProjectWorkbenchProps) {
   const [view, setView] = useState<View>('tree');
+  // Open-ATC tabs for the Tree view's detail pane (mockup TabBar). Clicking an
+  // ATC in the explorer opens it here; tabs are closeable.
+  const [openTabs, setOpenTabs] = useState<Atc[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const activeTab = openTabs.find(t => t.id === activeTabId) ?? null;
+
+  const openAtc = (atc: Atc) => {
+    setOpenTabs(prev => (prev.some(t => t.id === atc.id) ? prev : [...prev, atc]));
+    setActiveTabId(atc.id);
+    setView('tree');
+  };
+
+  const closeTab = (id: string) => {
+    setOpenTabs((prev) => {
+      const next = prev.filter(t => t.id !== id);
+      if (activeTabId === id) {
+        const idx = prev.findIndex(t => t.id === id);
+        const neighbour = next[idx] ?? next[idx - 1] ?? null;
+        setActiveTabId(neighbour?.id ?? null);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface-0">
@@ -110,9 +134,51 @@ export function ProjectWorkbench({
               projectName={projectName}
               tree={tree}
               canCreate={canCreate}
+              onOpenAtc={openAtc}
+              selectedAtcId={activeTabId}
             />
-            <main className="flex flex-1 flex-col overflow-hidden bg-surface-0">
-              <AtcTable atcs={rows} projectSlug={projectSlug} />
+            <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-0">
+              {openTabs.length > 0 && (
+                <div className="flex h-8 flex-shrink-0 items-stretch overflow-x-auto border-b border-stroke-1 bg-surface-1">
+                  {openTabs.map(t => (
+                    <div
+                      key={t.id}
+                      role="tab"
+                      aria-selected={t.id === activeTabId}
+                      data-testid={`atc-tab-${t.id}`}
+                      onClick={() => setActiveTabId(t.id)}
+                      className={cn(
+                        'flex flex-shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap border-r border-stroke-1 pl-3 pr-2 text-xs',
+                        t.id === activeTabId
+                          ? 'border-t border-t-accent bg-surface-0 text-fg-0'
+                          : 'border-t border-t-transparent text-fg-2 hover:bg-surface-2',
+                      )}
+                    >
+                      <span className="dot" data-status={t.status} />
+                      <span className="font-mono text-xs">{t.slug}</span>
+                      <span className="layer-chip" data-layer={t.layer.toLowerCase()}>{t.layer}</span>
+                      <button
+                        type="button"
+                        data-testid={`atc-tab-close-${t.id}`}
+                        aria-label="Close tab"
+                        onClick={(e) => { e.stopPropagation(); closeTab(t.id); }}
+                        className="ml-1 inline-flex rounded-1 p-0.5 text-fg-3 hover:bg-surface-3 hover:text-fg-0"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="min-h-0 flex-1 overflow-auto">
+                {activeTab
+                  ? <AtcDetailPane projectSlug={projectSlug} atc={activeTab} />
+                  : (
+                      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-fg-4">
+                        Select an ATC from the explorer to preview it here.
+                      </div>
+                    )}
+              </div>
             </main>
           </>
         )}
