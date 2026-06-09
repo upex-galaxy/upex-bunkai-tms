@@ -176,7 +176,7 @@ Example (same work, different register):
 
 > **Persistent memory** — `bun run setup` installs Engram via `gentle-ai install --preset minimal`. Active across sessions + compactions per §12 (proactive memory triggers). No other gentle-ai skills installed.
 >
-> **T3 (community project-level)** — frontend/backend skills matched by category at runtime, NOT by literal name. List in `cli/install.ts`.
+> **T3 (community project-level)** — frontend/backend skills matched by category at runtime, NOT by literal name. List in `cli/install.ts`. **Activity→bundle co-load map** (which community skills to load TOGETHER per work-type, with PRIMARY/SECONDARY tiers to bound token cost): `.claude/skills/agentic-dev-core/references/skill-composition-strategy.md` §4.4 — enforced by `/sprint-development` Stage 2 (Composable callees). Experimental in this repo; evaluate before promoting to boilerplate.
 >
 > **T4 (community user-level)** — repo-agnostic skills, auto-discovered at runtime, **ASK before load** per strategy §3.2.
 >

@@ -72,9 +72,10 @@ Canonical reading order for any AI starting cold on a sprint-development workflo
 6. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md` — story-level context (dev-authored, non-Jira): session notes, open questions.
 7. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` — canonical story-level technical plan, synced from the Jira `spec_implementation_plan` field (read-only cache; read before Stage 2 resume).
 8. `.context/SRS/` architecture-specs and `.context/ADR/` — only when the story touches a cross-cutting concern (auth, data model, infra). Read existing ADRs so the plan honors a settled architectural decision instead of silently violating it.
-9. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
+9. `DESIGN.md` (+ `.context/design/master-design-plan.md` when the project keeps per-screen specs) — **mandatory whenever the story has UI**. `DESIGN.md` is the token + component-system contract; a master design plan, when present, adds per-screen fidelity specs and a US→Screen map. Find the story's screen, build against that screen + the frozen tokens, and don't invent UI on the fly. Ratify any deliberate departure from the agreed design before coding.
+10. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
 
-**Optional inputs.** Business maps (9) frequently arrive after `/business-*-map` runs and may be absent. Proceed without them when missing; surface a `missing_input` note in the Stage 1 plan so a later pass can fill the gap.
+**Optional inputs.** Business maps (10) frequently arrive after `/business-*-map` runs and may be absent. Proceed without them when missing; surface a `missing_input` note in the Stage 1 plan so a later pass can fill the gap.
 
 ---
 
@@ -127,13 +128,17 @@ row at each Jira transition (Stage 1 → Stage 4). Stage 5 (production deploy) i
 
 Per `complementary_categories` in this skill's frontmatter and the matching rule in `agentic-dev-core/references/skill-composition-strategy.md` §3:
 
-- **UI work in any stage** → `frontend-ui` category match (T3 or T4 — ASK if T4).
-- **Next.js / React patterns** → `frontend-framework` category match (T3 silent if matched).
-- **Forms work** → `forms-validation` category match (T3 silent).
-- **DB work** → `backend-db` category match (T3 silent).
-- **E2E tests if in scope** → `testing-e2e` category match (T4 — ASK before load).
+Co-load the **tiered bundle** per work-type (full table: `agentic-dev-core/references/skill-composition-strategy.md` §4.4). PRIMARY loads on match (T3 silent / T4 ask); SECONDARY only for net-new / from-scratch / polish work — skip it for quick tweaks and bugfixes.
 
-When delegating to a sub-agent, inject a `## Composable Skills` block into the sub-agent prompt listing the resolved skills + project standards per `agentic-dev-core/references/skill-composition-strategy.md` §6.2.
+- **UI build / component / new screen** → `frontend-ui` PRIMARY: `frontend-design`, `shadcn`, `tailwind-css-patterns`. SECONDARY: `impeccable`, `emil-design-eng`, `ui-ux-pro-max`.
+- **UI polish / redesign / audit** → `frontend-ui` PRIMARY: `impeccable`, `emil-design-eng`. SECONDARY: `redesign-existing-projects`, `design-taste-frontend`.
+- **Next.js / RSC / routing** → `frontend-framework` PRIMARY: `next-best-practices`. SECONDARY: `next-cache-components` (caching), `next-upgrade` (version bump).
+- **Forms** → `forms-validation` PRIMARY: `react-hook-form`, `zod`.
+- **DB / Supabase** → `backend-db` PRIMARY: `supabase`. SECONDARY: `supabase-postgres-best-practices`.
+- **Public page (SEO)** → `seo` + `accessibility` PRIMARY: `seo`, `accessibility`.
+- **E2E tests if in scope** → `testing-e2e` (T4 — ASK before load): `playwright-cli`.
+
+When delegating to a sub-agent, inject a `## Composable Skills` block into the sub-agent prompt listing the resolved bundle (PRIMARY + any earned SECONDARY) + project standards per `agentic-dev-core/references/skill-composition-strategy.md` §6.2.
 
 ---
 
@@ -301,7 +306,7 @@ Review checklist (driven by `references/review-pr.md`):
 - Lint + build green; types clean
 - Code-standards conformance (imports via aliases, no relative paths, parameter limits, etc.)
 - Security checks (no secrets in diff, auth handled, input validation)
-- UI/UX adherence to design system (where applicable)
+- UI/UX fidelity (where applicable): matches the story's screen — `DESIGN.md` tokens plus the per-screen spec in `.context/design/master-design-plan.md` when the project maintains one; unratified divergence from the agreed design/mockup is a defect
 
 Review notes are dev-authored (non-Jira) and persist at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` with topic_key `pbi/{ticket}/review`. Auto-generated review summaries use `capture_prompt: false`; human-prompted architectural decisions use `capture_prompt: true`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
