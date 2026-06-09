@@ -60,7 +60,7 @@
  *   1 — at least one ERROR found
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
@@ -720,6 +720,10 @@ function main() {
   // Discover T1 skills (folders in .claude/skills/)
   const t1 = new Set<string>();
   for (const e of readdirSync(SKILLS_DIR)) {
+    // Symlinked entries (community skills linked from .agents/skills) are NOT
+    // T1 — their tier comes from install.ts. Mirrors the symlink-awareness in
+    // build-skill-registry.ts so tier classification stays consistent.
+    if (lstatSync(join(SKILLS_DIR, e)).isSymbolicLink()) { continue; }
     const skillFile = join(SKILLS_DIR, e, 'SKILL.md');
     try { if (statSync(skillFile).isFile()) { t1.add(e); } }
     catch { /* skip */ }

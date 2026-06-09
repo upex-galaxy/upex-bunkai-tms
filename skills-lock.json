@@ -113,7 +113,7 @@
       "source": "resend/resend-cli",
       "sourceType": "github",
       "skillPath": "skills/resend-cli/SKILL.md",
-      "computedHash": "8253f110ec3cbaac56153fc9051eeb7d3e8dbba03c31b49981aeb4d6f036d6d7"
+      "computedHash": "1e90cef2f15e4fae8b7dd57f1e39f90c7114c1be218a6be027cc42ffeef65548"
     },
     "seo": {
       "source": "addyosmani/web-quality-skills",
