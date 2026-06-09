@@ -132,7 +132,7 @@ Mockup: `screens/project.jsx` · Impl: `app/(app)/projects/[projectSlug]/` + `pr
 | Explorer | "EXPLORER" header | ✅ | keep |
 | Explorer | **Filter chips all/fail/blocked/unrun + counts** | ✅ | **done (BK-9)** — live counts from tree; hidden when project has 0 ATCs |
 | Explorer | Tree hierarchy | ✅ | module→story→AC/ATC; **stories are accordions** (AC+ATC collapse until toggled), ATCs nest under their US showing slug not UUID. `folder`/`test` nodes stay presentation-only (D4) |
-| Explorer | Status dots / layer chips on rows | ⚠️/✅ | dots+layer chips on ATC leaves → still add status dots to module/story rows (image-13 target) |
+| Explorer | Status dots / layer chips on rows | ✅ | layer chips on ATC leaves; status dots on ATC leaves + **roll-up status dots on module/story rows** (worst-of-subtree, derived from ATC statuses) |
 | Explorer | Context menu (Open/Run/Edit/Rename/Duplicate/Copy ID/Link/Deps/Delete) | ✅ | **done (BK-10)** — custom right-click popover; Duplicate/Run render `soon`; hover icons kept as touch fallback |
 | Explorer | **Panel collapse + drag-resize** (Jira-style divider) | ✅ | **added** (UX review) — collapse to rail, resize 220–520px. Beyond mockup; ratified §5 D8 |
 | Explorer | **Create-ATC shortcut from story/AC** (deep-link `/atcs/new?story&ac`) | ✅ | **added** (UX review) — pre-anchors module+story+AC in the editor. Ratified §5 D8 |

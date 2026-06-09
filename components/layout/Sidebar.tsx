@@ -271,6 +271,7 @@ function ModuleNode({
   const [open, setOpen] = useState(depth < 2);
   const indent = 8 + depth * 12;
   const selected = node.id === selectedModuleId;
+  const moduleRollup = rollupStatus(moduleStatuses(node));
   // ATCs that belong to a user story in this module are rendered nested under
   // that story (StoryNode). Only render genuinely module-level / orphan ATCs
   // flat here, so a story-linked ATC isn't drawn twice.
@@ -319,7 +320,8 @@ function ModuleNode({
             ? <FolderOpen size={12} className="text-fg-2" />
             : <FolderClosed size={12} className="text-fg-2" />}
           <span className="truncate font-semibold text-fg-0">{node.name}</span>
-          <span className="ml-auto font-mono text-xs text-fg-4">{countAtcs(node)}</span>
+          {moduleRollup && <span className="dot ml-auto shrink-0" data-status={moduleRollup} />}
+          <span className={cn('font-mono text-xs text-fg-4', !moduleRollup && 'ml-auto')}>{countAtcs(node)}</span>
         </button>
         {canCreate && (onAddSubModule || onRenameModule || onMoveModule || onDeleteModule) && (
           <div className="absolute right-1 hidden items-center gap-0.5 group-hover:flex">
@@ -487,6 +489,7 @@ function StoryNode({
   const [open, setOpen] = useState(false);
   const acs = story.acceptance_criteria;
   const storyAtcs = story.atcs.filter(atc => atcMatches(atc.status, filter));
+  const storyRollup = rollupStatus(story.atcs.map(a => a.status));
   const hasChildren = acs.length > 0 || story.atcs.length > 0;
   const newAtcHref = `/projects/${projectSlug}/atcs/new?story=${story.id}`;
 
@@ -524,6 +527,7 @@ function StoryNode({
             <span className="shrink-0 whitespace-nowrap font-mono text-xs text-accent">{story.external_id}</span>
           )}
           <span className="min-w-0 flex-1 truncate text-fg-2">{story.title}</span>
+          {storyRollup && <span className="dot shrink-0" data-status={storyRollup} />}
           {story.status === 'ready_to_test' && (
             <span
               data-testid={`story-status-${story.id}`}
@@ -896,6 +900,27 @@ function countAtcs(node: ModuleTreeNode): number {
   let n = node.atcs.length;
   for (const c of node.children) { n += countAtcs(c); }
   return n;
+}
+
+// Worst-first precedence for the roll-up status dot on container rows (module /
+// story). A module shows the most-severe status among the ATCs beneath it, so
+// the tree reads at a glance — matches the mockup's per-row dots.
+const ROLLUP_ORDER: AtcStatus[] = ['fail', 'blocked', 'running', 'unrun', 'skipped', 'pass'];
+
+function rollupStatus(statuses: AtcStatus[]): AtcStatus | null {
+  if (statuses.length === 0) { return null; }
+  for (const s of ROLLUP_ORDER) {
+    if (statuses.includes(s)) { return s; }
+  }
+  return null;
+}
+
+// node.atcs already holds every ATC in the module (the tree builder buckets
+// story-linked ATCs there too), so recursing children alone covers the subtree.
+function moduleStatuses(node: ModuleTreeNode): AtcStatus[] {
+  const acc = node.atcs.map(a => a.status);
+  for (const c of node.children) { acc.push(...moduleStatuses(c)); }
+  return acc;
 }
 
 function countByStatus(tree: ModuleTreeNode[]): Record<ExplorerFilter, number> {
