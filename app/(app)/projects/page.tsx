@@ -61,7 +61,7 @@ export default async function ProjectsIndexPage() {
           <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-widest text-fg-4">
             Projects
           </div>
-          <ul className="m-0 grid gap-1 p-0">
+          <ul className="m-0 grid grid-cols-1 gap-1 p-0">
             {projects.map(project => (
               <li key={project.slug}>
                 <Link
