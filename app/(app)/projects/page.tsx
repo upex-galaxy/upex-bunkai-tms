@@ -70,7 +70,7 @@ export default async function ProjectsIndexPage() {
                   className="flex items-baseline justify-between rounded-2 px-2 py-1.5 text-sm text-fg-1 hover:bg-surface-2"
                 >
                   <span className="min-w-0 flex-1 truncate font-medium text-fg-0">{project.name}</span>
-                  <span className="ml-2 shrink-0 font-mono text-xs text-fg-4">{project.slug}</span>
+                  <span className="ml-2 max-w-[50%] shrink-0 truncate font-mono text-xs text-fg-4">{project.slug}</span>
                 </Link>
               </li>
             ))}
