@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Bunkai">
+  <defs>
+    <linearGradient id="verm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8634c"></stop>
+      <stop offset="1" stop-color="#c1432f"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="54" height="54" rx="12" fill="url(#verm)"></rect>
+  <rect x="5.5" y="5.5" width="53" height="53" rx="11.5" fill="none" stroke="rgba(255,255,255,0.18)"></rect>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-family="&#39;Noto Serif JP&#39;,&#39;Yu Mincho&#39;,serif" font-weight="900" font-size="40" fill="#f6f1ea">分</text>
+</svg>
