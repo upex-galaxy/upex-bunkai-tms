@@ -1,10 +1,39 @@
 'use client';
 
-import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { Atc, AtcStatus, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@lib/utils';
-import { ChevronDown, ChevronRight, FilePlus, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Copy, FilePlus, Files, FileText, FolderClosed, FolderInput, FolderOpen, ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
+// Explorer status filter (BK-9). `all` shows everything; the others narrow the
+// visible ATC rows to a single status. `unrun` maps to the `unrun` AtcStatus.
+type ExplorerFilter = 'all' | 'fail' | 'blocked' | 'unrun';
+
+const FILTERS: { key: ExplorerFilter, label: string }[] = [
+  { key: 'all', label: 'all' },
+  { key: 'fail', label: 'fail' },
+  { key: 'blocked', label: 'blocked' },
+  { key: 'unrun', label: 'unrun' },
+];
+
+// Right-click context-menu target (BK-10). One union member per row kind so the
+// menu can render the right verbs and wire to the matching callback.
+type CtxTarget
+  = | { kind: 'module', node: ModuleTreeNode }
+    | { kind: 'story', story: UserStoryWithChildren }
+    | { kind: 'atc', atc: Atc };
+
+interface CtxState {
+  x: number
+  y: number
+  target: CtxTarget
+}
+
+type OpenCtx = (e: React.MouseEvent, target: CtxTarget) => void;
 
 interface SidebarProps {
   projectSlug: string
@@ -59,6 +88,19 @@ export function Sidebar({
   onManageCriteria,
   onSelect,
 }: SidebarProps) {
+  const router = useRouter();
+  const [filter, setFilter] = useState<ExplorerFilter>('all');
+  const [ctx, setCtx] = useState<CtxState | null>(null);
+
+  // Status counts across the whole tree drive the filter-chip badges. Computed
+  // from the full tree (not the filtered view) so the numbers stay stable.
+  const counts = useMemo(() => countByStatus(tree), [tree]);
+
+  const openCtx: OpenCtx = (e, target) => {
+    e.preventDefault();
+    setCtx({ x: e.clientX, y: e.clientY, target });
+  };
+
   return (
     <aside className="flex w-[280px] flex-shrink-0 flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
       <div className="flex h-10 flex-shrink-0 items-center justify-between border-b border-stroke-1 px-3">
@@ -80,6 +122,33 @@ export function Sidebar({
             )
           : <span className="text-xs text-fg-3">{projectName}</span>}
       </div>
+      {/* Status filter chips (BK-9). Hidden when the project has no ATCs yet so
+          an empty project doesn't show four zero-count chips. */}
+      {counts.all > 0 && (
+        <div
+          data-testid="explorer-filters"
+          className="flex flex-shrink-0 items-center gap-1.5 border-b border-stroke-1 px-2.5 py-2"
+        >
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              type="button"
+              data-testid={`explorer-filter-${f.key}`}
+              aria-pressed={filter === f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                'inline-flex items-center rounded-1 border px-1.5 py-0.5 text-2xs font-medium transition-colors',
+                filter === f.key
+                  ? 'border-stroke-3 bg-surface-3 text-fg-0'
+                  : 'border-stroke-1 text-fg-2 hover:border-stroke-2 hover:text-fg-1',
+              )}
+            >
+              {f.label}
+              <span className="ml-1 font-mono text-fg-4">{counts[f.key]}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <nav className="flex-1 overflow-auto py-1.5">
         {tree.length === 0
           ? (
@@ -115,6 +184,7 @@ export function Sidebar({
                 selectedAtcId={selectedAtcId}
                 selectedModuleId={selectedModuleId}
                 canCreate={canCreate}
+                filter={filter}
                 onAddSubModule={onAddSubModule}
                 onRenameModule={onRenameModule}
                 onMoveModule={onMoveModule}
@@ -124,9 +194,28 @@ export function Sidebar({
                 onDeleteUserStory={onDeleteUserStory}
                 onManageCriteria={onManageCriteria}
                 onSelect={onSelect}
+                onContextMenu={openCtx}
               />
             ))}
       </nav>
+      {ctx && (
+        <ExplorerContextMenu
+          state={ctx}
+          projectSlug={projectSlug}
+          canCreate={canCreate}
+          onClose={() => setCtx(null)}
+          router={router}
+          onSelect={onSelect}
+          onAddSubModule={onAddSubModule}
+          onRenameModule={onRenameModule}
+          onMoveModule={onMoveModule}
+          onDeleteModule={onDeleteModule}
+          onNewUserStory={onNewUserStory}
+          onEditUserStory={onEditUserStory}
+          onDeleteUserStory={onDeleteUserStory}
+          onManageCriteria={onManageCriteria}
+        />
+      )}
     </aside>
   );
 }
@@ -138,6 +227,7 @@ interface ModuleNodeProps {
   selectedAtcId?: string | null
   selectedModuleId?: string | null
   canCreate?: boolean
+  filter: ExplorerFilter
   onAddSubModule?: (node: ModuleTreeNode) => void
   onRenameModule?: (node: ModuleTreeNode) => void
   onMoveModule?: (node: ModuleTreeNode) => void
@@ -147,6 +237,7 @@ interface ModuleNodeProps {
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
   onManageCriteria?: (story: UserStoryWithChildren) => void
   onSelect?: (moduleId: string) => void
+  onContextMenu: OpenCtx
 }
 
 function ModuleNode({
@@ -156,6 +247,7 @@ function ModuleNode({
   selectedAtcId,
   selectedModuleId,
   canCreate = false,
+  filter,
   onAddSubModule,
   onRenameModule,
   onMoveModule,
@@ -165,16 +257,19 @@ function ModuleNode({
   onDeleteUserStory,
   onManageCriteria,
   onSelect,
+  onContextMenu,
 }: ModuleNodeProps) {
   const hasChildren
     = node.children.length > 0 || node.user_stories.length > 0 || node.atcs.length > 0;
   const [open, setOpen] = useState(depth < 2);
   const indent = 8 + depth * 12;
   const selected = node.id === selectedModuleId;
+  const visibleAtcs = node.atcs.filter(atc => atcMatches(atc.status, filter));
 
   return (
     <div>
       <div
+        onContextMenu={e => onContextMenu(e, { kind: 'module', node })}
         className={cn(
           'group relative flex h-6 w-full items-center hover:bg-surface-2',
           selected && 'bg-surface-2',
@@ -289,6 +384,7 @@ function ModuleNode({
               selectedAtcId={selectedAtcId}
               selectedModuleId={selectedModuleId}
               canCreate={canCreate}
+              filter={filter}
               onAddSubModule={onAddSubModule}
               onRenameModule={onRenameModule}
               onMoveModule={onMoveModule}
@@ -298,11 +394,13 @@ function ModuleNode({
               onDeleteUserStory={onDeleteUserStory}
               onManageCriteria={onManageCriteria}
               onSelect={onSelect}
+              onContextMenu={onContextMenu}
             />
           ))}
           {node.user_stories.map(story => (
             <div key={story.id}>
               <div
+                onContextMenu={e => onContextMenu(e, { kind: 'story', story })}
                 className="group relative flex h-6 items-center gap-1.5 text-sm text-fg-2 hover:bg-surface-2"
                 style={{ paddingLeft: indent + 18, paddingRight: 8 }}
               >
@@ -372,13 +470,14 @@ function ModuleNode({
               ))}
             </div>
           ))}
-          {node.atcs.map(atc => (
+          {visibleAtcs.map(atc => (
             <AtcLink
               key={atc.id}
               atc={atc}
               indent={indent + 18}
               projectSlug={projectSlug}
               selected={atc.id === selectedAtcId}
+              onContextMenu={onContextMenu}
             />
           ))}
           {node.children.length === 0
@@ -388,7 +487,7 @@ function ModuleNode({
               className="flex h-5 items-center text-xs italic text-fg-4"
               style={{ paddingLeft: indent + 30, paddingRight: 8 }}
             >
-              Empty — hover this module to add a story
+              Empty — right-click or hover this module to add a story
             </div>
           )}
         </div>
@@ -402,15 +501,18 @@ function AtcLink({
   indent,
   projectSlug,
   selected,
+  onContextMenu,
 }: {
   atc: Atc
   indent: number
   projectSlug: string
   selected: boolean
+  onContextMenu: OpenCtx
 }) {
   return (
     <Link
       href={`/projects/${projectSlug}/atcs/${atc.id}`}
+      onContextMenu={e => onContextMenu(e, { kind: 'atc', atc })}
       className={cn(
         'flex h-6 items-center gap-1.5 text-sm transition-colors',
         selected
@@ -432,8 +534,227 @@ function AtcLink({
   );
 }
 
+// ── Context menu (BK-10) ───────────────────────────────────────────
+// Custom right-click menu. Deliberately not @radix-ui/react-context-menu —
+// that's not in deps and adding it churns package.json/lockfile. Items reuse
+// the callbacks already threaded into Sidebar; affordances without a backend
+// (Run, Duplicate, View deps) render disabled with a "soon" hint.
+
+interface MenuItem {
+  label: string
+  icon?: LucideIcon
+  shortcut?: string
+  onClick?: () => void
+  danger?: boolean
+  accent?: boolean
+  soon?: boolean
+}
+
+type MenuEntry = MenuItem | 'divider';
+
+interface ContextMenuProps {
+  state: CtxState
+  projectSlug: string
+  canCreate: boolean
+  onClose: () => void
+  router: ReturnType<typeof useRouter>
+  onSelect?: (moduleId: string) => void
+  onAddSubModule?: (node: ModuleTreeNode) => void
+  onRenameModule?: (node: ModuleTreeNode) => void
+  onMoveModule?: (node: ModuleTreeNode) => void
+  onDeleteModule?: (node: ModuleTreeNode) => void
+  onNewUserStory?: (node: ModuleTreeNode) => void
+  onEditUserStory?: (story: UserStoryWithChildren) => void
+  onDeleteUserStory?: (story: UserStoryWithChildren) => void
+  onManageCriteria?: (story: UserStoryWithChildren) => void
+}
+
+function ExplorerContextMenu({
+  state,
+  projectSlug,
+  canCreate,
+  onClose,
+  router,
+  onSelect,
+  onAddSubModule,
+  onRenameModule,
+  onMoveModule,
+  onDeleteModule,
+  onNewUserStory,
+  onEditUserStory,
+  onDeleteUserStory,
+  onManageCriteria,
+}: ContextMenuProps) {
+  // Close on Escape, on scroll, and on resize — a positioned menu shouldn't
+  // linger detached from the row it points at.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); }
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onClose, true);
+    window.addEventListener('resize', onClose);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onClose, true);
+      window.removeEventListener('resize', onClose);
+    };
+  }, [onClose]);
+
+  const copyId = (id: string) => {
+    navigator.clipboard?.writeText(id).then(
+      () => toast.success('ID copied to clipboard'),
+      () => toast.error('Could not copy ID'),
+    );
+  };
+
+  const { target } = state;
+  const { title, kind, entries } = buildMenu();
+
+  function buildMenu(): { title: string, kind: string, entries: MenuEntry[] } {
+    if (target.kind === 'module') {
+      const node = target.node;
+      const entries: MenuEntry[] = [
+        { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => onSelect?.(node.id) },
+      ];
+      if (canCreate) {
+        entries.push(
+          'divider',
+          ...(onAddSubModule ? [{ label: 'New sub-module', icon: Plus, onClick: () => onAddSubModule(node) }] : []),
+          ...(onNewUserStory ? [{ label: 'New user story', icon: FilePlus, onClick: () => onNewUserStory(node) }] : []),
+          'divider',
+          ...(onRenameModule ? [{ label: 'Rename', icon: Pencil, shortcut: 'F2', onClick: () => onRenameModule(node) }] : []),
+          ...(onMoveModule ? [{ label: 'Move', icon: FolderInput, onClick: () => onMoveModule(node) }] : []),
+          { label: 'Duplicate', icon: Files, shortcut: '⌘D', soon: true },
+        );
+      }
+      entries.push(
+        { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(node.id) },
+      );
+      if (canCreate && onDeleteModule) {
+        entries.push('divider', { label: 'Delete', icon: Trash2, shortcut: '⌫', danger: true, onClick: () => onDeleteModule(node) });
+      }
+      return { title: node.name, kind: 'Module', entries };
+    }
+
+    if (target.kind === 'story') {
+      const story = target.story;
+      const entries: MenuEntry[] = [];
+      if (canCreate) {
+        entries.push(
+          ...(onManageCriteria ? [{ label: 'Manage criteria', icon: ListChecks, onClick: () => onManageCriteria(story) }] : []),
+          ...(onEditUserStory ? [{ label: 'Edit', icon: Pencil, shortcut: 'E', onClick: () => onEditUserStory(story) }] : []),
+        );
+      }
+      entries.push(
+        { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(story.external_id ?? story.id) },
+      );
+      if (canCreate && onDeleteUserStory) {
+        entries.push('divider', { label: 'Remove', icon: Trash2, shortcut: '⌫', danger: true, onClick: () => onDeleteUserStory(story) });
+      }
+      return { title: story.external_id ?? story.title, kind: 'User story', entries };
+    }
+
+    const atc = target.atc;
+    const href = `/projects/${projectSlug}/atcs/${atc.id}`;
+    return {
+      title: atc.id,
+      kind: 'ATC',
+      entries: [
+        { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => router.push(href) },
+        { label: 'Open in new tab', icon: ArrowUpRight, shortcut: '⌘⏎', onClick: () => window.open(href, '_blank', 'noopener') },
+        'divider',
+        { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(atc.id) },
+      ],
+    };
+  }
+
+  // Clamp into the viewport so the menu never spills off-screen. Width/height
+  // are fixed estimates that match the rendered popover.
+  const MENU_W = 230;
+  const estH = 56 + entries.length * 28;
+  const left = Math.min(state.x, (typeof window !== 'undefined' ? window.innerWidth : 1280) - MENU_W - 8);
+  const top = Math.min(state.y, (typeof window !== 'undefined' ? window.innerHeight : 800) - estH - 8);
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50"
+        onClick={onClose}
+        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+      />
+      <div
+        data-testid="explorer-context-menu"
+        role="menu"
+        className="fixed z-[51] w-[230px] rounded-2 border border-stroke-3 bg-surface-3 p-1 shadow-pop"
+        style={{ left, top }}
+        onContextMenu={e => e.preventDefault()}
+      >
+        <div className="mb-1 border-b border-stroke-1 px-2 py-1.5">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-3">{kind}</div>
+          <div className="truncate text-sm font-semibold text-fg-0">{title}</div>
+        </div>
+        {entries.map((it, i) =>
+          it === 'divider'
+            ? <div key={`div-${i}`} className="my-1 h-px bg-stroke-1" />
+            : (
+                <button
+                  key={it.label}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`ctx-${it.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  disabled={it.soon || !it.onClick}
+                  onClick={() => {
+                    it.onClick?.();
+                    onClose();
+                  }}
+                  className={cn(
+                    'grid w-full grid-cols-[14px_1fr_auto] items-center gap-2 rounded-1 px-2 py-1.5 text-left text-sm',
+                    it.danger
+                      ? 'text-signal-fail hover:bg-surface-4'
+                      : it.accent
+                        ? 'text-accent-hi hover:bg-surface-4'
+                        : 'text-fg-1 hover:bg-surface-4',
+                    (it.soon || !it.onClick) && 'cursor-default opacity-40 hover:bg-transparent',
+                  )}
+                >
+                  <span className="flex items-center justify-center">
+                    {it.icon ? <it.icon size={12} /> : null}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    {it.label}
+                    {it.soon && <span className="rounded-1 bg-surface-2 px-1 font-mono text-[9px] uppercase text-fg-4">soon</span>}
+                  </span>
+                  {it.shortcut ? <span className="kbd">{it.shortcut}</span> : <span />}
+                </button>
+              ),
+        )}
+      </div>
+    </>
+  );
+}
+
+function atcMatches(status: AtcStatus, filter: ExplorerFilter): boolean {
+  return filter === 'all' || status === filter;
+}
+
 function countAtcs(node: ModuleTreeNode): number {
   let n = node.atcs.length;
   for (const c of node.children) { n += countAtcs(c); }
   return n;
+}
+
+function countByStatus(tree: ModuleTreeNode[]): Record<ExplorerFilter, number> {
+  const acc: Record<ExplorerFilter, number> = { all: 0, fail: 0, blocked: 0, unrun: 0 };
+  const walk = (node: ModuleTreeNode) => {
+    for (const atc of node.atcs) {
+      acc.all += 1;
+      if (atc.status === 'fail') { acc.fail += 1; }
+      else if (atc.status === 'blocked') { acc.blocked += 1; }
+      else if (atc.status === 'unrun') { acc.unrun += 1; }
+    }
+    for (const child of node.children) { walk(child); }
+  };
+  for (const node of tree) { walk(node); }
+  return acc;
 }
