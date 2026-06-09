@@ -5,7 +5,7 @@
 >
 > **Design medium of record:** the Claude Design handoff mockups in `.context/designs/bunkai-test-management-tool/` (5 screens + `styles.css` token system). When mockup and implementation disagree, **the mockup wins** unless a divergence is explicitly ratified in §5.
 >
-> Last audit: 2026-06-08. Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
+> Last audit: 2026-06-09. Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
 
 ---
 
@@ -31,7 +31,7 @@ Every user story that touches UI MUST:
 | Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~30% | ⚠️ Only 4 of ~13 ported |
 | App Shell (global sidebar + nav) | ~10% | ❌ No global nav exists |
 | Login | ~70% marketing / auth divergent | 🔶 |
-| Projects (Tree/Table/Mindmap + detail) | ~35% | 🔶 Routed multi-page |
+| Projects (Tree/Table/Mindmap + detail) | ~55% | 🔶 Explorer hardened (BK-9 filter chips, BK-10 context menu, US accordion, collapse/resize panel); Table/Mindmap + tabs still pending |
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
@@ -130,10 +130,12 @@ Mockup: `screens/project.jsx` · Impl: `app/(app)/projects/[projectSlug]/` + `pr
 | Toolbar | Inline filter box (name/ATC ID/tag) | 🔶 | replaced by CommandPalette → add inline filter |
 | Toolbar | New ATC + `N` kbd / New Test | ⚠️ | add kbd binding; New Test deferred |
 | Explorer | "EXPLORER" header | ✅ | keep |
-| Explorer | **Filter chips all/fail/blocked/unrun + counts** | ❌ | build |
-| Explorer | Tree hierarchy | 🔶 | real = module→story→AC→atc; mockup tree adds `folder`/`test` nodes. **Reconcile** (see §5 — data-model gap) |
-| Explorer | Status dots / layer chips on rows | ⚠️/✅ | dots only on ATC leaves → add to module/story |
-| Explorer | Context menu (Open/Run/Edit/Rename/Duplicate/Copy ID/Link/Deps/Delete) | 🔶 | hover icons → full context menu |
+| Explorer | **Filter chips all/fail/blocked/unrun + counts** | ✅ | **done (BK-9)** — live counts from tree; hidden when project has 0 ATCs |
+| Explorer | Tree hierarchy | ✅ | module→story→AC/ATC; **stories are accordions** (AC+ATC collapse until toggled), ATCs nest under their US showing slug not UUID. `folder`/`test` nodes stay presentation-only (D4) |
+| Explorer | Status dots / layer chips on rows | ⚠️/✅ | dots+layer chips on ATC leaves → still add status dots to module/story rows (image-13 target) |
+| Explorer | Context menu (Open/Run/Edit/Rename/Duplicate/Copy ID/Link/Deps/Delete) | ✅ | **done (BK-10)** — custom right-click popover; Duplicate/Run render `soon`; hover icons kept as touch fallback |
+| Explorer | **Panel collapse + drag-resize** (Jira-style divider) | ✅ | **added** (UX review) — collapse to rail, resize 220–520px. Beyond mockup; ratified §5 D8 |
+| Explorer | **Create-ATC shortcut from story/AC** (deep-link `/atcs/new?story&ac`) | ✅ | **added** (UX review) — pre-anchors module+story+AC in the editor. Ratified §5 D8 |
 | Tabs | Open-ATC tabs row (dot+id+layer+close, active accent top-border) | ❌ | build (or ratify route-per-ATC in §5) |
 | Detail | Status badge + last-run-failed banner + Run btn + Used-by-tests | ❌ | needs runs data; build when available |
 | Detail | Linked story card US-742 | ⚠️ | picker vs read-only card |
@@ -202,8 +204,9 @@ Decision rule per divergence:
 | D5 | App shell: per-page chrome vs global persistent Sidebar+nav | **UI** | Correct → build global shell (§3). Nav badges can read live counts from existing APIs; missing-domain badges render `0`/hidden until those domains exist. |
 | D6 | Projects: routed multi-page vs single-page workbench w/ tabs | **UI** | Correct → add open-ATC tabs as a client-side layer over current routes. No backend change. |
 | D7 | Login left panel hidden `<lg` | **UI** | Correct → restore always-visible (or ratify responsive hide via ADR). |
+| D8 | Explorer additions beyond mockup: **US accordion**, **panel collapse/drag-resize**, **Create-ATC shortcut from story/AC** | **UI (additive)** | **Ratified ADD** (2026-06-09 UX review). Mockup's flat tree becomes unusable at scale (20 US × ~10 AC = 200 flat rows), so stories collapse their AC/ATC children; the panel gains a Jira-style collapse/resize divider; story/AC rows deep-link to the pre-anchored ATC editor. All UI-only over the existing model — zero schema/API change, consistent with D4. |
 
-> **Net:** D2, D3, D5, D6, D7 are pure UI — close them for full fidelity. D1 and D4 carry backend cost — make them **look** faithful now, defer the backend (OAuth infra / never revert schema) to separate, explicitly-sequenced work. This honors both rules: design fidelity up, backend churn zero.
+> **Net:** D2, D3, D5, D6, D7 are pure UI — close them for full fidelity. D1 and D4 carry backend cost — make them **look** faithful now, defer the backend (OAuth infra / never revert schema) to separate, explicitly-sequenced work. D8 is an additive UI enhancement (no mockup equivalent) ratified from the 2026-06-09 UX review. This honors both rules: design fidelity up, backend churn zero.
 
 ---
 
