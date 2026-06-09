@@ -1,14 +1,8 @@
 import type { Atc, Module, UserStory } from '@lib/types';
-import { AtcTable } from '@components/atcs/AtcTable';
-import { CommandPalette } from '@components/layout/CommandPalette';
-import { Breadcrumb, Topbar } from '@components/layout/Topbar';
-import { Button, buttonVariants } from '@components/ui/button';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ProjectExplorer } from './project-explorer';
+import { ProjectWorkbench } from './project-workbench';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
@@ -98,42 +92,14 @@ export default async function ProjectPage({ params }: PageProps) {
   }));
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-0">
-      <Topbar
-        left={<Breadcrumb items={[workspace.name, project.name, 'All ATCs']} />}
-        center={null}
-        right={(
-          <>
-            <CommandPalette />
-            <Link
-              href={`/projects/${project.slug}/atcs/new`}
-              className={buttonVariants({ size: 'sm' })}
-              data-testid="project-new-atc"
-            >
-              <Plus size={11} />
-              {' '}
-              New ATC
-            </Link>
-            <Button variant="primary" size="sm" disabled title="Test builder ships next sprint" className="cursor-not-allowed opacity-60">
-              <Plus size={11} />
-              {' '}
-              New Test
-            </Button>
-          </>
-        )}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <ProjectExplorer
-          projectId={project.id}
-          projectSlug={project.slug}
-          projectName={project.name}
-          tree={tree}
-          canCreate={canCreate}
-        />
-        <main className="flex flex-1 flex-col overflow-hidden bg-surface-0">
-          <AtcTable atcs={rows} projectSlug={project.slug} />
-        </main>
-      </div>
-    </div>
+    <ProjectWorkbench
+      projectId={project.id}
+      projectSlug={project.slug}
+      projectName={project.name}
+      workspaceName={workspace.name}
+      tree={tree}
+      rows={rows}
+      canCreate={canCreate}
+    />
   );
 }
