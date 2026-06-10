@@ -49,6 +49,28 @@ Emitted inside the create/edit transaction (`bunkai_create_atc` / `bunkai_update
 
 > `affected_test_ids` is **always `[]`** in the MVP: the `test_steps` table that links Tests to ATCs does not exist yet (EPIC-BK-5). The field name is fixed so consumers handle empty arrays today and real ids later. An empty-body PATCH is a no-op — it emits **no** `atc.updated` event and does not bump `version`.
 
+## Module events (BK-59)
+
+Emitted inside the three SECURITY DEFINER module-mutation RPCs (`bunkai_update_module`, `bunkai_move_module`, `bunkai_archive_module_subtree` — migration `0023_module_activity_log.sql`), atomically with the mutation. Actor = `auth.uid()` (the RPCs run through a user-scoped client on both auth paths and role-gate on it). No-op early returns (same-parent move, already-archived subtree) emit nothing. Module **create** is intentionally not audited: it is a direct RLS table insert, not an RPC.
+
+All module events share: `entity_type` = `module`, `entity_id` = the module id, `workspace_id` = the owning project's workspace.
+
+### `module.renamed`
+
+`payload`: `{ "name": "<new name>", "old_path": "a/b", "new_path": "a/c" }`
+
+### `module.description_updated`
+
+`payload`: `{}` (deliberately empty — no content leak into the audit trail).
+
+### `module.moved`
+
+`payload`: `{ "old_path": "a/b", "new_path": "c/b", "old_parent_id": "<uuid|null>", "new_parent_id": "<uuid|null>" }`
+
+### `module.archived`
+
+`payload`: the same per-table counts the RPC returns — `{ "modules": n, "user_stories": n, "acceptance_criteria": n, "atcs": n }`.
+
 ## Consumers
 
 - **BK-20** (ATC search) — reindex on `atc.created` / `atc.updated`.
