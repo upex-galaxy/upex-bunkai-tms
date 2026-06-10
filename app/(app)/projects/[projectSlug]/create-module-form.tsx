@@ -3,7 +3,7 @@
 import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { slugify } from '@lib/utils/slug';
+import { slugifyWithFallback } from '@lib/utils/slug';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -84,9 +84,10 @@ export function CreateModuleForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Live slug preview uses the SAME helper the server derives the path segment
-  // with, so what the user sees is what gets stored.
-  const slugPreview = slugify(name);
+  // Live slug preview uses the SAME helper (and prefix/minLength) the server
+  // derives the path segment with, so what the user sees is what gets stored —
+  // CJK or Cyrillic names preview the `module-<hash>` fallback (BK-53).
+  const slugPreview = name.trim() ? slugifyWithFallback(name, 'module', 1) : '';
   // Mirror the server minimum (>= 2) so the button doesn't enable for input the
   // API will reject — avoids a submit-and-fail round-trip.
   const trimmedName = name.trim();

@@ -3,6 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createAdminClient } from '@lib/supabase/admin';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 
 // GET /api/v1/me — introspect the authenticated principal. Cookie session OR
@@ -34,10 +35,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   if (principal.via === 'cookie') {
     const cookieStore = await cookies();
     const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-    const visibleIds = new Set(workspaces.map(w => w.id));
-    activeWorkspaceId = cookieActive && visibleIds.has(cookieActive)
-      ? cookieActive
-      : (workspaces[0]?.id ?? null);
+    activeWorkspaceId = resolveActiveWorkspaceId(cookieActive, workspaces.map(w => w.id));
   }
   else {
     activeWorkspaceId = principal.workspaceId ?? (workspaces[0]?.id ?? null);

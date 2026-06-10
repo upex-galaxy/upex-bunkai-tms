@@ -3,7 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { moduleNameError } from '@lib/modules/path';
-import { slugify } from '@lib/utils/slug';
+import { slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
 // PATCH  /api/v1/modules/{id} — rename a module and/or edit its description.
@@ -64,12 +64,10 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
       throw new ApiError('validation_failed', nameMessage(reason), { details: { reason } });
     }
     trimmedName = (body.name ?? '').trim();
-    slug = slugify(trimmedName);
-    if (slug.length < 1) {
-      throw new ApiError('validation_failed', nameMessage('name_no_alphanumeric'), {
-        details: { reason: 'name_no_alphanumeric' },
-      });
-    }
+    // Derive the new path segment with a deterministic hash fallback (BK-53):
+    // CJK/Cyrillic names get `module-<hash>` instead of failing on an empty
+    // derived slug. moduleNameError above already accepts Unicode letters.
+    slug = slugifyWithFallback(trimmedName, 'module', 1);
   }
 
   const description = hasDescription ? body.description ?? null : null;

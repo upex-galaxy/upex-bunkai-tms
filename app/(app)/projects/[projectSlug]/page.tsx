@@ -1,6 +1,9 @@
 import type { Atc, Module, UserStory } from '@lib/types';
+import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ProjectWorkbench } from './project-workbench';
 
@@ -12,14 +15,25 @@ export default async function ProjectPage({ params }: PageProps) {
   const { projectSlug } = await params;
   const supabase = await createClient();
 
-  // RLS narrows visible projects to workspaces the caller is a member of, so
-  // a single-row match is the natural shape for MVP single-workspace users.
-  // When multi-workspace lands, route shape becomes
-  // `/projects/{workspaceSlug}/{projectSlug}` and this lookup gains the
-  // workspace filter.
+  // Project slugs are only unique PER WORKSPACE (BK-52), so the lookup must be
+  // scoped to the caller's active workspace — RLS alone would happily match a
+  // same-slug project from another workspace the caller belongs to.
+  const { data: workspaceRows } = await supabase
+    .from('workspaces')
+    .select('id')
+    .order('created_at', { ascending: true });
+  const cookieStore = await cookies();
+  const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
+  const activeWorkspaceId = resolveActiveWorkspaceId(
+    cookieActive,
+    (workspaceRows ?? []).map(w => w.id),
+  );
+  if (!activeWorkspaceId) { notFound(); }
+
   const { data: project, error: projectErr } = await supabase
     .from('projects')
     .select('*')
+    .eq('workspace_id', activeWorkspaceId)
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();

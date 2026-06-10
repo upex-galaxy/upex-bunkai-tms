@@ -1,4 +1,4 @@
-import { hasAlphanumeric, slugify } from '@lib/utils/slug';
+import { hasAlphanumeric, slugify, slugifyWithFallback } from '@lib/utils/slug';
 import { describe, expect, test } from 'bun:test';
 
 describe('slugify', () => {
@@ -55,11 +55,46 @@ describe('hasAlphanumeric', () => {
     expect(hasAlphanumeric('!!!')).toBe(false);
     expect(hasAlphanumeric('   ')).toBe(false);
     expect(hasAlphanumeric('')).toBe(false);
+    // Emoji are \p{So} (symbols), not letters/numbers — still rejected.
+    expect(hasAlphanumeric('🚀🚀')).toBe(false);
   });
 
-  test('non-ASCII letters alone do not count (route relies on derived slug)', () => {
-    // A name of only non-ASCII letters passes hasAlphanumeric only if it has
-    // ASCII; pure accented input like "éé" has no raw ASCII alphanumeric.
-    expect(hasAlphanumeric('éé')).toBe(false);
+  test('Unicode letters and digits count (BK-53: CJK, Cyrillic, accented Latin)', () => {
+    expect(hasAlphanumeric('éé')).toBe(true);
+    expect(hasAlphanumeric('日本語プロジェクト')).toBe(true);
+    expect(hasAlphanumeric('Проект')).toBe(true);
+    expect(hasAlphanumeric('中文123')).toBe(true);
+  });
+});
+
+describe('slugifyWithFallback', () => {
+  test('passes a normal derived slug through unchanged', () => {
+    expect(slugifyWithFallback('Checkout v2', 'project', 3)).toBe('checkout-v2');
+  });
+
+  test('accented Latin still transliterates — no fallback needed', () => {
+    expect(slugifyWithFallback('Café Münchën', 'project', 3)).toBe('cafe-munchen');
+  });
+
+  test('a CJK name falls back to a prefixed 8-hex hash', () => {
+    expect(slugifyWithFallback('日本語プロジェクト', 'project', 3)).toMatch(/^project-[0-9a-f]{8}$/);
+  });
+
+  test('the fallback is deterministic (same input twice → identical slug)', () => {
+    expect(slugifyWithFallback('日本語プロジェクト', 'project', 3))
+      .toBe(slugifyWithFallback('日本語プロジェクト', 'project', 3));
+  });
+
+  test('different CJK names hash to different fallbacks', () => {
+    expect(slugifyWithFallback('日本語プロジェクト', 'project', 3))
+      .not
+      .toBe(slugifyWithFallback('中文项目', 'project', 3));
+  });
+
+  test('surrounding whitespace does not change the fallback (trim parity)', () => {
+    // Preserves duplicate-name → unique-violation (23505) → 409 semantics:
+    // visually identical names must produce the identical slug.
+    expect(slugifyWithFallback(' 日本語 ', 'project', 3))
+      .toBe(slugifyWithFallback('日本語', 'project', 3));
   });
 });
