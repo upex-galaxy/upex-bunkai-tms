@@ -47,5 +47,34 @@
 
 ---
 
+### Automation for Jira - 6/8/2026, 8:57:34 AM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 6/8/2026, 9:44:18 AM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 6/8/2026, 9:45:32 AM
+
+BK-19 merged to staging and deployed for QA.
+
+- PR: https://github.com/upex-galaxy/upex-bunkai-tms/pull/29 (merge commit, base staging)
+- Test URL: https://staging-upexbunkai.vercel.app/ -> open a project, click 'New ATC'
+- Scope: ATC creation builder (UI-only; consumes the BK-18 POST /api/v1/atcs contract)
+
+Suggested smoke (the 5 ACs):
+1. Create an ATC with a title, module, layer, >=1 step, 1 assertion, anchored to a User Story + >=1 Acceptance Criterion -> lands on the ATC detail page.
+2. Save without a User Story / AC -> blocked with a provenance message.
+3. Save with no steps -> blocked.
+4. Title 'AB' (2 chars) -> rejected (min 3).
+5. Add an 11th tag -> prevented (max 10).
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

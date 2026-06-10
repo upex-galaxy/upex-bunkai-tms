@@ -42,5 +42,13 @@ Scenario: Adding more than the allowed number of tags is prevented
   And I see a message that an ATC can have at most 10 tags
 ```
 
+## Scenario (design fidelity): Steps & Assertions code-authoring with format guidance
+
+Given the ATC editor (new or existing ATC)
+When I view the Steps and Assertions fields
+Then each is a code editor — Steps as a markdown numbered list, Assertions as a YAML bullet list — with a live preview that renders what I type
+And each field shows an inline format hint with a real example (e.g. "01. Open the page" for steps, "- status == 200" for assertions)
+And this code-authoring approach is the ratified design per master-design-plan §5 D3 (the mockup's structured rows are intentionally NOT used)
+
 ---
 _Synced from Jira by sync-jira-issues_
