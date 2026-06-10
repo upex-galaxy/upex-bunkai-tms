@@ -20,7 +20,10 @@ interface MarkdownEditorProps {
   testId?: string
 }
 
-const DEFAULT_MAX_BYTES = 50 * 1024;
+// 50 KB decimal (50,000 bytes) per the BK-16 AC5 contract — NOT KiB. Using
+// 50 * 1024 let 50,001–51,200-byte payloads through (BK-99) and pushed the 90%
+// warning threshold past where QA probes it (BK-100).
+const DEFAULT_MAX_BYTES = 50_000;
 
 export function MarkdownEditor({
   value,
@@ -192,7 +195,7 @@ export function MarkdownEditor({
         >
           {maxLength
             ? `${value.length}/${maxLength}`
-            : `${(bytes / 1024).toFixed(1)} KB`}
+            : `${(bytes / 1000).toFixed(1)} KB`}
         </span>
       </div>
 
@@ -200,7 +203,7 @@ export function MarkdownEditor({
         <p className="px-2.5 pb-1.5 text-xs text-signal-fail" data-testid="markdown-size-error">
           The description exceeds the maximum size of
           {' '}
-          {Math.round(maxBytes / 1024)}
+          {Math.round(maxBytes / 1000)}
           {' '}
           KB.
         </p>

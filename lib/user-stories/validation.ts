@@ -6,8 +6,9 @@ export type StoryTitleError = 'title_required' | 'title_too_short' | 'title_too_
 
 export const MIN_STORY_TITLE = 3;
 export const MAX_STORY_TITLE = 200;
-// 50 KB UTF-8, shared with the BK-16 editor cap.
-export const MAX_STORY_DESCRIPTION_BYTES = 50 * 1024;
+// 50 KB UTF-8 (decimal — 50,000 bytes, NOT KiB), shared with the BK-16 editor
+// cap. The former 50 * 1024 admitted 50,001–51,200-byte payloads (BK-99).
+export const MAX_STORY_DESCRIPTION_BYTES = 50_000;
 
 // Validate a story title (the server trims first). Returns the granular reason,
 // or null when the trimmed title is acceptable.

@@ -1,4 +1,5 @@
-import { jiraKeyError, normalizeJiraKey, storyTitleError } from '@lib/user-stories/validation';
+import { byteLength } from '@lib/markdown/format';
+import { jiraKeyError, MAX_STORY_DESCRIPTION_BYTES, normalizeJiraKey, storyTitleError } from '@lib/user-stories/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('storyTitleError', () => {
@@ -45,5 +46,20 @@ describe('jiraKeyError', () => {
     expect(jiraKeyError('BK42')).toBe('external_id_invalid');
     expect(jiraKeyError('BK-')).toBe('external_id_invalid');
     expect(jiraKeyError('123-BK')).toBe('external_id_invalid');
+  });
+});
+
+describe('MAX_STORY_DESCRIPTION_BYTES (BK-99)', () => {
+  test('is 50 KB decimal — 50,000 bytes, not 50 KiB', () => {
+    expect(MAX_STORY_DESCRIPTION_BYTES).toBe(50_000);
+  });
+
+  test('the QA repro payload (51,000 bytes) lands over the cap', () => {
+    expect(byteLength('A'.repeat(51_000)) > MAX_STORY_DESCRIPTION_BYTES).toBe(true);
+  });
+
+  test('boundary: exactly 50,000 bytes is allowed, 50,001 is not', () => {
+    expect(byteLength('A'.repeat(50_000)) > MAX_STORY_DESCRIPTION_BYTES).toBe(false);
+    expect(byteLength('A'.repeat(50_001)) > MAX_STORY_DESCRIPTION_BYTES).toBe(true);
   });
 });

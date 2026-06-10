@@ -1,4 +1,4 @@
-import { criterionTitleError } from '@lib/acceptance-criteria/validation';
+import { criterionTitleError, MAX_CRITERION_DESCRIPTION_BYTES } from '@lib/acceptance-criteria/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('criterionTitleError', () => {
@@ -24,5 +24,11 @@ describe('criterionTitleError', () => {
   test('trims before measuring', () => {
     expect(criterionTitleError('  ab  ')).toBe('title_too_short');
     expect(criterionTitleError('  abc  ')).toBeNull();
+  });
+});
+
+describe('MAX_CRITERION_DESCRIPTION_BYTES (BK-99)', () => {
+  test('is 50 KB decimal — 50,000 bytes, not 50 KiB', () => {
+    expect(MAX_CRITERION_DESCRIPTION_BYTES).toBe(50_000);
   });
 });
