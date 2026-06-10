@@ -27,7 +27,7 @@
 
 | # | Ticket | Type | Title | Priority | Owner | Impl Plan | PR | Status |
 | - | ------ | ---- | ----- | -------- | ----- | --------- | -- | ------ |
-| 3 | BK-99 + BK-100 | Bug | MarkdownEditor 50 KB cap + 90% warning (KiB/KB unit mismatch) | High/Med | Ely | (bug flow via /sprint-development) | #33 | PR open |
+| — | — | — | (none in flight — Wave 1 complete; next: Wave 2 BK-62/60/61) | — | — | — | — | — |
 
 ### Queue — Wave 1 CRITICAL bugs (build in this order)
 
@@ -62,6 +62,7 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 | ------ | ----- | ----- | -- | ------ | ------- | ---- | ----- |
 | BK-84 | PAT bearer 401 on member routes (requireAuth) | Ely | — (already fixed by 226fc9d, PRs #28/#29 era ADR-0001) | 2026-06-08 | 2026-06-08 | — | **Already-fixed case**: reported 2026-06-07, structurally fixed 2026-06-08 by unified auth gateway (ADR-0001). Live re-verified on staging 2026-06-10 (8-route matrix, 0×401). Jira → Ready For QA, root_cause=Code Error, fix=Bugfix, fix-doc comment posted. Assign-to-reporter failed (no permission). BK-92/93 dup-closure PENDING user authorization. |
 | BK-83 | active-workspace switch response missing {id, slug, name, role} | Ely | #32 | 2026-06-10 | 2026-06-10 | — | Ready For QA. Root cause: handler never queried workspace details/role. Flat superset response (non-breaking); OpenAPI updated. Staging smoke green: 200 with all 4 fields (role=owner). Unblocks BK-6 AC1. Fix-doc comment 11483. |
+| BK-99 + BK-100 | MarkdownEditor 50 KB cap not enforced + 90% warning never fired | Ely | #33 | 2026-06-10 | 2026-06-10 | — | Both Ready For QA. Single root cause: KiB/KB mismatch — all cap sites used 50*1024 (51,200) vs the 50,000-byte AC5 contract; submit gate + amber warning already existed but never fired at QA's thresholds. Constants → 50,000, display /1000, forms import shared constants, 4 regression tests (184/184). Staging smoke: 51,000 + 50,500-byte POSTs → 422 description_too_long. Unblocks BK-16. |
 
 ### Blocked
 
