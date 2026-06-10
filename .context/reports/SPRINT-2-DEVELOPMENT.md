@@ -46,9 +46,9 @@
 | 5 | BK-60 | No uniqueness check vs active members in POST /invites |
 | 6 | BK-61 | No uniqueness check vs pending invites |
 
-### Queue — Wave 3 (dedup + remaining Medium)
+### Queue — Wave 3 (remaining Medium)
 
-Dedup (no code): BK-54/55/56 → dups of BK-51/52/53 · BK-92/93 → dups of BK-84.
+Dedup DONE 2026-06-10 (user-authorized): BK-54/55/56 closed as dups of BK-51/52/53; BK-92/93 closed as dups of BK-84 — all 5 linked Duplicate, commented, root_cause=Code Error (transition validator requires it).
 Then: BK-51 (reserved slugs) · BK-52 (route not workspace-scoped) · BK-53 (CJK names) · BK-67 (depth-5 toast) · BK-57/59/58 (tech-debt trio).
 
 ### Pipeline — Wave 4 simple bugs + story frontier (later)
