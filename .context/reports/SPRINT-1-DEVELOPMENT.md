@@ -1,7 +1,10 @@
 # Sprint 1 — In-Sprint Development Tracker
 
+> **CLOSED 2026-06-09.** Sprint 1 ended; active work moved to "Bunkai (69) Sprint 2" (id 339). This file is now historical — current tracker: `.context/reports/SPRINT-2-DEVELOPMENT.md`, current sequence: `.context/PBI/sprint-sequence.md`.
+> Outcome: Part 1 complete (8/8 Ready For QA) + BK-18 (Part 2 head) Ready For QA; 9 stories merged + staging-deployed; 0 prod. QA opened 20 bugs against the delivered work (1 Highest, 2 High) — bug-fix waves are Sprint 2's first focus. BK-98 (explorer view switcher, shipped as hotfix) reached QA Approved.
+
 > Purpose: track dev progress per ticket; cross-ticket aggregate for AI session resume.
-> Sprint: 1 (Jira: "Bunkai (67) Sprint 1", board 7) | Tech Lead: Ely | Started: 2026-06-03 | Last Updated: 2026-06-05
+> Sprint: 1 (Jira: "Bunkai (67) Sprint 1", board 7) | Tech Lead: Ely | Started: 2026-06-03 | Closed: 2026-06-09 | Last Updated: 2026-06-10
 >
 > **Authoritative build order + Part 1 / Part 2 split:** `.context/PBI/sprint-sequence.md`.
 > **Operational gotchas for a fresh session:** see "Operational Notes" below + Engram topic keys

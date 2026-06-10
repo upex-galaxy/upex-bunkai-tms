@@ -8,6 +8,10 @@ const ResponseSchema = z
   .object({
     ok: z.literal(true),
     active_workspace_id: z.string().uuid(),
+    id: z.string().uuid(),
+    slug: z.string(),
+    name: z.string(),
+    role: z.string().nullable(),
   })
   .openapi('ActiveWorkspaceResponse');
 
