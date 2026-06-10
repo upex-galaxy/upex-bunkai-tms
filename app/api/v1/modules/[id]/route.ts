@@ -3,6 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { moduleNameError } from '@lib/modules/path';
+import { modulePatchShapeError } from '@lib/modules/validation';
 import { slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -29,6 +30,7 @@ const UpdateBodySchema = z.object({
   description: z.string().nullable().optional(),
   // BK-11 move: a UUID re-parents under that module; null moves to the project
   // root; the key absent means "no move". Processed by bunkai_move_module.
+  // Mutually exclusive with name/description (BK-57) — see modulePatchShapeError.
   parent_module_id: z.string().uuid().nullable().optional(),
 });
 
@@ -50,9 +52,19 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const hasName = body.name !== undefined;
   const hasDescription = Object.prototype.hasOwnProperty.call(body, 'description');
   const hasParent = Object.prototype.hasOwnProperty.call(body, 'parent_module_id');
-  if (!hasName && !hasDescription && !hasParent) {
+
+  // Body-shape gate (BK-57): an empty body is rejected, and a rename/description
+  // edit cannot be combined with a move — the two run as separate rpc() calls,
+  // so a combined request could half-apply (update succeeds, move fails).
+  const shapeError = modulePatchShapeError({ hasName, hasDescription, hasParent });
+  if (shapeError === 'no_fields') {
     throw new ApiError('validation_failed', 'Provide a new name, description, or parent.', {
       details: { reason: 'no_fields' },
+    });
+  }
+  if (shapeError === 'combined_update_and_move') {
+    throw new ApiError('validation_failed', 'Rename/description edits and a move cannot be combined in one request — send them as separate PATCH calls.', {
+      details: { reason: 'combined_update_and_move' },
     });
   }
 

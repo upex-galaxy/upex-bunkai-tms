@@ -3,6 +3,7 @@
 import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { moduleCreateToasts } from '@lib/modules/validation';
 import { slugifyWithFallback } from '@lib/utils/slug';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -115,14 +116,17 @@ export function CreateModuleForm({
         setSubmitting(false);
         return;
       }
-      // 201 — the module now exists. A `warning` string is present only when
-      // the resulting depth is >= 5; surface it as a non-blocking notice.
+      // 201 — the module now exists, so the success toast always fires (BK-67).
+      // A `warning` string is present only when the resulting depth is >= 5;
+      // it adds a second, non-blocking notice — never replaces the success.
       const body = (await response.json().catch(() => ({}))) as ApiSuccessBody;
-      if (body.warning) {
-        toast.warning(body.warning);
-      }
-      else {
-        toast.success('Module created');
+      for (const { kind, message } of moduleCreateToasts(body.warning)) {
+        if (kind === 'warning') {
+          toast.warning(message);
+        }
+        else {
+          toast.success(message);
+        }
       }
       setName('');
       setDescription('');
