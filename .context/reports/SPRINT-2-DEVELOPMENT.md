@@ -69,10 +69,9 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 
 | Ticket | Owner | Blocking | Since | Decision Pending |
 | ------ | ----- | -------- | ----- | ---------------- |
-| BK-6 (story) | — | bug BK-83 | 2026-06-09 | none — fix in Wave 1 |
-| BK-16 (story) | — | bugs BK-99 + BK-100 | 2026-06-09 | none — fix in Wave 1 |
-| BK-18 (story) | — | relates BK-96 (already Closed) | 2026-06-09 | ask QA to re-check/unblock |
 | BK-10 (story) | — | QA sequencing (BK-9 In Test) | 2026-06-09 | QA-side, no dev action |
+
+Unblocked 2026-06-10 (Task 0): BK-6 (BK-83 fixed), BK-16 (BK-99/100 fixed), BK-18 (BK-96 already Closed) — all transitioned BLOCKED → In Test (changelog confirmed each was blocked from In Test) + tester comment posted on each story.
 
 ## Sprint 2 Stats
 
@@ -97,6 +96,11 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-10 — Task 0: unblocked BK-6 / BK-16 / BK-18
+- Verified live: BK-83, BK-99, BK-100 all Ready For QA; BK-96 Closed; PRs #32/#33 merged on origin/staging.
+- Transitioned all 3 stories BLOCKED → In Test (transition 21 "back"; changelog showed each was blocked from In Test) + posted English resume-testing comment with fix-evidence table on each.
+- Next: Wave 3 (BK-51/52/53/67 + tech-debt BK-57/59/58).
 
 ### 2026-06-10 — Sprint 2 dev batch started (bug-first)
 - Read live board state (62 items, sprint 339). Sequenced bug-fix waves into `sprint-sequence.md`; closed Sprint-1 tracker; created this tracker.
