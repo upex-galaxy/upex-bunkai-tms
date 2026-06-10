@@ -1,8 +1,10 @@
+import type { WorkspaceRole } from '@lib/workspaces/invites';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { hashInviteToken } from '@lib/api/invite-tokens';
 import { createAdminClient } from '@lib/supabase/admin';
+import { inviteAcceptAction } from '@lib/workspaces/invites';
 import { z } from 'zod';
 
 // POST /api/v1/invites/accept — invitee redeems a raw token. The caller must
@@ -76,8 +78,29 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('forbidden', 'This invite was sent to a different email address.');
   }
 
-  // Upsert membership: if the user already has any row for this workspace
-  // (e.g. status='invited'), promote it to active; otherwise insert.
+  // BK-62: an accept must never demote. If the caller already holds an active
+  // membership with an equal or higher role, reject instead of upserting —
+  // the unconditional upsert here is what demoted a workspace owner to member.
+  const { data: existingMember, error: existingError } = await admin
+    .from('workspace_members')
+    .select('role, status')
+    .eq('workspace_id', invite.workspace_id)
+    .eq('user_id', principal.userId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new ApiError('internal_error', existingError.message);
+  }
+
+  const action = inviteAcceptAction(existingMember, invite.role as WorkspaceRole);
+  if (action === 'reject_already_member') {
+    throw new ApiError('conflict', 'You are already a member of this workspace with an equal or higher role.', {
+      details: { reason: 'already_member_equal_or_higher_role' },
+    });
+  }
+
+  // Upsert membership: insert a new row, activate a non-active row (e.g.
+  // status='invited'), or apply a legitimate promotion to a higher role.
   const { error: memberError } = await admin
     .from('workspace_members')
     .upsert(

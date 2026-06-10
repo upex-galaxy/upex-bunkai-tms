@@ -31,6 +31,73 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, role } = CreateBodySchema.parse(payload);
+  const normalizedEmail = email.toLowerCase();
+
+  // Authorize BEFORE the uniqueness probes below — they use the admin client,
+  // so answering them first would leak membership facts to non-admins. The
+  // self-row select is allowed by workspace_members_select_self_or_admin.
+  const { data: callerMembership, error: callerError } = await db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', principal.userId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (callerError) {
+    throw new ApiError('internal_error', callerError.message);
+  }
+  if (!callerMembership || !['admin', 'owner'].includes(callerMembership.role)) {
+    throw new ApiError('forbidden', 'You must be an admin or owner to invite teammates.');
+  }
+
+  const admin = createAdminClient();
+
+  // BK-60 (FR-003): email must be unique among ACTIVE workspace members.
+  // workspace_members has no email column, so resolve email -> user id via
+  // the service-role-only SQL helper (auth.users is not exposed to PostgREST).
+  const { data: invitedUserId, error: lookupError } = await admin
+    .rpc('bunkai_user_id_by_email', { p_email: normalizedEmail });
+  if (lookupError) {
+    throw new ApiError('internal_error', lookupError.message);
+  }
+  if (invitedUserId) {
+    const { data: existingMember, error: memberError } = await admin
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', invitedUserId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (memberError) {
+      throw new ApiError('internal_error', memberError.message);
+    }
+    if (existingMember) {
+      throw new ApiError('conflict', 'This email already belongs to an active workspace member.', {
+        details: { reason: 'email_already_member' },
+      });
+    }
+  }
+
+  // BK-61: one live invite per (workspace, email). Pending = not accepted,
+  // not revoked, not expired. Expired/revoked rows do NOT block a re-invite.
+  const { data: pendingInvite, error: pendingError } = await admin
+    .from('workspace_invites')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('email', normalizedEmail)
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  if (pendingError) {
+    throw new ApiError('internal_error', pendingError.message);
+  }
+  if (pendingInvite) {
+    throw new ApiError('conflict', 'A pending invite already exists for this email.', {
+      details: { reason: 'invite_already_pending' },
+    });
+  }
 
   const rawToken = generateInviteToken();
   const tokenHash = await hashInviteToken(rawToken);
@@ -58,7 +125,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // Token hash lives in a sibling table QA/analytics roles cannot read. The
   // RLS-gated insert above already proved the caller is a workspace admin, so
   // the service-role write here is authorization-safe.
-  const { error: secretError } = await createAdminClient()
+  const { error: secretError } = await admin
     .from('workspace_invite_secrets')
     .insert({ invite_id: data.id, token_hash: tokenHash });
 

@@ -948,6 +948,7 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_user_id_by_email: { Args: { p_email: string }, Returns: string }
     }
     Enums: {
       [_ in never]: never

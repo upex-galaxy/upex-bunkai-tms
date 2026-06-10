@@ -31,6 +31,6 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Invite email does not match caller.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Token invalid.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Invite already accepted / revoked / expired.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Invite already accepted / revoked / expired, or the caller already holds an equal-or-higher role (`already_member_equal_or_higher_role`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

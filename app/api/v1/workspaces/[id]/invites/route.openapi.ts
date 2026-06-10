@@ -62,6 +62,7 @@ registry.registerPath({
     },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Caller is not an admin/owner.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'Email already belongs to an active member (`email_already_member`) or a pending invite exists (`invite_already_pending`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
