@@ -5,6 +5,7 @@ import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { MarkdownRenderer } from '@components/markdown/markdown-renderer';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
+import { MAX_CRITERION_DESCRIPTION_BYTES } from '@lib/acceptance-criteria/validation';
 import { byteLength } from '@lib/markdown/format';
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -26,7 +27,8 @@ interface AcceptanceCriteriaPanelProps {
   onCancel?: () => void
 }
 
-const MAX_BYTES = 50 * 1024;
+// Shared with the server-side guard so client gate and API reject at the same byte.
+const MAX_BYTES = MAX_CRITERION_DESCRIPTION_BYTES;
 
 function friendlyError(body: ApiErrorBody): string {
   switch (body.error?.details?.reason) {
