@@ -128,17 +128,13 @@ row at each Jira transition (Stage 1 → Stage 4). Stage 5 (production deploy) i
 
 Per `complementary_categories` in this skill's frontmatter and the matching rule in `agentic-dev-core/references/skill-composition-strategy.md` §3:
 
-Co-load the **tiered bundle** per work-type (full table: `agentic-dev-core/references/skill-composition-strategy.md` §4.4). PRIMARY loads on match (T3 silent / T4 ask); SECONDARY only for net-new / from-scratch / polish work — skip it for quick tweaks and bugfixes.
+- **UI work in any stage** → `frontend-ui` category match (T3 or T4 — ASK if T4).
+- **Next.js / React patterns** → `frontend-framework` category match (T3 silent if matched).
+- **Forms work** → `forms-validation` category match (T3 silent).
+- **DB work** → `backend-db` category match (T3 silent).
+- **E2E tests if in scope** → `testing-e2e` category match (T4 — ASK before load).
 
-- **UI build / component / new screen** → `frontend-ui` PRIMARY: `frontend-design`, `shadcn`, `tailwind-css-patterns`. SECONDARY: `impeccable`, `emil-design-eng`, `ui-ux-pro-max`.
-- **UI polish / redesign / audit** → `frontend-ui` PRIMARY: `impeccable`, `emil-design-eng`. SECONDARY: `redesign-existing-projects`, `design-taste-frontend`.
-- **Next.js / RSC / routing** → `frontend-framework` PRIMARY: `next-best-practices`. SECONDARY: `next-cache-components` (caching), `next-upgrade` (version bump).
-- **Forms** → `forms-validation` PRIMARY: `react-hook-form`, `zod`.
-- **DB / Supabase** → `backend-db` PRIMARY: `supabase`. SECONDARY: `supabase-postgres-best-practices`.
-- **Public page (SEO)** → `seo` + `accessibility` PRIMARY: `seo`, `accessibility`.
-- **E2E tests if in scope** → `testing-e2e` (T4 — ASK before load): `playwright-cli`.
-
-When delegating to a sub-agent, inject a `## Composable Skills` block into the sub-agent prompt listing the resolved bundle (PRIMARY + any earned SECONDARY) + project standards per `agentic-dev-core/references/skill-composition-strategy.md` §6.2.
+When delegating to a sub-agent, inject a `## Composable Skills` block into the sub-agent prompt listing the resolved skills + project standards per `agentic-dev-core/references/skill-composition-strategy.md` §6.2.
 
 ---
 

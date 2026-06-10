@@ -13,7 +13,7 @@
 > - `cli/install.ts` (installer — declares project-level vs user-level skill installs)
 > - `.claude/skills/agentic-dev-core/references/{briefing-template,dispatch-patterns,orchestration-doctrine,skill-resolver}.md` (sibling meta-doctrine references)
 >
-> **Last updated**: 2026-06-09 — added §4.4 (Activity → Bundle tiered co-load). Experimental in this repo (upex-bunkai-tms) only; evaluate before promoting to the boilerplate.
+> **Last updated**: 2026-05-18
 
 ---
 
@@ -144,34 +144,6 @@ At runtime, the skill (or orchestrator) scans the available skill list, matches 
 - Community skills get renamed, deprecated, replaced. Naming creates dead refs.
 - Different users have different installs. Category match degrades gracefully (skill missing → no false negative, just no extra capability).
 - Project-owned skills stay portable across community ecosystems.
-
-### 4.4 Activity → Bundle (tiered co-load)
-
-§4.1 maps each community skill to a category. This subsection adds, **per work-type, WHICH skills to co-load together and in what order** — so UI work pulls a coherent set instead of one arbitrary category match. Two tiers per bundle bound the context cost:
-
-- **PRIMARY** — co-load directly when the work-type matches. The 1–3 skills that earn their tokens on almost any task of that type.
-- **SECONDARY** — load ONLY when the task is deep: net-new screen/page, a dedicated polish/redesign pass, or non-trivial work inside that area. Skip for quick tweaks/bugfixes.
-
-Rule of thumb: trivial change → PRIMARY only (often a single skill). Net-new / from-scratch / polish → PRIMARY + SECONDARY.
-
-| Work-type (trigger)                | Category               | PRIMARY (co-load)                                    | SECONDARY (load only if deep)                                  |
-| ---------------------------------- | ---------------------- | --------------------------------------------------- | ------------------------------------------------------------- |
-| UI build / component / new screen  | `frontend-ui`          | `frontend-design`, `shadcn`, `tailwind-css-patterns` | `impeccable`, `emil-design-eng`, `ui-ux-pro-max`              |
-| UI polish / redesign / audit       | `frontend-ui`          | `impeccable`, `emil-design-eng`                      | `redesign-existing-projects`, `design-taste-frontend`, `ui-ux-pro-max` |
-| Next.js / RSC / routing            | `frontend-framework`   | `next-best-practices`                                | `next-cache-components` (caching), `next-upgrade` (version bump) |
-| Forms                              | `forms-validation`     | `react-hook-form`, `zod`                             | —                                                             |
-| Schemas / validation / types       | `forms-validation` + `language` | `zod`                                       | `typescript-advanced-types`                                  |
-| Supabase / DB / SQL                | `backend-db`           | `supabase`                                           | `supabase-postgres-best-practices`                           |
-| Public page (marketing / SEO)      | `seo` + `accessibility` | `seo`, `accessibility`                              | `frontend-design`                                            |
-| a11y pass                          | `accessibility`        | `accessibility`                                      | `impeccable`                                                 |
-| Email feature                      | `email`                | `resend-cli`                                         | —                                                             |
-| Workflow automation                | `automation`           | `n8n-skills` (ASK — see §4.1)                        | —                                                             |
-
-Notes:
-
-- Bundles overlap by design (`shadcn` in build+forms; `impeccable` in build+polish+a11y).
-- Tiering respects the §3.2 threshold: a T3 PRIMARY skill loads silently on match; a T4 skill still triggers the ASK gate even when it sits in a PRIMARY slot.
-- **Token guard**: never co-load a full SECONDARY set "just in case" — gate it on the deep-work condition above. A one-line CSS tweak does not warrant six design skills.
 
 ---
 

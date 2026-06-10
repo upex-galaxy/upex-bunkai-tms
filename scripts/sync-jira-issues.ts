@@ -79,6 +79,7 @@ import { parse as parseYaml } from 'yaml';
 
 const DEFAULT_OUTPUT_DIR = '.context/PBI';
 const PROJECT_YAML_PATH = join(import.meta.dir, '..', '.agents', 'project.yaml');
+const JIRA_REQUIRED_PATH = join(import.meta.dir, '..', '.agents', 'jira-required.yaml');
 
 // No files are protected from overwrite. Jira is the single source of truth and the
 // sync re-materializes every file it owns on each run (per-field files only when the
@@ -387,6 +388,97 @@ interface AdfDocument {
   content: AdfNode[]
 }
 
+// ============================================================================
+// WORK-TYPE REGISTRY (manifest-driven routing — replaces hardcoded switch(type))
+// ============================================================================
+
+type SyncMode = 'default' | 'optional' | 'discovery' | 'never';
+type ContentMode = 'split' | 'single' | 'description' | 'auto';
+
+interface WorkTypeEntry {
+  slug: string
+  jiraIssueType: string
+  sync: SyncMode
+  coverable: boolean
+  content: ContentMode | null
+  localDir: string | null
+  recommended: boolean
+}
+
+interface Registry {
+  list: WorkTypeEntry[]
+  byJiraType: Map<string, WorkTypeEntry>
+  bySlug: Map<string, WorkTypeEntry>
+}
+
+/** Folder-name prefixes per work-type slug (preserves the existing on-disk filenames). */
+const FOLDER_PREFIX: Record<string, string> = {
+  bug: 'BUG',
+  defect: 'DEFECT',
+  improvement: 'IMPROVEMENT',
+  tech_story: 'TECHSTORY',
+  tech_debt: 'TECHDEBT',
+  test_case: 'TEST',
+};
+
+let REGISTRY_CACHE: Registry | null = null;
+
+/**
+ * Loads the work-type registry from `.agents/jira-required.yaml` → `work_types`.
+ * Each entry declares how its Jira issue type is synced: `sync` mode, `coverable`,
+ * `content` strategy and `local_dir`. Replaces the former hardcoded `switch(type)`
+ * so adding a work type is a YAML edit, not a code change.
+ */
+function loadRegistry(): Registry {
+  if (REGISTRY_CACHE) { return REGISTRY_CACHE; }
+
+  const list: WorkTypeEntry[] = [];
+  if (existsSync(JIRA_REQUIRED_PATH)) {
+    let parsed: unknown = null;
+    try {
+      parsed = parseYaml(readFileSync(JIRA_REQUIRED_PATH, 'utf8'));
+    }
+    catch {
+      parsed = null;
+    }
+    const workTypes = (parsed as Record<string, unknown> | null)?.work_types;
+    if (workTypes && typeof workTypes === 'object') {
+      for (const [slug, raw] of Object.entries(workTypes as Record<string, unknown>)) {
+        if (!raw || typeof raw !== 'object') { continue; }
+        const e = raw as Record<string, unknown>;
+        const jiraIssueType = typeof e.jira_issue_type === 'string' ? e.jira_issue_type.trim() : '';
+        if (!jiraIssueType) { continue; }
+
+        const cr = e.content;
+        const content: ContentMode | null
+          = cr === 'split' || cr === 'single' || cr === 'description' || cr === 'auto' ? cr : null;
+        const sr = e.sync;
+        const sync: SyncMode
+          = sr === 'default' || sr === 'optional' || sr === 'discovery' || sr === 'never' ? sr : 'never';
+
+        list.push({
+          slug,
+          jiraIssueType,
+          sync,
+          coverable: e.coverable === true,
+          content,
+          localDir: typeof e.local_dir === 'string' ? e.local_dir : null,
+          recommended: e.recommended === true,
+        });
+      }
+    }
+  }
+
+  const byJiraType = new Map<string, WorkTypeEntry>();
+  const bySlug = new Map<string, WorkTypeEntry>();
+  for (const e of list) {
+    byJiraType.set(e.jiraIssueType, e);
+    bySlug.set(e.slug, e);
+  }
+  REGISTRY_CACHE = { list, byJiraType, bySlug };
+  return REGISTRY_CACHE;
+}
+
 type IssueTypeFilter = 'stories' | 'bugs' | 'defects' | 'improvements' | 'tests';
 
 interface SyncOptions {
@@ -407,6 +499,8 @@ interface SyncResult {
     defects: number
     improvements: number
     tests: number
+    tech_stories: number
+    tech_debts: number
   }
   warnings: string[]
   files: {
@@ -1943,7 +2037,7 @@ async function syncAll(config: Config, options: SyncOptions): Promise<SyncResult
 
   const result: SyncResult = {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
@@ -2035,7 +2129,7 @@ async function syncBugs(config: Config, options: SyncOptions): Promise<SyncResul
 
   const result: SyncResult = {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
@@ -2122,7 +2216,7 @@ async function syncDefects(config: Config, options: SyncOptions): Promise<SyncRe
 
   const result: SyncResult = {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
@@ -2221,7 +2315,7 @@ async function syncImprovements(config: Config, options: SyncOptions): Promise<S
 
   const result: SyncResult = {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
@@ -2281,7 +2375,7 @@ async function syncTests(config: Config, options: SyncOptions): Promise<SyncResu
 
   const result: SyncResult = {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
@@ -2343,18 +2437,29 @@ async function syncTests(config: Config, options: SyncOptions): Promise<SyncResu
 function emptyResult(): SyncResult {
   return {
     success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0 },
+    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
     warnings: [],
     files: { created: 0, updated: 0, skipped: 0 },
     duration_ms: 0,
   };
 }
 
+/** Legacy Xray container types (not declared in this repo's work_types) — generic description capture. */
+const XRAY_CONTAINER_ROUTING: Record<string, { subdir: string, prefix: string }> = {
+  'Test Plan': { subdir: 'test-plans', prefix: 'TESTPLAN' },
+  'Test Execution': { subdir: 'test-executions', prefix: 'TESTEXEC' },
+  'Test Set': { subdir: 'test-sets', prefix: 'TESTSET' },
+  'Pre-Condition': { subdir: 'preconditions', prefix: 'PRECONDITION' },
+};
+
 /**
- * Writes a single non-Story/Epic issue to its type folder. Handles Bug, Defect,
- * Improvement, Test (full custom-field materializers) plus the Xray container types
- * Test Plan / Test Execution / Test Set / Pre-Condition (generic description capture —
- * this is where the ATP/ATR body lives in Modality jira-xray).
+ * Writes a single non-Story/Epic issue to its registry-declared folder. The work-type
+ * registry (`.agents/jira-required.yaml` → work_types) drives the target dir, filename
+ * prefix, field set and content strategy — replacing the former hardcoded `switch(type)`,
+ * which silently dropped Tech Story / Tech Debt. Bug / Defect / Improvement / Test plus
+ * Tech Story / Tech Debt route via the registry; the legacy Xray container types (Test
+ * Plan / Test Execution / Test Set / Pre-Condition) keep their static fallback. Unknown
+ * types are reported, not silently skipped.
  */
 async function syncStandaloneIssue(
   config: Config,
@@ -2363,44 +2468,117 @@ async function syncStandaloneIssue(
   options: SyncOptions,
   result: SyncResult,
 ): Promise<void> {
-  let fields: string[];
-  let subdir: string;
-  let prefix: string;
-  switch (type) {
-    case 'Bug': fields = BUG_FIELDS; subdir = 'bugs'; prefix = 'BUG'; break;
-    case 'Defect': fields = BUG_FIELDS; subdir = 'defects'; prefix = 'DEFECT'; break;
-    case 'Improvement': fields = IMPROVEMENT_FIELDS; subdir = 'improvements'; prefix = 'IMPROVEMENT'; break;
-    case 'Test': fields = TEST_FIELDS; subdir = 'tests'; prefix = 'TEST'; break;
-    case 'Test Plan': fields = TEST_FIELDS; subdir = 'test-plans'; prefix = 'TESTPLAN'; break;
-    case 'Test Execution': fields = TEST_FIELDS; subdir = 'test-executions'; prefix = 'TESTEXEC'; break;
-    case 'Test Set': fields = TEST_FIELDS; subdir = 'test-sets'; prefix = 'TESTSET'; break;
-    case 'Pre-Condition': fields = TEST_FIELDS; subdir = 'preconditions'; prefix = 'PRECONDITION'; break;
-    default:
-      result.warnings.push(`${key}: unsupported issue type '${type}' — skipped`);
+  const entry = loadRegistry().byJiraType.get(type);
+
+  // Registry-declared work types route by manifest. Unknown types that are not the
+  // legacy Xray container types are reported (not silently dropped) to match the
+  // QA-side "reported, not skipped" behaviour.
+  if (!entry) {
+    const xray = XRAY_CONTAINER_ROUTING[type];
+    if (xray) {
+      await writeStandaloneIssue(
+        config,
+        key,
+        type,
+        xray.subdir,
+        xray.prefix,
+        TEST_FIELDS,
+        i => generateXrayArtifactMarkdown(i, type.toUpperCase(), config),
+        null,
+        options,
+        result,
+      );
       return;
+    }
+    result.warnings.push(
+      `${key}: issue type '${type}' is not declared under work_types: in .agents/jira-required.yaml — skipped`,
+    );
+    return;
   }
 
+  // Story / Epic are containers routed via the pull/epic/story path, never standalone.
+  if (entry.slug === 'story' || entry.slug === 'epic' || entry.content === 'split') {
+    result.warnings.push(`${key}: '${type}' is routed via pull/epic/story, not as a standalone issue — skipped`);
+    return;
+  }
+
+  const subdir = entry.localDir ?? entry.slug;
+  const prefix = FOLDER_PREFIX[entry.slug] ?? entry.slug.toUpperCase();
+
+  await writeStandaloneIssue(
+    config,
+    key,
+    type,
+    subdir,
+    prefix,
+    fieldsForEntry(entry),
+    i => renderStandaloneContent(entry, i, type, config),
+    entry.slug,
+    options,
+    result,
+  );
+}
+
+/** Fetches an issue, writes it to its folder and bumps the matching counter. Shared by registry + Xray paths. */
+async function writeStandaloneIssue(
+  config: Config,
+  key: string,
+  type: string,
+  subdir: string,
+  prefix: string,
+  fields: string[],
+  render: (issue: JiraIssue) => string,
+  slug: string | null,
+  options: SyncOptions,
+  result: SyncResult,
+): Promise<void> {
   const issue = await fetchIssue(config, key, fields);
   const dir = join(config.outputDir, subdir);
   if (!options.dryRun) { ensureDir(dir); }
   const filePath = join(dir, `${prefix}-${key}-${generateSlug(issue.fields.summary)}.md`);
 
-  let content: string;
-  if (type === 'Defect') { content = generateDefectMarkdown(issue, findLinkedStory(issue), config); }
-  else if (type === 'Bug') { content = generateBugMarkdown(issue, config); }
-  else if (type === 'Improvement') { content = generateImprovementMarkdown(issue, config); }
-  else if (type === 'Test') { content = generateTestMarkdown(issue, config); }
-  else { content = generateXrayArtifactMarkdown(issue, type.toUpperCase(), config); }
+  const content = render(issue);
 
   const r = writeIndexFile(filePath, content, options.dryRun);
   if (r.status === 'created') { result.files.created++; }
   else if (r.status === 'updated') { result.files.updated++; }
   else { result.files.skipped++; }
 
-  if (type === 'Bug') { result.synced.bugs++; }
-  else if (type === 'Defect') { result.synced.defects++; }
-  else if (type === 'Improvement') { result.synced.improvements++; }
-  else if (type === 'Test') { result.synced.tests++; }
+  if (slug) { bumpSyncedCounter(slug, result); }
+}
+
+/** Picks the Jira field set to fetch for a standalone work type, keyed by its content strategy / slug. */
+function fieldsForEntry(entry: WorkTypeEntry): string[] {
+  if (entry.slug === 'improvement') { return IMPROVEMENT_FIELDS; }
+  if (entry.content === 'single') { return BUG_FIELDS; } // bug / defect → full custom fields
+  return TEST_FIELDS; // description / auto → description + issuelinks + components
+}
+
+/** Renders the body for a standalone (non Epic/Story) issue per its registry content mode. */
+function renderStandaloneContent(
+  entry: WorkTypeEntry,
+  issue: JiraIssue,
+  type: string,
+  config: Config,
+): string {
+  switch (entry.slug) {
+    case 'defect': return generateDefectMarkdown(issue, findLinkedStory(issue), config);
+    case 'bug': return generateBugMarkdown(issue, config);
+    case 'improvement': return generateImprovementMarkdown(issue, config);
+    case 'test_case': return generateTestMarkdown(issue, config);
+    // tech_story / tech_debt → generic description capture (no dedicated dev renderer).
+    default: return generateXrayArtifactMarkdown(issue, type.toUpperCase(), config);
+  }
+}
+
+/** Bumps the matching SyncResult counter for a synced standalone issue. */
+function bumpSyncedCounter(slug: string, result: SyncResult): void {
+  if (slug === 'bug') { result.synced.bugs++; }
+  else if (slug === 'defect') { result.synced.defects++; }
+  else if (slug === 'improvement') { result.synced.improvements++; }
+  else if (slug === 'test_case') { result.synced.tests++; }
+  else if (slug === 'tech_story') { result.synced.tech_stories++; }
+  else if (slug === 'tech_debt') { result.synced.tech_debts++; }
 }
 
 /** Detects an issue's type and routes it to the correct materializer (full custom fields). */
@@ -2435,7 +2613,7 @@ function printGetSummary(result: SyncResult, options: SyncOptions): void {
   log.title('Summary');
   log.line('─'.repeat(20));
   const s = result.synced;
-  log.line(`Synced: ${s.epics} epic(s), ${s.stories} story(ies), ${s.bugs} bug(s), ${s.defects} defect(s), ${s.improvements} improvement(s), ${s.tests} test(s)`);
+  log.line(`Synced: ${s.epics} epic(s), ${s.stories} story(ies), ${s.bugs} bug(s), ${s.defects} defect(s), ${s.improvements} improvement(s), ${s.tests} test(s), ${s.tech_stories} tech-story(ies), ${s.tech_debts} tech-debt(s)`);
   log.line(`Files created:  ${result.files.created}`);
   log.line(`Files updated:  ${result.files.updated}`);
   log.line(`Files skipped:  ${result.files.skipped}`);

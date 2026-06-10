@@ -317,7 +317,7 @@ statuses:
       default: "Planning" (used as fallback literal when `work_types.epic` is
       not declared in this catalog).
     fallback_literal: Planning
-    work_type_slug: null # set to `planning` once `work_types.epic` is declared
+    work_type_slug: planning # resolves via work_types.epic.required_statuses.planning
     used_by: [product-management/epic-creation]
 
   story_default:
@@ -391,7 +391,7 @@ link_types:
       used_by: [product-management/dependency-linking (fallback only)]
 
     causes:
-      name: Causes
+      name: Problem/Incident # workspace BK names this link type "Problem/Incident" (same semantics: causes / is caused by)
       outward: causes
       inward: is caused by
       description: |
@@ -421,6 +421,10 @@ work_types:
   story:
     jira_issue_type: Story
     description: User story / feature work item
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: default
+    coverable: true
+    content: split
     required_statuses:
       backlog: { description: Initial state for a freshly created story }
       shift_left_qa: { description: Story under early QA review (shift-left quality check) }
@@ -525,6 +529,11 @@ work_types:
   bug:
     jira_issue_type: Bug
     description: Defect / bug work item
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: default
+    coverable: false
+    content: single
+    local_dir: bugs
     required_statuses:
       open: { description: Newly reported bug awaiting triage }
       in_progress: { description: Developer actively fixing }
@@ -580,6 +589,10 @@ work_types:
   test_case:
     jira_issue_type: Test
     description: Test case (TC) work item (QA-side; included so a single Jira workspace serves both repos)
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: optional
+    content: single
+    local_dir: tests
     required_statuses:
       draft: { description: 'Just created, not yet designed' }
       in_design: { description: Test scenario being authored }
@@ -654,3 +667,228 @@ work_types:
       deprecated: { from: any, to: deprecated, description: Retire the TC (global transition) }
       recover: { from: deprecated, to: draft, description: Restore a deprecated TC back to draft }
     used_by: [agentic-qa-boilerplate (test-documentation, test-automation)]
+
+  epic:
+    jira_issue_type: Epic
+    description: Epic / feature container (UPEX Epic Workflow)
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: default
+    container: true
+    content: split
+    local_dir: epics
+    required_statuses:
+      backlog: { description: Newly created epic awaiting planning }
+      planning: { description: Epic being planned / scoped (default landing state after creation) }
+      in_progress: { description: Epic actively in development }
+      done: { description: Epic completed (terminal success) }
+      aborted: { description: Epic cancelled (terminal) }
+    required_transitions:
+      plan: { from: backlog, to: planning, description: Move a backlog epic into planning }
+      ready_to_work:
+        { from: planning, to: in_progress, description: 'Planning done, epic work begins' }
+      complete: { from: in_progress, to: done, description: Epic finished }
+      aborted: { from: any, to: aborted, description: Cancel the epic (global transition) }
+    used_by: [product-management/epic-creation, sprint-development]
+
+  defect:
+    jira_issue_type: Defect
+    description: Defect work item (UPEX Bug/Defect lifecycle — identical workflow to `bug`)
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: discovery
+    coverable: true
+    content: single
+    local_dir: defects
+    required_statuses:
+      open: { description: Newly reported defect awaiting triage }
+      in_progress: { description: Developer actively fixing }
+      in_review: { description: Pull request open }
+      ready_for_qa: { description: Fix deployed; defect ready to retest }
+      closed: { description: "Defect verified fixed (terminal 'verified')" }
+      deferred: { description: Defect accepted but postponed; resumable via resume_fix }
+      cannot_reproduce: { description: Defect closed because the team cannot reproduce (terminal) }
+      duplicated: { description: Defect closed as duplicate of another (terminal) }
+      rejected: { description: Defect rejected as Working As Designed / WAD (terminal) }
+      enhancement: { description: Reclassified as enhancement / feature request (terminal) }
+      aborted: { description: Defect abandoned without fix (terminal) }
+    required_transitions:
+      start_fixing:
+        { from: open, to: in_progress, description: Developer starts working on the defect }
+      is_cnr: { from: open, to: cannot_reproduce, description: Cannot reproduce — close (terminal) }
+      defer: { from: open, to: deferred, description: Postpone the fix }
+      is_duplicated: { from: open, to: duplicated, description: Defect is a duplicate of another }
+      is_wad: { from: open, to: rejected, description: Working as designed — reject the defect }
+      is_not_a_bug:
+        { from: open, to: enhancement, description: Reclassify as enhancement / feature request }
+      pull_request: { from: in_progress, to: in_review, description: PR opened }
+      hard_pushed:
+        { from: in_progress, to: ready_for_qa, description: 'Skip review, push directly to QA' }
+      fixed_and_deployed:
+        from: in_review
+        to: ready_for_qa
+        description: 'PR merged & deployed; defect ready to retest'
+
+      retest_passed:
+        from: ready_for_qa
+        to: closed
+        description: "QA verifies the fix (canonical 'Tested / VERIFIED' transition for defects)"
+
+      re_open:
+        from: any
+        to: open
+        description: Re-open a closed defect (global transition — accepts any source state)
+
+      back:
+        from: closed
+        to: ready_for_qa
+        description: Re-test required after close (regression caught after sign-off)
+
+      resume_fix: { from: deferred, to: in_progress, description: Resume work on a deferred defect }
+      aborted: { from: any, to: aborted, description: Abandon the defect (global transition) }
+    used_by: [acli, sprint-development]
+
+  improvement:
+    jira_issue_type: Improvement
+    description: Improvement / enhancement work item (UPEX Bug/Defect lifecycle — identical workflow to `bug`)
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    sync: optional
+    recommended: true
+    content: single
+    local_dir: improvements
+    required_statuses:
+      open: { description: Newly reported improvement awaiting triage }
+      in_progress: { description: Developer actively working }
+      in_review: { description: Pull request open }
+      ready_for_qa: { description: Change deployed; ready to verify }
+      closed: { description: Improvement verified delivered (terminal) }
+      deferred: { description: Improvement accepted but postponed; resumable via resume_fix }
+      cannot_reproduce:
+        { description: Closed because the team cannot reproduce the need (terminal) }
+      duplicated: { description: Closed as duplicate of another (terminal) }
+      rejected: { description: Rejected as Working As Designed / WAD (terminal) }
+      enhancement: { description: Reclassified as enhancement / feature request (terminal) }
+      aborted: { description: Abandoned without delivery (terminal) }
+    required_transitions:
+      start_fixing:
+        { from: open, to: in_progress, description: Developer starts working on the improvement }
+      is_cnr: { from: open, to: cannot_reproduce, description: Cannot reproduce — close (terminal) }
+      defer: { from: open, to: deferred, description: Postpone the work }
+      is_duplicated:
+        { from: open, to: duplicated, description: Improvement is a duplicate of another }
+      is_wad: { from: open, to: rejected, description: Working as designed — reject }
+      is_not_a_bug:
+        { from: open, to: enhancement, description: Reclassify as enhancement / feature request }
+      pull_request: { from: in_progress, to: in_review, description: PR opened }
+      hard_pushed:
+        { from: in_progress, to: ready_for_qa, description: 'Skip review, push directly to QA' }
+      fixed_and_deployed:
+        from: in_review
+        to: ready_for_qa
+        description: 'PR merged & deployed; improvement ready to verify'
+
+      retest_passed:
+        from: ready_for_qa
+        to: closed
+        description: QA verifies the change (canonical Tested transition)
+
+      re_open:
+        from: any
+        to: open
+        description: Re-open a closed improvement (global transition — accepts any source state)
+
+      back:
+        from: closed
+        to: ready_for_qa
+        description: Re-test required after close (regression caught after sign-off)
+
+      resume_fix:
+        { from: deferred, to: in_progress, description: Resume work on a deferred improvement }
+      aborted: { from: any, to: aborted, description: Abandon the improvement (global transition) }
+    used_by: [acli, sprint-development, product-management]
+
+  tech_story:
+    jira_issue_type: Tech Story
+    description: |
+      Technical story (UPEX Tech Task/Debt workflow — identical to `tech_debt`).
+      NOTE: the `🚀` status (id 10021) and the `✅` / `Auto-Deploy` transitions
+      slugify to empty and are NOT addressable as canonical slugs — the sync
+      captures them only as discovered entries. Do not declare them as required.
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    # content: auto → generic description capture (no dedicated dev renderer yet).
+    sync: optional
+    recommended: true
+    coverable: true
+    content: auto
+    local_dir: tech-stories
+    required_statuses:
+      to_do: { description: Newly created tech story awaiting pickup }
+      in_progress: { description: Developer actively working }
+      in_review: { description: Pull request open / under review }
+      blocked: { description: Work blocked; resumable via recover_from_blocked }
+      fixed: { description: Fix landed (reworkable via back_from_fixed) }
+      completed: { description: Work completed (terminal success) }
+      automated: { description: Verified / test-finished (terminal success) }
+      aborted: { description: Cancelled (terminal); recoverable via recovered }
+    required_transitions:
+      start_working:
+        { from: to_do, to: in_progress, description: Developer picks up the tech story }
+      ready: { from: in_progress, to: in_review, description: Work ready for review }
+      fix: { from: in_review, to: fixed, description: Apply fix from review }
+      complete: { from: in_review, to: completed, description: Mark work completed }
+      test_finished: { from: in_review, to: automated, description: Testing finished / automated }
+      blocked: { from: in_progress, to: blocked, description: Block the work }
+      recover_from_blocked: { from: blocked, to: in_progress, description: Unblock and resume }
+      renew: { from: in_progress, to: to_do, description: Return work to To Do }
+      abort: { from: in_progress, to: aborted, description: Cancel the work }
+      recover_from_in_review:
+        { from: in_review, to: in_progress, description: Send review back to in progress }
+      back_from_completed:
+        { from: completed, to: in_review, description: Re-open completed work for review }
+      back_from_fixed: { from: fixed, to: in_review, description: Re-open fixed work for review }
+      back_from_automated:
+        { from: automated, to: in_review, description: Re-open automated work for review }
+      recovered: { from: aborted, to: to_do, description: Restore an aborted item back to To Do }
+    used_by: [sprint-development]
+
+  tech_debt:
+    jira_issue_type: Tech Debt
+    description: |
+      Technical debt (UPEX Tech Task/Debt workflow — identical to `tech_story`).
+      NOTE: the `🚀` status (id 10021) and the `✅` / `Auto-Deploy` transitions
+      slugify to empty and are NOT addressable as canonical slugs — the sync
+      captures them only as discovered entries. Do not declare them as required.
+    # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
+    # content: auto → generic description capture (no dedicated dev renderer yet).
+    sync: optional
+    recommended: true
+    coverable: true
+    content: auto
+    local_dir: tech-debts
+    required_statuses:
+      to_do: { description: Newly created tech debt item awaiting pickup }
+      in_progress: { description: Developer actively working }
+      in_review: { description: Pull request open / under review }
+      blocked: { description: Work blocked; resumable via recover_from_blocked }
+      fixed: { description: Fix landed (reworkable via back_from_fixed) }
+      completed: { description: Work completed (terminal success) }
+      automated: { description: Verified / test-finished (terminal success) }
+      aborted: { description: Cancelled (terminal); recoverable via recovered }
+    required_transitions:
+      start_working:
+        { from: to_do, to: in_progress, description: Developer picks up the tech debt item }
+      ready: { from: in_progress, to: in_review, description: Work ready for review }
+      fix: { from: in_review, to: fixed, description: Apply fix from review }
+      complete: { from: in_review, to: completed, description: Mark work completed }
+      test_finished: { from: in_review, to: automated, description: Testing finished / automated }
+      blocked: { from: in_progress, to: blocked, description: Block the work }
+      recover_from_blocked: { from: blocked, to: in_progress, description: Unblock and resume }
+      renew: { from: in_progress, to: to_do, description: Return work to To Do }
+      abort: { from: in_progress, to: aborted, description: Cancel the work }
+      recover_from_in_review:
+        { from: in_review, to: in_progress, description: Send review back to in progress }
+      back_from_completed:
+        { from: completed, to: in_review, description: Re-open completed work for review }
+      back_from_fixed: { from: fixed, to: in_review, description: Re-open fixed work for review }
+      back_from_automated:
+        { from: automated, to: in_review, description: Re-open automated work for review }
+      recovered: { from: aborted, to: to_do, description: Restore an aborted item back to To Do }
+    used_by: [sprint-development]
