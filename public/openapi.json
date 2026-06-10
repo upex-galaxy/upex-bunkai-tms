@@ -2089,7 +2089,7 @@
             }
           },
           "409": {
-            "description": "Invite already accepted / revoked / expired.",
+            "description": "Invite already accepted / revoked / expired, or the caller already holds an equal-or-higher role (`already_member_equal_or_higher_role`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2497,6 +2497,16 @@
           },
           "403": {
             "description": "Caller is not an admin/owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already belongs to an active member (`email_already_member`) or a pending invite exists (`invite_already_pending`).",
             "content": {
               "application/json": {
                 "schema": {
