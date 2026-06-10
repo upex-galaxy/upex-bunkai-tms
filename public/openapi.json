@@ -562,9 +562,22 @@
           "active_workspace_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": ["string", "null"]
           }
         },
-        "required": ["ok", "active_workspace_id"]
+        "required": ["ok", "active_workspace_id", "id", "slug", "name", "role"]
       },
       "ActiveWorkspaceBody": {
         "type": "object",
@@ -4194,13 +4207,13 @@
             }
           },
           {
-            "name": "If-Match",
+            "name": "X-If-Match",
             "in": "header",
             "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "Current version for optimistic locking (RFC 7232). A mismatch returns 409."
+            "description": "Current version for optimistic locking. A mismatch returns 409. Uses a custom header instead of RFC 7232 `If-Match` because the Vercel edge intercepts `If-Match` and rewrites the response to 412 (BK-96); `If-Match` is still accepted as a fallback on non-Vercel deployments."
           }
         ],
         "requestBody": {
@@ -4231,7 +4244,7 @@
             }
           },
           "400": {
-            "description": "Malformed id, body, or If-Match.",
+            "description": "Malformed id, body, or X-If-Match.",
             "content": {
               "application/json": {
                 "schema": {

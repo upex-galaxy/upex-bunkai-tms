@@ -19,7 +19,7 @@ const BodySchema = z.object({
 });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -29,7 +29,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // RLS filters the select to workspaces the caller belongs to.
   const { data: workspace, error } = await db
     .from('workspaces')
-    .select('id')
+    .select('id, slug, name')
     .eq('id', workspace_id)
     .maybeSingle();
 
@@ -40,7 +40,27 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('forbidden', 'You are not a member of that workspace.');
   }
 
-  const response = jsonResponse({ ok: true, active_workspace_id: workspace_id });
+  // BK-6 AC1 contract: the switch response carries the new workspace details
+  // (id, slug, name, role) so the UI does not need a follow-up GET /me.
+  const { data: membership, error: membershipError } = await db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', workspace_id)
+    .eq('user_id', principal.userId)
+    .maybeSingle();
+
+  if (membershipError) {
+    throw new ApiError('internal_error', membershipError.message);
+  }
+
+  const response = jsonResponse({
+    ok: true,
+    active_workspace_id: workspace_id,
+    id: workspace.id,
+    slug: workspace.slug,
+    name: workspace.name,
+    role: membership?.role ?? null,
+  });
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace_id, ACTIVE_WORKSPACE_COOKIE_DEFAULTS);
   return response;
 }, { auth: 'required' });
