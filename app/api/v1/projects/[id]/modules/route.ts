@@ -3,7 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
-import { hasAlphanumeric, slugify } from '@lib/utils/slug';
+import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
 // POST /api/v1/projects/{id}/modules — a workspace member (role >= member)
@@ -95,12 +95,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
   const warning = resultingDepth >= DEEP_NESTING_WARNING_THRESHOLD;
 
-  const segment = slugify(trimmedName);
-  if (segment.length < 1) {
-    throw new ApiError('validation_failed', 'Name must yield a non-empty slug.', {
-      details: { reason: 'name_no_alphanumeric' },
-    });
-  }
+  // Derive the path segment with a deterministic hash fallback (BK-53): names
+  // with no Latin-transliterable chars (CJK, Cyrillic) get `module-<hash>`
+  // instead of failing on an empty derived slug.
+  const segment = slugifyWithFallback(trimmedName, 'module', 1);
   const path = buildModulePath(parentPath, segment);
 
   // Position = max sibling position + 1 within the (project_id, parent) set.

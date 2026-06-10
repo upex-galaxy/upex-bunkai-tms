@@ -13,7 +13,7 @@ const ProjectSchema = z
 
 const CreateBodySchema = z
   .object({
-    name: z.string().describe('3–80 chars, at least one alphanumeric. Slug is auto-derived.'),
+    name: z.string().describe('3–80 chars, at least one alphanumeric. Slug is auto-derived; names mapping to a reserved slug (api, new, settings, …) are rejected.'),
     description: z.string().optional().describe('Optional Markdown, max 5KB.'),
   })
   .openapi('ProjectCreateBody');
@@ -53,7 +53,7 @@ registry.registerPath({
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'A project with this slug already exists in the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (including names that map to a reserved slug).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

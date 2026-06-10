@@ -1,5 +1,6 @@
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -33,11 +34,11 @@ export default async function ProjectsIndexPage() {
 
   const cookieStore = await cookies();
   const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-  const visibleIds = new Set(workspaces.map(w => w.id));
+  // The list is non-empty here (empty redirects above), so the helper's null
+  // case is unreachable; the `??` keeps the type narrowed to string.
   const activeWorkspaceId
-    = cookieActive && visibleIds.has(cookieActive)
-      ? cookieActive
-      : workspaces[0].id;
+    = resolveActiveWorkspaceId(cookieActive, workspaces.map(w => w.id))
+      ?? workspaces[0].id;
 
   // RLS-gated read of the active workspace's projects for the list.
   const { data: projects } = await supabase

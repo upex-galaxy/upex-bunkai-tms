@@ -7,7 +7,10 @@ import type {
   AtcStep,
   UserStory,
 } from '@lib/types';
+import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
+import { cookies } from 'next/headers';
 
 // Read-only bundle the Tree-view ATC detail pane needs. Same shape the editor
 // page assembles, minus the anchoring picker data — this is render-only. RLS on
@@ -29,9 +32,25 @@ export async function getAtcDetailAction(
 ): Promise<AtcDetail | null> {
   const supabase = await createClient();
 
+  // Project slugs are only unique PER WORKSPACE (BK-52), so the lookup must be
+  // scoped to the caller's active workspace — RLS alone would happily match a
+  // same-slug project from another workspace the caller belongs to.
+  const { data: workspaceRows } = await supabase
+    .from('workspaces')
+    .select('id')
+    .order('created_at', { ascending: true });
+  const cookieStore = await cookies();
+  const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
+  const activeWorkspaceId = resolveActiveWorkspaceId(
+    cookieActive,
+    (workspaceRows ?? []).map(w => w.id),
+  );
+  if (!activeWorkspaceId) { return null; }
+
   const { data: project } = await supabase
     .from('projects')
     .select('id')
+    .eq('workspace_id', activeWorkspaceId)
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();

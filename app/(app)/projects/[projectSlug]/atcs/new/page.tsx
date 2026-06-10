@@ -1,7 +1,10 @@
 import type { ModuleOption } from '@components/atcs/NewAtcEditor';
 import type { AcceptanceCriterion, UserStory } from '@lib/types';
 import { NewAtcEditor } from '@components/atcs/NewAtcEditor';
+import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -14,10 +17,25 @@ export default async function NewAtcPage({ params, searchParams }: PageProps) {
   const { story: storyParam, ac: acParam } = await searchParams;
   const supabase = await createClient();
 
-  // RLS narrows visible projects to workspaces the caller is a member of.
+  // Project slugs are only unique PER WORKSPACE (BK-52), so the lookup must be
+  // scoped to the caller's active workspace — RLS alone would happily match a
+  // same-slug project from another workspace the caller belongs to.
+  const { data: workspaceRows } = await supabase
+    .from('workspaces')
+    .select('id')
+    .order('created_at', { ascending: true });
+  const cookieStore = await cookies();
+  const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
+  const activeWorkspaceId = resolveActiveWorkspaceId(
+    cookieActive,
+    (workspaceRows ?? []).map(w => w.id),
+  );
+  if (!activeWorkspaceId) { notFound(); }
+
   const { data: project } = await supabase
     .from('projects')
     .select('id, slug')
+    .eq('workspace_id', activeWorkspaceId)
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();

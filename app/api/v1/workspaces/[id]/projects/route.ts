@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
-import { hasAlphanumeric, slugify } from '@lib/utils/slug';
+import { isReservedProjectSlug } from '@lib/projects/validation';
+import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
 // POST /api/v1/workspaces/{id}/projects — a workspace member (role >= member)
@@ -55,10 +56,15 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     });
   }
 
-  const slug = slugify(name);
-  if (slug.length < 3) {
-    throw new ApiError('validation_failed', 'Name must yield a slug of at least 3 characters.', {
-      details: { reason: 'name_no_alphanumeric' },
+  // Derive the slug with a deterministic hash fallback (BK-53): names that
+  // transliterate to fewer than 3 slug chars (CJK, Cyrillic — and, deliberately,
+  // short ASCII leftovers like 'ab!') now get `project-<hash>` instead of a 422.
+  const slug = slugifyWithFallback(trimmedName, 'project', 3);
+  // Reserved words shadow app routes / future URL surface, so they are checked
+  // on the FINAL slug — after the fallback — per BK-8 AC-11 (BK-51).
+  if (isReservedProjectSlug(slug)) {
+    throw new ApiError('validation_failed', 'This name maps to a reserved URL slug.', {
+      details: { reason: 'slug_reserved' },
     });
   }
 

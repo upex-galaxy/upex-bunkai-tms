@@ -3,7 +3,7 @@
 import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { slugify } from '@lib/utils/slug';
+import { slugifyWithFallback } from '@lib/utils/slug';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -76,9 +76,11 @@ export function RenameModuleForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Live slug preview uses the SAME helper the server rebuilds the path with, so
-  // the user sees how renaming will reshape the stored path segment.
-  const slugPreview = slugify(name);
+  // Live slug preview uses the SAME helper (and prefix/minLength) the server
+  // rebuilds the path with, so the user sees how renaming will reshape the
+  // stored path segment — CJK or Cyrillic names preview the `module-<hash>`
+  // fallback (BK-53).
+  const slugPreview = name.trim() ? slugifyWithFallback(name, 'module', 1) : '';
   const isValid = name.trim().length > 0 && !submitting;
 
   const onSubmit = async (e: React.FormEvent) => {

@@ -3,6 +3,7 @@ import { AppSidebar } from '@components/layout/AppSidebar';
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
+import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 
 // Resolves the global-shell data server-side (workspaces, active workspace,
@@ -20,10 +21,7 @@ async function getShellData() {
 
   const cookieStore = await cookies();
   const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-  const visibleIds = new Set(list.map(w => w.id));
-  const activeWorkspaceId = cookieActive && visibleIds.has(cookieActive)
-    ? cookieActive
-    : (list[0]?.id ?? null);
+  const activeWorkspaceId = resolveActiveWorkspaceId(cookieActive, list.map(w => w.id));
 
   let projects: { id: string, slug: string, name: string }[] = [];
   if (activeWorkspaceId) {

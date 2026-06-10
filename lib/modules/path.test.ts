@@ -88,6 +88,11 @@ describe('moduleNameError', () => {
   test('a name with no alphanumeric is name_no_alphanumeric', () => {
     expect(moduleNameError('---')).toBe('name_no_alphanumeric');
   });
+
+  test('Unicode names are accepted (BK-53: CJK / Cyrillic count as letters)', () => {
+    expect(moduleNameError('日本語')).toBeNull();
+    expect(moduleNameError('Проект')).toBeNull();
+  });
 });
 
 describe('rebuildModulePath', () => {
