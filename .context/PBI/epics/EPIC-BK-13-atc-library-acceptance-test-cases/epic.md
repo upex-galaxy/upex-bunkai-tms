@@ -1,23 +1,23 @@
-# EPIC: ATC Library (Atomic Test Components)
+# EPIC: ATC Library (Acceptance Test Cases)
 
 **Jira Key:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 13
+**Total Story Points:** 28
 
 ---
 
 ## Description
 
-# EPIC-BK-4 — ATC Library (Atomic Test Components)
+# EPIC-BK-4 — ATC Library (Acceptance Test Cases)
 
 Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 
-***Capability***: The reusable testing primitives layer. An ATC (Atomic Test Component) is a small, named, reusable test fragment anchored to a User Story + ≥1 Acceptance Criterion. Tests are composed by chaining ATCs (see EPIC-BK-5). Editing an ATC propagates to every Test that references it — one-edit-many-tests.
+***Capability***: The reusable testing primitives layer. An ATC (Acceptance Test Case) is a small, named, reusable test fragment anchored to a User Story + ≥1 Acceptance Criterion. Tests are composed by chaining ATCs (see EPIC-BK-5). Editing an ATC propagates to every Test that references it — one-edit-many-tests.
 
 ## Wave
 
-***Wave 3*** — ATC Library (Atomic Test Components). Bunkai's differentiator — one-edit-many-tests. Authoring layer that Wave 4 (Tests + Manual Runs) chains together. Cannot start before Wave 2 (Project + Module hierarchy) lands. See `.context/master-implementation-plan.md` §5.
+***Wave 3*** — ATC Library (Acceptance Test Cases). Bunkai's differentiator — one-edit-many-tests. Authoring layer that Wave 4 (Tests + Manual Runs) chains together. Cannot start before Wave 2 (Project + Module hierarchy) lands. See `.context/master-implementation-plan.md` §5.
 
 ## Scope
 
@@ -66,19 +66,19 @@ Maps PRD EPIC-BK-004 (US 4.1..4.6) and SRS FR-010..FR-014.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-18](https://jira.upexgalaxy.com/browse/BK-18) | TMS-ATC API | Create and edit ATCs with steps and assertions | 5 | Medium | Ready For Dev |
-| [BK-19](https://jira.upexgalaxy.com/browse/BK-19) | TMS-ATC Builder | Build an ATC with ordered steps and assertions | - | Medium | Shift-Left QA |
+| [BK-18](https://jira.upexgalaxy.com/browse/BK-18) | TMS-ATC API | Create and edit ATCs with steps and assertions | 5 | Medium | In Test |
+| [BK-19](https://jira.upexgalaxy.com/browse/BK-19) | TMS-ATC Builder | Build an ATC with ordered steps and assertions | 5 | Medium | Ready For QA |
 | [BK-20](https://jira.upexgalaxy.com/browse/BK-20) | TMS-ATC Search | Search and autocomplete ATCs | 5 | Medium | Ready For Dev |
-| [BK-21](https://jira.upexgalaxy.com/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests | - | Medium | Shift-Left QA |
+| [BK-21](https://jira.upexgalaxy.com/browse/BK-21) | TMS-ATC Propagation | Cascade ATC edits to all tests | 5 | Medium | Shift-Left QA |
 | [BK-22](https://jira.upexgalaxy.com/browse/BK-22) | TMS-ATC Usage | See a "Used in N tests" report | 3 | Medium | Ready For Dev |
-| [BK-23](https://jira.upexgalaxy.com/browse/BK-23) | TMS-ATC Duplicate | Duplicate an ATC with steps and assertions | - | Medium | Shift-Left QA |
+| [BK-23](https://jira.upexgalaxy.com/browse/BK-23) | TMS-ATC Duplicate | Duplicate an ATC with steps and assertions | 5 | Medium | Ready For Dev |
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** mvp, wave-2

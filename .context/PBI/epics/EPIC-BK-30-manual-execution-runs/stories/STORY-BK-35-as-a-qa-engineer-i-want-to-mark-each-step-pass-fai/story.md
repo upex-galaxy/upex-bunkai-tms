@@ -6,6 +6,7 @@
 **Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -31,11 +32,23 @@
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+
+---
+
 ## Traceability
 
 ### Storys (2)
 
-- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Backlog)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Dev)_
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
 
 ---
@@ -43,9 +56,9 @@
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Benjamin Segovia
 
 ---
 

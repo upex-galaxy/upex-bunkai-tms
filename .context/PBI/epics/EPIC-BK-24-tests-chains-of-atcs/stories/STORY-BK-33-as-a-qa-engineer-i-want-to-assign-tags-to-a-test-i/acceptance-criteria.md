@@ -1,8 +1,8 @@
 # BK-33 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
 
-```gherkin
+```
 Scenario: Assign a mix of reserved and custom tags to a Test
   Given a Test named "Checkout - Guest Purchase" currently has no tags
   When I assign the tags "smoke", "regression", and "checkout-v2"
@@ -11,7 +11,7 @@ Scenario: Assign a mix of reserved and custom tags to a Test
   And "checkout-v2" is kept as a custom tag
 ```
 
-```gherkin
+```
 Scenario: Filter Tests by a reserved suite tag
   Given "Checkout - Guest Purchase" and "Login - Happy Path" both carry the "smoke" tag
   And "Refunds - Full Flow" carries only the "regression" tag
@@ -20,7 +20,7 @@ Scenario: Filter Tests by a reserved suite tag
   And "Refunds - Full Flow" is not shown
 ```
 
-```gherkin
+```
 Scenario: Replacing the tag set re-groups the Test
   Given "Refunds - Full Flow" currently carries the tags "regression" and "finance"
   When I replace its tags with "smoke" and "finance"
@@ -30,7 +30,7 @@ Scenario: Replacing the tag set re-groups the Test
   And it no longer appears when I filter by the "regression" suite
 ```
 
-```gherkin
+```
 Scenario: Remove all tags from a Test (boundary)
   Given "Login - Happy Path" currently carries the tags "smoke" and "auth"
   When I remove every tag so the Test has none
@@ -39,7 +39,7 @@ Scenario: Remove all tags from a Test (boundary)
   And the Test itself remains intact and runnable
 ```
 
-```gherkin
+```
 Scenario: Adding the same tag twice keeps a single tag
   Given "Checkout - Guest Purchase" already carries the "smoke" tag
   When I assign the tags "smoke", "smoke", and "regression"
@@ -47,7 +47,7 @@ Scenario: Adding the same tag twice keeps a single tag
   And no duplicate "smoke" tag appears
 ```
 
-```gherkin
+```
 Scenario: Filter by a tag no Test carries
   Given no Test in the project carries the tag "deprecated"
   When I filter the list of Tests by "deprecated"

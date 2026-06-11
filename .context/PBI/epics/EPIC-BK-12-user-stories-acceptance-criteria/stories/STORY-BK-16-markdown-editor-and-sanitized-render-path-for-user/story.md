@@ -3,9 +3,10 @@
 **Jira Key:** [BK-16](https://jira.upexgalaxy.com/browse/BK-16)
 **Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
-**Status:** In Progress
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 13
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -42,10 +43,19 @@
 
 ---
 
+## Traceability
+
+### Bugs (2)
+
+- [BK-99](https://jira.upexgalaxy.com/browse/BK-99): MarkdownEditor: Description: 50 KB size limit not enforced on submission _(Closed)_
+- [BK-100](https://jira.upexgalaxy.com/browse/BK-100): MarkdownEditor: Description: 90% capacity warning threshold not implemented _(Closed)_
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/4/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Facu Barea
 - **Labels:** markdown, mvp, shift-left-2026-06-01, shift-left-reviewed, ux, wave-2

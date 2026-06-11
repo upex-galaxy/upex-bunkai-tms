@@ -9,7 +9,7 @@
 
 ## Description
 
-Coverage & Traceability turns the test assets a team already maintains — user stories, acceptance criteria, atomic test components, tests, runs and defects — into a single, navigable story of quality. Today that evidence is spread across separate screens, so a QA Lead who needs to answer "what does this work actually cover, and how fast did we recover when it broke?" has to assemble the picture by hand. This epic makes that picture a first-class, read-only product surface.
+Coverage & Traceability turns the test assets a team already maintains — user stories, acceptance criteria, acceptance test cases, tests, runs and defects — into a single, navigable story of quality. Today that evidence is spread across separate screens, so a QA Lead who needs to answer "what does this work actually cover, and how fast did we recover when it broke?" has to assemble the picture by hand. This epic makes that picture a first-class, read-only product surface.
 
 It delivers four connected views: the full evidence chain from a user story down to any defect raised against it; a coverage lens that surfaces the acceptance criteria and modules with no test behind them; a cycle-time clock that measures how long quality took to go from first failure back to green; and a shareable, audit-ready evidence pack. A live activity feed keeps the whole workspace aware of what changed, by whom, and when.
 
@@ -35,7 +35,7 @@ It delivers four connected views: the full evidence chain from a user story down
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** new-feature

@@ -6,6 +6,7 @@
 **Status:** Shift-Left QA
 **Priority:** Medium
 **Story Points:** -
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -13,7 +14,17 @@
 
 ## User story
 
-As a QA Lead, I want to open any user story and see its full evidence chain — acceptance criteria, the test components that satisfy them, the tests they belong to, the latest run result, and any defect raised — so that I can answer audit and coverage questions without assembling the picture by hand.
+As a QA Lead, I want to open any user story and see its full evidence chain — acceptance criteria, the ATCs that satisfy them, the tests they belong to, the latest run result, and any defect raised — so that I can answer audit and coverage questions without assembling the picture by hand.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 
 ---
 
@@ -34,7 +45,7 @@ As a QA Lead, I want to open any user story and see its full evidence chain — 
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** new-feature

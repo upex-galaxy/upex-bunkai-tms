@@ -1,6 +1,6 @@
 # BK-37 — Business Rules
 
-> Jira field: `customfield_10134` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
+> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
 
 - Run history is scoped to a single Test
 - Runs are ordered newest first by when they ran

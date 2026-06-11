@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-58](https://jira.upexgalaxy.com/browse/BK-58)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -14,10 +14,16 @@ Remote Supabase ledger has 3 entries (module*soft*delete, module*update*fn*param
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Config/Env Error 
+
+---
+
 ## Metadata
 
 - **Created:** 6/4/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 

@@ -1,8 +1,8 @@
 # BK-41 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
-```gherkin
+```
 Scenario: List defects for a module including its sub-modules
   Given the module "Checkout" has sub-modules "Promo codes" and "Payment"
   And there are 3 defects under "Promo codes" and 2 under "Payment"
@@ -11,7 +11,7 @@ Scenario: List defects for a module including its sub-modules
   And the defects from both sub-modules are included
 ```
 
-```gherkin
+```
 Scenario: Filter by severity and status combined
   Given the module "Checkout" has 5 defects: 2 are P1 and open, 1 is P1 and resolved, and 2 are P3 and open
   When Elena filters by severity "P1" and status "open"
@@ -19,7 +19,7 @@ Scenario: Filter by severity and status combined
   And the other 3 defects are hidden from the list
 ```
 
-```gherkin
+```
 Scenario: Counts by severity and status reflect the current view
   Given the module "Checkout" with no filters applied shows 5 defects
   When Elena looks at the summary counts
@@ -27,7 +27,7 @@ Scenario: Counts by severity and status reflect the current view
   And she sees "open: 4, in progress: 0, resolved: 1, closed: 0" by status
 ```
 
-```gherkin
+```
 Scenario: Counts recompute when a filter is applied
   Given the module "Checkout" shows 5 defects with counts "open: 4, resolved: 1"
   When Elena filters by status "open"
@@ -35,7 +35,7 @@ Scenario: Counts recompute when a filter is applied
   And the status counts update to "open: 4, in progress: 0, resolved: 0, closed: 0"
 ```
 
-```gherkin
+```
 Scenario: A filter combination with no matches shows an empty state
   Given the module "Checkout" has no defects with severity "P4"
   When Elena filters by severity "P4"
@@ -43,7 +43,7 @@ Scenario: A filter combination with no matches shows an empty state
   And the severity counts show "P4: 0"
 ```
 
-```gherkin
+```
 Scenario: A module with no defects at all shows an empty state
   Given the module "Wishlist" has no defects and no sub-modules with defects
   When Elena selects the module "Wishlist"

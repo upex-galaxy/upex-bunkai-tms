@@ -6,6 +6,7 @@
 **Status:** Shift-Left QA
 **Priority:** Medium
 **Story Points:** -
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -17,10 +18,20 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+
+---
+
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/2/2026
+- **Updated:** 6/5/2026
 - **Reporter:** Ely
 - **Assignee:** José Andrés Lorca
 - **Labels:** new-feature

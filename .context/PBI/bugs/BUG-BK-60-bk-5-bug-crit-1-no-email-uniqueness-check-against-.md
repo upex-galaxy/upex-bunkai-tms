@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-60](https://jira.upexgalaxy.com/browse/BK-60)
 **Priority:** Medium
-**Status:** Open
+**Status:** Closed
 **Components:** None
 **Severity:** Crítica
 **Error Type:** Functional
@@ -109,7 +109,7 @@ app/api/v1/workspaces/[id]/invites/route.ts: no pre-check against workspace_memb
 ## Metadata
 
 - **Created:** 6/5/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Nahuel Gomez
 - **Assignee:** Ely
 

@@ -6,6 +6,7 @@
 **Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -22,13 +23,25 @@
 ## Definition of done
 
 - [ ] A "Report defect" action appears when a step is marked failed during a run
-- [ ] The defect form opens pre-filled with the module, the steps already executed, the failing test component, and any captured evidence
+- [ ] The defect form opens pre-filled with the module, the steps already executed, the failing ATC, and any captured evidence
 - [ ] Severity can be set to one of P1, P2, P3 or P4 before saving
 - [ ] A defect can also be filed standalone (not tied to any run) from the defects area
 - [ ] Title length is validated (5 to 200 characters) with a clear message when out of range
 - [ ] The module is required and only modules belonging to the current project can be chosen
 - [ ] Up to 10 evidence links can be attached; attempting more is blocked with a clear message
 - [ ] A filed defect starts in the open state and is immediately visible in the defects list
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 
 ---
 
@@ -46,7 +59,7 @@
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

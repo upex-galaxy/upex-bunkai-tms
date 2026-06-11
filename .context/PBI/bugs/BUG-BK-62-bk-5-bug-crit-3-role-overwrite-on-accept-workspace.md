@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-62](https://jira.upexgalaxy.com/browse/BK-62)
 **Priority:** Medium
-**Status:** Open
+**Status:** Closed
 **Components:** None
 **Severity:** Crítica
 **Error Type:** Functional
@@ -141,7 +141,7 @@ Check existing role before upsert. If user has higher role, return 409 ALREADY_M
 ## Metadata
 
 - **Created:** 6/5/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Nahuel Gomez
 - **Assignee:** Ely
 

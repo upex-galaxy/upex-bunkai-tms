@@ -6,6 +6,7 @@
 **Status:** Shift-Left QA
 **Priority:** Medium
 **Story Points:** -
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -14,6 +15,16 @@
 ## User story
 
 As a QA Lead, I want to export a user story's assembled evidence chain as a shareable, read-only pack so that I can hand auditors and stakeholders a fixed record without giving them system access.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 
 ---
 
@@ -28,7 +39,7 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/5/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** new-feature

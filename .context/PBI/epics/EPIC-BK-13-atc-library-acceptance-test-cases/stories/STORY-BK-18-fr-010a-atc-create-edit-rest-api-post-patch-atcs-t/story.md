@@ -1,9 +1,9 @@
 # TMS-ATC API | Create and edit ATCs with steps and assertions
 
 **Jira Key:** [BK-18](https://jira.upexgalaxy.com/browse/BK-18)
-**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
+**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Test
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -18,7 +18,7 @@
 
 ## User Story
 
-Como ingeniero de automatización o consumidor de la API, quiero una REST API para crear y editar ATCs (Atomic Test Components) con sus steps y assertions en una sola llamada transaccional, para que pueda componer bloques de prueba reutilizables desde herramientas de CLI, scripts y el cliente de UI.
+Como ingeniero de automatización o consumidor de la API, quiero una REST API para crear y editar ATCs (Acceptance Test Cases) con sus steps y assertions en una sola llamada transaccional, para que pueda componer bloques de prueba reutilizables desde herramientas de CLI, scripts y el cliente de UI.
 
 ## Context
 
@@ -77,30 +77,43 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
 ## Traceability
 
+### Test Execution (1)
+
+- [BK-95](https://jira.upexgalaxy.com/browse/BK-95): [ATR] BK-18 — ATC create/edit REST API _(ACTIVE)_
+
+### Bug (1)
+
+- [BK-96](https://jira.upexgalaxy.com/browse/BK-96): ATC Library: ATC PATCH API: Happy-path PATCH /atcs/{id} returns 412 instead of 200 though the edit commits _(Closed)_
+
 ### Storys (7)
 
 - [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For QA)_
-- [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(Estimation)_
+- [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(Ready For QA)_
 - [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(Ready For Dev)_
-- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(Estimation)_
+- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(Ready For Dev)_
 - [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Dev)_
 - [BK-21](https://jira.upexgalaxy.com/browse/BK-21): TMS-ATC Propagation | Cascade ATC edits to all tests _(Shift-Left QA)_
 - [BK-22](https://jira.upexgalaxy.com/browse/BK-22): TMS-ATC Usage | See a "Used in N tests" report _(Ready For Dev)_
+
+### Test Plan (1)
+
+- [BK-94](https://jira.upexgalaxy.com/browse/BK-94): [ATP] BK-18 — ATC create/edit REST API _(Planning)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** api, atc, backend, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2
 
 ---

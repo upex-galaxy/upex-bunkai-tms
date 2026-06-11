@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-59](https://jira.upexgalaxy.com/browse/BK-59)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -14,10 +14,16 @@ Structural module operations (rename, move, soft-delete cascade) do not write to
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
 ## Metadata
 
 - **Created:** 6/4/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 

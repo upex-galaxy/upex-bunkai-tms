@@ -1,8 +1,8 @@
 # BK-28 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
 
-```gherkin
+```
 Scenario: Elena drags an ATC into a new position and saves
   Given Elena has an existing Test "Add to Cart from Empty State" containing four ATCs in the order A, B, C, D
   When she opens the Test, drags ATC D to the second position so the chain becomes A, D, B, C, and clicks "Save"
@@ -11,7 +11,7 @@ Scenario: Elena drags an ATC into a new position and saves
   And the activity log of her workspace records that Elena reordered this Test, with a timestamp and the new chain A, D, B, C
 ```
 
-```gherkin
+```
 Scenario: Saving without changing the order is a no-op
   Given Elena has an existing Test containing ATCs A, B, C in that order
   When she opens the Test, drags an ATC and drops it back in its original slot, then clicks "Save"
@@ -19,7 +19,7 @@ Scenario: Saving without changing the order is a no-op
   And the Test's last-modified timestamp does not change
 ```
 
-```gherkin
+```
 Scenario: A viewer cannot reorder a Test
   Given Pablo is signed in to the same workspace as Elena but with the role "viewer"
   When he opens the Test "Add to Cart from Empty State"
@@ -27,7 +27,7 @@ Scenario: A viewer cannot reorder a Test
   And any attempt by him to reorder the chain is rejected with a clear permission message
 ```
 
-```gherkin
+```
 Scenario: Two teammates reorder the same Test at the same time
   Given Elena and her teammate Mateo are both viewing Test "Add to Cart from Empty State", both seeing the chain A, B, C
   And Mateo reorders the chain to C, B, A and saves first

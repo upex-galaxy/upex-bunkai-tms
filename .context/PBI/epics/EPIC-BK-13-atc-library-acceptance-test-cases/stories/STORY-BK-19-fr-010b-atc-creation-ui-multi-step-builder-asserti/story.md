@@ -1,7 +1,7 @@
 # TMS-ATC Builder | Build an ATC with ordered steps and assertions
 
 **Jira Key:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19)
-**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
+**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
@@ -65,16 +65,16 @@
 
 ### Story (1)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(BLOCKED)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(In Test)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** maibeth vega
 - **Labels:** atc, frontend, mvp, shift-left-2026-06-05, shift-left-reviewed, ui, wave-2
 
 ---

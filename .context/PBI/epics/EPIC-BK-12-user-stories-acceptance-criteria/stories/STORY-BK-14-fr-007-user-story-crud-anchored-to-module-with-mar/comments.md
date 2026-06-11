@@ -42,5 +42,45 @@
 
 ---
 
+### Ely - 6/4/2026, 11:37:11 PM
+
+## Ready For QA — BK-14 (Manage user stories anchored to a module)
+
+Merged to staging and deployed. Ready for testing on staging.
+
+### Links
+
+- PR: https://github.com/upex-galaxy/upex-bunkai-tms/pull/13 (merged)
+- Staging: https://staging-upexbunkai.vercel.app — deploy READY
+- Merge commit: 8a19b1f
+
+### What shipped
+
+- Per-module "New User Story" action in the project tree; per-story edit and remove actions on the story rows.
+- The story form takes a title, a Markdown description (the BK-16 editor, up to 50 KB, sanitized), and an optional Jira key. The Jira key is locked once set.
+- Stories that are removed are archived (hidden from the module's default list, retained).
+
+### As-built contract (observable)
+
+- Create: POST /api/v1/modules/{moduleId}/user-stories. List: GET same path. Single + edit + remove: GET/PATCH/DELETE /api/v1/user-stories/{id}.
+- Title required, 3–200. Jira key must read as LETTERS-NUMBER (e.g. BK-42), unique per project (case-insensitive), immutable once set (409). Description Markdown ≤ 50 KB. Removing archives (409 on re-remove).
+
+### Suggested QA focus
+
+- Create a story under a module with title + Markdown description → appears in that module's list; preview renders the Markdown.
+- Title "Re" (2 chars) → rejected ("at least 3 characters").
+- Link a story to "BK-42"; try linking a second story in the same project to "BK-42" → rejected (already linked). Try "bk-42" (case) → same conflict.
+- Malformed key "not a key" → rejected.
+- Edit a story whose key is set → the key field is locked.
+- Remove a story → it leaves the module's list.
+
+### Notes / known follow-ups
+
+- The Jira key shows as a visible reference but is not yet a clickable hyperlink (no Jira base URL is configured app-side) — follow-up.
+- "Re-import updates instead of duplicating" is BK-17 (Jira import); BK-14 stores the key + provides the uniqueness index that enables it.
+- The story description is shown via the editor's preview; a dedicated read-only story detail view arrives with later work.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

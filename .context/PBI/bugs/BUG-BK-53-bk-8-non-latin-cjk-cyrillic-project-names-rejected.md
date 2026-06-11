@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-53](https://jira.upexgalaxy.com/browse/BK-53)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -47,6 +47,12 @@ International users cannot name a project in their own script. Improvement-grade
 ## Evidence
 
 `test-session-memory.md` (T13b row).
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

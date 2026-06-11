@@ -2,166 +2,134 @@
 
 **Jira Key:** [BK-29](https://jira.upexgalaxy.com/browse/BK-29)
 **Priority:** Medium
-**Status:** Backlog
+**Status:** Planning
 **Total Story Points:** 0
 
 ---
 
 ## Description
 
-Este Epic concentra las credenciales y conexiones que usa el equipo de QA para ejercitar Bunkai en los entornos disponibles. ***No publicar fuera de este Epic.*** La guía técnica pública (sin credenciales) vive en `/qa` de la app desplegada.
+Credenciales reales para testear Bunkai TMS. Esta página va al grano: qué credenciales son y qué variables setear en tu `.env`. La guía de ***cómo*** testear (sin credenciales) vive en /qa de la app desplegada. No publicar nada de esto fuera de este Epic.
 
-## Arquitectura
+## 🌐 Entornos
 
-- ***Stack***: Next.js 15 (App Router) + Supabase (Auth + Postgres) + Vercel.
-- ***Auth***: magic-link OTP via Supabase + password sign-in via REST + PAT Bearer para agentes/CLI.
-- ***Multi-tenant***: cada fila workspace-scoped está protegida por Postgres RLS.
-- ***Proyecto Supabase***: `fmbpikzpkafptqximhxn` (region us-east-1, Postgres 17.6).
-- ***Base de datos (MVP)***: una sola DB Supabase (`fmbpikzpkafptqximhxn`) sirve local + staging + production (single-project tenancy). `production` = rama `main`; `staging` (`staging-upexbunkai.vercel.app`) = ambiente principal de Sprint Testing, y lo que se valida ahí promociona a `production`.
-
-## Entornos
-
-| ***Entorno**** | ****URL web**** | ****API base**** | ****OpenAPI**** | ****Estado*** |
+| Entorno | URL web | API base | OpenAPI | Estado |
 | --- | --- | --- | --- | --- |
-| local | `http://localhost:3000` | `http://localhost:3000/api/v1` | `http://localhost:3000/api/openapi` | dev |
-| staging | `https://staging-upexbunkai.vercel.app` | `https://staging-upexbunkai.vercel.app/api/v1` | `https://staging-upexbunkai.vercel.app/api/openapi` | Sprint Testing (principal) |
-| production | `https://upexbunkai.vercel.app` | `https://upexbunkai.vercel.app/api/v1` | `https://upexbunkai.vercel.app/api/openapi` | live (rama `main`) |
+| local | http://localhost:3000 | http://localhost:3000/api/v1 | http://localhost:3000/api/openapi | dev |
+| staging | https://staging-upexbunkai.vercel.app | https://staging-upexbunkai.vercel.app/api/v1 | https://staging-upexbunkai.vercel.app/api/openapi | Sprint Testing (principal) |
+| production | https://upexbunkai.vercel.app | https://upexbunkai.vercel.app/api/v1 | https://upexbunkai.vercel.app/api/openapi | live (rama main) |
 
-***Nota Vercel Deployment Protection***: si los endpoints devuelven HTML "Authentication Required", el proyecto Vercel tiene SSO Protection activa. Para QA externo, deshabilitar en Project Settings → Deployment Protection.
+> Vercel Deployment Protection: si los endpoints devuelven HTML "Authentication Required", el proyecto tiene SSO Protection activa. Para QA externo, deshabilitar en Project Settings → Deployment Protection.
 
-## DB Connection — Roles QA con BYPASSRLS (via Session Pooler)
+## 🔐 Auth a nivel UI (browser)
 
-Dos roles dedicados, ambos con LOGIN + BYPASSRLS.
+Roles del sistema: `viewer` · `member` · `admin` · `owner`.
 
-***Alcance de lectura (importante)***: el GRANT es a nivel de tabla, por lo que ambos roles pueden leer todas las columnas — incluidas las columnas hash sensibles (`access*tokens.hash`, `workspace*invites.token*hash`, `magic*link*tokens.token*hash`). No existe un REVOKE column-level efectivo sobre ellas; tratar estas credenciales en consecuencia.
+Cómo crear tu usuario (cada tester el suyo):
 
-***Pooler****: Supabase deprecó el host directo `db.<ref>.supabase.co` para proyectos nuevos. La conexión correcta es via ****Session Pooler*** (puerto 5432) con el username en formato `<dbuser>.<project-ref>` (concatenado con punto).
+- Andá a `/login` e ingresá tu email → llega un magic-link (login passwordless, no hay campo de password en la UI).
+- El primer login te manda a `/onboarding` → creás tu workspace → quedás `owner` de ese workspace.
+- Cada tester usa su PROPIO usuario y su PROPIO workspace. Compartir solo si lo acuerdan entre compañeros (vía invite: `admin`/`member`/`viewer`).
 
-| ***Role**** | ****Privileges**** | ****Pooler username**** | ****Password*** |
+Para sacar un PAT desde una sesión de browser (camino híbrido): `POST /api/v1/tokens` con la cookie de sesión. El paso a paso está en /qa.
+
+## 🗄️ Auth a nivel DB (DBHub MCP)
+
+Dos roles dedicados (LOGIN + BYPASSRLS), vía Session Pooler (puerto 5432). El username del pooler es `<rol>.<project-ref>`.
+
+| Rol | Permisos | Pooler username | Password |
 | --- | --- | --- | --- |
-| `qa*inspector*ro` | SELECT on public.* | `qa*inspector*ro.fmbpikzpkafptqximhxn` | `Bunk4i-QA-Read-9zKpM7xL` |
-| `qa*inspector*rw` | SELECT + INSERT + UPDATE + DELETE on public.* + sequence usage | `qa*inspector*rw.fmbpikzpkafptqximhxn` | `Bunk4i-QA-Write-8mNqR3yT` |
+| qa*inspector*ro | SELECT en public.* | qa*inspector*ro.fmbpikzpkafptqximhxn | Bunk4i-QA-Read-9zKpM7xL |
+| qa*inspector*rw | SELECT + INSERT + UPDATE + DELETE en public.* + uso de secuencias | qa*inspector*rw.fmbpikzpkafptqximhxn | Bunk4i-QA-Write-8mNqR3yT |
 
-Connection strings (Session Pooler, puerto 5432):
+Cuidado: BYPASSRLS = estos roles ven datos de TODOS los tenants (son de inspección, no de tenant). El GRANT es a nivel tabla, así que alcanzan columnas hash sensibles. Tratar como secreto; solo dentro de este Epic.
+
+Hay DOS formatos distintos y NO son intercambiables:
+
+1) Connection string crudo del pooler — sirve SOLO para una extensión SQL de VSCode/Cursor (no para DBHub):
 
 ```
-# Read-only
 postgresql://qa*inspector*ro.fmbpikzpkafptqximhxn:Bunk4i-QA-Read-9zKpM7xL@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
-
-# Read-write
-postgresql://qa*inspector*rw.fmbpikzpkafptqximhxn:Bunk4i-QA-Write-8mNqR3yT@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
 ```
 
-psql ejemplo:
+2) Formato `[[sources]]` del `dbhub.toml` — es lo que usa el DBHub MCP. El `dbhub.toml` ya viene committeado con placeholders `${VAR}`; vos NO lo editás, solo seteás estas variables en tu `.env`:
 
-```
-psql "postgresql://qa*inspector*ro.fmbpikzpkafptqximhxn:Bunk4i-QA-Read-9zKpM7xL@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
-```
-
-Notas sobre el pooler:
-
-- Puerto ***5432*** = Session pooler (transacciones largas, prepared statements OK).
-- Puerto ***6543*** = Transaction pooler (más estricto, sin prepared statements). NO usar para QA.
-- La región queda en el subdominio: `aws-1-us-east-1.pooler.supabase.com`.
-
-Rotación de password (cuando aplique):
-
-```
-alter role qa*inspector*ro password '<new-secret>';
-alter role qa*inspector*rw password '<new-secret>';
+```bash
+# .env — DBHub read-only (qa*inspector*ro)
+DBHUB_TYPE=postgres
+DBHUB_HOST=aws-1-us-east-1.pooler.supabase.com
+DBHUB_PORT=5432
+DBHUB_DATABASE=postgres
+DBHUB*USER=qa*inspector_ro.fmbpikzpkafptqximhxn
+DBHUB_PASSWORD=Bunk4i-QA-Read-9zKpM7xL
 ```
 
-DBHub MCP / agentes que necesiten un solo URL pueden tomar las vars de `.env` (`QA*INSPECTOR*RO*URL` / `QA*INSPECTOR*RW*URL`).
+Para read-write, cambiá las dos últimas:
 
-## API Sign-in sin browser (pure CLI)
-
-Tres formas válidas de obtener un Bearer PAT:
-
-1. ***Headless signup*** — `POST /api/v1/auth/signup` provisiona usuario con password (email_confirm forzado, sin click de email) y mintea PAT en la misma respuesta.
-2. ***Headless signin*** — `POST /api/v1/auth/signin` autentica con email + password y mintea PAT fresco. Útil para CI runs.
-3. ***Hybrid (browser → mint)*** — magic-link en `/login`, luego `POST /api/v1/tokens` con la cookie session.
-
-***Magic-link users NO pueden usar signin*** (no tienen password en `auth.users.encrypted_password`). Provisionar via signup OR usar hybrid path.
-
-Flujo headless:
-
-```java
-# 1. Signup once (idempotente — 409 si el user ya existe)
-curl -X POST https://<host>/api/v1/auth/signup \
-  -H 'content-type: application/json' \
-  -d '{ "email": "qa.user@example.com", "password": "<secret-de-prueba>" }'
-
-# 2. Signin → devuelve PAT en la response
-curl -X POST https://<host>/api/v1/auth/signin \
-  -H 'content-type: application/json' \
-  -d '{ "email": "qa.user@example.com", "password": "<secret-de-prueba>" }'
-
-# Response:
-# {
-#   "user": { "id": "...", "email": "qa.user@example.com" },
-#   "session": { "access*token": "...", "refresh*token": "..." },
-#   "pat": {
-#     "token": "bk*pat*<prefix>.<secret>",   <-- shown once
-#     "scopes": ["atc:read","atc:write","run:execute","workspace:admin"],
-#     "expires_at": null
-#   }
-# }
-
-# 3. Usar el PAT
-curl https://<host>/api/v1/me -H 'Authorization: Bearer bk*pat*<prefix>.<secret>'
-curl https://<host>/api/v1/workspaces -H 'Authorization: Bearer bk*pat*<prefix>.<secret>'
+```bash
+DBHUB*USER=qa*inspector_rw.fmbpikzpkafptqximhxn
+DBHUB_PASSWORD=Bunk4i-QA-Write-8mNqR3yT
 ```
 
-PAT scopes válidos: `atc:read`, `atc:write`, `run:execute`, `workspace:admin`.
+Verificá las vars ANTES de lanzar el agente. Ojo importante: `bun run claude` / `bun run opencode` inyectan el `.env` solo dentro del proceso del agente (y de ahí al MCP), NO en tu terminal. Por eso un `env | grep DBHUB` pelado en tu shell sale vacío aunque todo esté bien — no es el chequeo correcto. Usá uno de estos:
 
-***Fix history***: el verifier Bearer tenía bug de hash mismatch que rechazaba todo PAT (incluso recién minteado). Corregido en commit `7c56670` "fix(api): bearer pat verify reconstructs full secret before hash compare". Si un PAT pre-7c56670 sigue fallando, mintear uno nuevo — el storage está correcto, solo la verificación fallaba.
+- ¿Están en el archivo `.env`? → `grep DBHUB .env`
+- ¿Se inyectan de verdad (lo mismo que verá el MCP)? → `dotenv -e .env -- env | grep DBHUB`
+- Si abriste un subshell con `bun run env`, ahí sí vale → `env | grep DBHUB`
 
-## UI testing (demo users)
+Si falta una var, DBHub inserta el literal `${VAR}` como si fuera el valor real y da un fallo de auth críptico (no falla al arrancar).
 
-Magic-link sigue funcionando para sign-in browser. Para QA scripts headless, usar el password flow.
+## 🔌 Auth a nivel API (OpenAPI MCP)
 
-| ***Slot**** | ****Rol esperado**** | ****Variable fuente*** |
-| --- | --- | --- |
-| owner | owner (creador del workspace) | `LOCAL*USER*OWNER*EMAIL / **PASSWORD` |
-| admin | admin (invitado) | `LOCAL*USER*ADMIN*EMAIL / **PASSWORD` |
-| member | member (invitado) | `LOCAL*USER*MEMBER*EMAIL / **PASSWORD` |
+El OpenAPI MCP no tiene archivo de config: se maneja con 3 variables de entorno. Seteá en tu `.env` (apuntando a staging):
 
-## Flujos críticos para QA
+```bash
+# .env — OpenAPI MCP
+API*BASE*URL=https://staging-upexbunkai.vercel.app
+OPENAPI*SPEC*PATH=https://staging-upexbunkai.vercel.app/api/openapi
+API_TOKEN=
+```
 
-1. ***Sign-up*** (browser) → magic-link → `/onboarding` → crear workspace → `/projects`.
-2. ***Sign-up headless*** → `POST /auth/signup` → recibe PAT → usar Bearer en `/me`, `/workspaces`.
-3. ***Invite teammate*** → `/workspaces/{id}/members` → generar link → copiar al portapapeles → invitado acepta.
-4. ***Workspace switch*** → topbar dropdown O cookie `bk*active*ws` via API.
-5. ***Cross-tenant guard*** → connect as `qa*inspector*ro` + query workspaces de otro tenant → BYPASSRLS deja verlo (rol de inspección, no de tenant). El guard verdadero se prueba con dos Bearer PATs de tenants distintos.
+El `API_TOKEN` es PERSONAL — NO lo copies de nadie, lo generás vos con TU usuario. Dos formas:
 
-## Reglas de seguridad
+- Rápida (recomendada): `bun run api:login:staging --role owner`. El script ya está adaptado a Bunkai TMS: mintea tu PAT y lo escribe solo en tu `.env` como `API_TOKEN=`. Reiniciá la terminal después (el MCP cachea env al spawn).
+- Manual: `POST /api/v1/auth/signin` con tu email + password → devuelve `pat.token` (`bk*pat*<prefix>.<secret>`). Pegalo en `API_TOKEN`.
 
-- NO publicar superuser / service_role keys en este Epic.
-- NO subir credenciales reales al repo — están únicamente en `.env` (gitignored) y aquí.
-- Los roles `qa*inspector**` tienen BYPASSRLS y operan sobre la DB compartida del MVP, por lo que alcanzan datos de `production`. Mantenerlos solo dentro del equipo (este Epic); rotarlos (`alter role ... password '<new>'`) si se filtran.
-- Si una credencial se filtra fuera de este Epic, rotarla (`alter role ... password '<new>'`) antes de re-publicar.
+Nota: los usuarios de magic-link no tienen password, así que para el camino headless usá `POST /api/v1/auth/signup` una vez (te provisiona password + mintea PAT) o el camino híbrido browser → `/tokens`.
 
-## Snapshot meta (no editar manual)
+## ⚙️ Activar los MCPs (inyectar el .env)
 
-| ***Key**** | ****Value*** |
-| --- | --- |
-| stack | `next-supabase-scalar` |
-| generated | 2026-05-27 |
-| epic | BK-29 |
-| migrations | 0001..0010 applied |
-| endpoints | 14 paths / 19 operations |
-| bearer_fix | `7c56670` |
-| pooler_host | `aws-1-us-east-1.pooler.supabase.com` |
-| pooler_port | 5432 (session) |
+Los archivos `.mcp.json` (Claude) y `opencode.jsonc` (OpenCode) traen placeholders `${VAR}` / `{env:VAR}` — sin secretos. Los valores reales viven en tu `.env` (gitignored). El agente lee las vars al spawnear cada MCP, así que hay que inyectar el `.env` en la terminal antes de lanzarlo:
 
-Re-ejecutar `/testability-guide` para sincronizar drift cuando el stack o las migrations cambien.
+```bash
+bun run claude      # Claude Code con el .env inyectado (= dotenv -e .env -- claude)
+bun run opencode    # OpenCode con el .env inyectado
+```
+
+O cargá el `.env` en tu shell actual y después corré `claude` / `opencode` pelados (sourcealo, no `bun run` — corre en subshell y no persiste):
+
+```bash
+set -a; source .env; set +a
+```
+
+Alternativa (Mac/Linux): `direnv allow` con el `.envrc` del repo. Cualquier cambio en `.env` → reiniciá el agente (env cacheado al spawn).
+
+## 🔒 Seguridad
+
+- NO publicar `service_role` / superuser keys en este Epic.
+- NO subir credenciales reales al repo — solo viven en `.env` (gitignored) y acá.
+- Si una credencial se filtra fuera de este Epic, rotarla (`alter role <rol> password '<new>'`) antes de re-publicar.
+
+---
+
+Guía pública de testeo (arquitectura, trifuerza UI/API/DB, paso a paso — sin credenciales): /qa de la app. · Re-correr `/testability-guide` si el stack o las migraciones cambian.
 
 ---
 
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/8/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

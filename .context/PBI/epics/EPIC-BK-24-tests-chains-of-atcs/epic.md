@@ -3,7 +3,7 @@
 **Jira Key:** [BK-24](https://jira.upexgalaxy.com/browse/BK-24)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 4
+**Total Story Points:** 22
 
 ---
 
@@ -11,7 +11,7 @@
 
 ## Epic overview
 
-Tests are user-authored chains of ATCs (Atomic Test Components) that the QA Engineer assembles to validate a User Story end-to-end. Where an ATC is the reusable atomic building block (one validation), a Test is the orchestrated sequence — for example, "Test: Add-to-Cart from Empty State" chains the ATCs "open product page", "click add-to-cart", "verify cart counter increments". One ATC edit propagates instantly to every Test that uses it, which is the Bunkai differentiator preserved by this epic.
+Tests are user-authored chains of ATCs (Acceptance Test Cases) that the QA Engineer assembles to validate a User Story end-to-end. Where an ATC is the reusable atomic building block (one validation), a Test is the orchestrated sequence — for example, "Test: Add-to-Cart from Empty State" chains the ATCs "open product page", "click add-to-cart", "verify cart counter increments". One ATC edit propagates instantly to every Test that uses it, which is the Bunkai differentiator preserved by this epic.
 
 This epic establishes the Test entity, the transactional API to author and reorder Tests, the expanded read endpoint that returns the full ATC chain in one round-trip (consumed by the Run runner UI and AI executor agents alike), and the Realtime broadcast on chain reorder. After this epic closes, the design-partner can author a 7-ATC Test, see it expand correctly with all step + assertion detail, and reorder its chain via drag-and-drop — the prerequisite for Manual Runs (BK-006).
 
@@ -50,17 +50,17 @@ See `.context/SRS/functional-specs.md`.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-27](https://jira.upexgalaxy.com/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 1 | Medium | Shift-Left QA |
-| [BK-28](https://jira.upexgalaxy.com/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 1 | Medium | Backlog |
+| [BK-27](https://jira.upexgalaxy.com/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 8 | Medium | Ready For Dev |
+| [BK-28](https://jira.upexgalaxy.com/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 5 | Medium | Ready For Dev |
 | [BK-32](https://jira.upexgalaxy.com/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 1 | Medium | Backlog |
-| [BK-33](https://jira.upexgalaxy.com/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 1 | Medium | Backlog |
+| [BK-33](https://jira.upexgalaxy.com/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 8 | Medium | Ready For Dev |
 
 ---
 
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** master-sprint-4, mvp

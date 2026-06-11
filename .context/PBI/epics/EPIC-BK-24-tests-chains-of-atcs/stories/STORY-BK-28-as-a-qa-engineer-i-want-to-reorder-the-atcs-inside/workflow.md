@@ -1,6 +1,6 @@
 # BK-28 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
+> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
 
 ## User flow
 
@@ -11,8 +11,8 @@
 5. She clicks "Save".
 6. The system checks for conflicts — has anyone else reordered this same Test since Elena opened it?
 
-   - If yes: the save is blocked with a message showing the current order; Elena reviews and decides whether to keep her change or accept the teammate's.
-   - If no: the new order is committed.
+- If yes: the save is blocked with a message showing the current order; Elena reviews and decides whether to keep her change or accept the teammate's.
+- If no: the new order is committed.
 
 1. If the order Elena submitted is identical to what was there before, the system saves no change — no activity log entry, no last-modified bump.
 2. If the order actually changed, the activity log of her workspace shows the new chain alongside her name and a timestamp.

@@ -1,11 +1,12 @@
 # TMS-ATC Duplicate | Duplicate an ATC with steps and assertions
 
 **Jira Key:** [BK-23](https://jira.upexgalaxy.com/browse/BK-23)
-**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
+**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -28,10 +29,30 @@
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+
+---
+
+## Traceability
+
+### Story (1)
+
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(In Test)_
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/2/2026
+- **Updated:** 6/8/2026
 - **Reporter:** Ely
 - **Assignee:** Benjamin Segovia
 - **Labels:** atc, clone, mvp, wave-2

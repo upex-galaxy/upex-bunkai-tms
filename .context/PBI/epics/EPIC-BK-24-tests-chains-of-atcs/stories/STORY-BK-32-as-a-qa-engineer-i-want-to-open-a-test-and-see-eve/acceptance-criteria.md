@@ -1,8 +1,8 @@
 # BK-32 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
 
-```gherkin
+```
 Scenario: Open a populated Test and see every ATC expanded in chain order
   Given a Test named "Checkout - Guest Purchase" chains 3 ATCs in order: "Add item to cart", "Enter shipping address", "Complete payment"
   And "Add item to cart" has 2 steps and 1 assertion
@@ -12,7 +12,7 @@ Scenario: Open a populated Test and see every ATC expanded in chain order
   And a summary at the top reads "3 ATCs"
 ```
 
-```gherkin
+```
 Scenario: The expanded view is read-only
   Given I have opened the Test "Checkout - Guest Purchase" in the expanded view
   When I look for a way to change a step, add an assertion, or move an ATC up or down
@@ -20,7 +20,7 @@ Scenario: The expanded view is read-only
   And every ATC, step, and assertion is presented as read-only text
 ```
 
-```gherkin
+```
 Scenario: Empty-state Test with no ATCs yet
   Given a Test named "Refunds - Smoke" has been created but no ATCs have been chained into it
   When I open the Test
@@ -29,7 +29,7 @@ Scenario: Empty-state Test with no ATCs yet
   And no step or assertion sections are shown
 ```
 
-```gherkin
+```
 Scenario: Ordering guarantee holds for a longer chain
   Given a Test named "Onboarding - Full Flow" chains 5 ATCs whose running order is positions 1 through 5
   When I open the Test
@@ -37,7 +37,7 @@ Scenario: Ordering guarantee holds for a longer chain
   And the displayed position of each ATC matches the sequence it will execute in
 ```
 
-```gherkin
+```
 Scenario: Expanded view shows the latest saved version of a shared ATC
   Given the ATC "Enter shipping address" was edited to have 4 steps instead of 3
   And that ATC is chained inside the Test "Checkout - Guest Purchase"
@@ -46,7 +46,7 @@ Scenario: Expanded view shows the latest saved version of a shared ATC
   And no stale or pre-edit version of the steps is shown
 ```
 
-```gherkin
+```
 Scenario: Try to open a Test that no longer exists
   Given a Test I bookmarked was deleted by a teammate
   When I open the bookmarked Test

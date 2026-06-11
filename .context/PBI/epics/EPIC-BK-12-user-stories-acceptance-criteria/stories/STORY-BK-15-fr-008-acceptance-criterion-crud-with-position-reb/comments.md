@@ -42,5 +42,44 @@
 
 ---
 
+### Ely - 6/5/2026, 4:11:06 AM
+
+## Ready For QA — BK-15 Manage acceptance criteria under a user story
+
+***Staging:**** https://staging-upexbunkai.vercel.app  ·  ****PR:**** #14 (merged to staging)  ·  ****Deploy:*** READY
+
+### What shipped (as-built)
+
+Acceptance Criteria CRUD under a User Story, with stable gap-free ordering and a ready-to-test gate.
+
+- Open a project, hover a User Story in the Explorer sidebar, click the ***checklist icon*** (Manage acceptance criteria) to open the panel.
+- The panel: numbered ordered list, ***up/down arrows**** to reorder, ****edit**** (title + optional Markdown detail, 50 KB cap, sanitized), ****remove**** (soft-archive), an ****add**** form, and a ****Mark ready to test / Back to draft*** toggle.
+- A ***ready*** chip shows on the story row when it is ready*to*test.
+
+### Endpoints
+
+- `POST /api/v1/user-stories/{id}/acceptance-criteria` — add (optional `position`, else tail).
+- `GET  /api/v1/user-stories/{id}/acceptance-criteria` — list active, in position order.
+- `GET/PATCH/DELETE /api/v1/acceptance-criteria/{id}` — read / edit (title/detail) or reorder (`position`) / soft-archive.
+- `PATCH /api/v1/user-stories/{id}` `{status}` — ready-to-test gate (409 `ac*required*for*ready*to_test`).
+
+### AC verification guide
+
+1. ***Add → first***: on a story with no criteria, add one → it is #1.
+2. ***Insert preserves order***: with A,B,C, add and move so X sits between A and B → A,X,B,C.
+3. ***Reorder, no gaps***: move the last to the top → it becomes #1 and the rest renumber 2,3,… with no gaps.
+4. ***Gate***: on a story with zero criteria, click "Mark ready to test" → blocked, amber message "at least one acceptance criterion".
+5. ***Title min length***: add with a 2-char title → rejected ("at least 3 characters").
+6. ***Remove last reverts***: mark a story (with exactly one criterion) ready to test, then remove that criterion → the story drops back to draft and tells you it needs ≥1 criterion.
+
+### Notes for QA
+
+- Reordering is atomic and gap-free; archived criteria leave no holes.
+- Markdown detail renders through the BK-16 sanitized path (no raw HTML execution) — XSS payloads in detail should render inert.
+- 403 vs 404: a workspace outsider sees 404; an in-workspace viewer (read-only) sees 403 on writes.
+- The ready-to-test gate is race-safe (serialized at the DB level).
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

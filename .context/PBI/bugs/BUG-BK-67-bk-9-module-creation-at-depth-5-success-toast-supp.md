@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-67](https://jira.upexgalaxy.com/browse/BK-67)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -11,6 +11,12 @@
 ## Description
 
 ACTUAL: When a module is successfully created at depth 5 or 6, only toast.warning('This module is nested deeply — consider keeping the tree shallow.') fires. No 'Module created' success confirmation is shown to the user. CODE: create-module-form.tsx lines 116-121 uses if/else: warning branch suppresses success branch. USER IMPACT: User is left uncertain whether the module was created — they see only an advisory, not a confirmation. MODULE IS actually created (HTTP 201), but the user receives no positive feedback. EXPECTED: Both a success toast ('Module created') AND the deep-nesting advisory should fire. REPRO: API POST /api/v1/projects/{id}/modules with parent at depth 4 → 201 + warning. Observe UI shows only warning toast. ENVIRONMENT: staging | RELATED: BK-9
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
@@ -23,7 +29,7 @@ ACTUAL: When a module is successfully created at depth 5 or 6, only toast.warnin
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/10/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** bk-9, depth-warning, toast, ux

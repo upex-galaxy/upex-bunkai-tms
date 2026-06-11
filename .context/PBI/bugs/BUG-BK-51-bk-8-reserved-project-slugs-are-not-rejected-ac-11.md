@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-51](https://jira.upexgalaxy.com/browse/BK-51)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -47,6 +47,12 @@ Reserved slugs collide with Next.js route segments under `app/(app)/projects/[pr
 ## Evidence
 
 `.context/PBI/epics/EPIC-BK-7-project-module-hierarchy/stories/STORY-BK-8-create-a-project-inside-a-workspace/test-session-memory.md` (T09 row) + DB rows.
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

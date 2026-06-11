@@ -5,7 +5,7 @@
 # ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions)
 
 **Jira Key:** [BK-18](https://jira.upexgalaxy.com/browse/BK-18)
-**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
+**Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Priority:** Media
 **Story Points:** -
 **Status:** Shift-Left QA
@@ -16,7 +16,7 @@
 
 **Source spec:** FR-010a — superficie de servidor de ATC (REST)
 
-Como ingeniero de automatización o consumidor de la API, quiero una REST API para crear y editar ATCs (Atomic Test Components) con sus steps y assertions en una sola llamada transaccional, para que pueda componer bloques de prueba reutilizables desde herramientas de CLI, scripts y el cliente de UI.
+Como ingeniero de automatización o consumidor de la API, quiero una REST API para crear y editar ATCs (Acceptance Test Cases) con sus steps y assertions en una sola llamada transaccional, para que pueda componer bloques de prueba reutilizables desde herramientas de CLI, scripts y el cliente de UI.
 
 Implementa **FR-010a** — solo superficie de servidor. El formulario de UI es BK-19, la composición de Test posterior es EPIC-BK-5.
 

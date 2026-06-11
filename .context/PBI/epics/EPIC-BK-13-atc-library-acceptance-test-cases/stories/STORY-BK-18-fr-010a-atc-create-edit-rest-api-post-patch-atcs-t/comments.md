@@ -52,7 +52,7 @@
 # ATC create + edit REST API (POST/PATCH /atcs, transactional steps + assertions)
 
 ***Jira Key:*** [BK-18](https://jira.upexgalaxy.com/browse/BK-18)
-***Epic:*** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Atomic Test Components))
+***Epic:*** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 ***Priority:*** Medium
 ***Story Points:*** -
 ***Status:*** Shift-Left QA
@@ -63,7 +63,7 @@
 
 ******Source spec:**** FR-010a — ATC server surface (REST)
 
-As an automation engineer or API consumer, I want a REST API to create and edit ATCs (Atomic Test Components) with their steps and assertions in a single transactional call, so that I can compose reusable test building blocks from CLI tools, scripts, and the UI client.
+As an automation engineer or API consumer, I want a REST API to create and edit ATCs (Acceptance Test Cases) with their steps and assertions in a single transactional call, so that I can compose reusable test building blocks from CLI tools, scripts, and the UI client.
 
 Implements ***FR-010a*** — server surface only. UI form is [https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19), downstream Test composition is EPIC-BK-5.
 
@@ -497,6 +497,102 @@ A no-op is not an error condition. This makes PATCH idempotent by definition.
 | ***Transactional Rollback***  | Cross-entity validation before transaction, writes inside. On failure, zero DML runs.  | Integration test must assert row counts before/after across all 4 tables.  |
 | ***Error Envelope***  | `ApiError` with semantic `error.code`, all returning 422.  | Assertions must validate `error.code`, not just HTTP status code.  |
 | ***No-op PATCH***  | Empty body → 200, skip RPC and event emission.  | Single outline verifying version unchanged and `event_log` not written to.  |
+
+---
+
+### Automation for Jira - 6/8/2026, 6:15:07 AM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 6/8/2026, 6:16:48 AM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 6/8/2026, 6:19:58 AM
+
+## 🧪 Listo para QA — BK-18 (TMS-ATC API)
+
+Desplegado en ***staging***: https://staging-upexbunkai.vercel.app
+
+***PR:**** #27 (merge commit `54fcd8b`) · ****Branch:*** `feature/BK-18-atc-create-edit-api` (mergeada y borrada)
+
+### Qué se entregó
+
+- `POST /api/v1/atcs` — crea un ATC con steps + assertions en una sola llamada transaccional.
+- `PATCH /api/v1/atcs/{id}` — edición estilo PUT (reemplazo total de steps/assertions).
+
+### Cómo probar
+
+- ***Auth:*** Personal Access Token (PAT) con scope `atc:write` en header `Authorization: Bearer bk*pat*...`. La sesión por cookie también funciona. Un token con solo `atc:read` → 403.
+- ***Slug:*** `{module-slug}/atc-{8 hex}` — inmutable tras crear (no cambia al renombrar).
+- ***PATCH optimistic locking:*** header `If-Match: <version>` → 409 si la versión no coincide. Body vacío `{}` = no-op 200 (sin incremento de versión, sin evento).
+- ***Inmutables en PATCH:*** `user*story*id`, `module_id`, `slug`.
+
+### Escenarios del ATP (todos verificados a nivel RPC contra la DB real; ver la matriz en el PR #27)
+
+- Crear con payload válido → 201, slug con regex, version 1, steps + assertions, evento `atc.created`.
+- AC que pertenece a otra User Story → 422 `ac*outside*user_story` (sin filas insertadas — rollback transaccional).
+- Module fuera del subtree del project de la US → 422 `module*outside*project_subtree`.
+- Posiciones de steps inválidas (`[1,3,2]` / `[2,3,4]`) → 422 `steps*position*invalid` (lista las posiciones infractoras).
+- PATCH a un id inexistente → 404.
+- Conflicto de versión (If-Match viejo) → 409 `conflict` (incluye la versión actual).
+- Sin auth / PAT inválido → 401. Scope insuficiente (`atc:read`) → 403.
+
+### Notas
+
+- Los eventos van a la tabla `activity*log` (`atc.created` / `atc.updated`); `affected*test*ids` = `[]` en el MVP (la tabla `test*steps` llega con EPIC-BK-5).
+- Fuera de alcance (otras stories): GET/search (BK-20), duplicar (BK-23), UI (BK-19), reporte de uso (BK-22).
+- Contrato completo en OpenAPI: `/api/openapi` (paths `/api/v1/atcs` y `/api/v1/atcs/{id}`).
+
+---
+
+### Ely - 6/8/2026, 9:11:10 AM
+
+## QA Testing Complete — BK-18
+
+***Environment******:*** Staging (`https://staging-upexbunkai.vercel.app/api/v1`)
+***Result******:*** FAILED (12/13 TCs — 92%)
+***Surfaces******:*** API + DB (no UI — UI is BK-19)
+
+### Test data used
+
+- Project "Openapi Test Project" · User story FSX-45 (`b1f68acf-...`) · Modules "Credit Cards" / "Billing"
+
+### Verified behaviors
+
+- Happy POST `/atcs` → 201, version 1, slug valid, DB rows + `atc.created` event — VERIFIED
+- Authorization (401 no-auth, 403 missing `atc:write` scope, 401 invalid bearer) — VERIFIED
+- Anchoring moat: cross-US AC → 422 `ac*outside*user*story` with rollback; cross-project module → 422 `module*outside*project*subtree` — VERIFIED
+- Step-position validation (`[1,3,2]`, `[2,3,4]` → 422 `steps*position*invalid`) — VERIFIED
+- Optimistic-lock conflict: stale `If-Match` → 409 with `current_version` — VERIFIED
+- Boundary validation (short title, empty steps → 422) — VERIFIED
+- Transactional integrity: all rollbacks left zero DB residue; slug-uniqueness constraint present; cleanup cascaded with zero orphans — VERIFIED
+
+### Failed verification
+
+- ***Happy-path PATCH ****`/atcs/{id}`**** (AC******:****** "PATCH returns 200 with version 2") — FAILED***
+
+### Defect
+
+- ***BK-96*** — ATC Library: ATC PATCH API: Happy-path PATCH /atcs/{id} returns 412 instead of 200 though the edit commits (Severity Major, non-blocking).
+
+***Verdict******:*** FAILED. Recommend NOT QA Sign-Off until BK-96 is fixed and the H2 happy-path PATCH re-runs green. The 12 passing scenarios remain eligible for ROI evaluation.
+
+***Artifacts******:*** ATP BK-94 · ATR BK-95 · Defect BK-96
+
+---
+
+### Ely - 6/10/2026, 6:48:13 PM
+
+## ✅ Blocker no longer applies — story resumed
+
+This story was blocked in relation to BK-96, which is already ***Closed*** — no open defect blocks this story anymore.
+
+This story has been moved back to ***In Test*** so testing can resume. Please continue the story run.
 
 ---
 

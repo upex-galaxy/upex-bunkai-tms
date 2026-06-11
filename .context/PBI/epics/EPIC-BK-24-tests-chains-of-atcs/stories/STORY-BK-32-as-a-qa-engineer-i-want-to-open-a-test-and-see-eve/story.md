@@ -6,6 +6,7 @@
 **Status:** Backlog
 **Priority:** Medium
 **Story Points:** 1
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -33,20 +34,32 @@
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+
+---
+
 ## Traceability
 
 ### Story (1)
 
-- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Shift-Left QA)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Dev)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 6/1/2026
+- **Updated:** 6/9/2026
 - **Reporter:** Ely
-- **Assignee:** Benjamin Segovia
+- **Assignee:** Unassigned
 
 ---
 
