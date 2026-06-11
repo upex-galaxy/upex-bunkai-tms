@@ -3,7 +3,7 @@
 **Jira Key:** [BK-88](https://jira.upexgalaxy.com/browse/BK-88)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
 **Story Points:** 5
 
@@ -70,7 +70,7 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/11/2026
 - **Reporter:** Ely
 - **Assignee:** Carlos Alberto Chiavassa
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed

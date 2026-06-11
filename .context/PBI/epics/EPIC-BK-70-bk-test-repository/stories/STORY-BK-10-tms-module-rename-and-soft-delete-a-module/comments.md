@@ -344,5 +344,21 @@ ATP and ATR posted as comments on this story (jira-native modality — fields no
 
 ---
 
+### Ely - 6/11/2026, 9:13:21 AM
+
+## ✅ Blocking defect resolved — story resumed
+
+The defect behind TC-I04 (the only real FAIL in your 25/28 run) is fixed and verifiable:
+
+| Defect | Resolution |
+| --- | --- |
+| BK-93 — PAT bearer rejected on module/workspace endpoints (401) | Closed as duplicate of BK-84. BK-84 was fixed by the unified auth gateway (ADR-0001) and live-verified on staging 2026-06-10 with an 8-route matrix including module and workspace endpoints — 0×401. BK-84 is ***Ready For QA***. |
+
+This story has been moved back to ***In Test*** so testing can resume. Please re-run TC-I04 (PAT bearer on PATCH/DELETE module endpoints) and continue the story run.
+
+TC-I01 (dev DB injection) and TC-I03 (search endpoint not yet deployed) remain not-testable as you recorded — they are not blockers for this story.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

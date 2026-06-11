@@ -3,7 +3,7 @@
 **Jira Key:** [BK-10](https://jira.upexgalaxy.com/browse/BK-10)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** BLOCKED
+**Status:** In Test
 **Priority:** Medium
 **Story Points:** 2
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -54,7 +54,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/11/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** hierarchy, mvp, shift-left-2026-06-01, shift-left-reviewed, wave-1
