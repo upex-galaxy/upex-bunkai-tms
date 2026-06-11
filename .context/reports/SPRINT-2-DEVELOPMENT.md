@@ -27,7 +27,7 @@
 
 | # | Ticket | Type | Title | Priority | Owner | Impl Plan | PR | Status |
 | - | ------ | ---- | ----- | -------- | ----- | --------- | -- | ------ |
-| — | — | — | (none in flight — Waves 1+2 complete; next: Wave 3 BK-51/52/53/67 + tech-debt trio) | — | — | — | — | — |
+| — | — | — | (none in flight — ALL bug waves complete. Next: BK-97 improvement (story-sized, needs Stage 1 planning session) + story frontier BK-3/BK-20/BK-22/BK-23) | — | — | — | — | — |
 
 ### Queue — Wave 1 CRITICAL bugs (build in this order)
 
@@ -67,6 +67,8 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 | BK-58 | Consolidate remote Supabase migration ledger (0014 ×3) | Ely | #35 | 2026-06-10 | 2026-06-10 | — | Ready For QA, root_cause=Config/Env Error, fix=Bugfix. FULL ledger normalization (user-ratified): deleted 2 amendment rows, renamed 0014/0015/0016/0021 rows to file basenames, reset 0014 statements to final file content, backfilled 0019/0020 (synthetic versions 20260607000019/20). Post-repair: 22 rows 1:1 with repo. Convention + repair log in supabase/migrations/README.md. |
 | BK-51 + BK-52 + BK-53 | Project slug integrity trio (reserved slugs, workspace scoping, Unicode names) | Ely | #36 | 2026-06-10 | 2026-06-10 | — | All 3 Ready For QA, root_cause=Code Error, fix=Bugfix, assignee Ely (reporter). BK-51: AC-11 18-word list in lib/projects/validation.ts, 422 slug_reserved on FINAL slug + ratified UI copy. BK-52: resolveActiveWorkspaceId helper + workspace_id filter in 4 resolution sites + 3 inline copies consolidated (URL shape stays /projects/{slug}, ws-scoped URLs deferred as ADR candidate). BK-53: hasAlphanumeric Unicode + slugifyWithFallback (fnv1a32 of trimmed NFKC name) in projects/modules routes + UI previews. 227/227 tests. Staging smoke zero-residue: api/Settings! → 422 slug_reserved; CJK name passes guards (422 only on oversized description); page + /me regression 200. |
 | BK-57 + BK-59 + BK-67 | Module mutations hardening (atomic PATCH contract, activity_log audit, create toast) | Ely | #37 | 2026-06-10 | 2026-06-10 | — | All 3 Ready For QA, root_cause=Code Error, fix=Bugfix; assignees: BK-57/59 Ely, BK-67 Andrés (reporters). BK-57: modulePatchShapeError helper, 422 combined_update_and_move (REJECT ratified over atomic RPC; OpenAPI exclusivity documented). BK-59: migration 0023 re-creates the 3 module RPCs with in-function audit inserts (module.renamed/description_updated/moved/archived, actor=auth.uid(), no-ops silent; taxonomy in events.md; module CREATE out of scope). BK-67: moduleCreateToasts — success always first, warning additive. 237/237 tests. Staging smoke: combined PATCH → 422; rename round-trip → 2 module.renamed audit rows with actor (module restored). |
+| BK-68 | Create Module 1-char names (client min-length) | Ely | — (already fixed by df47918, 2026-06-08) | 2026-06-08 | 2026-06-08 | — | **Already-fixed case**: reported 6/6, fixed 6/8 by df47918 (isValid >= 2 mirrors server MIN_NAME_LENGTH). Verified on current staging code. Ready For QA, fields set, fix-doc posted, assignee Andrés (reporter). |
+| BK-69 | Module name stores raw HTML tags (improvement) | Ely | #38 | 2026-06-10 | 2026-06-10 | — | Ready For QA, assignee Andrés (reporter). stripHtmlTags (tag-shape anchored — 'a < b' survives) before validation in module create + rename + both UI slug previews. 243/243 tests. Staging smoke: PATCH name '<b>Payments</b>' → stored 'Payments'. |
 
 ### Blocked
 
@@ -82,9 +84,10 @@ Unblocked 2026-06-10 (Task 0): BK-6 (BK-83 fixed), BK-16 (BK-99/100 fixed), BK-1
 | ------ | ----- |
 | Total Sprint Tickets | 62 |
 | Open bugs at sprint start | 20 (+2 improvements) |
-| Bugs fixed | 0 |
-| Stories merged this sprint | 0 |
-| Staging-deployed | 0 |
+| Bugs fixed (Ready For QA) | 16 — Waves 1–4 (BK-84, 83, 99, 100, 60, 61, 62, 58, 51, 52, 53, 57, 59, 67, 68, 69) + 5 dup-closed (92, 93, 54, 55, 56) |
+| Remaining dev-side | 1 — BK-97 (improvement, story-sized, deferred to planning session) |
+| Stories merged this sprint | 0 (4 unblocked back to In Test: BK-6, BK-16, BK-18; BK-10 QA-side) |
+| Staging-deployed | PRs #32–#38 |
 | Prod-deployed | 0 |
 
 ## Operational Notes (carry-over from Sprint 1 — still honor)
@@ -99,6 +102,11 @@ Unblocked 2026-06-10 (Task 0): BK-6 (BK-83 fixed), BK-16 (BK-99/100 fixed), BK-1
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-10 — Waves 3+4 complete (BK-58 #35, BK-51/52/53 #36, BK-57/59/67 #37, BK-69 #38, BK-68 already-fixed)
+- Root causes for all 7 Wave-3 bugs confirmed via a 14-agent investigate+adversarial-verify workflow before any code. 4 product decisions ratified by Tech Lead (BK-52 active-ws scoping, BK-53 hash fallback, BK-57 reject-combined, BK-58 full ledger normalization).
+- All remaining open bugs/improvements except BK-97 are now Ready For QA with fields, fix-doc comments, and reporter-assignees. BK-97 deferred (story-sized, needs its own Stage 1).
+- FINDING for Tech Lead: an "Atomic Test Components" → "Acceptance Test Cases" terminology rewrite (app/layout.tsx + PRD/business docs) kept reappearing in the working tree during agent runs; reverted 3× and excluded from all PRs. Jira epic BK-13 already uses "Acceptance Test Cases" — codebase/doc alignment needs an explicit decision + dedicated chore.
 
 ### 2026-06-10 — Task 0: unblocked BK-6 / BK-16 / BK-18
 - Verified live: BK-83, BK-99, BK-100 all Ready For QA; BK-96 Closed; PRs #32/#33 merged on origin/staging.
