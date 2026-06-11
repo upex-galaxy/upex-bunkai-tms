@@ -29,7 +29,7 @@
 - **US 3.3**: As a Project member, I want to import User Stories from Jira (one-way pull in MVP) so I don't re-type what already exists in Jira.
 - **US 3.4**: As a Project member, I want to write US and AC in Markdown so the content is rich and AI-readable.
 
-### EPIC-BK-004 — ATC Library (Atomic Test Components)
+### EPIC-BK-004 — ATC Library (Acceptance Test Cases)
 
 - **US 4.1**: As a QA, I want to create an ATC anchored to a User Story and at least one AC so every ATC has provenance.
 - **US 4.2**: As a QA, I want each ATC to have: title, module, layer (UI / API / Unit), ordered steps, assertions, tags so it is reusable across tests.

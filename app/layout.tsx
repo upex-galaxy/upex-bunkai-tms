@@ -25,7 +25,7 @@ const notoSerifJP = Noto_Serif_JP({
 export const metadata: Metadata = {
   title: 'Bunkai — Test Management System',
   description:
-    'Open-core Test Management System. ATCs (Atomic Test Components), modular tests, full traceability — built for engineering teams that take QA seriously.',
+    'Open-core Test Management System. ATCs (Acceptance Test Cases), modular tests, full traceability — built for engineering teams that take QA seriously.',
   metadataBase: new URL('http://localhost:3000'),
 };
 

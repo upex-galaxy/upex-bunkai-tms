@@ -25,7 +25,7 @@ Bunkai is a TMS whose **data model enforces structure** so good QA is the path o
 
 Core MVP features (the 30% that differentiates Bunkai from "another CRUD of test cases"):
 
-- **ATCs (Atomic Test Components)** — reusable, atomic units of verification, mandatory-anchored to a User Story + Acceptance Criterion, scoped to a Module. The library of ATCs becomes the team's most valuable artifact.
+- **ATCs (Acceptance Test Cases)** — reusable, atomic units of verification, mandatory-anchored to a User Story + Acceptance Criterion, scoped to a Module. The library of ATCs becomes the team's most valuable artifact.
 - **Tests = ordered chains of ATCs**, not free-form step lists. Edit ATC-001 once; every test that uses it updates. Duplication is structurally impossible.
 - **Workspace → Project → Module hierarchy** for multi-tenant data and feature partitioning. Module is a first-class entity with its own metrics, not a folder name.
 - **Tree view (file-explorer style) + Table view** as equal-citizen views over the same data. (Mind-map / graph view ships Phase 2; 3D toggle Phase 3.)

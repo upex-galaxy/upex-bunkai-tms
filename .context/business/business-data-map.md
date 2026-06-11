@@ -20,7 +20,7 @@
 
 ### What does this system do?
 
-Bunkai is a **Test Management System (TMS)** built around a single non-negotiable structural rule: **every ATC (Atomic Test Component) must be anchored to a User Story AND at least one Acceptance Criterion**. Test cases are not free-form scripts — they are **ordered chains of reusable ATCs**, so editing one ATC propagates to every Test that chains it ("one-edit-many-tests"). Bugs live inside the test cycle (anchored to Module + ATC + Run), not delegated to Jira. The same data model serves three execution modes — **manual**, **agentic** (AI), **automated** (CI/CD adapters in Phase 2) — producing runs that aggregate transparently in dashboards.
+Bunkai is a **Test Management System (TMS)** built around a single non-negotiable structural rule: **every ATC (Acceptance Test Case) must be anchored to a User Story AND at least one Acceptance Criterion**. Test cases are not free-form scripts — they are **ordered chains of reusable ATCs**, so editing one ATC propagates to every Test that chains it ("one-edit-many-tests"). Bugs live inside the test cycle (anchored to Module + ATC + Run), not delegated to Jira. The same data model serves three execution modes — **manual**, **agentic** (AI), **automated** (CI/CD adapters in Phase 2) — producing runs that aggregate transparently in dashboards.
 
 Two editions ship from one codebase: **Bunkai Cloud** (Supabase-hosted) for the MVP, and **Bunkai Community** (self-hosted Docker Compose, Phase 2). The data model is identical across editions; only the infrastructure substrate differs.
 
@@ -86,7 +86,7 @@ Two editions ship from one codebase: **Bunkai Cloud** (Supabase-hosted) for the 
        ▼                            ▼
 ┌──────────────────────────────────────────────────┐
 │                      ATCS                        │
-│  (Atomic Test Components — anchored to US + AC)  │
+│  (Acceptance Test Cases — anchored to US + AC)   │
 │  module_id, user_story_id, layer, slug, version  │
 └─────┬──────────────┬──────────────┬──────────────┘
       │              │              │
