@@ -216,6 +216,13 @@ Phase 4 is now an **orchestrator** — it delegates to four standalone commands 
 - Output: `.context/master-implementation-plan.md`.
 - This step is **recommended but optional**. Skip it if the user has not yet defined product scope (e.g. greenfield where only the constitution exists). Re-invoke later, after `/product-management` has seeded the backlog, to align the master plan with the planned epics.
 
+**Step 6 — Domain glossary** (canonical domain terminology — the single vocabulary every later artifact must speak):
+
+- Runs **once**. Seed it from the PRD (personas, product terms), the SRS, the business maps (Steps 1–3), and existing ADRs.
+- Output: `.context/business/domain-glossary.md` with this section structure: §0 read-first clarification of the most-confused term (optional), §1 Core acronyms table (term → expansion → one-line definition), §2 Methodology terms, §3 Product entities (short forms pointing to `business-data-map.md` for detail), §4 Anti-glossary (banned/ambiguous terms → correct replacement → why), §5 Change protocol (glossary updated FIRST in the same PR; glossary wins doc conflicts; Jira content must match it).
+- Hand-maintained and **append-only** afterwards (like ADRs) — re-running `/project-foundation` NEVER regenerates it. If the file already exists, skip this step with a note.
+- Every domain term used later in Jira content, docs, code comments, and UI copy must match this glossary.
+
 **Final Phase 4 outputs:**
 
 - `.context/business/business-data-map.md`
@@ -223,6 +230,7 @@ Phase 4 is now an **orchestrator** — it delegates to four standalone commands 
 - `.context/business/business-api-map.md`
 - `.context/business/project-dev-guide.md`
 - `.context/master-implementation-plan.md` (if Step 5 ran)
+- `.context/business/domain-glossary.md`
 
 On successful completion of Phase 4 (Verification checklist from `plan.md` passes), the orchestrator runs Archive per `agentic-dev-core/references/session-management.md` §8 — moves `.session/project-foundation/` to `.session/.archive/<YYYY-MM-DD>-project-foundation-project/` and calls `mem_session_summary` with the archive path included so future `mem_search` calls can navigate back.
 
