@@ -3,7 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { moduleNameError } from '@lib/modules/path';
-import { modulePatchShapeError } from '@lib/modules/validation';
+import { modulePatchShapeError, stripHtmlTags } from '@lib/modules/validation';
 import { slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -71,11 +71,14 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   let trimmedName: string | null = null;
   let slug: string | null = null;
   if (hasName) {
-    const reason = moduleNameError(body.name ?? '');
+    // Names are plain text: strip HTML tags before validating/persisting
+    // (BK-69), so a tag-only rename collapses to '' and fails the name rules.
+    const cleanName = stripHtmlTags(body.name ?? '');
+    const reason = moduleNameError(cleanName);
     if (reason) {
       throw new ApiError('validation_failed', nameMessage(reason), { details: { reason } });
     }
-    trimmedName = (body.name ?? '').trim();
+    trimmedName = cleanName.trim();
     // Derive the new path segment with a deterministic hash fallback (BK-53):
     // CJK/Cyrillic names get `module-<hash>` instead of failing on an empty
     // derived slug. moduleNameError above already accepts Unicode letters.

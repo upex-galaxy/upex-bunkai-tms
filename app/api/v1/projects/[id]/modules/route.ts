@@ -3,6 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { buildModulePath, computeDepth, MAX_MODULE_DEPTH, nextPosition } from '@lib/modules/path';
+import { stripHtmlTags } from '@lib/modules/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
 
@@ -43,7 +44,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   });
   const { name, description, parent_module_id } = CreateBodySchema.parse(payload);
 
-  const trimmedName = name.trim();
+  // Names are plain text: strip HTML tags before validating/persisting (BK-69)
+  // so '<script>alert(1)</script>' stores as 'alert(1)'; tag-only input then
+  // fails the normal name rules below.
+  const trimmedName = stripHtmlTags(name).trim();
   if (trimmedName.length < MIN_NAME_LENGTH) {
     throw new ApiError('validation_failed', 'Name must be at least 2 characters.', {
       details: { reason: 'name_too_short' },

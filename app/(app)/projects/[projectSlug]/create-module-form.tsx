@@ -3,7 +3,7 @@
 import { MarkdownEditor } from '@components/markdown/markdown-editor';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { moduleCreateToasts } from '@lib/modules/validation';
+import { moduleCreateToasts, stripHtmlTags } from '@lib/modules/validation';
 import { slugifyWithFallback } from '@lib/utils/slug';
 import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -88,7 +88,7 @@ export function CreateModuleForm({
   // Live slug preview uses the SAME helper (and prefix/minLength) the server
   // derives the path segment with, so what the user sees is what gets stored —
   // CJK or Cyrillic names preview the `module-<hash>` fallback (BK-53).
-  const slugPreview = name.trim() ? slugifyWithFallback(name, 'module', 1) : '';
+  const slugPreview = name.trim() ? slugifyWithFallback(stripHtmlTags(name), 'module', 1) : '';
   // Mirror the server minimum (>= 2) so the button doesn't enable for input the
   // API will reject — avoids a submit-and-fail round-trip.
   const trimmedName = name.trim();
