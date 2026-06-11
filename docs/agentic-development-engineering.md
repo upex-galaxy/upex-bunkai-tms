@@ -282,10 +282,10 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  MODULE / EPIC LEVEL  (Module = Epic, 1:1)                  │
-│  Module context · Roadmap of stories · Cross-story decisions │
+│  Epic overview · Story table · Epic-level Jira fields        │
 │  Example: .context/PBI/epics/EPIC-<KEY>-<slug>/              │
-│  module-context.md catalogues the routes, DB tables, and     │
-│  shared types for that epic.                                 │
+│  epic.md carries summary, description, and the story table;  │
+│  feature-*.md files mirror epic-level Jira fields.           │
 └──────────────────────────────────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -302,9 +302,6 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 
 ```
 .context/
-├── _framework/                       # Framework infrastructure
-│   └── skill-registry.md            #   Compact-rules cache    (scripts/build-skill-registry.ts)
-│
 ├── PRD/                              # Product Requirements (/project-foundation Phase 2)
 │   ├── executive-summary.md         #   Problem, KPIs, MVP metrics
 │   ├── personas.md                  #   Target users, JTBD
@@ -332,28 +329,24 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │
 ├── master-implementation-plan.md     # High-level roadmap                (/master-implementation-plan)
 │
-└── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1)
-    ├── epic-tree.md                 #   [SYNC] master index
-    └── epics/EPIC-<KEY>-<slug>/
-        ├── epic.md                  #   [SYNC]
-        ├── feature-implementation-plan.md  # [SYNC ← Jira field / stub]
-        ├── feature-test-plan.md     #   [SYNC ← Jira field / stub]
-        ├── module-context.md        #   Routes, DB tables, shared types (non-Jira)
-        ├── ROADMAP.md               #   Stories + dev status
-        ├── PROGRESS.md              #   Current progress
-        ├── SESSION-PROMPT.md        #   @-loadable session resume
-        └── stories/STORY-<KEY>-<slug>/
-            ├── story.md             #   [SYNC]
-            ├── acceptance-criteria.md  # AC                  (non-Jira)
-            ├── scope.md             #   In-scope
-            ├── out-of-scope.md      #   Out-of-scope
-            ├── business-rules.md    #   Domain rules
-            ├── workflow.md          #   Flow / sequence
-            ├── implementation-plan.md  # Plan               (/sprint-development Stage 1)
-            ├── comments.md          #   [SYNC, --include-comments]
-            ├── context.md           #   Session context     (non-Jira)
-            ├── progress.md          #   Story progress       (non-Jira)
-            └── evidence/            #   Screenshots, logs   (gitignored)
+└── PBI/                              # Jira-synced cache (Module = Epic, 1:1; Jira = source of truth)
+    ├── epic-tree.md                 #   [SYNC] master index: epics → stories (+points/status)
+    ├── epics/EPIC-<KEY>-<slug>/
+    │   ├── epic.md                  #   [SYNC]
+    │   ├── feature-implementation-plan.md  # [SYNC ← Jira field / stub]
+    │   ├── feature-test-plan.md     #   [SYNC ← Jira field / stub]
+    │   └── stories/STORY-<KEY>-<slug>/
+    │       ├── story.md             #   [SYNC]
+    │       ├── acceptance-criteria.md  # [SYNC ← Jira field]
+    │       ├── scope.md / out-of-scope.md / business-rules.md / workflow.md  # [SYNC ← Jira fields]
+    │       ├── implementation-plan.md  # [SYNC ← Jira field] (/sprint-development Stage 1 authors it Jira-first)
+    │       ├── acceptance-test-plan.md / acceptance-test-results.md  # [SYNC ← ATP / ATR fields]
+    │       ├── comments.md          #   [SYNC, --include-comments]
+    │       ├── defects/             #   [SYNC] linked defects, auto-nested
+    │       ├── context.md           #   Session context     (non-Jira, optional)
+    │       └── evidence/            #   Screenshots, logs   (gitignored)
+    ├── bugs/BUG-<KEY>-<slug>.md     #   [SYNC] flat file (work_types registry: coverable=false, content=single)
+    └── tech-stories/ tests/ improvements/  # [SYNC] other work types per .agents/jira-required.yaml
 ```
 
 The `PBI/` tree is owned by `scripts/sync-jira-issues.ts`: Jira is the source of truth and the local `[SYNC]` `.md` files are a read-only cache materialized by `bun run jira:sync-issues`. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read.

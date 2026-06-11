@@ -133,8 +133,8 @@ Example (same work, different register):
 | Design system (DESIGN.md)                   | "definir design system", "rebrandear el proyecto"                                               | `/design-system`                                   | `business/business-model.md`, `PRD/`                            | Write                                        |
 | Infra scaffolding (backend/frontend)        | "scaffolding del proyecto", "API routes setup"                                                  | `/project-bootstrap`                               | `SRS/infrastructure.md`, `DESIGN.md`                            | Code edit                                    |
 | QA testability page + credentials artifact  | "create QA guide page", "guía de testeabilidad", "credenciales para testing", "update /qa page" | `/testability-guide`                               | `app/qa/page.tsx` snapshot, `.agents/project.yaml`, `.mcp.json` | Read + Write + `[ISSUE_TRACKER_TOOL]`        |
-| Backlog / story refinement                  | "create epic", "refine acceptance criteria"                                                     | `/product-management`                              | `.context/PBI/{module}/ROADMAP.md`, `PRD/`                      | `[ISSUE_TRACKER_TOOL]`                       |
-| Sprint-development ticket                   | "implementar esta historia", "trabajar UPEX-XXX"                                                | `/sprint-development`                              | `.context/PBI/{module}/{TICKET}-*/`                             | `[ISSUE_TRACKER_TOOL]` + `[AUTOMATION_TOOL]` |
+| Backlog / story refinement                  | "create epic", "refine acceptance criteria"                                                     | `/product-management`                              | `.context/PBI/epic-tree.md`, `PRD/`                             | `[ISSUE_TRACKER_TOOL]`                       |
+| Sprint-development ticket                   | "implementar esta historia", "trabajar UPEX-XXX"                                                | `/sprint-development`                              | `.context/PBI/epics/EPIC-*/stories/STORY-{TICKET}-*/`           | `[ISSUE_TRACKER_TOOL]` + `[AUTOMATION_TOOL]` |
 | TDD slice / unit tests                      | "write unit tests", "TDD this function"                                                         | `/unit-testing`                                    | function under test, existing tests                             | Code edit                                    |
 | Sync AI memory                              | "sync memory", `/sync-ai-memory`                                                                | `/sync-ai-memory`                                  | `README.md`, this file, `.context/`, `package.json`             | Edit                                         |
 | Business map refresh                        | "refresh data map", `/business-*-map`                                                           | `/business-data-map` / `-feature-map` / `-api-map` | Supabase schema, backend code, PRD                              | Read + Write                                 |
@@ -145,11 +145,11 @@ Example (same work, different register):
 **Key paths**:
 
 - `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — system maps (refresh via `/business-*-map`)
+- `.context/business/domain-glossary.md` — canonical domain terminology (ATC = Acceptance Test Case, KATA, IQL, TMS entities). Any domain term in Jira content, docs, or UI copy MUST match it; anti-glossary lists banned terms.
 - `.context/master-implementation-plan.md` — prioritized roadmap
 - `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`. NOT for bug fixes, local refactors, or naming tweaks.
 - `.context/reports/SPRINT-{N}-DEVELOPMENT.md` — cross-ticket dev tracker per sprint (generated/updated by `/sprint-development` batch mode)
-- `.context/PBI/{module}/` — module-level (ROADMAP, PROGRESS, SESSION-PROMPT)
-- `.context/PBI/{module}/{TICKET}-{title}/` — story-level (context.md, implementation-plan.md, evidence/)
+- `.context/PBI/` — Jira-synced cache (see §9). Epics/stories under `epics/`, plus `bugs/`, `tech-stories/`, `tests/`, `improvements/`, `epic-tree.md` index
 - `.agents/project.yaml` — `{{VAR}}` source-of-truth (load ONCE per session, cache)
 - `.agents/jira-fields.json` · `jira-workflows.json` · `jira-required.yaml` — Jira catalogs
 
@@ -277,27 +277,34 @@ Project values live in **`.agents/project.yaml`** — load once per session. NEV
 
 ## 9. LOCAL CONTEXT (PBI)
 
-Every story being developed → maintain local docs under `.context/PBI/`:
+`.context/PBI/` is the **Jira-synced cache** — Jira is the source of truth; the sync script (`jira:sync-issues`, READ `package.json`) re-materializes every file it owns. Hand-authored files (context.md, evidence/, shift-left-refinement.md) use names the sync never writes.
 
 ```
-.context/PBI/{module-name}/
-  module-context.md          # Module overview + shared context
-  ROADMAP.md                 # All stories + dev status
-  PROGRESS.md                # Current progress tracker
-  SESSION-PROMPT.md          # @-loadable session resume prompt
-  {TICKET-ID}-{brief-title}/
-    context.md               # ACs, data, session notes, open questions
-    implementation-plan.md   # Plan produced by /sprint-development
-    evidence/                # Screenshots, traces, logs (gitignored)
+.context/PBI/
+  epic-tree.md                       # Global index: epics → stories (+points/status)
+  epics/EPIC-{KEY}-{slug}/
+    epic.md                          # Summary, description, story table, metadata
+    feature-*.md                     # Epic-level rich-text fields (when non-empty)
+    stories/STORY-{KEY}-{slug}/
+      story.md                       # Index: overview, field manifest, traceability
+      acceptance-criteria.md, scope.md, business-rules.md, …   # One file per non-empty field
+      implementation-plan.md         # Spec Implementation Plan (Dev) field
+      acceptance-test-plan.md / acceptance-test-results.md     # ATP / ATR fields
+      comments.md                    # With --include-comments
+      defects/                       # Linked defects (auto-nested)
+      evidence/                      # Hand-authored: screenshots, traces (gitignored)
+  bugs/BUG-{KEY}-{slug}.md           # Flat file (registry: coverable=false, content=single)
+  tech-stories/TECHSTORY-{KEY}-{slug}/   # Coverable folder (registry-driven)
+  tests/ improvements/ …             # Other work types per .agents/jira-required.yaml
 ```
 
-Variables: `{module-name}` = kebab-case module (`user-management`). `{TICKET-ID}` = issue tracker id (`UPEX-277`). `{brief-title}` = max ~5 words kebab-case AI-generated.
+Folder layout per work type is governed by `.agents/jira-required.yaml` → `work_types` (coverable/content/local_dir) — the script is shared byte-identical with both boilerplates; per-repo behavior lives in that YAML.
 
 > Sprint-level cross-ticket aggregate → `.context/reports/SPRINT-{N}-DEVELOPMENT.md` (gen by `/sprint-development` batch). Lifecycle → `.context/reports/README.md`.
 
 **ENTRY POINT**: invoke `/sprint-development` — fetches ticket, explains story, loads context, drives plan → code → review → deploy.
 
-**RESUME SESSION**: `@.context/PBI/{module}/SESSION-PROMPT.md` — @-loadable, restores full context.
+**RESUME SESSION**: `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume contract, see `agentic-dev-core/references/session-management.md`) + re-sync the ticket (`jira:sync-issues get <KEY>`) and load its story folder.
 
 ---
 
