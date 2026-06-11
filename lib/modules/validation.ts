@@ -37,6 +37,20 @@ export function modulePatchShapeError(input: ModulePatchShape): ModulePatchShape
   return null;
 }
 
+// HTML-tag pattern for module names (BK-69). Deliberately anchored on a tag
+// shape (`<` + optional `/` + letter) so comparison text like "a < b" survives
+// — only real markup is stripped. Names are plain text, unlike descriptions
+// (Markdown, sanitized separately via sanitizeMarkdown).
+const HTML_TAG = /<\/?[a-z][a-z0-9-]*(?:\s[^>]*)?\/?>/gi;
+
+// Strip HTML tags from a module name before validation/persistence (BK-69):
+// '<script>alert(1)</script>' stores as 'alert(1)', matching the description
+// field's sanitize-on-save behavior. Tag-only input collapses to '' and then
+// fails the normal name rules.
+export function stripHtmlTags(name: string): string {
+  return name.replace(HTML_TAG, '');
+}
+
 // Toast sequence after a 201 module create (BK-67). The success toast ALWAYS
 // fires first — a deep-nesting `warning` (depth >= 5) is additive, never a
 // replacement. A missing/empty warning yields the success toast alone.

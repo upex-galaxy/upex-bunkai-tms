@@ -1,4 +1,4 @@
-import { moduleCreateToasts, modulePatchShapeError } from '@lib/modules/validation';
+import { moduleCreateToasts, modulePatchShapeError, stripHtmlTags } from '@lib/modules/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('modulePatchShapeError', () => {
@@ -63,5 +63,35 @@ describe('moduleCreateToasts', () => {
     for (const input of inputs) {
       expect(moduleCreateToasts(input)[0]?.kind).toBe('success');
     }
+  });
+});
+
+describe('stripHtmlTags', () => {
+  test('strips script tags, keeping the inner text (the BK-69 repro)', () => {
+    expect(stripHtmlTags('<script>alert(1)</script>')).toBe('alert(1)');
+  });
+
+  test('strips formatting tags around a legitimate name', () => {
+    expect(stripHtmlTags('<b>Payments</b>')).toBe('Payments');
+    expect(stripHtmlTags('<B>Payments</B>')).toBe('Payments');
+  });
+
+  test('strips tags with attributes and self-closing tags', () => {
+    expect(stripHtmlTags('<img src=x onerror=alert(1)>')).toBe('');
+    expect(stripHtmlTags('Line<br/>Break')).toBe('LineBreak');
+  });
+
+  test('comparison text is NOT mistaken for markup', () => {
+    expect(stripHtmlTags('a < b')).toBe('a < b');
+    expect(stripHtmlTags('2 < 3 > 1')).toBe('2 < 3 > 1');
+  });
+
+  test('plain names pass through untouched', () => {
+    expect(stripHtmlTags('Payments')).toBe('Payments');
+    expect(stripHtmlTags('Refunds and Credits')).toBe('Refunds and Credits');
+  });
+
+  test('tag-only input collapses to empty (then fails the normal name rules)', () => {
+    expect(stripHtmlTags('<b></b>')).toBe('');
   });
 });
