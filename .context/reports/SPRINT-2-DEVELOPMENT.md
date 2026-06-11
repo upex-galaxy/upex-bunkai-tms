@@ -74,9 +74,10 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 
 | Ticket | Owner | Blocking | Since | Decision Pending |
 | ------ | ----- | -------- | ----- | ---------------- |
-| BK-10 (story) | — | QA sequencing (BK-9 In Test) | 2026-06-09 | QA-side, no dev action |
+| (none) | — | — | — | — |
 
 Unblocked 2026-06-10 (Task 0): BK-6 (BK-83 fixed), BK-16 (BK-99/100 fixed), BK-18 (BK-96 already Closed) — all transitioned BLOCKED → In Test (changelog confirmed each was blocked from In Test) + tester comment posted on each story.
+Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the tester's block reason was NOT BK-9 sequencing — her 06-08 run was 25/28 PASS with the only real FAIL being TC-I04 (PAT 401 → defect BK-93, dup of BK-84, fixed + live-verified 06-10). TC-I01/TC-I03 are not-testable by design, not blockers. Evidence comment posted for Jorgelina to re-run TC-I04.
 
 ## Sprint 2 Stats
 
