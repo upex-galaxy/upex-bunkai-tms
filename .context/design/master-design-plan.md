@@ -270,7 +270,11 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-32 Open test, see every ATC | **Projects** detail (test view) | `project.jsx` |
 | | BK-33 Assign tags to a test | Tests · ATC Editor tags | `editor.jsx` |
 | **BK-30 Manual Execution & Runs** | BK-34 Start a manual run | **Test Runner** | `run.jsx` §4.5 |
+| | BK-35 Mark each step pass/fail/block | **Test Runner** step list | `run.jsx` §4.5 |
+| | BK-36 Abort a run in progress | **Test Runner** (abort action) | `run.jsx` §4.5 |
+| | BK-37 View a test's past runs | **Test Runs** index (per-test history) | ⚠️ wireframe pending |
 | | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | `home.jsx` |
+| | BK-39 Finish a run with a final verdict | **Test Runner** (finish/verdict) | `run.jsx` §4.5 |
 | **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) | `run.jsx` §4.5 |
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 |
 | | BK-42 Defect heatmap | **Metrics** · Bug Reports | §4.7 |
