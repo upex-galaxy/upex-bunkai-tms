@@ -106,7 +106,7 @@ Unblocked 2026-06-10 (Task 0): BK-6 (BK-83 fixed), BK-16 (BK-99/100 fixed), BK-1
 ### 2026-06-10 — Waves 3+4 complete (BK-58 #35, BK-51/52/53 #36, BK-57/59/67 #37, BK-69 #38, BK-68 already-fixed)
 - Root causes for all 7 Wave-3 bugs confirmed via a 14-agent investigate+adversarial-verify workflow before any code. 4 product decisions ratified by Tech Lead (BK-52 active-ws scoping, BK-53 hash fallback, BK-57 reject-combined, BK-58 full ledger normalization).
 - All remaining open bugs/improvements except BK-97 are now Ready For QA with fields, fix-doc comments, and reporter-assignees. BK-97 deferred (story-sized, needs its own Stage 1).
-- FINDING for Tech Lead: an "Atomic Test Components" → "Acceptance Test Cases" terminology rewrite (app/layout.tsx + PRD/business docs) kept reappearing in the working tree during agent runs; reverted 3× and excluded from all PRs. Jira epic BK-13 already uses "Acceptance Test Cases" — codebase/doc alignment needs an explicit decision + dedicated chore.
+- CORRECTED 2026-06-11: the "Atomic Test Components" → "Acceptance Test Cases" rewrites seen during this session were legitimate work by a PARALLEL session running the terminology remediation (ATC = Acceptance Test Case; canonical glossary `.context/business/domain-glossary.md`; Jira BK-13/18/24/30/40/44/45/46 already remediated). This session mistakenly reverted that work 4× believing it was out-of-scope agent drift — those files are now owned by the other session and must not be touched here. None of this session's PRs (#35–#38) or Jira artifacts used the erroneous expansion.
 
 ### 2026-06-10 — Task 0: unblocked BK-6 / BK-16 / BK-18
 - Verified live: BK-83, BK-99, BK-100 all Ready For QA; BK-96 Closed; PRs #32/#33 merged on origin/staging.
