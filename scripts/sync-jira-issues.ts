@@ -767,8 +767,10 @@ async function searchIssues(
   let hasMorePages = true;
 
   while (hasMorePages) {
+    // /rest/api/3/search/jql requires the same jql/fields on every page —
+    // a token-only body returns 400 "next page token is invalid or expired".
     const body: Record<string, unknown> = nextPageToken
-      ? { nextPageToken }
+      ? { jql, fields, maxResults, nextPageToken }
       : { jql, fields, maxResults };
 
     const response = await jiraFetch<JiraSearchResponse>(
