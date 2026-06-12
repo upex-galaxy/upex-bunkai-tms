@@ -71,6 +71,11 @@
                   "idempotency_key_required",
                   "idempotency_key_invalid",
                   "rate_limited",
+                  "ac_outside_user_story",
+                  "module_outside_project_subtree",
+                  "steps_position_invalid",
+                  "slug_collision",
+                  "chain_empty",
                   "internal_error",
                   "upstream_error"
                 ],
@@ -925,7 +930,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "3–80 chars, at least one alphanumeric. Slug is auto-derived."
+            "description": "3–80 chars, at least one alphanumeric. Slug is auto-derived; names mapping to a reserved slug (api, new, settings, …) are rejected."
           },
           "description": {
             "type": "string",
@@ -1071,16 +1076,16 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "New name, 2–80 chars, at least one alphanumeric. Renaming rebuilds the module path and every descendant path."
+            "description": "New name, 2–80 chars, at least one alphanumeric. Renaming rebuilds the module path and every descendant path. Mutually exclusive with `parent_module_id` — a rename cannot be combined with a move."
           },
           "description": {
             "type": ["string", "null"],
-            "description": "New description (max 500 chars). Pass null to clear it; omit to leave it unchanged."
+            "description": "New description (max 500 chars). Pass null to clear it; omit to leave it unchanged. Mutually exclusive with `parent_module_id` — a description edit cannot be combined with a move."
           },
           "parent_module_id": {
             "type": ["string", "null"],
             "format": "uuid",
-            "description": "Move the module: a UUID re-parents it under that module (carrying its subtree); null moves it to the project root; omit to leave the parent unchanged. Rejects cycles, depth > 6, and cross-project targets."
+            "description": "Move the module: a UUID re-parents it under that module (carrying its subtree); null moves it to the project root; omit to leave the parent unchanged. Rejects cycles, depth > 6, and cross-project targets. Mutually exclusive with `name`/`description` — combining a move with a rename/description edit returns 422 (`combined_update_and_move`)."
           }
         }
       },
@@ -2791,7 +2796,7 @@
             }
           },
           "422": {
-            "description": "Validation failed.",
+            "description": "Validation failed (including names that map to a reserved slug).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2905,7 +2910,7 @@
       "patch": {
         "tags": ["Modules"],
         "summary": "Rename, edit, or move a module",
-        "description": "Member-only (role >= member). Renaming rebuilds the module path and every descendant path; `parent_module_id` moves the module (and its subtree) to a new parent or the project root. A sibling/destination slug collision returns 409; a cycle, depth-overflow, or invalid target returns 422. An archived module reads as 404. Viewers/non-members return 403.",
+        "description": "Member-only (role >= member). Renaming rebuilds the module path and every descendant path; `parent_module_id` moves the module (and its subtree) to a new parent or the project root. `parent_module_id` is mutually exclusive with `name`/`description` — a combined update+move request returns 422 (`combined_update_and_move`); send them as separate PATCH calls. A sibling/destination slug collision returns 409; a cycle, depth-overflow, or invalid target returns 422. An archived module reads as 404. Viewers/non-members return 403.",
         "security": [
           {
             "cookieAuth": []
@@ -2997,7 +3002,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (name, description, or move: cycle / depth / invalid parent).",
+            "description": "Validation failed (name, description, combined update+move, or move: cycle / depth / invalid parent).",
             "content": {
               "application/json": {
                 "schema": {
