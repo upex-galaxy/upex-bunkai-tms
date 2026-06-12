@@ -11,7 +11,12 @@ import { createAdminClient } from '@lib/supabase/admin';
 //        stored response snapshot. Handler short-circuits.
 //      - row found + different hash → 409 conflict (same key used for two
 //        different payloads — client bug).
-//      - no row → inserts a `pending` row, returns `isReplay=false`.
+//      - row found + same hash + pending → 409 conflict (request in flight;
+//        letting a second caller proceed would run the business write twice).
+//      - row found + same hash + failed → atomic compare-and-set re-claims the
+//        row (failed → pending) so exactly ONE concurrent retry proceeds.
+//      - no row → inserts a `pending` row, returns `isReplay=false`. A
+//        concurrent duplicate insert loses on the unique constraint → 409.
 //   2. On success, handler calls `recordIdempotencyResult(token, snapshot,
 //      status)` which flips the row to `succeeded` and stores the response.
 //   3. On failure, handler calls `discardIdempotencyResult(token)` which
@@ -90,8 +95,32 @@ export async function beginIdempotentRequest(
         },
       };
     }
-    // pending or failed → caller may proceed. We do not delete failed rows so
-    // the next attempt with the same key+hash continues the journey.
+    if (existing.status === 'pending') {
+      // Same key+hash already in flight. Proceeding would execute the business
+      // write twice (ADR-0002: collapse to one row by construction).
+      throw new ApiError(
+        'conflict',
+        'A request with this Idempotency-Key is already in flight. Retry shortly.',
+      );
+    }
+    // failed → one retry may proceed. Atomically re-claim the row via
+    // compare-and-set so two concurrent retries cannot both pass. We do not
+    // delete failed rows so the same key+hash can continue the journey.
+    const { data: claimed, error: claimError } = await admin
+      .from('idempotency_keys')
+      .update({ status: 'pending' })
+      .eq('id', existing.id)
+      .eq('status', 'failed')
+      .select('id');
+    if (claimError) {
+      throw new ApiError('internal_error', 'Idempotency claim failed.');
+    }
+    if (!claimed || claimed.length === 0) {
+      throw new ApiError(
+        'conflict',
+        'A request with this Idempotency-Key is already in flight. Retry shortly.',
+      );
+    }
     return {
       isReplay: false,
       token: { key, userId: args.userId, endpoint: args.endpoint, rowId: existing.id },
@@ -112,6 +141,13 @@ export async function beginIdempotentRequest(
     .single();
 
   if (insertError || !inserted) {
+    if (insertError?.code === '23505') {
+      // Lost the insert race against a concurrent request using the same key.
+      throw new ApiError(
+        'conflict',
+        'A request with this Idempotency-Key is already in flight. Retry shortly.',
+      );
+    }
     throw new ApiError('internal_error', 'Idempotency insert failed.');
   }
 
