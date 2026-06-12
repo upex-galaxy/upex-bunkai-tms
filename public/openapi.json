@@ -1673,6 +1673,78 @@
           }
         },
         "required": ["title", "layer", "steps", "acceptance_criterion_ids"]
+      },
+      "Test": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestStep"
+            }
+          }
+        },
+        "required": ["id", "workspace_id", "title", "created_by", "created_at", "steps"]
+      },
+      "TestStep": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "description": "1-based position in the chain; follows `atc_ids` array order verbatim."
+          },
+          "atc_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chained ATC reference — a reference, never a copy."
+          }
+        },
+        "required": ["position", "atc_id"]
+      },
+      "TestCreateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Trimmed before validation; 1–200 chars after trim."
+          },
+          "atc_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "description": "Ordered chain, ≥1. Duplicates are legal — a chain is a sequence, not a set. No server-side length cap."
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for token-authenticated (Bearer) callers. Cookie sessions default to the active workspace at the submit instant."
+          }
+        },
+        "required": ["title", "atc_ids"]
       }
     },
     "parameters": {}
@@ -4310,6 +4382,121 @@
           },
           "422": {
             "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests": {
+      "post": {
+        "tags": ["Tests"],
+        "summary": "Create a Test by chaining ATCs",
+        "description": "Bearer `atc:write` (or cookie session). Transactional create across tests + test_steps + activity log via one SECURITY DEFINER RPC. The Test binds to the workspace resolved at the submit instant: explicit `workspace_id` wins, else the cookie session's active workspace; token-authenticated callers must send `workspace_id`. Chain order follows the `atc_ids` array; duplicates are preserved.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored 201 snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Test created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {
+                      "$ref": "#/components/schemas/Test"
+                    }
+                  },
+                  "required": ["test"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a workspace member with write access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "One or more selected ATCs are not available in this workspace (`not_found`). Foreign-workspace and nonexistent ids return byte-identical responses — no existence disclosure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`validation_failed` for title/uuid/workspace_id rules, `chain_empty` when the chain references no ATC).",
             "content": {
               "application/json": {
                 "schema": {
