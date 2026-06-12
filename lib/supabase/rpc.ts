@@ -130,3 +130,23 @@ export async function getAtc(supabase: Client, args: { actorUserId: string, atcI
     p_atc_id: args.atcId,
   });
 }
+
+// BK-27 — Test create via the SECURITY DEFINER RPC. Same explicit-actor
+// contract as the ATC wrappers; returns the composed Test json (header +
+// ordered chain steps).
+
+export interface CreateTestArgs {
+  actorUserId: string
+  workspaceId: string
+  title: string
+  atcIds: string[]
+}
+
+export async function createTest(supabase: Client, args: CreateTestArgs) {
+  return supabase.rpc('bunkai_create_test', {
+    p_actor_user_id: args.actorUserId,
+    p_workspace_id: args.workspaceId,
+    p_title: args.title,
+    p_atc_ids: args.atcIds,
+  });
+}

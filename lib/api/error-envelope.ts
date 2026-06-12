@@ -33,6 +33,10 @@ export const API_ERROR_CODES = {
   STEPS_POSITION_INVALID: 'steps_position_invalid',
   SLUG_COLLISION: 'slug_collision',
 
+  // Tests domain (BK-27) — a Test chain must reference at least one ATC;
+  // distinct from validation_failed so API consumers can branch on it.
+  CHAIN_EMPTY: 'chain_empty',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -55,6 +59,7 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   module_outside_project_subtree: 422,
   steps_position_invalid: 422,
   slug_collision: 409,
+  chain_empty: 422,
   internal_error: 500,
   upstream_error: 502,
 };

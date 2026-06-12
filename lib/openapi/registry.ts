@@ -38,6 +38,11 @@ const ApiErrorCodeSchema = z
     'idempotency_key_required',
     'idempotency_key_invalid',
     'rate_limited',
+    'ac_outside_user_story',
+    'module_outside_project_subtree',
+    'steps_position_invalid',
+    'slug_collision',
+    'chain_empty',
     'internal_error',
     'upstream_error',
   ])
