@@ -1,4 +1,5 @@
 import type { Atc, Module, UserStory } from '@lib/types';
+import type { ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
@@ -76,11 +77,20 @@ export default async function ProjectPage({ params }: PageProps) {
 
   const moduleIds = (modulesData ?? []).map(m => m.id);
 
-  const [{ data: storiesData }, { data: atcsData }] = await Promise.all([
+  // Workspace Tests (BK-27) feed the explorer's flat Tests group. Tests are
+  // workspace-scoped (no module anchor), the read is RLS-scoped (a member of
+  // another workspace gets zero rows), and `test_steps(count)` keeps the chain
+  // length cheap — one aggregate, no step rows shipped to the client.
+  const [{ data: storiesData }, { data: atcsData }, { data: testsData }] = await Promise.all([
     moduleIds.length > 0
       ? supabase.from('user_stories').select('*').in('module_id', moduleIds).is('archived_at', null)
       : Promise.resolve({ data: [] as UserStory[] }),
     supabase.from('atcs').select('*').eq('project_id', project.id).is('archived_at', null),
+    supabase
+      .from('tests')
+      .select('id, title, created_at, test_steps(count)')
+      .eq('workspace_id', activeWorkspaceId)
+      .order('created_at', { ascending: false }),
   ]);
 
   const storyIds = (storiesData ?? []).map(s => s.id);
@@ -105,6 +115,13 @@ export default async function ProjectPage({ params }: PageProps) {
     module_path: moduleById.get(a.module_id)?.path ?? '—',
   }));
 
+  const tests: ExplorerTestItem[] = (testsData ?? []).map(t => ({
+    id: t.id,
+    title: t.title,
+    created_at: t.created_at,
+    step_count: t.test_steps[0]?.count ?? 0,
+  }));
+
   return (
     <ProjectWorkbench
       projectId={project.id}
@@ -113,6 +130,7 @@ export default async function ProjectPage({ params }: PageProps) {
       workspaceName={workspace.name}
       tree={tree}
       rows={rows}
+      tests={tests}
       canCreate={canCreate}
     />
   );

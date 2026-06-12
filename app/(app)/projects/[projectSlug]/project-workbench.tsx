@@ -1,10 +1,11 @@
 'use client';
 
 import type { Atc, ModuleTreeNode } from '@lib/types';
+import type { ExplorerTestItem } from './project-explorer';
 import { AtcTable } from '@components/atcs/AtcTable';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
-import { Button, buttonVariants } from '@components/ui/button';
+import { buttonVariants } from '@components/ui/button';
 import { cn, shortSlug } from '@lib/utils';
 import { ListTree, Network, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
@@ -28,6 +29,8 @@ interface ProjectWorkbenchProps {
   workspaceName: string
   tree: ModuleTreeNode[]
   rows: (Atc & { module_path: string })[]
+  // Workspace Tests (chains of ATCs, BK-27) for the explorer's Tests group.
+  tests: ExplorerTestItem[]
   canCreate: boolean
 }
 
@@ -41,6 +44,7 @@ export function ProjectWorkbench({
   workspaceName,
   tree,
   rows,
+  tests,
   canCreate,
 }: ProjectWorkbenchProps) {
   const [view, setView] = useState<View>('tree');
@@ -111,17 +115,15 @@ export function ProjectWorkbench({
               {' '}
               New ATC
             </Link>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled
-              title="Test builder ships next sprint"
-              className="cursor-not-allowed opacity-60"
+            <Link
+              href={`/projects/${projectSlug}/tests/new`}
+              className={buttonVariants({ variant: 'primary', size: 'sm' })}
+              data-testid="project-new-test"
             >
               <Plus size={11} />
               {' '}
               New Test
-            </Button>
+            </Link>
           </>
         )}
       />
@@ -133,6 +135,7 @@ export function ProjectWorkbench({
               projectSlug={projectSlug}
               projectName={projectName}
               tree={tree}
+              tests={tests}
               canCreate={canCreate}
               onOpenAtc={openAtc}
               selectedAtcId={activeTabId}
