@@ -108,5 +108,116 @@ Shift-Left Handoff Complete: 25 ATP scenarios, 8 edge cases mapped, 8 open quest
 
 ---
 
+### Ely - 6/12/2026, 1:57:22 AM
+
+# BK-27 — Implementation Plan — Appendix
+
+> Continuation of the Spec Implementation Plan (Dev) field — split due to Jira field content limit.
+
+## Types & Type Safety
+
+- Regenerate `lib/types/supabase.ts` via `bun run types:gen` after the migration (picks up `tests`, `test*steps`, `bunkai*create_test`). Generated file — mark `// generated, do not review` in the PR.
+- New domain types live in `lib/tests/validation.ts` (`z.infer<typeof TestCreateBodySchema>`) and the `createTest` wrapper args in `lib/supabase/rpc.ts` — follow the `createAtc` wrapper shape (`lib/supabase/rpc.ts:85`).
+- Import aliases: `@lib/**`, `@components/**`, `@app/*` only (this repo has NO `@api/`/`@schemas/` aliases — verified in `tsconfig.json`). Max 2 positional params; 3+ → object param.
+- UI components type props from the generated row types; zero hand-rolled entity shapes.
+
+---
+
+## Content Writing (exact strings — glossary casing enforced)
+
+| Context | Copy |
+| --- | --- |
+| Empty chain (server + UI, byte-identical) | `A Test must include at least one ATC.` |
+| Foreign/nonexistent ATC (server, rendered verbatim by UI) | `One or more selected ATCs are not available in this workspace.` |
+| Title required | `Title is required.` |
+| Title too long | `Title must be 200 characters or fewer.` |
+| Builder heading | `New Test` |
+| Builder helper line | `Chain ATCs from your workspace library — selection order is run order.` |
+| UI soft cap | `Chains are limited to 100 ATCs in the UI.` |
+
+Never "test case", "test component", or "published ATC" anywhere (UI, code comments, OpenAPI descriptions).
+
+---
+
+## Unit-Test Plan (bun:test, colocated `*.test.ts` — no `test` script; run `bun test`)
+
+| Step | Test file | Cases |
+| --- | --- | --- |
+| 4 | `lib/tests/validation.ts` → `lib/tests/validation.test.ts` | Title: trim-then-validate, whitespace-only rejected, 1-char OK, 200 OK, 201 rejected; chain: `[]` rejected, 1 OK, duplicates OK, non-uuid rejected; `workspace_id` optional; schema parse table tests (TC-04/05/09/10 fast layer) |
+| 4 | `lib/tests/errors.ts` → `lib/tests/errors.test.ts` | SQLSTATE map: 42501→403 `forbidden`; 45120→422 `chain*empty` + exact copy; 45121→422; 45122→404 `not*found` + exact copy + NO details/id echo; unknown→500 (TC-06/07 mapping layer) |
+| 9 | `lib/tests/rls-isolation.test.ts` (env-gated, `rls-parity.test.ts` pattern) | WS-X member reads zero WS-Y `tests`/`test_steps`; foreign-ATC create via RPC → uniform error; viewer RPC → 42501 (TC-13, TC-06/07 DB layer) |
+
+RPC business rules (order preservation, duplicates, activity_log row, idempotent replay) are verified via Step 2/6 `verify:` checks and the env-gated suite. E2E is out of scope for this plan (owned by `/sprint-testing`).
+
+---
+
+## Dependencies
+
+- [ ] BK-18 (ATC create/edit REST API) — dev-done, provides the route/RPC/error patterns being cloned. Present.
+- [ ] Migrations 0001–0023 applied to the target DB (esp. 0005 helpers, 0009 `idempotency*keys`/`activity*log`, 0021 RPC precedent). Present.
+- [ ] Supabase creds in `.env` for `types:gen` + env-gated tests (read from `.env`, never hardcode).
+- [ ] ***Orchestrator******:****** add the §5 ratification entry for the builder derivation (Decisions 17–18) before Step 7 begins.***
+- [ ] ***Orchestrator******:****** draft ****`ADR-0002-idempotency-key-scoping`**** (Decision 3); also fix the stale ADR README index (ADR-0001 missing) when it lands.***
+- [ ] Branch: `feature/BK-27-test-builder` off `staging`; merge `--no-ff` into `staging`.
+
+## Risks & Mitigations
+
+***Risk 1 — Sibling "BK-2x" was never created; idempotency + audit tests (TC-12/14/16) had no owning story.***
+
+- Impact: High (coverage orphaned, DoD audit line "blocked").
+- Mitigation: this plan absorbs both write paths (Steps 2 and 6) at marginal cost; Decision 4 flags the PO confirmation. DoD audit line becomes satisfiable, not blocked.
+
+***Risk 2 — ATP count mismatch (19 synced vs 25 claimed).***
+
+- Impact: Medium (silent coverage gap if Jira truly holds 25).
+- Mitigation: traceability note above; orchestrator re-syncs BK-27 before Stage 2 and extends the map if new outlines appear.
+
+***Risk 3 — Builder UI has no authored mockup (placeholder ****`TestDetail`****).***
+
+- Impact: Medium (design-fidelity defect if invented silently).
+- Mitigation: derive-by-analogy spec written above; §5 ratification entry is a hard pre-Step-7 dependency.
+
+***Risk 4 — First idempotency consumer sets a repo-wide precedent.***
+
+- Impact: Medium (wrong scoping is hard to reverse once agents depend on it).
+- Mitigation: defaults match the already-built 0009 schema exactly (no new semantics invented); ADR-0002 documents it; replay/409/discard paths covered by Step 6 verify + curls.
+
+***Risk 5 — Review workload is High (******~******1.9k weighted lines).***
+
+- Impact: High (review quality collapse past 400 lines/PR).
+- Mitigation: feature-branch-chain proposed below; generated types excluded; OpenAPI sibling and SQL are low-cognitive-density.
+
+## Estimated Effort
+
+| Step | Time |
+| --- | --- |
+| 1. Migration: schema + RLS | 3h |
+| 2. Migration: RPC + activity log | 5h |
+| 3. Types regen | 0.5h |
+| 4. Domain layer (validation/errors/codes/wrapper) | 4h |
+| 5. API handler + OpenAPI | 4h |
+| 6. Idempotency wiring | 2h |
+| 7. UI builder | 8h |
+| 8. Explorer Tests group | 3h |
+| 9. Verification sweep | 2.5h |
+| ***Total**** | ****32h ≈ 4 dev-days*** |
+
+***Story points******:*** 8 (matches the PO re-estimate and the epic story table).
+
+## Definition of Done Checklist
+
+- [ ] All 9 steps implemented per this plan; every `verify:` line observed
+- [ ] All 10 AC scenarios + all 19 synced ATP TCs traceable to passing behavior (table above)
+- [ ] Backend types used throughout (`lib/types/supabase.ts` regenerated; zero hand-rolled entity shapes)
+- [ ] Glossary casing exact in all UI copy + identifiers (Test, ATC, chain; `test_steps`)
+- [ ] Non-disclosure verified: foreign vs nonexistent ATC responses byte-identical
+- [ ] activity_log row asserted for every successful creation (DoD audit line satisfied in-RPC)
+- [ ] Idempotency replay verified (UI double-submit + headless retry)
+- [ ] Sibling scope untouched: no reorder UX (BK-28), no Test detail pane (BK-32), no tags (BK-33), no Used-by wiring (BK-22)
+- [ ] `bun test` · `bun run types:check` · `bun run lint:check` · `bun run openapi:diff` all green (no local production build)
+- [ ] Code review approved; merged `--no-ff` to `staging`; staging smoke test (desktop layout, builder flow, explorer list)
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

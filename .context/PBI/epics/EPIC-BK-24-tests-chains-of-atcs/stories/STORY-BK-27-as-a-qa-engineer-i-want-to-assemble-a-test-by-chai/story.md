@@ -3,7 +3,7 @@
 **Jira Key:** [BK-27](https://jira.upexgalaxy.com/browse/BK-27)
 **Epic:** [BK-24](https://jira.upexgalaxy.com/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -89,6 +89,7 @@ Shift-Left QA reviewed this Story. The full ATP DRAFT (25 scenarios across Posit
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -110,7 +111,7 @@ Shift-Left QA reviewed this Story. The full ATP DRAFT (25 scenarios across Posit
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/12/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** master-sprint-4, mvp, shift-left-2026-06-06, shift-left-reviewed, tests-epic
