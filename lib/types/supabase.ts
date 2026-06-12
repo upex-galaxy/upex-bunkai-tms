@@ -631,6 +631,77 @@ export interface Database {
           },
         ]
       }
+      test_steps: {
+        Row: {
+          atc_id: string
+          id: string
+          position: number
+          test_id: string
+        }
+        Insert: {
+          atc_id: string
+          id?: string
+          position: number
+          test_id: string
+        }
+        Update: {
+          atc_id?: string
+          id?: string
+          position?: number
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'test_steps_atc_id_fkey'
+            columns: ['atc_id']
+            isOneToOne: false
+            referencedRelation: 'atcs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'test_steps_test_id_fkey'
+            columns: ['test_id']
+            isOneToOne: false
+            referencedRelation: 'tests'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tests_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       user_stories: {
         Row: {
           archived_at: string | null
@@ -863,6 +934,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: string
       }
+      bunkai_assert_actor_can_write_workspace: {
+        Args: { p_actor_user_id: string, p_workspace_id: string }
+        Returns: undefined
+      }
       bunkai_atc_json: { Args: { p_atc_id: string }, Returns: Json }
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
@@ -880,6 +955,15 @@ export interface Database {
           p_tags: string[]
           p_title: string
           p_user_story_id: string
+        }
+        Returns: Json
+      }
+      bunkai_create_test: {
+        Args: {
+          p_actor_user_id: string
+          p_atc_ids: string[]
+          p_title: string
+          p_workspace_id: string
         }
         Returns: Json
       }
