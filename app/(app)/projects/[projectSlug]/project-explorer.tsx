@@ -5,7 +5,7 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
-import { ChevronLeft, ChevronRight, DownloadCloud } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
@@ -16,11 +16,24 @@ import { MoveModuleDialog } from './move-module-dialog';
 import { RenameModuleForm } from './rename-module-form';
 import { UserStoryForm } from './user-story-form';
 
+// Workspace Test projection for the explorer's flat Tests group (BK-27).
+// Tests are workspace-scoped (no module anchor — ratified derivation D9), so
+// they render as a flat list, not inside the module tree.
+export interface ExplorerTestItem {
+  id: string
+  title: string
+  created_at: string
+  step_count: number
+}
+
 interface ProjectExplorerProps {
   projectId: string
   projectSlug: string
   projectName: string
   tree: ModuleTreeNode[]
+  // Workspace Tests for the read-only Tests group. Opening a Test as a `t:`
+  // tab is BK-32 — rows here are creation feedback only.
+  tests?: ExplorerTestItem[]
   // True when the caller's workspace role is >= member. Gates the create
   // affordances; the API remains the authority and rejects unauthorized writes.
   canCreate: boolean
@@ -93,6 +106,7 @@ export function ProjectExplorer({
   projectSlug,
   projectName,
   tree,
+  tests = [],
   canCreate,
   onOpenAtc,
   selectedAtcId,
@@ -107,6 +121,10 @@ export function ProjectExplorer({
   const [manageStory, setManageStory] = useState<UserStoryWithChildren | null>(null);
   const [importing, setImporting] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+
+  // Tests group accordion (BK-27). Open by default so a just-created Test is
+  // immediately visible after the builder redirects back here.
+  const [testsOpen, setTestsOpen] = useState(true);
 
   // Explorer panel chrome: collapse to a thin rail (Jira-style) and drag-resize
   // the width. Bounds keep the tree usable. Width is not persisted — a session
@@ -218,6 +236,52 @@ export function ProjectExplorer({
                 onManageCriteria={setManageStory}
                 onSelect={setSelectedModuleId}
               />
+            </div>
+            {/* Tests group (BK-27): workspace-scoped chains of ATCs, flat list
+                per ratified derivation D9 (Tests have no module anchor).
+                Read-only rows — opening a `t:` tab is BK-32, reorder is BK-28.
+                Test rows carry NO layer chip (layer chips are ATC-only) and a
+                neutral `unrun` dot (§7 gate: no Runs exist yet). */}
+            <div
+              data-testid="explorer-tests-group"
+              className="flex max-h-[40%] flex-shrink-0 flex-col border-t border-stroke-1"
+            >
+              <button
+                type="button"
+                onClick={() => setTestsOpen(o => !o)}
+                aria-expanded={testsOpen}
+                className="flex h-8 flex-shrink-0 items-center gap-1.5 px-3 text-left hover:bg-surface-2"
+              >
+                {testsOpen
+                  ? <ChevronDown size={10} className="text-fg-3" />
+                  : <ChevronRight size={10} className="text-fg-3" />}
+                <span className="font-mono text-xs font-semibold uppercase tracking-widest text-fg-3">
+                  Tests
+                </span>
+                <span className="ml-auto font-mono text-xs text-fg-4">{tests.length}</span>
+              </button>
+              {testsOpen && (
+                <div className="min-h-0 overflow-auto pb-1.5">
+                  {tests.length === 0
+                    ? (
+                        <div className="flex h-5 items-center px-3 text-xs italic text-fg-4">
+                          No Tests yet
+                        </div>
+                      )
+                    : tests.map(t => (
+                        <div
+                          key={t.id}
+                          data-testid={`explorer-test-${t.id}`}
+                          className="flex h-6 items-center gap-1.5 px-3 text-sm text-fg-1"
+                        >
+                          <GitBranch size={12} className="shrink-0 text-fg-3" />
+                          <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                          <span className="shrink-0 font-mono text-xs text-fg-4">{t.step_count}</span>
+                          <span className="dot shrink-0" data-status="unrun" />
+                        </div>
+                      ))}
+                </div>
+              )}
             </div>
           </>
         )}
