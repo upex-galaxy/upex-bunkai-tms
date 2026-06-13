@@ -1,8 +1,8 @@
 # ADR-0002 — Idempotency-Key Scoping for the Headless Write Surface
 
-- **Status:** Proposed
-- **Date:** 2026-06-12
-- **Deciders:** Project architect (pending acceptance) · drafted by `/sprint-development` Stage 1 (BK-27)
+- **Status:** Accepted — Implemented
+- **Date:** 2026-06-12 (proposed) · 2026-06-12 (accepted by owner)
+- **Deciders:** Ely (owner) · drafted by `/sprint-development` Stage 1 (BK-27)
 - **Tags:** api, idempotency, headless-surface, cross-cutting-invariant
 - **Supersedes:** —
 - **Superseded by:** —
