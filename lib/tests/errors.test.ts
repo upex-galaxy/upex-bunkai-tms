@@ -23,6 +23,13 @@ describe('mapTestRpcError', () => {
     expect(err.status).toBe(403);
   });
 
+  test('P0002 → not_found 404 (BK-32 expanded read)', () => {
+    const err = capture({ code: 'P0002', message: 'no_data_found' });
+    expect(err.code).toBe('not_found');
+    expect(err.status).toBe(404);
+    expect(err.message).toBe('Test not found.');
+  });
+
   test('45120 → chain_empty 422 with exact copy', () => {
     const err = capture({ code: '45120', message: 'chain_empty' });
     expect(err.code).toBe('chain_empty');

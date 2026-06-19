@@ -930,6 +930,10 @@ export interface Database {
         Args: { p_module_id: string }
         Returns: Json
       }
+      bunkai_assert_actor_can_read_workspace: {
+        Args: { p_actor_user_id: string, p_workspace_id: string }
+        Returns: undefined
+      }
       bunkai_assert_actor_can_write_project: {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: string
@@ -971,6 +975,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
       }
+      bunkai_get_test_expanded: {
+        Args: { p_actor_user_id: string, p_test_id: string }
+        Returns: Json
+      }
       bunkai_insert_acceptance_criterion: {
         Args: {
           p_description?: string
@@ -1008,6 +1016,7 @@ export interface Database {
         Args: { p_id: string, p_status: string }
         Returns: Json
       }
+      bunkai_test_json: { Args: { p_test_id: string }, Returns: Json }
       bunkai_update_atc: {
         Args: {
           p_ac_ids: string[]

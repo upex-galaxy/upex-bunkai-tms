@@ -150,3 +150,13 @@ export async function createTest(supabase: Client, args: CreateTestArgs) {
     p_atc_ids: args.atcIds,
   });
 }
+
+// BK-32 — read-only expanded Test view. Same explicit-actor contract as the
+// other wrappers; returns the composed Test json (header + ordered chain of
+// expanded ATCs).
+export async function getTestExpanded(supabase: Client, args: { actorUserId: string, testId: string }) {
+  return supabase.rpc('bunkai_get_test_expanded', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+  });
+}
