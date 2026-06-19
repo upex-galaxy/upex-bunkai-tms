@@ -1,5 +1,6 @@
 import { ChainedAtcCard } from '@components/tests/ChainedAtcCard';
-import { GitBranch } from 'lucide-react';
+import { ChevronLeft, GitBranch } from 'lucide-react';
+import Link from 'next/link';
 
 // BK-32 — read-only expanded Test view. Presentational server component: a pure
 // projection of the composed RPC payload. STRICTLY READ-ONLY — no buttons,
@@ -48,7 +49,7 @@ interface TestDetailViewProps {
   projectSlug: string
 }
 
-export function TestDetailView({ test }: TestDetailViewProps) {
+export function TestDetailView({ test, projectSlug }: TestDetailViewProps) {
   return (
     <div
       data-testid="test-detail-view"
@@ -56,10 +57,26 @@ export function TestDetailView({ test }: TestDetailViewProps) {
     >
       {/* header: full-width bar (border-b divider spans the pane), but its
           content sits in the SAME centered max-width column as the chain below,
-          so the header and body share one centered reading column. */}
+          so the header and body share one centered reading column. A back link
+          + breadcrumb mirror the ATC detail page chrome (way back to the project). */}
       <div className="flex h-9 flex-shrink-0 items-center border-b border-stroke-1 px-4">
         <div className="mx-auto flex w-full max-w-[820px] items-center gap-2">
+          <Link
+            href={`/projects/${projectSlug}`}
+            data-testid="test-detail-back"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-2 border border-stroke-2 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:bg-surface-3 hover:text-fg-0"
+            title="Back to project"
+          >
+            <ChevronLeft size={13} />
+          </Link>
           <GitBranch size={13} className="shrink-0 text-fg-3" />
+          <Link
+            href={`/projects/${projectSlug}`}
+            className="shrink-0 text-xs text-fg-3 hover:text-fg-1 hover:underline"
+          >
+            Tests
+          </Link>
+          <span className="shrink-0 text-xs text-fg-4">/</span>
           <h1
             data-testid="test-detail-title"
             className="min-w-0 truncate text-sm font-semibold text-fg-0"
@@ -82,7 +99,7 @@ export function TestDetailView({ test }: TestDetailViewProps) {
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
           {test.atcs.map(atc => (
-            <ChainedAtcCard key={atc.step_id} atc={atc} />
+            <ChainedAtcCard key={atc.step_id} atc={atc} projectSlug={projectSlug} />
           ))}
         </div>
       </div>

@@ -1,18 +1,21 @@
 import type { ChainedAtc } from '@components/tests/TestDetailView';
 import { shortSlug } from '@lib/utils';
-import { GitBranch } from 'lucide-react';
+import { ArrowUpRight, GitBranch } from 'lucide-react';
+import Link from 'next/link';
 
 // BK-32 — one expanded ATC inside the Test chain. Read-only projection: the
 // header mirrors the ATCDetail "Used by" chain-row anatomy (project.jsx:528-546),
 // steps use the ATCDetail ordered-`<ol>` anatomy (:476-501), assertions the
 // stacked `<code>` anatomy (:502-518) — neutral styling, NO pass/fail color
-// (no Runs exist, §7 data-model gate). NO chevron-to-collapse, NO controls.
+// (no Runs exist, §7 data-model gate). NO chevron-to-collapse, NO mutation
+// controls. The header links out to the ATC's own page (navigation, read-only).
 
 interface ChainedAtcCardProps {
   atc: ChainedAtc
+  projectSlug: string
 }
 
-export function ChainedAtcCard({ atc }: ChainedAtcCardProps) {
+export function ChainedAtcCard({ atc, projectSlug }: ChainedAtcCardProps) {
   const { position, steps, assertions } = atc;
 
   return (
@@ -20,19 +23,33 @@ export function ChainedAtcCard({ atc }: ChainedAtcCardProps) {
       data-testid={`chained-atc-card-${position}`}
       className="card flex flex-col gap-3 p-3"
     >
-      {/* header row — ATCDetail "Used by" chain-row anatomy */}
+      {/* header row — ATCDetail "Used by" chain-row anatomy. The id/layer/title
+          are a link to the ATC's own page (read-only navigation, BK-32). */}
       <div className="flex items-center gap-2.5">
         <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-1 border border-stroke-2 bg-surface-2 font-mono text-2xs font-medium text-fg-3">
           {position}
         </span>
         <GitBranch size={12} className="shrink-0 text-fg-3" />
-        <span className="shrink-0 font-mono text-xs text-fg-3" title={atc.slug}>
-          {shortSlug(atc.slug)}
-        </span>
-        <span className="layer-chip" data-layer={atc.layer.toLowerCase()}>
-          {atc.layer}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm text-fg-1">{atc.title}</span>
+        <Link
+          href={`/projects/${projectSlug}/atcs/${atc.id}`}
+          data-testid={`chained-atc-open-${position}`}
+          className="group flex min-w-0 flex-1 items-center gap-2.5"
+          title={`Open ATC ${atc.slug}`}
+        >
+          <span className="shrink-0 font-mono text-xs text-fg-3 group-hover:text-fg-1" title={atc.slug}>
+            {shortSlug(atc.slug)}
+          </span>
+          <span className="layer-chip" data-layer={atc.layer.toLowerCase()}>
+            {atc.layer}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm text-fg-1 group-hover:text-fg-0 group-hover:underline">
+            {atc.title}
+          </span>
+          <ArrowUpRight
+            size={13}
+            className="shrink-0 text-fg-4 opacity-0 transition-opacity group-hover:opacity-100"
+          />
+        </Link>
         <span className="dot shrink-0" data-status="unrun" />
       </div>
 
