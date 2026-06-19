@@ -1,12 +1,13 @@
 import { ChainedAtcCard } from '@components/tests/ChainedAtcCard';
+import { TestReorderClient } from '@components/tests/TestReorderClient';
 import { ChevronLeft, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 
-// BK-32 — read-only expanded Test view. Presentational server component: a pure
-// projection of the composed RPC payload. STRICTLY READ-ONLY — no buttons,
-// forms, drag handles, or edit/add/remove/reorder affordances anywhere (those
-// are BK-28+). Shape mirrors `ExpandedTestSchema` in
-// `app/api/v1/tests/[id]/route.openapi.ts`.
+// BK-32 — expanded Test view. Presentational server component: a pure projection
+// of the composed RPC payload. The chain is read-only EXCEPT when the viewer can
+// reorder (BK-28, member+) — then the chain region is delegated to the
+// interactive `TestReorderClient` (drag-reorder + Save). Shape mirrors
+// `ExpandedTestSchema` in `app/api/v1/tests/[id]/route.openapi.ts`.
 
 export interface ChainedStep {
   id: string
@@ -38,6 +39,7 @@ export interface ExpandedTest {
   id: string
   workspace_id: string
   title: string
+  version: number
   created_at: string
   updated_at: string
   atc_count: number
@@ -47,9 +49,12 @@ export interface ExpandedTest {
 interface TestDetailViewProps {
   test: ExpandedTest
   projectSlug: string
+  // BK-28 — member/admin/owner may drag-reorder the chain; viewers get the
+  // read-only projection with no drag handles (affordance hidden).
+  canReorder?: boolean
 }
 
-export function TestDetailView({ test, projectSlug }: TestDetailViewProps) {
+export function TestDetailView({ test, projectSlug, canReorder = false }: TestDetailViewProps) {
   return (
     <div
       data-testid="test-detail-view"
@@ -98,9 +103,11 @@ export function TestDetailView({ test, projectSlug }: TestDetailViewProps) {
           max-width reading column, aligned with the centered header content. */}
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
-          {test.atcs.map(atc => (
-            <ChainedAtcCard key={atc.step_id} atc={atc} projectSlug={projectSlug} />
-          ))}
+          {canReorder
+            ? <TestReorderClient test={test} projectSlug={projectSlug} />
+            : test.atcs.map(atc => (
+                <ChainedAtcCard key={atc.step_id} atc={atc} projectSlug={projectSlug} />
+              ))}
         </div>
       </div>
     </div>

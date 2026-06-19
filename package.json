@@ -44,6 +44,9 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@clack/prompts": "^1.4.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@inquirer/prompts": "^8.1.0",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-dialog": "^1.1.15",
