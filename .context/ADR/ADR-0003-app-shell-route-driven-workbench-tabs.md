@@ -1,7 +1,7 @@
 # ADR-0003 — Persistent Project Shell & Route-Driven Workbench Tabs
 
-- **Status:** Proposed — drafted by `/sprint-development` Stage 1 (BK-147); awaiting owner acceptance
-- **Date:** 2026-06-19 (proposed)
+- **Status:** Accepted — drafted by `/sprint-development` Stage 1 (BK-147); accepted by owner (Ely)
+- **Date:** 2026-06-19 (proposed) · 2026-06-19 (accepted by owner)
 - **Deciders:** Ely (owner) · drafted by `/sprint-development` Stage 1 (BK-147)
 - **Tags:** frontend, app-shell, routing, workbench, ui-architecture, presentation-layer
 - **Supersedes:** —
