@@ -104,7 +104,12 @@ export function TestDetailView({ test, projectSlug, canReorder = false }: TestDe
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
           {canReorder
-            ? <TestReorderClient test={test} projectSlug={projectSlug} />
+            ? (
+                // Key on id+version so a router.refresh() that brings fresh server
+                // data (e.g. after a conflict reload) REMOUNTS with clean baseline
+                // state instead of keeping the stale local order.
+                <TestReorderClient key={`${test.id}:${test.version}`} test={test} projectSlug={projectSlug} />
+              )
             : test.atcs.map(atc => (
                 <ChainedAtcCard key={atc.step_id} atc={atc} projectSlug={projectSlug} />
               ))}

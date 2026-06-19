@@ -98,7 +98,13 @@ async function reorderEventCount(db: Db, testId: string): Promise<number> {
 // Put a Test back the way we found it and delete any reorder events this test
 // created (created at/after `sinceIso`), so the shared DB is left pristine.
 async function restore(db: Db, actorId: string, testId: string, originalStepIds: string[], originalVersion: number, sinceIso: string) {
-  await db.rpc(RPC, { p_actor_user_id: actorId, p_test_id: testId, p_if_match: null, p_step_ids: originalStepIds });
+  // Put the order back first; only override version + purge events if that
+  // succeeded, so a failed restore does not corrupt the row's version.
+  const { error } = await db.rpc(RPC, { p_actor_user_id: actorId, p_test_id: testId, p_if_match: null, p_step_ids: originalStepIds });
+  if (error) {
+    console.warn(`[reorder] restore failed for ${testId}: ${error.message}`);
+    return;
+  }
   await db.from('tests').update({ version: originalVersion }).eq('id', testId);
   await db.from('activity_log').delete().eq('entity_id', testId).eq('action', 'test.reordered').gte('created_at', sinceIso);
 }

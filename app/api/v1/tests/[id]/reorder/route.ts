@@ -88,12 +88,15 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     if (error.code === '45125') {
       const fresh = await getTestExpanded(supabase, { actorUserId: principal.userId, testId });
       const freshTest = fresh.error ? null : (fresh.data as unknown as ReorderTestShape);
+      // The RPC embeds the live version in the message (`version_conflict:<n>`);
+      // use it as a fallback for current_version when the re-fetch itself fails.
+      const messageVersion = /version_conflict:(\d+)/.exec(error.message ?? '');
       throw new ApiError('conflict', 'The Test was reordered by another request.', {
         details: {
           reason: 'version_conflict',
           ...(freshTest
             ? { current_version: freshTest.version, current_chain: freshTest.atcs.map(atc => atc.id) }
-            : {}),
+            : (messageVersion ? { current_version: Number(messageVersion[1]) } : {})),
         },
       });
     }
