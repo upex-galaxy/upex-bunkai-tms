@@ -29,7 +29,7 @@ Every user story that touches UI MUST:
 |------|----------|-------|
 | Design tokens (color/type/radii/shadow) | ~95% | ✅ Byte-exact — strong base |
 | Atom CSS classes (`.btn/.input/.seg/.card/.bar`…) | ~30% | ⚠️ Only 4 of ~13 ported |
-| App Shell (global sidebar + nav) | ~10% | ❌ No global nav exists |
+| App Shell (global sidebar + nav) | ~75% | ⚠️ `AppSidebar` shipped (logo 分-box, workspace switcher, nav scaffold, pinned projects, user block); missing destinations gated as "soon"; polish + persistent-project-explorer pending (BK-147) |
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
@@ -78,11 +78,11 @@ Mockup `styles.css` defines ~13 atom classes. Only `.dot`, `.kbd`, `.layer-chip`
 
 ## 3. App Shell 🔶 (highest-priority gap)
 
-The mockup renders a persistent global shell on every screen (`Shell` = Sidebar + Topbar + content). **It does not exist** in the implementation — `components/layout/Sidebar.tsx` is a *per-project module-tree explorer* (misleading name collision), and `app/(app)/layout.tsx` renders only `{children}`.
+The mockup renders a persistent global shell on every screen (`Shell` = Sidebar + Topbar + content). **It now largely exists** — `components/layout/AppSidebar.tsx` is mounted in `app/(app)/layout.tsx` inside a `grid-cols-[224px_1fr]` shell (audit predating BK-147 said it was missing; that is stale). Note the name collision still stands: `components/layout/Sidebar.tsx` is the *per-project module-tree explorer*, distinct from the global `AppSidebar.tsx`. Remaining BK-147 work is shell polish + making the **project** explorer persist across the detail routes (D6), not building the global shell from scratch.
 
 | Element | Canonical spec | Current | Verdict |
 |---------|----------------|---------|---------|
-| Persistent global sidebar (`<aside>` full-height) | rendered on every non-login screen | none | ❌ build |
+| Persistent global sidebar (`<aside>` full-height) | rendered on every non-login screen | `AppSidebar` mounted in `app/(app)/layout.tsx` (224px grid) | ✅ shipped |
 | Logo | `分` (single kanji) in vermillion box + "Bunkai" | `Wordmark` = `分解` text, no box, not in shell | 🔶 |
 | New (+) button | ghost icon in sidebar header | none | ❌ |
 | Workspace switcher | `UG` gradient avatar + "upex-galaxy" + chevron, in sidebar | topbar dropdown, no UG avatar, mixes project name | ⚠️ relocate+restyle |
@@ -257,6 +257,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-9 Create modules | **Projects** explorer tree | `project.jsx` §4.3 |
 | | BK-10 Rename/delete module | **Projects** explorer (context menu) | `project.jsx` |
 | | BK-11 Move module | **Projects** explorer | `project.jsx` |
+| | BK-147 App Shell — ATCs/Tests as tabs + persistent explorer | **Shell** (§3, D5) · **Projects** workbench (§4.3, D6) | `app.jsx` §3, `project.jsx` §4.3 |
 | **BK-12 User Stories & AC** | BK-14 User Story CRUD | **Projects** explorer (story nodes) · ATC Editor anchoring | `project.jsx`, `editor.jsx` |
 | | BK-15 AC CRUD + reorder | **Projects** detail · **ATC Editor** AC chips | `editor.jsx` |
 | | BK-16 Markdown editor + render | ATC Editor · Story detail | `editor.jsx` |
