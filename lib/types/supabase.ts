@@ -674,6 +674,7 @@ export interface Database {
           id: string
           title: string
           updated_at: string
+          version: number
           workspace_id: string
         }
         Insert: {
@@ -682,6 +683,7 @@ export interface Database {
           id?: string
           title: string
           updated_at?: string
+          version?: number
           workspace_id: string
         }
         Update: {
@@ -690,6 +692,7 @@ export interface Database {
           id?: string
           title?: string
           updated_at?: string
+          version?: number
           workspace_id?: string
         }
         Relationships: [
@@ -997,6 +1000,15 @@ export interface Database {
       }
       bunkai_move_module: {
         Args: { p_module_id: string, p_new_parent_id?: string }
+        Returns: Json
+      }
+      bunkai_reorder_test_steps: {
+        Args: {
+          p_actor_user_id: string
+          p_if_match: number
+          p_step_ids: string[]
+          p_test_id: string
+        }
         Returns: Json
       }
       bunkai_save_atc: {

@@ -43,6 +43,8 @@ const ApiErrorCodeSchema = z
     'steps_position_invalid',
     'slug_collision',
     'chain_empty',
+    'chain_mismatch',
+    'chain_invalid',
     'internal_error',
     'upstream_error',
   ])

@@ -76,6 +76,8 @@ import '../app/api/v1/tests/route.openapi';
 
 import '../app/api/v1/tests/[id]/route.openapi';
 
+import '../app/api/v1/tests/[id]/reorder/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });

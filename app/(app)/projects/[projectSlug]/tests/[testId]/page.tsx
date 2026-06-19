@@ -49,5 +49,18 @@ export default async function TestDetailPage({ params }: PageProps) {
 
   const test = data as unknown as ExpandedTest;
 
-  return <TestDetailView test={test} projectSlug={projectSlug} />;
+  // BK-28 — reorder is gated to member/admin/owner. The self-row select is
+  // permitted by `workspace_members_select_self_or_admin`; viewers fall through
+  // to the read-only chain (no drag handles). The RPC's own write gate stays
+  // authoritative regardless of what the UI exposes.
+  const { data: memberRow } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  const canReorder = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+
+  return <TestDetailView test={test} projectSlug={projectSlug} canReorder={canReorder} />;
 }
