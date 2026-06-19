@@ -1745,6 +1745,134 @@
           }
         },
         "required": ["title", "atc_ids"]
+      },
+      "ExpandedTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atc_count": {
+            "type": "integer",
+            "description": "Number of ATCs in the chain (= count of `test_steps`)."
+          },
+          "atcs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChainedAtc"
+            },
+            "description": "The chain of ATCs, ordered by `test_steps.position`."
+          }
+        },
+        "required": ["id", "workspace_id", "title", "created_at", "updated_at", "atc_count", "atcs"]
+      },
+      "ChainedAtc": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "description": "Position of this ATC in the Test chain (1..n, from `test_steps.position`)."
+          },
+          "step_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "`test_steps.id` — the stable chain-row handle."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "status": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChainedStep"
+            }
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChainedAssertion"
+            }
+          }
+        },
+        "required": [
+          "position",
+          "step_id",
+          "id",
+          "slug",
+          "title",
+          "layer",
+          "status",
+          "steps",
+          "assertions"
+        ]
+      },
+      "ChainedStep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          },
+          "input_data": {
+            "type": ["string", "null"]
+          },
+          "expected": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "position", "content", "input_data", "expected"]
+      },
+      "ChainedAssertion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "position", "content"]
       }
     },
     "parameters": {}
@@ -4497,6 +4625,89 @@
           },
           "422": {
             "description": "Validation failed (`validation_failed` for title/uuid/workspace_id rules, `chain_empty` when the chain references no ATC).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/{id}": {
+      "get": {
+        "tags": ["Tests"],
+        "summary": "Read a Test with its chain of ATCs fully expanded",
+        "description": "Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Test header plus the ordered chain of ATCs, each expanded inline with its ordered steps and assertions, in one round trip. Live content (references, not snapshots). Non-disclosing: missing, not-visible, and foreign-workspace Tests all return an identical 404 — never 403, never an existence echo.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Accepted for forward-compatibility; the response is always fully expanded in the MVP."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The expanded Test.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {
+                      "$ref": "#/components/schemas/ExpandedTest"
+                    }
+                  },
+                  "required": ["test"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found (missing, not visible, or foreign workspace — non-disclosing).",
             "content": {
               "application/json": {
                 "schema": {
