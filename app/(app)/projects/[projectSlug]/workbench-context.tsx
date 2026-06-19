@@ -59,31 +59,36 @@ export function useWorkbench(): WorkbenchContextValue {
   return ctx;
 }
 
-function buildTab(
+// Returns a tab descriptor for an item that EXISTS in the loaded project data,
+// or null. A deleted / invisible item resolves to null so it never spawns a
+// stray tab — the route's not-found page renders inside the shell instead.
+function findTab(
   rows: ProjectRow[],
   tests: ExplorerTestItem[],
   projectSlug: string,
   kind: WorkbenchTabKind,
   id: string,
-): WorkbenchTab {
+): WorkbenchTab | null {
   if (kind === 'atc') {
     const atc = rows.find(r => r.id === id);
+    if (!atc) { return null; }
     return {
       kind: 'atc',
       id,
       href: `/projects/${projectSlug}/atcs/${id}`,
-      label: atc ? shortSlug(atc.slug) : 'ATC',
-      layer: atc?.layer,
-      status: atc?.status,
+      label: shortSlug(atc.slug),
+      layer: atc.layer,
+      status: atc.status,
     };
   }
   const test = tests.find(t => t.id === id);
+  if (!test) { return null; }
   return {
     kind: 'test',
     id,
     href: `/projects/${projectSlug}/tests/${id}`,
-    label: test?.title ?? 'Test',
-    stepCount: test?.step_count,
+    label: test.title,
+    stepCount: test.step_count,
   };
 }
 
@@ -96,9 +101,12 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
 
   const [view, setView] = useState<WorkbenchView>('tree');
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
-    if (activeAtcId) { return [buildTab(rows, tests, projectSlug, 'atc', activeAtcId)]; }
-    if (activeTestId) { return [buildTab(rows, tests, projectSlug, 'test', activeTestId)]; }
-    return [];
+    const seed = activeAtcId
+      ? findTab(rows, tests, projectSlug, 'atc', activeAtcId)
+      : activeTestId
+        ? findTab(rows, tests, projectSlug, 'test', activeTestId)
+        : null;
+    return seed ? [seed] : [];
   });
 
   // Visiting a detail route registers it as a tab (dedup) and makes it active.
@@ -109,9 +117,11 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     const kind: WorkbenchTabKind | null = activeAtcId ? 'atc' : activeTestId ? 'test' : null;
     const id = activeAtcId ?? activeTestId;
     if (!kind || !id) { return; }
+    const tab = findTab(rows, tests, projectSlug, kind, id);
+    if (!tab) { return; } // deleted / invisible item -> no tab; the not-found page shows
     setOpenTabs((prev) => {
       if (prev.some(t => t.kind === kind && t.id === id)) { return prev; }
-      return [...prev, buildTab(rows, tests, projectSlug, kind, id)];
+      return [...prev, tab];
     });
   }, [activeAtcId, activeTestId, rows, tests, projectSlug]);
 
