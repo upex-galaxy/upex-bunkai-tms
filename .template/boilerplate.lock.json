@@ -4,14 +4,14 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "f4f945ee7e80d499e326c8ce287fe59b14ebce1a",
+    "claude": "f07612e4531bc6a48d8cd631c27887659732dd20",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "f4f945ee7e80d499e326c8ce287fe59b14ebce1a",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "scripts": "f4f945ee7e80d499e326c8ce287fe59b14ebce1a",
-    "docs": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
-    "context": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
-    "context-engineering": "fd4ad5f6895dbf25ab5880b36690f96bd250d655",
+    "docs": "f07612e4531bc6a48d8cd631c27887659732dd20",
+    "context": "f07612e4531bc6a48d8cd631c27887659732dd20",
+    "context-engineering": "f07612e4531bc6a48d8cd631c27887659732dd20",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -39,7 +39,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-10T13:19:15.413Z",
+  "lastSyncedAt": "2026-06-19T13:08:14.410Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
