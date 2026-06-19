@@ -101,7 +101,7 @@ export function NewTestBuilder({ projectSlug, atcs }: NewTestBuilderProps) {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-0" data-testid="new-test-builder">
+    <div className="flex h-full flex-col overflow-hidden bg-surface-0" data-testid="new-test-builder">
       {/* topbar */}
       <div className="flex h-10 flex-shrink-0 items-center justify-between border-b border-stroke-1 bg-surface-1 px-3">
         <div className="flex min-w-0 items-center gap-2">

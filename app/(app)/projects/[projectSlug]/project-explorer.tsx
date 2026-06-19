@@ -1,6 +1,6 @@
 'use client';
 
-import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
@@ -38,11 +38,11 @@ interface ProjectExplorerProps {
   // True when the caller's workspace role is >= member. Gates the create
   // affordances; the API remains the authority and rejects unauthorized writes.
   canCreate: boolean
-  // Tree-workbench wiring: a plain ATC click opens an in-pane tab (handled by
-  // the parent workbench) instead of navigating to the editor. `selectedAtcId`
-  // highlights the active tab's row in the tree.
-  onOpenAtc?: (atc: Atc) => void
+  // Route-driven workbench (BK-147): a plain ATC/Test click navigates to its
+  // route, which opens as a tab in the persistent shell. `selectedAtcId` /
+  // `selectedTestId` (derived from the active route) highlight the open item.
   selectedAtcId?: string | null
+  selectedTestId?: string | null
 }
 
 interface CreateTarget {
@@ -109,8 +109,8 @@ export function ProjectExplorer({
   tree,
   tests = [],
   canCreate,
-  onOpenAtc,
   selectedAtcId,
+  selectedTestId,
 }: ProjectExplorerProps) {
   const [target, setTarget] = useState<CreateTarget | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
@@ -224,7 +224,6 @@ export function ProjectExplorer({
                 canCreate={canCreate}
                 selectedModuleId={selectedModuleId}
                 selectedAtcId={selectedAtcId}
-                onOpenAtc={onOpenAtc}
                 onNewModule={() => setTarget({ parentModuleId: null })}
                 onAddSubModule={node =>
                   setTarget({ parentModuleId: node.id, parentLabel: node.name })}
@@ -274,7 +273,12 @@ export function ProjectExplorer({
                           key={t.id}
                           href={`/projects/${projectSlug}/tests/${t.id}`}
                           data-testid={`explorer-test-${t.id}`}
-                          className="flex h-6 items-center gap-1.5 px-3 text-sm text-fg-1 hover:bg-surface-2"
+                          className={cn(
+                            'flex h-6 items-center gap-1.5 border-l-2 px-3 text-sm',
+                            t.id === selectedTestId
+                              ? 'border-accent bg-accent-soft text-fg-0'
+                              : 'border-transparent text-fg-1 hover:bg-surface-2',
+                          )}
                         >
                           <GitBranch size={12} className="shrink-0 text-fg-3" />
                           <span className="min-w-0 flex-1 truncate">{t.title}</span>
