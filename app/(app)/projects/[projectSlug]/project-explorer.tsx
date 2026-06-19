@@ -6,6 +6,7 @@ import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
@@ -269,16 +270,17 @@ export function ProjectExplorer({
                         </div>
                       )
                     : tests.map(t => (
-                        <div
+                        <Link
                           key={t.id}
+                          href={`/projects/${projectSlug}/tests/${t.id}`}
                           data-testid={`explorer-test-${t.id}`}
-                          className="flex h-6 items-center gap-1.5 px-3 text-sm text-fg-1"
+                          className="flex h-6 items-center gap-1.5 px-3 text-sm text-fg-1 hover:bg-surface-2"
                         >
                           <GitBranch size={12} className="shrink-0 text-fg-3" />
                           <span className="min-w-0 flex-1 truncate">{t.title}</span>
                           <span className="shrink-0 font-mono text-xs text-fg-4">{t.step_count}</span>
                           <span className="dot shrink-0" data-status="unrun" />
-                        </div>
+                        </Link>
                       ))}
                 </div>
               )}
