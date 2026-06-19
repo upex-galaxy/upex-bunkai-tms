@@ -182,6 +182,10 @@ export function TestReorderClient({ test, projectSlug }: TestReorderClientProps)
       )}
 
       <DndContext
+        // Stable id so dnd-kit's generated a11y ids (DndDescribedBy-N) are
+        // deterministic across SSR/CSR — without it the server (0) and client
+        // (post-increment) ids diverge and React reports a hydration mismatch.
+        id={`test-reorder-${test.id}`}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
