@@ -160,3 +160,26 @@ export async function getTestExpanded(supabase: Client, args: { actorUserId: str
     p_test_id: args.testId,
   });
 }
+
+// BK-28 — reorder the ATC chain inside a Test. `stepIds` is the COMPLETE new
+// order of existing test_steps.id values (a permutation). `ifMatch` is the
+// optimistic-lock version token (null skips the guard). The RPC enforces set
+// equality + version under FOR UPDATE, detects no-ops (no bump, no event), and
+// returns the composed Test json — same explicit-actor contract as the others.
+export interface ReorderTestStepsArgs {
+  actorUserId: string
+  testId: string
+  ifMatch: number | null
+  stepIds: string[]
+}
+
+export async function reorderTestSteps(supabase: Client, args: ReorderTestStepsArgs) {
+  return supabase.rpc('bunkai_reorder_test_steps', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    // The RPC param is `int` (typed non-null) but accepts NULL to skip the
+    // If-Match guard. supabase-js serializes null → SQL NULL (mirrors updateAtc).
+    p_if_match: args.ifMatch as number,
+    p_step_ids: args.stepIds,
+  });
+}

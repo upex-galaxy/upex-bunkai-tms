@@ -37,6 +37,12 @@ export const API_ERROR_CODES = {
   // distinct from validation_failed so API consumers can branch on it.
   CHAIN_EMPTY: 'chain_empty',
 
+  // Tests domain (BK-28, reorder) — the submitted chain is not the Test's exact
+  // step set (`chain_mismatch`, with details.missing / details.extra), or is
+  // structurally invalid: empty or with duplicate step ids (`chain_invalid`).
+  CHAIN_MISMATCH: 'chain_mismatch',
+  CHAIN_INVALID: 'chain_invalid',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -60,6 +66,8 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   steps_position_invalid: 422,
   slug_collision: 409,
   chain_empty: 422,
+  chain_mismatch: 422,
+  chain_invalid: 422,
   internal_error: 500,
   upstream_error: 502,
 };
