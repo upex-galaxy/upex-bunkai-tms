@@ -4,37 +4,77 @@ import { Button } from '@components/ui/button';
 import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+interface CommandPaletteProps {
+  /**
+   * Controlled open state. When provided, the component is controlled and
+   *  reports changes via `onOpenChange`; otherwise it manages its own state.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /**
+   * Render the built-in trigger button. Set false to drive the palette from an
+   *  external trigger (e.g. the AppSidebar search button) and render only the modal.
+   */
+  trigger?: boolean
+  /**
+   * Attach the global ⌘K / Esc key handler. Only ONE mounted instance should own
+   *  the hotkey, otherwise a single ⌘K opens multiple palettes at once.
+   */
+  ownsHotkey?: boolean
+}
+
+export function CommandPalette({
+  open: openProp,
+  onOpenChange,
+  trigger = true,
+  ownsHotkey = true,
+}: CommandPaletteProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+
+  const setOpen = (next: boolean) => {
+    if (isControlled) { onOpenChange?.(next); }
+    else { setInternalOpen(next); }
+  };
 
   useEffect(() => {
+    if (!ownsHotkey) { return; }
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setOpen(o => !o);
+        const next = !open;
+        if (isControlled) { onOpenChange?.(next); }
+        else { setInternalOpen(next); }
       }
-      if (e.key === 'Escape') { setOpen(false); }
+      if (e.key === 'Escape') {
+        if (isControlled) { onOpenChange?.(false); }
+        else { setInternalOpen(false); }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [ownsHotkey, open, isControlled, onOpenChange]);
 
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="hidden gap-2 md:inline-flex"
-      >
-        <Search size={11} className="text-fg-3" />
-        <span className="text-fg-3">Search…</span>
-        <span className="kbd">⌘</span>
-        <span className="kbd">K</span>
-      </Button>
+      {trigger && (
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setOpen(true)}
+          className="hidden gap-2 md:inline-flex"
+        >
+          <Search size={11} className="text-fg-3" />
+          <span className="text-fg-3">Search…</span>
+          <span className="kbd">⌘</span>
+          <span className="kbd">K</span>
+        </Button>
+      )}
 
       {open && (
         <div
+          data-testid="command-palette"
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[12vh]"
           onClick={() => setOpen(false)}
         >

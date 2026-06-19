@@ -105,7 +105,7 @@ export function ProjectWorkbench({
         )}
         right={(
           <>
-            <CommandPalette />
+            <CommandPalette ownsHotkey={false} />
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
               className={buttonVariants({ size: 'sm' })}

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComponentType } from 'react';
+import { CommandPalette } from '@components/layout/CommandPalette';
 import { useAuth } from '@components/providers/auth-context';
 import { cn } from '@lib/utils';
 import {
@@ -80,6 +81,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
   const [wsOpen, setWsOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0] ?? null;
 
@@ -213,10 +215,12 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
         )}
       </div>
 
-      {/* Search (⌘K) — affordance per mockup; command palette wiring is a follow-up */}
+      {/* Search (⌘K) — opens the command palette; also bound to ⌘K globally */}
       <div className="px-2 pb-2.5">
         <button
           type="button"
+          data-testid="sidebar-search"
+          onClick={() => setPaletteOpen(true)}
           className="flex w-full items-center justify-between gap-2 rounded-2 bg-surface-2 px-2 py-1.5 text-sm text-fg-3 hover:bg-surface-3"
         >
           <span className="inline-flex items-center gap-1.5">
@@ -356,6 +360,10 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
           </>
         )}
       </div>
+
+      {/* Global command palette: the sidebar owns the ⌘K hotkey (single owner).
+          Driven by the search button above; other triggers pass ownsHotkey={false}. */}
+      <CommandPalette trigger={false} open={paletteOpen} onOpenChange={setPaletteOpen} />
     </aside>
   );
 }
