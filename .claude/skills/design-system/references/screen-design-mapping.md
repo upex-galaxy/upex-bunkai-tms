@@ -20,7 +20,14 @@ Supported external tools (document both; the user picks):
 | **Open Design** (OSS, local Docker app) | Free. User iterates screens in the local UI, downloads the prototypes. | Prototype files dropped into the drop zone. |
 | Any other prototyper (Figma export, hand-authored HTML, …) | User's choice | Whatever lands in the drop zone is treated as the screen source. |
 
-**Drop zone:** `.context/designs/<project-slug>/` (project-slug from `.agents/project.yaml`).
+**Drop zone:** `.context/designs/<project-slug>/<batch-slug>/` (project-slug from `.agents/project.yaml`;
+batch-slug per `references/screen-design-brief.md` — one folder per brief/feature batch, holding
+`BRIEF.md` + the returned bundle).
+
+> **Two drop zones, two artifacts — do not confuse them.**
+> `design/handoff/` (repo root) is Path D's zone for the **system-level token bundle** that becomes
+> `DESIGN.md`. `.context/designs/` is THIS phase's zone for **screen mockups** that become
+> `master-design-plan.md` specs. Same external tools, different cargo, different consumers.
 
 ## Always opt-in — never auto-run
 
@@ -39,14 +46,17 @@ standalone invocation), ALWAYS ask — never assume. Suggested prompt (AskUserQu
 ## Procedure (when opted in)
 
 1. **Check the drop zone.** Look for mockups under `.context/designs/<project-slug>/`.
-2. **If empty → delegate + PAUSE.** Print tool-specific instructions and wait:
-   - *Claude Design:* go to `claude.ai/design`, mock the screens, trigger the handoff export, drop the
-     bundle into `.context/designs/<project-slug>/`.
-   - *Open Design:* bring up the local Docker app (see `references/open-design-app.md`), iterate the
-     screens, download the prototypes into the same drop zone.
-   - Record a `progress.md` checkpoint `status: started, notes: "waiting for screen mockups in
-     .context/designs/<slug>/"` so the session is resume-safe (Phase 0 picks it back up). Do NOT
-     fabricate screens to keep going.
+2. **If empty → generate a design brief, delegate + PAUSE.** Do NOT print generic "go design"
+   instructions — load `references/screen-design-brief.md` and follow its procedure:
+   - Build a portable brief seeded with the `DESIGN.md` frozen tokens (inlined values), the
+     batch's user stories + AC-visible behaviors, and per-tool export instructions
+     (Claude Design chat pane / Open Design brief form / any prototyper).
+   - Save it as `.context/designs/<project-slug>/<batch-slug>/BRIEF.md` BEFORE handing it over
+     (provenance — §4 specs cite it), then print it with the one-line mission: copy into the
+     tool, design, export into the same folder, return and confirm.
+   - Record a `progress.md` checkpoint `status: started, notes: "brief <batch-slug> delivered,
+     waiting for screen mockups in .context/designs/<slug>/<batch-slug>/"` so the session is
+     resume-safe (Phase 0 picks it back up). Do NOT fabricate screens to keep going.
 3. **Detect + enumerate.** Once mockups are present, read them and list the screens (one entry per
    screen/route), capturing each screen's purpose and notable components. Dispatch a Single subagent
    for the read+synthesis (mockups can be large) per the briefing template.
@@ -60,7 +70,8 @@ standalone invocation), ALWAYS ask — never assume. Suggested prompt (AskUserQu
    - **§1 Scorecard** — per-screen fidelity status (built / partial / missing) — start empty.
    - **§2 Frozen design contract** — a short token summary that points to `DESIGN.md` as the
      authority (never duplicate token values; reference them).
-   - **§4 Screen specs** — one section per screen: the spec drawn from the mockup + a checklist.
+   - **§4 Screen specs** — one section per screen: the spec drawn from the mockup + a checklist
+     + provenance (mockup path in the drop zone + the `BRIEF.md` that requested it, when one exists).
    - **§5 Divergence register** — deliberate departures from the mockup, ratified, with reason.
    - **§8 US→Screen map** — the table from step 4.
    - **§9 Maintenance** — how to keep it in sync.
@@ -70,6 +81,9 @@ standalone invocation), ALWAYS ask — never assume. Suggested prompt (AskUserQu
 7. **Incremental / just-in-time.** This phase is re-runnable. The user need not design every screen
    upfront — design a feature's screens right before its sprint and append the new screens to §4 +
    rows to §8. Re-invocation UPSERTs; never wipe existing screen specs or ratified divergences.
+   When `/sprint-development` hits a UI story with no §8 row (its input #10 gate), it routes the
+   user here: a new brief for just that screen batch (`references/screen-design-brief.md`),
+   mockup comes back, this procedure UPSERTs §4 + §8, dev resumes.
 
 ## Hand-off
 

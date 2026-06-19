@@ -241,7 +241,7 @@ The skill roster is split by _phase_ (declared in each `SKILL.md` frontmatter as
 
 - **`foundation` (passive reference host)** — `agentic-dev-core` (briefing template, dispatch patterns, orchestration doctrine, skill-composition strategy; loaded on demand by other skills, not invoked directly).
 - **`onboarding`** — `agentic-dev-onboard` (guided tour for newcomers).
-- **`foundation`** — `project-foundation` (Constitution + PRD + SRS + Discovery), `design-system` (DESIGN.md), `project-bootstrap` (backend + frontend scaffolding).
+- **`foundation`** — `project-foundation` (Constitution + PRD + SRS + Discovery), `design-system` (DESIGN.md + opt-in screen-mapping: design briefs for Claude Design / Open Design → `master-design-plan.md`), `project-bootstrap` (backend + frontend scaffolding).
 - **`foundation-extension`** — `testability-guide` (in-app `/qa` page + tool-agnostic credentials artifact for QA testers and AI agents; runs after `project-bootstrap`, idempotent on re-run).
 - **`management`** — `product-management` (backlog seed, epic creation, story refinement, AC quality, edge-case enumeration, sprint reporting).
 - **`implementation`** — `sprint-development` (per-story mega-orchestrator), `unit-testing` (TDD composable slice), `git-flow-master` (branches, commits, PRs, conflicts).
@@ -282,10 +282,10 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  MODULE / EPIC LEVEL  (Module = Epic, 1:1)                  │
-│  Epic overview · Story table · Epic-level Jira fields        │
-│  Example: .context/PBI/epics/EPIC-<KEY>-<slug>/              │
-│  epic.md carries summary, description, and the story table;  │
-│  feature-*.md files mirror epic-level Jira fields.           │
+│  Epic scope · Feature plans · Cross-story decisions          │
+│  Example: .context/PBI/epics/EPIC-<KEY>-<slug>/ holds        │
+│  epic.md plus feature-implementation-plan.md and             │
+│  feature-test-plan.md, mirroring epic-level Jira fields.     │
 └──────────────────────────────────────────────────────────────┘
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -325,35 +325,37 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │   ├── legacy-analysis.md           #   Legacy stack + doc-gap analysis (optional) (/project-foundation Phase 1)
 │   ├── business-data-map.md         #   Entities, flows, state machines  (/business-data-map)
 │   ├── business-feature-map.md      #   Feature inventory + CRUD matrix  (/business-feature-map)
-│   └── business-api-map.md          #   Auth model + critical endpoints  (/business-api-map)
+│   ├── business-api-map.md          #   Auth model + critical endpoints  (/business-api-map)
+│   └── domain-glossary.md           #   Canonical domain terminology     (/project-foundation Phase 4 Step 6; hand-maintained, append-only)
 │
 ├── master-implementation-plan.md     # High-level roadmap                (/master-implementation-plan)
 │
-└── PBI/                              # Jira-synced cache (Module = Epic, 1:1; Jira = source of truth)
-    ├── epic-tree.md                 #   [SYNC] master index: epics → stories (+points/status)
-    ├── epics/EPIC-<KEY>-<slug>/
-    │   ├── epic.md                  #   [SYNC]
-    │   ├── feature-implementation-plan.md  # [SYNC ← Jira field / stub]
-    │   ├── feature-test-plan.md     #   [SYNC ← Jira field / stub]
-    │   └── stories/STORY-<KEY>-<slug>/
-    │       ├── story.md             #   [SYNC]
-    │       ├── acceptance-criteria.md  # [SYNC ← Jira field]
-    │       ├── scope.md / out-of-scope.md / business-rules.md / workflow.md  # [SYNC ← Jira fields]
-    │       ├── implementation-plan.md  # [SYNC ← Jira field] (/sprint-development Stage 1 authors it Jira-first)
-    │       ├── acceptance-test-plan.md / acceptance-test-results.md  # [SYNC ← ATP / ATR fields]
-    │       ├── comments.md          #   [SYNC, --include-comments]
-    │       ├── defects/             #   [SYNC] linked defects, auto-nested
-    │       ├── context.md           #   Session context     (non-Jira, optional)
-    │       └── evidence/            #   Screenshots, logs   (gitignored)
-    ├── bugs/BUG-<KEY>-<slug>.md     #   [SYNC] flat file (work_types registry: coverable=false, content=single)
-    └── tech-stories/ tests/ improvements/  # [SYNC] other work types per .agents/jira-required.yaml
+└── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1)
+    ├── epic-tree.md                 #   [SYNC] master index
+    ├── bugs/ defects/ improvements/ tests/  # [SYNC] standalone issue types (per work_types registry)
+    └── epics/EPIC-<KEY>-<slug>/
+        ├── epic.md                  #   [SYNC]
+        ├── feature-implementation-plan.md  # [SYNC ← Jira field / stub]
+        ├── feature-test-plan.md     #   [SYNC ← Jira field / stub]
+        └── stories/STORY-<KEY>-<slug>/
+            ├── story.md             #   [SYNC]
+            ├── acceptance-criteria.md  # AC                 [SYNC ← Jira field / stub]
+            ├── scope.md             #   In-scope            [SYNC ← Jira field / stub]
+            ├── out-of-scope.md      #   Out-of-scope        [SYNC ← Jira field / stub]
+            ├── business-rules.md    #   Domain rules        [SYNC ← Jira field / stub]
+            ├── workflow.md          #   Flow / sequence     [SYNC ← Jira field / stub]
+            ├── implementation-plan.md  # Plan               [SYNC ← Jira `spec_implementation_plan` / stub]
+            ├── comments.md          #   [SYNC, --include-comments]
+            ├── context.md           #   Session context     (non-Jira)
+            ├── progress.md          #   Story progress       (non-Jira)
+            └── evidence/            #   Screenshots, logs   (gitignored)
 ```
 
 The `PBI/` tree is owned by `scripts/sync-jira-issues.ts`: Jira is the source of truth and the local `[SYNC]` `.md` files are a read-only cache materialized by `bun run jira:sync-issues`. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read.
 
 Plus, at the project root:
 
-- **`DESIGN.md`** — Apache-2.0 spec from Google Labs. The portable visual identity (palette, typography, spacing, components) every AI agent reads. Generated by `/design-system`.
+- **`DESIGN.md`** — Apache-2.0 spec from Google Labs. The portable visual identity (palette, typography, spacing, components) every AI agent reads. Generated by `/design-system`. An optional opt-in screen-mapping phase extends it with `.context/design/master-design-plan.md` (per-screen specs + US→Screen map): the AI generates portable design briefs, the user produces mockups in Claude Design / Open Design, the bundle returns to `.context/designs/`, and `/sprint-development` builds every UI story against its agreed screen.
 - **`CLAUDE.md`** — operational context loaded every Claude Code session: project identity, behavioral layer, critical reminders, tool resolution, orchestration mode, skills catalog.
 
 The canonical shape is documented in `.context/README.md`. The strategic reasoning behind the three-tier split lives in `CONTEXT.md` at the repo root.

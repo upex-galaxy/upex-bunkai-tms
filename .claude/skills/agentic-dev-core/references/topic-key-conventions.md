@@ -55,7 +55,7 @@ The vocabulary is open — pick whatever name the workflow naturally uses — bu
 | Artifact name       | Producer                                          | What it is                                                  | File path                                       |
 | ------------------- | ------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
 | `spec`              | `product-management` (AC refinement)              | Refined story spec (Gherkin AC, business rules, scope)      | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md`                 |
-| `epic`              | `product-management` (epic creation)              | Epic-level scope, child stories, traceability to PRD        | `.context/PBI/epics/EPIC-<KEY>-<slug>/module-context.md`              |
+| `epic`              | `product-management` (epic creation)              | Epic-level scope, child stories, traceability to PRD. Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/epic.md`              |
 | `implementation-plan` | `sprint-development` Stage 1                    | Story implementation plan (tasks mapped to AC). Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md`            |
 | `feature-implementation-plan` | `sprint-development` Stage 1 (macro)     | Feature-level implementation plan across multiple stories. Jira-synced. | `.context/PBI/epics/EPIC-<KEY>-<slug>/feature-implementation-plan.md` |
 | `review`            | `sprint-development` Stage 3                      | Code-review findings against AC + standards                 | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md`               |
@@ -115,16 +115,14 @@ The **canonical location** of every artifact is its file path under `.context/PB
 .context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/{artifact}.md
 ```
 
-The PBI tree is rooted at the epic (Module = Epic, 1:1). Epic-level files live in the epic folder; story-level files live in the story folder:
+The PBI tree is rooted at the epic (Module = Epic, 1:1). Epic-level files live in the epic folder; story-level files live in the story folder; per-ticket session state (the `session/...` prefix) lives under `.session/sprint-development/<KEY>/` per `./session-management.md`:
 
 ```
-.context/PBI/epics/EPIC-<KEY>-<slug>/module-context.md
-.context/PBI/epics/EPIC-<KEY>-<slug>/ROADMAP.md
-.context/PBI/epics/EPIC-<KEY>-<slug>/PROGRESS.md
-.context/PBI/epics/EPIC-<KEY>-<slug>/SESSION-PROMPT.md
+.context/PBI/epics/EPIC-<KEY>-<slug>/epic.md
 .context/PBI/epics/EPIC-<KEY>-<slug>/feature-implementation-plan.md
 .context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md
 .context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md
+.session/sprint-development/<KEY>/progress.md
 …
 ```
 

@@ -61,8 +61,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 
 | ADR | Title | Status | Supersedes | Superseded by |
 | --- | ----- | ------ | ---------- | ------------- |
-| [ADR-0001](./ADR-0001-unified-api-authentication.md) | Unified API Authentication (Single Identity Gateway) | Accepted — Implemented | — | — |
-| [ADR-0002](./ADR-0002-idempotency-key-scoping.md) | Idempotency-Key Scoping for the Headless Write Surface | Accepted — Implemented | — | — |
+| _— none yet —_ | The first ADR is usually seeded during `/project-foundation` (SRS architecture) or the first `/sprint-development` story that forces a hard-to-reverse decision. | | | |
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 

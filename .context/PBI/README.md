@@ -13,7 +13,6 @@ Per-epic and per-story workspace shared by `/product-management` (backlog + AC r
     epic.md                                       [SYNC]
     feature-implementation-plan.md                [SYNC ← Jira `feature_implementation_plan` / stub]
     feature-test-plan.md                          [SYNC ← Jira field / stub]
-    module-context.md  ROADMAP.md  PROGRESS.md  SESSION-PROMPT.md   [dev — non-Jira, OK]
     stories/STORY-<KEY>-<slug>/
       story.md                                    [SYNC]
       acceptance-criteria.md  scope.md  out-of-scope.md  business-rules.md  workflow.md   [SYNC ← Jira fields / stub]
@@ -29,7 +28,7 @@ Folder naming follows Jira IDs verbatim — `<KEY>` is the Jira issue key (e.g. 
 ## `[SYNC]` vs dev-authored
 
 - **`[SYNC]` files = forbidden to hand-write.** They are overwritten on every sync — **NO file is hard-protected.** A file that mirrors a Jira field → read the synced copy, never author it locally.
-- **Dev-authored, non-Jira files** (`module-context.md`, `ROADMAP.md`, `PROGRESS.md`, `SESSION-PROMPT.md`, `context.md`, `progress.md`, `evidence/`) are authored locally as usual — they hold info that is NOT in Jira.
+- **Dev-authored, non-Jira files** (`context.md`, `progress.md`, `evidence/`) are authored locally as usual — they hold info that is NOT in Jira.
 
 ## Jira-first generation contract
 
@@ -61,4 +60,4 @@ Issues are created in Jira before the local folder, so folder names always use r
 
 ## Cross-session resumability
 
-DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from the synced PBI plus the Epic-level `ROADMAP.md` / `PROGRESS.md` / `SESSION-PROMPT.md` (dev-authored, non-Jira) — see `CLAUDE.md` §9.
+DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume check, per `.claude/skills/agentic-dev-core/references/session-management.md`) plus the synced story folder and engram — see `CLAUDE.md` §9.

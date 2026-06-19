@@ -4,7 +4,14 @@
 
 ## Purpose
 
-Use este camino cuando el user quiere **iterar visualmente** antes de fijar los tokens — explorar variantes de paleta, jugar con composiciones, ver previews HTML/PDF/PPTX en vivo, todo en una UI local. Open Design (nexu-io, Apache-2.0) es OSS, free, sin signup, sin SaaS lock-in. Comparte el catálogo de 72 brands con `getdesign` (Path B), pero le suma una capa interactiva de Q&A visual encima. La UI no emite `DESIGN.md` nativo — produce artifacts HTML/PDF/PPTX/ZIP/PNG/MP4 que después se convierten al spec Google Labs vía Path E.
+Use este camino cuando el user quiere **iterar visualmente** antes de fijar los tokens — explorar variantes de paleta, jugar con composiciones, ver previews HTML/PDF/PPTX en vivo, todo en una UI local. Open Design (nexu-io, Apache-2.0) es OSS, free, sin signup, sin SaaS lock-in. Comparte el catálogo de brands con `getdesign` (Path B), pero le suma una capa interactiva de Q&A visual encima. La UI no emite `DESIGN.md` nativo — produce artifacts HTML/PDF/PPTX/ZIP/Markdown que después se convierten al spec Google Labs vía Path E.
+
+> **Currency note**: el producto evoluciona rápido — a 2026-06 (`open-design.ai`) el surface es
+> desktop app + daemon local-first con flujo Detect→Discover→Direct→Deliver, ~155 skills,
+> ~150 design systems y 17 coding agents soportados. Los números/pasos de abajo pueden quedar
+> detrás del release actual; ante discrepancia, la UI real manda y este doc se actualiza.
+> Para screen mockups (fase screen-mapping), el user pega el `BRIEF.md` generado por
+> `references/screen-design-brief.md` en el formulario Discover / brief field.
 
 ## Pre-flight
 

@@ -8,9 +8,6 @@ This directory is what makes a fresh AI session productive on day one. Every fil
 .context/
 ├── README.md                      This file — index + generator map
 │
-├── _framework/                    Framework infrastructure (auto-generated)
-│   └── skill-registry.md          Compact-rules cache for skills        (scripts/build-skill-registry.ts)
-│
 ├── business/                      Single source of business knowledge (Constitution + Maps)
 │   ├── README.md                  Folder index (Constitution + Maps layers)
 │   ├── business-model.md          Business Model Canvas, value prop (/project-foundation Phase 1)
@@ -19,7 +16,8 @@ This directory is what makes a fresh AI session productive on day one. Every fil
 │   ├── business-data-map.md       Entities, flows, state machines    (/business-data-map)
 │   ├── business-feature-map.md    Feature catalog, CRUD matrix       (/business-feature-map)
 │   ├── business-api-map.md        Auth model, critical journeys      (/business-api-map)
-│   └── project-dev-guide.md       How to build features here         (/project-foundation Phase 4 embedded)
+│   ├── project-dev-guide.md       How to build features here         (/project-foundation Phase 4 embedded)
+│   └── domain-glossary.md         Canonical domain terminology       (/project-foundation Phase 4 Step 6; hand-maintained, append-only)
 │
 ├── master-implementation-plan.md  High-level dependency-cascaded roadmap (/master-implementation-plan)
 │
@@ -50,6 +48,7 @@ Every file in `.context/` has an owner. Do not edit auto-generated files by hand
 | `business/business-feature-map.md`                  | `/business-feature-map` command         | Invoked by `/project-foundation` Phase 4 Step 2        |
 | `business/business-api-map.md`                      | `/business-api-map` command             | Invoked by `/project-foundation` Phase 4 Step 3        |
 | `business/project-dev-guide.md`                     | `/project-foundation` (Phase 4 Step 4)  | Embedded skill logic; re-run if architecture changes   |
+| `business/domain-glossary.md`                       | `/project-foundation` (Phase 4 Step 6); updated when new terms surface (via `/product-management` flag) | Hand-maintained, append-only, never regenerated        |
 | `master-implementation-plan.md`                     | `/master-implementation-plan` command   | Invoked by `/project-foundation` Phase 4 Step 5        |
 | `PRD/*.md`                                          | `/project-foundation` (Phase 2)         | Executive summary, personas, MVP scope, user journeys  |
 | `SRS/*.md`                                          | `/project-foundation` (Phase 2)         | Functional / non-functional / architecture / API specs |

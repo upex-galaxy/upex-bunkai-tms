@@ -104,6 +104,28 @@ The skill handles Jira transitions, branch creation, commits, PR open, deploy. Y
 
 ---
 
+## Screen design flow (optional — for UI-heavy projects)
+
+UI stories can be built against **agreed screen mockups**, not improvised UI. The loop (CLAUDE.md
+Critical Rule 14 — UI Fidelity Contract):
+
+```
+/design-system (screen-mapping, opt-in)
+  → generates a portable DESIGN BRIEF (frozen tokens + your stories' functional intent)
+  → YOU paste it into Claude Design (claude.ai/design) or Open Design (open-design.ai),
+    iterate, export the bundle into .context/designs/<project>/<batch>/
+  → the skill maps the mockups into .context/design/master-design-plan.md
+    (per-screen specs + US→Screen map)
+  → /sprint-development builds every UI story against its mapped screen;
+    unratified divergence from the mockup = review defect
+```
+
+The AI never generates mockups itself — it generates the brief, you design in the external tool
+(which keeps project memory across batches, so later briefs are light "follow-up" deltas). Entirely
+optional: without a master design plan, UI fidelity degrades gracefully to `DESIGN.md` tokens only.
+
+---
+
 ## MCPs available
 
 Five canonical MCPs ship with the boilerplate:
@@ -153,7 +175,7 @@ Verify your config by running the linter declared in `package.json` (typically `
 | `agentic-dev-core`    | (auto, cited by other skills) | Passive reference host for shared doctrine (briefing template, dispatch patterns, orchestration, skill-composition strategy). Loaded on demand — not invoked directly. |
 | `agentic-dev-onboard` | `/agentic-dev-onboard`        | This skill — first-time orientation                                                                                                                                    |
 | `project-foundation`  | `/project-foundation`         | Constitution + PRD + SRS + Discovery                                                                                                                                   |
-| `design-system`       | `/design-system`              | DESIGN.md (Google Labs spec) — visual identity contract                                                                                                                |
+| `design-system`       | `/design-system`              | DESIGN.md (Google Labs spec) — visual identity contract. Opt-in screen-mapping: design briefs → external mockups → `master-design-plan.md`                             |
 | `project-bootstrap`   | `/project-bootstrap`          | Backend + frontend skeleton + features                                                                                                                                 |
 | `testability-guide`   | `/testability-guide`          | `/qa` page + tool-agnostic credentials artifact (Jira / Confluence / Notion / MCP / CLI / manual). Idempotent re-runs.                                                 |
 | `product-management`  | `/product-management`         | Backlog seeding, epic creation, INVEST/AC refinement                                                                                                                   |
@@ -169,7 +191,7 @@ Browser automation is provided by `/playwright-cli` (community skill from `micro
 
 ## Persistent memory via gentle-ai
 
-`bun run setup` installs Engram via `gentle-ai install --preset minimal` — persistent memory that survives across sessions and compactions. No other gentle-ai skills are installed (CLAUDE.md §13 covers the proactive-save protocol). Full details in [`INSTALLER.md`](../../../INSTALLER.md).
+`bun run setup` installs Engram via `gentle-ai install --preset minimal` — persistent memory that survives across sessions and compactions. No other gentle-ai skills are installed (CLAUDE.md §12 covers the proactive-save protocol). Full details in [`INSTALLER.md`](../../../INSTALLER.md).
 
 ---
 
@@ -177,7 +199,7 @@ Browser automation is provided by `/playwright-cli` (community skill from `micro
 
 The AI persistent-memory file at the repo root carries the full operational contract. Before your first ticket, skim these sections:
 
-- **§1 CRITICAL RULES** — 12 rules that override defaults (credentials, plan-before-coding, no AI attribution, MCP credential failure protocol, `READ package.json DIRECTLY`).
+- **§1 CRITICAL RULES** — 14 rules that override defaults (credentials, plan-before-coding, no AI attribution, MCP credential failure protocol, `READ package.json DIRECTLY`, UI fidelity contract).
 - **§4 CONTEXT LOADING MAP** — task → trigger phrase → skill → context files → primary tool.
 - **§5 SKILLS + COMMANDS + MCPs REGISTRY** — full T1/T3/T4 skill model.
 - **§12 PROACTIVE MEMORY TRIGGERS** — when to call `mem_save` without being asked.

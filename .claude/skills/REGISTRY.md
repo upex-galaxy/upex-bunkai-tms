@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-06-10T13:19:15.491Z`
+> Generated: `2026-06-19T13:08:14.478Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -107,7 +107,7 @@ Skills indexed: 40
 - Use **Context7** for "how to use X" — official docs, current API
 - Use **Tavily** for "how to solve X" — community fixes, troubleshooting
 - Use **Atlassian** only as fallback — prefer `/acli` skill (fewer tokens, faster)
-- **§1 CRITICAL RULES** — 12 rules that override defaults (credentials, plan-before-coding, no AI attribution, MCP credential failure protocol, `READ package.json DIRECTLY`).
+- **§1 CRITICAL RULES** — 14 rules that override defaults (credentials, plan-before-coding, no AI attribution, MCP credential failure protocol, `READ package.json DIRECTLY`, UI fidelity contract).
 - **§4 CONTEXT LOADING MAP** — task → trigger phrase → skill → context files → primary tool.
 - **§5 SKILLS + COMMANDS + MCPs REGISTRY** — full T1/T3/T4 skill model.
 - **§12 PROACTIVE MEMORY TRIGGERS** — when to call `mem_save` without being asked.

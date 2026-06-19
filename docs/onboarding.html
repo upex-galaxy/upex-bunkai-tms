@@ -3245,7 +3245,10 @@ bun run vars:check           # validate placeholders</code></pre>
                   Five paths: automated brand match via <code>npx getdesign</code>, manual gallery,
                   Open Design app, Claude Design, or LLM-authored custom. Composed by
                   <code>/project-foundation</code> (post-PRD) and consumed by
-                  <code>/project-bootstrap</code>.
+                  <code>/project-bootstrap</code>. Optional opt-in screen-mapping: generates
+                  portable design briefs for Claude Design / Open Design, ingests the returned
+                  mockups into <code>.context/design/master-design-plan.md</code> (per-screen specs
+                  + US→Screen map) that <code>/sprint-development</code> builds UI stories against.
                 </p>
               </article>
 

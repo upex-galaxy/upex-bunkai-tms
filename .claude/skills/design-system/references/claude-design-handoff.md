@@ -27,6 +27,13 @@ La skill imprime estos pasos textuales para que el user los ejecute en el browse
 
 Why el path convencional `design/handoff/`: estandariza dónde la skill busca el bundle, hace el flow reproducible entre proyectos, y deja un lugar obvio gitignoreable si el user no quiere commitear el bundle crudo (sí commitea el `DESIGN.md` final).
 
+> **Scope de este path — system bundle, NO screen mockups.** `design/handoff/` recibe el bundle
+> de tokens que se convierte en `DESIGN.md` (este documento). Los **screen mockups** de la fase
+> opcional screen-mapping van a OTRO drop zone: `.context/designs/<project-slug>/<batch-slug>/`,
+> y el user arranca esa sesión de Claude Design pegando el `BRIEF.md` generado por
+> `references/screen-design-brief.md` (no en frío). Misma herramienta, dos cargas distintas —
+> ver `references/screen-design-mapping.md`.
+
 ## Wait state
 
 Una vez impresas las instrucciones, la skill **bloquea** esperando al user con AskUserQuestion:

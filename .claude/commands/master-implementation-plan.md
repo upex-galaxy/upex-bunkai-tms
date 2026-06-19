@@ -30,12 +30,7 @@ The output contains:
 - Explicit out-of-scope section (to stop scope creep into the master plan)
 - Implementation gaps — spike candidates and unknowns to investigate before building
 
-This is **NOT** a story-level implementation plan (→ `/sprint-development` Planning stage), a flow description (→ `business-data-map.md`), a feature inventory (→ `business-feature-map.md`), nor the **ticket-level dependency execution roadmap** (→ `.context/dev-roadmap.md` — which BK-NN unblocks which, execution sprints, mockup-gates). It is the **implementation-strategy layer** above those maps.
-
-> **Altitude split** (do not collapse these):
-> - **THIS doc** (`master-implementation-plan.md`) — EPIC / strategy, derived from business-maps. "What to build & why that order."
-> - `.context/dev-roadmap.md` — TICKET / sequence, derived from Jira links + local design. "Which story unblocks which, in what execution sprint." This skill does NOT own or write it; only cross-links it.
-> - `/sprint-development` plan — STORY / files. "How to build one ticket."
+This is **NOT** a story-level implementation plan (→ `/sprint-development` Planning stage), a flow description (→ `business-data-map.md`), a feature inventory (→ `business-feature-map.md`), nor a per-epic ROADMAP (→ `.context/PBI/epics/EPIC-<KEY>-<slug>/ROADMAP.md`). It is the **implementation-strategy layer** above those maps.
 
 ---
 
@@ -47,8 +42,7 @@ This is **NOT** a story-level implementation plan (→ `/sprint-development` Pla
 | `.context/business/business-feature-map.md` | Optional — warn if missing | Feature catalog, CRUD matrix, feature flags, dependency tags, MVP-relevance matrix                                      | Read file                          |
 | Existing context                            | If available               | PRD priorities, SRS architecture, user journeys, domain glossary                                                        | `.context/PRD/`, `.context/SRS/`, `.context/business/domain-glossary.md` |
 | Git history                                 | If signals needed          | Already-shipped modules (skip), recently-touched modules (in-flight)                                                    | `git log --oneline -90 --stat`     |
-| PBI epics                                   | If available               | Existing epic/story breakdowns to align the plan with current backlog                                                   | `.context/PBI/epic-tree.md` (Jira mirror) |
-| Live Jira epic keys                         | If available               | **Reconcile** plan-internal strategy-epic labels (`EPIC-BK-00N`) to live Jira keys (`BK-1`, `BK-7`, …) — emit the map (see §Numbering reconciliation) | `.context/PBI/epic-tree.md` + `[ISSUE_TRACKER_TOOL]` |
+| PBI epics                                   | If available               | Existing epic/story breakdowns to align the plan with current backlog                                                   | `.context/PBI/epics/EPIC-<KEY>-<slug>/ROADMAP.md` |
 | Issue tracker                               | If helpful                 | Already-prioritized backlog signals from product                                                                        | `[ISSUE_TRACKER_TOOL]`             |
 
 **Golden rule**: ground every priority claim in evidence from the maps. "This feature is Master Sprint 0 because…" must cite either a data-map flow (revenue / legal / blocker), a feature-map MVP-relevance row, a named external dependency, or an explicit user-journey reference. No hand-wave prioritization.
@@ -262,13 +256,12 @@ No TC IDs (those live in the TMS / QA side). No code review checklist (that live
 Explicit delegation to stop scope creep into this plan:
 
 ```markdown
-- Ticket-level dependency execution roadmap (which BK-NN unblocks which, execution sprints, mockup-gates) → `.context/dev-roadmap.md` (companion at ticket altitude; not written by this skill)
 - Per-story implementation plan, file-by-file design → `/sprint-development` Planning stage, written to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md`
 - Feature catalog, CRUD matrix, feature flags → `.context/business/business-feature-map.md`
 - Flow diagrams and state-machine transitions → `.context/business/business-data-map.md`
 - API endpoint inventory / contracts → `bun run api:sync` + `/business-api-map` (when available)
 - Test strategy and risk map → `.context/master-test-plan.md` (sister repo: `/master-test-plan`)
-- Sprint-level execution order → `.context/dev-roadmap.md` §4 (execution sprints) + sprint planning artifacts
+- Sprint-level execution order → `.context/PBI/epics/EPIC-<KEY>-<slug>/ROADMAP.md` (per-epic) or sprint planning artifacts
 - Definite delivery dates → out of scope; this plan only orders work, it does not estimate it
 - Deferred / won't-do features → list here at the end of this section, do not promote them into Master Sprints
 ```
@@ -309,7 +302,6 @@ Each gap should be phrased as a one-line spike: "Spike: choose payment provider 
 ## Rules / constraints
 
 - Never auto-overwrite an existing `.context/master-implementation-plan.md`. UPDATE mode always pauses for confirmation.
-- **Numbering reconciliation (MANDATORY)**: this plan uses plan-internal labels (`EPIC-BK-00N` strategy epics, `{{PROJECT_KEY}}-NNN` / `FEAT-NNN` feature-catalog IDs) that do **not** equal live Jira keys — and `{{PROJECT_KEY}}-029` can visually collide with Jira `BK-29` while meaning something else. Whenever `.context/PBI/epic-tree.md` or the issue tracker is available, emit a **§2.1 epic→Jira-key map** (strategy epic · title · live Jira epic · confidence). Mark any unmapped/ambiguous strategy epic ⚠️ and defer it to the Jira issue-link validation pass — never invent a Jira key. Feature-catalog IDs are NOT mapped 1:1 to Jira stories here; that lives in `dev-roadmap.md`.
 - Never invent priorities. Every Master Sprint 0 / Master Sprint 1 claim cites a data-map flow, a feature-map row, a PRD priority, or a named integration constraint.
 - Never collapse this plan into a story-level plan. If the reader needs file-level detail, point them at `/sprint-development`.
 - Never include dates. Order matters; estimates do not belong here.
