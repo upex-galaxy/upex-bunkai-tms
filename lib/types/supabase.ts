@@ -974,6 +974,14 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_duplicate_atc: {
+        Args: {
+          p_actor_user_id: string
+          p_source_atc_id: string
+          p_title?: string
+        }
+        Returns: Json
+      }
       bunkai_get_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json

@@ -1,13 +1,15 @@
 'use client';
 
-import type { ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
+import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
 import { CreateModuleForm } from './create-module-form';
 import { DeleteModuleDialog } from './delete-module-dialog';
@@ -112,7 +114,9 @@ export function ProjectExplorer({
   selectedAtcId,
   selectedTestId,
 }: ProjectExplorerProps) {
+  const router = useRouter();
   const [target, setTarget] = useState<CreateTarget | null>(null);
+  const [duplicatingAtcId, setDuplicatingAtcId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<ModuleTreeNode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTreeNode | null>(null);
@@ -176,6 +180,41 @@ export function ProjectExplorer({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // BK-23 — duplicate an ATC from the explorer context menu. One click → POST
+  // the dedicated duplicate endpoint (default `(copy)` title) → navigate to the
+  // freshly-created ATC's editor. A second click while a duplicate is in flight
+  // is ignored (the menu closes on click anyway, this guards a double-fire).
+  const handleDuplicateAtc = async (atc: Atc) => {
+    if (duplicatingAtcId) { return; }
+    setDuplicatingAtcId(atc.id);
+    try {
+      const response = await fetch(`/api/v1/atcs/${atc.id}/duplicate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+        toast.error(body.error?.message ?? 'Could not duplicate the ATC.');
+        return;
+      }
+      const body = (await response.json().catch(() => ({}))) as { atc?: { id?: string } };
+      toast.success('ATC duplicated');
+      if (body.atc?.id) {
+        router.push(`/projects/${projectSlug}/atcs/${body.atc.id}`);
+      }
+      else {
+        router.refresh();
+      }
+    }
+    catch {
+      toast.error('Network error while duplicating the ATC.');
+    }
+    finally {
+      setDuplicatingAtcId(null);
+    }
+  };
+
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
   const flatModules = useMemo(() => flattenModules(tree), [tree]);
 
@@ -235,6 +274,7 @@ export function ProjectExplorer({
                 onDeleteUserStory={setDeleteStory}
                 onManageCriteria={setManageStory}
                 onSelect={setSelectedModuleId}
+                onDuplicateAtc={(atc) => { void handleDuplicateAtc(atc); }}
               />
             </div>
             {/* Tests group (BK-27): workspace-scoped chains of ATCs, flat list
