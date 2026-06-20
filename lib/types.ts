@@ -141,6 +141,23 @@ export interface AtcAcceptanceCriterion {
   acceptance_criterion_id: Uuid
 }
 
+// BK-22 — "used in N tests" report. One entry per distinct Test that chains
+// the ATC; `positions` lists every position the ATC occupies in that Test
+// (ascending). The same ATC at multiple positions in one Test yields one entry
+// with multiple positions, NOT multiple entries — `count` is the distinct-Test
+// total. No `slug`: the `tests` table has only id/title (see migration 0029 /
+// BK-22 impl-plan §5 R1 — order by and surface `title`, do not invent a slug).
+export interface AtcUsageEntry {
+  test_id: Uuid
+  title: string
+  positions: number[]
+}
+
+export interface AtcUsageReport {
+  count: number
+  used_in: AtcUsageEntry[]
+}
+
 export interface ModuleTreeNode extends Module {
   children: ModuleTreeNode[]
   user_stories: UserStoryWithChildren[]

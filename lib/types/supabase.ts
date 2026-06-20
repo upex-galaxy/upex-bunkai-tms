@@ -946,6 +946,10 @@ export interface Database {
         Returns: undefined
       }
       bunkai_atc_json: { Args: { p_atc_id: string }, Returns: Json }
+      bunkai_atc_usage: {
+        Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
       bunkai_bootstrap_workspace: {
         Args: { p_name: string, p_slug: string }
         Returns: string

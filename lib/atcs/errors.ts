@@ -45,6 +45,23 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
   }
 }
 
+// BK-22 — map a bunkai_atc_usage RPC error to the canonical API envelope. The
+// usage RPC is read-only and raises exactly ONE domain error: P0002 for a
+// nonexistent, archived, or cross-workspace ATC (the membership gate and the
+// existence check collapse into the same uniform not_found, INV-3 — no
+// existence leak). Zero chaining Tests is NOT an error (the RPC returns an
+// empty list, the route surfaces 200), so it never reaches here.
+export function mapAtcUsageRpcError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case 'P0002':
+      throw new ApiError('not_found', 'ATC not found.', {
+        details: { reason: 'not_found' },
+      });
+    default:
+      throw new ApiError('internal_error', error.message);
+  }
+}
+
 // The version-conflict RPC raises `version_conflict:<current>` so the route can
 // surface the live version in the 409 body without a second round-trip.
 function parseConflictVersion(message: string): number | null {
