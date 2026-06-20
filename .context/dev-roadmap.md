@@ -1,12 +1,20 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-06-13
-> **Maintained by**: hand-authored synthesis + `jira:sync-issues` snapshots. See §7.
+> **Last sync**: 2026-06-19
+> **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
 
 ## 1. How to read this — authority split
+
+> **TL;DR for the AI/human reading this — what this doc is, in one breath:**
+> This doc answers **one question only: "which Jira ticket do we work next, and what is blocking it?"** It is NOT the strategy plan and it does NOT store live status.
+> - Want **"why are we building epics in this order?"** → that is `master-implementation-plan.md` (strategy / epic altitude). Not here.
+> - Want **"what ticket is next + what unblocks what?"** → **you are in the right doc** (§3 graph, §4 execution sprints, §5 mockup-gates). This is the part nothing else holds.
+> - Want **"is BK-28 done yet / what's its current status?"** → **do not read it off this page.** Status changes daily and is never written here. Query it live with the recipe in **§6**.
+>
+> One-line rule: **§2–§5 are durable truth you can trust; live status is always a query, never a paste.**
 
 This doc sits in a 3-layer roadmap stack. Each layer owns a different altitude:
 
@@ -149,53 +157,56 @@ A story whose primary screen has no mockup **cannot start** until the mockup lan
 
 ---
 
-## 6. Status snapshot — VOLATILE (Jira is truth)
+## 6. Live status — query it, never freeze it
 
-> Frozen 2026-06-13. Re-sync with `bun run jira:sync-issues` before relying on it. Dependency edges in §3 are durable; **these status cells are not.**
+> **Why there is no status table here.** Story status (`Ready For Dev`, `In Progress`, `QA Approved`, …) and story points live in **Jira**, which changes every day. Any table pasted here goes stale within days and then actively *lies* to whoever reads it. So this section is a **recipe, not a photo**: run one of the two queries below to get *today's* truth. The durable structure — which ticket unblocks which (§3), execution sprints (§4), mockup-gates (§5) — is safe to trust as written; only status is volatile.
 
-| Story | Title | SP | Status (snapshot) | Exec Sprint |
-|-------|-------|----|-------------------|-------------|
-| BK-27 | Test Builder | 8 | 🧪 Ready For QA (dev-done) | ES0 ✅ |
-| BK-20 | ATC Search | 5 | 🟢 Ready For Dev | ES1 |
-| BK-3 | OAuth sign-in | 8 | 🟢 Ready For Dev *(sync AC field)* | ES1 |
-| BK-86 | Account/sign-out | 3 | 🟢 Ready For Dev *(ratify 3 role-plays)* | ES1 |
-| BK-28 | Test Reorder | 5 | 🟢 Ready For Dev | ES1 |
-| BK-33 | Test Tags | 8 | 🟢 Ready For Dev | ES1 |
-| BK-22 | ATC Usage report | 3 | 🟢 Ready For Dev | ES1 |
-| BK-23 | ATC Duplicate | 5 | 🟢 Ready For Dev *(8 contract Qs)* | ES1 |
-| BK-32 | Test view expanded | 1 | ⚪ Backlog *(gate met, promotable)* | ES1 |
-| BK-87 | Settings hub | 2 | 🟢 Ready For Dev *(🔒 mockup or ratify)* | ES1.5 |
-| BK-21 | ATC Propagation | 5 | 🟡 Shift-Left QA *(10 Qs + OpenAPI drift)* | ES1.5 |
-| BK-34 | Start manual run | 8 | 🟢 Ready For Dev *(7 Qs)* | ES2 |
-| BK-88 | Manage PATs | 5 | 🟡 Ready For Dev *(🔒 mockup + 9 Qs)* | ES2.5 |
-| BK-89 | View workspaces | 2 | 🟡 Shift-Left QA *(2 contract BLOCKERS)* | ES2.5 |
-| BK-35 | Mark step pass/fail | 1* | ⚪ Backlog *(re-estimate)* | ES3 |
-| BK-36 | Abort run | 1 | ⚪ Estimation | ES3 |
-| BK-37 | Run history | 1 | ⚪ Backlog *(🔒 mockup)* | ES3 |
-| BK-38 | Filter project runs | 1 | ⚪ Backlog *(🔒 mockup)* | ES3 |
-| BK-39 | Finish run verdict | 1 | ⚪ Backlog | ES3 |
-| BK-90 | Leave workspace | 5 | 🟡 Ready For Dev *(🔒 mockup)* | ES3 |
-| BK-18 | ATC API | 5 | 🧪 In Test | shipped |
-| BK-19 | ATC Builder | 5 | 🧪 Ready For QA | shipped |
+**Recipe A — refresh the local PBI cache** (writes files under `.context/PBI/`, good for offline reading):
 
-> Earlier-shipped / In-Test (epics BK-1/BK-7/BK-12): BK-2/4/5/6/8/9/10/11/14/15/16/17 — out of the active dependency frontier; see Jira for live status.
+```bash
+bun run jira:sync-issues        # READ package.json for the exact script before running
+# then read .context/PBI/epic-tree.md  — the epic→story index with status per story
+```
 
-### Pre-dev chore backlog (cheap, unblocks the above)
-1. BK-3 — sync AC field to the 10 refined ACs (/onboarding vs /projects redirects, drop "201").
-2. BK-22 / BK-86 / BK-90 — human-ratify AI role-played PO answers.
-3. BK-23 — answer 8 contract Qs (role gate, title overflow, API mismatch).
-4. BK-88 — answer 4 PO + 5 dev Qs (ATP marks them planning blockers).
-5. BK-89 — decide API contract (role per workspace in GET /workspaces + active-workspace contract).
-6. BK-21 — answer 10 propagation Qs + fix OpenAPI drift on PATCH /atcs/{id}.
-7. BK-35 — re-estimate (1 vs ≥5) + post the announced ATP content to Jira.
-8. Design §8 — add screen rows for BK-35/36/37/39.
+**Recipe B — one-shot live query** (Atlassian MCP, nothing written to disk):
+
+```
+project = BK AND sprint in openSprints() AND issuetype = Story ORDER BY rank ASC
+```
+
+Useful fields: `summary, status, assignee, customfield_10016` (story points). Then cross-reference each `BK-NN` against the §3 graph + §4 execution sprints to see what is *actually* workable now.
+
+**To answer "what is next to work?"** — run Recipe B, then pick the highest-ranked story where ALL of these hold:
+1. its §3 blocker is already dev-done (`QA Approved` / `In Test` / merged), AND
+2. its §5 mockup-gate (if any) is cleared, AND
+3. its pre-dev blockers below (if any) are resolved.
+
+### Per-story pre-dev blockers — LOCAL knowledge (NOT a Jira field; will NOT appear in a §6 query)
+
+These are gating questions / contract decisions captured during shift-left refinement. A story can read `Ready For Dev` in Jira while still blocked by one of these. Clear before starting dev:
+
+| Story | Pre-dev blocker (resolve first) |
+|-------|----------------------------------|
+| BK-3  | Sync AC field to the 10 refined ACs (/onboarding vs /projects redirects, drop "201"). |
+| BK-22 / BK-86 / BK-90 | Human-ratify the AI role-played PO answers. |
+| BK-23 | Answer 8 contract Qs (role gate, title overflow, API mismatch). |
+| BK-88 | Answer 4 PO + 5 dev Qs (ATP marks them planning blockers). |
+| BK-89 | Decide API contract (role per workspace in `GET /workspaces` + active-workspace contract). |
+| BK-21 | Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`. |
+| BK-35 | Re-estimate (1 vs ≥5) + post the announced ATP content to Jira. |
+| Design §8 | Add screen rows for BK-35 / 36 / 37 / 39. |
+
+### Edge-mapping TODO — stories seen on the board but not yet in the §3 graph
+
+- **BK-98** "TMS-Projects | Tree / Table / Mind-map views in a hardened explorer" — lands the `EPIC-BK-008` "Views" surface as a story under BK-7; resolves part of the §2.1 ⚠️ "Views folded into BK-7" note in `master-implementation-plan.md`. Add a §3 edge if it gains downstream dependents.
+- **BK-101** "🚀 TMS-Workspace | View the workspaces I belong to" — ⚠️ **same title as BK-89**. Likely a re-scoped/clone delivery that **supersedes BK-89**. Confirm with PO; if confirmed, close BK-89 and drop its ES2.5 edge. Durable-edge change → needs human ratify per §7.
 
 ---
 
 ## 7. Maintenance protocol
 
 - **Dependency edges (§2–§5)**: hand-maintained here. When a new story is refined, add its edge BEFORE it goes Ready For Dev.
-- **Status snapshot (§6)**: refresh by re-running `jira:sync-issues` (READ `package.json` for the exact script) and re-photographing. Date the snapshot.
+- **Live status (§6)**: **never hand-maintained.** §6 is a query recipe, not a table. Do NOT paste status snapshots here — they rot in days. If someone needs status, they run Recipe A or B. The only hand-edited parts of §6 are the *local-only* lists (pre-dev blockers, edge-mapping TODO), which hold knowledge Jira does not store.
 - **Cross-check against Jira issue-links** (validation, not authority): periodically diff §3 edge list vs Jira "blocks/is-blocked-by" links. **Local wins on structure** — Jira links are sparser and have no execution-sprint/mockup concept. Flag any Jira edge missing here, and any here missing in Jira (candidate to push up to Jira for traceability).
-- **Relation to `/master-implementation-plan`**: that skill regenerates the epic-strategy layer (`master-implementation-plan.md`) from business-maps. It does NOT own this doc. If the skill is extended to emit ticket-level sequence, it should write *here*, not into the strategy doc. See open recommendation in session notes.
+- **Relation to `/master-implementation-plan`** (decided 2026-06-19, do not re-litigate): that skill regenerates the epic-strategy layer (`master-implementation-plan.md`) from business-maps. It does NOT own this doc, and the two are **intentionally kept separate** — they consume different inputs (strategy ← business-maps; this doc ← Jira issue-links + local design context like mockup status), so one generator cannot produce both. Do not merge them. The two docs answer different questions: `master-implementation-plan.md` = "why this epic order" (strategy); this doc = "what ticket next + what unblocks it" (sequence).
 - **Trigger to update**: a gate releases (story → dev-done), a new story enters refinement, a mockup lands (clears a 🔒), or a sprint closes.

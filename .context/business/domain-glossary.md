@@ -76,7 +76,8 @@ Authoritative detail: `business-data-map.md`. Short forms here for terminology c
 | **User Story (US)** | Markdown-bodied requirement, optional `external_id` (Jira key). Has 1..N ACs. |
 | **Acceptance Criterion (AC)** | Atomic, sortable, Markdown-bodied testable behavior of a US. |
 | **ATC** | Acceptance Test Case: title, layer (`UI \| API \| Unit`), tags, ordered `atc_steps`, ordered `atc_assertions`, plus `atc_acceptance_criteria` M:N join binding it to ≥1 AC. Orphan ATCs are rejected at the schema-constraint level. Unit of *authorship*. |
-| **Test** | Named container owning an **ordered chain of ATC references** (`test_steps`: test_id + atc_id + position). References, not copies → "one-edit-many-tests". Unit of *execution*. |
+| **Test** | Named container owning an **ordered chain of ATC references** (`test_steps`: test_id + atc_id + position). References, not copies → "one-edit-many-tests". A chain is a *sequence, not a set*: the same ATC may appear at more than one position, so each chain row carries its own surrogate **step_id** (see *Chain step*). Unit of *execution*. |
+| **Chain step (`test_step`)** | One position in a Test's ATC chain: a surrogate `step_id` (`test_steps.id`) + the referenced `atc_id` + its `position`. The **step_id is the stable per-row handle** — the identifier used to reorder, address, or key a chain row — *not* the `atc_id`, because the same `atc_id` may legally repeat at several positions. "Reorder the chain" means permuting `step_id`s; the run order is the resulting sequence of `atc_id`s. |
 | **Run** | One execution instance of a Test against an environment (executor: human / agent / ci). Snapshots step content (`run_atcs`, `run_steps`) so editing an ATC later never corrupts history. |
 | **Bug** | Native defect record anchored to Module + ATC + Run — lives inside the test cycle, not delegated to Jira (optional one-way Jira sync). |
 
@@ -90,6 +91,7 @@ Authoritative detail: `business-data-map.md`. Short forms here for terminology c
 | "Komponent Action Test Architecture" | **Component Action Test Architecture** | Spelling drift from an early design chat (`.context/designs/.../chats/chat1.md`, 2026-05-11). The boilerplate skill — the canonical source — spells it "Component"; the K in KATA comes from the martial-arts term *kata*, mirrored by the brand name Bunkai. |
 | "test case" for an ATC chain | **Test** | In Bunkai a Test is the chain; the chained units are ATCs. Keep the two words distinct. |
 | "test component" | **ATC**, **end-to-end test**, or **integration test** — by context | Ambiguous and generic ("a component of testing" says nothing). If the sentence means the minimal atomic unit that satisfies an AC → **ATC**. If it means the assembled chain walking a journey → **end-to-end test** or **integration test**. Never leave "test component" in specs, ACs, or Jira content. |
+| "reorder a Test by ATC" / "reorder the `atc_id`s" | **reorder the chain by step_id** (chain-step handle) | A Test chain may hold the same `atc_id` at several positions, so an `atc_id` cannot identify a single row. Reorder addresses rows by **step_id** (`test_steps.id`). Speak of `atc_id` only for the resulting *run order*, never as the reorder handle. Recorded during BK-28 (chain reorder). |
 
 ---
 

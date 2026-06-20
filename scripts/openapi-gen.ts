@@ -70,6 +70,8 @@ import '../app/api/v1/imports/[id]/route.openapi';
 
 import '../app/api/v1/atcs/route.openapi';
 
+import '../app/api/v1/atcs/search/route.openapi';
+
 import '../app/api/v1/atcs/[id]/route.openapi';
 
 import '../app/api/v1/tests/route.openapi';

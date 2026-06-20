@@ -9,6 +9,7 @@ import { cn } from '@lib/utils';
 import { GitBranch, ListTree, Network, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AtcSearchFilter } from './atc-search-filter';
 import { ProjectExplorer } from './project-explorer';
 import { useWorkbench, WorkbenchProvider } from './workbench-context';
 
@@ -92,6 +93,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
         )}
         right={(
           <>
+            <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
             <CommandPalette ownsHotkey={false} />
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
