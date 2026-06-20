@@ -2,7 +2,7 @@
 
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import type { ReactNode } from 'react';
-import type { ExplorerTestItem } from './project-explorer';
+import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { shortSlug } from '@lib/utils';
 import { useParams, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -39,6 +39,8 @@ export interface WorkbenchData {
   tree: ModuleTreeNode[]
   rows: ProjectRow[]
   tests: ExplorerTestItem[]
+  // BK-148 — the project's environments, fed to the explorer's Environments group.
+  environments: ExplorerEnvironmentItem[]
   canCreate: boolean
 }
 

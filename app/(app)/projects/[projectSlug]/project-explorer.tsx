@@ -5,17 +5,20 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
-import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch, MoreHorizontal, Pencil, Plus, Server, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
+import { CreateEnvironmentForm } from './create-environment-form';
 import { CreateModuleForm } from './create-module-form';
+import { DeleteEnvironmentDialog } from './delete-environment-dialog';
 import { DeleteModuleDialog } from './delete-module-dialog';
 import { DeleteUserStoryDialog } from './delete-user-story-dialog';
 import { ImportFromJiraDialog } from './import-from-jira-dialog';
 import { MoveModuleDialog } from './move-module-dialog';
+import { RenameEnvironmentForm } from './rename-environment-form';
 import { RenameModuleForm } from './rename-module-form';
 import { UserStoryForm } from './user-story-form';
 import { useWorkbench } from './workbench-context';
@@ -30,6 +33,14 @@ export interface ExplorerTestItem {
   step_count: number
 }
 
+// BK-148 — a project environment row for the explorer's Environments group. A
+// named deployment target a Run executes against, project-scoped.
+export interface ExplorerEnvironmentItem {
+  id: string
+  name: string
+  created_at: string
+}
+
 interface ProjectExplorerProps {
   projectId: string
   projectSlug: string
@@ -38,6 +49,8 @@ interface ProjectExplorerProps {
   // Workspace Tests for the read-only Tests group. Opening a Test as a `t:`
   // tab is BK-32 — rows here are creation feedback only.
   tests?: ExplorerTestItem[]
+  // BK-148 — the project's environments for the Environments group (name asc).
+  environments?: ExplorerEnvironmentItem[]
   // True when the caller's workspace role is >= member. Gates the create
   // affordances; the API remains the authority and rejects unauthorized writes.
   canCreate: boolean
@@ -111,6 +124,7 @@ export function ProjectExplorer({
   projectName,
   tree,
   tests = [],
+  environments = [],
   canCreate,
   selectedAtcId,
   selectedTestId,
@@ -141,6 +155,15 @@ export function ProjectExplorer({
   // Tests group accordion (BK-27). Open by default so a just-created Test is
   // immediately visible after the builder redirects back here.
   const [testsOpen, setTestsOpen] = useState(true);
+
+  // Environments group (BK-148). Collapsed by default — a lower-traffic surface
+  // than modules/tests. `envMenuId` drives the per-row rename/remove menu;
+  // `creatingEnv` / `renameEnv` / `deleteEnv` host the overlay modals.
+  const [envOpen, setEnvOpen] = useState(false);
+  const [envMenuId, setEnvMenuId] = useState<string | null>(null);
+  const [creatingEnv, setCreatingEnv] = useState(false);
+  const [renameEnv, setRenameEnv] = useState<ExplorerEnvironmentItem | null>(null);
+  const [deleteEnv, setDeleteEnv] = useState<ExplorerEnvironmentItem | null>(null);
 
   // Explorer panel chrome: collapse to a thin rail (Jira-style) and drag-resize
   // the width. Bounds keep the tree usable. Width is not persisted — a session
@@ -186,6 +209,10 @@ export function ProjectExplorer({
       setDeleteStory(null);
       setManageStory(null);
       setImporting(false);
+      setCreatingEnv(false);
+      setRenameEnv(null);
+      setDeleteEnv(null);
+      setEnvMenuId(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -347,6 +374,104 @@ export function ProjectExplorer({
                           <span className="shrink-0 font-mono text-xs text-fg-4">{t.step_count}</span>
                           <span className="dot shrink-0" data-status="unrun" />
                         </Link>
+                      ))}
+                </div>
+              )}
+            </div>
+
+            {/* Environments group (BK-148): per-project deployment targets a Run
+                executes against. Sibling of the Tests group; member+ can add,
+                rename, and remove via the overlay modals below. Removal is
+                blocked when a run references the environment (clean 409 with the
+                run count, surfaced by the delete dialog). */}
+            <div
+              data-testid="explorer-environments-group"
+              className="flex flex-shrink-0 flex-col border-t border-stroke-1"
+            >
+              <div className="flex h-8 flex-shrink-0 items-center gap-1.5 px-3 hover:bg-surface-2">
+                <button
+                  type="button"
+                  onClick={() => setEnvOpen(o => !o)}
+                  aria-expanded={envOpen}
+                  className="flex flex-1 items-center gap-1.5 text-left"
+                >
+                  {envOpen
+                    ? <ChevronDown size={10} className="text-fg-3" />
+                    : <ChevronRight size={10} className="text-fg-3" />}
+                  <span className="font-mono text-xs font-semibold uppercase tracking-widest text-fg-3">
+                    Environments
+                  </span>
+                  <span className="ml-auto font-mono text-xs text-fg-4">{environments.length}</span>
+                </button>
+                {canCreate && (
+                  <button
+                    type="button"
+                    data-testid="environment-add"
+                    onClick={() => { setCreatingEnv(true); setEnvOpen(true); }}
+                    title="Add environment"
+                    aria-label="Add environment"
+                    className="inline-flex size-5 flex-shrink-0 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-3 hover:text-fg-1"
+                  >
+                    <Plus size={12} />
+                  </button>
+                )}
+              </div>
+              {envOpen && (
+                <div className="overflow-auto pb-1.5">
+                  {environments.length === 0
+                    ? (
+                        <div
+                          data-testid="explorer-environments-empty"
+                          className="flex h-5 items-center px-3 text-xs italic text-fg-4"
+                        >
+                          No environments yet
+                        </div>
+                      )
+                    : environments.map(env => (
+                        <div
+                          key={env.id}
+                          data-testid={`explorer-environment-${env.id}`}
+                          className="group/env relative flex h-6 items-center gap-1.5 border-l-2 border-transparent px-3 text-sm text-fg-1 hover:bg-surface-2"
+                        >
+                          <Server size={12} className="shrink-0 text-fg-3" />
+                          <span className="min-w-0 flex-1 truncate">{env.name}</span>
+                          {canCreate && (
+                            <button
+                              type="button"
+                              data-testid={`environment-menu-${env.id}`}
+                              onClick={() => setEnvMenuId(id => (id === env.id ? null : env.id))}
+                              aria-label={`Manage ${env.name}`}
+                              className="inline-flex size-5 shrink-0 items-center justify-center rounded-1 text-fg-3 opacity-0 hover:bg-surface-3 hover:text-fg-1 group-hover/env:opacity-100"
+                            >
+                              <MoreHorizontal size={13} />
+                            </button>
+                          )}
+                          {envMenuId === env.id && (
+                            <div
+                              data-testid={`environment-menu-popover-${env.id}`}
+                              className="absolute right-2 top-6 z-30 w-32 rounded-2 border border-stroke-2 bg-surface-1 p-1 shadow-pop"
+                            >
+                              <button
+                                type="button"
+                                data-testid={`environment-rename-${env.id}`}
+                                onClick={() => { setRenameEnv(env); setEnvMenuId(null); }}
+                                className="flex w-full items-center gap-2 rounded-1 px-2 py-1 text-left text-xs text-fg-1 hover:bg-surface-2"
+                              >
+                                <Pencil size={11} className="text-fg-3" />
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`environment-remove-${env.id}`}
+                                onClick={() => { setDeleteEnv(env); setEnvMenuId(null); }}
+                                className="flex w-full items-center gap-2 rounded-1 px-2 py-1 text-left text-xs text-signal-fail hover:bg-surface-2"
+                              >
+                                <Trash2 size={11} />
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ))}
                 </div>
               )}
@@ -546,6 +671,56 @@ export function ProjectExplorer({
             <ImportFromJiraDialog
               projectId={projectId}
               onClose={() => setImporting(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {creatingEnv && (
+        <div
+          data-testid="create-environment-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setCreatingEnv(false)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <CreateEnvironmentForm
+              projectId={projectId}
+              onCreated={() => setCreatingEnv(false)}
+              onCancel={() => setCreatingEnv(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {renameEnv && (
+        <div
+          data-testid="rename-environment-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setRenameEnv(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <RenameEnvironmentForm
+              environmentId={renameEnv.id}
+              initialName={renameEnv.name}
+              onUpdated={() => setRenameEnv(null)}
+              onCancel={() => setRenameEnv(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {deleteEnv && (
+        <div
+          data-testid="delete-environment-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setDeleteEnv(null)}
+        >
+          <div className="w-full max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <DeleteEnvironmentDialog
+              environmentId={deleteEnv.id}
+              environmentName={deleteEnv.name}
+              onDeleted={() => setDeleteEnv(null)}
+              onCancel={() => setDeleteEnv(null)}
             />
           </div>
         </div>

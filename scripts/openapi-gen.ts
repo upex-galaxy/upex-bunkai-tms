@@ -54,6 +54,10 @@ import '../app/api/v1/workspaces/[id]/projects/route.openapi';
 
 import '../app/api/v1/projects/[id]/modules/route.openapi';
 
+import '../app/api/v1/projects/[id]/environments/route.openapi';
+
+import '../app/api/v1/environments/[id]/route.openapi';
+
 import '../app/api/v1/modules/[id]/route.openapi';
 
 import '../app/api/v1/modules/[id]/user-stories/route.openapi';
