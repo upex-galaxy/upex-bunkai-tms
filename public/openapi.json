@@ -1605,6 +1605,34 @@
           "steps"
         ]
       },
+      "AtcSearchResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "blocked", "skipped", "running", "unrun"]
+          },
+          "module_path": {
+            "type": "string",
+            "description": "Slash-separated module breadcrumb."
+          }
+        },
+        "required": ["id", "slug", "title", "layer", "status", "module_path"]
+      },
       "AtcUpdateBody": {
         "type": "object",
         "properties": {
@@ -4403,6 +4431,128 @@
           },
           "422": {
             "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/search": {
+      "get": {
+        "tags": ["ATCs"],
+        "summary": "Search ATCs by title and tags",
+        "description": "Bearer `atc:read` (or cookie session). Project-scoped full-text search over ATC title + tags, ranked by relevance with a 7-day recency tie-break, optionally narrowed by a module subtree and/or layer. Results are restricted to the caller's active workspace memberships AND to the required `project_id`; a project outside those memberships returns no rows. Zero matches return an empty `items` array (never 404).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Free-text query matched against ATC title + tags. Single token is prefix-aware (autocomplete); multiple words use AND semantics."
+            },
+            "required": true,
+            "description": "Free-text query matched against ATC title + tags. Single token is prefix-aware (autocomplete); multiple words use AND semantics.",
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required. Scopes the search to a single project; a project outside the caller's active workspaces returns no rows."
+            },
+            "required": true,
+            "description": "Required. Scopes the search to a single project; a project outside the caller's active workspaces returns no rows.",
+            "name": "project_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Narrow results to this module and its descendant subtree."
+            },
+            "required": false,
+            "description": "Narrow results to this module and its descendant subtree.",
+            "name": "module_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["UI", "API", "Unit"]
+            },
+            "required": false,
+            "name": "layer",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "1..50, default 20."
+            },
+            "required": false,
+            "description": "1..50, default 20.",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked matches (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AtcSearchResult"
+                      }
+                    }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (empty/missing query, missing/invalid project_id, bad limit, bad layer).",
             "content": {
               "application/json": {
                 "schema": {

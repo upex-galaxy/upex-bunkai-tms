@@ -1024,6 +1024,17 @@ export interface Database {
         }
         Returns: undefined
       }
+      bunkai_search_atcs: {
+        Args: {
+          p_actor_user_id: string
+          p_layer?: string
+          p_limit?: number
+          p_module_id?: string
+          p_project_id: string
+          p_query: string
+        }
+        Returns: Json
+      }
       bunkai_set_user_story_status: {
         Args: { p_id: string, p_status: string }
         Returns: Json

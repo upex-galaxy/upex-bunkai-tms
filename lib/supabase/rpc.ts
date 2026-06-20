@@ -131,6 +131,33 @@ export async function getAtc(supabase: Client, args: { actorUserId: string, atcI
   });
 }
 
+// BK-20 — project-scoped ATC full-text search. The SECURITY DEFINER RPC takes
+// the resolved actor explicitly (PAT callers have no auth.uid()) and restricts
+// the result set to the actor's active workspace memberships — any caller scope
+// is ignored — AND to the single project the caller names (projectId, required).
+// A project the actor can't reach yields zero rows. Returns a jsonb array of
+// lightweight rows (id/slug/title/layer/status/module_path), ranked relevance ×
+// recency, capped by p_limit.
+export interface SearchAtcsArgs {
+  actorUserId: string
+  query: string
+  projectId: string
+  moduleId?: string | null
+  layer?: string | null
+  limit?: number
+}
+
+export async function searchAtcs(supabase: Client, args: SearchAtcsArgs) {
+  return supabase.rpc('bunkai_search_atcs', {
+    p_actor_user_id: args.actorUserId,
+    p_query: args.query,
+    p_project_id: args.projectId,
+    p_module_id: args.moduleId ?? undefined,
+    p_layer: args.layer ?? undefined,
+    p_limit: args.limit ?? undefined,
+  });
+}
+
 // BK-27 — Test create via the SECURITY DEFINER RPC. Same explicit-actor
 // contract as the ATC wrappers; returns the composed Test json (header +
 // ordered chain steps).
