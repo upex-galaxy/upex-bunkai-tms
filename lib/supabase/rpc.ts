@@ -277,3 +277,40 @@ export async function filterTestsByTag(supabase: Client, args: { actorUserId: st
     p_tag: args.tag,
   });
 }
+
+// BK-34 — start a manual Run of a Test via the SECURITY DEFINER RPC. Same
+// explicit-actor contract as the other wrappers; the RPC gates write-membership,
+// validates the executor mode + environment + executable-steps, enforces the
+// 24h same-token idempotency window, snapshots the Test's chain into
+// run_atcs/run_steps, emits the run.started audit, and returns the composed Run
+// json. The composed json carries a `replayed` boolean: `true` when the call hit
+// an existing Run within the 24h window (HTTP 200), `false` when freshly created
+// (HTTP 201).
+export interface CreateRunArgs {
+  actorUserId: string
+  testId: string
+  environmentId: string
+  executorMode: string
+  startToken: string
+}
+
+export async function createRun(supabase: Client, args: CreateRunArgs) {
+  return supabase.rpc('bunkai_create_run', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    p_environment_id: args.environmentId,
+    p_executor_mode: args.executorMode,
+    p_start_token: args.startToken,
+  });
+}
+
+// BK-34 — read-only expanded Run view (header + ordered run_atcs + run_steps).
+// Same explicit-actor contract; the SECURITY DEFINER RPC resolves the Run's
+// workspace and gates the actor's active membership (any role). Powers the
+// runner checklist + progress.
+export async function getRunExpanded(supabase: Client, args: { actorUserId: string, runId: string }) {
+  return supabase.rpc('bunkai_get_run_expanded', {
+    p_actor_user_id: args.actorUserId,
+    p_run_id: args.runId,
+  });
+}

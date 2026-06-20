@@ -62,5 +62,34 @@ export default async function TestDetailPage({ params }: PageProps) {
     .maybeSingle();
   const canReorder = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
-  return <TestDetailView test={test} projectSlug={projectSlug} canReorder={canReorder} />;
+  // BK-34 — the Start-run picker needs the project's environments. Tests are
+  // workspace-scoped, so the project id isn't on the test; resolve it from the
+  // route slug within the active workspace, then read its environments. The
+  // `project_environments` SELECT RLS is workspace-member gated, so this direct
+  // read is safe under the cookie client's `auth.uid()`.
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('slug', projectSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const { data: envRows } = project
+    ? await supabase
+        .from('project_environments')
+        .select('id, name')
+        .eq('project_id', project.id)
+        .order('name', { ascending: true })
+    : { data: [] };
+  const environments = envRows ?? [];
+
+  return (
+    <TestDetailView
+      test={test}
+      projectSlug={projectSlug}
+      canReorder={canReorder}
+      environments={environments}
+    />
+  );
 }

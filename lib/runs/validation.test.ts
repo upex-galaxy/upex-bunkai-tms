@@ -1,0 +1,64 @@
+import { RUN_START_TOKEN_MAX, RunCreateBodySchema } from '@lib/runs/validation';
+import { describe, expect, test } from 'bun:test';
+
+// BK-34 — body validation for POST /api/v1/runs. Pure schema tests: the Zod
+// layer mirrors the bunkai_create_run SHAPE rules (test_id + environment_id are
+// uuids, executor_mode is an allowed enum, start_token is a bounded non-empty
+// string) so malformed bodies fail fast as 422 before any DB round-trip; the RPC
+// stays the enforcement point of record for env containment + the steps gate +
+// the 24h window.
+
+const VALID_TEST_ID = '11111111-1111-4111-8111-111111111111';
+const VALID_ENV_ID = '22222222-2222-4222-8222-222222222222';
+
+describe('runCreateBodySchema', () => {
+  test('accepts the minimal valid body (test_id + environment_id)', () => {
+    const parsed = RunCreateBodySchema.parse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID });
+    expect(parsed.test_id).toBe(VALID_TEST_ID);
+    expect(parsed.environment_id).toBe(VALID_ENV_ID);
+    expect(parsed.executor_mode).toBeUndefined();
+    expect(parsed.start_token).toBeUndefined();
+  });
+
+  test('accepts each allowed executor_mode', () => {
+    for (const mode of ['human', 'agent', 'ci'] as const) {
+      const parsed = RunCreateBodySchema.parse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, executor_mode: mode });
+      expect(parsed.executor_mode).toBe(mode);
+    }
+  });
+
+  test('rejects an out-of-enum executor_mode', () => {
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, executor_mode: 'robot' }).success).toBe(false);
+  });
+
+  test('rejects a non-uuid test_id', () => {
+    expect(RunCreateBodySchema.safeParse({ test_id: 'not-a-uuid', environment_id: VALID_ENV_ID }).success).toBe(false);
+  });
+
+  test('rejects a non-uuid environment_id', () => {
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: 'nope' }).success).toBe(false);
+  });
+
+  test('rejects an absent test_id', () => {
+    expect(RunCreateBodySchema.safeParse({ environment_id: VALID_ENV_ID }).success).toBe(false);
+  });
+
+  test('rejects an absent environment_id', () => {
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID }).success).toBe(false);
+  });
+
+  test('accepts a start_token and trims it', () => {
+    const parsed = RunCreateBodySchema.parse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, start_token: '  tok-123  ' });
+    expect(parsed.start_token).toBe('tok-123');
+  });
+
+  test('rejects an empty / whitespace-only start_token', () => {
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, start_token: '' }).success).toBe(false);
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, start_token: '   ' }).success).toBe(false);
+  });
+
+  test('rejects a start_token over the length cap', () => {
+    const tooLong = 'x'.repeat(RUN_START_TOKEN_MAX + 1);
+    expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, start_token: tooLong }).success).toBe(false);
+  });
+});

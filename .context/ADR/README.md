@@ -64,6 +64,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0001](./ADR-0001-unified-api-authentication.md) | Unified API Authentication | Accepted | — | — |
 | [ADR-0002](./ADR-0002-idempotency-key-scoping.md) | Idempotency-Key Scoping for the Headless Write Surface | Accepted — Implemented | — | — |
 | [ADR-0003](./ADR-0003-app-shell-route-driven-workbench-tabs.md) | Persistent Project Shell & Route-Driven Workbench Tabs | Accepted | — | — |
+| [ADR-0004](./ADR-0004-run-snapshot-and-environments.md) | Run Snapshot Model & Project Environments Entity | Proposed | — | — |
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 

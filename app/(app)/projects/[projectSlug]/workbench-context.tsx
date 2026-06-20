@@ -17,7 +17,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 
 export type WorkbenchView = 'tree' | 'table' | 'mindmap';
 
-export type WorkbenchTabKind = 'atc' | 'test';
+export type WorkbenchTabKind = 'atc' | 'test' | 'run';
 
 export interface WorkbenchTab {
   kind: WorkbenchTabKind
@@ -48,6 +48,11 @@ interface WorkbenchContextValue extends WorkbenchData {
   openTabs: WorkbenchTab[]
   activeAtcId: string | null
   activeTestId: string | null
+  // BK-34 — the active 'run' route's id (null off a run route). Runs are not in
+  // the loaded project data, so a run tab's label is supplied lazily by the
+  // runner view via `registerRunLabel` once the composed run payload loads.
+  activeRunId: string | null
+  registerRunLabel: (id: string, label: string) => void
   closeTab: (kind: WorkbenchTabKind, id: string) => void
   // BK-33 — Test tag filter shared between the toolbar control and the explorer
   // Tests group. `testTagFilter` is the active tag (null = no filter); when set,
@@ -72,6 +77,7 @@ export function useWorkbench(): WorkbenchContextValue {
 function findTab(
   rows: ProjectRow[],
   tests: ExplorerTestItem[],
+  runLabels: Record<string, string>,
   projectSlug: string,
   kind: WorkbenchTabKind,
   id: string,
@@ -88,6 +94,17 @@ function findTab(
       status: atc.status,
     };
   }
+  if (kind === 'run') {
+    // Runs aren't in the loaded project data — return the tab immediately (so a
+    // run route always gets a tab) with a placeholder label that the runner
+    // view refines via `registerRunLabel`.
+    return {
+      kind: 'run',
+      id,
+      href: `/projects/${projectSlug}/runs/${id}`,
+      label: runLabels[id] ?? 'Run',
+    };
+  }
   const test = tests.find(t => t.id === id);
   if (!test) { return null; }
   return {
@@ -102,11 +119,21 @@ function findTab(
 export function WorkbenchProvider({ children, ...data }: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
   const { rows, tests, projectSlug } = data;
-  const params = useParams<{ atcId?: string, testId?: string }>();
+  const params = useParams<{ atcId?: string, testId?: string, runId?: string }>();
   const activeAtcId = params.atcId ?? null;
   const activeTestId = params.testId ?? null;
+  const activeRunId = params.runId ?? null;
 
   const [view, setView] = useState<WorkbenchView>('tree');
+  // BK-34 — lazy label registry for run tabs. Runs aren't in the loaded project
+  // data, so the runner view registers its `test_title` once the composed run
+  // payload loads; the tab seeds with a placeholder and refines on registration.
+  const [runLabels, setRunLabels] = useState<Record<string, string>>({});
+  const registerRunLabel = useCallback(
+    (id: string, label: string) =>
+      setRunLabels(prev => (prev[id] === label ? prev : { ...prev, [id]: label })),
+    [],
+  );
   // BK-33 — active tag filter + the matching Test id set (null = no filter).
   const [testTagFilter, setTagFilter] = useState<string | null>(null);
   const [filteredTestIds, setFilteredTestIds] = useState<string[] | null>(null);
@@ -118,10 +145,12 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   }, []);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId
-      ? findTab(rows, tests, projectSlug, 'atc', activeAtcId)
+      ? findTab(rows, tests, runLabels, projectSlug, 'atc', activeAtcId)
       : activeTestId
-        ? findTab(rows, tests, projectSlug, 'test', activeTestId)
-        : null;
+        ? findTab(rows, tests, runLabels, projectSlug, 'test', activeTestId)
+        : activeRunId
+          ? findTab(rows, tests, runLabels, projectSlug, 'run', activeRunId)
+          : null;
     return seed ? [seed] : [];
   });
 
@@ -130,16 +159,28 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   // loads them once; a project switch remounts via the slug key), so this only
   // meaningfully fires when the active item changes.
   useEffect(() => {
-    const kind: WorkbenchTabKind | null = activeAtcId ? 'atc' : activeTestId ? 'test' : null;
-    const id = activeAtcId ?? activeTestId;
+    const kind: WorkbenchTabKind | null = activeAtcId
+      ? 'atc'
+      : activeTestId
+        ? 'test'
+        : activeRunId
+          ? 'run'
+          : null;
+    const id = activeAtcId ?? activeTestId ?? activeRunId;
     if (!kind || !id) { return; }
-    const tab = findTab(rows, tests, projectSlug, kind, id);
+    const tab = findTab(rows, tests, runLabels, projectSlug, kind, id);
     if (!tab) { return; } // deleted / invisible item -> no tab; the not-found page shows
     setOpenTabs((prev) => {
-      if (prev.some(t => t.kind === kind && t.id === id)) { return prev; }
-      return [...prev, tab];
+      const existing = prev.find(t => t.kind === kind && t.id === id);
+      if (!existing) { return [...prev, tab]; }
+      // A run tab's label refines when `registerRunLabel` populates `runLabels`
+      // — swap in the fresh label if it changed, otherwise keep prev identity.
+      if (existing.label !== tab.label) {
+        return prev.map(t => (t.kind === kind && t.id === id ? tab : t));
+      }
+      return prev;
     });
-  }, [activeAtcId, activeTestId, rows, tests, projectSlug]);
+  }, [activeAtcId, activeTestId, activeRunId, rows, tests, runLabels, projectSlug]);
 
   const closeTab = (kind: WorkbenchTabKind, id: string) => {
     const idx = openTabs.findIndex(t => t.kind === kind && t.id === id);
@@ -149,7 +190,9 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     // calling router.push() inside a setState updater fires during render and
     // triggers "Cannot update Router while rendering WorkbenchProvider".
     const isActive
-      = (kind === 'atc' && id === activeAtcId) || (kind === 'test' && id === activeTestId);
+      = (kind === 'atc' && id === activeAtcId)
+        || (kind === 'test' && id === activeTestId)
+        || (kind === 'run' && id === activeRunId);
     if (isActive) {
       const neighbour = next[idx] ?? next[idx - 1] ?? null;
       router.push(neighbour ? neighbour.href : `/projects/${projectSlug}`);
@@ -163,6 +206,8 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     openTabs,
     activeAtcId,
     activeTestId,
+    activeRunId,
+    registerRunLabel,
     closeTab,
     testTagFilter,
     filteredTestIds,

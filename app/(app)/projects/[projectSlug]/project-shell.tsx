@@ -6,7 +6,7 @@ import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
-import { GitBranch, ListTree, Network, Plus, Table2, X } from 'lucide-react';
+import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AtcSearchFilter } from './atc-search-filter';
@@ -49,6 +49,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     openTabs,
     activeAtcId,
     activeTestId,
+    activeRunId,
     closeTab,
   } = useWorkbench();
 
@@ -140,7 +141,8 @@ function ShellChrome({ children }: { children: ReactNode }) {
               {openTabs.map((t) => {
                 const active
                   = (t.kind === 'atc' && t.id === activeAtcId)
-                    || (t.kind === 'test' && t.id === activeTestId);
+                    || (t.kind === 'test' && t.id === activeTestId)
+                    || (t.kind === 'run' && t.id === activeRunId);
                 return (
                   <div
                     key={`${t.kind}:${t.id}`}
@@ -157,7 +159,9 @@ function ShellChrome({ children }: { children: ReactNode }) {
                   >
                     {t.kind === 'atc'
                       ? <span className="dot" data-status={t.status} />
-                      : <GitBranch size={11} className="shrink-0 text-fg-3" />}
+                      : t.kind === 'run'
+                        ? <Play size={11} className="shrink-0 text-fg-3" />
+                        : <GitBranch size={11} className="shrink-0 text-fg-3" />}
                     <span className="max-w-[160px] truncate font-mono text-xs" title={t.label}>
                       {t.label}
                     </span>

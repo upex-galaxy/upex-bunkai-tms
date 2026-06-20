@@ -2002,6 +2002,219 @@
           }
         },
         "required": ["tags"]
+      },
+      "Run": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "passed", "failed", "aborted"]
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"]
+          },
+          "executor_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "test_title": {
+            "type": "string",
+            "description": "Snapshot of the Test title at start."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atc_count": {
+            "type": "integer"
+          },
+          "step_count": {
+            "type": "integer"
+          },
+          "atcs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunAtc"
+            },
+            "description": "The snapshot chain, ordered by position."
+          },
+          "replayed": {
+            "type": "boolean",
+            "description": "true when this call returned an existing Run within the 24h same-token window (HTTP 200); false/absent when freshly created (HTTP 201)."
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "test_id",
+          "environment_id",
+          "environment_name",
+          "status",
+          "executor_mode",
+          "executor_user_id",
+          "test_title",
+          "version",
+          "started_at",
+          "finished_at",
+          "created_at",
+          "updated_at",
+          "atc_count",
+          "step_count",
+          "atcs"
+        ]
+      },
+      "RunAtc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "atc_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source ATC; SET NULL if the source is deleted."
+          },
+          "position": {
+            "type": "integer",
+            "description": "Chain position copied from test_steps.position (1..n)."
+          },
+          "atc_title": {
+            "type": "string",
+            "description": "Snapshot of the ATC title at start."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "passed", "failed", "blocked", "skipped"]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunStep"
+            }
+          }
+        },
+        "required": ["id", "atc_id", "position", "atc_title", "status", "steps"]
+      },
+      "RunStep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "atc_step_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source atc_steps row; SET NULL if the source is deleted. Never read for content."
+          },
+          "position": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string",
+            "description": "Snapshot of atc_steps.content at start — frozen; later Test edits never alter it."
+          },
+          "input_data": {
+            "type": ["string", "null"]
+          },
+          "expected": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "passed", "failed", "blocked", "skipped"]
+          },
+          "note": {
+            "type": ["string", "null"]
+          },
+          "evidence_url": {
+            "type": ["string", "null"]
+          },
+          "executed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "atc_step_id",
+          "position",
+          "content",
+          "input_data",
+          "expected",
+          "status",
+          "note",
+          "evidence_url",
+          "executed_at"
+        ]
+      },
+      "RunCreateBody": {
+        "type": "object",
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Test to run."
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A configured project_environments row belonging to the Test's Project."
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"],
+            "description": "Cookie sessions are always `human` (any supplied value is ignored). Bearer (PAT) callers may declare `agent` / `ci`; defaults to `human`."
+          },
+          "start_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Domain idempotency token (distinct from the Idempotency-Key header). A same (test_id, start_token) within 24h returns the existing Run (HTTP 200). Omit it to mint a fresh one server-side (always a new Run)."
+          }
+        },
+        "required": ["test_id", "environment_id"]
       }
     },
     "parameters": {}
@@ -5468,6 +5681,201 @@
           },
           "422": {
             "description": "A tag exceeds 50 chars, contains a comma, or more than 20 tags supplied (`validation_failed`, `details.reason: tags_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Start a manual Run of a Test in a chosen environment",
+        "description": "Bearer `run:execute` (or cookie session). Transactional create via one SECURITY DEFINER RPC: snapshots the Test's ATC chain into run_atcs/run_steps (each `pending`), validates the environment belongs to the Test's Project and that the Test has ≥1 executable step, and enforces a 24h same-token idempotency window. Cookie sessions run as `human`; PAT callers may declare `agent` / `ci`. Returns 201 on create, 200 when the 24h same-token window returned an existing Run.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. The HTTP request-replay guard: a replay with the same key and payload returns the stored response; the same key with a different payload returns 409 `conflict`. Distinct from the domain `start_token` (the per-Test 24h window). Window: 24h."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay: the same (test_id, start_token) within 24h returned the existing Run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Run started.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Test the caller cannot see).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency-Key reused with a different payload, or a request with the same key is still in flight (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`validation_failed` for body shape, `no_executable_steps` when the Test has no executable steps, `environment_invalid` when the environment is not configured for the Test's Project).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "Read a Run with its snapshot chain fully expanded",
+        "description": "Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Run header plus the ordered run_atcs, each with its ordered run_steps — the immutable snapshot taken at start. Non-disclosing: missing, not-visible, and foreign-workspace Runs all return an identical 404 — never 403, never an existence echo.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The expanded Run.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found (missing, not visible, or foreign workspace — non-disclosing).",
             "content": {
               "application/json": {
                 "schema": {
