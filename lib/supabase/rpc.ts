@@ -174,6 +174,20 @@ export async function searchAtcs(supabase: Client, args: SearchAtcsArgs) {
   });
 }
 
+// BK-22 — read-only "used in N tests" report for one ATC. Same explicit-actor
+// contract as the other ATC wrappers (PAT callers have no auth.uid()); the
+// SECURITY DEFINER RPC resolves the ATC's workspace, gates the actor's active
+// membership of it, then returns the distinct Tests that chain the ATC.
+// Returns `{ count, used_in: [{ test_id, title, positions }] }`. A reachable
+// ATC with no chaining Tests returns `count: 0` + `used_in: []` (not an error);
+// a nonexistent / cross-workspace / archived ATC raises a uniform not_found.
+export async function atcUsage(supabase: Client, args: { actorUserId: string, atcId: string }) {
+  return supabase.rpc('bunkai_atc_usage', {
+    p_actor_user_id: args.actorUserId,
+    p_atc_id: args.atcId,
+  });
+}
+
 // BK-27 — Test create via the SECURITY DEFINER RPC. Same explicit-actor
 // contract as the ATC wrappers; returns the composed Test json (header +
 // ordered chain steps).

@@ -1,9 +1,12 @@
 'use client';
 
-import type { AcceptanceCriterion, AtcLayer, AtcStatus, UserStory } from '@lib/types';
+import type { AcceptanceCriterion, AtcLayer, AtcStatus, AtcUsageReport, UserStory } from '@lib/types';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
-import { Check, Sparkles } from 'lucide-react';
-import { useMemo } from 'react';
+import { atcUsageLabel, formatPositions } from '@lib/atcs/usage';
+import { Check, ListChecks, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+
+const UUID_RE = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
 // Read-only live render of the ATC as test runners and AI agents will consume
 // it — the mockup's "Live preview" pane (editor.jsx). Driven entirely by the
@@ -39,6 +42,7 @@ export function AtcPreview({
 }: AtcPreviewProps) {
   const steps = useMemo(() => parseStepsMarkdown(stepsMd), [stepsMd]);
   const assertions = useMemo(() => parseAssertionsYaml(assertionsYaml), [assertionsYaml]);
+  const usage = useAtcUsage(id);
 
   return (
     <aside className="flex h-full flex-col overflow-hidden bg-surface-1">
@@ -131,6 +135,39 @@ export function AtcPreview({
             </div>
           )}
 
+          {/* used by tests (BK-22) — only for a saved ATC (a draft has no id
+              to query). Read-only count + per-Test rows. Per-Test pass/fail
+              status chip is DEFERRED until Runs data exists (master-design-plan
+              §7 gate / §4.3 "Used-by deferred"); rows render neutral, mirroring
+              the ratified BK-32/D10 approach. PO-PENDING: count = distinct
+              Tests, one row per Test with positions joined (impl-plan §2 R3). */}
+          {usage && (
+            <div className="flex flex-col gap-2" data-testid="atc-usage">
+              <div className="flex items-center justify-between">
+                <PreviewLabel>Used by</PreviewLabel>
+                <span className="font-mono text-2xs text-fg-4" data-testid="atc-usage-count">
+                  {atcUsageLabel(usage.count)}
+                </span>
+              </div>
+              {usage.used_in.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  {usage.used_in.map(entry => (
+                    <div
+                      key={entry.test_id}
+                      className="flex items-center gap-2 rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2"
+                    >
+                      <ListChecks size={12} className="shrink-0 text-fg-4" />
+                      <span className="min-w-0 flex-1 truncate text-sm text-fg-1">{entry.title}</span>
+                      <span className="shrink-0 font-mono text-2xs text-fg-4">
+                        {formatPositions(entry.positions)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -157,6 +194,35 @@ export function AtcPreview({
       </div>
     </aside>
   );
+}
+
+// BK-22 — fetch the "used in N tests" report for a SAVED ATC. A draft ATC has
+// `id === null` (or the display "ATC-—" placeholder), so we only query when the
+// id is a real UUID. Cookie-session auth carries through the fetch. On any
+// failure we render nothing (the section is additive, never blocks the editor).
+function useAtcUsage(id: string | null): AtcUsageReport | null {
+  const [usage, setUsage] = useState<AtcUsageReport | null>(null);
+
+  useEffect(() => {
+    if (!id || !UUID_RE.test(id)) {
+      setUsage(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`/api/v1/atcs/${id}/usage`, { signal: controller.signal })
+      .then(async res => (res.ok ? res.json() : null))
+      .then((data: AtcUsageReport | null) => {
+        if (data && typeof data.count === 'number' && Array.isArray(data.used_in)) {
+          setUsage(data);
+        }
+      })
+      .catch(() => {
+        // Aborted or network error — leave the section unrendered.
+      });
+    return () => controller.abort();
+  }, [id]);
+
+  return usage;
 }
 
 function PreviewLabel({ children }: { children: React.ReactNode }) {

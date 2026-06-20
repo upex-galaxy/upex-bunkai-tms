@@ -1715,6 +1715,43 @@
           }
         }
       },
+      "AtcUsageReport": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of distinct Tests that chain this ATC."
+          },
+          "used_in": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtcUsageEntry"
+            }
+          }
+        },
+        "required": ["count", "used_in"]
+      },
+      "AtcUsageEntry": {
+        "type": "object",
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The Test title (Tests have no slug — ordered by title asc)."
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Ascending positions the ATC occupies in this Test."
+          }
+        },
+        "required": ["test_id", "title", "positions"]
+      },
       "Test": {
         "type": "object",
         "properties": {
@@ -4802,6 +4839,85 @@
           },
           "422": {
             "description": "Validation failed (`title_too_long` when the computed `(copy)` title exceeds 200 chars, or title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/{id}/usage": {
+      "get": {
+        "tags": ["ATCs"],
+        "summary": "Report which Tests chain an ATC (\"used in N tests\")",
+        "description": "Bearer `atc:read` (or cookie session). Returns the distinct Tests that chain this ATC — each with the positions the ATC occupies — plus a `count` of distinct Tests, ordered by Test title. Results are confined to the ATC's own workspace (Tests are workspace-scoped) and the caller must be an active member of it. A reachable ATC with no chaining Tests returns `count: 0` + an empty `used_in` (never 404). A nonexistent, archived, or cross-workspace ATC returns a uniform 404 (no existence leak).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The ATC to report usage for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage report (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtcUsageReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATC not found (also returned for an ATC outside the caller's workspaces — no existence leak).",
             "content": {
               "application/json": {
                 "schema": {
