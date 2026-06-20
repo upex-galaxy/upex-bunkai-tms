@@ -1824,6 +1824,28 @@
         },
         "required": ["title", "atc_ids"]
       },
+      "FilteredTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "step_count": {
+            "type": "integer"
+          }
+        },
+        "required": ["id", "title", "tags", "step_count"]
+      },
       "ExpandedTest": {
         "type": "object",
         "properties": {
@@ -1965,6 +1987,21 @@
           }
         },
         "required": ["step_ids"]
+      },
+      "TestTagsBody": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "maxItems": 20,
+            "description": "The COMPLETE new tag set — assigning replaces the whole set; an empty array clears all tags. Reserved tags (smoke/sanity/regression) are lowercased; custom tags preserve casing. Server normalizes (trim, dedupe) and rejects commas, >50 chars, or >20 tags."
+          }
+        },
+        "required": ["tags"]
       }
     },
     "parameters": {}
@@ -5042,6 +5079,81 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": ["Tests"],
+        "summary": "List Tests carrying a tag",
+        "description": "Bearer `atc:read` (or cookie session). Returns the actor's workspace Tests that carry the given `tag` via a GIN containment match. Results are restricted to the actor's active workspace memberships — caller scope is ignored, cross-workspace Tests never leak. Zero matches return `{ items: [] }`, never a 404. The MVP exposes single-tag filtering only.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required. The single tag to filter by. Normalized like stored tags (reserved tags lowercased), so `Smoke` matches `smoke`. An unused tag returns an empty list, never a 404."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching Tests (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FilteredTest"
+                      }
+                    }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authentication / scope error (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing `tag` query parameter (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/tests/{id}": {
@@ -5236,6 +5348,126 @@
           },
           "422": {
             "description": "Empty chain or duplicate step ids (`chain_invalid`), or the submitted set is not the Test's steps (`chain_mismatch`, with `details.missing` / `details.extra`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/{id}/tags": {
+      "put": {
+        "tags": ["Tests"],
+        "summary": "Assign / replace the tag set on a Test",
+        "description": "Bearer `atc:write` (or cookie session). Replaces the Test's entire tag set (PUT semantics — an empty array clears all tags). One SECURITY DEFINER RPC enforces the write gate, normalization (trim, reserved-lowercase, dedupe), shape rules (≤ 20 tags, ≤ 50 chars each, comma-free), optimistic lock, and no-op detection. Submitting the current set is a 200 no-op — no version bump, no `updated_at` change, no event. A real change emits a single `test.tags_changed` activity-log event with `old_tags` / `new_tags`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Current Test version for optimistic locking (lenient — absent skips the guard). A mismatch returns 409 with `details.current_version` and `details.current_tags`. Uses a custom header instead of RFC 7232 `If-Match` because the Vercel edge rewrites `If-Match` to 412 (BK-96); `If-Match` is accepted as a fallback off-Vercel."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestTagsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tags set (or a no-op when unchanged). Returns the expanded Test, now carrying `tags`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, body, or X-If-Match (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a workspace member with write access (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found / not visible — non-disclosing (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict (`conflict`, `details.reason: version_conflict`, with `current_version` + `current_tags`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A tag exceeds 50 chars, contains a comma, or more than 20 tags supplied (`validation_failed`, `details.reason: tags_invalid`).",
             "content": {
               "application/json": {
                 "schema": {

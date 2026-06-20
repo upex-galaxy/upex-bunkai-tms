@@ -4,8 +4,8 @@ import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createTest } from '@lib/supabase/rpc';
-import { mapTestRpcError } from '@lib/tests/errors';
+import { createTest, filterTestsByTag } from '@lib/supabase/rpc';
+import { mapTestFilterError, mapTestRpcError } from '@lib/tests/errors';
 import { TestCreateBodySchema } from '@lib/tests/validation';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -16,6 +16,34 @@ import { cookies } from 'next/headers';
 // resolution, activity log); this handler does parsing, workspace binding at
 // the submit instant, idempotency, and error mapping. `Idempotency-Key` is
 // REQUIRED on this endpoint.
+
+// GET /api/v1/tests?tag=<tag> — list the workspace's Tests that carry a single
+// tag (BK-33). Auth: Bearer `atc:read` (or cookie session). The SECURITY
+// DEFINER RPC restricts results to the actor's active workspace memberships
+// (any role) and matches via a GIN `@>` containment — the lookup tag is
+// normalized the same way stored tags are, so `Smoke` matches `smoke`. Zero
+// matches return `{ items: [] }`, never a 404; cross-workspace Tests never leak.
+// `tag` is required (the MVP exposes single-tag filtering only — no list-all).
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal } = getAuth(ctx);
+
+  const tag = request.nextUrl.searchParams.get('tag')?.trim() ?? '';
+  if (tag === '') {
+    throw new ApiError('validation_failed', 'A `tag` query parameter is required.');
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await filterTestsByTag(supabase, {
+    actorUserId: principal.userId,
+    tag,
+  });
+  if (error) {
+    mapTestFilterError(error);
+  }
+
+  // The RPC returns a jsonb array (already workspace-isolated).
+  return jsonResponse({ items: data ?? [] }, { status: 200 });
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);

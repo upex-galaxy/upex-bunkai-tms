@@ -18,6 +18,7 @@ import { ImportFromJiraDialog } from './import-from-jira-dialog';
 import { MoveModuleDialog } from './move-module-dialog';
 import { RenameModuleForm } from './rename-module-form';
 import { UserStoryForm } from './user-story-form';
+import { useWorkbench } from './workbench-context';
 
 // Workspace Test projection for the explorer's flat Tests group (BK-27).
 // Tests are workspace-scoped (no module anchor — ratified derivation D9), so
@@ -115,6 +116,16 @@ export function ProjectExplorer({
   selectedTestId,
 }: ProjectExplorerProps) {
   const router = useRouter();
+  // BK-33 — when a tag filter is active, scope the Tests group to the matching
+  // id set (an empty set ⇒ "No Tests carry this tag"). No filter ⇒ all Tests.
+  const { testTagFilter, filteredTestIds } = useWorkbench();
+  const tagFilterActive = testTagFilter !== null;
+  const visibleTests = useMemo(
+    () => (filteredTestIds === null
+      ? tests
+      : tests.filter(t => filteredTestIds.includes(t.id))),
+    [tests, filteredTestIds],
+  );
   const [target, setTarget] = useState<CreateTarget | null>(null);
   const [duplicatingAtcId, setDuplicatingAtcId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<ModuleTreeNode | null>(null);
@@ -298,17 +309,28 @@ export function ProjectExplorer({
                 <span className="font-mono text-xs font-semibold uppercase tracking-widest text-fg-3">
                   Tests
                 </span>
-                <span className="ml-auto font-mono text-xs text-fg-4">{tests.length}</span>
+                {tagFilterActive && (
+                  <span
+                    data-testid="explorer-tests-tag-filter-badge"
+                    className="inline-flex items-center rounded-1 border border-stroke-1 bg-surface-3 px-1.5 py-0.5 font-mono text-2xs text-fg-2"
+                  >
+                    {testTagFilter}
+                  </span>
+                )}
+                <span className="ml-auto font-mono text-xs text-fg-4">{visibleTests.length}</span>
               </button>
               {testsOpen && (
                 <div className="min-h-0 overflow-auto pb-1.5">
-                  {tests.length === 0
+                  {visibleTests.length === 0
                     ? (
-                        <div className="flex h-5 items-center px-3 text-xs italic text-fg-4">
-                          No Tests yet
+                        <div
+                          data-testid="explorer-tests-empty"
+                          className="flex h-5 items-center px-3 text-xs italic text-fg-4"
+                        >
+                          {tagFilterActive ? 'No Tests carry this tag' : 'No Tests yet'}
                         </div>
                       )
-                    : tests.map(t => (
+                    : visibleTests.map(t => (
                         <Link
                           key={t.id}
                           href={`/projects/${projectSlug}/tests/${t.id}`}

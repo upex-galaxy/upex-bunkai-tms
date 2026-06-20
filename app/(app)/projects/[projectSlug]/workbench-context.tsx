@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import type { ExplorerTestItem } from './project-explorer';
 import { shortSlug } from '@lib/utils';
 import { useParams, useRouter } from 'next/navigation';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // Client state layer for the project workbench (BK-147). The persistent shell
 // (project-shell.tsx) and the index page both read this. Tabs are route-driven:
@@ -49,6 +49,13 @@ interface WorkbenchContextValue extends WorkbenchData {
   activeAtcId: string | null
   activeTestId: string | null
   closeTab: (kind: WorkbenchTabKind, id: string) => void
+  // BK-33 — Test tag filter shared between the toolbar control and the explorer
+  // Tests group. `testTagFilter` is the active tag (null = no filter); when set,
+  // `filteredTestIds` is the id set the explorer scopes the Tests list to
+  // (empty array = the tag matches no Test → "No Tests carry this tag").
+  testTagFilter: string | null
+  filteredTestIds: string[] | null
+  setTestTagFilter: (tag: string | null, ids: string[] | null) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null);
@@ -100,6 +107,15 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   const activeTestId = params.testId ?? null;
 
   const [view, setView] = useState<WorkbenchView>('tree');
+  // BK-33 — active tag filter + the matching Test id set (null = no filter).
+  const [testTagFilter, setTagFilter] = useState<string | null>(null);
+  const [filteredTestIds, setFilteredTestIds] = useState<string[] | null>(null);
+  // Stable identity so the toolbar filter's debounced effect can list it as a
+  // dependency without re-running every render.
+  const setTestTagFilter = useCallback((tag: string | null, ids: string[] | null) => {
+    setTagFilter(tag);
+    setFilteredTestIds(ids);
+  }, []);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId
       ? findTab(rows, tests, projectSlug, 'atc', activeAtcId)
@@ -148,6 +164,9 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     activeAtcId,
     activeTestId,
     closeTab,
+    testTagFilter,
+    filteredTestIds,
+    setTestTagFilter,
   };
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
