@@ -30,6 +30,12 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
         },
       });
     }
+    case '45023':
+      // BK-23 — duplicate's computed `<source> (copy)` title would exceed 200
+      // chars. PO-PENDING: reject vs truncate (see implementation-plan §6).
+      throw new ApiError('validation_failed', 'The duplicate\'s title would exceed 200 characters. Provide a shorter title.', {
+        details: { reason: 'title_too_long' },
+      });
     case '23505':
       throw new ApiError('slug_collision', 'An ATC with this slug already exists in the project. Retry to generate a new one.', {
         details: { reason: 'slug_collision' },

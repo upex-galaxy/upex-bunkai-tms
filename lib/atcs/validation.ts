@@ -53,6 +53,21 @@ export const AtcUpdateBodySchema = AtcWriteBodySchema.extend({
   module_id: z.string().uuid().optional(),
 });
 
+// BK-23 — duplicate body. Only an optional title (reusing the 3–200 rule); the
+// server reads everything else from the source ATC. An empty body is valid and
+// defaults the copy's title to `<source> (copy)`.
+export const AtcDuplicateBodySchema = z.object({
+  title: z.string().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX).optional(),
+});
+
+// BK-23 — default title for a duplicate when the caller supplies none. Single
+// ` (copy)` suffix, no de-dup (PO-PENDING: duplicating a copy yields
+// `… (copy) (copy)`). The RPC re-derives this server-side; this helper keeps the
+// rule unit-testable and lets a UI preview the default before the round-trip.
+export function defaultCopyTitle(sourceTitle: string): string {
+  return `${sourceTitle} (copy)`;
+}
+
 export interface StepPositionsError {
   reason: 'steps_position_invalid'
   positions: number[]

@@ -71,6 +71,9 @@ interface SidebarProps {
   // When provided, a plain click on an ATC opens it in the Tree workbench's
   // in-pane tab instead of navigating to the full editor.
   onOpenAtc?: (atc: Atc) => void
+  // Duplicates an ATC from its context menu (BK-23). One click → deep-copy with
+  // the default `(copy)` title → navigate to the new ATC editor.
+  onDuplicateAtc?: (atc: Atc) => void
 }
 
 export function Sidebar({
@@ -91,6 +94,7 @@ export function Sidebar({
   onManageCriteria,
   onSelect,
   onOpenAtc,
+  onDuplicateAtc,
 }: SidebarProps) {
   const router = useRouter();
   const [filter, setFilter] = useState<ExplorerFilter>('all');
@@ -219,6 +223,7 @@ export function Sidebar({
           onEditUserStory={onEditUserStory}
           onDeleteUserStory={onDeleteUserStory}
           onManageCriteria={onManageCriteria}
+          onDuplicateAtc={onDuplicateAtc}
         />
       )}
     </aside>
@@ -725,6 +730,7 @@ interface ContextMenuProps {
   onEditUserStory?: (story: UserStoryWithChildren) => void
   onDeleteUserStory?: (story: UserStoryWithChildren) => void
   onManageCriteria?: (story: UserStoryWithChildren) => void
+  onDuplicateAtc?: (atc: Atc) => void
 }
 
 function ExplorerContextMenu({
@@ -742,6 +748,7 @@ function ExplorerContextMenu({
   onEditUserStory,
   onDeleteUserStory,
   onManageCriteria,
+  onDuplicateAtc,
 }: ContextMenuProps) {
   // Close on Escape, on scroll, and on resize — a positioned menu shouldn't
   // linger detached from the row it points at.
@@ -815,16 +822,21 @@ function ExplorerContextMenu({
 
     const atc = target.atc;
     const href = `/projects/${projectSlug}/atcs/${atc.id}`;
-    return {
-      title: atc.id,
-      kind: 'ATC',
-      entries: [
-        { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => router.push(href) },
-        { label: 'Open in new tab', icon: ArrowUpRight, shortcut: '⌘⏎', onClick: () => window.open(href, '_blank', 'noopener') },
+    const entries: MenuEntry[] = [
+      { label: 'Open', icon: ArrowRight, shortcut: '⏎', onClick: () => router.push(href) },
+      { label: 'Open in new tab', icon: ArrowUpRight, shortcut: '⌘⏎', onClick: () => window.open(href, '_blank', 'noopener') },
+    ];
+    if (canCreate && onDuplicateAtc) {
+      entries.push(
         'divider',
-        { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(atc.id) },
-      ],
-    };
+        { label: 'Duplicate', icon: Files, shortcut: '⌘D', onClick: () => onDuplicateAtc(atc) },
+      );
+    }
+    entries.push(
+      'divider',
+      { label: 'Copy ID', icon: Copy, shortcut: '⌘C', onClick: () => copyId(atc.id) },
+    );
+    return { title: atc.id, kind: 'ATC', entries };
   }
 
   // Clamp into the viewport so the menu never spills off-screen. Width/height

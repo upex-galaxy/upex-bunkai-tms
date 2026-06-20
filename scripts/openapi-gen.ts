@@ -74,6 +74,8 @@ import '../app/api/v1/atcs/search/route.openapi';
 
 import '../app/api/v1/atcs/[id]/route.openapi';
 
+import '../app/api/v1/atcs/[id]/duplicate/route.openapi';
+
 import '../app/api/v1/tests/route.openapi';
 
 import '../app/api/v1/tests/[id]/route.openapi';

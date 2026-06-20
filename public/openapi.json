@@ -1704,6 +1704,17 @@
         },
         "required": ["title", "layer", "steps", "acceptance_criterion_ids"]
       },
+      "AtcDuplicateBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "Optional title for the copy. Omit to default to `<source> (copy)`."
+          }
+        }
+      },
       "Test": {
         "type": "object",
         "properties": {
@@ -4676,6 +4687,121 @@
           },
           "422": {
             "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/atcs/{id}/duplicate": {
+      "post": {
+        "tags": ["ATCs"],
+        "summary": "Duplicate an ATC (deep-copy steps, assertions, AC bindings)",
+        "description": "Bearer `atc:write` (or cookie session). Deep-copies the source ATC into a NEW ATC in the same project — every step and assertion (in order) plus the AC bindings — with a fresh slug, `version = 1`, and an independent set of child rows (editing the copy never changes the source). The title defaults to `<source> (copy)` unless an optional `title` is supplied. Emits an `atc.created` event.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The source ATC to duplicate."
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtcDuplicateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Duplicate created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atc": {
+                      "$ref": "#/components/schemas/Atc"
+                    }
+                  },
+                  "required": ["atc"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source ATC not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slug collision (`slug_collision`). Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (`title_too_long` when the computed `(copy)` title exceeds 200 chars, or title/limits).",
             "content": {
               "application/json": {
                 "schema": {

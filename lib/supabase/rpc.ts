@@ -131,6 +131,22 @@ export async function getAtc(supabase: Client, args: { actorUserId: string, atcI
   });
 }
 
+// BK-23 — deep-copy an ATC (header + ordered steps/assertions + AC bindings)
+// into a new ATC with a fresh slug and version = 1. `title` is optional; when
+// omitted the RPC defaults the copy's title to `<source> (copy)`. Same
+// explicit-actor contract as the other ATC wrappers; returns the composed json
+// of the NEW ATC.
+export async function duplicateAtc(
+  supabase: Client,
+  args: { actorUserId: string, sourceAtcId: string, title?: string },
+) {
+  return supabase.rpc('bunkai_duplicate_atc', {
+    p_actor_user_id: args.actorUserId,
+    p_source_atc_id: args.sourceAtcId,
+    p_title: args.title ?? undefined,
+  });
+}
+
 // BK-20 — project-scoped ATC full-text search. The SECURITY DEFINER RPC takes
 // the resolved actor explicitly (PAT callers have no auth.uid()) and restricts
 // the result set to the actor's active workspace memberships — any caller scope
