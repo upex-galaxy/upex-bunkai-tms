@@ -43,6 +43,12 @@ export const API_ERROR_CODES = {
   CHAIN_MISMATCH: 'chain_mismatch',
   CHAIN_INVALID: 'chain_invalid',
 
+  // Runs domain (BK-34) — a Run can only start when the Test has at least one
+  // executable step, and the chosen environment must belong to the Test's
+  // Project. Distinct from validation_failed so API consumers can branch on them.
+  NO_EXECUTABLE_STEPS: 'no_executable_steps',
+  ENVIRONMENT_INVALID: 'environment_invalid',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -68,6 +74,8 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   chain_empty: 422,
   chain_mismatch: 422,
   chain_invalid: 422,
+  no_executable_steps: 422,
+  environment_invalid: 422,
   internal_error: 500,
   upstream_error: 502,
 };

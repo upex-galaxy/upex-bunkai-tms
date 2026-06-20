@@ -596,6 +596,35 @@ export interface Database {
           },
         ]
       }
+      project_environments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'project_environments_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string
@@ -624,6 +653,188 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'projects_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      run_atcs: {
+        Row: {
+          atc_id: string | null
+          atc_title: string
+          id: string
+          position: number
+          run_id: string
+          status: string
+        }
+        Insert: {
+          atc_id?: string | null
+          atc_title: string
+          id?: string
+          position: number
+          run_id: string
+          status?: string
+        }
+        Update: {
+          atc_id?: string | null
+          atc_title?: string
+          id?: string
+          position?: number
+          run_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'run_atcs_atc_id_fkey'
+            columns: ['atc_id']
+            isOneToOne: false
+            referencedRelation: 'atcs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'run_atcs_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'runs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      run_steps: {
+        Row: {
+          atc_step_id: string | null
+          content: string
+          evidence_url: string | null
+          executed_at: string | null
+          expected: string | null
+          id: string
+          input_data: string | null
+          note: string | null
+          position: number
+          run_atc_id: string
+          status: string
+        }
+        Insert: {
+          atc_step_id?: string | null
+          content: string
+          evidence_url?: string | null
+          executed_at?: string | null
+          expected?: string | null
+          id?: string
+          input_data?: string | null
+          note?: string | null
+          position: number
+          run_atc_id: string
+          status?: string
+        }
+        Update: {
+          atc_step_id?: string | null
+          content?: string
+          evidence_url?: string | null
+          executed_at?: string | null
+          expected?: string | null
+          id?: string
+          input_data?: string | null
+          note?: string | null
+          position?: number
+          run_atc_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'run_steps_atc_step_id_fkey'
+            columns: ['atc_step_id']
+            isOneToOne: false
+            referencedRelation: 'atc_steps'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'run_steps_run_atc_id_fkey'
+            columns: ['run_atc_id']
+            isOneToOne: false
+            referencedRelation: 'run_atcs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      runs: {
+        Row: {
+          created_at: string
+          environment_id: string
+          executor_mode: string
+          executor_user_id: string | null
+          finished_at: string | null
+          id: string
+          project_id: string
+          start_token: string
+          started_at: string
+          status: string
+          test_id: string
+          test_title: string
+          updated_at: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment_id: string
+          executor_mode: string
+          executor_user_id?: string | null
+          finished_at?: string | null
+          id?: string
+          project_id: string
+          start_token: string
+          started_at?: string
+          status?: string
+          test_id: string
+          test_title: string
+          updated_at?: string
+          version?: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          environment_id?: string
+          executor_mode?: string
+          executor_user_id?: string | null
+          finished_at?: string | null
+          id?: string
+          project_id?: string
+          start_token?: string
+          started_at?: string
+          status?: string
+          test_id?: string
+          test_title?: string
+          updated_at?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'runs_environment_id_fkey'
+            columns: ['environment_id']
+            isOneToOne: false
+            referencedRelation: 'project_environments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'runs_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'runs_test_id_fkey'
+            columns: ['test_id']
+            isOneToOne: false
+            referencedRelation: 'tests'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'runs_workspace_id_fkey'
             columns: ['workspace_id']
             isOneToOne: false
             referencedRelation: 'workspaces'
@@ -972,6 +1183,16 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_create_run: {
+        Args: {
+          p_actor_user_id: string
+          p_environment_id: string
+          p_executor_mode: string
+          p_start_token: string
+          p_test_id: string
+        }
+        Returns: Json
+      }
       bunkai_create_test: {
         Args: {
           p_actor_user_id: string
@@ -995,6 +1216,10 @@ export interface Database {
       }
       bunkai_get_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
+        Returns: Json
+      }
+      bunkai_get_run_expanded: {
+        Args: { p_actor_user_id: string, p_run_id: string }
         Returns: Json
       }
       bunkai_get_test_expanded: {
@@ -1034,6 +1259,7 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_run_json: { Args: { p_run_id: string }, Returns: Json }
       bunkai_save_atc: {
         Args: {
           p_ac_ids: string[]

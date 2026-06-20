@@ -1,4 +1,5 @@
 import { ChainedAtcCard } from '@components/tests/ChainedAtcCard';
+import { StartRunButton } from '@components/tests/StartRunButton';
 import { TestReorderClient } from '@components/tests/TestReorderClient';
 import { TestTagEditor } from '@components/tests/TestTagEditor';
 import { ChevronLeft, GitBranch } from 'lucide-react';
@@ -54,11 +55,14 @@ interface TestDetailViewProps {
   projectSlug: string
   // BK-28 — member/admin/owner may drag-reorder the chain; viewers get the
   // read-only projection with no drag handles (affordance hidden). BK-33 reuses
-  // this same member+ gate as `canEdit` for the tag editor.
+  // this same member+ gate as `canEdit` for the tag editor. BK-34 reuses it to
+  // gate the Start-run affordance — viewers don't start runs.
   canReorder?: boolean
+  // BK-34 — the project's environments (id + name) for the Start-run picker.
+  environments?: { id: string, name: string }[]
 }
 
-export function TestDetailView({ test, projectSlug, canReorder = false }: TestDetailViewProps) {
+export function TestDetailView({ test, projectSlug, canReorder = false, environments = [] }: TestDetailViewProps) {
   const tags = test.tags ?? [];
   return (
     <div
@@ -93,14 +97,23 @@ export function TestDetailView({ test, projectSlug, canReorder = false }: TestDe
           >
             {test.title}
           </h1>
-          <span
-            data-testid="test-detail-atc-count"
-            className="ml-auto inline-flex shrink-0 items-center rounded-1 border border-stroke-2 bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-3"
-          >
-            {test.atc_count}
-            {' '}
-            ATCs
-          </span>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {canReorder && (
+              <StartRunButton
+                testId={test.id}
+                projectSlug={projectSlug}
+                environments={environments}
+              />
+            )}
+            <span
+              data-testid="test-detail-atc-count"
+              className="inline-flex shrink-0 items-center rounded-1 border border-stroke-2 bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-3"
+            >
+              {test.atc_count}
+              {' '}
+              ATCs
+            </span>
+          </div>
         </div>
       </div>
 
