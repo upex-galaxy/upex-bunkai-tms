@@ -66,6 +66,48 @@ export function mapTestReorderError(error: { code?: string, message: string }): 
   }
 }
 
+// BK-33 — map a bunkai_set_test_tags RPC error to the canonical envelope. The
+// RPC raises 45126 (tags_invalid) for the shape rules the Zod layer also guards
+// (so this is the under-lock backstop), and reuses 45125 (version_conflict),
+// 42501, P0002 unchanged from the reorder/create paths.
+export function mapTestTagsError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case '42501':
+      throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
+        details: { reason: 'not_a_member' },
+      });
+    case 'P0002':
+      throw new ApiError('not_found', 'Test not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '45126':
+      throw new ApiError('validation_failed', 'Tags must be 50 characters or fewer, comma-free, and at most 20 per Test.', {
+        details: { reason: 'tags_invalid' },
+      });
+    case '45125': {
+      const currentVersion = parseConflictVersion(error.message);
+      throw new ApiError('conflict', 'The Test was changed by another request.', {
+        details: {
+          reason: 'version_conflict',
+          ...(currentVersion !== null ? { current_version: currentVersion } : {}),
+        },
+      });
+    }
+    default:
+      throw new ApiError('internal_error', error.message);
+  }
+}
+
+// BK-33 — map a bunkai_filter_tests_by_tag RPC error to the canonical envelope.
+// The filter RPC is read-only and carries no domain SQLSTATEs, so any error is
+// unexpected. Log the raw RPC/SQL detail server-side for diagnosis but return a
+// generic `internal_error` — never embed the raw message in the response (it
+// would leak internal SQL detail and conflate real errors with empty results).
+export function mapTestFilterError(error: { code?: string, message: string }): never {
+  console.error('bunkai_filter_tests_by_tag RPC failed', error);
+  throw new ApiError('internal_error', 'Failed to filter Tests by tag.');
+}
+
 // The version-conflict RPC raises `version_conflict:<current>` so the route can
 // surface the live version in the 409 body without a second round-trip.
 function parseConflictVersion(message: string): number | null {

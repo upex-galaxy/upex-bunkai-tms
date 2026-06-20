@@ -62,4 +62,38 @@ registry.registerPath({
   },
 });
 
+// BK-33 — GET /api/v1/tests?tag= — workspace-scoped single-tag filter.
+const TagFilterParam = {
+  name: 'tag',
+  in: 'query' as const,
+  required: true,
+  schema: { type: 'string' as const },
+  description: 'Required. The single tag to filter by. Normalized like stored tags (reserved tags lowercased), so `Smoke` matches `smoke`. An unused tag returns an empty list, never a 404.',
+};
+
+const FilteredTestSchema = z
+  .object({
+    id: z.string().uuid(),
+    title: z.string(),
+    tags: z.array(z.string()),
+    step_count: z.number().int(),
+  })
+  .openapi('FilteredTest');
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tests',
+  tags: ['Tests'],
+  summary: 'List Tests carrying a tag',
+  description: 'Bearer `atc:read` (or cookie session). Returns the actor\'s workspace Tests that carry the given `tag` via a GIN containment match. Results are restricted to the actor\'s active workspace memberships — caller scope is ignored, cross-workspace Tests never leak. Zero matches return `{ items: [] }`, never a 404. The MVP exposes single-tag filtering only.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [TagFilterParam],
+  responses: {
+    200: { description: 'The matching Tests (possibly empty).', content: { 'application/json': { schema: z.object({ items: z.array(FilteredTestSchema) }) } } },
+    400: { description: 'Authentication / scope error (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Missing `tag` query parameter (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
 export { TestSchema };

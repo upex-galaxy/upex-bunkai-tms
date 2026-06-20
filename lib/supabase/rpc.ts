@@ -240,3 +240,40 @@ export async function reorderTestSteps(supabase: Client, args: ReorderTestStepsA
     p_step_ids: args.stepIds,
   });
 }
+
+// BK-33 — replace the whole tag set on a Test (PUT semantics). The SECURITY
+// DEFINER RPC normalizes (trim, reserved-lowercase, dedupe), enforces the write
+// gate + shape rules (count ≤ 20, len ≤ 50, comma-free), and guards the
+// optimistic lock under FOR UPDATE — a no-op (set unchanged) skips the version
+// bump / event. `ifMatch` null skips the guard. Returns the composed Test json
+// (now carrying `tags`). Same explicit-actor contract as the other wrappers.
+export interface SetTestTagsArgs {
+  actorUserId: string
+  testId: string
+  ifMatch: number | null
+  tags: string[]
+}
+
+export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
+  return supabase.rpc('bunkai_set_test_tags', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    // The RPC param is `int` (typed non-null) but accepts NULL to skip the
+    // If-Match guard. supabase-js serializes null → SQL NULL (mirrors updateAtc).
+    p_if_match: args.ifMatch as number,
+    p_tags: args.tags,
+  });
+}
+
+// BK-33 — workspace-scoped filter of Tests carrying a single tag. The SECURITY
+// DEFINER RPC restricts results to the actor's active memberships (any role) —
+// caller scope is ignored — and matches via a GIN `@>` containment. The lookup
+// tag is normalized the SAME way stored tags are, so `Smoke` matches `smoke`.
+// An unused tag returns `[]`, never a 404, never a cross-workspace leak.
+// Returns a jsonb array of lightweight rows (id/title/tags/step_count).
+export async function filterTestsByTag(supabase: Client, args: { actorUserId: string, tag: string }) {
+  return supabase.rpc('bunkai_filter_tests_by_tag', {
+    p_actor_user_id: args.actorUserId,
+    p_tag: args.tag,
+  });
+}

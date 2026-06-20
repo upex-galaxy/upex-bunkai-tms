@@ -672,6 +672,7 @@ export interface Database {
           created_at: string
           created_by: string
           id: string
+          tags: string[]
           title: string
           updated_at: string
           version: number
@@ -681,6 +682,7 @@ export interface Database {
           created_at?: string
           created_by: string
           id?: string
+          tags?: string[]
           title: string
           updated_at?: string
           version?: number
@@ -690,6 +692,7 @@ export interface Database {
           created_at?: string
           created_by?: string
           id?: string
+          tags?: string[]
           title?: string
           updated_at?: string
           version?: number
@@ -986,6 +989,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_filter_tests_by_tag: {
+        Args: { p_actor_user_id: string, p_tag: string }
+        Returns: Json
+      }
       bunkai_get_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
@@ -1013,6 +1020,10 @@ export interface Database {
       bunkai_move_module: {
         Args: { p_module_id: string, p_new_parent_id?: string }
         Returns: Json
+      }
+      bunkai_normalize_test_tags: {
+        Args: { p_tags: string[] }
+        Returns: string[]
       }
       bunkai_reorder_test_steps: {
         Args: {
@@ -1047,11 +1058,24 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_set_test_tags: {
+        Args: {
+          p_actor_user_id: string
+          p_if_match: number
+          p_tags: string[]
+          p_test_id: string
+        }
+        Returns: Json
+      }
       bunkai_set_user_story_status: {
         Args: { p_id: string, p_status: string }
         Returns: Json
       }
       bunkai_test_json: { Args: { p_test_id: string }, Returns: Json }
+      bunkai_test_tags_shape_ok: {
+        Args: { p_tags: string[] }
+        Returns: boolean
+      }
       bunkai_update_atc: {
         Args: {
           p_ac_ids: string[]

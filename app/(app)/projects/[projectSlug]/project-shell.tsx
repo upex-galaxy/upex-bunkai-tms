@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AtcSearchFilter } from './atc-search-filter';
 import { ProjectExplorer } from './project-explorer';
+import { TestTagFilter } from './test-tag-filter';
 import { useWorkbench, WorkbenchProvider } from './workbench-context';
 
 const VIEWS: { key: WorkbenchView, label: string, icon: typeof ListTree }[] = [
@@ -94,6 +95,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
         right={(
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
+            <TestTagFilter />
             <CommandPalette ownsHotkey={false} />
             <Link
               href={`/projects/${projectSlug}/atcs/new`}

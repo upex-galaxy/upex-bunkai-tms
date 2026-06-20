@@ -1,4 +1,4 @@
-import { TestCreateBodySchema } from '@lib/tests/validation';
+import { TestCreateBodySchema, TestTagsBodySchema } from '@lib/tests/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('TestCreateBodySchema boundaries', () => {
@@ -59,5 +59,50 @@ describe('TestCreateBodySchema boundaries', () => {
 
   test('rejects a non-uuid workspace_id', () => {
     expect(TestCreateBodySchema.safeParse({ ...base, title: 'Cart', workspace_id: 'not-a-uuid' }).success).toBe(false);
+  });
+});
+
+// BK-33 — Test tags body. The Zod layer guards the SHAPE (count ≤ 20, len ≤ 50,
+// comma-free) on the trimmed+non-empty view; the RPC owns reserved-lowercase +
+// dedupe. These tests assert the transform (trim/drop-blank) and the bounds.
+describe('TestTagsBodySchema boundaries', () => {
+  test('accepts a reserved + custom mix', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: ['smoke', 'P1-critical'] }).success).toBe(true);
+  });
+
+  test('accepts an empty set (clears all tags — boundary sc.4)', () => {
+    const parsed = TestTagsBodySchema.parse({ tags: [] });
+    expect(parsed.tags).toEqual([]);
+  });
+
+  test('trims each tag and drops blank/whitespace entries', () => {
+    const parsed = TestTagsBodySchema.parse({ tags: ['  smoke  ', '   ', 'P1'] });
+    expect(parsed.tags).toEqual(['smoke', 'P1']);
+  });
+
+  test('rejects a tag containing a comma', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: ['a,b'] }).success).toBe(false);
+  });
+
+  test('accepts a 50-char tag (upper boundary)', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: ['x'.repeat(50)] }).success).toBe(true);
+  });
+
+  test('rejects a 51-char tag (over boundary)', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: ['x'.repeat(51)] }).success).toBe(false);
+  });
+
+  test('accepts 20 tags (upper boundary)', () => {
+    const tags = Array.from({ length: 20 }, (_, i) => `t${i}`);
+    expect(TestTagsBodySchema.safeParse({ tags }).success).toBe(true);
+  });
+
+  test('rejects 21 tags (over boundary)', () => {
+    const tags = Array.from({ length: 21 }, (_, i) => `t${i}`);
+    expect(TestTagsBodySchema.safeParse({ tags }).success).toBe(false);
+  });
+
+  test('rejects a non-array tags value', () => {
+    expect(TestTagsBodySchema.safeParse({ tags: 'smoke' }).success).toBe(false);
   });
 });

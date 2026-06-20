@@ -1,5 +1,6 @@
 import { ChainedAtcCard } from '@components/tests/ChainedAtcCard';
 import { TestReorderClient } from '@components/tests/TestReorderClient';
+import { TestTagEditor } from '@components/tests/TestTagEditor';
 import { ChevronLeft, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,6 +41,8 @@ export interface ExpandedTest {
   workspace_id: string
   title: string
   version: number
+  // BK-33 — the Test's tag set (reserved suite tags + custom tags). May be empty.
+  tags: string[]
   created_at: string
   updated_at: string
   atc_count: number
@@ -50,11 +53,13 @@ interface TestDetailViewProps {
   test: ExpandedTest
   projectSlug: string
   // BK-28 — member/admin/owner may drag-reorder the chain; viewers get the
-  // read-only projection with no drag handles (affordance hidden).
+  // read-only projection with no drag handles (affordance hidden). BK-33 reuses
+  // this same member+ gate as `canEdit` for the tag editor.
   canReorder?: boolean
 }
 
 export function TestDetailView({ test, projectSlug, canReorder = false }: TestDetailViewProps) {
+  const tags = test.tags ?? [];
   return (
     <div
       data-testid="test-detail-view"
@@ -98,6 +103,41 @@ export function TestDetailView({ test, projectSlug, canReorder = false }: TestDe
           </span>
         </div>
       </div>
+
+      {/* BK-33 — tags row: read-only chips (AtcPreview idiom) plus, for members+,
+          an inline "Edit tags" affordance that opens the TestTagEditor. Sits in
+          the SAME centered reading column as the header + chain. Hidden entirely
+          for a viewer with no tags (nothing to show, nothing to edit). */}
+      {(tags.length > 0 || canReorder) && (
+        <div className="flex flex-shrink-0 items-center border-b border-stroke-1 px-4 py-1.5">
+          <div className="mx-auto flex w-full max-w-[820px] flex-wrap items-center gap-1.5">
+            {tags.length > 0
+              ? (
+                  tags.map(t => (
+                    <span
+                      key={t}
+                      data-testid={`test-detail-tag-${t}`}
+                      className="inline-flex items-center rounded-1 border border-stroke-1 bg-surface-3 px-1.5 py-0.5 font-mono text-2xs text-fg-2"
+                    >
+                      {t}
+                    </span>
+                  ))
+                )
+              : (
+                  <span data-testid="test-detail-tags-empty" className="text-2xs italic text-fg-4">
+                    No tags
+                  </span>
+                )}
+            {canReorder && (
+              <TestTagEditor
+                testId={test.id}
+                version={test.version}
+                initialTags={tags}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ordered chain of expanded ATCs (already ordered by the RPC). Centered
           max-width reading column, aligned with the centered header content. */}
