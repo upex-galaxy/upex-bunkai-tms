@@ -1,6 +1,6 @@
 # ADR-0006 — Consumption-side scope enforcement: TS capability gate + workspace context match
 
-- **Status:** Proposed <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
+- **Status:** Accepted <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-06-21
 - **Deciders:** Ely (PO/approver), dev (proposer)
 - **Tags:** authentication, authorization, api, security, cross-cutting-invariant

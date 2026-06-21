@@ -1,6 +1,6 @@
 # ADR-0005 — Role-gated PAT issuance; no global `workspace:admin` tokens
 
-- **Status:** Proposed <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
+- **Status:** Accepted <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-06-21
 - **Deciders:** Ely (PO/approver), dev (proposer)
 - **Tags:** authentication, authorization, api, security, cross-cutting-invariant
