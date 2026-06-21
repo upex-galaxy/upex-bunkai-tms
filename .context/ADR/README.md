@@ -65,6 +65,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0002](./ADR-0002-idempotency-key-scoping.md) | Idempotency-Key Scoping for the Headless Write Surface | Accepted — Implemented | — | — |
 | [ADR-0003](./ADR-0003-app-shell-route-driven-workbench-tabs.md) | Persistent Project Shell & Route-Driven Workbench Tabs | Accepted | — | — |
 | [ADR-0004](./ADR-0004-run-snapshot-and-environments.md) | Run Snapshot Model & Project Environments Entity | Accepted | — | — |
+| [ADR-0005](./ADR-0005-password-auth-and-email-otp.md) | Password-Primary Auth & Mandatory Email-OTP Verification | Proposed | — | — |
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 
