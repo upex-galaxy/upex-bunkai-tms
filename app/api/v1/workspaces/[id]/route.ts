@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { assertWorkspaceContext } from '@lib/api/principal';
 import { z } from 'zod';
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
@@ -38,12 +39,14 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 }, { auth: 'required' });
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
   const id = extractId(request);
   const parsed = ParamsSchema.safeParse({ id });
   if (!parsed.success) {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
+  // A workspace-scoped PAT may only modify its own workspace (ADR-0006).
+  assertWorkspaceContext(principal, parsed.data.id);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -70,7 +73,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspace: data });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['workspace:admin'] });
 
 function extractId(request: NextRequest): string {
   // App Router exposes route params via context, but withApiHandler is generic

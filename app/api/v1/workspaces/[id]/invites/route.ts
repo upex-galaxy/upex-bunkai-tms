@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { generateInviteToken, hashInviteToken } from '@lib/api/invite-tokens';
+import { assertWorkspaceContext } from '@lib/api/principal';
 import { createAdminClient } from '@lib/supabase/admin';
 import { webUrl } from '@lib/urls';
 import { z } from 'zod';
@@ -26,6 +27,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   const { principal, db } = getAuth(ctx);
+  // A workspace-scoped PAT may only act on its own workspace (ADR-0006).
+  assertWorkspaceContext(principal, workspaceId);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -155,7 +158,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     },
     { status: 201 },
   );
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['workspace:admin'] });
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const workspaceId = extractWorkspaceId(request);
@@ -163,7 +166,8 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
+  assertWorkspaceContext(principal, workspaceId);
 
   const { data, error } = await db
     .from('workspace_invites')
@@ -181,7 +185,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }));
 
   return jsonResponse({ invites });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['workspace:admin'] });
 
 // Members list for the same workspace lives here for convenience because the
 // /members page wants both invites and members in the same request burst.

@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { generateInviteToken, hashInviteToken } from '@lib/api/invite-tokens';
+import { assertWorkspaceContext } from '@lib/api/principal';
 import { createAdminClient } from '@lib/supabase/admin';
 import { webUrl } from '@lib/urls';
 
@@ -20,7 +21,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'workspace id and invite id must be UUIDs.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
+  assertWorkspaceContext(principal, workspaceId);
 
   const newToken = generateInviteToken();
   const newHash = await hashInviteToken(newToken);
@@ -64,7 +66,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     accept_url: acceptUrl,
     warning: 'Copy this URL now — the token cannot be retrieved later.',
   });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['workspace:admin'] });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const { workspaceId, inviteId } = extractIds(request);
@@ -72,7 +74,8 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'workspace id and invite id must be UUIDs.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
+  assertWorkspaceContext(principal, workspaceId);
 
   const { data, error } = await db
     .from('workspace_invites')
@@ -90,7 +93,7 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ ok: true });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['workspace:admin'] });
 
 function extractIds(request: NextRequest): { workspaceId: string, inviteId: string } {
   const segments = new URL(request.url).pathname.split('/');
