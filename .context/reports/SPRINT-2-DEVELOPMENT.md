@@ -1,23 +1,23 @@
 # Sprint 2 — In-Sprint Development Tracker
 
 > Purpose: track dev progress per ticket; cross-ticket aggregate for AI session resume.
-> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-10
+> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-20
 > Goal: "Finalizar un Producto Funcional con Módulos de Story, Test, ATC y Accounting."
 >
 > **Authoritative build order (bug waves + story frontier):** `.context/PBI/sprint-sequence.md`.
 > **Sprint 1 history:** `.context/reports/SPRINT-1-DEVELOPMENT.md` (closed 2026-06-09).
 
-## Board Summary (2026-06-10)
+## Board Summary (2026-06-20)
 
 | Bucket | Count | Dev Relevant |
 | ------ | ----- | ------------ |
-| Bugs Open | 20 | **YES — Sprint 2 starts here** (1 Highest · 2 High · 16 Medium · 1 Low) |
-| Improvements Open | 2 | BK-97 (Medium) · BK-69 (Low) |
-| Stories Ready For Dev | 11 | YES — frontier after Wave 1 |
-| Stories BLOCKED | 4 | BK-6 / BK-10 / BK-16 / BK-18 — 2 unblock via bug fixes (BK-83, BK-99+100) |
-| Stories in QA pipe (RFQA / In Test / SLQA) | 11 | NO — QA hands |
-| Stories Backlog | 6 | Pull later (BK-32, BK-35–39) |
-| QA Approved | 1 | BK-98 |
+| Bugs Open | 0 | **CLEARED** — all 16 fixed + 5 dup-closed in Sprint-2 bug waves (now Ready For QA / QA-side) |
+| Improvements Open | 1 | BK-97 (Medium, story-sized — deferred to planning session) |
+| Stories Ready For Dev | ~4 | YES — active frontier: BK-33 · BK-34 · BK-86 · BK-3 |
+| Stories BLOCKED | 0 | BK-6 / BK-10 / BK-16 / BK-18 all unblocked → In Test |
+| Stories in QA pipe (RFQA / In Test / SLQA) | 17 | NO — QA hands (incl. 6 stories shipped this sprint: BK-20/22/23/27/28/32) |
+| Stories Backlog | — | Runs tail BK-35–39 (opens after BK-34); Settings cluster 🔒 |
+| QA Approved | 2 | BK-98 · BK-27 (Test Builder — released the ATC/Test frontier) |
 | Test artifacts (Test/Plan/Execution) | 6 | NO — QA-owned |
 | Total Sprint 2 | 62 | |
 
@@ -27,7 +27,7 @@
 
 | # | Ticket | Type | Title | Priority | Owner | Impl Plan | PR | Status |
 | - | ------ | ---- | ----- | -------- | ----- | --------- | -- | ------ |
-| — | — | — | (none in flight — ALL bug waves complete. Next: BK-97 improvement (story-sized, needs Stage 1 planning session) + story frontier BK-3/BK-20/BK-22/BK-23) | — | — | — | — | — |
+| — | — | — | (none in flight — ALL bug waves complete + 6-story ATC/Test frontier shipped. Recommended next sequence: **BK-33 → BK-34 → BK-86 → BK-3**, see Pipeline below) | — | — | — | — | — |
 
 ### Queue — Wave 1 CRITICAL bugs (build in this order)
 
@@ -51,10 +51,21 @@
 Dedup DONE 2026-06-10 (user-authorized): BK-54/55/56 closed as dups of BK-51/52/53; BK-92/93 closed as dups of BK-84 — all 5 linked Duplicate, commented, root_cause=Code Error (transition validator requires it).
 Then: BK-51 (reserved slugs) · BK-52 (route not workspace-scoped) · BK-53 (CJK names) · BK-67 (depth-5 toast) · BK-57/59/58 (tech-debt trio).
 
-### Pipeline — Wave 4 simple bugs + story frontier (later)
+### Pipeline — Story frontier (recommended sequence)
 
-Bugs/improvements: BK-68 (Low) · BK-69 (Low) · BK-97 (ADR-0001 follow-up, story-sized).
-Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account cluster BK-86→87→88/89→90. Full order in `sprint-sequence.md`.
+ATC/Test wave SHIPPED (see Done table): BK-27 (gate) → BK-20/22/23 → BK-28/32. Active frontier now:
+
+1. **BK-33** Test Tags — tag + filter tests.
+2. **BK-34** Start manual run — opens the Runs tail (BK-35–39).
+3. **BK-86** Account / sign-out.
+4. **BK-3** OAuth — needs AC-field sync first.
+
+**Excluded (do NOT pull yet):**
+- Settings cluster **BK-87 / BK-88 / BK-90** 🔒 — Settings mockup not authored (no design contract per Rule #15).
+- **BK-21** — 10 open propagation questions, unrefined.
+- **BK-89** (Shift-Left QA) — likely superseded by BK-101.
+
+Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own Stage 1). Full order in `sprint-sequence.md`.
 
 ### Done — This Sprint
 
@@ -69,6 +80,12 @@ Stories: BK-3, BK-20, BK-22, BK-23 → BK-27 → BK-28/33 → BK-34 · Account c
 | BK-57 + BK-59 + BK-67 | Module mutations hardening (atomic PATCH contract, activity_log audit, create toast) | Ely | #37 | 2026-06-10 | 2026-06-10 | — | All 3 Ready For QA, root_cause=Code Error, fix=Bugfix; assignees: BK-57/59 Ely, BK-67 Andrés (reporters). BK-57: modulePatchShapeError helper, 422 combined_update_and_move (REJECT ratified over atomic RPC; OpenAPI exclusivity documented). BK-59: migration 0023 re-creates the 3 module RPCs with in-function audit inserts (module.renamed/description_updated/moved/archived, actor=auth.uid(), no-ops silent; taxonomy in events.md; module CREATE out of scope). BK-67: moduleCreateToasts — success always first, warning additive. 237/237 tests. Staging smoke: combined PATCH → 422; rename round-trip → 2 module.renamed audit rows with actor (module restored). |
 | BK-68 | Create Module 1-char names (client min-length) | Ely | — (already fixed by df47918, 2026-06-08) | 2026-06-08 | 2026-06-08 | — | **Already-fixed case**: reported 6/6, fixed 6/8 by df47918 (isValid >= 2 mirrors server MIN_NAME_LENGTH). Verified on current staging code. Ready For QA, fields set, fix-doc posted, assignee Andrés (reporter). |
 | BK-69 | Module name stores raw HTML tags (improvement) | Ely | #38 | 2026-06-10 | 2026-06-10 | — | Ready For QA, assignee Andrés (reporter). stripHtmlTags (tag-shape anchored — 'a < b' survives) before validation in module create + rename + both UI slug previews. 243/243 tests. Staging smoke: PATCH name '<b>Payments</b>' → stored 'Payments'. |
+| BK-27 | Test Builder — assemble a test by chaining ATCs | Ely | #40 | 2026-06-12 | 2026-06-12 | — | **QA Approved** — the gate that released the ATC/Test frontier (BK-20/22/23/28/32). Merge commit 54749ba. |
+| BK-32 | Test View — read-only expanded Test detail view | Ely | #41 | 2026-06-19 | 2026-06-19 | — | Ready For QA. Merge commit 2f509e4 (merged in a parallel/prior session — full impl detail not captured here). |
+| BK-28 | Test Reorder — reorder Test ATC chain (RPC + PATCH route + drag UI) | Ely | #42 | 2026-06-19 | 2026-06-19 | — | Ready For QA. Merge commit d4fb8e2 (merged in a parallel/prior session — full impl detail not captured here). |
+| BK-20 | ATC Search — project-scoped full-text search + Projects toolbar filter | Facu Barea | #44 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Facu Barea (shift-left QA owner). Project-scoped FTS search. Merge commit 3574d50. |
+| BK-23 | ATC Duplicate — deep-copy ATC with steps, assertions, AC bindings | Benjamin Segovia | #45 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Benjamin Segovia (shift-left QA owner). Atomic deep-copy RPC. Merge commit 5f02be9. |
+| BK-22 | ATC Usage — "used in N tests" usage report | Andrés Daniel Cumare Morales | #46 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Andrés Daniel Cumare Morales (shift-left QA owner). Used-in-N-tests report. Merge commit efcb282. |
 
 ### Blocked
 
@@ -86,9 +103,9 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 | Total Sprint Tickets | 62 |
 | Open bugs at sprint start | 20 (+2 improvements) |
 | Bugs fixed (Ready For QA) | 16 — Waves 1–4 (BK-84, 83, 99, 100, 60, 61, 62, 58, 51, 52, 53, 57, 59, 67, 68, 69) + 5 dup-closed (92, 93, 54, 55, 56) |
-| Remaining dev-side | 1 — BK-97 (improvement, story-sized, deferred to planning session) |
-| Stories merged this sprint | 0 (4 unblocked back to In Test: BK-6, BK-16, BK-18; BK-10 QA-side) |
-| Staging-deployed | PRs #32–#38 |
+| Remaining dev-side | Story frontier: BK-33 → BK-34 → BK-86 → BK-3 (bug work done; BK-97 improvement still deferred) |
+| Stories merged this sprint | 6 — BK-27 (QA Approved), BK-20, BK-22, BK-23, BK-28, BK-32 (all Ready For QA) |
+| Staging-deployed | PRs #32–#38 (bugs) + #40, #41, #42, #44, #45, #46 (stories) |
 | Prod-deployed | 0 |
 
 ## Operational Notes (carry-over from Sprint 1 — still honor)
@@ -103,6 +120,12 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-20 — ATC/Test story frontier shipped (BK-20 #44, BK-23 #45, BK-22 #46)
+- Orchestrated sprint loop shipped **BK-20 / BK-23 / BK-22** to staging (PRs #44 / #45 / #46, merge commits 3574d50 / 5f02be9 / efcb282). All three Ready For QA and assigned to their shift-left QA owners (Facu Barea / Benjamin Segovia / Andrés Daniel Cumare Morales).
+- Frontier had been released by **BK-27 Test Builder** (QA Approved, #40) earlier in the sprint; **BK-28** (#42) and **BK-32** (#41) merged in parallel/prior sessions (06-19) and are now Ready For QA.
+- **Flow change adopted**: the sprint loop now auto-merges `feature/*` → `staging` via admin bypass; `main` (production) stays gated behind explicit promotion.
+- Next frontier: **BK-33 Test Tags → BK-34 Start manual run (opens Runs tail BK-35–39) → BK-86 Account/sign-out → BK-3 OAuth (needs AC-field sync first)**. Excluded: Settings cluster BK-87/88/90 🔒, BK-21 (10 propagation Qs), BK-89 (likely superseded by BK-101).
 
 ### 2026-06-10 — Waves 3+4 complete (BK-58 #35, BK-51/52/53 #36, BK-57/59/67 #37, BK-69 #38, BK-68 already-fixed)
 - Root causes for all 7 Wave-3 bugs confirmed via a 14-agent investigate+adversarial-verify workflow before any code. 4 product decisions ratified by Tech Lead (BK-52 active-ws scoping, BK-53 hash fallback, BK-57 reject-combined, BK-58 full ledger normalization).

@@ -45,7 +45,7 @@ This plan predates the live Jira backlog and uses **plan-internal** labels that 
 | `EPIC-BK-005` | Tests (chains of ATCs) | **BK-24** Tests | ✅ exact |
 | `EPIC-BK-006` | Manual Execution & Runs | **BK-30** Manual Execution & Runs | ✅ exact |
 | `EPIC-BK-007` | Bugs + Defect Heatmap | **BK-31** Bugs & Defect Heatmap | ✅ exact |
-| `EPIC-BK-008` | Views + Search | ≈ folded into **BK-7** (tree/table views) + **BK-20** (ATC search, under BK-13) — no standalone Jira epic | ⚠️ validate (part C) |
+| `EPIC-BK-008` | Views + Search | ≈ folded into **BK-7** (tree/table views) + **BK-20** (ATC search, under BK-13) — no standalone Jira epic | ⚠️ validate (part C) — _partially resolved: **BK-98** (TMS-Projects Tree/Table/Mind-map views, now QA Approved) lands the "Views" surface under BK-7_ |
 | `EPIC-BK-009` | API hardening (PAT / OpenAPI / idempotency) | ≈ cross-cutting; no standalone Jira epic | ⚠️ validate (part C) |
 | — (not in original 9) | Account & Settings | **BK-85** Account & Settings | ➕ added post-foundation |
 | — (not in original 9) | QA Credentials (`/qa`) | **BK-29** QA Credentials | ➕ added post-foundation |
