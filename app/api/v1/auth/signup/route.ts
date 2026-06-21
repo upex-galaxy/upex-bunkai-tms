@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { ALLOWED_PAT_SCOPES, mintPat } from '@lib/api/pat';
+import { assertNoGlobalAdminScope, DEFAULT_PAT_SCOPES, mintPat } from '@lib/api/pat';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
@@ -27,6 +27,11 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { email, password, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+
+  // Reject a disallowed admin scope BEFORE provisioning the user, so a 403
+  // never leaves an orphaned account behind. See ADR-0005.
+  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
+  assertNoGlobalAdminScope(scopes);
 
   const admin = createAdminClient();
 
@@ -62,7 +67,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     admin,
     userId: created.user.id,
     name: pat_name ?? 'cli-signup',
-    scopes: pat_scopes ?? [...ALLOWED_PAT_SCOPES],
+    scopes,
     expiresInDays: pat_expires_in_days ?? null,
   });
 
