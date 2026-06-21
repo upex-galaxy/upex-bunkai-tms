@@ -39,6 +39,10 @@ export default antfu({
     // code blocks, and example snippets rely on exact formatting we don't own.
     '.claude/skills/**',
     '.agents/skills/**',
+    // Agent worktrees — nested git checkouts created by isolated sub-agent
+    // sessions. They are a full copy of the repo; linting them double-counts
+    // every file (and fails on another session's in-flight code). Never lint.
+    '.claude/worktrees/**',
     // MCP reference templates — syntax-sensitive opt-in configs. Linting them
     // (e.g. toml/array-bracket-newline) corrupts the layout users copy from.
     'docs/mcp/**',

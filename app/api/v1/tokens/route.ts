@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { assertTokenIssuanceAuthorized } from '@lib/api/pat';
 import { createAdminClient } from '@lib/supabase/admin';
 import { z } from 'zod';
 
@@ -29,7 +30,7 @@ const CreateBodySchema = z.object({
 });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
-  const { principal } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
   // A PAT must not mint another PAT — privilege escalation / persistence risk.
   // Token issuance is a browser-session-only operation (ADR-0001 exception).
   if (principal.via === 'bearer') {
@@ -42,6 +43,16 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { name, scopes, workspace_id: workspaceId, expires_in_days: expiresInDays }
     = CreateBodySchema.parse(payload);
+
+  // Role-gate the requested scopes against the caller's workspace role before
+  // minting — a member must not be able to self-issue workspace:admin. See
+  // ADR-0005 / BK-135.
+  await assertTokenIssuanceAuthorized({
+    db,
+    userId: principal.userId,
+    scopes,
+    workspaceId: workspaceId ?? null,
+  });
 
   const secret = generateSecret(SECRET_BYTES);
   const tokenPrefix = secret.slice(0, TOKEN_PREFIX_LENGTH);
