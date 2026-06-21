@@ -1,6 +1,6 @@
 # ADR-0004 — Run Snapshot Model & Project Environments Entity
 
-- **Status:** Proposed <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
+- **Status:** Accepted <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-06-20 <!-- date the decision was made / last status change -->
 - **Deciders:** Dev (drafted), Architect + PO (accept), QA-Lead (test gate)
 - **Tags:** data-model, execution, runs, cross-cutting-invariant, tenancy

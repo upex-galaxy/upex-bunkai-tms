@@ -314,3 +314,45 @@ export async function getRunExpanded(supabase: Client, args: { actorUserId: stri
     p_run_id: args.runId,
   });
 }
+
+// BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
+// explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
+// user id the route passes in); each RPC gates member+ write access on the
+// project's workspace via bunkai_assert_actor_can_write_project, trims + length-
+// guards the name (1..50), and relies on the unique (project_id, lower(name))
+// index for case-insensitive uniqueness. The delete RPC pre-counts referencing
+// runs and BLOCKS removal (45211, count in message) when any run references the
+// env. Each returns the composed environment json (or { deleted: true } for the
+// delete).
+
+export async function createEnvironment(
+  supabase: Client,
+  args: { actorUserId: string, projectId: string, name: string },
+) {
+  return supabase.rpc('bunkai_create_environment', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_name: args.name,
+  });
+}
+
+export async function renameEnvironment(
+  supabase: Client,
+  args: { actorUserId: string, environmentId: string, name: string },
+) {
+  return supabase.rpc('bunkai_rename_environment', {
+    p_actor_user_id: args.actorUserId,
+    p_environment_id: args.environmentId,
+    p_name: args.name,
+  });
+}
+
+export async function deleteEnvironment(
+  supabase: Client,
+  args: { actorUserId: string, environmentId: string },
+) {
+  return supabase.rpc('bunkai_delete_environment', {
+    p_actor_user_id: args.actorUserId,
+    p_environment_id: args.environmentId,
+  });
+}

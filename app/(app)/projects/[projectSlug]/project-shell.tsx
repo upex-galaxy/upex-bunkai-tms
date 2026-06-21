@@ -43,6 +43,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
     workspaceName,
     tree,
     tests,
+    environments,
     canCreate,
     view,
     setView,
@@ -127,6 +128,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
             projectName={projectName}
             tree={tree}
             tests={tests}
+            environments={environments}
             canCreate={canCreate}
             selectedAtcId={activeAtcId}
             selectedTestId={activeTestId}

@@ -1,6 +1,6 @@
 import type { Atc, Module, UserStory } from '@lib/types';
 import type { ReactNode } from 'react';
-import type { ExplorerTestItem } from './project-explorer';
+import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
@@ -80,8 +80,10 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
 
   const moduleIds = (modulesData ?? []).map(m => m.id);
 
-  // Workspace Tests (BK-27) feed the explorer's flat Tests group.
-  const [{ data: storiesData }, { data: atcsData }, { data: testsData }] = await Promise.all([
+  // Workspace Tests (BK-27) feed the explorer's flat Tests group; BK-148 adds
+  // the project's environments for the explorer's Environments group (name asc,
+  // mirroring the GET route's stable order).
+  const [{ data: storiesData }, { data: atcsData }, { data: testsData }, { data: environmentsData }] = await Promise.all([
     moduleIds.length > 0
       ? supabase.from('user_stories').select('*').in('module_id', moduleIds).is('archived_at', null)
       : Promise.resolve({ data: [] as UserStory[] }),
@@ -91,6 +93,11 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       .select('id, title, created_at, test_steps(count)')
       .eq('workspace_id', activeWorkspaceId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('project_environments')
+      .select('id, name, created_at')
+      .eq('project_id', project.id)
+      .order('name', { ascending: true }),
   ]);
 
   const storyIds = (storiesData ?? []).map(s => s.id);
@@ -122,6 +129,12 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     step_count: t.test_steps[0]?.count ?? 0,
   }));
 
+  const environments: ExplorerEnvironmentItem[] = (environmentsData ?? []).map(e => ({
+    id: e.id,
+    name: e.name,
+    created_at: e.created_at,
+  }));
+
   return (
     <ProjectShell
       key={project.slug}
@@ -132,6 +145,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
       tree={tree}
       rows={rows}
       tests={tests}
+      environments={environments}
       canCreate={canCreate}
     >
       {children}

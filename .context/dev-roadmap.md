@@ -1,7 +1,7 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-06-19
+> **Last sync**: 2026-06-20
 > **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
@@ -118,6 +118,7 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
 | BK-27 | BK-21 | soft | propagation cascades edits *to tests*; pointless before tests exist |
 | BK-27 | BK-34 | hard | a run executes a Test; no Test → no run |
 | BK-34 Start manual run | BK-35, BK-36, BK-37, BK-38, BK-39 | hard | all operate on a `run` / `run_atc` / `run_step` row created by BK-34 |
+| BK-34 Start manual run | BK-148 Project Environments | hard | env CRUD operates on the `project_environments` table + `runs.environment_id` FK created by BK-34 — **Relates BK-34 (gate satisfied: BK-34 merged to staging)** |
 | BK-86 Account | BK-87 Settings hub | hard | BK-87 owns the topbar entry point BK-86 renders into |
 | BK-87 Settings hub | BK-88 PATs, BK-89 Workspaces | hard | both are Settings sub-views; need the hub shell |
 | BK-89 View workspaces | BK-90 Leave workspace | hard | leave action lives in the workspaces list + needs its active-workspace contract |
@@ -130,13 +131,15 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
 
 An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely workable in parallel once the prior ES's gates are dev-done. ES are dependency-driven batches, **not** calendar sprints and **not** the strategy-layer Master Sprints in `master-implementation-plan.md`.
 
+> This table is **regenerated from the live dependency graph each run** — it is a derived projection of §3 + current gate state, not a hand-frozen plan. Status words below ("shipped", "done this cycle") describe gate-release events, not live Jira status (query that via §6).
+
 | Exec Sprint | Stories | Gate released by | Notes |
 |-------------|---------|------------------|-------|
-| **ES0 ✅** | BK-27 | — | Done this cycle → Ready For QA. Released the whole ES1 fan-out. |
-| **ES1 (now)** | BK-28, BK-33, BK-22, BK-23, BK-32 + parallels BK-20, BK-3, BK-86 | BK-27 ✅ | All Ready For Dev. BK-23 needs 8 contract Qs first; BK-3 needs AC-field sync. |
+| **ES0 ✅** | BK-27 | — | Shipped → Ready For QA (QA Approved). Released the whole ES1 fan-out. |
+| **ES1 (mostly shipped)** | ✅ shipped this cycle: BK-28, BK-22, BK-23, BK-32, BK-20 (all Ready For QA). **Active remainder: BK-33** + parallels **BK-3, BK-86** | BK-27 ✅ | ES1 fan-out is nearly drained: reorder/usage/duplicate/view + ATC Search all landed. Only **BK-33 Test Tags** left on the BK-27 gate; BK-3 (OAuth, needs AC-field sync) + BK-86 (Account) run parallel. |
 | **ES1.5** | BK-87 (after BK-86) ; BK-21 (after its 10 Qs) | BK-86 ; BK-27 | BK-87 spec-only OK if Rule-15 §4.10 ratified, else 🔒 Settings mockup. |
-| **ES2** | BK-34 | BK-27 ✅ | Opens the Runs tail. 7 PO/Design/Dev Qs answerable during build. |
-| **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | 🔒 Settings mockup. BK-88 has 9 planning-blocker Qs; BK-89 has 2 API-contract BLOCKERS. |
+| **ES2 (live frontier)** | BK-34 Start manual run | BK-27 ✅ | **Now the highest-leverage pick** — opens the Runs tail (BK-35/36/37/38/39, 5 stories). 7 PO/Design/Dev Qs answerable during build. |
+| **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | 🔒 Settings mockup. BK-88 has 9 planning-blocker Qs; BK-89 has 2 API-contract BLOCKERS + is Shift-Left QA. |
 | **ES3** | BK-35, BK-36, BK-37, BK-38, BK-39 ; BK-90 (after BK-89) | BK-34 ; BK-89 | BK-35 re-estimate (1 vs ≥5). BK-37/38 🔒 Test Runs mockup. |
 | **ES4+** | epic BK-31 (Bugs), BK-44 (Coverage) | BK-30 complete | 🔒 Bug Reports + Metrics mockups. Beyond current frontier. |
 
@@ -194,12 +197,12 @@ These are gating questions / contract decisions captured during shift-left refin
 | BK-89 | Decide API contract (role per workspace in `GET /workspaces` + active-workspace contract). |
 | BK-21 | Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`. |
 | BK-35 | Re-estimate (1 vs ≥5) + post the announced ATP content to Jira. |
-| Design §8 | Add screen rows for BK-35 / 36 / 37 / 39. |
+| Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
 
 ### Edge-mapping TODO — stories seen on the board but not yet in the §3 graph
 
 - **BK-98** "TMS-Projects | Tree / Table / Mind-map views in a hardened explorer" — lands the `EPIC-BK-008` "Views" surface as a story under BK-7; resolves part of the §2.1 ⚠️ "Views folded into BK-7" note in `master-implementation-plan.md`. Add a §3 edge if it gains downstream dependents.
-- **BK-101** "🚀 TMS-Workspace | View the workspaces I belong to" — ⚠️ **same title as BK-89**. Likely a re-scoped/clone delivery that **supersedes BK-89**. Confirm with PO; if confirmed, close BK-89 and drop its ES2.5 edge. Durable-edge change → needs human ratify per §7.
+- **BK-101** "🚀 TMS-Workspace | View the workspaces I belong to" — **Resolved (2026-06-20)**: BK-101 was a **duplicate** of BK-89 and has been **deleted from Jira** (user-confirmed). **BK-89 stands as the real story** — it keeps its ES2.5 edge, is not superseded. No further action.
 
 ---
 

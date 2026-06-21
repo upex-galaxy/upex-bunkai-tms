@@ -1183,6 +1183,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_create_environment: {
+        Args: { p_actor_user_id: string, p_name: string, p_project_id: string }
+        Returns: Json
+      }
       bunkai_create_run: {
         Args: {
           p_actor_user_id: string
@@ -1200,6 +1204,10 @@ export interface Database {
           p_title: string
           p_workspace_id: string
         }
+        Returns: Json
+      }
+      bunkai_delete_environment: {
+        Args: { p_actor_user_id: string, p_environment_id: string }
         Returns: Json
       }
       bunkai_duplicate_atc: {
@@ -1249,6 +1257,14 @@ export interface Database {
       bunkai_normalize_test_tags: {
         Args: { p_tags: string[] }
         Returns: string[]
+      }
+      bunkai_rename_environment: {
+        Args: {
+          p_actor_user_id: string
+          p_environment_id: string
+          p_name: string
+        }
+        Returns: Json
       }
       bunkai_reorder_test_steps: {
         Args: {
