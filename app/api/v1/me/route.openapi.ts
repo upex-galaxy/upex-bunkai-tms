@@ -17,6 +17,7 @@ const MeResponseSchema = z
       }),
     ),
     active_workspace_id: z.string().uuid().nullable(),
+    active_workspace_role: z.enum(['viewer', 'member', 'admin', 'owner']).nullable(),
     auth: z.object({
       source: z.enum(['cookie', 'bearer']),
       scopes: z.array(z.string()),

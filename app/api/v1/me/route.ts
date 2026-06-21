@@ -1,3 +1,4 @@
+import type { MemberRole } from '@lib/types';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
@@ -41,6 +42,21 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     activeWorkspaceId = principal.workspaceId ?? (workspaces[0]?.id ?? null);
   }
 
+  // Resolve the caller's role in the active workspace (BK-86). One uniform
+  // RLS-scoped read of the caller's OWN membership row — identical for cookie
+  // and bearer (ADR-0001: `principal.userId` is set on both paths). Null when
+  // there is no active workspace (no-workspace empty state, Scenario B).
+  let activeWorkspaceRole: MemberRole | null = null;
+  if (activeWorkspaceId) {
+    const { data: membership } = await db
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', activeWorkspaceId)
+      .eq('user_id', principal.userId)
+      .maybeSingle();
+    activeWorkspaceRole = (membership?.role as MemberRole | undefined) ?? null;
+  }
+
   // Email lives in auth.users (not exposed through PostgREST), so fetch it
   // best-effort via the admin auth API for both auth methods.
   let email: string | null = null;
@@ -61,6 +77,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     user: { id: principal.userId, email },
     workspaces,
     active_workspace_id: activeWorkspaceId,
+    active_workspace_role: activeWorkspaceRole,
     auth: {
       source: principal.via,
       scopes: principal.capabilities,

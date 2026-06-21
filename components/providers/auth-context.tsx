@@ -2,7 +2,9 @@
 
 import type { Session, User } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
+import { handleAuthChangeRedirect } from '@lib/account/auth-redirect';
 import { createClient } from '@lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface AuthState {
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [state, setState] = useState<AuthState>({
     user: null,
     session: null,
@@ -40,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) {
         return;
       }
@@ -49,13 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading: false,
       });
+      // Multi-tab / multi-device sign-out (BK-86, Scenario D): supabase.auth
+      // broadcasts SIGNED_OUT to every tab via localStorage. Redirect the other
+      // tabs to /login so a session terminated anywhere takes effect everywhere.
+      // The tab that called signOut() navigates itself; replace() here is
+      // idempotent (no-op when already on /login). Decision is in a pure,
+      // unit-tested helper.
+      handleAuthChangeRedirect(event, path => router.replace(path));
     });
 
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   const signInWithMagicLink = useCallback(
     async (email: string, redirectTo?: string) => {

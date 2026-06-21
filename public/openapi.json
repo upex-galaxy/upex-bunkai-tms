@@ -648,6 +648,10 @@
             "type": ["string", "null"],
             "format": "uuid"
           },
+          "active_workspace_role": {
+            "type": ["string", "null"],
+            "enum": ["viewer", "member", "admin", "owner", null]
+          },
           "auth": {
             "type": "object",
             "properties": {
@@ -665,7 +669,7 @@
             "required": ["source", "scopes"]
           }
         },
-        "required": ["user", "workspaces", "active_workspace_id", "auth"]
+        "required": ["user", "workspaces", "active_workspace_id", "active_workspace_role", "auth"]
       },
       "WorkspaceCreateResponse": {
         "type": "object",
