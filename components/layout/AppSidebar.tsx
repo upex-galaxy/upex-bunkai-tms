@@ -1,9 +1,13 @@
 'use client';
 
+import type { MemberRole } from '@lib/types';
 import type { ComponentType } from 'react';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { useAuth } from '@components/providers/auth-context';
+import { emailInitials } from '@lib/account/initials';
+import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
 import { cn } from '@lib/utils';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   BarChart3,
   Bug,
@@ -50,6 +54,7 @@ interface AppSidebarProps {
   activeWorkspaceId: string | null
   projects: ShellProject[]
   userEmail: string | null
+  userRole: MemberRole | null
 }
 
 interface NavItem {
@@ -73,13 +78,12 @@ function projectCode(slug: string): string {
   return slug.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase() || '—';
 }
 
-export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail }: AppSidebarProps) {
+export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
 
   const [wsOpen, setWsOpen] = useState(false);
-  const [userOpen, setUserOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -98,14 +102,17 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
   const isActive = (href: string | null) =>
     href !== null && (pathname === href || pathname.startsWith(`${href}/`));
 
+  // Escape closes the workspace switcher. The account menu is a Radix
+  // DropdownMenu and owns its own Escape / focus-return, so it is intentionally
+  // not handled here (BK-86 — migrate only the account menu).
   useEffect(() => {
-    if (!wsOpen && !userOpen) { return; }
+    if (!wsOpen) { return; }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setWsOpen(false); setUserOpen(false); }
+      if (e.key === 'Escape') { setWsOpen(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [wsOpen, userOpen]);
+  }, [wsOpen]);
 
   const switchWorkspace = async (workspaceId: string) => {
     if (busy || workspaceId === activeWorkspaceId) { setWsOpen(false); return; }
@@ -142,12 +149,15 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
       setBusy(false);
       return;
     }
+    setBusy(false);
     router.push('/login');
     router.refresh();
   };
 
   const email = userEmail ?? '';
-  const userInitial = email ? email[0].toUpperCase() : '?';
+  const userInitial = emailInitials(email);
+  const roleText = roleLabel(userRole);
+  const hasWorkspaceRole = userRole != null;
 
   return (
     <aside className="flex h-screen flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
@@ -172,7 +182,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
       <div className="relative px-2 pb-2.5">
         <button
           type="button"
-          onClick={() => { setWsOpen(p => !p); setUserOpen(false); }}
+          onClick={() => { setWsOpen(p => !p); }}
           className="flex w-full items-center justify-between gap-2 rounded-2 border border-stroke-1 px-2 py-1.5 text-sm hover:bg-surface-2"
         >
           <span className="inline-flex min-w-0 items-center gap-2">
@@ -319,46 +329,64 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail 
 
       <div className="flex-1" />
 
-      {/* User block */}
-      <div className="relative border-t border-stroke-1 px-3 py-2.5">
-        <button
-          type="button"
-          onClick={() => { setUserOpen(p => !p); setWsOpen(false); }}
-          title={email || 'Account'}
-          className="flex w-full items-center gap-2 rounded-2 px-1 py-1 text-left hover:bg-surface-2"
-        >
-          <span className="flex size-[22px] shrink-0 items-center justify-center rounded-1 bg-gradient-to-br from-[#d9543f] to-[#b73a28] text-xs font-bold text-white">
-            {userInitial}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-semibold text-fg-0">{email || 'Account'}</span>
-            <span className="block text-2xs text-fg-3">Signed in</span>
-          </span>
-          <MoreHorizontal size={14} className="shrink-0 text-fg-3" />
-        </button>
+      {/* User block — account identity, role, and sign out (BK-86). The menu is
+          a Radix DropdownMenu so it gets the full ARIA contract for free:
+          role="menu"/menuitem, aria-haspopup/aria-expanded on the trigger,
+          focus-trap, arrow-key nav, Escape-to-close, and focus-return. */}
+      <div className="border-t border-stroke-1 px-3 py-2.5">
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              data-testid="account-menu-trigger"
+              title={email || 'Account'}
+              className="flex w-full items-center gap-2 rounded-2 px-1 py-1 text-left hover:bg-surface-2"
+            >
+              <span className="flex size-[22px] shrink-0 items-center justify-center rounded-1 bg-gradient-to-br from-[#d9543f] to-[#b73a28] text-xs font-bold text-white">
+                {userInitial}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-fg-0">{email || 'Account'}</span>
+                <span className="block text-2xs text-fg-3">
+                  {hasWorkspaceRole ? roleText : 'Signed in'}
+                </span>
+              </span>
+              <MoreHorizontal size={14} className="shrink-0 text-fg-3" />
+            </button>
+          </DropdownMenu.Trigger>
 
-        {userOpen && (
-          <>
-            <div className="fixed inset-0 z-40" aria-hidden onClick={() => setUserOpen(false)} />
-            <div className="absolute inset-x-3 bottom-full z-50 mb-1 rounded-3 border border-stroke-2 bg-surface-1 p-2 shadow-pop">
-              <div className="px-2 py-1">
-                <div className="font-mono text-2xs font-semibold uppercase tracking-widest text-fg-4">
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              side="top"
+              align="start"
+              sideOffset={6}
+              data-testid="account-menu"
+              className="z-50 min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-3 border border-stroke-2 bg-surface-1 p-2 shadow-pop"
+            >
+              <DropdownMenu.Label className="px-2 py-1">
+                <span className="block font-mono text-2xs font-semibold uppercase tracking-widest text-fg-4">
                   Signed in as
-                </div>
-                <div className="mt-0.5 truncate text-sm text-fg-1" title={email}>{email || '—'}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => { void handleSignOut(); }}
+                </span>
+                <span className="mt-0.5 block truncate text-sm text-fg-1" title={email}>
+                  {email || '—'}
+                </span>
+                <span className="mt-0.5 block text-2xs text-fg-3">
+                  {hasWorkspaceRole ? roleText : NO_WORKSPACE_LABEL}
+                </span>
+              </DropdownMenu.Label>
+              <DropdownMenu.Separator className="my-1 h-px bg-stroke-2" />
+              <DropdownMenu.Item
+                data-testid="account-sign-out"
                 disabled={busy}
-                className="mt-1 flex w-full items-center gap-2 rounded-2 border-t border-stroke-2 px-2 pt-2 text-sm text-fg-1 hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
+                onSelect={(e) => { e.preventDefault(); void handleSignOut(); }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-2 px-2 py-1.5 text-sm text-fg-1 outline-none data-[highlighted]:bg-surface-2 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60"
               >
                 <LogOut size={14} className="text-fg-3" />
                 {busy ? 'Signing out…' : 'Sign out'}
-              </button>
-            </div>
-          </>
-        )}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </div>
 
       {/* Global command palette: the sidebar owns the ⌘K hotkey (single owner).

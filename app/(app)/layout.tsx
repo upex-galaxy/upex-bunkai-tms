@@ -1,3 +1,4 @@
+import type { MemberRole } from '@lib/types';
 import type { ReactNode } from 'react';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { AuthProvider } from '@components/providers/auth-context';
@@ -24,6 +25,7 @@ async function getShellData() {
   const activeWorkspaceId = resolveActiveWorkspaceId(cookieActive, list.map(w => w.id));
 
   let projects: { id: string, slug: string, name: string }[] = [];
+  let userRole: MemberRole | null = null;
   if (activeWorkspaceId) {
     const { data } = await supabase
       .from('projects')
@@ -31,9 +33,22 @@ async function getShellData() {
       .eq('workspace_id', activeWorkspaceId)
       .order('created_at', { ascending: true });
     projects = data ?? [];
+
+    // Caller's role in the active workspace, for the account menu (BK-86).
+    // RLS scopes this to the caller's own membership row. Re-resolved on every
+    // render, so a workspace switch (router.refresh) reflects the new role.
+    if (user) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', activeWorkspaceId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      userRole = (membership?.role as MemberRole | undefined) ?? null;
+    }
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -47,6 +62,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           activeWorkspaceId={shell.activeWorkspaceId}
           projects={shell.projects}
           userEmail={shell.userEmail}
+          userRole={shell.userRole}
         />
         <div className="flex min-h-0 flex-col overflow-hidden">
           {children}
