@@ -3,7 +3,8 @@ import { createClient } from '@lib/supabase/server';
 import { ArrowRight, Terminal } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { MagicLinkForm } from './magic-link-form';
+import { EmailFirstForm } from './email-first-form';
+import { MagicLinkDisclosure } from './magic-link-disclosure';
 
 const FEATURE_TICKS: Array<[string, string]> = [
   ['IQL', 'Integrated Quality Lifecycle — methodology that spans story → case → run → bug.'],
@@ -170,12 +171,12 @@ export default async function LoginPage() {
               Continue to your workspace
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-fg-3">
-              Magic link to your work email. OAuth and SSO ship next sprint.
+              Sign in with your email and password — or create an account. OAuth and SSO ship next sprint.
             </p>
           </div>
 
           <Suspense fallback={<div className="h-[120px]" aria-hidden />}>
-            <MagicLinkForm />
+            <EmailFirstForm />
           </Suspense>
 
           <div className="my-4 flex items-center gap-2.5 text-xs text-fg-4">
@@ -184,7 +185,11 @@ export default async function LoginPage() {
             <div className="h-px flex-1 bg-stroke-1" />
           </div>
 
-          <div className="flex flex-col gap-2">
+          <Suspense fallback={<div className="h-9" aria-hidden />}>
+            <MagicLinkDisclosure />
+          </Suspense>
+
+          <div className="mt-4 flex flex-col gap-2">
             <Button
               size="lg"
               disabled

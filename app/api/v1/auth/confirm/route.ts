@@ -6,19 +6,22 @@ import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
-// POST /api/v1/auth/signin — headless sign-in. Accepts email + password,
-// verifies against Supabase Auth, then mints a fresh PAT in the same call so
-// the CLI / agent has both the Supabase session AND the long-lived Bearer
-// token in one round trip. The session cookies are still set (so the same
-// request that signed in can also be used from a browser context if desired).
+// POST /api/v1/auth/confirm — completes a verification-first sign-up (BK-166).
+//
+// Verifies the email OTP from `signup` via the public `verifyOtp` path,
+// which (on the SSR client) establishes the session cookies, then mints a fresh
+// PAT in the same call. The response is byte-for-byte the signin shape
+// `{ user, session, pat, warning }` so a CLI / agent gets both the Supabase
+// session AND the long-lived Bearer token in one round trip — the point where
+// new accounts first obtain credentials (signup itself issues none).
 
 const BodySchema = z.object({
   email: z.string().email().max(254),
-  // Asymmetry by design (BK-166): sign-up + confirm enforce min(8) for new
-  // accounts; sign-in keeps min(6) so pre-policy legacy passwords still work.
-  password: z.string().min(6).max(128),
+  // Supabase signup OTP is a numeric code; this project emits 6-to-8 digits.
+  token: z.string().regex(/^\d{6,8}$/, 'Verification code must be 6 to 8 digits.'),
   // Optional PAT controls — defaults give the CLI read+write+run power.
-  // workspace:admin is NOT a default and cannot be requested here (ADR-0005).
+  // workspace:admin is accepted as an input value but rejected at runtime by
+  // assertNoGlobalAdminScope below (ADR-0005); it cannot be minted here.
   pat_name: z.string().min(1).max(80).optional(),
   pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),
   pat_expires_in_days: z.number().int().positive().max(365).optional(),
@@ -28,15 +31,23 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
-  const { email, password, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  const { email, token, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+
+  if (error?.status === 429) {
+    throw new ApiError('rate_limited', error.message, { status: 429 });
+  }
   if (error || !data.user || !data.session) {
-    // Uniform 401 — never leak whether the email exists vs the password is wrong.
-    throw new ApiError('unauthorized', 'Invalid email or password.');
+    // Uniform 401 — never distinguish "no such pending signup" from "wrong code".
+    throw new ApiError('unauthorized', 'Invalid or expired verification code.');
   }
 
+  // Headless rail: default to least-privilege scopes and reject any attempt to
+  // mint a global workspace:admin token here. Mirrors signin exactly — an
+  // admin-scoped token must be minted explicitly via POST /api/v1/tokens
+  // against a specific workspace. See ADR-0005 / ADR-0007.
   const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
   assertNoGlobalAdminScope(scopes);
 
@@ -44,7 +55,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const pat = await mintPat({
     admin,
     userId: data.user.id,
-    name: pat_name ?? 'cli-signin',
+    name: pat_name ?? 'cli-signup-confirm',
     scopes,
     expiresInDays: pat_expires_in_days ?? null,
   });

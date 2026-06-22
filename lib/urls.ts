@@ -42,3 +42,15 @@ export function webUrl(path: string = ''): string {
 export function apiUrl(path: string = ''): string {
   return `${getBaseUrl()}/api${normalisePath(path)}`;
 }
+
+// Open-redirect guard. Returns `raw` only when it is an in-app, root-relative
+// path (`/foo`), rejecting absolute URLs (`https://evil.com`) and
+// protocol-relative URLs (`//evil.com`) that would redirect cross-origin after
+// auth. Shared by the login form, the OTP callback, and the magic-link route so
+// the guard cannot drift between consumers.
+export function safeInternalPath(raw: string | null | undefined, fallback = '/projects'): string {
+  if (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) {
+    return raw;
+  }
+  return fallback;
+}

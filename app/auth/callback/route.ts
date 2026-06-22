@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { createClient } from '@lib/supabase/server';
+import { safeInternalPath } from '@lib/urls';
 import { NextResponse } from 'next/server';
 
 // Magic-link OTP exchange handler. Supabase redirects here with `?code=...`
@@ -12,10 +13,9 @@ import { NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/projects';
 
   // Disallow open redirects — `next` must be an in-app, root-relative path.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/projects';
+  const safeNext = safeInternalPath(searchParams.get('next'));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
