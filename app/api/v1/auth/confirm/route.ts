@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 // POST /api/v1/auth/confirm — completes a verification-first sign-up (BK-166).
 //
-// Verifies the 6-digit email OTP from `signup` via the public `verifyOtp` path,
+// Verifies the email OTP from `signup` via the public `verifyOtp` path,
 // which (on the SSR client) establishes the session cookies, then mints a fresh
 // PAT in the same call. The response is byte-for-byte the signin shape
 // `{ user, session, pat, warning }` so a CLI / agent gets both the Supabase
@@ -17,8 +17,8 @@ import { z } from 'zod';
 
 const BodySchema = z.object({
   email: z.string().email().max(254),
-  // Supabase signup OTP is a fixed-length 6-digit numeric code.
-  token: z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits.'),
+  // Supabase signup OTP is a numeric code; this project emits 6-to-8 digits.
+  token: z.string().regex(/^\d{6,8}$/, 'Verification code must be 6 to 8 digits.'),
   // Optional PAT controls — defaults give the CLI full read+write power.
   pat_name: z.string().min(1).max(80).optional(),
   pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),

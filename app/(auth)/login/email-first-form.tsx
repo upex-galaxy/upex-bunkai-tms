@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-const OTP_REGEX = /^\d{6}$/;
+const OTP_REGEX = /^\d{6,8}$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 type Step = 'email' | 'password' | 'create' | 'verify';
@@ -116,7 +116,7 @@ export function EmailFirstForm() {
       if (response.status === 401) {
         if (!accountConfirmed) {
           setCode('');
-          setError('Verify your email with the 6-digit code we sent before signing in.');
+          setError('Verify your email with the code we sent before signing in.');
           setStep('verify');
           return;
         }
@@ -395,7 +395,7 @@ export function EmailFirstForm() {
       }}
     >
       <div className="mb-1 text-sm leading-relaxed text-fg-2">
-        Check your email for a 6-digit code and enter it below to confirm
+        Check your email for a verification code and enter it below to confirm
         {' '}
         <span className="font-mono text-fg-0">{email}</span>
         .
@@ -407,10 +407,11 @@ export function EmailFirstForm() {
         <Input
           type="text"
           inputMode="numeric"
-          maxLength={6}
+          pattern="\d*"
+          maxLength={8}
           data-testid="login-otp"
           autoComplete="one-time-code"
-          placeholder="123456"
+          placeholder="Verification code"
           value={code}
           onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
           className="h-10 text-md tracking-[0.4em]"
