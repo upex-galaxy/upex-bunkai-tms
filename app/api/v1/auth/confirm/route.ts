@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { ALLOWED_PAT_SCOPES, mintPat } from '@lib/api/pat';
+import { assertNoGlobalAdminScope, DEFAULT_PAT_SCOPES, mintPat } from '@lib/api/pat';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
@@ -19,7 +19,9 @@ const BodySchema = z.object({
   email: z.string().email().max(254),
   // Supabase signup OTP is a numeric code; this project emits 6-to-8 digits.
   token: z.string().regex(/^\d{6,8}$/, 'Verification code must be 6 to 8 digits.'),
-  // Optional PAT controls — defaults give the CLI full read+write power.
+  // Optional PAT controls — defaults give the CLI read+write+run power.
+  // workspace:admin is accepted as an input value but rejected at runtime by
+  // assertNoGlobalAdminScope below (ADR-0005); it cannot be minted here.
   pat_name: z.string().min(1).max(80).optional(),
   pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),
   pat_expires_in_days: z.number().int().positive().max(365).optional(),
@@ -42,12 +44,19 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('unauthorized', 'Invalid or expired verification code.');
   }
 
+  // Headless rail: default to least-privilege scopes and reject any attempt to
+  // mint a global workspace:admin token here. Mirrors signin exactly — an
+  // admin-scoped token must be minted explicitly via POST /api/v1/tokens
+  // against a specific workspace. See ADR-0005 / ADR-0007.
+  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
+  assertNoGlobalAdminScope(scopes);
+
   const admin = createAdminClient();
   const pat = await mintPat({
     admin,
     userId: data.user.id,
-    name: pat_name ?? 'cli-confirm',
-    scopes: pat_scopes ?? [...ALLOWED_PAT_SCOPES],
+    name: pat_name ?? 'cli-signup-confirm',
+    scopes,
     expiresInDays: pat_expires_in_days ?? null,
   });
 

@@ -18,6 +18,76 @@ export const ALLOWED_PAT_SCOPES: readonly AccessTokenScope[] = [
   'workspace:admin',
 ] as const;
 
+// Default scopes for headless bootstrap (sign-in / sign-up). Deliberately
+// EXCLUDES workspace:admin — an admin-scoped token must be minted explicitly
+// against a specific workspace via POST /api/v1/tokens. See ADR-0005 / BK-135.
+export const DEFAULT_PAT_SCOPES: readonly AccessTokenScope[] = [
+  'atc:read',
+  'atc:write',
+  'run:execute',
+] as const;
+
+// Headless auth flows take no workspace_id, so they can never satisfy the
+// workspace:admin issuance rule (a specific workspace + admin/owner role).
+// Reject the scope outright there. See ADR-0005.
+export function assertNoGlobalAdminScope(scopes: AccessTokenScope[]): void {
+  if (scopes.includes('workspace:admin')) {
+    throw new ApiError(
+      'forbidden',
+      'workspace:admin tokens cannot be issued via headless auth; use POST /api/v1/tokens with a workspace_id.',
+    );
+  }
+}
+
+export interface AssertTokenIssuanceArgs {
+  db: SupabaseClient<Database>
+  userId: string
+  scopes: AccessTokenScope[]
+  workspaceId: string | null
+}
+
+// Role-gate for session-issued tokens (POST /api/v1/tokens). A workspace:admin
+// scope requires the caller to be admin/owner in the SPECIFIC target workspace;
+// any workspace_id at all requires active membership. Mirrors the invites
+// endpoint role check and uses the RLS-scoped client. See ADR-0005 / BK-135.
+export async function assertTokenIssuanceAuthorized(args: AssertTokenIssuanceArgs): Promise<void> {
+  const wantsAdmin = args.scopes.includes('workspace:admin');
+
+  if (wantsAdmin && !args.workspaceId) {
+    throw new ApiError(
+      'forbidden',
+      'workspace:admin tokens must target a specific workspace (workspace_id required).',
+    );
+  }
+
+  // Global token with non-admin scopes only — allowed (AI-agent / cross-workspace
+  // enumeration use case). No membership to check.
+  if (!args.workspaceId) {
+    return;
+  }
+
+  const { data: membership, error } = await args.db
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', args.workspaceId)
+    .eq('user_id', args.userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error) {
+    throw new ApiError('internal_error', error.message);
+  }
+  if (!membership) {
+    throw new ApiError('forbidden', 'You are not a member of the target workspace.');
+  }
+  if (wantsAdmin && !['admin', 'owner'].includes(membership.role)) {
+    throw new ApiError(
+      'forbidden',
+      'Only workspace admins or owners can issue workspace:admin tokens.',
+    );
+  }
+}
+
 export interface MintPatArgs {
   admin: SupabaseClient<Database>
   userId: string

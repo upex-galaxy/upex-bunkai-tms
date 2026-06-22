@@ -9,7 +9,7 @@ Make password the primary, email-first sign-in/sign-up method on the login scree
 ## Resolved decisions (Stage 1)
 
 1. **Unconfirmed-account handling** — `POST /api/v1/auth/check-email` returns `{ exists, confirmed }`. The UI uses `confirmed` to interpret a signin failure (route an existing-but-unconfirmed account to the OTP verify step instead of showing "wrong password"). `signin` stays UNCHANGED (uniform 401, no leak from the endpoint itself).
-2. **Rate-limiting (AC #8)** — MVP relies on Supabase's built-in auth/OTP throttling + 429→`rate_limited` mapping. A dedicated app-level limiter is a documented follow-up (recorded in ADR-0005), not in this story's scope.
+2. **Rate-limiting (AC #8)** — MVP relies on Supabase's built-in auth/OTP throttling + 429→`rate_limited` mapping. A dedicated app-level limiter is a documented follow-up (recorded in ADR-0007), not in this story's scope.
 3. **Password policy** — sign-up + confirm enforce `min 8`; sign-in keeps `min 6` for legacy accounts (asymmetry documented in code).
 
 ## Current-state map
@@ -83,7 +83,7 @@ Make password the primary, email-first sign-in/sign-up method on the login scree
 
 ## ADR
 
-ADR-0005 `password-auth-and-email-otp` — ratifies mockup §4.1 departure (D12), email-first enumeration tradeoff, OTP verification on all rails (no public auto-confirm), reaffirms ADR-0001 coexistence invariant. Status Proposed (human accepts).
+ADR-0007 `password-auth-and-email-otp` — ratifies mockup §4.1 departure (D12), email-first enumeration tradeoff, OTP verification on all rails (no public auto-confirm), reaffirms ADR-0001 coexistence invariant. Status Proposed (human accepts).
 
 ## Design-plan edits
 
@@ -92,7 +92,7 @@ ADR-0005 `password-auth-and-email-otp` — ratifies mockup §4.1 departure (D12)
 ## Risks / open questions
 
 - Browser session handoff from a same-origin `fetch` password POST (cookies set on route-handler response, picked up on next navigation) — smoke-verify on `next dev`.
-- `check-email` enumeration accepted (business-rules + ADR-0005); only mitigation is throttling.
+- `check-email` enumeration accepted (business-rules + ADR-0007); only mitigation is throttling.
 - Supabase dashboard config (C1/C2/C3/C5) gates the end-to-end OTP flow; cannot be verified from code.
 - Exact admin existence-lookup API to confirm at impl.
 

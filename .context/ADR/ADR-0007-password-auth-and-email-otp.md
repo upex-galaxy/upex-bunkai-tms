@@ -1,4 +1,4 @@
-# ADR-0005 — Password-Primary Auth & Mandatory Email-OTP Verification
+# ADR-0007 — Password-Primary Auth & Mandatory Email-OTP Verification
 
 - **Status:** Proposed <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-06-21 <!-- date the decision was made / last status change -->
@@ -57,7 +57,7 @@ Concretely:
 
 An adversarial security review of the BK-166 implementation surfaced the following items. They are **deliberately deferred** (out of this story's scope) and recorded here so they are not lost:
 
-- **PAT issuance defaults to god-scope + non-expiring** on both `signin` and `/confirm` (mirrors `POST /api/v1/tokens`, which requires explicit scopes). Consider least-privilege defaults in a follow-up. Not changed now to preserve `signin`'s existing contract and the "always mint a PAT" product decision.
+- **PAT issuance now defaults to least-privilege** on both `signin` and `/confirm`: per [ADR-0005](./ADR-0005-pat-issuance-role-gate.md) (role-gated PAT issuance), the headless rails default to `DEFAULT_PAT_SCOPES` (`atc:read`, `atc:write`, `run:execute`) and call `assertNoGlobalAdminScope(scopes)`, so `workspace:admin` can never be minted through a headless auth flow — an admin-scoped token must be issued explicitly via `POST /api/v1/tokens` against a specific workspace. This supersedes the original "defaults to god-scope" follow-up note; the least-privilege default is now in place. Tokens remain non-expiring by default to preserve the "always mint a PAT" product decision.
 - **`check-email` enumeration needs an app-level rate limiter.** Supabase's GoTrue auth/OTP throttling does **not** cover this route — it is a direct service-role PostgREST read of `auth.users` that bypasses GoTrue. This is the real mitigation for the accepted enumeration tradeoff (point 5 above).
 - **`signin`/`confirm` echo the session `refresh_token` and the PAT in the JSON body** (by design, for CLI parity). Ensure logging / error-reporting middleware scrubs these fields so they never land in logs or error reports.
 - **`lib/api/middleware/bearer.ts` hash comparison is non-constant-time** despite a comment implying otherwise (pre-existing infra). Risk is negligible — it compares SHA-256 digests of 256-bit secrets — but a follow-up should align the code or the comment.
@@ -72,5 +72,7 @@ An adversarial security review of the BK-166 implementation surfaced the followi
 
 - Story plan: `.context/PBI/epics/EPIC-BK-1-tenancy-identity/stories/STORY-BK-166-authentication-sign-up-and-sign-in-with-email-and-/implementation-plan.md` (resolved Stage-1 decisions, A1–A6 backend steps, AC→step traceability, ADR section).
 - [ADR-0001](./ADR-0001-unified-api-authentication.md) — Unified API Authentication: the cookie/PAT coexistence invariant and `resolveIdentity` gateway this ADR **reaffirms** (does not supersede).
+- [ADR-0005](./ADR-0005-pat-issuance-role-gate.md) — Role-gated PAT issuance; no global `workspace:admin` tokens. This ADR **follows** ADR-0005: the PAT minting in the `signin` / `confirm` headless rails uses `DEFAULT_PAT_SCOPES` and calls `assertNoGlobalAdminScope`, so it **never** mints a global `workspace:admin` token.
+- [ADR-0006](./ADR-0006-consumption-side-scope-enforcement.md) — Consumption-side scope enforcement (TS capability gate + workspace context match). This ADR **follows** ADR-0006: the least-privilege PATs minted here are enforced at consumption time by that scope gate.
 - Master design plan: `.context/design/master-design-plan.md` §4.1 (Login screen), §5 D1 (OAuth visual-only deferral) and **D12** (password-primary departure ratified by this ADR), §8 (BK-166 → Login row).
 - Domain glossary: `.context/business/domain-glossary.md` — auth terminology.

@@ -11,14 +11,14 @@ import { z } from 'zod';
 // unconfirmed), or create (unknown). `signin` itself stays a uniform 401 with
 // no enumeration leak; this endpoint deliberately exposes existence.
 //
-// ENUMERATION TRADEOFF (ADR-0005): this endpoint intentionally reveals whether
+// ENUMERATION TRADEOFF (ADR-0007): this endpoint intentionally reveals whether
 // an email is registered. The product needs email-first routing (an existing
 // user must not be shown a "create account" form, and an unconfirmed user must
 // be routed to verification rather than a misleading "wrong password"). This
 // endpoint is NOT covered by Supabase's GoTrue auth/OTP throttling — it reads
 // `auth.users` via the `public.auth_email_status` SECURITY DEFINER RPC, which
 // bypasses GoTrue entirely. The accepted enumeration tradeoff's real mitigation
-// is therefore an app-level rate limiter, a documented follow-up in ADR-0005
+// is therefore an app-level rate limiter, a documented follow-up in ADR-0007
 // (not yet shipped). The lookup runs ONLY with the service-role key, never
 // client-side, and returns two booleans — no user id, name, or other internals
 // are ever exposed.

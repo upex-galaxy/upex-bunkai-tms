@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
-import { ALLOWED_PAT_SCOPES, mintPat } from '@lib/api/pat';
+import { assertNoGlobalAdminScope, DEFAULT_PAT_SCOPES, mintPat } from '@lib/api/pat';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
@@ -17,7 +17,8 @@ const BodySchema = z.object({
   // Asymmetry by design (BK-166): sign-up + confirm enforce min(8) for new
   // accounts; sign-in keeps min(6) so pre-policy legacy passwords still work.
   password: z.string().min(6).max(128),
-  // Optional PAT controls — defaults give the CLI full read+write power.
+  // Optional PAT controls — defaults give the CLI read+write+run power.
+  // workspace:admin is NOT a default and cannot be requested here (ADR-0005).
   pat_name: z.string().min(1).max(80).optional(),
   pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),
   pat_expires_in_days: z.number().int().positive().max(365).optional(),
@@ -36,12 +37,15 @@ export const POST = withApiHandler(async (request: NextRequest) => {
     throw new ApiError('unauthorized', 'Invalid email or password.');
   }
 
+  const scopes = pat_scopes ?? [...DEFAULT_PAT_SCOPES];
+  assertNoGlobalAdminScope(scopes);
+
   const admin = createAdminClient();
   const pat = await mintPat({
     admin,
     userId: data.user.id,
     name: pat_name ?? 'cli-signin',
-    scopes: pat_scopes ?? [...ALLOWED_PAT_SCOPES],
+    scopes,
     expiresInDays: pat_expires_in_days ?? null,
   });
 

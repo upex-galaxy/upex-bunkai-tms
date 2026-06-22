@@ -82,6 +82,27 @@ export function requireCapability(principal: Principal, capability: string): voi
   }
 }
 
+// Binds a workspace-scoped operation to the caller's token scope (see ADR-0006).
+// Cookie sessions are the trusted UI — RLS + the route's workspace_members role
+// check gate them — so they pass through. A PAT (`via: 'bearer'`) may only act
+// on the workspace it is scoped to: a token with no workspace binding cannot
+// perform workspace-admin operations at all (there is no global admin — ADR-0005),
+// and a token scoped to workspace A cannot operate on workspace B.
+export function assertWorkspaceContext(principal: Principal, targetWorkspaceId: string): void {
+  if (principal.via !== 'bearer') {
+    return;
+  }
+  if (principal.workspaceId === null) {
+    throw new ApiError(
+      'forbidden',
+      'This token is not scoped to a workspace; it cannot perform workspace-admin operations.',
+    );
+  }
+  if (principal.workspaceId !== targetWorkspaceId) {
+    throw new ApiError('forbidden', 'This token is scoped to a different workspace.');
+  }
+}
+
 // Anon client carrying a per-request user JWT. PostgREST treats it as that user's
 // session, so RLS applies exactly as it would for the browser. The service role
 // key is never handed to PostgREST here — we authenticate AS the user, not as a

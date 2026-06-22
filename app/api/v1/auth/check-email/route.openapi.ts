@@ -19,7 +19,7 @@ registry.registerPath({
   tags: ['Auth'],
   summary: 'Email-first routing probe',
   description:
-    'Returns whether an email is registered and whether it has been confirmed, so the login UI can route to the password, verify, or create step. Deliberately reveals existence (see ADR-0005 enumeration tradeoff); the real auth endpoints stay enumeration-safe.',
+    'Returns whether an email is registered and whether it has been confirmed, so the login UI can route to the password, verify, or create step. Deliberately reveals existence (see ADR-0007 enumeration tradeoff); the real auth endpoints stay enumeration-safe.',
   request: {
     body: {
       required: true,

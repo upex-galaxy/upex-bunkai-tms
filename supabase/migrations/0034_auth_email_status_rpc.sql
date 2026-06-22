@@ -1,4 +1,4 @@
--- 0033_auth_email_status_rpc.sql — BK-166: email-first existence lookup
+-- 0034_auth_email_status_rpc.sql — BK-166: email-first existence lookup
 --
 -- The email-first login flow (BK-166) needs to know, before asking for a
 -- password, whether an account exists for a typed email and whether it is
@@ -10,7 +10,7 @@
 -- authenticated clients.
 --
 -- Enumeration of account existence is a knowingly-accepted tradeoff for the
--- email-first UX (see ADR-0005), mitigated by rate-limiting. The route
+-- email-first UX (see ADR-0007), mitigated by rate-limiting. The route
 -- (app/api/v1/auth/check-email) calls this via `admin.rpc('auth_email_status')`.
 --
 -- Conventions mirror prior DEFINER RPCs (0032_project_environments_crud.sql):
