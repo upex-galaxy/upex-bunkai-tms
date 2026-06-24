@@ -143,15 +143,23 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const handleSignOut = async () => {
     if (busy) { return; }
     setBusy(true);
-    const { error } = await signOut();
-    if (error) {
-      toast.error(error.message || 'Could not sign out.');
-      setBusy(false);
-      return;
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast.error(error.message || 'Could not sign out.');
+        setBusy(false);
+        return;
+      }
     }
-    setBusy(false);
-    router.push('/login');
-    router.refresh();
+    catch {
+      // A failed server-side revoke (e.g. an already-expired OAuth token) still
+      // clears the local session. Fall through to the redirect rather than
+      // stranding the user on a stale, signed-out page.
+    }
+    // Hard navigation guarantees an immediate redirect to a freshly
+    // server-rendered /login (cookies are already cleared), instead of relying on
+    // a soft client nav that can be skipped if signOut() rejects.
+    window.location.assign('/login');
   };
 
   const email = userEmail ?? '';
