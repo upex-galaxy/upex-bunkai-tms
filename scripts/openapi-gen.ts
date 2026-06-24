@@ -22,6 +22,10 @@ import { buildOpenApiDocument } from '../lib/openapi/registry';
 // Side-effect imports — each module calls `registry.registerPath(...)` at
 // load time. Order does not matter; the registry deduplicates by method+path.
 
+import '../app/api/v1/auth/check-email/route.openapi';
+
+import '../app/api/v1/auth/confirm/route.openapi';
+
 import '../app/api/v1/auth/magic-link/route.openapi';
 
 import '../app/api/v1/auth/signin/route.openapi';

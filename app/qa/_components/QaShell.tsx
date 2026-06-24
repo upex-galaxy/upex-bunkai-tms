@@ -132,7 +132,7 @@ const es = {
   apiTitle: 'Backend testing: API (dos caminos) + auth + docs',
   apiDesc: 'Tres métodos de auth detectados, dos caminos de testing (OpenAPI MCP / Postman) y las docs interactivas.',
   uiTitle: 'Frontend testing: Playwright (scripted + agéntico)',
-  uiDesc: 'magic-link es passwordless: la regresión maneja la UI; el puente UI→API es el camino híbrido (cookie → PAT).',
+  uiDesc: 'Login primario email + password (email-first en /login); la regresión maneja esa UI y el puente UI→API es el camino híbrido (cookie → PAT).',
   refTitle: 'Referencia rápida',
   docsCta: 'Abrir docs',
 };
@@ -293,23 +293,31 @@ export async function QaShell({ config }: { config: QaConfig }) {
               <RequestCards requests={prepared.requests} />
             </div>
 
-            <Callout hue="amber" title="magic-link es passwordless">
+            <Callout hue="amber" title="Login primario: email + password (con OTP en el alta)">
               <p>
-                Los usuarios creados por la UI de
+                El login primario en la UI de
                 {' '}
                 <code className="rounded bg-surface-2 px-1 text-fg-1">/login</code>
                 {' '}
-                no tienen password en
+                es email-first: un solo campo de email →
                 {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">auth.users.encrypted_password</code>
-                , así que no pueden usar
+                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/check-email</code>
                 {' '}
-                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
-                . Provisioná un QA bot dedicado vía
+                enruta a password (cuenta existente) o a alta. Una cuenta nueva confirma con un
+                OTP de 6-8 dígitos por mail (Resend) antes de quedar usable; el magic-link es un
+                fallback secundario ("o pedí un enlace por correo"). Para flujos headless provisioná
+                el QA bot vía
                 {' '}
                 <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signup</code>
                 {' '}
-                (que sí setea password) antes de correr flujos headless. La forma del token es:
+                →
+                {' '}
+                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
+                , después
+                {' '}
+                <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
+                {' '}
+                con email + password mintea PATs frescos. La forma del token es:
                 {' '}
                 <code className="break-all rounded bg-surface-2 px-1 text-fg-1">
                   {config.api.tokenShape ?? '— preguntá a tu lead —'}
@@ -320,16 +328,17 @@ export async function QaShell({ config }: { config: QaConfig }) {
 
             <Callout hue="violet" title="Camino híbrido — PAT desde una sesión de browser">
               <p>
-                Ya logueado vía magic-link, reusás la cookie de sesión para mintear un PAT
-                sin re-autenticar — es el request
+                Ya logueado por la UI (email + password, o magic-link como fallback), reusás la
+                cookie de sesión para mintear un PAT sin re-autenticar — es el request
                 {' '}
                 <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens (hybrid)</code>
                 {' '}
                 de arriba (
                 <ShieldCheck className="inline h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                 {' '}
-                tab). Es también el camino correcto para usuarios de producción (solo
-                magic-link) que automatizan Bunkai.
+                tab). La cookie del browser y el Bearer PAT de la misma cuenta conviven
+                independientes — ninguno revoca al otro (ADR-0001). Es el camino correcto para
+                cualquier usuario que automatice Bunkai desde una sesión de UI.
               </p>
             </Callout>
 
@@ -405,14 +414,15 @@ export async function QaShell({ config }: { config: QaConfig }) {
           >
             <Callout hue="pink" title="El puente UI → API (headline)">
               <p>
-                magic-link no devuelve token al navegador de forma síncrona. El puente real
-                entre testing de UI y de API es
+                El login por la UI (email + password) establece una cookie de sesión, pero no te
+                entrega un PAT directo. El puente real entre testing de UI y de API es
                 {' '}
                 <strong className="text-fg-0">híbrido</strong>
                 : reusás la cookie de sesión del browser para mintear un PAT vía
                 {' '}
                 <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens</code>
-                , y después corrés los tests de API con Bearer.
+                , y después corrés los tests de API con Bearer. Cookie y PAT conviven
+                independientes (ADR-0001).
               </p>
             </Callout>
 
@@ -422,8 +432,8 @@ export async function QaShell({ config }: { config: QaConfig }) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-fg-1">Regresión scripteada — UI de magic-link (passwordless)</p>
-              <CodeBlock language="typescript" code={config.playwright.scriptedFixture} title="magic-link.spec.ts" />
+              <p className="text-sm font-semibold text-fg-1">Regresión scripteada — login email-first (email + password)</p>
+              <CodeBlock language="typescript" code={config.playwright.scriptedFixture} title="login.spec.ts" />
             </div>
 
             <div className="space-y-2">
@@ -559,11 +569,14 @@ export async function QaShell({ config }: { config: QaConfig }) {
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
                   {' '}
-                  → usuario solo-magic-link sin password. Usá
+                  → credenciales mal, o cuenta sin confirmar. Confirmá el OTP con
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
+                  {' '}
+                  (alta vía
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signup</code>
-                  {' '}
-                  o el camino híbrido.
+                  ) o usá el camino híbrido.
                 </li>
                 <li>
                   <strong className="text-fg-0">DBHub auth críptico</strong>

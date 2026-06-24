@@ -101,6 +101,132 @@
         "required": ["error"],
         "description": "Canonical error envelope returned by every `/api/v1` route on failure."
       },
+      "CheckEmailResponse": {
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "confirmed": {
+            "type": "boolean"
+          }
+        },
+        "required": ["exists", "confirmed"]
+      },
+      "CheckEmailBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          }
+        },
+        "required": ["email"]
+      },
+      "ConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": ["string", "null"],
+                "format": "email"
+              }
+            },
+            "required": ["id", "email"]
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "access_token": {
+                "type": "string"
+              },
+              "refresh_token": {
+                "type": "string"
+              },
+              "expires_at": {
+                "type": "number"
+              },
+              "token_type": {
+                "type": "string"
+              }
+            },
+            "required": ["access_token", "refresh_token"]
+          },
+          "pat": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+                }
+              },
+              "expires_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": ["token", "id", "name", "scopes", "expires_at"]
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": ["user", "session", "pat", "warning"]
+      },
+      "ConfirmBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "123456"
+          },
+          "pat_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "pat_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+            }
+          },
+          "pat_expires_in_days": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 365
+          }
+        },
+        "required": ["email", "token"]
+      },
       "MagicLinkResponse": {
         "type": "object",
         "properties": {
@@ -234,70 +360,16 @@
       "SignupResponse": {
         "type": "object",
         "properties": {
-          "user": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "email": {
-                "type": ["string", "null"],
-                "format": "email"
-              }
-            },
-            "required": ["id", "email"]
+          "status": {
+            "type": "string",
+            "enum": ["pending_confirmation"]
           },
-          "session": {
-            "type": "object",
-            "properties": {
-              "access_token": {
-                "type": "string"
-              },
-              "refresh_token": {
-                "type": "string"
-              },
-              "expires_at": {
-                "type": "number"
-              },
-              "token_type": {
-                "type": "string"
-              }
-            },
-            "required": ["access_token", "refresh_token"]
-          },
-          "pat": {
-            "type": "object",
-            "properties": {
-              "token": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "name": {
-                "type": ["string", "null"]
-              },
-              "scopes": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
-                }
-              },
-              "expires_at": {
-                "type": ["string", "null"],
-                "format": "date-time"
-              }
-            },
-            "required": ["token", "id", "name", "scopes", "expires_at"]
-          },
-          "warning": {
-            "type": "string"
+          "email": {
+            "type": "string",
+            "format": "email"
           }
         },
-        "required": ["user", "session", "pat", "warning"]
+        "required": ["status", "email"]
       },
       "SignupBody": {
         "type": "object",
@@ -310,25 +382,8 @@
           },
           "password": {
             "type": "string",
-            "minLength": 6,
+            "minLength": 8,
             "maxLength": 128
-          },
-          "pat_name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          },
-          "pat_scopes": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
-            }
-          },
-          "pat_expires_in_days": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 365
           }
         },
         "required": ["email", "password"]
@@ -2334,6 +2389,114 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/auth/check-email": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Email-first routing probe",
+        "description": "Returns whether an email is registered and whether it has been confirmed, so the login UI can route to the password, verify, or create step. Deliberately reveals existence (see ADR-0005 enumeration tradeoff); the real auth endpoints stay enumeration-safe.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckEmailBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckEmailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/confirm": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify email OTP → session + auto-minted PAT",
+        "description": "Completes a verification-first sign-up by verifying the 6-digit email OTP. On success it establishes the Supabase session AND mints a fresh Bearer PAT in a single response — the same shape as POST /api/v1/auth/signin — so a new account can immediately authenticate subsequent requests.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified + authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired verification code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/magic-link": {
       "post": {
         "tags": ["Auth"],
@@ -2445,8 +2608,8 @@
     "/api/v1/auth/signup": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Headless sign-up + auto-minted PAT",
-        "description": "Provisions a user via the Supabase admin API with `email_confirm: true` so no email click is required, then signs them in and mints a PAT. Intended for QA / CLI environments — production sign-up should still use the magic-link path.",
+        "summary": "Sign up + send 6-digit email verification",
+        "description": "Registers an email + password account via the public sign-up path, which sends a 6-digit confirmation code by email. No session and no PAT are issued here — the account stays unconfirmed until the code is verified via POST /api/v1/auth/confirm.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2458,8 +2621,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "User created + signed in.",
+          "202": {
+            "description": "Sign-up accepted; verification code emailed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2480,6 +2643,16 @@
           },
           "422": {
             "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
             "content": {
               "application/json": {
                 "schema": {
