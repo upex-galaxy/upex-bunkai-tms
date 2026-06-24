@@ -3,7 +3,6 @@
 import { useAuth } from '@components/providers/auth-context';
 import { cn } from '@lib/utils';
 import { ChevronDown, LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,7 +13,6 @@ import { toast } from 'sonner';
 // Topbar and, as a floating control, on the chrome-less /projects and
 // /onboarding screens so a signed-in user can always end their session.
 export function UserMenu({ className }: { className?: string }) {
-  const router = useRouter();
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,15 +38,24 @@ export function UserMenu({ className }: { className?: string }) {
       return;
     }
     setBusy(true);
-    const { error } = await signOut();
-    if (error) {
-      toast.error(error.message || 'Could not sign out.');
-      setBusy(false);
-      return;
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast.error(error.message || 'Could not sign out.');
+        setBusy(false);
+        return;
+      }
+    }
+    catch {
+      // A failed server-side revoke (e.g. an already-expired OAuth token) still
+      // clears the local session. Fall through to the redirect rather than
+      // stranding the user on a stale, signed-out page.
     }
     setOpen(false);
-    router.push('/login');
-    router.refresh();
+    // Hard navigation guarantees an immediate redirect to a freshly
+    // server-rendered /login (cookies are already cleared), instead of relying on
+    // a soft client nav that can be skipped if signOut() rejects.
+    window.location.assign('/login');
   };
 
   return (

@@ -110,7 +110,7 @@ Mockup: `.context/designs/.../screens/login.jsx` · Impl: `app/(auth)/login/`
 | Left panel hidden `<lg` | 🔶 | mockup always-visible; restore or ratify responsive hide |
 | Brand mark | 🔶 | use Logo component (分 box), not `BUNKAI·TMS` text |
 | H1 size 30px → 24px; version v0.4.2 → v0.1.0 | ⚠️ | restore 30px; version may stay current |
-| **Auth method: OAuth GitHub+Google primary** | 🔶 **gap (D1)** | impl = magic-link only, OAuth disabled "soon". **UI-first: restore the visual OAuth buttons + layout faithfully, keep disabled until OAuth infra sequenced.** Do NOT refactor auth backend now. (§5 D1) |
+| **Auth method: OAuth GitHub+Google primary** | ✅ **delivered (D1 resolved, BK-3)** | OAuth GitHub+Google enabled end-to-end: enabled buttons (faithful to `login.jsx`), server initiation + CSRF state, callback code exchange. Coexists with password-primary + magic-link. See §5 D1 + ADR-0008. |
 | Self-hosted card hover-reveal URL | ⚠️ | restore hover interaction |
 | Demo "Skip to workspace" | ✅ | correctly omitted |
 
@@ -197,7 +197,7 @@ Decision rule per divergence:
 
 | # | Divergence | Layer | Decision (UI-first) |
 |---|------------|-------|---------------------|
-| D1 | Auth: magic-link only vs mockup OAuth GitHub+Google | **Backend** | Do NOT refactor auth now. Restore the **visual** OAuth buttons + layout to mockup fidelity; keep them disabled/"soon" until OAuth infra is sequenced separately. UI looks faithful, backend untouched. |
+| D1 | Auth: magic-link only vs mockup OAuth GitHub+Google | **Backend** | **RESOLVED (2026-06-24, BK-3).** OAuth infra sequenced and shipped: GitHub+Google enabled end-to-end (server initiation + custom CSRF state → 403, callback code exchange, faithful enabled buttons), coexisting with the password+magic-link rails. See ADR-0008. (Originally: keep visually faithful but disabled until infra sequenced.) |
 | D2 | ATC Editor: AnchoringPanel right pane vs Live Preview pane | **UI** | Correct → restore Live Preview as the right pane. Keep anchoring **enforcement logic** (backend-backed) but move its controls inline into the compose column. No API change. |
 | D3 | Steps/Assertions: Monaco code-authoring vs mockup's structured numbered rows / enter-to-add list | **UI (product decision)** | **REVERSED 2026-06-09 — KEEP the Monaco code editors.** Product decision: the user prefers code-authoring (type the markdown/YAML format → live preview renders it). The mockup's structured rows are intentionally NOT restored. Mitigation shipped: an inline format hint (`AuthoringFormatHint`) under each editor shows the exact syntax with a real example, so the box isn't mistaken for a free textarea. |
 | D4 | Explorer tree: real `module→story→AC→atc` vs mockup `module→folder→atc/test` | **Backend if reverted** | **Keep the DB.** Render `folder`/`test`/tab nodes as a **presentation layer** over the existing model (mockup already embraces stories+ACs — US-742 / AC-742-3). Zero schema/API change. |
@@ -251,7 +251,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | Epic | Story | Screen(s) | Mockup ref |
 |------|-------|-----------|------------|
 | **BK-1 Tenancy & Identity** | BK-2 Email magic-link | **Login** | `login.jsx` |
-| | BK-3 OAuth sign-in | **Login** (D1 — visual now, infra later) | `login.jsx` |
+| | BK-3 OAuth sign-in | **Login** (D1 resolved — OAuth shipped) | `login.jsx` |
 | | BK-4 Workspace create | **Login**/onboarding · Shell switcher | `login.jsx`, `app.jsx` |
 | | BK-5 Invite teammate | Settings · (workspace members) | §4.10 |
 | | BK-6 Workspace switch | **Shell** workspace switcher | `app.jsx` §3 |

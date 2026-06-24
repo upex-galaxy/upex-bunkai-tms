@@ -1,10 +1,11 @@
-import { Button } from '@components/ui/button';
 import { createClient } from '@lib/supabase/server';
 import { ArrowRight, Terminal } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { EmailFirstForm } from './email-first-form';
+import { LoginErrorToast } from './login-error-toast';
 import { MagicLinkDisclosure } from './magic-link-disclosure';
+import { OAuthButtons } from './oauth-buttons';
 
 const FEATURE_TICKS: Array<[string, string]> = [
   ['IQL', 'Integrated Quality Lifecycle — methodology that spans story → case → run → bug.'],
@@ -171,9 +172,13 @@ export default async function LoginPage() {
               Continue to your workspace
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-fg-3">
-              Sign in with your email and password — or create an account. OAuth and SSO ship next sprint.
+              Sign in with your email and password, continue with GitHub or Google, or create an account.
             </p>
           </div>
+
+          <Suspense fallback={null}>
+            <LoginErrorToast />
+          </Suspense>
 
           <Suspense fallback={<div className="h-[120px]" aria-hidden />}>
             <EmailFirstForm />
@@ -189,28 +194,9 @@ export default async function LoginPage() {
             <MagicLinkDisclosure />
           </Suspense>
 
-          <div className="mt-4 flex flex-col gap-2">
-            <Button
-              size="lg"
-              disabled
-              className="w-full cursor-not-allowed justify-center opacity-60"
-              title="OAuth ships next sprint"
-            >
-              <span className="font-mono text-xs">GH</span>
-              Continue with GitHub
-              <span className="ml-auto font-mono text-xs text-fg-4">soon</span>
-            </Button>
-            <Button
-              size="lg"
-              disabled
-              className="w-full cursor-not-allowed justify-center opacity-60"
-              title="OAuth ships next sprint"
-            >
-              <span className="font-mono text-xs">G</span>
-              Continue with Google
-              <span className="ml-auto font-mono text-xs text-fg-4">soon</span>
-            </Button>
-          </div>
+          <Suspense fallback={<div className="mt-4 h-[88px]" aria-hidden />}>
+            <OAuthButtons />
+          </Suspense>
 
           <div className="mt-6 rounded-3 border border-stroke-2 bg-surface-2 p-3">
             <div className="flex items-center justify-between">
