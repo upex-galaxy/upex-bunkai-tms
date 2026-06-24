@@ -36,8 +36,7 @@ Layer an **independent, server-issued CSRF `state` token** on top of Supabase PK
    - `bkstate` present marks the OAuth branch → compare against the `bk_oauth_state`
      cookie with a **constant-time** comparison; delete the cookie (one-time use);
      mismatch/missing → **`403 { code: 'OAUTH_STATE_MISMATCH' }`, no session.**
-   - then `exchangeCodeForSession(code)`; on error, classify cross-provider email
-     collision → `email_exists`, else `oauth_init_failed`.
+   - then `exchangeCodeForSession(code)`; on error → `oauth_init_failed` (AC-9).
    - success → 302 to `next` (`/projects`); the existing redirect chain routes a
      first-time user (no workspace) to `/onboarding`.
 3. **No PAT at OAuth login.** A 302 redirect cannot return a JSON PAT the way the
@@ -47,8 +46,13 @@ Layer an **independent, server-issued CSRF `state` token** on top of Supabase PK
 4. **No server-side workspace bootstrap.** First-time OAuth users reuse the
    existing `/onboarding` workspace-creation flow (same path email signups take).
    This avoids a new backend code path and the AC-8 ghost-user failure mode.
+5. **Automatic identity linking (PO decision, 2026-06-24).** Supabase's default
+   auto-linking stays **enabled**: identities sharing the same verified email
+   (GitHub / Google / password) link to one account and sign in seamlessly. There
+   is therefore **no `EMAIL_EXISTS` error path** — AC-7 was reversed by the PO to
+   prioritize sign-in UX. Explicit/manual multi-provider management UI stays Phase 2.
 
-## Alternatives considered
+## Alternatives considered (CSRF)
 
 - **Supabase PKCE only.** Simplest and industry-standard, but cannot produce the
   literal `403 + OAUTH_STATE_MISMATCH` that the business rule, scope, and AC-5
@@ -67,11 +71,9 @@ Layer an **independent, server-issued CSRF `state` token** on top of Supabase PK
   the new routes.
 - **Negative / follow-ups:**
   - Two CSRF layers (our state + PKCE verifier) — intentional redundancy.
-  - The cross-provider `email_exists` classification (`mapOAuthExchangeError`)
-    depends on Supabase's error shape when **automatic identity linking is
-    disabled**; the provider/Supabase dashboard config must disable linking, and
-    the classifier signals are tunable after live E2E (AC-7 was flagged
-    NEEDS DEV CONFIRMATION).
+  - Automatic identity linking means a single verified email is one account across
+    all methods; there is no per-method isolation (accepted by the PO as the
+    desired UX). Supabase auto-linking must remain enabled (its default).
   - A literal 403 JSON page on state tampering is an attacker/tamper path, not a
     normal-UX redirect — acceptable per AC-5.
 

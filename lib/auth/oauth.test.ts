@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { isOAuthProvider, mapOAuthExchangeError, OAUTH_ERROR_TOASTS, OAUTH_PROVIDERS } from './oauth';
+import { isOAuthProvider, OAUTH_ERROR_TOASTS, OAUTH_PROVIDERS } from './oauth';
 
 describe('isOAuthProvider', () => {
   it('accepts the supported providers', () => {
@@ -20,39 +20,18 @@ describe('isOAuthProvider', () => {
   });
 });
 
-describe('mapOAuthExchangeError', () => {
-  it('classifies a cross-provider email collision as email_exists', () => {
-    expect(mapOAuthExchangeError({ message: 'A user with this email already exists' })).toBe('email_exists');
-    expect(mapOAuthExchangeError({ code: 'identity_already_exists' })).toBe('email_exists');
-    expect(mapOAuthExchangeError({ message: 'duplicate identity' })).toBe('email_exists');
-  });
-
-  it('classifies an unrelated failure as oauth_init_failed', () => {
-    expect(mapOAuthExchangeError({ message: 'provider unavailable', status: 503 })).toBe('oauth_init_failed');
-    expect(mapOAuthExchangeError({ code: 'pkce_failure' })).toBe('oauth_init_failed');
-  });
-
-  it('defaults to oauth_init_failed for a null/empty error', () => {
-    expect(mapOAuthExchangeError(null)).toBe('oauth_init_failed');
-    expect(mapOAuthExchangeError({})).toBe('oauth_init_failed');
-  });
-});
-
 describe('OAUTH_ERROR_TOASTS', () => {
-  it('marks the security + collision errors destructive', () => {
-    expect(OAUTH_ERROR_TOASTS.email_exists.variant).toBe('destructive');
+  it('marks the security error destructive', () => {
     expect(OAUTH_ERROR_TOASTS.oauth_state_mismatch.variant).toBe('destructive');
   });
 
-  it('uses the exact AC-7 copy for email_exists', () => {
-    expect(OAUTH_ERROR_TOASTS.email_exists.title).toBe('Account already exists');
-    expect(OAUTH_ERROR_TOASTS.email_exists.description).toBe(
-      'This email is registered via a different provider. Contact support to link accounts.',
-    );
+  it('has no email_exists code (automatic identity linking, AC-7)', () => {
+    expect('email_exists' in OAUTH_ERROR_TOASTS).toBe(false);
   });
 
-  it('keeps consent-denied non-destructive with a fallback hint', () => {
+  it('keeps consent-denied + init-failure non-destructive with a fallback hint', () => {
     expect(OAUTH_ERROR_TOASTS.oauth_denied.variant).toBe('default');
     expect(OAUTH_ERROR_TOASTS.oauth_denied.description.toLowerCase()).toContain('magic-link');
+    expect(OAUTH_ERROR_TOASTS.oauth_init_failed.variant).toBe('default');
   });
 });

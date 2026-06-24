@@ -40,7 +40,7 @@ And surfaces a "Try a different method" CTA including the magic-link fallback
 Scenario: AC-5 OAuth state CSRF token mismatch
 Given an OAuth callback whose state token does not match the issued one
 When the callback hits /auth/callback
-Then the request is rejected with code OAUTH*STATE*MISMATCH and 403
+Then the request is rejected with code OAUTH**STATE**MISMATCH and 403
 And no session is created
 ```
 
@@ -53,13 +53,12 @@ And shows a clear copy explaining the fallback
 ```
 
 ```
-Scenario: AC-7 EMAIL_EXISTS — cross-provider collision
-Given an email already registered via a different provider
-When the user attempts OAuth sign-in with that email via Google or GitHub
-Then the browser is redirected (302) to /login?error=email_exists
-And a destructive Sonner toast titled "Account already exists" is shown
-And the message reads "This email is registered via a different provider. Contact support to link accounts."
-And no error page is shown and the login screen stays interactive
+Scenario: AC-7 Cross-provider same verified email — automatic identity linking
+Given a user who already has an account via one method (GitHub, Google, or email/password)
+When they sign in via a different method using the SAME verified email
+Then Supabase automatically links the new identity to the existing account
+And the user is signed in to that same account (no duplicate user, no EMAIL_EXISTS block)
+And the user lands on /projects with their existing workspace
 ```
 
 ```

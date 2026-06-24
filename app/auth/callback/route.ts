@@ -1,5 +1,4 @@
 import type { NextRequest } from 'next/server';
-import { mapOAuthExchangeError } from '@lib/auth/oauth';
 import { OAUTH_STATE_COOKIE, stateMatches } from '@lib/auth/oauth-state';
 import { createClient } from '@lib/supabase/server';
 import { safeInternalPath } from '@lib/urls';
@@ -52,10 +51,11 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    // OAuth exchange failures map to a user-facing code (email collision vs
-    // generic init failure); the magic-link rail keeps its original error flag.
+    // OAuth exchange failures surface a graceful init error (AC-9). Same-email
+    // cross-provider sign-ins are NOT an error — Supabase auto-links them (AC-7).
+    // The magic-link rail keeps its original error flag.
     if (oauthState !== null) {
-      return NextResponse.redirect(`${origin}/login?error=${mapOAuthExchangeError(error)}`);
+      return NextResponse.redirect(`${origin}/login?error=oauth_init_failed`);
     }
     const reason = encodeURIComponent(error.message);
     return NextResponse.redirect(`${origin}/login?error=otp_exchange_failed&reason=${reason}`);

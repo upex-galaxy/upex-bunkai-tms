@@ -12,7 +12,12 @@ export function isOAuthProvider(value: unknown): value is OAuthProvider {
 
 // Error codes round-tripped to /login as `?error=<code>` and rendered by the
 // login error toast. Kept as a const map so the route and the toast agree.
-export type OAuthErrorCode = 'oauth_denied' | 'oauth_state_mismatch' | 'email_exists' | 'oauth_init_failed';
+//
+// Note: there is no `email_exists` code. Per the PO decision (2026-06-24) Supabase
+// automatic identity linking is enabled, so a second provider presenting an
+// already-registered verified email links to the same account and signs in
+// seamlessly — it is not an error (AC-7). See ADR-0008.
+export type OAuthErrorCode = 'oauth_denied' | 'oauth_state_mismatch' | 'oauth_init_failed';
 
 interface OAuthToast {
   title: string
@@ -32,39 +37,9 @@ export const OAUTH_ERROR_TOASTS: Record<OAuthErrorCode, OAuthToast> = {
     description: 'The sign-in request failed a security check. Please start again.',
     variant: 'destructive',
   },
-  email_exists: {
-    title: 'Account already exists',
-    description: 'This email is registered via a different provider. Contact support to link accounts.',
-    variant: 'destructive',
-  },
   oauth_init_failed: {
     title: 'Could not start sign-in',
     description: 'The provider was unreachable. Try again, or use the magic-link option below.',
     variant: 'default',
   },
 };
-
-// Minimal shape of a Supabase auth error we classify on. Avoids importing the
-// SDK type into a pure module.
-interface ClassifiableError {
-  code?: string | null
-  message?: string | null
-  status?: number | null
-}
-
-// Cross-provider same-email collision (AC-7). Supabase surfaces this when
-// automatic identity linking is disabled and a second provider presents an
-// email already bound to another identity. The exact code/message is
-// config/version dependent, so we match defensively on the known signals and
-// fall back to a generic init failure otherwise. Tunable after live E2E.
-export function mapOAuthExchangeError(error: ClassifiableError | null | undefined): Extract<OAuthErrorCode, 'email_exists' | 'oauth_init_failed'> {
-  if (!error) {
-    return 'oauth_init_failed';
-  }
-  const haystack = `${error.code ?? ''} ${error.message ?? ''}`.toLowerCase();
-  const collisionSignals = ['already', 'exists', 'identity_already', 'email_exists', 'duplicate'];
-  if (collisionSignals.some(signal => haystack.includes(signal))) {
-    return 'email_exists';
-  }
-  return 'oauth_init_failed';
-}
