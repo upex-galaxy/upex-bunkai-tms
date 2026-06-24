@@ -3,7 +3,7 @@
    stack=next-15
    ui-kit=shadcn
    icons=lucide-react
-   auth-method=supabase-cookie+bearer-pat
+   auth-method=supabase-password+otp+cookie+bearer-pat
    docs-ui=scalar
    docs-route=/api/docs
    openapi-spec=/api/openapi
@@ -15,7 +15,8 @@
    publisher=jira-epic
    credentials-source=https://jira.upexgalaxy.com/browse/BK-29
    default-branch=main
-   generated=2026-05-28
+   adr=ADR-0007
+   generated=2026-06-24
    content-hash=sha256:9e9feb18046fdb3b22b18493f71d1032e7d24f91aa2d8df1487ffad91ee6f61b
 */
 
