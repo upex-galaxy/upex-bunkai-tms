@@ -398,6 +398,27 @@ export function entryMatchesFileList(filePath: string, component: Component): bo
   return false;
 }
 
+/**
+ * Whether a file is framework-exempt — i.e. its basename matches the component's
+ * `frameworkFiles` allowlist (so it flows through despite `bootstrapOnly`), UNLESS
+ * its full repo-relative path is re-exempted via `frameworkFilesExcept` (project
+ * state that must be preserved, e.g. `.context/ADR/README.md`).
+ *
+ * Single source of truth for both `classifyFile` and the batch loop in
+ * `computeDelta` — they MUST agree or bootstrap/diverged classification drifts.
+ */
+export function isFrameworkExemptPath(
+  component: Component | undefined,
+  relPath: string,
+): boolean {
+  if (component?.bootstrapOnly !== true) { return false; }
+  const basename = path.basename(relPath);
+  if (component.frameworkFiles?.includes(basename) !== true) { return false; }
+  // Path-level re-exemption: keep this file project-owned (bootstrap), not flow-through.
+  if (component.frameworkFilesExcept?.includes(relPath) === true) { return false; }
+  return true;
+}
+
 export function classifyFile(
   entry: Omit<DeltaEntry, 'classification'>,
   templateDir: string,
@@ -422,10 +443,7 @@ export function classifyFile(
   // 4. Bootstrap-aware override
   const component = components.find(c => c.name === entry.component);
   const basename = path.basename(entry.path);
-  const isFrameworkExempt = (
-    component?.bootstrapOnly === true
-    && component.frameworkFiles?.includes(basename) === true
-  );
+  const isFrameworkExempt = isFrameworkExemptPath(component, entry.path);
   const isBootstrapFile = !isFrameworkExempt && (
     (component?.bootstrapOnly === true)
     || (entry.component === 'agents' && agentsBootstrapFiles.includes(basename))
@@ -790,8 +808,7 @@ export function reconcileComponentsByContent(
       if (BINARY_EXTENSIONS.has(ext)) { continue; } // mirror classifyFile rule 1
 
       const basename = path.basename(relPath);
-      const isFrameworkExempt = component.bootstrapOnly === true
-        && component.frameworkFiles?.includes(basename) === true;
+      const isFrameworkExempt = isFrameworkExemptPath(component, relPath);
       const isBootstrapFile = !isFrameworkExempt && (
         component.bootstrapOnly === true
         || (component.name === 'agents' && agentsBootstrapFiles.includes(basename))

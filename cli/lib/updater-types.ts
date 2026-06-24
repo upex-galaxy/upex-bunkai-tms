@@ -154,6 +154,22 @@ export interface Component {
    * Ignored when `bootstrapOnly` is false/undefined.
    */
   frameworkFiles?: string[]
+  /**
+   * Repo-relative path allowlist that RE-EXEMPTS files back to bootstrap-only
+   * (project-owned) behavior even though their basename matches `frameworkFiles`.
+   *
+   * Use case: the `README.md` under each `.context` sub-directory is framework
+   * scaffolding and flows through (`frameworkFiles: ['README.md']`), but
+   * `.context/ADR/README.md` carries a
+   * project-maintained ADR index table — it is hybrid (framework guidance +
+   * project state). Listing it here keeps it from being overwritten on update,
+   * since the basename-only `frameworkFiles` rule is too coarse to tell the two
+   * apart. Without this, an update silently clobbers the project's ADR index.
+   *
+   * Matching is on the full repo-relative path (e.g. `.context/ADR/README.md`),
+   * not the basename. Ignored when `bootstrapOnly` is false/undefined.
+   */
+  frameworkFilesExcept?: string[]
 }
 
 export type ChangeStatus = 'M' | 'A' | 'D';

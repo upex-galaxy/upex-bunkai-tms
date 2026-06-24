@@ -9,6 +9,7 @@
 
 import type { Component, DeprecatedFile, ReportSink, UpdaterConfig } from './lib/updater-types';
 import { execSync, spawnSync } from 'node:child_process';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -51,7 +52,7 @@ const COMPONENTS: Component[] = [
   { name: 'scripts', type: 'directory', paths: ['scripts'] },
   { name: 'cli', type: 'directory', paths: ['cli'] },
   { name: 'docs', type: 'directory', paths: ['docs'] },
-  { name: 'context', type: 'directory', paths: ['.context'], bootstrapOnly: true, frameworkFiles: ['README.md'] },
+  { name: 'context', type: 'directory', paths: ['.context'], bootstrapOnly: true, frameworkFiles: ['README.md'], frameworkFilesExcept: ['.context/ADR/README.md'] },
   { name: 'context-engineering', type: 'file-list', paths: ['.'], files: ['CONTEXT.md'] },
   { name: 'vscode', type: 'directory', paths: ['.vscode'] },
   { name: 'husky', type: 'directory', paths: ['.husky'] },
@@ -303,6 +304,218 @@ async function detectEnvVarDrift(
   }
 }
 
+// --- GIT_STRATEGY UPSERT (afterApply hook) ---
+//
+// The `git_strategy:` block in `.agents/project.yaml` (git workflow definition,
+// read by the git-flow-master skill) was added to the boilerplate AFTER some
+// projects were already scaffolded. `.agents/project.yaml` is bootstrapOnly, so
+// the regular sync NEVER overwrites it — a pre-feature project would silently
+// stay without the block. This hook back-fills it ONCE, APPEND-ONLY.
+//
+// HARD CONSTRAINT: append-only. It NEVER edits, reorders, or deletes any
+// existing line in the consumer's project.yaml — it only appends the missing
+// block at EOF. This preserves every user-set value verbatim.
+//
+// Like detectEnvVarDrift, the upstream clone still sits in `tempDir` (cleanup
+// happens after afterApply). We lift the `git_strategy:` block (with its leading
+// comment header) out of the upstream copy and append it to the consumer's file.
+
+/**
+ * Extract the `git_strategy:` block from an upstream `.agents/project.yaml`,
+ * INCLUDING the contiguous comment header immediately preceding it.
+ *
+ * Strategy: find the `git_strategy:` line, walk BACKWARDS over contiguous
+ * leading `#` comment lines to capture the header, then walk FORWARDS over all
+ * indented (space-prefixed) lines until the next top-level key or top-level
+ * comment introducing another section. Returns the block as a trimmed string,
+ * or null if no `git_strategy:` key exists upstream.
+ */
+function extractUpstreamGitStrategyBlock(upstreamYaml: string): string | null {
+  const lines = upstreamYaml.split('\n');
+  const keyIdx = lines.findIndex(l => l.startsWith('git_strategy:'));
+  if (keyIdx === -1) { return null; }
+
+  // Walk backwards over the contiguous comment header (stop at blank/non-comment).
+  let start = keyIdx;
+  while (start - 1 >= 0 && /^\s*#/.test(lines[start - 1])) { start -= 1; }
+
+  // Walk forwards over indented body lines (block scalars, nested keys, lists).
+  let end = keyIdx; // inclusive index of last block line
+  for (let i = keyIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim() === '') { continue; } // blank lines inside the block are tolerated
+    if (/^\s/.test(line)) { end = i; continue; } // indented → still part of the block
+    break; // top-level key or top-level comment → block ended
+  }
+
+  return lines.slice(start, end + 1).join('\n').trimEnd();
+}
+
+/**
+ * Back-fill a missing `git_strategy:` block into the consumer's
+ * `.agents/project.yaml`. Mirrors detectEnvVarDrift's signature (tempDir, sink,
+ * nonInteractive). Append-only; never modifies existing lines.
+ */
+async function upsertGitStrategyBlock(
+  templateDir: string,
+  sink: ReportSink,
+  nonInteractive: boolean,
+): Promise<void> {
+  const consumerYaml = path.join(process.cwd(), '.agents', 'project.yaml');
+  if (!fs.existsSync(consumerYaml)) { return; }
+
+  let consumerContent: string;
+  try {
+    consumerContent = fs.readFileSync(consumerYaml, 'utf8');
+  }
+  catch {
+    return; // unreadable consumer file — nothing to do.
+  }
+
+  // Already has a top-level git_strategy block → NO-OP. Never touch it.
+  if (/^git_strategy:/m.test(consumerContent)) { return; }
+
+  // Absent → pre-feature project. Lift the block from the upstream clone.
+  const upstreamYaml = path.join(templateDir, '.agents', 'project.yaml');
+  if (!fs.existsSync(upstreamYaml)) { return; }
+
+  let block: string | null;
+  try {
+    block = extractUpstreamGitStrategyBlock(fs.readFileSync(upstreamYaml, 'utf8'));
+  }
+  catch {
+    return; // unreadable upstream — skip.
+  }
+  if (!block) { return; }
+
+  // CI / non-interactive: never modify the file — just flag it.
+  if (nonInteractive) {
+    sink.warn('Tu `.agents/project.yaml` no tiene el bloque `git_strategy` (definición del flujo de git).');
+    sink.step('Modo --auto: ejecuta el updater de forma interactiva para agregarlo (o añádelo manualmente).');
+    return;
+  }
+
+  // Interactive: OFFER to append (append-only — existing values untouched).
+  const proceed = await sink.confirm(
+    'Tu `.agents/project.yaml` no tiene el nuevo bloque `git_strategy` (definición del flujo de git). ¿Agregarlo ahora? (append-only — tus valores existentes nunca se modifican)',
+    false,
+  );
+  if (!proceed) {
+    sink.step('Omitido. Puedes agregar el bloque `git_strategy` más tarde.');
+    return;
+  }
+
+  // APPEND ONLY — preserve the existing file verbatim, and prepend exactly one
+  // blank line before the block regardless of the file's trailing-newline state:
+  //  - ends with "\n"  → add "\n" (a blank line) then the block.
+  //  - no trailing "\n" → add "\n\n" (close the last line + a blank line).
+  const sep = consumerContent.endsWith('\n') ? '\n' : '\n\n';
+  try {
+    fs.appendFileSync(consumerYaml, `${sep}${block}\n`);
+  }
+  catch (err) {
+    sink.warn(`No se pudo agregar el bloque \`git_strategy\`: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
+  sink.step('Bloque `git_strategy` agregado al final de `.agents/project.yaml` (append-only).');
+  sink.step('Revisa la estrategia o ejecuta "set up our git strategy" en Claude (git-flow-master) para definir la tuya.');
+}
+
+// --- CLAUDE.md UPSTREAM-DRIFT ADVISORY (afterApply hook) ---
+//
+// Root `CLAUDE.md` is a per-project file: heavily customized (project identity,
+// env URLs, Jira fields, custom rules) and deliberately NOT a synced component —
+// `bun up` never overwrites it. But the boilerplate's OWN `CLAUDE.md` keeps
+// evolving (doctrine, behavioral rules, workflow conventions), so a downstream
+// project would silently miss those improvements.
+//
+// This advisory NEVER edits `CLAUDE.md`. It prints a copy-paste prompt the user
+// hands to their AI, which fetches the canonical `CLAUDE.md` and SEMANTICALLY
+// merges the upstream improvements while preserving every project-specific value.
+//
+// Noise control: the local file ALWAYS differs from the generic upstream, so
+// "they differ" alone would fire every run. Instead we fire ONLY when the
+// upstream `CLAUDE.md` actually CHANGED since the last advice, tracked by a
+// content hash in `.template/claude-md.upstream.sha`. One nudge per upstream
+// change — never on dry-run (the whole afterApply hook is skipped there).
+
+const CLAUDE_MD_SHA_MARKER = '.template/claude-md.upstream.sha';
+
+/** Whitespace-insensitive normalization for the "already identical" short-circuit. */
+function normalizeForCompare(s: string): string {
+  return s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n+$/g, '\n');
+}
+
+/**
+ * Detect that the upstream `CLAUDE.md` improved since we last advised, and emit a
+ * copy-paste AI prompt to merge those improvements into the local (per-project)
+ * `CLAUDE.md`. Mirrors `detectEnvVarDrift` (reads upstream from `templateDir`,
+ * never mutates the consumer file). `templateRepo` builds the canonical raw URL.
+ */
+async function detectClaudeMdDrift(
+  templateDir: string,
+  templateRepo: string,
+  sink: ReportSink,
+): Promise<void> {
+  const upstreamPath = path.join(templateDir, 'CLAUDE.md');
+  const localPath = path.join(process.cwd(), 'CLAUDE.md');
+  // Need BOTH the boilerplate's canonical copy and the project's own.
+  if (!fs.existsSync(upstreamPath) || !fs.existsSync(localPath)) { return; }
+
+  let upstreamContent: string;
+  let localContent: string;
+  try {
+    upstreamContent = fs.readFileSync(upstreamPath, 'utf8');
+    localContent = fs.readFileSync(localPath, 'utf8');
+  }
+  catch { return; }
+
+  // Project tracks the boilerplate verbatim → nothing to suggest.
+  if (normalizeForCompare(upstreamContent) === normalizeForCompare(localContent)) { return; }
+
+  // Fire only when the UPSTREAM file changed since our last advice.
+  const upstreamSha = crypto.createHash('sha256').update(upstreamContent, 'utf8').digest('hex');
+  const markerPath = path.join(process.cwd(), CLAUDE_MD_SHA_MARKER);
+  let lastSha = '';
+  try {
+    if (fs.existsSync(markerPath)) { lastSha = fs.readFileSync(markerPath, 'utf8').trim(); }
+  }
+  catch { /* unreadable marker — treat as first advice */ }
+
+  if (lastSha === upstreamSha) { return; } // no NEW upstream change since last nudge
+
+  // Persist the marker FIRST so this is one nudge per upstream change, even if the
+  // user ignores it (non-fatal if the write fails — worst case we advise again).
+  try {
+    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+    fs.writeFileSync(markerPath, `${upstreamSha}\n`);
+  }
+  catch { /* non-fatal */ }
+
+  const rawUrl = `https://raw.githubusercontent.com/${templateRepo}/main/CLAUDE.md`;
+  const firstAdvice = lastSha === '';
+
+  sink.warn(firstAdvice
+    ? 'El `CLAUDE.md` del boilerplate trae mejoras que tu `CLAUDE.md` local podría no tener (es un archivo per-proyecto: el updater nunca lo sobrescribe).'
+    : 'El `CLAUDE.md` del boilerplate cambió desde la última vez. Tu `CLAUDE.md` local no se actualiza solo (es per-proyecto).');
+  sink.step('No tocamos tu `CLAUDE.md`. Copia el prompt de abajo y pégalo en tu IA para traer SOLO las mejoras, preservando lo específico de tu proyecto:');
+
+  const prompt = [
+    'Sync the local ./CLAUDE.md with the upstream boilerplate, pulling ONLY the improvements.',
+    '',
+    `1. Fetch the canonical boilerplate CLAUDE.md: ${rawUrl}`,
+    `   (use your web-fetch tool, or run: curl -fsSL ${rawUrl})`,
+    '2. Diff it against the local ./CLAUDE.md.',
+    '3. Merge in ONLY the upstream improvements: new or updated rules, doctrine, behavioral guidance, workflow conventions, and sections this project lacks.',
+    '4. PRESERVE every project-specific value verbatim — project identity, env URLs, Jira keys/fields, credential references, and any custom rule or section this project added. Never replace a local customization with a generic boilerplate placeholder.',
+    '5. On any genuine conflict (same rule, divergent intent), surface it for my decision instead of silently overwriting. Keep the rule numbering coherent after merging.',
+    '6. Show me a concise before/after diff of what you changed and why BEFORE writing the file.',
+  ].join('\n');
+
+  // Plain stdout (no log-prefix bullets) so the block copy-pastes cleanly.
+  process.stdout.write(`\n${pc.dim('────────  COPY PROMPT BELOW  ────────')}\n${prompt}\n${pc.dim('────────  COPY PROMPT ABOVE  ────────')}\n\n`);
+}
+
 // --- SINK ---
 function abortOnCancel<T>(v: T | symbol): T {
   if (tui.isCancel(v)) {
@@ -535,6 +748,8 @@ async function main(): Promise<void> {
           }
         }
         await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
+        await upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto);
+        await detectClaudeMdDrift(TEMP_DIR, TEMPLATE_REPO, sink);
       },
     },
   };
@@ -554,6 +769,7 @@ async function main(): Promise<void> {
     `Con error:    ${summary.failed.length}`,
     `Avanzados:    ${summary.componentsAdvanced.join(', ') || '(ninguno)'}`,
     `Retenidos:    ${summary.componentsHeldBack.join(', ') || '(ninguno)'}`,
+    'Git: si tu `git_strategy` está sin definir o es heredado, ejecuta "set up our git strategy" en Claude (git-flow-master).',
   ])}\n`);
 
   tui.outro(parsed.dryRun ? 'Dry-run completado.' : 'Sincronizacion completada.');

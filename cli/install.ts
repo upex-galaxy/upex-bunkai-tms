@@ -2162,6 +2162,11 @@ function printClosingSummary(state: InstallState): void {
 
   process.stdout.write('\n');
 
+  // 4f.5 — Git strategy reminder (the project inherited the boilerplate's git_strategy block)
+  tui.section('Git strategy');
+  process.stdout.write(`  This project inherited the boilerplate's git strategy. Run ${COLORS.bold}"set up our git strategy"${COLORS.reset} in Claude\n`);
+  process.stdout.write(`  ${COLORS.dim}(git-flow-master Strategy Setup) to define your own flow.${COLORS.reset}\n\n`);
+
   // 4g — Final tip box
   process.stdout.write(`${tui.successBox([
     'Re-run anytime: bun run setup  (idempotent — completed steps are skipped)',
