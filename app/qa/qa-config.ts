@@ -79,8 +79,10 @@ export interface QaConfig {
     tokenShape: string | null
     loginHelper: string | null
     authMethods: AuthMethod[]
-    // Headless PAT bootstrap (signup / signin) — magic-link users have no
-    // password, so the signup endpoint provisions a password + mints a PAT.
+    // Headless onboarding (verification-first, BK-166). signup creates an
+    // unconfirmed account (NO session, NO PAT) and triggers an email OTP;
+    // confirm verifies the code and mints the session + PAT. signin reuses an
+    // existing email+password account and mints a fresh PAT.
     signupEndpoint: string | null
     signinEndpoint: string | null
     // Hybrid path: reuse a browser cookie session to mint a PAT via the API.
@@ -205,8 +207,9 @@ playwright-cli close`;
 // curl examples use API_BASE_URL (relative /api/v1) — never a literal host.
 // ---------------------------------------------------------------------------
 
-const cookieSnippet = `# Cookie de sesión (browser) — magic-link es PASSWORDLESS.
-# Logueate en /login, recibís el link por mail, y el navegador guarda la cookie:
+const cookieSnippet = `# Cookie de sesión (browser) — la obtenés logueándote por la UI de /login.
+# Flujo primario: email + password (con OTP por mail en alta de cuenta). El
+# navegador guarda la cookie de sesión:
 #   sb-<project-ref>-auth-token   (<project-ref> sale del .env, nunca acá)
 # Reusá esa cookie desde curl para llamar la API como ese usuario:
 curl '<API_BASE_URL>/me' \\
@@ -218,27 +221,39 @@ const bearerSnippet = `# Bearer PAT (headless) — sin navegador, ideal para CLI
 curl '<API_BASE_URL>/me' \\
   -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
 # → auth.source = "bearer", auth.scopes = [...]
+# COEXISTENCIA (ADR-0001 / ADR-0007): la cookie del browser y el Bearer PAT de
+# la MISMA cuenta conviven independientes — ninguno revoca al otro. Podés tener
+# sesión por UI y PAT por API al mismo tiempo, ambos válidos (resolveIdentity).
 # Endpoints que ya aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).`;
 
-const signinSnippet = `# Signup / Signin (mint PAT) — el bootstrap headless.
-# Los usuarios de magic-link NO tienen password, así que se provisiona uno
-# dedicado de QA vía /auth/signup (one-time), y después se mintea un PAT fresco
-# en cada corrida vía /auth/signin.
+const signinSnippet = `# Onboarding headless (verification-first, BK-166) — signup → confirm → signin.
+# El alta NO loguea a nadie: signup crea la cuenta SIN confirmar y dispara un
+# OTP por mail. Recién /auth/confirm verifica el código y mintea sesión + PAT.
 
-# 1) Provisionar QA bot (una vez por entorno) — password vive en el Epic, no acá:
+# 1) Crear la cuenta (una vez por entorno) — password vive en el Epic, no acá:
 curl -X POST '<API_BASE_URL>/auth/signup' \\
   -H 'content-type: application/json' \\
   -d '{
     "email": "<see credentials source>",
-    "password": "<see credentials source>",
-    "pat_name": "qa-bot-primary",
-    "pat_scopes": ["atc:read","atc:write","run:execute","workspace:admin"]
+    "password": "<see credentials source>"
   }'
-# 201 Created → { user, session, pat:{ token:"bk_pat_<prefix>.<secret>", scopes, expires_at } }
-#   El campo pat.token se muestra UNA sola vez — guardalo.
+# 202 Accepted → { status: "pending_confirmation", email }   (SIN session, SIN PAT)
+# Llega un código de 6-8 dígitos por mail (Resend, no-reply@mail.upexgalaxy.com).
 # 409 → el user ya existe; saltá al signin.
 
-# 2) Signin para mintear un PAT fresco (cada corrida de CI / sesión de test):
+# 2) Confirmar el OTP → mintea sesión + PAT (misma forma que signin):
+curl -X POST '<API_BASE_URL>/auth/confirm' \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "<see credentials source>",
+    "token": "<código de 6-8 dígitos del mail>",
+    "pat_name": "qa-bot-primary",
+    "pat_expires_in_days": 7
+  }'
+# 200 OK → { user, session, pat:{ token:"bk_pat_<prefix>.<secret>", scopes, expires_at }, warning }
+#   El campo pat.token se muestra UNA sola vez — guardalo.
+
+# 3) Signin para mintear un PAT fresco (cada corrida de CI / sesión de test):
 curl -X POST '<API_BASE_URL>/auth/signin' \\
   -H 'content-type: application/json' \\
   -d '{
@@ -247,11 +262,16 @@ curl -X POST '<API_BASE_URL>/auth/signin' \\
     "pat_name": "ci-run",
     "pat_expires_in_days": 7
   }'
-# 200 OK → misma forma que el signup.
-# 401 → credenciales mal (o usuario solo-magic-link sin password).`;
+# 200 OK → misma forma que confirm.
+# 401 → credenciales mal (o cuenta sin confirmar — usá /auth/confirm primero).
 
-const cookieMintSnippet = `# UI → API BRIDGE (hybrid): ya logueado en el navegador vía magic-link,
-# reusá la cookie de sesión para mintear un PAT sin re-autenticar.
+# Scopes por defecto (least-privilege): atc:read, atc:write, run:execute.
+# workspace:admin NO es default y NO se puede pedir acá (ADR-0005) — se mintea
+# vía POST /api/v1/tokens con un workspace_id donde seas admin/owner.`;
+
+const cookieMintSnippet = `# UI → API BRIDGE (hybrid): ya logueado en el navegador (email+password o
+# magic-link), reusá la cookie de sesión para mintear un PAT sin re-autenticar.
+# La cookie y el PAT conviven independientes (ADR-0001) — el mint NO toca la sesión.
 # 1) Logueate normal en /login.
 # 2) Copiá la cookie sb-<project-ref>-auth-token (DevTools → Application → Cookies),
 #    o pasá la sesión directo con --cookie.
@@ -262,38 +282,42 @@ curl -X POST '<API_BASE_URL>/tokens' \\
   -d '{ "name": "browser-hybrid", "scopes": ["atc:read","atc:write"] }'
 # 201 Created → { id, token:"bk_pat_<prefix>.<secret>", scopes, warning }
 #   token se muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}.
-# 4) Usá el Bearer para los tests de API. Este es el camino correcto también
-#    para usuarios de producción (solo magic-link) que automatizan Bunkai.`;
+# 4) Usá el Bearer para los tests de API. Cookie de UI + Bearer de API = ambos
+#    válidos a la vez para la misma cuenta, sin que uno revoque al otro.`;
 
 // ---------------------------------------------------------------------------
-// §6 Playwright — scripted regression drives the magic-link UI (passwordless:
-// assert the "magic link sent" state, do NOT pretend to intercept a token).
-// The UI→API bridge is the hybrid cookie→PAT path (headline of §6).
+// §6 Playwright — scripted regression drives the email-first password UI (the
+// primary login flow, BK-166): one email field → Continue → password step →
+// signed in. The UI→API bridge is the hybrid cookie→PAT path (headline of §6).
 // ---------------------------------------------------------------------------
 
 const scriptedFixture = `import { expect, test } from '@playwright/test';
 
-// Regresión de UI sobre el login passwordless (magic-link).
-// No interceptamos token: magic-link NO devuelve uno de forma síncrona.
-// Validamos el flujo visible — el mail con el link queda fuera del scope del browser.
-test('magic-link UI: envía el link y muestra el estado de confirmación', async ({ page }) => {
+// Regresión de UI sobre el login email-first con password (flujo primario, BK-166).
+// Un solo campo de email → Continue → check-email enruta → step de password → adentro.
+// (Cuenta nueva: el step "create" pide setear password y un OTP de 6-8 dígitos.)
+test('login email-first: email → password → entra a la app', async ({ page }) => {
   await page.goto('/login');
 
   // Selectores reales del login (ver tabla de data-testids abajo).
   await page.getByTestId('login-email').fill('qa.bot@bunkai-test.dev');
-  await page.getByTestId('login-submit').click();
+  await page.getByTestId('login-continue').click();
 
-  // El form pasa a "Check your inbox" — sin token, sin password.
-  await expect(page.getByText(/check your inbox/i)).toBeVisible();
-  await expect(page.getByText('qa.bot@bunkai-test.dev')).toBeVisible();
+  // check-email detectó cuenta existente + confirmada → step de password.
+  await page.getByTestId('login-password').fill('<see credentials source>');
+  await page.getByTestId('login-signin').click();
+
+  // Sesión establecida (cookie) → la app redirige fuera de /login.
+  await expect(page).not.toHaveURL(/\\/login/);
 });`;
 
 const hybridBridge = `import { expect, request, test } from '@playwright/test';
 
 // UI → API BRIDGE (el puente entre testing de UI y de API).
-// magic-link es passwordless: el login NO entrega token al navegador.
-// El puente real es HÍBRIDO — reusá la cookie de sesión del browser para
-// mintear un PAT vía POST /api/v1/tokens, y después testeás la API con Bearer.
+// El login establece una cookie de sesión (email+password o magic-link). El
+// puente HÍBRIDO reusa esa cookie para mintear un PAT vía POST /api/v1/tokens,
+// y después testeás la API con Bearer. La cookie y el PAT conviven independientes
+// (ADR-0001): mintear el PAT no toca la sesión del browser.
 
 // Fixture reutilizable: dado un browser ya logueado (storageState con la cookie
 // sb-<project-ref>-auth-token), mintea un PAT y expone un cliente API con Bearer.
@@ -368,9 +392,10 @@ const apiRequests: ApiRequest[] = [
     method: 'GET',
     url: '<API_BASE_URL>/me',
     description:
-      'Cookie de sesión (browser) — magic-link es PASSWORDLESS. Logueate en /login, '
+      'Cookie de sesión (browser). Logueate en /login (email+password, flujo primario), '
       + 'el navegador guarda sb-<project-ref>-auth-token y reusás esa cookie desde curl. '
-      + 'La respuesta trae auth.source = "cookie".',
+      + 'La respuesta trae auth.source = "cookie". La cookie convive con un Bearer PAT de '
+      + 'la misma cuenta sin que uno revoque al otro (ADR-0001).',
     headers: [
       { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor-de-DevTools>' },
     ],
@@ -391,8 +416,9 @@ const apiRequests: ApiRequest[] = [
     url: '<API_BASE_URL>/me',
     description:
       'Bearer PAT (headless) — sin navegador, ideal para CLI / CI / agentes. El token '
-      + 'tiene forma bk_pat_<prefix>.<secret> y va en cada request. Endpoints que ya '
-      + 'aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).',
+      + 'tiene forma bk_pat_<prefix>.<secret> y va en cada request. Convive con la cookie '
+      + 'de sesión de la misma cuenta — ninguno revoca al otro (ADR-0001 / ADR-0007). '
+      + 'Endpoints que ya aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).',
     headers: [
       { key: 'Authorization', value: 'Bearer bk_pat_<prefix>.<secret>' },
     ],
@@ -411,39 +437,73 @@ const apiRequests: ApiRequest[] = [
     method: 'POST',
     url: '<API_BASE_URL>/auth/signup',
     description:
-      'Provisionar QA bot (una vez por entorno). Los usuarios de magic-link NO tienen '
-      + 'password, así que se provisiona uno dedicado de QA. El password vive en el Epic, '
-      + 'no acá. 201 Created → el campo pat.token se muestra UNA sola vez. 409 → el user '
-      + 'ya existe; saltá al signin.',
+      'Crear cuenta (verification-first, BK-166). NO loguea ni mintea PAT: crea la cuenta '
+      + 'SIN confirmar y dispara un OTP de 6-8 dígitos por mail (Resend). El password (min 8) '
+      + 'vive en el Epic, no acá. 202 Accepted → seguí con /auth/confirm. 409 → el user ya '
+      + 'existe; saltá al signin.',
     headers: [
       { key: 'content-type', value: 'application/json' },
     ],
     body: `{
   "email": "<see credentials source>",
-  "password": "<see credentials source>",
-  "pat_name": "qa-bot-primary",
-  "pat_scopes": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
+  "password": "<see credentials source>"
 }`,
     response: `{
-  "user": { "id": "<uuid>", "email": "<email>" },
-  "session": { /* ... */ },
-  "pat": {
-    "token": "bk_pat_<prefix>.<secret>",
-    "scopes": ["atc:read", "atc:write", "run:execute", "workspace:admin"],
-    "expires_at": "<iso-8601>"
-  }
+  "status": "pending_confirmation",
+  "email": "<email>"
 }`,
     curl: `curl -X POST '<API_BASE_URL>/auth/signup' \\
   -H 'content-type: application/json' \\
   -d '{
     "email": "<see credentials source>",
-    "password": "<see credentials source>",
-    "pat_name": "qa-bot-primary",
-    "pat_scopes": ["atc:read","atc:write","run:execute","workspace:admin"]
+    "password": "<see credentials source>"
   }'
-# 201 Created → { user, session, pat:{ token, scopes, expires_at } }
-# El campo pat.token se muestra UNA sola vez — guardalo.
+# 202 Accepted → { status: "pending_confirmation", email }   (SIN session, SIN PAT)
+# Llega un OTP de 6-8 dígitos por mail → confirmá con POST /auth/confirm.
 # 409 → el user ya existe; saltá al signin.`,
+  },
+  {
+    id: 'confirm',
+    label: 'POST /auth/confirm',
+    method: 'POST',
+    url: '<API_BASE_URL>/auth/confirm',
+    description:
+      'Verificar el OTP del signup → establece la sesión (cookie) y mintea un PAT en la '
+      + 'misma llamada. token = código de 6-8 dígitos del mail. Scopes por defecto '
+      + '(least-privilege): atc:read, atc:write, run:execute. workspace:admin se rechaza acá '
+      + '(ADR-0005). 200 OK → pat.token se muestra UNA sola vez. 401 → código inválido o vencido.',
+    headers: [
+      { key: 'content-type', value: 'application/json' },
+    ],
+    body: `{
+  "email": "<see credentials source>",
+  "token": "<6-8 dígitos del mail>",
+  "pat_name": "qa-bot-primary",
+  "pat_expires_in_days": 7
+}`,
+    response: `{
+  "user": { "id": "<uuid>", "email": "<email>" },
+  "session": { "access_token": "<jwt>", "refresh_token": "<token>", "expires_at": 0, "token_type": "bearer" },
+  "pat": {
+    "token": "bk_pat_<prefix>.<secret>",
+    "id": "<uuid>",
+    "name": "qa-bot-primary",
+    "scopes": ["atc:read", "atc:write", "run:execute"],
+    "expires_at": "<iso-8601>"
+  },
+  "warning": "Store the PAT token now — it cannot be retrieved later."
+}`,
+    curl: `curl -X POST '<API_BASE_URL>/auth/confirm' \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "email": "<see credentials source>",
+    "token": "<6-8 dígitos del mail>",
+    "pat_name": "qa-bot-primary",
+    "pat_expires_in_days": 7
+  }'
+# 200 OK → { user, session, pat:{ token, scopes, expires_at }, warning }
+# El campo pat.token se muestra UNA sola vez — guardalo.
+# 401 → código inválido o vencido.`,
   },
   {
     id: 'signin',
@@ -451,9 +511,10 @@ const apiRequests: ApiRequest[] = [
     method: 'POST',
     url: '<API_BASE_URL>/auth/signin',
     description:
-      'Signin para mintear un PAT fresco (cada corrida de CI / sesión de test). '
-      + '200 OK → misma forma que el signup. 401 → credenciales mal (o usuario '
-      + 'solo-magic-link sin password).',
+      'Login email+password de una cuenta ya confirmada → mintea un PAT fresco (cada corrida '
+      + 'de CI / sesión de test). Scopes por defecto: atc:read, atc:write, run:execute '
+      + '(workspace:admin NO se mintea acá, ADR-0005). 200 OK → misma forma que confirm. '
+      + '401 → credenciales mal o cuenta sin confirmar (usá /auth/confirm primero).',
     headers: [
       { key: 'content-type', value: 'application/json' },
     ],
@@ -465,12 +526,15 @@ const apiRequests: ApiRequest[] = [
 }`,
     response: `{
   "user": { "id": "<uuid>", "email": "<email>" },
-  "session": { /* ... */ },
+  "session": { "access_token": "<jwt>", "refresh_token": "<token>", "expires_at": 0, "token_type": "bearer" },
   "pat": {
     "token": "bk_pat_<prefix>.<secret>",
-    "scopes": ["atc:read", "atc:write"],
+    "id": "<uuid>",
+    "name": "ci-run",
+    "scopes": ["atc:read", "atc:write", "run:execute"],
     "expires_at": "<iso-8601>"
-  }
+  },
+  "warning": "Store the PAT token now — it cannot be retrieved later."
 }`,
     curl: `curl -X POST '<API_BASE_URL>/auth/signin' \\
   -H 'content-type: application/json' \\
@@ -480,8 +544,8 @@ const apiRequests: ApiRequest[] = [
     "pat_name": "ci-run",
     "pat_expires_in_days": 7
   }'
-# 200 OK → misma forma que el signup.
-# 401 → credenciales mal (o usuario solo-magic-link sin password).`,
+# 200 OK → misma forma que confirm.
+# 401 → credenciales mal o cuenta sin confirmar (usá /auth/confirm primero).`,
   },
   {
     id: 'tokens-mint',
@@ -489,10 +553,10 @@ const apiRequests: ApiRequest[] = [
     method: 'POST',
     url: '<API_BASE_URL>/tokens',
     description:
-      'UI → API BRIDGE (hybrid): ya logueado en el navegador vía magic-link, reusá la '
-      + 'cookie de sesión para mintear un PAT sin re-autenticar. 201 Created → token se '
-      + 'muestra UNA vez. Listar: GET /tokens. Revocar: DELETE /tokens/{id}. Este es el '
-      + 'camino correcto también para usuarios de producción (solo magic-link).',
+      'UI → API BRIDGE (hybrid): ya logueado en el navegador (email+password o magic-link), '
+      + 'reusá la cookie de sesión para mintear un PAT sin re-autenticar — el mint NO toca la '
+      + 'sesión (ADR-0001). 201 Created → token se muestra UNA vez. Listar: GET /tokens. '
+      + 'Revocar: DELETE /tokens/{id}. Cookie + Bearer válidos a la vez para la misma cuenta.',
     headers: [
       { key: 'content-type', value: 'application/json' },
       { key: 'Cookie', value: 'sb-<project-ref>-auth-token=<valor>' },
@@ -531,7 +595,7 @@ export const qaConfig: QaConfig = {
     ui: 'shadcn/ui + Tailwind',
     db: 'Supabase (PostgreSQL 17)',
     orm: null,
-    auth: ['Supabase cookie', 'Bearer PAT'],
+    auth: ['Email + password (primary)', 'Magic link (secondary)', 'Supabase cookie', 'Bearer PAT'],
   },
   credentialsSource: {
     label: 'Jira Epic',
@@ -545,7 +609,7 @@ export const qaConfig: QaConfig = {
   api: {
     baseUrl: '/api/v1',
     loginEndpoint: '/api/v1/auth/signin',
-    tokenShape: '{ session, pat: { token: \'bk_pat_<prefix>.<secret>\', scopes, expires_at } }',
+    tokenShape: '{ user, session, pat: { token: \'bk_pat_<prefix>.<secret>\', scopes, expires_at }, warning }',
     loginHelper: null,
     signupEndpoint: '/api/v1/auth/signup',
     signinEndpoint: '/api/v1/auth/signin',
@@ -558,17 +622,19 @@ export const qaConfig: QaConfig = {
     ],
     apiRequests,
     patScopes: [
-      { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC.' },
-      { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs.' },
-      { scope: 'run:execute', purpose: 'Iniciar runs + postear resultados de steps (Sprint 2).' },
-      { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace.' },
+      { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC. (DEFAULT)' },
+      { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs. (DEFAULT)' },
+      { scope: 'run:execute', purpose: 'Iniciar runs + postear resultados de steps (Sprint 2). (DEFAULT)' },
+      { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace. NO es default — signin/confirm lo rechazan (ADR-0005); se mintea sólo vía POST /tokens con un workspace_id donde seas admin/owner.' },
     ],
     endpoints: [
       { method: 'GET', path: '/api/v1/me', purpose: 'Identidad + lista de workspaces + workspace activo. Acepta cookie y Bearer.' },
       { method: 'GET', path: '/api/v1/workspaces', purpose: 'Workspaces a los que pertenece el caller. Acepta cookie y Bearer.' },
-      { method: 'POST', path: '/api/v1/auth/signup', purpose: 'Provisiona usuario con password + mintea PAT (bootstrap headless).' },
-      { method: 'POST', path: '/api/v1/auth/signin', purpose: 'Login email+password → session + PAT fresco.' },
-      { method: 'POST', path: '/api/v1/auth/magic-link', purpose: 'Dispara el mail de magic-link (flujo passwordless del /login).' },
+      { method: 'POST', path: '/api/v1/auth/check-email', purpose: 'Routing email-first → { exists, confirmed }. Decide password vs create.' },
+      { method: 'POST', path: '/api/v1/auth/signup', purpose: 'Crea cuenta SIN confirmar + dispara OTP por mail → 202. Sin session ni PAT.' },
+      { method: 'POST', path: '/api/v1/auth/confirm', purpose: 'Verifica el OTP del signup → session + PAT fresco.' },
+      { method: 'POST', path: '/api/v1/auth/signin', purpose: 'Login email+password (cuenta confirmada) → session + PAT fresco.' },
+      { method: 'POST', path: '/api/v1/auth/magic-link', purpose: 'Dispara el mail de magic-link (login secundario "email me a link").' },
       { method: 'POST', path: '/api/v1/tokens', purpose: 'Mintea un PAT (cookie o Bearer). Token visible una sola vez.' },
       { method: 'GET', path: '/api/v1/tokens', purpose: 'Lista PATs (sin secretos).' },
       { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación.' },
@@ -619,19 +685,26 @@ export const qaConfig: QaConfig = {
   demoUsers: [
     {
       email: 'qa.bot@bunkai-test.dev',
-      note: 'QA bot headless — provisionar vía POST /api/v1/auth/signup; passwords en el Epic BK-29.',
+      note: 'QA bot headless — alta vía POST /auth/signup → /auth/confirm (OTP); passwords en el Epic BK-29.',
     },
   ],
   playwright: {
     loginTestIds: [
-      { id: 'login-email', purpose: 'Input de email del login (magic-link).' },
-      { id: 'login-submit', purpose: 'Botón "Send magic link".' },
+      { id: 'login-email', purpose: 'Input de email (paso único email-first).' },
+      { id: 'login-continue', purpose: 'Botón "Continue" — dispara check-email y enruta.' },
+      { id: 'login-password', purpose: 'Input de password (steps de signin y create).' },
+      { id: 'login-signin', purpose: 'Botón de login para cuenta existente (email+password).' },
+      { id: 'login-create', purpose: 'Botón de alta para email nuevo (setea password).' },
+      { id: 'login-otp', purpose: 'Input del código OTP de 6-8 dígitos (step verify).' },
+      { id: 'login-verify', purpose: 'Botón "Verify" — confirma el OTP.' },
+      { id: 'login-resend', purpose: 'Reenvía el código OTP.' },
+      { id: 'login-magic-link-toggle', purpose: 'Toggle al login secundario por magic-link.' },
     ],
     scriptedFixture,
     hybridBridge,
     cliExample: playwrightCli,
     agenticPrompts: [
-      'abrí /login, mandá un magic-link a qa.bot@bunkai-test.dev y sacá un screenshot del estado "Check your inbox"',
+      'abrí /login, escribí qa.bot@bunkai-test.dev, dale Continue y sacá un screenshot del step de password',
       'listá todos los empty states de la home',
       'reportá un bug si algún texto visible desborda su contenedor',
     ],
