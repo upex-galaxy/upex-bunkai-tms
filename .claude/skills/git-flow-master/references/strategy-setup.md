@@ -1,14 +1,14 @@
 # Strategy Setup — Mechanics (questionnaire, materialization, sync, persist, report)
 
-This file is the heavy reference behind operation **3.6 Strategy Setup** in `SKILL.md`. The SKILL.md section holds WHEN and the six-step flow; this file holds HOW. Per-strategy runbook RENDER rules live in `references/branching-strategies.md` → "Runbook render rules" — this file does not duplicate them.
+This file is the heavy reference behind operation **3.6 Strategy Setup** in `SKILL.md`. The SKILL.md section holds WHEN and the six-step flow; this file holds HOW. Per-strategy `git_strategy` field values live in `references/branching-strategies.md` → "git_strategy field rules (per strategy)" — this file does not duplicate them.
 
-Strategy Setup is **detection + questionnaire → conditional materialization → render**. Nothing is baked in. A single-branch strategy creates no branches and writes a minimal runbook; a strategy with an integration branch creates/syncs exactly the branches its row in the materialization table requires.
+Strategy Setup is **detection + questionnaire → conditional materialization → write the `git_strategy:` block in `.agents/project.yaml`** (in place; preserve the rest of the file; create the block if missing — NEVER a separate file). Nothing is baked in. A single-branch strategy creates no branches and writes a minimal block (integration null, all decisions `n/a`); a strategy with an integration branch creates/syncs exactly the branches its row in the materialization table requires and records them in the block.
 
 ---
 
 ## 1. Decision questionnaire — full detail
 
-Run after the strategy slug is resolved (Step 2). Ask the questions in order. For each question: if its decision marker already exists in `CLAUDE.md`, SKIP it (idempotent). If the question does not apply to the resolved strategy (gating column below), SKIP it. Present the default first and let the user override.
+Run after the strategy slug is resolved (Step 2). Ask the questions in order. For each question: if its `git_strategy.decisions.*` field in `.agents/project.yaml` is already set (not `n/a`/empty), SKIP it (idempotent — Q4 is keyed off `git_strategy.policy.*` being already populated). If the question does not apply to the resolved strategy (gating column below), SKIP it. Q4 (protection policy) applies to ALL strategies. Present the default first and let the user override.
 
 ### Q1 — Promotion method, integration → production
 
@@ -18,7 +18,7 @@ Run after the strategy slug is resolved (Step 2). Ask the questions in order. Fo
   1. **Fast-forward only** — production is always a pure ancestor of integration; promotion is `git merge --ff-only`. Keeps the two branches byte-identical at release. This is the default.
   2. **Merge commit (`--no-ff`)** — promotion creates a merge commit on production. Branches are NOT byte-identical; the ancestor invariant does not hold.
   3. **Squash** — promotion squashes integration into one commit on production. Rewrites SHAs; invariant does not hold.
-- **Marker**: `<!-- git-flow-master:promote-method:ff-only|merge-commit|squash -->`
+- **Persisted as**: `git_strategy.decisions.promote_method: ff-only|merge-commit|squash`
 - **Drives**: the release runbook block, and whether the "production is an ancestor of integration" invariant is rendered (only for `ff-only`).
 
 ### Q2 — Merge method, work-branch → integration (or → trunk)
@@ -29,7 +29,7 @@ Run after the strategy slug is resolved (Step 2). Ask the questions in order. Fo
   1. **Merge commit (`--no-ff`)** — preserves the branch topology in history. Default.
   2. **Squash** — one commit per work-branch on integration; linear history, loses intermediate commits.
   3. **Rebase + merge** — replays work-branch commits onto integration; linear history, preserves individual commits.
-- **Marker**: `<!-- git-flow-master:feature-merge:merge-commit|squash|rebase-merge -->`
+- **Persisted as**: `git_strategy.decisions.feature_merge: merge-commit|squash|rebase-merge`
 - **Drives**: how integration history accrues; referenced by the merge-methods table in the runbook.
 
 ### Q3 — Hotfix policy
@@ -40,11 +40,23 @@ Run after the strategy slug is resolved (Step 2). Ask the questions in order. Fo
   1. **Branch off production → PR to production → back-merge to integration same day** — keeps the ff-only invariant intact. Default.
   2. **Always via integration** — hotfix flows through integration like any change; slower but no back-merge to forget.
   3. **No policy** — decide per incident (records intent to NOT standardize).
-- **Marker**: `<!-- git-flow-master:hotfix-policy:branch-off-prod-backmerge|via-integration|none -->`
+- **Persisted as**: `git_strategy.decisions.hotfix_policy: branch-off-prod-backmerge|via-integration|none`
 - **Drives**: the hotfix runbook block + the invariant-maintenance note.
 - **Note (one-direction flows)**: for `gitlab-flow` the "back-merge to integration" is realized as a forward-port / cherry-pick up the environment chain (`production` → `pre-production` → `main`), not a literal merge back — gitlab-flow has no back-merges.
 
-> The defaults (ff-only / merge-commit / branch-off-prod-backmerge) are the `main-integration` worked-example choices. They are DEFAULTS. Always present them as overridable, never auto-select without showing the alternatives.
+### Q4 — Protected-branch bypass policy
+
+- **Applies to**: **ALL strategies** (every strategy has at least one protected branch). Not gated.
+- **Skipped for**: nothing — but SKIP on re-run if `git_strategy.policy.*` is already populated (non-default values already chosen).
+- **Three sub-decisions** (present the default first for each):
+  1. **`direct_push_to_protected`** — how the Push operation (SKILL.md 3.3) treats a direct push to a protected branch: `confirm` (default — always ask) / `forbidden` (refuse the direct push, route through a PR) / `allowed` (proceed after one confirmation). For `solo-main` the sensible default is `allowed`; for every multi-branch / PR-gated strategy the default is `forbidden`.
+  2. **`admin_bypass`** — `false` (default) / `true`. A team POLICY (intent) declaring whether a repo admin may bypass the gate for urgent changes. It is NOT enforcement — real capability still depends on the GitHub user's role. When `true`, the skill may OFFER a bypass but only after re-confirming at runtime that (a) the operator is actually an admin (ASK — the skill can't know the GitHub role) and (b) the specific irreversible action. When `false`, the skill NEVER offers a bypass.
+  3. **`require_pr_reviews`** — `null` (default — unspecified) / `0` / `N`. Minimum approvals before a merge to a protected branch. Informational (the skill does not enforce GitHub branch protection); recorded so the PR operation can surface the expectation.
+- **Persisted as**: `git_strategy.policy.direct_push_to_protected` + `git_strategy.policy.admin_bypass` + `git_strategy.policy.require_pr_reviews`.
+- **Drives**: the strictness of the Push gate (SKILL.md 3.3) and whether an admin bypass may ever be offered.
+- **Per-strategy defaults**: see `references/branching-strategies.md` → "git_strategy field rules (per strategy)" (each strategy's `policy:` example).
+
+> The Q1-Q3 defaults (ff-only / merge-commit / branch-off-prod-backmerge) are the `main-integration` worked-example choices. They are DEFAULTS. Always present them as overridable, never auto-select without showing the alternatives. The Q4 defaults (`confirm` / `false` / `null`, with `allowed` for `solo-main`) are likewise overridable.
 
 ---
 
@@ -112,12 +124,19 @@ git push origin <ahead-ref>:refs/heads/<behind-branch>
 
 Once branches are materialized and decisions captured, persist in this order:
 
-1. **Locate or create the `## Git Strategy` section** in `CLAUDE.md`. If a neutral placeholder section exists (shipped by the boilerplate), replace its body. If the section is absent, append it near the existing `## Git Workflow` section.
-2. **Write the markers** that apply to the resolved strategy (strategy + integration-branch if any + the applicable decision markers). Omit markers that do not apply.
-3. **Render the full runbook body** below the markers, following the per-strategy render rule in `references/branching-strategies.md` → "Runbook render rules". Single-branch strategies render the minimal section (marker + branch table + "work lands on main via PR" + commit rules) — no invariant, no promotion, no hotfix blocks.
-4. **Set up local tracking** for any newly-ensured branch (`git branch --set-upstream-to=origin/<branch> <branch>` or `git checkout -b <branch> origin/<branch>`), so later operations don't re-detect.
+1. **Write the `git_strategy:` block in `.agents/project.yaml`** in place (create the block if absent; overwrite the relevant fields if it exists; PRESERVE the rest of the file; NEVER a separate file). Populate the fields that apply to the resolved strategy (all paths nested under `git_strategy`):
+   - `strategy:` — the resolved slug.
+   - `branches:` — `production` (release/default branch), `integration` (long-lived integration branch name or `null`), `ephemeral_pattern` (strategy-specific on-demand trunk pattern or `null`).
+   - `protected:` — branches requiring explicit confirm before a direct push.
+   - `decisions:` — `promote_method` / `feature_merge` / `hotfix_policy`, each captured from Q1/Q2/Q3 or left `n/a` when the question does not apply.
+   - `policy:` — `direct_push_to_protected` / `admin_bypass` / `require_pr_reviews`, captured from Q4 (applies to every strategy).
+   - `branch_prefixes:` — `precedence` + naming patterns (carry the defaults unless the user overrides).
+   - `description:` — the one-paragraph human summary of the flow for this repo.
+   - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema.
+   Per-strategy field values: `references/branching-strategies.md` → "git_strategy field rules (per strategy)".
+2. **Set up local tracking** for any newly-ensured branch (`git branch --set-upstream-to=origin/<branch> <branch>` or `git checkout -b <branch> origin/<branch>`), so later operations don't re-detect.
 
-The markers are the source of truth; the prose is for humans. A later Strategy Setup re-run re-reads the markers and only fills gaps.
+CLAUDE.md's `## Git Strategy` section is a shipped pointer to this block — NEVER write strategy policy there. The `git_strategy:` block is the source of truth; its `description:` field is the human summary. A later Strategy Setup re-run re-reads the block and only fills the `git_strategy.decisions.*` fields still at `n/a`.
 
 ---
 
@@ -132,11 +151,16 @@ Branches:
   - <branch>: created off <base> | already existed | ff-synced to <ahead-ref> (no force) | skipped (n/a for this strategy)
 
 Decisions captured:
-  - promote-method: <value | n/a>
-  - feature-merge:  <value | n/a>
-  - hotfix-policy:  <value | n/a>
+  - promote_method: <value | n/a>
+  - feature_merge:  <value | n/a>
+  - hotfix_policy:  <value | n/a>
 
-Runbook: CLAUDE.md → ## Git Strategy (<N> markers, <render-shape> render)
+Policy captured:
+  - direct_push_to_protected: <forbidden | confirm | allowed>
+  - admin_bypass: <true | false>
+  - require_pr_reviews: <null | 0 | N>
+
+Definition: .agents/project.yaml (git_strategy block, <N> fields populated)
 
 Next: branch off <work-branch-base> to start work; the Branch operation will use this strategy automatically.
 ```

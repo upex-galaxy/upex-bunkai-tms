@@ -79,7 +79,7 @@ The methodology reads Jira issue state through the local sync script, NOT throug
 
 **Why not `/acli` view:** its default projection omits every `customfield_*`, so reading AC / Scope / etc. through it returns `null` — looking empty even when the field is richly populated. Empirically-confirmed trap (see the `/acli` skill gotchas). Custom-field reads MUST go through the sync script (or REST `GET /rest/api/3/issue/{KEY}?fields=...`).
 
-**No local authoring.** Do NOT hand-write `.context/PBI/**` content (epic.md / story.md / per-field files / sprint-sequence.md). All issue content lives in Jira; the sync script is the one tool that materializes it locally. Author in Jira (create / REST PUT), then `get` / `jql` / `pull` to refresh the local cache.
+**No local authoring.** Do NOT hand-write `.context/PBI/**` content (epic.md / story.md / per-field files). All issue content lives in Jira; the sync script is the one tool that materializes it locally. Author in Jira (create / REST PUT), then `get` / `jql` / `pull` to refresh the local cache. Exception — `.context/dev-roadmap.md` is NOT part of this sync-owned cache: it is owned by `/dev-roadmap` (which regenerates §4 from the dependency graph and hand-authors the rest, §2/§3/§5/§6), so it must NOT be lumped with the read-only PBI mirror.
 
 ### Auditing an already-populated story (gap-safe review)
 

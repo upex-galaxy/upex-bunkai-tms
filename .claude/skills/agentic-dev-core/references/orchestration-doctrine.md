@@ -1,12 +1,14 @@
 # Orchestration Doctrine
 
-> **Mirror**: this file mirrors `CLAUDE.md` §"Orchestration Mode (Subagent Strategy)".
+> **Mirror**: this file mirrors `CLAUDE.md` §3 ("ORCHESTRATION MODE — PERMANENTLY ACTIVE").
 > If you change the doctrine, update both files. The root CLAUDE.md is the canonical source.
 > Rationale: subagents need to load this without pulling the full CLAUDE.md into their context.
 
 ## Orchestration Mode (Subagent Strategy)
 
 **Core Principle**: Main conversation = command center. Subagents = executors.
+
+> **Sanctioned exceptions** (not violations of the doctrine): a skill MAY define an explicit, user-invoked all-inline (**Solo**) mode that dispatches no subagents, AND MAY pin a specific step to the session that owns a non-delegable resource (e.g. a browser/extension or user auth bound to the main session). Example: `/sprint-development` Solo mode, and its live-UI step when the chosen tool is the session-bound claude-in-chrome MCP.
 
 **Use subagents for**: Reading/writing multiple files, MCP operations, research across repos, git operations, verification (tests/types/lint), multi-file edits.
 

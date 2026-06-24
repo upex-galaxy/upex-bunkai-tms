@@ -2,113 +2,50 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-88)
 
-# ATP DRAFT — BK-88: Settings | Manage Personal Access Tokens
+# ATP ACTIVE — BK-88: Settings | Manage Personal Access Tokens
 
-***Status***: Shift-Left DRAFT — Awaiting PO Estimation
-***Refined****: 2026-06-10 | ****Story quality***: Needs Improvement
-***Outlines***: 29 total (Positive 9, Negative 11, Boundary 3, Integration 3, API 3)
-
----
-
-## Coverage summary
-
-| Type | Count |
-| --- | --- |
-| Positive | 9 |
-| Negative | 11 |
-| Boundary | 3 |
-| Integration | 3 |
-| API | 3 |
-| ***Total**** | ****29*** |
+***Status***: ACTIVE — API-only phase (2026-06-12)
+***Mode***: Partial sprint — UI outlines deferred (BK-87 not shipped)
+***Outlines***: 14 API-executable | 17 UI-deferred
 
 ---
 
-## Critical Questions for PO (BLOCK sprint planning)
+## API-Executable TCs (this sprint)
 
-1. Should revoked tokens appear in the list? If yes, what is the visual treatment (badge, grayed row, sort order)?
-2. What is the exact copy for the revocation confirmation dialog?
-3. Are expiry date and workspace binding shown in the token list row and issuance form?
-4. What is the expected behavior when the Clipboard API is unavailable during the secret reveal?
+| TC | Summary | Auth | Expected |
+| --- | --- | --- | --- |
+| BK-120 | TC01: POST happy path — token issued, secret returned once | cookie session | 201 |
+| BK-121 | TC02: GET happy path — prefix only, {tokens:[...]} shape | Bearer PAT | 200 |
+| BK-122 | TC03: DELETE happy path — soft-revoke, 200 | cookie session | 200 |
+| BK-123 | TC04: POST unauthenticated → 401 | none | 401 |
+| BK-124 | TC05: GET unauthenticated → 401 | none | 401 |
+| BK-125 | TC06: DELETE unauthenticated → 401 | none | 401 |
+| BK-126 | TC07: POST invalid scope enum value → 422 | cookie session | 422 |
+| BK-127 | TC08: POST workspace:admin scope by member-role user → 403 ⚠️ BK-117 | cookie session | 403 |
+| BK-128 | TC09: POST name = 80 chars (boundary accept) → 201 | cookie session | 201 |
+| BK-129 | TC10: POST name = 81 chars (boundary reject) → 422 | cookie session | 422 |
+| BK-130 | TC11: GET RLS — User B cannot see User A tokens | Bearer PAT | 200 (own tokens only) |
+| BK-131 | TC12: DELETE RLS — User B cannot revoke User A token → 404 | cookie session | 404 |
+| BK-132 | TC13: DELETE already-revoked token → 404 | cookie session | 404 |
+| BK-133 | TC14: Revoked PAT → 401 on subsequent API call | revoked PAT | 401 |
 
----
-
-## Technical Questions for Dev (block implementation)
-
-1. Will GET /api/v1/tokens be updated to filter revoked tokens server-side, or is filtering purely client-side?
-2. Is there a maximum number of active tokens per user enforced at DB/API level?
-3. Is POST /api/v1/tokens rate-limited?
-4. What is the token prefix display format in the list (bk*pat*prefix or prefix only)?
-5. Is the Tokens section a tab within BK-87 Settings Hub or a standalone route?
-6. Security review required: confirm token secret never appears in server logs, client console, or error payloads; confirm mintPat() uses cryptographically secure randomness.
-
----
-
-## Test outline names
-
-### Positive
-
-- Should issue a token and display the full secret exactly once in the reveal dialog
-- Should hide the secret and show only the prefix after the reveal dialog is dismissed
-- Should copy the full token to clipboard when the copy control is activated
-- Should display name, scopes, and created date for each token in the list
-- Should show a revoked visual state for revoked tokens in the list
-- Should revoke a token and update the row to revoked state without page reload
-- Should cancel revocation and keep the token active when the confirmation dialog is dismissed
-- Should display an empty state with explanation and a primary issue CTA when no tokens exist
-- Should transition from empty state to token list after the first token is issued
-
-### Negative
-
-- Should reject token issuance when no scopes are selected
-- Should reject token issuance when the token name exceeds 80 characters
-- Should reject an unauthenticated request to issue a token
-- Should reject an unauthenticated request to list tokens
-- Should reject an unauthenticated request to revoke a token
-- Should return 404 (not 403) when User B attempts to DELETE User A token
-- Should reject a POST with an invalid scope value not in the AccessTokenScope enum
-- Should reject issuance of workspace:admin scope by a user without admin/owner role
-- Should handle a 404 gracefully when revoking an already-revoked token
-- Should handle a 5xx error gracefully when revocation fails
-- Should reject cross-tenant GET — User B cannot see User A tokens
-
-### Boundary
-
-- Should accept a token name of exactly 80 characters
-- Should reject a token name of exactly 81 characters
-- Should accept token issuance with expires*in*days = 365
-
-### Integration
-
-- Should enforce session authentication on all three token management endpoints
-- Should enforce RLS so that User B cannot see User A tokens
-- Should reflect revocation immediately in subsequent API authentication attempts
-
-### API
-
-- POST /api/v1/tokens — issues token, returns full secret once
-- GET /api/v1/tokens — lists tokens with prefix only, no secret
-- DELETE /api/v1/tokens/{id} — soft-revoke, RLS-enforced 404 for cross-tenant
+> ***ERROR:**** ****TC08 (BK-127) references known defect BK-117 (HIGH)*** — expected to FAIL until BK-117 is resolved.
+TC08 is DISTINCT from TC07: TC07 tests an invalid enum string (e.g. "admin:all"), TC08 tests a valid scope ("workspace:admin") with insufficient role.
 
 ---
 
-## Key risks
+## UI-Deferred TCs (17 outlines)
 
-| # | Risk | Impact |
-| --- | --- | --- |
-| 1 | Secret inadvertently rendered in DOM after dialog dismiss | Critical |
-| 2 | Revoked tokens appear without visual distinction | High |
-| 3 | BK-87 Settings Hub slips — BK-88 UI QA blocked | High |
-| 4 | Clipboard copy silently fails in staging (HTTP or permission) | Medium |
-| 5 | workspace:admin scope issued to member-role user — privilege escalation | Critical |
-| 6 | Full token secret lands in server logs or client console | Critical |
+Blocked on BK-87 (Settings Hub — Ready For Dev). Will activate when BK-87 reaches Ready For QA.
 
 ---
 
-## Story quality verdict
+## Open PO questions (block UI TCs only)
 
-***Needs Improvement*** — 6 AC-level gaps identified (error paths for POST, revoked token visibility, expiry display, workspace UI, confirmation dialog copy, clipboard fallback). Security-critical gap: GET /api/v1/tokens does not filter revoked tokens; AC is silent on list visibility. Entire UI surface blocked on BK-87 (Ready For Dev). API-level testing can proceed independently.
-
-**Full refinement detail (526 lines)****:**** .context/PBI/epics/EPIC-BK-85-account-settings/stories/STORY-BK-88-settings-manage-personal-access-tokens/shift-left-refinement.md**
+1. Should revoked tokens appear in the list? Visual treatment?
+2. Exact copy for revocation confirmation dialog?
+3. Are expiry date and workspace binding shown in list row and form?
+4. Clipboard API unavailability fallback?
 
 ---
 _Synced from Jira by sync-jira-issues_

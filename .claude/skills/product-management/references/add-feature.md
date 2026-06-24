@@ -757,7 +757,7 @@ The regenerated `.context/PBI/epic-tree.md` reflects the live Jira backlog graph
 
 Full details (Kahn algorithm, cycle detection, output schema) → `references/sprint-sequencing.md`.
 
-**Output:** this step ALWAYS persists the result to `.context/PBI/sprint-sequence.md` (overwrite on re-run).
+**Output:** this step invokes `/dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) — it DELEGATES the write, it no longer authors the file itself. §4 is regenerated (overwritten) on re-run; §2/§3/§5/§6 are surgically preserved.
 
 **When to re-run:** whenever the dependency graph changes (new stories, new links, removed links).
 
@@ -784,7 +784,7 @@ Full details (Kahn algorithm, cycle detection, output schema) → `references/sp
 - ✅ `story.md` files complete (no AC/Scope/OOS duplicated)
 - ✅ `epic.md` updated with real IDs
 - ✅ `epic-tree.md` updated
-- ✅ Sprint sequencing executed and persisted to `.context/PBI/sprint-sequence.md`
+- ✅ Sprint sequencing executed and written via `/dev-roadmap` to `.context/dev-roadmap.md` §4
 
 ---
 
@@ -1082,7 +1082,7 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 12. Create story.md files (no AC/Scope/OOS duplicated)
 13. Update epic.md with real IDs
 14. Update epic-tree.md
-15. Sprint sequencing (final) → persists .context/PBI/sprint-sequence.md
+15. Sprint sequencing (final) → invoke /dev-roadmap → .context/dev-roadmap.md §4
 ✅ Completed
 ```
 
@@ -1124,7 +1124,7 @@ STORY-{PROJECT}-{NUMBER}-{descriptive-name}/
 - ✅ Did you transition to the default status (`story_default` / `epic_default`)?
 - ✅ Did you publish the dependencies as issue links?
 - ✅ (Level 2) Did the Scope overlap check pass?
-- ✅ (Level 2) Did you run sprint-sequencing and did it persist `.context/PBI/sprint-sequence.md`?
+- ✅ (Level 2) Did you run sprint-sequencing and did it write `.context/dev-roadmap.md` §4 via `/dev-roadmap`?
 
 ### When Creating Local Files
 
@@ -1171,7 +1171,7 @@ Depending on the level, the following are generated:
 **Updated files:**
 
 - `epic-tree.md`
-- `.context/PBI/sprint-sequence.md` (generated/overwritten by sprint-sequencing)
+- `.context/dev-roadmap.md` §4 (produced by invoking `/dev-roadmap`; §2/§3/§5/§6 preserved)
 
 ---
 
@@ -1183,7 +1183,7 @@ Depending on the level, the following are generated:
 
 **Next files (after the split):**
 
-- Multiple epics will be created via Level 2 (each one includes its own sprint-sequence).
+- Multiple epics will be created via Level 2 (each one writes the execution-sprint sort to `.context/dev-roadmap.md` §4 via `/dev-roadmap`).
 
 ---
 
@@ -1242,7 +1242,7 @@ Depending on the level, the following are generated:
 - `references/jira-operations.md` — operation → tool-layer matrix (Primary / Fallback / Last resort). Consult before any Jira write.
 - `references/dependency-linking.md` — directionality table, link-type semantics, valid dependency sources, reporting.
 - `references/description-custom-field-dedup.md` — body ↔ custom fields contract and audit procedure.
-- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection, persistence in `.context/PBI/sprint-sequence.md`.
+- `references/sprint-sequencing.md` — Kahn topological sort, output schema, cycle detection; the sort result is written via `/dev-roadmap` into `.context/dev-roadmap.md` §4.
 - `references/jira-publishing-gotchas.md` — two known ADF bugs (combined `code` + `strong` marks; MCP batched custom fields) and workarounds.
 
 ---

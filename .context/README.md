@@ -19,7 +19,8 @@ This directory is what makes a fresh AI session productive on day one. Every fil
 │   ├── project-dev-guide.md       How to build features here         (/project-foundation Phase 4 embedded)
 │   └── domain-glossary.md         Canonical domain terminology       (/project-foundation Phase 4 Step 6; hand-maintained, append-only)
 │
-├── master-implementation-plan.md  High-level dependency-cascaded roadmap (/master-implementation-plan)
+├── master-implementation-plan.md  High-level dependency-cascaded roadmap — EPIC/strategy (/master-implementation-plan)
+├── dev-roadmap.md                 Ticket-level dependency execution roadmap — TICKET/sequence (/dev-roadmap; subsumes PBI/sprint-sequence.md)
 │
 ├── PRD/                           Output of /project-foundation Phase 2 — Product Requirements
 │   └── README.md                  Phase placeholder (see file)
@@ -49,7 +50,8 @@ Every file in `.context/` has an owner. Do not edit auto-generated files by hand
 | `business/business-api-map.md`                      | `/business-api-map` command             | Invoked by `/project-foundation` Phase 4 Step 3        |
 | `business/project-dev-guide.md`                     | `/project-foundation` (Phase 4 Step 4)  | Embedded skill logic; re-run if architecture changes   |
 | `business/domain-glossary.md`                       | `/project-foundation` (Phase 4 Step 6); updated when new terms surface (via `/product-management` flag) | Hand-maintained, append-only, never regenerated        |
-| `master-implementation-plan.md`                     | `/master-implementation-plan` command   | Invoked by `/project-foundation` Phase 4 Step 5        |
+| `master-implementation-plan.md`                     | `/master-implementation-plan` command   | Invoked by `/project-foundation` Phase 4 Step 5. EPIC/strategy layer. |
+| `dev-roadmap.md`                                    | `/dev-roadmap` command                  | TICKET/sequence layer. Surgical UPDATE (regenerates §4 Kahn sort, preserves hand-authored §2/§3/§5/§6). Subsumes `PBI/sprint-sequence.md`. Cascaded from `/master-implementation-plan` + `/product-management`; bootstrapped by `/sprint-development` Phase 0. |
 | `PRD/*.md`                                          | `/project-foundation` (Phase 2)         | Executive summary, personas, MVP scope, user journeys  |
 | `SRS/*.md`                                          | `/project-foundation` (Phase 2)         | Functional / non-functional / architecture / API specs |
 | `ADR/ADR-NNNN-<slug>.md`                            | Human architect, or `/project-foundation` (SRS) / `/sprint-development` (Stage 1) — AI drafts for human approval | **Exception: append-only, never regenerated.** Superseded by a newer ADR, never overwritten or hand-re-run. See `ADR/README.md`. |

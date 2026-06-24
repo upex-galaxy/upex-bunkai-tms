@@ -286,6 +286,7 @@ Each gap should be phrased as a one-line spike: "Spike: choose payment provider 
 
 ## After generation
 
+- **Cascade to `/dev-roadmap`** (strategy → sequence): after the Master Sprint structure changes, invoke `/dev-roadmap` so the ticket-level execution roadmap re-reconciles against the updated Master Sprint grouping. This is the strategy→sequence handoff — the two docs live at different altitudes (this one = "why this epic order"; `dev-roadmap.md` = "what ticket next + what unblocks it"). Skip only if no stories/links exist yet (nothing to sequence).
 - Update `CLAUDE.md` Context System section to reference `.context/master-implementation-plan.md` if not already present.
 - In UPDATE mode: show diff summary, wait for explicit confirmation before overwriting. Highlight changes that promote / demote a feature across Master Sprints — those are the high-attention deltas.
 - Report:

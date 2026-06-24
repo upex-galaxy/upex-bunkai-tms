@@ -132,3 +132,6 @@ dbhub.toml
 
 # ----- 2026-06-08 (sync) -----
 .claude/scheduled_tasks.lock
+
+# ----- 2026-06-24 (sync) -----
+.template/claude-md.upstream.sha

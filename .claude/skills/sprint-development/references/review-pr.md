@@ -581,3 +581,37 @@ Revisa el código implementado para STORY-{PROJECT_KEY}-{ISSUE_NUM}-{nombre}.
 ---
 
 **Nota:** Este flujo revisa código estáticamente. Los unit tests son responsabilidad de la implementación; los integration/E2E tests viven en su propio proceso.
+
+---
+
+## Adjudication contract (English — orchestrator-owned)
+
+> This reviewer is an **independent, adversarial agent**: fresh context, no stake in the implementation. It **proposes** findings; it does **not** apply fixes. The orchestrator then **adjudicates** each finding before anything loops back to Stage 2. This block is the contract that governs that step; it sits on top of the Spanish review report above (the severity emojis 🚨/⚠️/💡 map to the scale below).
+
+### Severity scale
+
+| Severity | Meaning | Maps to report section |
+| -------- | ------- | ---------------------- |
+| `BLOCKER` | Merge-stopping: failing AC, security hole, broken build, data-loss risk. | 🚨 CRITICAL |
+| `MAJOR` | Should fix before merge: real defect, DRY/standards violation with impact. | ⚠️ MEDIUM |
+| `MINOR` | Low-impact; fix or file a follow-up. | (between MEDIUM and NIT) |
+| `NIT` | Cosmetic / preference; optional. | 💡 NITPICKS |
+
+Every finding carries `file:line` evidence. No evidence → not a finding.
+
+### Per-finding adjudication
+
+The orchestrator verifies each finding against the **actual diff + AC** and records a verdict. Only `legitimate` findings become fixes (loop back to Stage 2 via `fix-issues.md`); `false-positive` findings are dismissed **with a one-line reason** — never silently, never blindly applied.
+
+| # | finding | severity | verdict (`legitimate` \| `false-positive`) | reason | action |
+| - | ------- | -------- | ------------------------------------------ | ------ | ------ |
+| 1 | `path:line` — short description | BLOCKER\|MAJOR\|MINOR\|NIT | legitimate | why the diff/AC confirms it | fix via `fix-issues.md` |
+| 2 | `path:line` — short description | BLOCKER\|MAJOR\|MINOR\|NIT | false-positive | why the diff/AC refutes it | dismissed (no change) |
+
+**Rules:**
+
+1. Only `legitimate` findings loop back to Stage 2. Applying a false positive is as much a defect as ignoring a real one.
+2. Every `false-positive` needs an explicit one-line reason (e.g. "Postgres `search_path` is set per-session by the framework; not reachable from this diff").
+3. Record the full per-finding verdict table in `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` (topic_key `pbi/{ticket}/review`).
+4. In **SOLO** mode the orchestrator runs a deliberate fresh-eyes review pass inline, then adjudicates with the same table.
+5. Architectural rework (rare) does not loop to Stage 2 — it loops to Stage 1 with a new spec (+ ADR if the decision is architectural and hard to reverse).

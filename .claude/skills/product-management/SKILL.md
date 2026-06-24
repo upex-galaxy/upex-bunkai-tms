@@ -274,7 +274,7 @@ When the user asks "what do we work on first?", "qué historias trabajamos prime
 
 Read `references/sprint-sequencing.md`.
 
-Output: `.context/PBI/sprint-sequence.md` (always persisted, overwrite on re-run) + an inline summary table. Session-managed: NO (one-shot derivation, no plan.md required).
+Output: invoke `/dev-roadmap` to write the execution-sprint sort to `.context/dev-roadmap.md` §4 (which also preserves the hand-authored backbone/edges/gates) + an inline summary table. This workflow DELEGATES the write to `/dev-roadmap`; it no longer authors a file itself. Session-managed: NO (one-shot derivation, no plan.md required).
 
 ## Archive (A / B / C only)
 

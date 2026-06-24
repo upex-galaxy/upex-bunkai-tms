@@ -86,6 +86,7 @@ Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own S
 | BK-20 | ATC Search — project-scoped full-text search + Projects toolbar filter | Facu Barea | #44 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Facu Barea (shift-left QA owner). Project-scoped FTS search. Merge commit 3574d50. |
 | BK-23 | ATC Duplicate — deep-copy ATC with steps, assertions, AC bindings | Benjamin Segovia | #45 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Benjamin Segovia (shift-left QA owner). Atomic deep-copy RPC. Merge commit 5f02be9. |
 | BK-22 | ATC Usage — "used in N tests" usage report | Andrés Daniel Cumare Morales | #46 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Andrés Daniel Cumare Morales (shift-left QA owner). Used-in-N-tests report. Merge commit efcb282. |
+| BK-142 | [BK-17] Staging Jira import `jira_unauthorized` — ATLASSIAN_* creds missing in Vercel `staging` Custom Env | Ely | — (env config, no PR/branch) | 2026-06-21 (redeploy) | — | **Ready For QA**, root_cause=Config/Env Error, fix=Bugfix, assignee Andrés (reporter). NOT a UI/API defect — the 3 Jira creds (`ATLASSIAN_URL`/`EMAIL`/`API_TOKEN`, read at runtime in `lib/jira/client.ts:120`) were absent from **every** Vercel scope. Key gotcha: the `staging` branch deploys to a Vercel **Custom Environment named `staging`** (not generic `Preview`), so the prior QA attempt that set vars on "Preview" never reached the staging runtime. Fix: set all 3 (encrypted, from `.env`) on **Production + staging** scopes, redeployed latest staging deployment (`target=staging`, status Ready). Generic `Preview` scope blocked by Vercel CLI 54.5 non-interactive branch-disambiguation quirk → follow-up only. Production scope set; applies on next `main` promotion (no forced prod redeploy per request). |
 
 ### Blocked
 
@@ -120,6 +121,13 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-21 — BK-142 fixed (env config, no code) — staging Jira creds restored
+- **BK-142** root cause: the 3 `ATLASSIAN_*` creds (read at runtime by the import worker, `lib/jira/client.ts:120`) were absent from **every** Vercel scope on `upex-bunkai-tms`. Not a UI/API defect — pure environment configuration.
+- **Diagnosis that prior QA missed**: the `staging` branch deploys to a Vercel **Custom Environment named `staging`**, not the generic `Preview` scope. The earlier QA attempt set vars on "Preview" → never reached the staging runtime (evidence: 6 identical `jira_unauthorized` jobs even after their redeploys).
+- **Fix**: set `ATLASSIAN_URL`/`ATLASSIAN_EMAIL`/`ATLASSIAN_API_TOKEN` (encrypted, values from `.env`) on **Production + staging** scopes via `vercel env add`; redeployed the latest staging deployment (`vercel redeploy`, `target=staging`, status Ready) so the creds inject. No branches/PRs (config-only).
+- **Gaps/notes**: generic `Preview` scope could not be set non-interactively (Vercel CLI 54.5 loops on `git_branch_required` even with `--value --yes`) — follow-up only if feature-branch previews must run the import. Production scope set but no forced prod redeploy (applies on next `main` promotion, per request).
+- Jira: Open → In Progress (`start fixing`) → Ready For QA (`Hard pushed`); `root_cause=Config/Env Error`; fix-doc comment posted; assignee = reporter (Andrés). **Live verification of the import deferred to QA per request.**
 
 ### 2026-06-20 — ATC/Test story frontier shipped (BK-20 #44, BK-23 #45, BK-22 #46)
 - Orchestrated sprint loop shipped **BK-20 / BK-23 / BK-22** to staging (PRs #44 / #45 / #46, merge commits 3574d50 / 5f02be9 / efcb282). All three Ready For QA and assigned to their shift-left QA owners (Facu Barea / Benjamin Segovia / Andrés Daniel Cumare Morales).
