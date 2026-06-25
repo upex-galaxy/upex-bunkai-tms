@@ -18,14 +18,16 @@
 10. **SCRIPTS = READ `package.json` DIRECTLY**. NEVER quote build/test/lint commands from this file or any doc — drift kills. Open `package.json` first, then answer.
 11. **DEFAULT COMMUNICATION MODE — CAVEMAN**: If `caveman` skill installed user-level (`~/.claude/skills/caveman/`), respond caveman level `full` by default (drop articles, fillers, pleasantries; fragments OK; technical terms exact; code/commits/PRs/security warnings always normal English — built-in boundary). Revert verbose ONLY when user explicitly say "normal mode", "habla normal", "stop caveman", "speak normally", "be verbose", "más detallado" or equivalent. If skill not installed, rule = no-op.
 12. **LANGUAGE DETECTION + MIRRORING**: At start of every conversation, READ FULL USER MESSAGE (not just opening words) to detect user working language. Mirror it in ALL conversational replies (questions, summaries, explanations, status). Repo artifacts ALWAYS English regardless: code, comments, commits, PR titles + bodies, branch names, file names, test names, config values, + any external action artifact (Jira, GitHub issues/PRs/comments, Slack, emails, deploy notes, MCP tool inputs). Override: if user explicitly requests another language for specific artifact ("crea el ticket en español"), honor only for that artifact + keep defaulting English unless re-requested.
-13. **STRUCTURED FEEDBACK + LONG REPORTS — WOKITOKI (`toki`)**: Two triggers, both PREFER `toki` (not mandatory — AI judges per reply):
+13. **NO GLOBAL DISCARDS (MULTI-SESSION SAFETY)**: PROHIBITED to run repo-wide destructive git commands: `git restore .`, `git checkout -- .`, `git reset --hard`, untargeted `git stash`, `git clean -f`. Multiple agent sessions may share this working tree without worktrees — a global discard silently destroys another session's uncommitted work, unrecoverably. Discard ONLY explicit paths YOU modified in THIS session (`git restore <path>...` / `git stash push <path>...`). Unsure who modified a file → do NOT restore it — ask the user. (Cited by `/git-flow-master` G9 + conflict-resolution as Critical Rule #13.)
+14. **LIVE-UI-FIRST (design-fidelity refinement of Rule #15)**: the CURRENT LIVE UI is the source of truth for fidelity, NOT the mockup. Mockup = INSPIRATION to stay close to or improve upon, adapted to what already exists. Therefore: (1) before building UI, INSPECT the current live components and REUSE them; (2) never blind-copy the mockup where it conflicts with the improved live UI; (3) navigation — how a user reaches and moves through the app — is paramount for UX; (4) if the mockup has something genuinely good the live UI lacks, do NOT force it into the current story — file it as a future tech-story / tech-debt. Live-UI validation (`/sprint-development`) checks consistency with the current app + design system, not pixel-match to the mockup. Composes with — does NOT replace — the mockup/ADR ratification machinery in Rule #15: a deliberate departure with no mockup is still recorded as a §5 spec-only divergence (+ ADR if architectural).
+15. **DESIGN FIDELITY — FOLLOW THE MASTER DESIGN PLAN**: The design contract is `.context/design/master-design-plan.md` (the visual analog of the master implementation plan). Before writing or reviewing ANY UI for a user story: (a) READ that plan, (b) find the US in §8 US→Screen map to know which screen(s) it renders into, (c) open that screen's spec in §4 + the frozen contract in §2, (d) implement against the MOCKUP (`.context/designs/bunkai-test-management-tool/`), guided by the LIVE-UI-FIRST refinement in Rule #14 (reuse current live components, mockup = inspiration). NEVER invent UI on the fly. NEVER re-pick colors/radii/fonts/spacing — reuse frozen tokens (§2). Principle: **maximize UI fidelity to the mockup WITHOUT backend refactors** — UI-only gaps get corrected; backend-cost divergences (auth infra, schema) get a faithful UI as a presentation layer, never a schema/auth revert. Any deliberate departure from the mockup must be ratified in §5 + an ADR FIRST — silent divergence is a defect. New US → add its §8 row before dev starts.
+16. **STRUCTURED FEEDBACK + LONG REPORTS — WOKITOKI (`toki`)**: Two triggers, both PREFER `toki` (not mandatory — AI judges per reply):
     - **(a) Multi-point feedback** — reply needs user to react to **>3 decision points at once** (mix single/multi/toggle), feedback **anchored to exact phrase** (highlight-to-quote), or **image pasted back**.
     - **(b) Long report delivery** — whenever you'd otherwise dump **more than ~2-3 paragraphs into terminal chat**, strongly consider `toki` report blocks instead. Rationale: SAME content goes into spec `content` (markdown) — **zero information loss** — but broken into per-block paragraphs user reacts to one at a time (per-block text + highlight-to-quote). Turns one-way wall of text into two-way exchange. Report blocks = `blocks` with NO `controls`; mix with control blocks for hybrid.
     - **Why over alternatives**: `AskUserQuestion` capped ~4×4, no rich free-text, can't show reference content while answering; inline prose questionnaires produce unanchored replies AI must guess-map.
     - **Mechanics**: skill `wokitoki` user-level (auto-loads every session); binary global; output lands in `~/.toki/` — **zero repo footprint**. Flow: write spec JSON → `toki <specPath>` (blocking) → parse stdout Result JSON same turn.
     - **Keep it cheap**: `AskUserQuestion` for 1-2 simple picks / single yes-no; plain chat for short answers; plain output when non-interactive (CI / no human).
-14. **NEVER RUN `build`**: NEVER run `next build` / `bun run build` / any production build. It writes `.next/` — the SAME dir a running `next dev` uses — and clobbers the dev server's chunks (CSS/JS 404, unstyled app). For local verification use `dev` (`bun run dev`) ONLY. The single exception: an explicit, important justification AND user approval first — STOP, state why a build (not dev) is required, ASK, wait for yes. Type-safety checks use `bun run types:check` (tsc, no build). Deploy builds run on Vercel, never locally.
-15. **DESIGN FIDELITY — FOLLOW THE MASTER DESIGN PLAN**: The design contract is `.context/design/master-design-plan.md` (the visual analog of the master implementation plan). Before writing or reviewing ANY UI for a user story: (a) READ that plan, (b) find the US in §8 US→Screen map to know which screen(s) it renders into, (c) open that screen's spec in §4 + the frozen contract in §2, (d) implement against the MOCKUP (`.context/designs/bunkai-test-management-tool/`), NOT against intuition or current partial impl. NEVER invent UI on the fly. NEVER re-pick colors/radii/fonts/spacing — reuse frozen tokens (§2). Principle: **maximize UI fidelity to the mockup WITHOUT backend refactors** — UI-only gaps get corrected; backend-cost divergences (auth infra, schema) get a faithful UI as a presentation layer, never a schema/auth revert. Any deliberate departure from the mockup must be ratified in §5 + an ADR FIRST — silent divergence is a defect. New US → add its §8 row before dev starts.
+17. **NEVER RUN `build`**: NEVER run `next build` / `bun run build` / any production build. It writes `.next/` — the SAME dir a running `next dev` uses — and clobbers the dev server's chunks (CSS/JS 404, unstyled app). For local verification use `dev` (`bun run dev`) ONLY. The single exception: an explicit, important justification AND user approval first — STOP, state why a build (not dev) is required, ASK, wait for yes. Type-safety checks use `bun run types:check` (tsc, no build). Deploy builds run on Vercel, never locally.
 
 ---
 
@@ -93,6 +95,8 @@ Example (same work, different register):
 ## 3. ORCHESTRATION MODE — PERMANENTLY ACTIVE
 
 > **Main conversation = command center. Subagents = executors.** Active EVERY session. Not optional.
+>
+> **Sanctioned exceptions** (not violations): a skill MAY define an explicit, user-invoked all-inline (Solo) mode that dispatches no subagents, and MAY pin a step to the session owning a non-delegable resource (browser/extension or session-bound auth). E.g. `/sprint-development` Solo mode + its session-bound live-UI step. Detail → `.claude/skills/agentic-dev-core/references/orchestration-doctrine.md`.
 
 **USE SUBAGENTS FOR**: read/write multiple files, MCP ops, research across repos, git ops, verification (tests/types/lint), multi-file edits, long tasks.
 
@@ -146,7 +150,8 @@ Example (same work, different register):
 
 - `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — system maps (refresh via `/business-*-map`)
 - `.context/business/domain-glossary.md` — canonical domain terminology (ATC = Acceptance Test Case, KATA, IQL, TMS entities). Any domain term in Jira content, docs, or UI copy MUST match it; anti-glossary lists banned terms.
-- `.context/master-implementation-plan.md` — prioritized roadmap
+- `.context/master-implementation-plan.md` — prioritized roadmap (EPIC/strategy; owned by `/master-implementation-plan`)
+- `.context/dev-roadmap.md` — ticket-level dependency execution roadmap (TICKET/sequence: which story unblocks which, in what execution sprint, gated by which mockup; owned by `/dev-roadmap`)
 - `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`. NOT for bug fixes, local refactors, or naming tweaks.
 - `.context/reports/SPRINT-{N}-DEVELOPMENT.md` — cross-ticket dev tracker per sprint (generated/updated by `/sprint-development` batch mode)
 - `.context/PBI/` — Jira-synced cache (see §9). Epics/stories under `epics/`, plus `bugs/`, `tech-stories/`, `tests/`, `improvements/`, `epic-tree.md` index
@@ -182,7 +187,7 @@ Example (same work, different register):
 >
 > Layout: T1 repo skills → `.claude/skills/<slug>/` (committed). T3/T4 community skills via `bunx skills add` → `.agents/skills/<slug>/` (gitignored, default CLI behavior).
 
-### Slash commands (utilities, 5)
+### Slash commands (utilities, 6)
 
 | Command                       | Purpose                                                                                        |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -190,7 +195,8 @@ Example (same work, different register):
 | `/business-data-map`          | Refresh `.context/business/business-data-map.md` (entities, flows, state machines).            |
 | `/business-feature-map`       | Refresh `.context/business/business-feature-map.md` (CRUD matrix, UI inventory).               |
 | `/business-api-map`           | Refresh `.context/business/business-api-map.md` (auth model, endpoints, architecture).         |
-| `/master-implementation-plan` | Refresh `.context/master-implementation-plan.md` (prioritized feature roadmap).                |
+| `/master-implementation-plan` | Refresh `.context/master-implementation-plan.md` (prioritized feature roadmap — EPIC/strategy).|
+| `/dev-roadmap`                | Refresh `.context/dev-roadmap.md` (ticket-level dependency execution roadmap — TICKET/sequence). |
 
 ### MCPs (configured in `.mcp.json`)
 
@@ -296,9 +302,14 @@ Project values live in **`.agents/project.yaml`** — load once per session. NEV
   bugs/BUG-{KEY}-{slug}.md           # Flat file (registry: coverable=false, content=single)
   tech-stories/TECHSTORY-{KEY}-{slug}/   # Coverable folder (registry-driven)
   tests/ improvements/ …             # Other work types per .agents/jira-required.yaml
+  test-plans/ test-executions/ test-sets/   # [SYNC] Xray container issues (jira-xray); description holds the ATP/ATR body
 ```
 
 Folder layout per work type is governed by `.agents/jira-required.yaml` → `work_types` (coverable/content/local_dir) — the script is shared byte-identical with both boilerplates; per-repo behavior lives in that YAML.
+
+**`[SYNC]` files = forbidden to hand-write** — every file the sync owns (epic.md, story.md, per-field `.md`, implementation-plan.md, ATP/ATR, comments.md, Xray containers) is overwritten on every sync. Jira is the source of truth. Author the content, push it to its Jira field (or fallback comment), THEN run the sync and read it back. File holds info NOT in Jira (context.md, progress.md, evidence/, roadmaps) → author locally as usual.
+
+**DETAILED READS via the script** (NOT `acli view` — that returns null for custom fields): `bun run jira:sync-issues get <KEY> --include-comments` → one issue, ALL custom fields + comments → read the generated `.md`. **FALLBACK**: a required custom field absent from the instance → write the content as a structured Jira comment (`## <label>`) per `.agents/jira-required.yaml` → `fallback:`; the sync emits a pointer stub. Never block on a missing field.
 
 > Sprint-level cross-ticket aggregate → `.context/reports/SPRINT-{N}-DEVELOPMENT.md` (gen by `/sprint-development` batch). Lifecycle → `.context/reports/README.md`.
 
