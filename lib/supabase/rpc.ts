@@ -302,6 +302,24 @@ export async function abortRun(
   });
 }
 
+// BK-39 — finish an in-progress Run with a final verdict. Same explicit-actor
+// contract; the SECURITY DEFINER RPC gates member+ write access, requires status
+// 'running' (else run_not_finishable), validates the verdict (passed | failed,
+// else finish_verdict_invalid), closes the Run with that verdict (finished_at set,
+// version bumped) and marks every not-yet-executed step 'skipped' while preserving
+// recorded results. Human / agent / ci callers pass the same gate. Returns the
+// composed Run json.
+export async function finishRun(
+  supabase: Client,
+  args: { actorUserId: string, runId: string, verdict: 'passed' | 'failed' },
+) {
+  return supabase.rpc('bunkai_finish_run', {
+    p_actor_user_id: args.actorUserId,
+    p_run_id: args.runId,
+    p_verdict: args.verdict,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the

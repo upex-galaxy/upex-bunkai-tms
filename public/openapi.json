@@ -2402,6 +2402,17 @@
           }
         },
         "required": ["reason"]
+      },
+      "RunFinishBody": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["passed", "failed"],
+            "description": "The final verdict to close the run with. `aborted` is not a finish verdict — abort is its own action (BK-36)."
+          }
+        },
+        "required": ["verdict"]
       }
     },
     "parameters": {}
@@ -6641,6 +6652,110 @@
           },
           "422": {
             "description": "Validation failed — the reason is shorter than 3 or longer than 500 characters (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/finish": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Finish an in-progress Run with a final verdict",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional finish via one SECURITY DEFINER RPC: closes the Run with the chosen final verdict `passed` or `failed` (sets `finished_at`, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. Only a `running` Run can be finished — an already-closed Run (passed/failed/aborted) returns 409. A human, an AI Test Agent, and a CI pipeline are handled identically. Finish is first-wins: a concurrent double-submit (or a race with abort) serializes on a row lock and the loser gets 409.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunFinishBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run finished. Returns the updated Run with `status` set to the final verdict (`passed`/`failed`) and `finished_at` stamped.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run the caller cannot see).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run is already closed and cannot be finished (`conflict`, reason `run_not_finishable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — no final verdict of passed or failed was supplied (`validation_failed`, reason `finish_verdict_invalid`).",
             "content": {
               "application/json": {
                 "schema": {

@@ -45,3 +45,23 @@ export const RunAbortBodySchema = z.object({
 });
 
 export type RunAbortBody = z.infer<typeof RunAbortBodySchema>;
+
+// BK-39 — finish-run final verdict. Mirrors the bunkai_finish_run verdict
+// backstop in 0037_run_finish.sql (passed | failed only; 'aborted' is its own
+// action — abort, BK-36). The route parses with safeParse and throws the AC-exact
+// "verdict required" copy rather than the generic ZodError envelope.
+export const RUN_FINISH_VERDICTS = ['passed', 'failed'] as const;
+
+// AC-exact frozen copy. The negative-path AC requires a clear message that a
+// final verdict is required to finish; the HTTP route surfaces this VERBATIM
+// (never via the generic ZodError envelope).
+export const RUN_FINISH_VERDICT_REQUIRED_MESSAGE = 'Select a final verdict of passed or failed to finish the run.';
+
+// BK-39 — finish request validation. The verdict must be one of passed | failed.
+// The route parses with safeParse and throws the AC-exact message above on any
+// miss (absent, null, or out-of-enum) rather than the generic validation envelope.
+export const RunFinishBodySchema = z.object({
+  verdict: z.enum(RUN_FINISH_VERDICTS),
+});
+
+export type RunFinishBody = z.infer<typeof RunFinishBodySchema>;

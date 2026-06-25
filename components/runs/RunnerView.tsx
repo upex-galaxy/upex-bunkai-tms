@@ -2,7 +2,7 @@
 
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { Button } from '@components/ui/button';
-import { ChevronLeft, Play, Square } from 'lucide-react';
+import { Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -12,10 +12,12 @@ import { toast } from 'sonner';
 // (`bunkai_get_run_expanded`): the snapshot chain rendered as a checklist.
 // Mark-pass / mark-fail interactions are BK-35 — this build renders statuses
 // read-only. BK-36 adds the Abort affordance: a running run can be aborted with
-// a reason (member+), closing it and skipping the not-yet-executed steps. Shape
-// mirrors the GET /api/v1/runs/[id] contract. CLIENT component because it
-// registers its `test_title` as the run tab's label via the workbench provider
-// and owns the abort modal state.
+// a reason (member+), closing it and skipping the not-yet-executed steps. BK-39
+// adds the symmetric Finish affordance: a running run can be finished with a
+// final verdict (passed | failed, member+), closing it and skipping the
+// not-yet-executed steps. Shape mirrors the GET /api/v1/runs/[id] contract.
+// CLIENT component because it registers its `test_title` as the run tab's label
+// via the workbench provider and owns the abort + finish modal state.
 
 // BK-36 — frozen AC copy. Mirrors lib/runs/validation.ts so the client renders
 // the agreed message without a round-trip on the short-reason case.
@@ -25,6 +27,8 @@ const ABORT_REASON_TOO_SHORT_MESSAGE = `Please give a reason of at least ${ABORT
 
 export type RunStatus = 'running' | 'passed' | 'failed' | 'aborted';
 export type StepStatus = 'pending' | 'passed' | 'failed' | 'blocked' | 'skipped';
+// BK-39 — the two final verdicts a run can be finished with.
+export type RunVerdict = 'passed' | 'failed';
 
 export interface RunStep {
   id: string
@@ -75,9 +79,12 @@ interface RunnerViewProps {
   projectSlug: string
   // BK-36 — member+ may abort; viewers get the read-only runner (no Abort button).
   canAbort?: boolean
+  // BK-39 — same member+ write gate as abort; viewers get no Finish button.
+  canFinish?: boolean
 }
 
-interface AbortErrorBody {
+// Shared error-envelope shape for both run terminal actions (abort + finish).
+interface RunActionErrorBody {
   error?: { message?: string }
 }
 
@@ -92,7 +99,15 @@ function statusChipToken(status: RunStatus): string {
   }
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewProps) {
+// BK-39 — deterministic UTC rendering of the finish timestamp. This is a CLIENT
+// component but still server-renders the first paint, so `toLocale*` would drift
+// between the server + browser timezone and trip a hydration mismatch; slicing
+// the ISO string is timezone-stable on both. '2026-06-25T14:32:10Z' -> '2026-06-25 14:32 UTC'.
+function formatFinishedAt(iso: string): string {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -106,6 +121,12 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [abortError, setAbortError] = useState<string | null>(null);
+
+  // BK-39 — finish modal state. `submitting` is shared with abort: only one of the
+  // two modals can be open at a time, so a single in-flight flag is sufficient.
+  const [finishModalOpen, setFinishModalOpen] = useState(false);
+  const [verdict, setVerdict] = useState<RunVerdict | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   // Keep the local view in sync if the server hands down a fresh payload.
   useEffect(() => {
@@ -129,6 +150,14 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
   const pct = total ? Math.round((done / total) * 100) : 0;
 
   const showAbort = canAbort && view.status === 'running';
+  const showFinish = canFinish && view.status === 'running';
+
+  // BK-39 — steps still 'pending' will be marked 'skipped' on finish; surfaced in
+  // the modal so the user knows what closing the run leaves behind.
+  const pendingSteps = view.atcs.reduce(
+    (acc, atc) => acc + atc.steps.filter(s => s.status === 'pending').length,
+    0,
+  );
 
   const openModal = () => {
     setReason('');
@@ -160,7 +189,7 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
         body: JSON.stringify({ reason: trimmed }),
       });
       if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as AbortErrorBody;
+        const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
         // Server copy is rendered VERBATIM (frozen AC messages, e.g. the 409
         // "This run is already closed and cannot be aborted.").
         setAbortError(body.error?.message ?? 'Could not abort the run.');
@@ -178,6 +207,57 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
     }
     catch (err) {
       setAbortError(err instanceof Error ? err.message : 'Network error.');
+      setSubmitting(false);
+    }
+  };
+
+  // BK-39 — finish flow, mirroring the abort flow above.
+  const openFinishModal = () => {
+    setVerdict(null);
+    setFinishError(null);
+    setFinishModalOpen(true);
+  };
+
+  const closeFinishModal = () => {
+    if (submitting) { return; }
+    setFinishModalOpen(false);
+  };
+
+  const handleFinish = async () => {
+    // The Confirm button is disabled until a verdict is picked (and while
+    // submitting), so finishing without a verdict can't reach here; the server
+    // re-validates as the source of truth, returning the AC-exact 422 copy.
+    if (submitting || !verdict) { return; }
+
+    setSubmitting(true);
+    setFinishError(null);
+    try {
+      const response = await fetch(`/api/v1/runs/${view.id}/finish`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ verdict }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
+        // Server copy is rendered VERBATIM (frozen AC messages, e.g. the 409
+        // "This run is already closed and cannot be finished.").
+        setFinishError(body.error?.message ?? 'Could not finish the run.');
+        setSubmitting(false);
+        return;
+      }
+      // The finish route always returns the composed run on success; reflect the
+      // server-stamped status + finished_at (never a client clock).
+      const body = (await response.json().catch(() => ({}))) as { run?: RunDetail };
+      if (body.run) {
+        setView(body.run);
+      }
+      setFinishModalOpen(false);
+      setSubmitting(false);
+      toast.success('Run finished');
+      router.refresh();
+    }
+    catch (err) {
+      setFinishError(err instanceof Error ? err.message : 'Network error.');
       setSubmitting(false);
     }
   };
@@ -228,6 +308,20 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
             >
               {view.environment_name ?? 'unknown env'}
             </span>
+            {/* BK-39 — Finish affordance: the positive close (member+, running
+                only). Sits beside Abort; primary/accent variant (Abort is danger). */}
+            {showFinish && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                data-testid="runner-finish-button"
+                onClick={openFinishModal}
+              >
+                <Flag size={11} />
+                Finish run
+              </Button>
+            )}
             {/* BK-36 — Abort affordance: member+ only, and only while the run is
                 still running (hidden on closed runs per the design spec). */}
             {showAbort && (
@@ -288,6 +382,38 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
             <span className="min-w-0 break-words text-xs text-fg-1">
               {view.abort_reason}
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* BK-39 — final verdict: shown on a finished run only (passed | failed),
+          mirroring the abort-reason block. The status chip already carries the
+          verdict; this adds the explicit finish time, tinted with the verdict
+          token color. */}
+      {(view.status === 'passed' || view.status === 'failed') && (
+        <div className="flex flex-shrink-0 items-start border-b border-stroke-1 bg-surface-2 px-4 py-2">
+          <div
+            data-testid="runner-final-verdict"
+            data-verdict={view.status}
+            className="mx-auto flex w-full max-w-[820px] items-baseline gap-2"
+          >
+            <span
+              className={`shrink-0 font-mono text-2xs font-medium uppercase tracking-wider ${view.status === 'passed' ? 'text-signal-pass' : 'text-signal-fail'}`}
+            >
+              Final verdict
+            </span>
+            <span
+              className={`shrink-0 text-xs font-medium ${view.status === 'passed' ? 'text-signal-pass' : 'text-signal-fail'}`}
+            >
+              {view.status === 'passed' ? 'Passed' : 'Failed'}
+            </span>
+            {view.finished_at && (
+              <span className="min-w-0 break-words font-mono text-2xs text-fg-3">
+                finished
+                {' '}
+                {formatFinishedAt(view.finished_at)}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -433,6 +559,128 @@ export function RunnerView({ run, projectSlug, canAbort = false }: RunnerViewPro
                 size="sm"
                 data-testid="runner-abort-cancel"
                 onClick={closeModal}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BK-39 — finish confirmation modal. Mirrors the abort overlay: a verdict
+          selector (Pass | Fail, required), the pending-steps note, an error slot
+          rendering server copy verbatim, and a primary Confirm gated on a pick. */}
+      {finishModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeFinishModal}
+        >
+          <div
+            data-testid="runner-finish-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Finish run"
+            className="w-full max-w-[440px] rounded-3 border border-stroke-2 bg-surface-1 p-5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-widest text-accent">
+              Finish run
+            </div>
+
+            <p className="m-0 mb-3 text-sm text-fg-1">
+              This closes the run with a final verdict. Already recorded results
+              are kept. Finishing is final.
+            </p>
+
+            <span id="finish-verdict-label" className="mb-1.5 block text-xs text-fg-2">
+              Verdict
+            </span>
+            <div role="group" aria-labelledby="finish-verdict-label" className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="runner-finish-verdict-passed"
+                aria-pressed={verdict === 'passed'}
+                disabled={submitting}
+                onClick={() => {
+                  setVerdict('passed');
+                  if (finishError) { setFinishError(null); }
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-2 border px-3 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  verdict === 'passed'
+                    ? 'border-signal-pass bg-signal-pass-bg text-signal-pass'
+                    : 'border-stroke-2 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:text-fg-1'
+                }`}
+              >
+                <Check size={13} />
+                Pass
+              </button>
+              <button
+                type="button"
+                data-testid="runner-finish-verdict-failed"
+                aria-pressed={verdict === 'failed'}
+                disabled={submitting}
+                onClick={() => {
+                  setVerdict('failed');
+                  if (finishError) { setFinishError(null); }
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-2 border px-3 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  verdict === 'failed'
+                    ? 'border-signal-fail bg-signal-fail-bg text-signal-fail'
+                    : 'border-stroke-2 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:text-fg-1'
+                }`}
+              >
+                <X size={13} />
+                Fail
+              </button>
+            </div>
+
+            {!verdict && (
+              <p data-testid="runner-finish-hint" className="m-0 mt-2 text-xs text-fg-3">
+                Select Pass or Fail to finish the run.
+              </p>
+            )}
+
+            {pendingSteps > 0 && (
+              <p
+                data-testid="runner-finish-pending-note"
+                className="m-0 mt-2.5 text-xs text-fg-3"
+              >
+                {pendingSteps}
+                {' '}
+                pending step
+                {pendingSteps === 1 ? '' : 's'}
+                {' '}
+                will be marked skipped.
+              </p>
+            )}
+
+            {finishError && (
+              <div className="mt-2.5">
+                <span data-testid="runner-finish-error" className="text-xs text-signal-fail">
+                  {finishError}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                data-testid="runner-finish-confirm"
+                onClick={() => { void handleFinish(); }}
+                disabled={submitting || !verdict}
+              >
+                <Flag size={11} />
+                {submitting ? 'Finishing…' : 'Finish run'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-testid="runner-finish-cancel"
+                onClick={closeFinishModal}
                 disabled={submitting}
               >
                 Cancel
