@@ -277,6 +277,7 @@ export function AtcEditor({
               <div className="rounded-3 border border-stroke-2 bg-surface-2 p-3">
                 <AnchoringPanel
                   embedded
+                  lockStory
                   stories={stories}
                   storyAcs={storyAcs}
                   selectedStoryId={storyId}

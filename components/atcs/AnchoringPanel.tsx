@@ -15,6 +15,11 @@ interface AnchoringPanelProps {
   // When embedded inside the compose column (not a full-height aside), drop the
   // fixed height + padding so the panel flows with the surrounding form.
   embedded?: boolean
+  // On edit the User Story anchor is immutable (it defines the ATC's slug + AC
+  // provenance — see ADR-0009), so the story picker renders read-only: the
+  // bound story is shown as a static card and the search + list are hidden. AC
+  // selection within that fixed story stays editable.
+  lockStory?: boolean
 }
 
 export function AnchoringPanel({
@@ -25,6 +30,7 @@ export function AnchoringPanel({
   onSelectStory,
   onToggleAc,
   embedded = false,
+  lockStory = false,
 }: AnchoringPanelProps) {
   const [query, setQuery] = useState('');
 
@@ -39,51 +45,72 @@ export function AnchoringPanel({
   }, [query, stories]);
 
   const acs = selectedStoryId ? storyAcs[selectedStoryId] ?? [] : [];
+  const lockedStory = lockStory
+    ? stories.find(s => s.id === selectedStoryId) ?? null
+    : null;
 
   return (
     <div className={cn('flex flex-col gap-3', embedded ? '' : 'h-full overflow-auto p-4')}>
       <Section
         title="Linked User Story"
-        hint={selectedStoryId ? '1 selected · required' : 'required'}
-        accent={!selectedStoryId}
+        hint={lockStory ? 'fixed on edit' : selectedStoryId ? '1 selected · required' : 'required'}
+        accent={!lockStory && !selectedStoryId}
       >
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search US- or paste a Jira ID…"
-          className="mb-2 h-7 w-full rounded-2 border border-stroke-2 bg-surface-2 px-2 text-sm text-fg-1 placeholder:text-fg-4 hover:border-stroke-3 focus:border-accent focus:outline-none"
-        />
-        <div className="flex flex-col gap-1">
-          {filtered.map(s => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onSelectStory(s.id)}
-              className={cn(
-                'flex items-start gap-2 rounded-2 border p-2 text-left text-sm transition-colors',
-                selectedStoryId === s.id
-                  ? 'border-accent/35 bg-accent-soft text-fg-0'
-                  : 'border-stroke-1 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:bg-surface-3',
-              )}
-            >
-              <FileText size={12} className="mt-0.5 text-fg-3" />
-              <div className="min-w-0 flex-1">
-                <div className="font-mono text-xs font-semibold text-accent">
-                  {s.external_id ?? s.id}
-                </div>
-                <div className="mt-0.5 text-sm leading-snug text-fg-1">
-                  {s.title}
+        {lockStory
+          ? (
+              <div className="flex items-start gap-2 rounded-2 border border-stroke-1 bg-surface-2 p-2 text-sm opacity-90">
+                <FileText size={12} className="mt-0.5 text-fg-3" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-mono text-xs font-semibold text-accent">
+                    {lockedStory?.external_id ?? lockedStory?.id ?? selectedStoryId}
+                  </div>
+                  <div className="mt-0.5 text-sm leading-snug text-fg-1">
+                    {lockedStory?.title ?? 'Bound user story'}
+                  </div>
                 </div>
               </div>
-              {selectedStoryId === s.id && (
-                <Check size={12} className="mt-0.5 text-accent" />
-              )}
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <div className="text-xs italic text-fg-4">No stories match.</div>
-          )}
-        </div>
+            )
+          : (
+              <>
+                <input
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search US- or paste a Jira ID…"
+                  className="mb-2 h-7 w-full rounded-2 border border-stroke-2 bg-surface-2 px-2 text-sm text-fg-1 placeholder:text-fg-4 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                />
+                <div className="flex flex-col gap-1">
+                  {filtered.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onSelectStory(s.id)}
+                      className={cn(
+                        'flex items-start gap-2 rounded-2 border p-2 text-left text-sm transition-colors',
+                        selectedStoryId === s.id
+                          ? 'border-accent/35 bg-accent-soft text-fg-0'
+                          : 'border-stroke-1 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:bg-surface-3',
+                      )}
+                    >
+                      <FileText size={12} className="mt-0.5 text-fg-3" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-xs font-semibold text-accent">
+                          {s.external_id ?? s.id}
+                        </div>
+                        <div className="mt-0.5 text-sm leading-snug text-fg-1">
+                          {s.title}
+                        </div>
+                      </div>
+                      {selectedStoryId === s.id && (
+                        <Check size={12} className="mt-0.5 text-accent" />
+                      )}
+                    </button>
+                  ))}
+                  {filtered.length === 0 && (
+                    <div className="text-xs italic text-fg-4">No stories match.</div>
+                  )}
+                </div>
+              </>
+            )}
       </Section>
 
       <Section
