@@ -326,13 +326,33 @@ paths:
     patch:
       tags: [ATCs]
       summary: Update an ATC
+      description: >-
+        Full replace of steps/assertions (omitted children are cleared). An empty body is a
+        200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are
+        immutable. BK-21: edits propagate automatically to every Test that chains the ATC
+        (Tests reference it by id, never copy its content), visible on the Test's next read.
+      parameters:
+        - in: header
+          name: X-If-Match
+          required: false
+          description: >-
+            Current version for optimistic locking; a mismatch returns 409. Custom header
+            because the Vercel edge intercepts RFC 7232 `If-Match` (BK-96); `If-Match` is
+            accepted as a fallback off Vercel. Omit to skip the guard (last-write-wins).
+          schema: { type: string }
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ATCUpdate' }
       responses:
-        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
+        '200': { description: Updated (or no-op for an empty body), content: { application/json: { schema: { $ref: '#/components/schemas/ATCUpdateResult' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: ATC not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: Validation failed (steps_position_invalid, ac_outside_user_story, title/limits), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
     delete:
       tags: [ATCs]
       summary: Soft-delete an ATC
@@ -1002,6 +1022,19 @@ components:
       allOf:
         - $ref: '#/components/schemas/ATCCreate'
         - description: Same shape as create; partial updates by omitting fields
+
+    ATCUpdateResult:
+      type: object
+      description: >-
+        BK-21 edit result. `version` is the ATC version after the edit (unchanged on a no-op).
+        `affected_test_count` is the number of DISTINCT Tests that chain this ATC and now
+        reflect the edit — a Test chaining the ATC at multiple positions counts once; 0 for a
+        no-op. The matching `affected_test_ids` ride the emitted `atc.updated` event, not this body.
+      required: [atc, version, affected_test_count]
+      properties:
+        atc: { $ref: '#/components/schemas/ATC' }
+        version: { type: integer }
+        affected_test_count: { type: integer }
 
     Test:
       type: object

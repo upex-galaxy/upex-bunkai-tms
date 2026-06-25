@@ -44,12 +44,23 @@ registry.registerPath({
   path: '/api/v1/atcs/{id}',
   tags: ['ATCs'],
   summary: 'Edit an ATC (full replace of steps and assertions)',
-  description: 'Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. Emits an `atc.updated` event with `affected_test_ids` (empty in the MVP).',
+  description: 'Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test\'s next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, VersionParam],
   request: { body: { required: false, content: { 'application/json': { schema: UpdateBodySchema } } } },
   responses: {
-    200: { description: 'ATC updated (or no-op for an empty body).', content: { 'application/json': { schema: z.object({ atc: AtcSchema }) } } },
+    200: {
+      description: 'ATC updated (or no-op for an empty body).',
+      content: {
+        'application/json': {
+          schema: z.object({
+            atc: AtcSchema,
+            version: z.number().int().describe('The ATC version after the edit (unchanged on a no-op).'),
+            affected_test_count: z.number().int().describe('DISTINCT Tests that chain this ATC and now reflect the edit. 0 for a no-op.'),
+          }),
+        },
+      },
+    },
     400: { description: 'Malformed id, body, or X-If-Match.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

@@ -40,7 +40,7 @@ export interface AtcSaveInput {
 }
 
 export type AtcSaveResult
-  = | { ok: true }
+  = | { ok: true, affectedTestCount: number }
     | { ok: false, error: string };
 
 interface AtcEditorProps {
@@ -122,7 +122,13 @@ export function AtcEditor({
         toast.error(result.error);
         return;
       }
-      toast.success('ATC saved');
+      // BK-21 — confirm how many Tests the edit propagated to.
+      const n = result.affectedTestCount;
+      toast.success(
+        n === 0
+          ? 'ATC saved — no Tests affected'
+          : `ATC saved — ${n} ${n === 1 ? 'Test' : 'Tests'} updated`,
+      );
       router.refresh();
     });
   };
