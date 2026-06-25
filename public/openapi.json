@@ -2203,6 +2203,10 @@
             "type": "string",
             "enum": ["running", "passed", "failed", "aborted"]
           },
+          "abort_reason": {
+            "type": ["string", "null"],
+            "description": "BK-36 — the reason captured when the run was aborted; null for non-aborted runs."
+          },
           "executor_mode": {
             "type": "string",
             "enum": ["human", "agent", "ci"]
@@ -2260,6 +2264,7 @@
           "environment_id",
           "environment_name",
           "status",
+          "abort_reason",
           "executor_mode",
           "executor_user_id",
           "test_title",
@@ -2385,6 +2390,18 @@
           }
         },
         "required": ["test_id", "environment_id"]
+      },
+      "RunAbortBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "description": "Why the run is being aborted. Trimmed, then required to be 3..500 characters."
+          }
+        },
+        "required": ["reason"]
       }
     },
     "parameters": {}
@@ -6520,6 +6537,110 @@
           },
           "404": {
             "description": "Run not found (missing, not visible, or foreign workspace — non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/abort": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Abort an in-progress Run with a reason",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional abort via one SECURITY DEFINER RPC: closes the Run as `aborted` (sets `finished_at`, records the reason, bumps `version`), marks every not-yet-executed step `skipped`, and preserves already-recorded step results. Only a `running` Run can be aborted — an already-closed Run returns 409. The reason is trimmed then required to be 3..500 characters. Abort is first-wins: a concurrent double-submit serializes on a row lock and the loser gets 409.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAbortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run aborted. Returns the updated Run with `status: aborted` and `abort_reason`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run the caller cannot see).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run is already closed and cannot be aborted (`conflict`, reason `run_not_abortable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — the reason is shorter than 3 or longer than 500 characters (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

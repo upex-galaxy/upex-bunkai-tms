@@ -761,6 +761,7 @@ export interface Database {
       }
       runs: {
         Row: {
+          abort_reason: string | null
           created_at: string
           environment_id: string
           executor_mode: string
@@ -778,6 +779,7 @@ export interface Database {
           workspace_id: string
         }
         Insert: {
+          abort_reason?: string | null
           created_at?: string
           environment_id: string
           executor_mode: string
@@ -795,6 +797,7 @@ export interface Database {
           workspace_id: string
         }
         Update: {
+          abort_reason?: string | null
           created_at?: string
           environment_id?: string
           executor_mode?: string
@@ -1139,6 +1142,17 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      auth_email_status: {
+        Args: { p_email: string }
+        Returns: {
+          email_confirmed: boolean
+          email_exists: boolean
+        }[]
+      }
+      bunkai_abort_run: {
+        Args: { p_actor_user_id: string, p_reason: string, p_run_id: string }
+        Returns: Json
+      }
       bunkai_archive_acceptance_criterion: {
         Args: { p_id: string }
         Returns: Json
