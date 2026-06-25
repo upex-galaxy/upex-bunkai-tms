@@ -43,11 +43,11 @@ Emitted inside the create/edit transaction (`bunkai_create_atc` / `bunkai_update
 {
   "title": "Login with valid email",
   "version": 2,
-  "affected_test_ids": []
+  "affected_test_ids": ["<test uuid>", "..."]
 }
 ```
 
-> `affected_test_ids` is **always `[]`** in the MVP: the `test_steps` table that links Tests to ATCs does not exist yet (EPIC-BK-5). The field name is fixed so consumers handle empty arrays today and real ids later. An empty-body PATCH is a no-op — it emits **no** `atc.updated` event and does not bump `version`.
+> **BK-21**: `affected_test_ids` now carries the REAL set of Tests that chain the edited ATC — the DISTINCT `test_steps.atc_id` references, computed **inside the same transaction** as the edit (migration `0035`), so a logged event always matches the persisted change. A Test that chains the ATC at multiple positions appears **once**. The array is `[]` when no Test chains the ATC. An empty-body PATCH is a no-op — it emits **no** `atc.updated` event and does not bump `version`. (Pre-BK-21 the field was hard-coded `[]` because `test_steps` had not shipped; `test_steps` landed in `0024`.)
 
 ## Module events (BK-59)
 

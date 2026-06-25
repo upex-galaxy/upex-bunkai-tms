@@ -1,7 +1,7 @@
 'use server';
 
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
-import { saveAtc } from '@lib/supabase/rpc';
+import { atcUsage, saveAtc } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
@@ -18,7 +18,7 @@ export interface SaveAtcActionInput {
 }
 
 export type SaveAtcActionResult
-  = | { ok: true }
+  = | { ok: true, affectedTestCount: number }
     | { ok: false, error: string };
 
 export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcActionResult> {
@@ -50,5 +50,22 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
 
   revalidatePath(`/projects/${input.projectSlug}/atcs/${input.atcId}`);
   revalidatePath(`/projects/${input.projectSlug}`);
-  return { ok: true };
+
+  // BK-21 — report how many Tests the edit propagated to. The edit just touched
+  // the ATC, not test_steps, so this read reflects the chaining Tests at save
+  // time; count is DISTINCT Tests (a Test chaining the ATC multiple times counts
+  // once). A failure here must not fail the save — fall back to 0.
+  let affectedTestCount = 0;
+  const { data: auth } = await supabase.auth.getUser();
+  if (auth.user) {
+    const { data: usage } = await atcUsage(supabase, {
+      actorUserId: auth.user.id,
+      atcId: input.atcId,
+    });
+    if (usage) {
+      affectedTestCount = (usage as { count: number }).count;
+    }
+  }
+
+  return { ok: true, affectedTestCount };
 }

@@ -204,8 +204,9 @@
           },
           "token": {
             "type": "string",
-            "pattern": "^\\d{6}$",
-            "example": "123456"
+            "pattern": "^\\d{6,8}$",
+            "description": "Numeric email OTP, 6 to 8 digits.",
+            "example": "12345678"
           },
           "pat_name": {
             "type": "string",
@@ -2393,7 +2394,7 @@
       "post": {
         "tags": ["Auth"],
         "summary": "Email-first routing probe",
-        "description": "Returns whether an email is registered and whether it has been confirmed, so the login UI can route to the password, verify, or create step. Deliberately reveals existence (see ADR-0005 enumeration tradeoff); the real auth endpoints stay enumeration-safe.",
+        "description": "Returns whether an email is registered and whether it has been confirmed, so the login UI can route to the password, verify, or create step. Deliberately reveals existence (see ADR-0007 enumeration tradeoff); the real auth endpoints stay enumeration-safe.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2442,7 +2443,7 @@
       "post": {
         "tags": ["Auth"],
         "summary": "Verify email OTP → session + auto-minted PAT",
-        "description": "Completes a verification-first sign-up by verifying the 6-digit email OTP. On success it establishes the Supabase session AND mints a fresh Bearer PAT in a single response — the same shape as POST /api/v1/auth/signin — so a new account can immediately authenticate subsequent requests.",
+        "description": "Completes a verification-first sign-up by verifying the email OTP (a 6-to-8-digit numeric code). On success it establishes the Supabase session AND mints a fresh Bearer PAT in a single response — the same shape as POST /api/v1/auth/signin — so a new account can immediately authenticate subsequent requests.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5501,7 +5502,7 @@
       "patch": {
         "tags": ["ATCs"],
         "summary": "Edit an ATC (full replace of steps and assertions)",
-        "description": "Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. Emits an `atc.updated` event with `affected_test_ids` (empty in the MVP).",
+        "description": "Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test's next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.",
         "security": [
           {
             "cookieAuth": []
@@ -5550,9 +5551,17 @@
                   "properties": {
                     "atc": {
                       "$ref": "#/components/schemas/Atc"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "description": "The ATC version after the edit (unchanged on a no-op)."
+                    },
+                    "affected_test_count": {
+                      "type": "integer",
+                      "description": "DISTINCT Tests that chain this ATC and now reflect the edit. 0 for a no-op."
                     }
                   },
-                  "required": ["atc"]
+                  "required": ["atc", "version", "affected_test_count"]
                 }
               }
             }
