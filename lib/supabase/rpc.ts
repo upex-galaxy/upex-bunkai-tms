@@ -20,39 +20,10 @@ export async function bootstrapWorkspace(supabase: Client, args: BootstrapWorksp
   });
 }
 
-export interface SaveAtcStep {
-  content: string
-  input_data?: string | null
-  expected?: string | null
-}
-
-export interface SaveAtcAssertion {
-  content: string
-}
-
-export interface SaveAtcArgs {
-  atcId: string
-  title: string
-  layer: string
-  tags: string[]
-  userStoryId: string
-  steps: SaveAtcStep[]
-  assertions: SaveAtcAssertion[]
-  acIds: string[]
-}
-
-export async function saveAtc(supabase: Client, args: SaveAtcArgs) {
-  return supabase.rpc('bunkai_save_atc', {
-    p_atc_id: args.atcId,
-    p_title: args.title,
-    p_layer: args.layer,
-    p_tags: args.tags,
-    p_user_story_id: args.userStoryId,
-    p_steps: args.steps as unknown as Json,
-    p_assertions: args.assertions as unknown as Json,
-    p_ac_ids: args.acIds,
-  });
-}
+// BK-21 unified the web editor's save onto bunkai_update_atc (the canonical
+// edit RPC), so the legacy bunkai_save_atc wrapper (SECURITY INVOKER, no event
+// emission) is no longer called from app code. The DB function is retained
+// (migration 0007, append-only) but has no TS wrapper.
 
 // BK-18 — ATC create/edit via the SECURITY DEFINER RPCs. These take the
 // resolved actor user id explicitly (PAT callers have no auth.uid()) and the
