@@ -3,7 +3,7 @@
 **Jira Key:** [BK-17](https://jira.upexgalaxy.com/browse/BK-17)
 **Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -97,21 +97,31 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 
 ## Traceability
 
-### Bug (1)
+### Tests (6)
 
-- [BK-84](https://jira.upexgalaxy.com/browse/BK-84): [Staging] PAT bearer auth rejected on member/owned-resource routes (Imports, Projects, Modules, Tokens) — requireAuth middleware regression _(Ready For QA)_
+- [BK-169](https://jira.upexgalaxy.com/browse/BK-169): BK-17: TC01: Validate fresh Jira import completes with accurate counts and correct API envelope _(Candidate)_
+- [BK-170](https://jira.upexgalaxy.com/browse/BK-170): BK-17: TC02: Validate idempotent re-import updates without duplicating stories _(Candidate)_
+- [BK-171](https://jira.upexgalaxy.com/browse/BK-171): BK-17: TC03: Validate concurrent import returns 409 import_in_progress _(Candidate)_
+- [BK-172](https://jira.upexgalaxy.com/browse/BK-172): BK-17: TC04: Validate chunked pagination across >100 issues with accurate final count _(Candidate)_
+- [BK-173](https://jira.upexgalaxy.com/browse/BK-173): BK-17: TC05: Validate input validation rejects invalid JQL and project_id _(Candidate)_
+- [BK-174](https://jira.upexgalaxy.com/browse/BK-174): BK-17: TC06: Validate RLS non-disclosure on non-member and inaccessible resources _(MANUAL)_
+
+### Bugs (2)
+
+- [BK-84](https://jira.upexgalaxy.com/browse/BK-84): [Staging] PAT bearer auth rejected on member/owned-resource routes (Imports, Projects, Modules, Tokens) — requireAuth middleware regression _(Closed)_
+- [BK-142](https://jira.upexgalaxy.com/browse/BK-142): [BK-17] Staging Jira import fails instantly with jira_unauthorized — ATLASSIAN_* credentials not configured in staging deployment _(Closed)_
 
 ### Storys (2)
 
 - [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(Ready For QA)_
-- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For QA)_
+- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/21/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** integration, jira-import, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2

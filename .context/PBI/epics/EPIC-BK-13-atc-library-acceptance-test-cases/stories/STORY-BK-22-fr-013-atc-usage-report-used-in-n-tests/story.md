@@ -3,7 +3,7 @@
 **Jira Key:** [BK-22](https://jira.upexgalaxy.com/browse/BK-22)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 3
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -107,15 +107,15 @@ The following rules were extracted from analysis but are NOT stated explicitly i
 
 ### Storys (2)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(In Test)_
-- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Dev)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(QA Approved)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/23/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** atc, mvp, reporting, shift-left-2026-06-02, shift-left-reviewed, wave-2

@@ -1,6 +1,6 @@
 # BK-5 — Workflow
 
-> Jira field: `customfield_10161` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
+> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
 
 Inviter:
 
@@ -17,8 +17,6 @@ Inviter:
 6. Server dispatches email with link /accept-invite?token=...
 
 7. Returns 201.
-
-
 
 Invitee:
 

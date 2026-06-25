@@ -229,5 +229,31 @@ Recommendation: keep [https://jira.upexgalaxy.com/browse/BK-23#icft=BK-23](https
 
 ---
 
+### Automation for Jira - 6/20/2026, 12:03:01 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 6/20/2026, 12:03:07 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Benjamin Segovia - 6/22/2026, 10:40:01 AM
+
+## QA session paused — blocked by BK-175
+
+QA started a sprint-testing session on this story today but could not reach the ATC library to verify any of the 4 ACs.
+
+> ***WARNING:**** ****Blocker******:**** the staging login flow (magic-link) is broken — the OTP email has no matching code-entry field on the "Check your inbox" screen. Filed as ****BK-175**** (links as **Blocks* this story). Confirmed by reproducing twice with independent OTP emails; see BK-175 for full repro + evidence.
+
+***Separately, worth a check once unblocked******:*** a static review of `upex-bunkai-tms` (git log + branches) found no commits, routes, migrations, or RPC related to duplicating an ATC, despite automated comments on this ticket reporting a PR merged on 2026-06-20. Please confirm the feature is actually deployed to staging before QA resumes — testing against code that isn't there would just waste another pass.
+
+***Status******:**** leaving this ticket at **Ready For QA* — nothing about the duplicate-ATC feature itself has been disproven, we simply couldn't reach it. QA will resume once BK-175 is resolved and the deployment status above is confirmed.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

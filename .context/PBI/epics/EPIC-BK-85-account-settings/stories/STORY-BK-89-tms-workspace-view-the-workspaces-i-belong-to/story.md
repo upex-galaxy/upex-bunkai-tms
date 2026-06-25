@@ -25,10 +25,18 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
 ## Traceability
+
+### Tests (4)
+
+- [BK-136](https://jira.upexgalaxy.com/browse/BK-136): BK-89: TC01: GET /api/v1/workspaces returns HTTP 200 with correct workspace list shape _(Draft)_
+- [BK-139](https://jira.upexgalaxy.com/browse/BK-139): BK-89: TC02: GET /api/v1/workspaces unauthenticated returns 401 _(Draft)_
+- [BK-140](https://jira.upexgalaxy.com/browse/BK-140): BK-89: TC03: GET /api/v1/workspaces returns only active memberships — DB cross-validation _(Draft)_
+- [BK-141](https://jira.upexgalaxy.com/browse/BK-141): BK-89: TC04: GET /api/v1/workspaces does not return role field — BLOCKER confirmed _(Draft)_
 
 ### Storys (2)
 
@@ -40,9 +48,9 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/20/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Alicia Juste
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed
 
 ---

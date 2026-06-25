@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-83](https://jira.upexgalaxy.com/browse/BK-83)
 **Priority:** High
-**Status:** Ready For QA
+**Status:** Closed
 **Components:** None
 **Severity:** Mayor
 **Error Type:** Functional
@@ -86,13 +86,14 @@ HTTP 200 with body containing the new active workspace details:
 ## Related Issues
 
 - blocks: [BK-6](https://jira.upexgalaxy.com/browse/BK-6) - TMS-Workspace | Switch between workspaces
+- relates to: [BK-118](https://jira.upexgalaxy.com/browse/BK-118) - TMS-Workspace: API: POST /api/v1/me/active-workspace returns legacy fields {ok, active_workspace_id} alongside fix fields
 
 ---
 
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/11/2026
 - **Reporter:** Luis Eduardo Flores Villarroel
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** api, bug, exploratory-testing, tenancy

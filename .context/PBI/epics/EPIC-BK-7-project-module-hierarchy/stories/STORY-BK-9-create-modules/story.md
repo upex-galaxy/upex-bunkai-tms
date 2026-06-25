@@ -3,9 +3,10 @@
 **Jira Key:** [BK-9](https://jira.upexgalaxy.com/browse/BK-9)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** In Progress
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 13
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -81,12 +82,32 @@
 
 ---
 
+## Traceability
+
+### Bugs (2)
+
+- [BK-67](https://jira.upexgalaxy.com/browse/BK-67): [BK-9] Module creation at depth ≥5: success toast suppressed — only deep-nesting warning shown _(Closed)_
+- [BK-68](https://jira.upexgalaxy.com/browse/BK-68): [BK-9] Create Module form allows submitting 1-char names — no client-side min-length validation _(Closed)_
+
+### Storys (4)
+
+- [BK-8](https://jira.upexgalaxy.com/browse/BK-8): TMS-Project | Create a project inside a workspace _(QA Approved)_
+- [BK-10](https://jira.upexgalaxy.com/browse/BK-10): TMS-Module | Rename and soft-delete a module _(QA Approved)_
+- [BK-11](https://jira.upexgalaxy.com/browse/BK-11): TMS-Module | Move a module to a different parent _(QA Approved)_
+- [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(Ready For QA)_
+
+### Improvement (1)
+
+- [BK-69](https://jira.upexgalaxy.com/browse/BK-69): [BK-9] Module name field stores raw HTML tags — inconsistent with description sanitization _(Closed)_
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/4/2026
+- **Updated:** 6/14/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** hierarchy, mvp, shift-left-2026-06-02, shift-left-reviewed, wave-1
 
 ---

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -58,24 +58,32 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
 ## Traceability
 
+### Defects (3)
+
+- [BK-144](https://jira.upexgalaxy.com/browse/BK-144): ATC builder — tag input remains enabled at 10-tag maximum instead of being disabled _(Open)_
+- [BK-145](https://jira.upexgalaxy.com/browse/BK-145): ATC builder — mapApiError does not handle validation_failed + too_small shows generic error instead of field-level message for short title _(Open)_
+- [BK-146](https://jira.upexgalaxy.com/browse/BK-146): ATC builder — module outside project subtree returns 404 not_found instead of 422 module_outside_project_subtree _(Open)_
+
 ### Story (1)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(In Test)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/19/2026
 - **Reporter:** Ely
 - **Assignee:** maibeth vega
-- **Labels:** atc, frontend, mvp, shift-left-2026-06-05, shift-left-reviewed, ui, wave-2
+- **Labels:** atc, frontend, mvp, shift-left-2026-06-05, shift-left-2026-06-18, shift-left-reviewed, ui, wave-2
 
 ---
 

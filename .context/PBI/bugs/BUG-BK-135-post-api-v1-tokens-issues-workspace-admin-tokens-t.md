@@ -133,6 +133,8 @@ Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK
 ## Related Issues
 
 - created by: [BK-88](https://jira.upexgalaxy.com/browse/BK-88) - Settings | Manage Personal Access Tokens
+- relates to: [BK-167](https://jira.upexgalaxy.com/browse/BK-167) - Enforce workspace:admin scope on admin endpoints (consumption-side)
+- relates to: [BK-97](https://jira.upexgalaxy.com/browse/BK-97) - Enforce per-route PAT capabilities on non-ATC API routes (ADR-0001 follow-up)
 
 ---
 

@@ -427,5 +427,132 @@ These follow the `{entity}-{field}-{type`} naming convention established by the 
 
 ---
 
+### Ely - 6/3/2026, 7:56:46 PM
+
+## Ready for QA — BK-8 deployed to staging
+
+***Staging:*** https://staging-upexbunkai.vercel.app
+***PR:*** #7 (merged) https://github.com/upex-galaxy/upex-bunkai-tms/pull/7
+***Branch:*** feature/BK-8-create-project
+
+### What shipped
+
+- POST /api/v1/workspaces/{id}/projects where {id} is the workspace UUID, cookie-session auth.
+- Create-Project UI at /projects: name input, optional description, live slug preview, lists existing projects.
+
+### As-built contract (test against THIS — codes were refined to the house API convention)
+
+Hybrid model: house error.code + granular error.details.reason.
+
+- Success: 201 with project object { id, slug, name, description, workspace*id, created*at }.
+- Name shorter than 3 / longer than 80 / no alphanumeric: 422, code validation*failed, details.reason name*too*short | name*too*long | name*no_alphanumeric.
+- Description over 5KB: 422, details.reason description*too*large.
+- Duplicate slug in the same workspace: 409, code conflict, details.reason slug*duplicate*in_workspace.
+- Caller not a member: 403, code forbidden, details.reason not*a*member.
+- Bad UUID or invalid JSON: 400 bad_request. Unauthenticated: 401.
+
+### Notes
+
+- Slug auto-derived: lowercase kebab, accents stripped, max 40 chars, unique per workspace, no auto-suffix.
+- After create the UI stays on /projects and refreshes the list (MVP; the original workflow step 9 said navigate to the new project).
+- data-testids: create-project-form, create-project-name, create-project-slug-preview, create-project-description, create-project-submit, create-project-error, projects-list, projects-list-item-{slug}.
+- Out of scope: project rename, delete, transfer, templates.
+
+---
+
+### Ely - 6/3/2026, 10:36:08 PM
+
+## 🚨 QA — BK-8 FAILED (NO-GO), awaiting fixes
+
+QA on staging is complete. The feature is mostly solid, but ***two Major defects + one Minor**** prevent sign-off. Story left ****In Test*** (not transitioned) — defects originate from this story itself, so we are signalling for dev fixes rather than blocking on a pre-existing defect.
+
+***Defects raised:***
+
+- BK-54 — Reserved project slugs are not rejected (AC-11) — created with HTTP 201
+- BK-55 — Project detail route /projects/{slug} is not workspace-scoped
+- BK-56 — Non-Latin (CJK/Cyrillic) project names rejected as name*no*alphanumeric
+
+***Headlines:***
+
+- ***Reserved slugs not enforced*** — `api`, `new`, `settings`, `admin`, `null`, `docs` all create with 201. AC-11 + Dev shift-left commitment fail. (Major)
+- `/projects/{slug}`*** not workspace-scoped*** — detail navigation crosses workspace boundaries; duplicate-slug projects shadow each other. Contradicts Workflow AC step 9. (Major)
+- ***Non-Latin names rejected*** — CJK/Cyrillic project names hit `name*no*alphanumeric` (ASCII-only check). (Minor / i18n improvement)
+
+Full ATR in the Acceptance Test Results field. Everything else (validation codes, auth, membership, duplicates, description size, slug derivation, DB integrity, create UI) passed against the as-built contract.
+
+---
+
+### Nahuel Gomez - 6/15/2026, 6:08:42 PM
+
+## Acceptance Test Results (ATR)
+
+BK-8 TEST RESULTS
+
+Tested: 2026-06-15
+
+Environment: Staging
+
+Tester: nahuelgomez.cti@gmail.com
+
+Result: PASSED (All tests passing)
+
+SUMMARY
+
+BK-8 Create Project — retest after fixes for 3 defects
+
+All 3 bugs verified as FIXED. Full regression PASSED.
+
+RETEST RESULTS
+
+| Bug | Description | Verdict |
+| --- | --- | --- |
+| BK-51 | Reserved project slugs not rejected | VERIFIED — 422 slug_reserved |
+| BK-52 | Project detail not workspace-scoped | VERIFIED — workspace-scoped |
+| BK-53 | Non-Latin names rejected | VERIFIED — 201 with fallback slug |
+
+REGRESSION
+
+Full ATP suite: PASSED (AC-1 through AC-11)
+
+BUGS VERIFIED
+
+BK-51 — Major — VERIFIED
+
+BK-52 — Major — VERIFIED
+
+BK-53 — Minor — VERIFIED
+
+OBSERVATIONS
+
+All 3 fixes confirmed in staging. No regression found.
+
+PR #36 (merged) addressed all 3 defects.
+
+RECOMMENDATIONS
+
+Close bugs. Move BK-8 to QA Approved.
+
+---
+
+### Nahuel Gomez - 6/15/2026, 6:08:48 PM
+
+QA Testing Complete — BK-8
+
+Environment: Staging
+
+Result: PASSED (All TCs passing)
+
+RETEST VERIFICATION:
+
+- BK-51: Reserved slugs rejected (422 slug_reserved) — VERIFIED
+- BK-52: Workspace-scoped project detail — VERIFIED
+- BK-53: Non-Latin names accepted (201 with fallback slug) — VERIFIED
+
+REGRESSION: Full suite PASSED (AC-1 through AC-11)
+
+All 3 bugs verified as FIXED. Ready for QA Approved.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

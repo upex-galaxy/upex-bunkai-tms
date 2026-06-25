@@ -3,9 +3,10 @@
 **Jira Key:** [BK-6](https://jira.upexgalaxy.com/browse/BK-6)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -51,10 +52,30 @@ Implements ***FR-004***.
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+
+---
+
+## Traceability
+
+### Bug (1)
+
+- [BK-83](https://jira.upexgalaxy.com/browse/BK-83): WorkspaceSwitch: API: POST /api/v1/me/active-workspace response missing workspace fields (id, slug, name, role) _(Closed)_
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/11/2026
 - **Reporter:** Ely
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** mvp, tenancy, wave-1

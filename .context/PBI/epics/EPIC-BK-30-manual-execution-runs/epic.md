@@ -3,7 +3,7 @@
 **Jira Key:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 13
+**Total Story Points:** 26
 
 ---
 
@@ -25,12 +25,12 @@ Crucially, the same Run produces the same data whether a human, an AI Test Agent
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-34](https://jira.upexgalaxy.com/browse/BK-34) | TMS-Run Execution | Start a manual run in a chosen environment | 8 | Medium | Ready For Dev |
-| [BK-35](https://jira.upexgalaxy.com/browse/BK-35) | TMS-Run Execution | Mark each step pass, fail, or block | 1 | Medium | Backlog |
-| [BK-36](https://jira.upexgalaxy.com/browse/BK-36) | TMS-Run Execution | Abort a run in progress with a reason | 1 | Medium | Estimation |
+| [BK-34](https://jira.upexgalaxy.com/browse/BK-34) | TMS-Run Execution | Start a manual run in a chosen environment | 8 | Medium | QA Approved |
+| [BK-35](https://jira.upexgalaxy.com/browse/BK-35) | TMS-Run Execution | Mark each step pass, fail, or block | 1 | Medium | Estimation |
+| [BK-36](https://jira.upexgalaxy.com/browse/BK-36) | TMS-Run Execution | Abort a run in progress with a reason | 8 | Medium | Ready For Dev |
 | [BK-37](https://jira.upexgalaxy.com/browse/BK-37) | TMS-Run History | View a test's past runs, filterable by outcome | 1 | Medium | Backlog |
-| [BK-38](https://jira.upexgalaxy.com/browse/BK-38) | TMS-Run Reporting | Filter project runs with pass/fail totals | 1 | Medium | Backlog |
-| [BK-39](https://jira.upexgalaxy.com/browse/BK-39) | TMS-Run Execution | Finish a run with a final verdict | 1 | Medium | Backlog |
+| [BK-38](https://jira.upexgalaxy.com/browse/BK-38) | TMS-Run Reporting | Filter project runs with pass/fail totals | 3 | Medium | Ready For Dev |
+| [BK-39](https://jira.upexgalaxy.com/browse/BK-39) | TMS-Run Execution | Finish a run with a final verdict | 5 | Medium | Ready For Dev |
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-84](https://jira.upexgalaxy.com/browse/BK-84)
 **Priority:** Highest
-**Status:** Ready For QA
+**Status:** Closed
 **Components:** None
 **Severity:** Crítica
 **Error Type:** Integration
@@ -120,7 +120,7 @@ Canonical repro record: .context/PBI/epics/EPIC-BK-12-user-stories-acceptance-cr
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/15/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** auth, blocker, bug, integration, staging

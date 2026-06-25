@@ -24,6 +24,7 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Mockup](./mockup.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -32,7 +33,7 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 
 ### Storys (3)
 
-- [BK-86](https://jira.upexgalaxy.com/browse/BK-86): Account | View my identity, role, and sign out _(Ready For Dev)_
+- [BK-86](https://jira.upexgalaxy.com/browse/BK-86): Account | View my identity, role, and sign out _(QA Approved)_
 - [BK-88](https://jira.upexgalaxy.com/browse/BK-88): Settings | Manage Personal Access Tokens _(Ready For Dev)_
 - [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Shift-Left QA)_
 
@@ -41,9 +42,9 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/14/2026
 - **Reporter:** Ely
-- **Assignee:** pinto.lucas.nahuel
+- **Assignee:** Ely
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed
 
 ---

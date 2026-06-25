@@ -3,7 +3,7 @@
 **Jira Key:** [BK-34](https://jira.upexgalaxy.com/browse/BK-34)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -206,23 +206,24 @@ Pending confirmation: Delivery/PO confirms whether BK-34 is estimated now or hel
 
 ## Traceability
 
-### Storys (6)
+### Storys (7)
 
-- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Dev)_
-- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Backlog)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(QA Approved)_
+- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Estimation)_
 - [BK-37](https://jira.upexgalaxy.com/browse/BK-37): TMS-Run History | View a test's past runs, filterable by outcome _(Backlog)_
-- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Backlog)_
-- [BK-39](https://jira.upexgalaxy.com/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Backlog)_
-- [BK-36](https://jira.upexgalaxy.com/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(Estimation)_
+- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Ready For Dev)_
+- [BK-39](https://jira.upexgalaxy.com/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Ready For Dev)_
+- [BK-36](https://jira.upexgalaxy.com/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(Ready For Dev)_
+- [BK-148](https://jira.upexgalaxy.com/browse/BK-148): TMS-Project Environments | List, add, rename and remove environments _(Ready For QA)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 6/9/2026
+- **Updated:** 6/23/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed
 
 ---

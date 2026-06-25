@@ -3,7 +3,7 @@
 **Jira Key:** [BK-32](https://jira.upexgalaxy.com/browse/BK-32)
 **Epic:** [BK-24](https://jira.upexgalaxy.com/browse/BK-24) (Tests (chains of ATCs))
 **Type:** Story
-**Status:** In Progress
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 3
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -138,18 +138,19 @@ Scenario: Expanded read returns full chain in one round trip
 
 ## Traceability
 
-### Story (1)
+### Storys (2)
 
 - [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(QA Approved)_
+- [BK-147](https://jira.upexgalaxy.com/browse/BK-147): App Shell | Open ATCs and Tests as tabs with a persistent explorer _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 6/19/2026
+- **Updated:** 6/23/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** needs-dev-confirmation, needs-po-confirmation, shift-left-2026-06-14, shift-left-reviewed, tests-epic
 
 ---

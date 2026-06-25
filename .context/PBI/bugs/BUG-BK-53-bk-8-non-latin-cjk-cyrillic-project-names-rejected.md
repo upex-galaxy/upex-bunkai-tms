@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-53](https://jira.upexgalaxy.com/browse/BK-53)
 **Priority:** Medium
-**Status:** Ready For QA
+**Status:** Closed
 **Components:** None
 **Fix Type:** Bugfix
 
@@ -65,9 +65,9 @@ International users cannot name a project in their own script. Improvement-grade
 ## Metadata
 
 - **Created:** 6/3/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/15/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Nahuel Gomez
 - **Labels:** bk-8, sprint-defect, wave-1
 
 ---

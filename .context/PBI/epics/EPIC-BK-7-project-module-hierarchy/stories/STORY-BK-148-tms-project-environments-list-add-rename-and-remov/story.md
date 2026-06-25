@@ -3,7 +3,7 @@
 **Jira Key:** [BK-148](https://jira.upexgalaxy.com/browse/BK-148)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 1
 
@@ -43,16 +43,16 @@ As a Senior QA Engineer, I want to manage the list of environments for a project
 
 ### Story (1)
 
-- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(In Progress)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/20/2026
-- **Updated:** 6/20/2026
+- **Updated:** 6/23/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** micaelavirgagarcia
 - **Labels:** feature-extension, post-mvp
 
 ---

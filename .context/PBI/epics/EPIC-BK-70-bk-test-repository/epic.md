@@ -16,7 +16,7 @@ _No description provided_
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/6/2026
+- **Updated:** 6/21/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Unassigned
 - **Labels:** qa, regression, test-repository

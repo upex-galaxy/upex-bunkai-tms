@@ -3,7 +3,7 @@
 **Jira Key:** [BK-15](https://jira.upexgalaxy.com/browse/BK-15)
 **Epic:** [BK-12](https://jira.upexgalaxy.com/browse/BK-12) (User Stories & Acceptance Criteria)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 3
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -39,26 +39,32 @@
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
 - [Implementation Plan (Dev)](./implementation-plan.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
 ## Traceability
 
+### Defect (1)
+
+- [BK-143](https://jira.upexgalaxy.com/browse/BK-143): AC Management: Description Validation: Byte cap enforces 50,000 bytes (decimal) instead of 51,200 bytes (binary KiB) _(Open)_
+
 ### Storys (3)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(In Test)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(QA Approved)_
 - [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(Ready For QA)_
-- [BK-17](https://jira.upexgalaxy.com/browse/BK-17): Jira Import | Pull Jira issues by JQL _(Ready For QA)_
+- [BK-17](https://jira.upexgalaxy.com/browse/BK-17): Jira Import | Pull Jira issues by JQL _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/19/2026
 - **Reporter:** Ely
 - **Assignee:** maibeth vega
-- **Labels:** acceptance-criteria, mvp, wave-2
+- **Labels:** acceptance-criteria, mvp, shift-left-reviewed, wave-2
 
 ---
 

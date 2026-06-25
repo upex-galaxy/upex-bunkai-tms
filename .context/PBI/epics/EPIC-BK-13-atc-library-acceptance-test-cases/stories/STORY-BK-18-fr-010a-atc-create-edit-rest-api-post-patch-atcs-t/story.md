@@ -3,7 +3,7 @@
 **Jira Key:** [BK-18](https://jira.upexgalaxy.com/browse/BK-18)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** In Test
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -84,6 +84,21 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 ## Traceability
 
+### Tests (12)
+
+- [BK-149](https://jira.upexgalaxy.com/browse/BK-149): BK-18: TC01: Validate POST /atcs creates ATC returning 201 with steps, assertions, slug and version 1 (layer UI/API/Unit) _(Draft)_
+- [BK-150](https://jira.upexgalaxy.com/browse/BK-150): BK-18: TC02: Validate POST /atcs auth and scope gate (no-auth 401 / invalid token 401 / read-scope 403) _(Draft)_
+- [BK-151](https://jira.upexgalaxy.com/browse/BK-151): BK-18: TC03: Validate POST /atcs rejects with 422 ac_outside_user_story when an AC belongs to a different user story _(Draft)_
+- [BK-152](https://jira.upexgalaxy.com/browse/BK-152): BK-18: TC04: Validate POST /atcs rejects with 422 module_outside_project_subtree when the module is outside the US project subtree _(Draft)_
+- [BK-153](https://jira.upexgalaxy.com/browse/BK-153): BK-18: TC05: Validate POST /atcs rejects with 422 steps_position_invalid for non-strictly-increasing-from-1 positions (parametrized) _(Draft)_
+- [BK-154](https://jira.upexgalaxy.com/browse/BK-154): BK-18: TC06: Validate POST /atcs request-body boundaries (BVA: title 3..200, steps>=1, tags<=10, layer enum) _(Draft)_
+- [BK-155](https://jira.upexgalaxy.com/browse/BK-155): BK-18: TC07: Validate POST /atcs writes zero rows across all three tables when a post-validation cross-entity check fails (DB-verified rollback) _(Draft)_
+- [BK-156](https://jira.upexgalaxy.com/browse/BK-156): BK-18: TC08: Validate PATCH /atcs/{id} happy-path full-replace returns 200, bumps version and cascade-replaces children (BK-96 regression, X-If-Match) _(Draft)_
+- [BK-157](https://jira.upexgalaxy.com/browse/BK-157): BK-18: TC09: Validate PATCH /atcs/{id} optimistic lock via X-If-Match (matching 200 / stale 409 / absent 200) _(Draft)_
+- [BK-158](https://jira.upexgalaxy.com/browse/BK-158): BK-18: TC10: Validate PATCH /atcs/{id} returns 404 not_found for a non-existent ATC id _(Draft)_
+- [BK-159](https://jira.upexgalaxy.com/browse/BK-159): BK-18: TC11: Validate PATCH /atcs/{id} with an empty body is a 200 no-op (no version bump, no event) _(Draft)_
+- [BK-160](https://jira.upexgalaxy.com/browse/BK-160): BK-18: TC12: Validate PATCH /atcs/{id} keeps slug, user_story_id and module_id immutable across an edit _(Draft)_
+
 ### Test Execution (1)
 
 - [BK-95](https://jira.upexgalaxy.com/browse/BK-95): [ATR] BK-18 — ATC create/edit REST API _(ACTIVE)_
@@ -94,13 +109,13 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 ### Storys (7)
 
-- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For QA)_
-- [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(Ready For QA)_
-- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(Ready For Dev)_
-- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(Ready For Dev)_
-- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Dev)_
-- [BK-21](https://jira.upexgalaxy.com/browse/BK-21): TMS-ATC Propagation | Cascade ATC edits to all tests _(Shift-Left QA)_
-- [BK-22](https://jira.upexgalaxy.com/browse/BK-22): TMS-ATC Usage | See a "Used in N tests" report _(Ready For Dev)_
+- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(QA Approved)_
+- [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(QA Approved)_
+- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(Ready For QA)_
+- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(Ready For QA)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(QA Approved)_
+- [BK-21](https://jira.upexgalaxy.com/browse/BK-21): TMS-ATC Propagation | Cascade ATC edits to all tests _(Ready For Dev)_
+- [BK-22](https://jira.upexgalaxy.com/browse/BK-22): TMS-ATC Usage | See a "Used in N tests" report _(Ready For QA)_
 
 ### Test Plan (1)
 
@@ -111,9 +126,9 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/20/2026
 - **Reporter:** Ely
-- **Assignee:** jesusgpythondev
+- **Assignee:** Ely
 - **Labels:** api, atc, backend, mvp, shift-left-2026-05-27, shift-left-reviewed, wave-2
 
 ---

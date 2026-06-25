@@ -596,5 +596,26 @@ This story has been moved back to ***In Test*** so testing can resume. Please co
 
 ---
 
+### Ely - 6/20/2026, 8:05:42 PM
+
+> ***SUCCESS:**** ****QA Verdict******:****** PASSED (GO) — re-run 2026-06-20, staging, API+DB.***
+
+***Re-tested BK-18 end-to-end (modality jira-xray).*** 12/12 test cases PASSED. No open defects.
+
+***Blocking defect BK-96 — verified FIXED end-to-end.*** This closes the gap left by the prior code-review-only retest. The fix moved the optimistic-lock token to a custom `X-If-Match` header (PR #30, commit `421a917`): `X-If-Match` matching → 200 + version bump + cascade replace; stale → 409 conflict; absent → 200. Legacy `If-Match` still returns 412 at the Vercel edge (documented limitation — `X-If-Match` is the contract).
+
+***Coverage (refactored, parametrized — EP + BVA)******:***
+
+- ATP BK-94 updated; 12 Xray Tests BK-149…BK-160 created, executed under Test Execution BK-95 (all PASSED), shared Pre-Condition BK-161.
+- Anchoring moat (AC→US, module→subtree), auth/scope gate, step-position rule, request boundaries, transactional rollback (DB-verified), PATCH happy path + optimistic lock + 404 + empty-body no-op + immutable fields.
+
+***DB integrity******:*** transactional rollback verified zero-residue; created ATCs cleaned up (0/0/0).
+
+***Observation (non-blocking)******:*** `affected*test*ids` returns `null` where the MVP contract said `[]` — recommend dev confirm intended representation.
+
+***Recommendation******:*** ready for QA sign-off.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

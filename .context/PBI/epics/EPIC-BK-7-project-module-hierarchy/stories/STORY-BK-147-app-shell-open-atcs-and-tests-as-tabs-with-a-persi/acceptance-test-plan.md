@@ -2,43 +2,60 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
 
-## Acceptance Test Plan (ATP) — BK-147 App Shell & Workbench Tabs
+# BK-147 — Acceptance Test Plan (ATP)
 
-***Persona under test******:*** Elena Vargas (Senior QA Engineer)
-***Surface******:*** Application shell + project workbench (Projects screen)
-***Test type legend******:*** P = positive · N = negative · B = boundary
+## Triage
 
-### Preconditions (shared)
+- ***Veto******:*** None (UI feature, user-facing)
+- ***Risk score******:*** 10 (HIGH) — new feature (+3) + explicit ACs (+2) + user-facing (+2) + high effort 5SP (+2) + Highest priority (+1)
+- ***Data feasibility******:*** Need authenticated browser session + project with ATCs and Tests. Workspace QASmoke-20250605 has data via PAT. UI login needed.
 
-- Elena is signed in and a member (or above) of a workspace that has at least one project.
-- The project contains at least one module, two ATCs, and two Tests (each Test chains ≥ 1 ATC).
-- A second project exists in the same workspace with its own ATCs/Tests.
+## Phase 1 — Critical Analysis
 
-| TC | Type | Objective | Steps | Expected result | AC ref |
+- ***Business******:*** Core UX improvement — Elena can navigate project like a code editor with persistent sidebar + tabs. No backend change.
+- ***Technical******:*** Frontend-only. Reuses existing routed detail views (ATC editor, Test detail view) as tab content. Routes: `/projects/{id}`, ATC/Tests opened as workbench tabs.
+- ***Complexity******:*** UI: Medium. Business logic: Low. Integration: None. Data validation: None.
+
+## Phase 2 — Story Quality
+
+- ***AC9 (not-found)******:*** No clear spec on what a "safe not-found state" looks like — needs visual confirmation.
+- ***AC10 (project isolation)******:*** What's the trigger? Is it clicking a different project in the nav, or navigating directly? Needs empirical check.
+
+## Phase 3 — Refined ACs (10 scenarios)
+
+All 10 ACs from the story are kept as-is. No new scenarios needed given the UI-only nature.
+
+## Phase 4 — Test Design (TC Outlines)
+
+### Technique application
+
+- ***EP******:*** AC1 (shell visible), AC2 (explorer visible), AC8 (deep link) → 2 partitions each (visible / hidden)
+- ***BVA******:*** AC5 (close tab → adjacent), AC6 (close last → index) → boundary at 1 tab
+- ***State-Transition******:*** Tab lifecycle: closed → opened → focused → closed. AC4 (no dup) = invalid transition (re-click same item while tab exists)
+- ***Error Guessing******:*** AC9 (deleted item), AC10 (cross-project)
+
+### Outlines
+
+| # | Outline | Type | Priority | Precondition | Expected |
 | --- | --- | --- | --- | --- | --- |
-| TC-01 | P | Shell persists across views | Sign in → open a project → open an ATC → open a Test | Left nav, workspace switcher, search entry, and account block remain visible the whole time | Shell stays visible |
-| TC-02 | P | Account block shows real identity | Inspect the account block after sign-in | The block shows Elena's own signed-in identity, not a placeholder name | Shell stays visible |
-| TC-03 | P | Explorer persists + item opens as tab | In a project, click an ATC in the explorer | ATC opens as a workbench tab; explorer stays beside it; ATC highlighted in the tree | Explorer stays visible |
-| TC-04 | P | Open a Test as a tab | Click a Test in the explorer | Test opens as a tab; explorer visible; Test highlighted | Explorer stays visible |
-| TC-05 | P | Multiple tabs, switchable | Open an ATC, then a second item, then a third | Three tabs exist; switching between them preserves all three | Multiple tabs |
-| TC-06 | N | No duplicate tab on re-open | With an ATC tab open, click the same ATC again | Existing tab is focused; no duplicate is created | Re-opening focuses |
-| TC-07 | P | Close active tab → neighbour active | With several tabs open, close the active one | Tab removed; an adjacent tab becomes active; explorer stays visible | Closing a tab |
-| TC-08 | B | Close the last tab | With exactly one tab open, close it | Workbench shows its empty index state; explorer stays visible | Closing last tab |
-| TC-09 | P | Toolbar reachable from a tab | With a Test open, locate project actions | New ATC, New Test, view switch, and search are reachable without closing the tab | Toolbar reachable |
-| TC-10 | P | Deep link to a Test opens as a tab | Paste a direct Test URL into a fresh load | Test opens as a tab inside the workbench; explorer visible; Test highlighted | Deep link opens as tab |
-| TC-11 | P | Deep link to an ATC opens as a tab | Paste a direct ATC URL into a fresh load | ATC opens as a tab inside the workbench; explorer visible; ATC highlighted | Deep link opens as tab |
-| TC-12 | N | Deep link to a deleted item | Delete a Test, then open its old URL | Safe not-found state shown inside the workbench; shell + explorer intact; no broken full page | Item no longer available |
-| TC-13 | N | Deep link to an item without access | Open a URL for an item in a project Elena cannot see | Safe not-found state inside the workbench; no data leak; shell intact | Item no longer available |
-| TC-14 | B | Switching projects resets tabs | Open tabs in project A, then open project B from nav | Lands on project B's workbench index; project A tabs are not shown | Switching projects |
-| TC-15 | N | Disabled nav destinations | Click a "coming soon" nav item (e.g. Metrics) | Item is visibly disabled; no navigation, no broken route | Disabled destinations (business rule) |
-| TC-16 | B | Many tabs overflow gracefully | Open enough items to exceed the tab strip width | Tab strip scrolls/condenses without breaking layout; all tabs reachable | Multiple tabs (boundary) |
+| TC1 | Shell stays visible across navigation | Positive | Critical | Signed in, on project page | Left nav, workspace switcher, search, account block visible at all times |
+| TC2 | Explorer tree visible when opening ATC | Positive | Critical | Signed in, project with ATCs | Click ATC → tab opens, tree stays, item highlighted |
+| TC3 | Explorer tree visible when opening Test | Positive | Critical | Signed in, project with Tests | Click Test → tab opens, tree stays, item highlighted |
+| TC4 | Multiple tabs open simultaneously | Positive | High | One tab open | Open 2nd + 3rd item → 3 tabs, switch between them without losing |
+| TC5 | Re-opening same item focuses tab (no dup) | Negative | High | ATC already open in tab | Click same ATC → existing tab focused, no duplicate |
+| TC6 | Close active tab → adjacent activates | Boundary | High | 3 tabs open | Close middle tab → right tab becomes active |
+| TC7 | Close last tab → workbench index | Boundary | High | Exactly 1 tab open | Close it → workbench index state shown, explorer persists |
+| TC8 | Toolbar reachable from any tab | Positive | High | Test open in tab | New ATC, New Test, view switch, search visible without closing tab |
+| TC9 | Deep link opens as tab with explorer | Positive | High | Direct URL to a Test | Test opens as tab, explorer visible, item highlighted in tree |
+| TC10 | Deleted/invisible item → safe not-found | Error | Medium | URL to deleted ATC | In-shell not-found shown, explorer + nav still visible |
+| TC11 | Switching projects clears tabs | Negative | High | Tabs open in project A | Open project B → workbench index, no tabs from project A |
 
-### Test-only concerns (not promoted to AC — exploratory / regression)
+***Total******:****** 11 outlines*** (10 ACs + 1 risk-beyond-AC for cross-project isolation detail)
 
-- Browser back/forward after opening and closing tabs lands on a coherent state (no orphaned URL).
-- Refreshing the page while a tab is open re-opens that tab (deep-link path) rather than losing context.
-- Keyboard/middle-click on an explorer item still allows opening the full editor in a new browser tab (existing power-user affordance preserved).
-- Read-only guarantee: opening an item performs no write; the item's `updated_at` is unchanged after open/close.
+## ATP publication
+
+- ***customfield******_******10120******:*** Not writable (confirmed earlier)
+- ***Fallback******:*** ATP posted as Jira comment
 
 ---
 _Synced from Jira by sync-jira-issues_

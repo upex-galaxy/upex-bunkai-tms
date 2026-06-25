@@ -46,9 +46,9 @@
 
 ### Storys (3)
 
-- [BK-9](https://jira.upexgalaxy.com/browse/BK-9): TMS-Module | Create modules with nested sub-modules _(In Test)_
-- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For QA)_
-- [BK-17](https://jira.upexgalaxy.com/browse/BK-17): Jira Import | Pull Jira issues by JQL _(Ready For QA)_
+- [BK-9](https://jira.upexgalaxy.com/browse/BK-9): TMS-Module | Create modules with nested sub-modules _(QA Approved)_
+- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(QA Approved)_
+- [BK-17](https://jira.upexgalaxy.com/browse/BK-17): Jira Import | Pull Jira issues by JQL _(QA Approved)_
 
 ---
 

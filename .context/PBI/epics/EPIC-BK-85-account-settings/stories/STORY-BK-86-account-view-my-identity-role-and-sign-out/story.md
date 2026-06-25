@@ -3,7 +3,7 @@
 **Jira Key:** [BK-86](https://jira.upexgalaxy.com/browse/BK-86)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 3
 
@@ -48,6 +48,10 @@ Re-validation of the codebase against the real ACs' "global chrome" / "account a
 
 ## Traceability
 
+### Bug (1)
+
+- [BK-176](https://jira.upexgalaxy.com/browse/BK-176): Account Settings: Sign-out: Client-side redirect to /login does not fire after successful server-side sign-out _(Open)_
+
 ### Story (1)
 
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For Dev)_
@@ -57,7 +61,7 @@ Re-validation of the codebase against the real ACs' "global chrome" / "account a
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/8/2026
+- **Updated:** 6/23/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed

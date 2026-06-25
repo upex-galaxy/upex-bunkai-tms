@@ -613,5 +613,69 @@ Color is never the sole signal. The muted zero state uses both color (`--fg-3`) 
 
 ---
 
+### Automation for Jira - 6/20/2026, 12:27:22 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 6/20/2026, 12:27:29 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Andrés Daniel Cumare Morales - 6/23/2026, 5:35:56 AM
+
+## QA Sprint-Testing — Session Start Report
+
+***Ticket***: BK-22 — TMS-ATC Usage | See a "Used in N tests" report
+***Date***: 2026-06-23
+***Environment***: staging (`staging-upexbunkai.vercel.app`)
+***QA Engineer***: Andrés Daniel Cumare Morales
+
+---
+
+## Finding: Feature NOT Deployed to Staging
+
+> ***ERROR:**** Sprint-testing session started on BK-22 but the feature has ****not been implemented*** in the codebase. QA cannot proceed with Stage 1 Planning, Stage 2 Execution, or Stage 3 Reporting.
+
+### Evidence
+
+| Expected artifact | Status | Detail |
+| --- | --- | --- |
+| `GET /atcs/{id}/usage` API endpoint | ***Missing*** | No route exists under `app/api/v1/atcs/` for the usage endpoint |
+| "Used in N tests" UI widget | ***Missing**** | `atc-detail-pane.tsx` displays placeholder text: **"Run history, 'Used by tests' and the Run action arrive with the test runner."* |
+| ATC Editor page (`/atcs/[atcId]`) | ***No usage section*** | Page renders steps, assertions, linked story — no usage widget |
+| Git history for BK-22 | ***No implementation commits*** | Only `docs(pbi): seed Wave 2 backlog` references BK-22 |
+
+### Upstream Dependency Status
+
+| Dependency | Status | Notes |
+| --- | --- | --- |
+| `tests` + `test*steps` tables (EPIC-BK-5 / BK-27) | ***Deployed*** | Migration `0024*tests.sql` exists and includes `test*steps*atc*id*idx` index |
+| BK-18 (atcs table) | ***QA Approved*** | Not a blocker |
+| BK-27 (Test Builder) | ***QA Approved*** | PR #40 merged 2026-06-20 |
+
+### Root Cause Hypothesis
+
+The Jira automation comments ("PR merged" on 2026-06-20) were triggered by ***BK-27*** (Test Builder), not BK-22. BK-22 is linked to BK-27 in the traceability section, which likely caused the automation to update BK-22's status. The actual BK-22 feature (usage endpoint + UI widget) was never developed.
+
+### Impact on QA
+
+- ***Stage 1 (Planning)***: ATP outlines exist from the shift-left session (2026-06-02) — no immediate loss, but parametrization cannot be verified without an endpoint to test against.
+- ***Stage 2 (Execution)***: Completely blocked — no endpoint, no widget, no feature to smoke test.
+- ***Stage 3 (Reporting)***: Cannot produce an ATR without execution results.
+
+### Recommendation
+
+The ticket status should be reviewed by the dev team. The feature needs implementation before QA can resume sprint-testing. Shift-left refinement (15 test outlines, PO/Dev/Design answers) remains valid and will be used when the feature is ready.
+
+---
+
+**Sprint-testing session paused — awaiting feature deployment.**
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
