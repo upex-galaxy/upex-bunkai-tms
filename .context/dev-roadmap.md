@@ -1,7 +1,7 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-06-20
+> **Last sync**: 2026-06-24
 > **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
@@ -88,23 +88,23 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
    BK-27 Test Builder ✅ ─────┤ (dev-done — gate RELEASED, unblocks 7)        │
    (chain ATCs, 8 SP)         └──┬───────────────────────────────────────────┘
                                  ├──> BK-28 Test Reorder        (5)
-                                 ├──> BK-33 Test Tags           (8)
+                                 ├──> BK-33 Test Tags ✅         (8)   (dev-done — QA Approved)
                                  ├──> BK-22 ATC Usage report    (3)
                                  ├──> BK-23 ATC Duplicate       (5)
                                  ├──> BK-32 Test view expanded  (1)
-                                 ├··> BK-21 ATC Propagation     (5)   (also needs its 10 contract Qs)
-                                 └──> BK-34 Start manual run    (8) ──┬──> BK-35 Mark step pass/fail (1*)
-                                          (opens Runs tail)           ├──> BK-36 Abort run          (1)
-                                                                      ├──> BK-37 Run history        (1) 🔒 Test Runs mockup
-                                                                      ├──> BK-38 Filter proj runs   (1) 🔒 Test Runs mockup
-                                                                      └──> BK-39 Finish run verdict (1)
+                                 ├··> BK-21 ATC Propagation     (5) 🟢  (RFD but contract-unratified)
+                                 └──> BK-34 Start manual run ✅  (8) ──┬──> BK-35 Mark step pass/fail (5*) ⚪ Estimation
+                                   (dev-done — gate RELEASED)          ├──> BK-36 Abort run          (8) 🟢
+                                                                       ├──> BK-37 Run history        (3) 🔒 Test Runs mockup
+                                                                       ├──> BK-38 Filter proj runs   (3) 🔒 Test Runs mockup
+                                                                       └──> BK-39 Finish run verdict (5) 🟢
 
    INDEPENDENT (no BK-27 gate — parallel-safe):
-     BK-20 ATC Search (5) 🟢      BK-3 OAuth (8) 🟢*sync-AC      BK-19 ATC Builder 🧪   BK-18 ATC API 🧪
+     BK-20 ATC Search 🧪      BK-3 OAuth (8) 🟢 (AC synced)      BK-19 ATC Builder ✅   BK-18 ATC API ✅
 
    SETTINGS CLUSTER (epic BK-85):
-     BK-86 Account/sign-out (3) ──> BK-87 Settings hub (2) ──┬──> BK-88 Manage PATs (5) 🔒
-                                                             └──> BK-89 View workspaces (2) ──> BK-90 Leave workspace (5) 🔒
+     BK-86 Account/sign-out ✅ ──> BK-87 Settings hub (2) 🟢 ──┬──> BK-88 Manage PATs (5) 🔒
+        (dev-done — QA Approved)                              └──> BK-89 View workspaces (2) 🟢 ──> BK-90 Leave workspace (5) 🔒
                                     └─ BK-87+ all 🔒 Settings mockup (§4.10 spec exists, wireframe ❌)
 ```
 
@@ -135,12 +135,12 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 
 | Exec Sprint | Stories | Gate released by | Notes |
 |-------------|---------|------------------|-------|
-| **ES0 ✅** | BK-27 | — | Shipped → Ready For QA (QA Approved). Released the whole ES1 fan-out. |
-| **ES1 (mostly shipped)** | ✅ shipped this cycle: BK-28, BK-22, BK-23, BK-32, BK-20 (all Ready For QA). **Active remainder: BK-33** + parallels **BK-3, BK-86** | BK-27 ✅ | ES1 fan-out is nearly drained: reorder/usage/duplicate/view + ATC Search all landed. Only **BK-33 Test Tags** left on the BK-27 gate; BK-3 (OAuth, needs AC-field sync) + BK-86 (Account) run parallel. |
-| **ES1.5** | BK-87 (after BK-86) ; BK-21 (after its 10 Qs) | BK-86 ; BK-27 | BK-87 spec-only OK if Rule-15 §4.10 ratified, else 🔒 Settings mockup. |
-| **ES2 (live frontier)** | BK-34 Start manual run | BK-27 ✅ | **Now the highest-leverage pick** — opens the Runs tail (BK-35/36/37/38/39, 5 stories). 7 PO/Design/Dev Qs answerable during build. |
-| **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | 🔒 Settings mockup. BK-88 has 9 planning-blocker Qs; BK-89 has 2 API-contract BLOCKERS + is Shift-Left QA. |
-| **ES3** | BK-35, BK-36, BK-37, BK-38, BK-39 ; BK-90 (after BK-89) | BK-34 ; BK-89 | BK-35 re-estimate (1 vs ≥5). BK-37/38 🔒 Test Runs mockup. |
+| **ES0 ✅** | BK-27 | — | Shipped → QA Approved. Released the whole ES1 fan-out. |
+| **ES1 ✅ (fully drained)** | ✅ all shipped: BK-28, BK-22, BK-23, BK-32, BK-20, **BK-33 Test Tags** | BK-27 ✅ | ES1 fan-out drained — reorder/usage/duplicate/view + ATC Search + Test Tags all landed (most QA Approved; BK-22/BK-23 dev-merged, awaiting QA — staging deploy gap per BK-142, code IS on staging). BK-86 (Account) also shipped → QA Approved; BK-3 (OAuth) now AC-synced + parallel. |
+| **ES1.5** | BK-87 (after BK-86 ✅) ; BK-21 (after its 10 Qs) | BK-86 ✅ ; BK-27 ✅ | BK-87 🟢 RFD but 🔒 Settings mockup (§4.10 spec only). BK-21 🟢 RFD but contract-unratified (10 Qs + OpenAPI drift on `PATCH /atcs/{id}` still open). |
+| **ES2 ✅ (shipped)** | BK-34 Start manual run | BK-27 ✅ | **Shipped → QA Approved** — released the Runs tail (BK-35/36/37/38/39). |
+| **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | BK-88 🔒 Settings mockup + own 9 Qs. **BK-89 promoted to RFD 2026-06-24** but open Dev contract (add `role` to `GET /workspaces` + active-workspace transport) — resolve before coding. |
+| **ES3 (live frontier)** | BK-36 Abort, BK-39 Finish verdict (both 🟢 workable now) ; BK-35 (⚪ Estimation, blocked) ; BK-37/38 (🔒 mockup) ; BK-90 (after BK-89) | BK-34 ✅ ; BK-89 | **Live frontier**: BK-36 + BK-39 workable now off the BK-34 gate. BK-35 re-estimated 1→5 SP, stays in Estimation (blocked by Q1 PO + Q5 Dev). BK-37/38 🔒 Test Runs mockup. BK-90 🔒 Settings mockup + waits on BK-89 contract. |
 | **ES4+** | epic BK-31 (Bugs), BK-44 (Coverage) | BK-30 complete | 🔒 Bug Reports + Metrics mockups. Beyond current frontier. |
 
 ---
@@ -190,13 +190,13 @@ These are gating questions / contract decisions captured during shift-left refin
 
 | Story | Pre-dev blocker (resolve first) |
 |-------|----------------------------------|
-| BK-3  | Sync AC field to the 10 refined ACs (/onboarding vs /projects redirects, drop "201"). |
+| BK-3  | ~~Sync AC field to the 10 refined ACs.~~ **DONE (2026-06-24)** — AC field synced to the 10 refined ACs (`/onboarding` first-time / `/projects` returning; removed `/home` + status `201`). Cleared for dev. |
 | BK-22 / BK-86 / BK-90 | Human-ratify the AI role-played PO answers. |
 | BK-23 | Answer 8 contract Qs (role gate, title overflow, API mismatch). |
 | BK-88 | Answer 4 PO + 5 dev Qs (ATP marks them planning blockers). |
-| BK-89 | Decide API contract (role per workspace in `GET /workspaces` + active-workspace contract). |
-| BK-21 | Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`. |
-| BK-35 | Re-estimate (1 vs ≥5) + post the announced ATP content to Jira. |
+| BK-89 | **Promoted to RFD 2026-06-24; open Dev contract**: add `role` to `GET /api/v1/workspaces` + active-workspace transport decision (API field vs localStorage vs session, undecided) — resolve before coding. Comment posted on the issue. |
+| BK-21 | Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`. **Still unratified as of 2026-06-24** — RFD status but contract/OpenAPI open (soft-blocked). |
+| BK-35 | **Re-estimated 1→5 SP 2026-06-24; still in Estimation** pending Q1 (PO: ATC verdict when steps pending) + Q5 (Dev: realtime transport + latency SLA). Comment posted. |
 | Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
 
 ### Edge-mapping TODO — stories seen on the board but not yet in the §3 graph

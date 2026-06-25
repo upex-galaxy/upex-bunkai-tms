@@ -1,23 +1,23 @@
 # Sprint 2 — In-Sprint Development Tracker
 
 > Purpose: track dev progress per ticket; cross-ticket aggregate for AI session resume.
-> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-20
+> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-24
 > Goal: "Finalizar un Producto Funcional con Módulos de Story, Test, ATC y Accounting."
 >
 > **Authoritative build order (bug waves + story frontier):** `.context/PBI/sprint-sequence.md`.
 > **Sprint 1 history:** `.context/reports/SPRINT-1-DEVELOPMENT.md` (closed 2026-06-09).
 
-## Board Summary (2026-06-20)
+## Board Summary (2026-06-24)
 
 | Bucket | Count | Dev Relevant |
 | ------ | ----- | ------------ |
 | Bugs Open | 0 | **CLEARED** — all 16 fixed + 5 dup-closed in Sprint-2 bug waves (now Ready For QA / QA-side) |
 | Improvements Open | 1 | BK-97 (Medium, story-sized — deferred to planning session) |
-| Stories Ready For Dev | ~4 | YES — active frontier: BK-33 · BK-34 · BK-86 · BK-3 |
-| Stories BLOCKED | 0 | BK-6 / BK-10 / BK-16 / BK-18 all unblocked → In Test |
-| Stories in QA pipe (RFQA / In Test / SLQA) | 17 | NO — QA hands (incl. 6 stories shipped this sprint: BK-20/22/23/27/28/32) |
-| Stories Backlog | — | Runs tail BK-35–39 (opens after BK-34); Settings cluster 🔒 |
-| QA Approved | 2 | BK-98 · BK-27 (Test Builder — released the ATC/Test frontier) |
+| Stories Ready For Dev | ~9 | YES — all reassigned to Ely 2026-06-24: BK-36 · BK-39 · BK-3 · BK-21 · BK-87 · BK-38 · BK-88 · BK-90 · BK-89. **Many are mockup/contract gated** (BK-87/88/90/38 🔒 mockup; BK-21 contract-unratified; BK-89 open Dev contract). Cleanly workable now: **BK-36, BK-39, BK-3**. |
+| Stories Ready For QA (dev done, awaiting QA) | 5 | NO — QA hands: BK-148 · BK-22 · BK-14 · BK-23 · BK-20 |
+| Stories in Estimation | 1 | BK-35 Mark step pass/fail — re-estimated 1→5 SP, blocked by Q1 (PO) + Q5 (Dev) |
+| Stories Backlog | — | BK-37 Run History (unrefined, no mockup, no ATP) |
+| QA Approved | ~18 | BK-98 · BK-27 · **BK-34 (released Runs tail)** · BK-33 · BK-86 · BK-147 · BK-19 · BK-18 · BK-17 · BK-9 · BK-10 · BK-11 · BK-8 · BK-5 · BK-6 · BK-15 · BK-16 |
 | Test artifacts (Test/Plan/Execution) | 6 | NO — QA-owned |
 | Total Sprint 2 | 62 | |
 
@@ -53,17 +53,19 @@ Then: BK-51 (reserved slugs) · BK-52 (route not workspace-scoped) · BK-53 (CJK
 
 ### Pipeline — Story frontier (recommended sequence)
 
-ATC/Test wave SHIPPED (see Done table): BK-27 (gate) → BK-20/22/23 → BK-28/32. Active frontier now:
+ATC/Test wave + Runs gate SHIPPED (see Done table): BK-27 (gate) → BK-20/22/23 → BK-28/32 → BK-33 → BK-34 (Runs-tail gate, QA Approved) + BK-86. Live linear order now:
 
-1. **BK-33** Test Tags — tag + filter tests.
-2. **BK-34** Start manual run — opens the Runs tail (BK-35–39).
-3. **BK-86** Account / sign-out.
-4. **BK-3** OAuth — needs AC-field sync first.
+1. **BK-36** Abort run — workable now off the BK-34 gate.
+2. **BK-39** Finish run verdict — workable now off the BK-34 gate.
+3. **BK-3** OAuth — AC field now synced (2026-06-24), cleared for dev.
+4. _[decision-gated]_ **BK-89** — after `role` field + active-workspace contract resolved; **BK-21** — after 10 contract Qs + OpenAPI drift ratified.
 
 **Excluded (do NOT pull yet):**
 - Settings cluster **BK-87 / BK-88 / BK-90** 🔒 — Settings mockup not authored (no design contract per Rule #15).
-- **BK-21** — 10 open propagation questions, unrefined.
-- **BK-89** (Shift-Left QA) — likely superseded by BK-101.
+- **BK-37 / BK-38** 🔒 — Test Runs index mockup not authored.
+- **BK-35** — in Estimation (re-estimated 1→5 SP); blocked by Q1 (PO) + Q5 (Dev).
+- **BK-21** — RFD but contract-unratified (10 propagation Qs + OpenAPI drift on `PATCH /atcs/{id}` open).
+- **BK-89** — promoted RFD 2026-06-24 (no longer superseded — BK-101 was a dup, deleted from Jira; BK-89 stands), but open Dev contract before coding.
 
 Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own Stage 1). Full order in `sprint-sequence.md`.
 
@@ -85,7 +87,11 @@ Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own S
 | BK-28 | Test Reorder — reorder Test ATC chain (RPC + PATCH route + drag UI) | Ely | #42 | 2026-06-19 | 2026-06-19 | — | Ready For QA. Merge commit d4fb8e2 (merged in a parallel/prior session — full impl detail not captured here). |
 | BK-20 | ATC Search — project-scoped full-text search + Projects toolbar filter | Facu Barea | #44 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Facu Barea (shift-left QA owner). Project-scoped FTS search. Merge commit 3574d50. |
 | BK-23 | ATC Duplicate — deep-copy ATC with steps, assertions, AC bindings | Benjamin Segovia | #45 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Benjamin Segovia (shift-left QA owner). Atomic deep-copy RPC. Merge commit 5f02be9. |
-| BK-22 | ATC Usage — "used in N tests" usage report | Andrés Daniel Cumare Morales | #46 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Andrés Daniel Cumare Morales (shift-left QA owner). Used-in-N-tests report. Merge commit efcb282. |
+| BK-22 | ATC Usage — "used in N tests" usage report | Andrés Daniel Cumare Morales | #46 | 2026-06-20 | 2026-06-20 | — | Ready For QA, assignee Andrés Daniel Cumare Morales (shift-left QA owner). Used-in-N-tests report. Merge commit efcb282. Code IS on staging — QA "not deployed" report = staging deploy gap (cf BK-142), not missing code; clarification comment posted to QA 2026-06-24. |
+| BK-33 | Test Tags — tag + filter tests | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved.** Drained the last BK-27-gated ES1 story. Impl detail not captured in this tracker. |
+| BK-34 | Start manual run — opens the Runs tail | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved — the gate that released the Runs tail (BK-35/36/37/38/39).** Impl detail not captured in this tracker. |
+| BK-86 | Account / sign-out | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved.** Settings-cluster root (unblocks BK-87). Impl detail not captured in this tracker. |
+| BK-147 | App Shell | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved.** Impl detail not captured in this tracker. |
 | BK-142 | [BK-17] Staging Jira import `jira_unauthorized` — ATLASSIAN_* creds missing in Vercel `staging` Custom Env | Ely | — (env config, no PR/branch) | 2026-06-21 (redeploy) | — | **Ready For QA**, root_cause=Config/Env Error, fix=Bugfix, assignee Andrés (reporter). NOT a UI/API defect — the 3 Jira creds (`ATLASSIAN_URL`/`EMAIL`/`API_TOKEN`, read at runtime in `lib/jira/client.ts:120`) were absent from **every** Vercel scope. Key gotcha: the `staging` branch deploys to a Vercel **Custom Environment named `staging`** (not generic `Preview`), so the prior QA attempt that set vars on "Preview" never reached the staging runtime. Fix: set all 3 (encrypted, from `.env`) on **Production + staging** scopes, redeployed latest staging deployment (`target=staging`, status Ready). Generic `Preview` scope blocked by Vercel CLI 54.5 non-interactive branch-disambiguation quirk → follow-up only. Production scope set; applies on next `main` promotion (no forced prod redeploy per request). |
 
 ### Blocked
@@ -104,8 +110,8 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 | Total Sprint Tickets | 62 |
 | Open bugs at sprint start | 20 (+2 improvements) |
 | Bugs fixed (Ready For QA) | 16 — Waves 1–4 (BK-84, 83, 99, 100, 60, 61, 62, 58, 51, 52, 53, 57, 59, 67, 68, 69) + 5 dup-closed (92, 93, 54, 55, 56) |
-| Remaining dev-side | Story frontier: BK-33 → BK-34 → BK-86 → BK-3 (bug work done; BK-97 improvement still deferred) |
-| Stories merged this sprint | 6 — BK-27 (QA Approved), BK-20, BK-22, BK-23, BK-28, BK-32 (all Ready For QA) |
+| Remaining dev-side | Live frontier: BK-36 Abort → BK-39 Finish verdict → BK-3 OAuth (AC synced); decision-gated BK-89/BK-21 (bug work done; BK-97 improvement still deferred) |
+| Stories merged this sprint | 10 — BK-27/33/34/86/147 (QA Approved) + BK-20/22/23/28/32 (Ready For QA) |
 | Staging-deployed | PRs #32–#38 (bugs) + #40, #41, #42, #44, #45, #46 (stories) |
 | Prod-deployed | 0 |
 
@@ -121,6 +127,14 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-24 — Roadmap audit + Jira hygiene
+- **Gate release confirmed**: **BK-34 Start manual run is QA Approved** → the Runs tail (BK-35/36/37/38/39) is officially RELEASED. BK-33 (Test Tags), BK-86 (Account), BK-147 (App Shell) also QA Approved this cycle.
+- **4 reassignments to Ely**: BK-90 / BK-88 / BK-21 / BK-3 reassigned to Ely. **BK-89 promoted Shift-Left QA → Ready For Dev + assigned Ely.**
+- **BK-3 AC-sync DONE**: Acceptance Criteria field synced to the 10 refined ACs — removed `/home` + status `201`; redirect = `/onboarding` (first-time) / `/projects` (returning). Pre-dev AC-sync chore cleared.
+- **BK-89 open contract**: still to resolve before coding — `GET /api/v1/workspaces` must add a `role` field; active-workspace data contract (API field vs localStorage vs session) undecided. Comment posted on the issue.
+- **BK-35 re-estimate**: re-estimated 1→5 SP; **stays in Estimation** — blocked by Q1 (PO: ATC verdict when steps pending) + Q5 (Dev: realtime transport + latency SLA). Comment posted.
+- **BK-22 & BK-23 QA clarification**: dev code IS merged to staging (PR #46 efcb282 / PR #45 5f02be9) — the QA "not deployed" reports are a **staging deploy gap (cf BK-142), not missing code**. Clarification comments posted to QA.
 
 ### 2026-06-21 — BK-142 fixed (env config, no code) — staging Jira creds restored
 - **BK-142** root cause: the 3 `ATLASSIAN_*` creds (read at runtime by the import worker, `lib/jira/client.ts:120`) were absent from **every** Vercel scope on `upex-bunkai-tms`. Not a UI/API defect — pure environment configuration.
