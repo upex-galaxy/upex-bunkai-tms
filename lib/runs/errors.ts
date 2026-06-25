@@ -34,6 +34,21 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('no_executable_steps', 'Add at least one ATC step to this Test before starting a run.', {
         details: { reason: 'no_executable_steps' },
       });
+    case '45204':
+      // BK-36 — the run is already closed (passed/failed/aborted). AC3-exact copy.
+      // 409 conflict: the request is well-formed but the run's state forbids it.
+      throw new ApiError('conflict', 'This run is already closed and cannot be aborted.', {
+        details: { reason: 'run_not_abortable' },
+      });
+    case '45205':
+      // BK-36 — RPC backstop for a reason outside 3..500. The HTTP route's Zod
+      // layer catches BOTH bounds (too-short with the AC-exact message, too-long
+      // with its own) BEFORE the RPC runs, so an API caller never reaches here;
+      // this only fires for a direct (non-HTTP) RPC caller. Keep the message
+      // length-agnostic so it is correct for either bound.
+      throw new ApiError('validation_failed', 'The reason must be between 3 and 500 characters.', {
+        details: { reason: 'abort_reason_invalid' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

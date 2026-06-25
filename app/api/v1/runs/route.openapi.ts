@@ -40,6 +40,7 @@ const RunSchema = z
     environment_id: z.string().uuid(),
     environment_name: z.string().nullable(),
     status: z.enum(['running', 'passed', 'failed', 'aborted']),
+    abort_reason: z.string().nullable().describe('BK-36 — the reason captured when the run was aborted; null for non-aborted runs.'),
     executor_mode: z.enum(['human', 'agent', 'ci']),
     executor_user_id: z.string().uuid().nullable(),
     test_title: z.string().describe('Snapshot of the Test title at start.'),

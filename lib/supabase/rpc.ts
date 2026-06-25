@@ -286,6 +286,22 @@ export async function getRunExpanded(supabase: Client, args: { actorUserId: stri
   });
 }
 
+// BK-36 — abort an in-progress Run with a reason. Same explicit-actor contract;
+// the SECURITY DEFINER RPC gates member+ write access, requires status 'running'
+// (else run_not_abortable), trims + bounds the reason (3..500), closes the Run as
+// 'aborted' (finished_at set, version bumped) and marks every not-yet-executed
+// step 'skipped' while preserving recorded results. Returns the composed Run json.
+export async function abortRun(
+  supabase: Client,
+  args: { actorUserId: string, runId: string, reason: string },
+) {
+  return supabase.rpc('bunkai_abort_run', {
+    p_actor_user_id: args.actorUserId,
+    p_run_id: args.runId,
+    p_reason: args.reason,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the

@@ -26,3 +26,22 @@ export const RunCreateBodySchema = z.object({
 });
 
 export type RunCreateBody = z.infer<typeof RunCreateBodySchema>;
+
+// BK-36 — abort-run reason bounds. Mirrors the runs_abort_reason_chk CHECK in
+// 0036_run_abort.sql (trimmed length 3..500) and the bunkai_abort_run backstop.
+export const RUN_ABORT_REASON_MIN = 3;
+export const RUN_ABORT_REASON_MAX = 500;
+
+// AC-exact frozen copy. The HTTP route surfaces these VERBATIM (never via the
+// generic ZodError envelope) so the client renders the agreed messages.
+export const RUN_ABORT_REASON_TOO_SHORT_MESSAGE = `Please give a reason of at least ${RUN_ABORT_REASON_MIN} characters`;
+export const RUN_ABORT_REASON_TOO_LONG_MESSAGE = `The reason must be at most ${RUN_ABORT_REASON_MAX} characters`;
+
+// BK-36 — abort request validation. The reason is trimmed then bounded 3..500.
+// The route parses with safeParse and throws an AC-exact message rather than the
+// generic validation envelope (handler.ts maps ZodError to a fixed string).
+export const RunAbortBodySchema = z.object({
+  reason: z.string().trim().min(RUN_ABORT_REASON_MIN).max(RUN_ABORT_REASON_MAX),
+});
+
+export type RunAbortBody = z.infer<typeof RunAbortBodySchema>;

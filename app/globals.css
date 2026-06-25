@@ -341,4 +341,10 @@
     background: var(--running-bg);
     border-color: rgba(79, 140, 247, 0.25);
   }
+  /* BK-36 — an aborted run reads as a terminal failure state (red family). */
+  .status-chip[data-status='aborted'] {
+    color: var(--fail);
+    background: var(--fail-bg);
+    border-color: rgba(229, 72, 77, 0.25);
+  }
 }

@@ -47,5 +47,17 @@ export default async function RunDetailPage({ params }: PageProps) {
 
   const run = data as unknown as RunDetail;
 
-  return <RunnerView run={run} projectSlug={projectSlug} />;
+  // BK-36 — aborting is a member+ write action. Mirror the Test detail page's
+  // role derivation: viewers see the runner read-only (no Abort affordance); the
+  // bunkai_abort_run RPC stays the authoritative write gate regardless of the UI.
+  const { data: memberRow } = await supabase
+    .from('workspace_members')
+    .select('role')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  const canAbort = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+
+  return <RunnerView run={run} projectSlug={projectSlug} canAbort={canAbort} />;
 }
