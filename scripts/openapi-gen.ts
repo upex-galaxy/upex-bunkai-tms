@@ -100,6 +100,8 @@ import '../app/api/v1/runs/[id]/route.openapi';
 
 import '../app/api/v1/runs/[id]/abort/route.openapi';
 
+import '../app/api/v1/runs/[id]/finish/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });

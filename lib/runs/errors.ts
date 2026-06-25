@@ -49,6 +49,22 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('validation_failed', 'The reason must be between 3 and 500 characters.', {
         details: { reason: 'abort_reason_invalid' },
       });
+    case '45206':
+      // BK-39 — the run is already closed (passed/failed/aborted). AC-exact copy.
+      // 409 conflict: the request is well-formed but the run's state forbids it.
+      // First-wins — a concurrent finish/abort loser re-reads a terminal status
+      // and lands here.
+      throw new ApiError('conflict', 'This run is already closed and cannot be finished.', {
+        details: { reason: 'run_not_finishable' },
+      });
+    case '45207':
+      // BK-39 — RPC backstop for a verdict outside passed/failed. The HTTP route's
+      // Zod layer catches a missing/invalid verdict (with the AC-exact message)
+      // BEFORE the RPC runs, so an API caller never reaches here; this only fires
+      // for a direct (non-HTTP) RPC caller.
+      throw new ApiError('validation_failed', 'A final verdict of passed or failed is required.', {
+        details: { reason: 'finish_verdict_invalid' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

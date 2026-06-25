@@ -47,9 +47,10 @@ export default async function RunDetailPage({ params }: PageProps) {
 
   const run = data as unknown as RunDetail;
 
-  // BK-36 — aborting is a member+ write action. Mirror the Test detail page's
-  // role derivation: viewers see the runner read-only (no Abort affordance); the
-  // bunkai_abort_run RPC stays the authoritative write gate regardless of the UI.
+  // BK-36 / BK-39 — aborting and finishing are both member+ write actions sharing
+  // the same role gate. Mirror the Test detail page's role derivation: viewers see
+  // the runner read-only (no Abort/Finish affordance); the bunkai_abort_run /
+  // bunkai_finish_run RPCs stay the authoritative write gates regardless of the UI.
   const { data: memberRow } = await supabase
     .from('workspace_members')
     .select('role')
@@ -57,7 +58,14 @@ export default async function RunDetailPage({ params }: PageProps) {
     .eq('user_id', user.id)
     .eq('status', 'active')
     .maybeSingle();
-  const canAbort = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
+  const canManageRun = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
-  return <RunnerView run={run} projectSlug={projectSlug} canAbort={canAbort} />;
+  return (
+    <RunnerView
+      run={run}
+      projectSlug={projectSlug}
+      canAbort={canManageRun}
+      canFinish={canManageRun}
+    />
+  );
 }

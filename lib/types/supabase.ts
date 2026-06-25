@@ -1236,6 +1236,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_tag: string }
         Returns: Json
       }
+      bunkai_finish_run: {
+        Args: { p_actor_user_id: string, p_run_id: string, p_verdict: string }
+        Returns: Json
+      }
       bunkai_get_atc: {
         Args: { p_actor_user_id: string, p_atc_id: string }
         Returns: Json
