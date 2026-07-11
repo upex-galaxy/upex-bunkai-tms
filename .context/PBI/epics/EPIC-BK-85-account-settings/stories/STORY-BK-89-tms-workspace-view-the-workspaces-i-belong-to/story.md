@@ -3,7 +3,7 @@
 **Jira Key:** [BK-89](https://jira.upexgalaxy.com/browse/BK-89)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Ready For Dev
 **Priority:** Medium
 **Story Points:** 2
 
@@ -48,9 +48,9 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/20/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
-- **Assignee:** Alicia Juste
+- **Assignee:** Ely
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed
 
 ---

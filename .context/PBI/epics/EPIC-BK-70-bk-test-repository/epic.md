@@ -1,4 +1,4 @@
-# EPIC: BK Test Repository
+# EPIC: QA Test Repository
 
 **Jira Key:** [BK-70](https://jira.upexgalaxy.com/browse/BK-70)
 **Priority:** Medium
@@ -16,8 +16,8 @@ _No description provided_
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/21/2026
-- **Reporter:** Andrés Daniel Cumare Morales
+- **Updated:** 6/26/2026
+- **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** qa, regression, test-repository
 

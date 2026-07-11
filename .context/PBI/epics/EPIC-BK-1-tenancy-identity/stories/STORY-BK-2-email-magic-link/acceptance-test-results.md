@@ -1,10 +1,10 @@
 # BK-2 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10284` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 ## Acceptance Test Results — BK-2 (condensed mirror)
 
-***Story:**** Sign up and sign in with email (magic-link). ****Result:**** PASS (GO-with-debt). ****Tested:**** 2026-05-28 on https://upexbunkai.vercel.app (session override — staging-upexbunkai.vercel.app returned 404). ****Modality:**** jira-native. ****Tester:*** Sprint Testing (orchestration, Stage 3).
+***Story:**** Sign up and sign in with email (magic-link). ****Result:**** PASS (GO-with-debt). ****Tested:**** 2026-05-28 on [https://upexbunkai.vercel.app](https://upexbunkai.vercel.app/) (session override — staging-upexbunkai.vercel.app returned 404). ****Modality:**** jira-native. ****Tester:*** Sprint Testing (orchestration, Stage 3).
 
 Full local mirror (source of truth): .context/PBI/epics/EPIC-BK-1-tenancy-identity/stories/STORY-BK-2-sign-up-and-sign-in-with-email-magic-link/acceptance-test-results.md
 
@@ -16,25 +16,26 @@ Green: magic-link send, click, callback exchange, returning-user short-circuit t
 
 ### Per-TC results
 
-| TC         | Title                                           | Pri | Status                                                |
-| ---------- | ----------------------------------------------- | --- | ----------------------------------------------------- |
-| TC-BK-2-01 | First-time sign-up: send to click to onboarding | P1  | KNOWN (name/slug pre-fill not implemented)            |
-| TC-BK-2-02 | Returning user to /projects                     | P1  | PASSED                                                |
-| TC-BK-2-03 | Workspace bootstrap via onboarding (atomic)     | P1  | PASSED                                                |
-| TC-BK-2-04 | Invalid email rejected client-side              | P2  | PASSED                                                |
-| TC-BK-2-05 | Invalid email rejected server-side              | P1  | KNOWN (422 validation*failed vs AC 400 INVALID*EMAIL) |
-| TC-BK-2-06 | Magic-link replay blocked                       | P1  | KNOWN (Supabase-native otp*expired, not TOKEN*USED)   |
-| TC-BK-2-07 | Expired magic link                              | P1  | BLOCKED (no clock fixture)                            |
-| TC-BK-2-08 | Callback missing code                           | P1  | PASSED                                                |
-| TC-BK-2-09 | Rate-limit 429                                  | P1  | PASSED                                                |
-| TC-BK-2-10 | Email exactly 254 chars accepted                | P2  | PASSED                                                |
-| TC-BK-2-11 | Email 255 chars rejected                        | P2  | KNOWN (server holds; client max-length gap)           |
-| TC-BK-2-12 | Magic link at 14:59 succeeds                    | P3  | BLOCKED (no clock fixture)                            |
-| TC-BK-2-13 | Magic link at 15:01 fails                       | P3  | BLOCKED (no clock fixture)                            |
-| TC-BK-2-14 | Open-redirect blocked                           | P2  | PASSED                                                |
-| TC-BK-2-15 | workspace_members atomic with workspaces        | P1  | PASSED                                                |
-| TC-BK-2-16 | Middleware redirect + next round-trip           | P1  | PASSED                                                |
-| TC-BK-2-17 | Session cookie attributes                       | P1  | PASSED (with hardening note — see below)              |
+| TC  | Title  | Pri  | Status  |
+| --- | --- | --- | --- |
+| ---- | ------- | ----- | -------- |
+| TC-BK-2-01  | First-time sign-up: send to click to onboarding  | P1  | KNOWN (name/slug pre-fill not implemented)  |
+| TC-BK-2-02  | Returning user to /projects  | P1  | PASSED  |
+| TC-BK-2-03  | Workspace bootstrap via onboarding (atomic)  | P1  | PASSED  |
+| TC-BK-2-04  | Invalid email rejected client-side  | P2  | PASSED  |
+| TC-BK-2-05  | Invalid email rejected server-side  | P1  | KNOWN (422 validation*failed vs AC 400 INVALID*EMAIL)  |
+| TC-BK-2-06  | Magic-link replay blocked  | P1  | KNOWN (Supabase-native otp*expired, not TOKEN*USED)  |
+| TC-BK-2-07  | Expired magic link  | P1  | BLOCKED (no clock fixture)  |
+| TC-BK-2-08  | Callback missing code  | P1  | PASSED  |
+| TC-BK-2-09  | Rate-limit 429  | P1  | PASSED  |
+| TC-BK-2-10  | Email exactly 254 chars accepted  | P2  | PASSED  |
+| TC-BK-2-11  | Email 255 chars rejected  | P2  | KNOWN (server holds; client max-length gap)  |
+| TC-BK-2-12  | Magic link at 14:59 succeeds  | P3  | BLOCKED (no clock fixture)  |
+| TC-BK-2-13  | Magic link at 15:01 fails  | P3  | BLOCKED (no clock fixture)  |
+| TC-BK-2-14  | Open-redirect blocked  | P2  | PASSED  |
+| TC-BK-2-15  | workspace_members atomic with workspaces  | P1  | PASSED  |
+| TC-BK-2-16  | Middleware redirect + next round-trip  | P1  | PASSED  |
+| TC-BK-2-17  | Session cookie attributes  | P1  | PASSED (with hardening note — see below)  |
 
 ### Defects
 
@@ -59,7 +60,7 @@ TC-07/12/13 (magic-link TTL boundary at 14:59 / 15:01 / expiry) need a clock-moc
 
 ### Verdict
 
-GO-with-debt. All 10 P1 PASS; no P1 FAIL remains. Transition fired: qa*sign*off (in*test to qa*approved). QA sign-off by Sprint Testing 2026-05-27, against URL override https://upexbunkai.vercel.app.
+GO-with-debt. All 10 P1 PASS; no P1 FAIL remains. Transition fired: qa*sign*off (in*test to qa*approved). QA sign-off by Sprint Testing 2026-05-27, against URL override [https://upexbunkai.vercel.app](https://upexbunkai.vercel.app/).
 
 ---
 _Synced from Jira by sync-jira-issues_

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-99](https://jira.upexgalaxy.com/browse/BK-99)
 **Priority:** High
 **Status:** Closed
-**Components:** None
+**Components:** User Stories & Acceptance Criteria
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -67,7 +67,7 @@ Missing client-side submit guard: the counter color changes to text-signal-block
 ## Metadata
 
 - **Created:** 6/9/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Facu Barea
 - **Assignee:** Facu Barea
 - **Labels:** bug, exploratory-testing, markdown-editor

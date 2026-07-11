@@ -50,17 +50,17 @@ See `.context/SRS/functional-specs.md`.
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-27](https://jira.upexgalaxy.com/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 8 | Medium | QA Approved |
-| [BK-28](https://jira.upexgalaxy.com/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 5 | Medium | QA Approved |
-| [BK-32](https://jira.upexgalaxy.com/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 3 | Medium | QA Approved |
-| [BK-33](https://jira.upexgalaxy.com/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 8 | Medium | QA Approved |
+| [BK-27](https://jira.upexgalaxy.com/browse/BK-27) | TMS-Test Builder | Assemble a test by chaining ATCs | 8 | Medium | Ready For Release |
+| [BK-28](https://jira.upexgalaxy.com/browse/BK-28) | TMS-Test Builder | Reorder ATCs inside a test | 5 | Medium | Ready For Release |
+| [BK-32](https://jira.upexgalaxy.com/browse/BK-32) | TMS-Test View | View a test with all chained ATCs expanded | 3 | Medium | Ready For Release |
+| [BK-33](https://jira.upexgalaxy.com/browse/BK-33) | TMS-Test Tags | Assign reserved and custom tags to a test | 8 | Medium | Ready For Release |
 
 ---
 
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 6/10/2026
+- **Updated:** 7/11/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** master-sprint-4, mvp

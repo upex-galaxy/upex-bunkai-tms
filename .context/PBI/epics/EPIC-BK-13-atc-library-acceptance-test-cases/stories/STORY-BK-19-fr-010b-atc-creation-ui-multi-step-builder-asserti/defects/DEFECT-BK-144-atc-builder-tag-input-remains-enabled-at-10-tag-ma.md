@@ -2,40 +2,59 @@
 
 **Jira Key:** [BK-144](https://jira.upexgalaxy.com/browse/BK-144)
 **Related Story:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19) - TMS-ATC Builder | Build an ATC with ordered steps and assertions
-**Priority:** Medium
+**Priority:** Low
 **Status:** Open
-**Components:** None
+**Components:** ATC Library (Acceptance Test Cases)
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
 
 ## Description
 
-## Bug Description
+### Bug Description (Updated 2026-07-06 — Scope Expanded)
 
-When an ATC already has 10 tags, the tag input field remains enabled. Attempting to add an 11th tag silently fails — the tag is not added and a paragraph message "An ATC can have at most 10 tags." appears below the input. Per design expectations, the input should be disabled at the 10-tag cap OR show an immediate inline message on attempt. Currently the silent failure may confuse users.
+Original scope: tag input stays enabled at 10-tag cap; adding an 11th tag was silently blocked with a paragraph message below the input.
 
-## Steps to Reproduce
+REGRESSION FOUND (2026-07-06 verification): The addTag() function does not check tags.length >= 10. The input has no disabled prop. saveAtcAction has no tags-length validation. The bunkai*save*atc RPC has no array-length check. The atcs.tags column has no DB constraint. Result: unlimited tags can be added to state AND saved to the database.
 
-1. Open ATC builder.
-2. Add 10 tags.
-3. Attempt to type and add an 11th tag.
+### Steps to Reproduce
 
-## Expected Result
+1. Open ATC builder with an ATC that already has 10 tags.
+2. Type an 11th tag and press Enter.
+3. Observe: 11th tag is added to the tag list. Input remains enabled.
+4. Click Save ATC.
+5. Observe: ATC saves successfully with 11+ tags persisted in the database.
 
-Input disabled OR immediate inline feedback on 11th attempt.
+### Expected Result
 
-## Observed Result
+Input disabled (or visually locked) when tags === 10. Attempting to add an 11th tag shows an inline error. ATC cannot be saved with more than 10 tags.
 
-Input stays enabled; tag not added; paragraph message visible below the input.
+### Observed Result
 
-## Test Environment
+Input stays enabled. 11th tag is added to state. ATC saves successfully with unlimited tags.
 
-staging (https://staging-upexbunkai.vercel.app)
+### Root Cause — Validation Absent at All Layers
 
-## Related Story
+- AtcEditor.tsx addTag(): no if (tags.length >= 10) return guard.
+- AtcEditor.tsx <input>: no disabled={tags.length >= 10} prop.
+- saveAtcAction: no if (input.tags.length > 10) guard.
+- bunkai*save*atc RPC: no array*length(p*tags, 1) <= 10 check.
+- DB: atcs.tags text[] — no array length constraint.
 
-BK-19 — TMS-ATC Builder
+### Fix Required
+
+1. AtcEditor.tsx addTag(): add if (tags.length >= 10) return guard (or show inline message).
+2. AtcEditor.tsx <input>: add disabled={tags.length >= 10} prop.
+3. saveAtcAction: add if (input.tags.length > 10) return { ok: false, error: "An ATC can have at most 10 tags." }
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
@@ -48,9 +67,9 @@ BK-19 — TMS-ATC Builder
 ## Metadata
 
 - **Created:** 6/18/2026
-- **Updated:** 6/19/2026
+- **Updated:** 7/10/2026
 - **Reporter:** maibeth vega
-- **Assignee:** maibeth vega
+- **Assignee:** Ely
 - **Labels:** bk-19, sprint-testing
 
 ---

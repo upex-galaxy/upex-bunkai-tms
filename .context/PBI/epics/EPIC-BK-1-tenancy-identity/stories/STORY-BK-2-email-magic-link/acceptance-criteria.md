@@ -1,12 +1,12 @@
 # BK-2 — Acceptance Criteria
 
-> Jira field: `customfield_10141` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 ## Refined Acceptance Criteria (Shift-Left QA pass — 2026-05-25)
 
 > Refined and consolidated by QA during the pre-sprint Shift-Left review. The original PO-authored Gherkin lives in the repo at `.context/PBI/epics/EPIC-BK-1-tenancy-identity/stories/STORY-BK-2-sign-up-and-sign-in-with-email-magic-link/story.md`. Reconciliation reasoning (AC ↔ code divergences, decisions, edge cases, UX proposals, scope cuts) is captured in the ***🧪 Acceptance Test Plan (ATP)**** field and the ****Shift-Left Refinement*** comment on this issue.
 
-```gherkin
+```
 Background:
   Given the Supabase auth.otp_exp is set to 900 seconds (15 minutes)
     And the project SMTP / mailer is operational

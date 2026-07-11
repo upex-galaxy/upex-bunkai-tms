@@ -3,9 +3,9 @@
 **Jira Key:** [BK-46](https://jira.upexgalaxy.com/browse/BK-46)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** Shift-Left QA
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
@@ -25,6 +25,7 @@ As a QA Lead, I want to see the acceptance criteria and modules that have no tes
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
@@ -40,10 +41,10 @@ As a QA Lead, I want to see the acceptance criteria and modules that have no tes
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 6/10/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
-- **Labels:** new-feature
+- **Assignee:** Carlos Alberto Chiavassa
+- **Labels:** new-feature, shift-left-2026-06-26, shift-left-reviewed
 
 ---
 

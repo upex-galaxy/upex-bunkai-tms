@@ -1,9 +1,12 @@
 # BUG: Account Settings: Sign-out: Client-side redirect to /login does not fire after successful server-side sign-out
 
 **Jira Key:** [BK-176](https://jira.upexgalaxy.com/browse/BK-176)
-**Priority:** Medium
+**Priority:** Low
 **Status:** Open
-**Components:** None
+**Components:** Account & Settings
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
@@ -67,6 +70,12 @@ After successful sign-out, the user should be immediately redirected to `/login`
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
 ## Related Issues
 
 - is caused by: [BK-86](https://jira.upexgalaxy.com/browse/BK-86) - Account | View my identity, role, and sign out
@@ -76,7 +85,7 @@ After successful sign-out, the user should be immediately redirected to `/login`
 ## Metadata
 
 - **Created:** 6/23/2026
-- **Updated:** 6/23/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** account-settings, bug, exploratory-testing

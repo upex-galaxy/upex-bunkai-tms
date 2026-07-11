@@ -1,10 +1,10 @@
 # BUG: WorkspaceSwitch: API: POST /api/v1/me/active-workspace response missing workspace fields (id, slug, name, role)
 
 **Jira Key:** [BK-83](https://jira.upexgalaxy.com/browse/BK-83)
-**Priority:** High
+**Priority:** Medium
 **Status:** Closed
-**Components:** None
-**Severity:** Mayor
+**Components:** Tenancy & Identity
+**Severity:** Moderada
 **Error Type:** Functional
 **Test Environment:** Staging
 **Fix Type:** Bugfix
@@ -93,7 +93,7 @@ HTTP 200 with body containing the new active workspace details:
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/11/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Luis Eduardo Flores Villarroel
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** api, bug, exploratory-testing, tenancy

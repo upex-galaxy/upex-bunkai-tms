@@ -48,16 +48,16 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 
 ### Story (1)
 
-- [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Shift-Left QA)_
+- [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Ready For Dev)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/10/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
-- **Assignee:** Andrés Daniel Cumare Morales
+- **Assignee:** Ely
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed
 
 ---

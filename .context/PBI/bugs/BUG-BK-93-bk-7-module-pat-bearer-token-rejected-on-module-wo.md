@@ -3,9 +3,9 @@
 **Jira Key:** [BK-93](https://jira.upexgalaxy.com/browse/BK-93)
 **Priority:** Medium
 **Status:** Duplicated
-**Components:** None
+**Components:** Project & Module Hierarchy, Tenancy & Identity
 **Severity:** Moderada
-**Error Type:** Integration
+**Error Type:** Functional
 **Test Environment:** Staging
 **Fix Type:** Bugfix
 
@@ -68,7 +68,7 @@ PAT bearer tokens are rejected with 401 on module and workspace resource endpoin
 ## Metadata
 
 - **Created:** 6/8/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Jorgelina Abdo
 - **Assignee:** Jorgelina Abdo
 - **Labels:** api, bug, exploratory-testing

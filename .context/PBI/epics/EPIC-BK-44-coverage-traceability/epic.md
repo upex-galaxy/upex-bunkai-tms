@@ -3,7 +3,7 @@
 **Jira Key:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 0
+**Total Story Points:** 29
 
 ---
 
@@ -16,6 +16,19 @@ It delivers four connected views: the full evidence chain from a user story down
 ***Business value:*** gives QA leadership a one-minute, data-backed answer to coverage and audit questions, strengthens the product's closed-loop promise that every story is traceable to its tests and defects, and removes the manual spreadsheet assembly that erodes trust in coverage numbers.
 
 ***Sequencing:*** this is a read-side capstone over the test-execution layer. It depends on the Tests, Manual Runs and Bugs capabilities being in place, and is scheduled to be implemented once those land — see the dependency links on this epic and its stories.
+
+---
+
+## User Stories
+
+| Key | Story | Points | Priority | Status |
+| --- | ----- | ------ | -------- | ------ |
+| [BK-45](https://jira.upexgalaxy.com/browse/BK-45) | TMS-Traceability | Render full US to bug evidence chain in one read | 8 | Medium | Ready For Dev |
+| [BK-46](https://jira.upexgalaxy.com/browse/BK-46) | TMS-Coverage | Surface untested ACs and modules with not-run filter | 8 | Medium | Ready For Dev |
+| [BK-47](https://jira.upexgalaxy.com/browse/BK-47) | TMS-Coverage | Compute time-to-green per user story from run and bug history | - | Medium | Shift-Left QA |
+| [BK-48](https://jira.upexgalaxy.com/browse/BK-48) | TMS-Traceability | Filter the chain by verdict, module, and date range | 3 | Medium | Shift-Left QA |
+| [BK-49](https://jira.upexgalaxy.com/browse/BK-49) | TMS-Activity | Stream a read-side feed over the existing activity log | 5 | Medium | Ready For Dev |
+| [BK-50](https://jira.upexgalaxy.com/browse/BK-50) | TMS-Traceability | Export the assembled chain as a read-only snapshot | 5 | Medium | Estimation |
 
 ---
 

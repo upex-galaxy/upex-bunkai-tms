@@ -81,11 +81,14 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 
 ### Bug (1)
 
-- [BK-135](https://jira.upexgalaxy.com/browse/BK-135): POST /api/v1/tokens issues workspace:admin tokens to member-role users without 403 enforcement _(Ready For QA)_
+- [BK-135](https://jira.upexgalaxy.com/browse/BK-135): POST /api/v1/tokens issues workspace:admin tokens to member-role users without 403 enforcement _(Closed)_
 
-### Story (1)
+### Storys (4)
 
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For Dev)_
+- [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
+- [BK-223](https://jira.upexgalaxy.com/browse/BK-223): TMS-Automation API | Stream step results during an automated run _(Backlog)_
+- [BK-226](https://jira.upexgalaxy.com/browse/BK-226): CI Integration | Upload a CI results file to create a run _(Backlog)_
 
 ### Tech Story (1)
 
@@ -96,9 +99,9 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 6/21/2026
+- **Updated:** 7/11/2026
 - **Reporter:** Ely
-- **Assignee:** Carlos Alberto Chiavassa
+- **Assignee:** Ely
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed
 
 ---

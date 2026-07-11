@@ -3,7 +3,7 @@
 **Jira Key:** [BK-147](https://jira.upexgalaxy.com/browse/BK-147)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** QA Approved
+**Status:** Ready For Release
 **Priority:** Highest
 **Story Points:** 5
 
@@ -40,14 +40,14 @@ Surfaced during the BK-32 review as a design-level gap: detail views currently o
 
 ### Story (1)
 
-- [BK-32](https://jira.upexgalaxy.com/browse/BK-32): TMS-Test View | View a test with all chained ATCs expanded _(QA Approved)_
+- [BK-32](https://jira.upexgalaxy.com/browse/BK-32): TMS-Test View | View a test with all chained ATCs expanded _(Ready For Release)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/19/2026
-- **Updated:** 6/24/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Ely
 - **Assignee:** Nahuel Gomez
 - **Labels:** app-shell, from-bk32-review, ux

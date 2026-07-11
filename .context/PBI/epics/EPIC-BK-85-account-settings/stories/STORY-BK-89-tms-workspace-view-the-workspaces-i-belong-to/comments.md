@@ -105,5 +105,16 @@ Any such actions belong to separate stories.
 
 ---
 
+### Ely - 6/24/2026, 3:47:31 PM
+
+## Promoted to Ready For Dev — open Dev contract to resolve before coding
+
+This story is moving to ***Ready For Dev****. Two Dev-contract items from the shift-left QA session remain ****open*** and must be resolved before coding starts. Recording them here, not deciding them:
+
+1. `GET /api/v1/workspaces` does not return `role` — AC 1 is untestable until the endpoint is extended (AC1/AC4 untestable without it).
+2. "Active workspace" concept has no data contract (no DB field, no API field, no session spec defined) — API field vs localStorage vs session still undecided.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

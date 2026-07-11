@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Estimation
 **Priority:** Medium
-**Story Points:** 1
+**Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
@@ -47,17 +47,18 @@
 
 ## Traceability
 
-### Storys (2)
+### Storys (3)
 
-- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(QA Approved)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Release)_
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Ready For Dev)_
+- [BK-223](https://jira.upexgalaxy.com/browse/BK-223): TMS-Automation API | Stream step results during an automated run _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 6/11/2026
+- **Updated:** 7/11/2026
 - **Reporter:** Ely
 - **Assignee:** Benjamin Segovia
 - **Labels:** shift-left-reviewed

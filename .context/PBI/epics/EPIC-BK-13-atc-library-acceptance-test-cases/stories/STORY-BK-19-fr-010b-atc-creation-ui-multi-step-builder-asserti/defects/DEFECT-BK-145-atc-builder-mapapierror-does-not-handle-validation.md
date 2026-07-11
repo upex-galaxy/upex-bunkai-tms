@@ -2,39 +2,61 @@
 
 **Jira Key:** [BK-145](https://jira.upexgalaxy.com/browse/BK-145)
 **Related Story:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19) - TMS-ATC Builder | Build an ATC with ordered steps and assertions
-**Priority:** Medium
+**Priority:** Low
 **Status:** Open
-**Components:** None
+**Components:** ATC Library (Acceptance Test Cases)
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
 
 ## Description
 
-## Bug Description
+### Bug Description (Updated 2026-07-06 — Scope Expanded)
 
-When the server returns 422 with `code: "validation*failed"` and `details[0].code: "too*small"` at `path:["title"]`, the `mapApiError` utility does not recognize this pattern. It only handles the `code: "title*too*short"` variant. As a result, a generic "Request body failed validation." message is displayed at the form level instead of a field-level "Title must be at least 3 characters" message. Client-side Zod validation correctly blocks the short-title case before submit, so this only manifests if the validation_failed response is triggered directly.
+Original scope: when the server returns 422 with code: "validation*failed" and details[0].code: "too*small" at path:["title"], the mapApiError utility shows a generic error instead of a field-level message.
 
-## Steps to Reproduce
+REGRESSION FOUND (2026-07-06 verification): The POST /api/v1/atcs endpoint referenced in the original filing does not exist. The ATC save path is a Supabase RPC (bunkai*save*atc). The mapApiError utility does not exist in the codebase. Title minimum-length validation is ABSENT at all layers — a 2-character title saves successfully with no error.
 
-1. Send POST /api/v1/atcs with title shorter than 3 chars bypassing client validation.
-2. Observe the form error display.
+### Steps to Reproduce
 
-## Expected Result
+1. Authenticate on staging and open any existing ATC in the editor.
+2. Change the title to 2 characters (e.g. "ab").
+3. Click Save ATC — button is enabled (canSave = title.length > 0).
+4. Observe: ATC saves successfully. No error is shown.
 
-Field-level error "Title must be at least 3 characters" at the title input.
+### Expected Result
 
-## Observed Result
+Title input shows a field-level error: "Title must be at least 3 characters." ATC is NOT saved.
 
-Generic form-level "Request body failed validation."
+### Observed Result
 
-## Test Environment
+ATC saves successfully with a 2-character title. No error is displayed.
 
-staging (https://staging-upexbunkai.vercel.app)
+### Root Cause — Validation Absent at All Layers
 
-## Related Story
+- DB: atcs.title is `text not null` — no CHECK constraint for minimum length.
+- RPC: bunkai*save*atc performs no title length validation.
+- Server Action: saveAtcAction checks title.trim().length === 0 only (not < 3).
+- UI: AtcEditor canSave = title.trim().length > 0 (not >= 3).
 
-BK-19 — TMS-ATC Builder
+### Fix Required
+
+1. DB migration: add CHECK (length(title) >= 3) to public.atcs OR enforce in RPC with RAISE EXCEPTION.
+2. saveAtcAction: add guard if (input.title.trim().length < 3) return { ok: false, error: "Title must be at least 3 characters." }
+3. AtcEditor.tsx: update canSave to title.trim().length >= 3 so Save button is disabled for short titles.
+
+### Test Environment
+
+staging (https://staging-upexbunkai.vercel.app) — verified by code analysis 2026-07-06
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
@@ -47,9 +69,9 @@ BK-19 — TMS-ATC Builder
 ## Metadata
 
 - **Created:** 6/18/2026
-- **Updated:** 6/19/2026
+- **Updated:** 7/10/2026
 - **Reporter:** maibeth vega
-- **Assignee:** maibeth vega
+- **Assignee:** Ely
 - **Labels:** bk-19, sprint-testing
 
 ---

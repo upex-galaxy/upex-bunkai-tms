@@ -1,9 +1,12 @@
 # BUG: [BK-9] Module creation at depth ≥5: success toast suppressed — only deep-nesting warning shown
 
 **Jira Key:** [BK-67](https://jira.upexgalaxy.com/browse/BK-67)
-**Priority:** Medium
+**Priority:** Low
 **Status:** Closed
-**Components:** None
+**Components:** Project & Module Hierarchy
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
@@ -29,7 +32,7 @@ ACTUAL: When a module is successfully created at depth 5 or 6, only toast.warnin
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/14/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** bk-9, depth-warning, toast, ux

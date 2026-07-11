@@ -1,9 +1,9 @@
 # BUG: BK-1: Auth: Staging deployment missing email-first password sign-in UI and 2 of 4 BK-166 API routes
 
 **Jira Key:** [BK-177](https://jira.upexgalaxy.com/browse/BK-177)
-**Priority:** Medium
-**Status:** Open
-**Components:** None
+**Priority:** Highest
+**Status:** REJECTED
+**Components:** Tenancy & Identity
 **Severity:** Crítica
 **Error Type:** Integration
 **Test Environment:** Staging
@@ -58,6 +58,12 @@ Staging should serve the BK-166 email-first password flow merged via PR #54 (com
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Working As Designed (WAD)
+
+---
+
 ## 🧫 Evidence
 
 evidence/BK-166-smoke-login.png (attached separately)
@@ -73,7 +79,7 @@ evidence/BK-166-smoke-login.png (attached separately)
 ## Metadata
 
 - **Created:** 6/23/2026
-- **Updated:** 6/23/2026
+- **Updated:** 7/8/2026
 - **Reporter:** Benjamin Segovia
 - **Assignee:** Benjamin Segovia
 - **Labels:** auth, bug, exploratory-testing

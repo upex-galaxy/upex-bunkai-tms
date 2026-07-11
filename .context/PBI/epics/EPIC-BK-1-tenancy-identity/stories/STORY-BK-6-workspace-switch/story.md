@@ -3,7 +3,7 @@
 **Jira Key:** [BK-6](https://jira.upexgalaxy.com/browse/BK-6)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** QA Approved
+**Status:** Ready For Release
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -75,7 +75,7 @@ Implements ***FR-004***.
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/11/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** mvp, tenancy, wave-1

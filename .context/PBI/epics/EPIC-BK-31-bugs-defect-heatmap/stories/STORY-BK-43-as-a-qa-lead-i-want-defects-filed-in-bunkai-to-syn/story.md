@@ -3,7 +3,7 @@
 **Jira Key:** [BK-43](https://jira.upexgalaxy.com/browse/BK-43)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For Dev
 **Priority:** Medium
 **Story Points:** 1
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -41,6 +41,7 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
@@ -48,16 +49,17 @@
 
 ### Story (1)
 
-- [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Backlog)_
+- [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Ready For Dev)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 6/5/2026
+- **Updated:** 7/10/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Ely
+- **Labels:** shift-left-2026-07-03, shift-left-reviewed
 
 ---
 

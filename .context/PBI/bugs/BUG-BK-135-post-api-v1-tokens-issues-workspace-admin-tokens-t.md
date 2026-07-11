@@ -1,9 +1,9 @@
 # BUG: POST /api/v1/tokens issues workspace:admin tokens to member-role users without 403 enforcement
 
 **Jira Key:** [BK-135](https://jira.upexgalaxy.com/browse/BK-135)
-**Priority:** Medium
-**Status:** Ready For QA
-**Components:** None
+**Priority:** Highest
+**Status:** Closed
+**Components:** Tenancy & Identity
 **Severity:** Crítica
 **Error Type:** Security
 **Test Environment:** Staging
@@ -130,6 +130,12 @@ Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
 ## Related Issues
 
 - created by: [BK-88](https://jira.upexgalaxy.com/browse/BK-88) - Settings | Manage Personal Access Tokens
@@ -141,7 +147,7 @@ Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK
 ## Metadata
 
 - **Created:** 6/12/2026
-- **Updated:** 6/21/2026
+- **Updated:** 6/28/2026
 - **Reporter:** Carlos Alberto Chiavassa
 - **Assignee:** Carlos Alberto Chiavassa
 

@@ -1,9 +1,12 @@
 # BUG: Tech-debt: consolidate remote Supabase migration ledger for 0014
 
 **Jira Key:** [BK-58](https://jira.upexgalaxy.com/browse/BK-58)
-**Priority:** Medium
-**Status:** Ready For QA
-**Components:** None
+**Priority:** Lowest
+**Status:** Closed
+**Components:** Project & Module Hierarchy
+**Severity:** Trivial
+**Error Type:** Data
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
@@ -16,14 +19,14 @@ Remote Supabase ledger has 3 entries (module*soft*delete, module*update*fn*param
 
 ## 🔍 Root Cause
 
-**Category:** Config/Env Error 
+**Category:** Configuration Error 
 
 ---
 
 ## Metadata
 
 - **Created:** 6/4/2026
-- **Updated:** 6/10/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 

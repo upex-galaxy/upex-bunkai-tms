@@ -2,8 +2,11 @@
 
 **Jira Key:** [BK-57](https://jira.upexgalaxy.com/browse/BK-57)
 **Priority:** Medium
-**Status:** Ready For QA
-**Components:** None
+**Status:** Closed
+**Components:** Project & Module Hierarchy
+**Severity:** Moderada
+**Error Type:** Data
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
@@ -23,7 +26,7 @@ PATCH /api/v1/modules/{id} can carry name/description AND parent*module*id in on
 ## Metadata
 
 - **Created:** 6/4/2026
-- **Updated:** 6/10/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 

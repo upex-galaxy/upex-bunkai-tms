@@ -1,66 +1,61 @@
-# BK-2 — Acceptance Test Results (QA)
+# BK-23 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
 
-## Acceptance Test Results — BK-2 (condensed mirror)
+BK-23 TEST RESULTS
+Tested: 2026-06-28
+Environment: Staging
+Tester: Benjamin Segovia
+Result: FAILED (14/18 TCs — 1 FAILED, 2 BLOCKED)
 
-***Story:**** Sign up and sign in with email (magic-link). ****Result:**** PASS (GO-with-debt). ****Tested:**** 2026-05-28 on [https://upexbunkai.vercel.app](https://upexbunkai.vercel.app/) (session override — staging-upexbunkai.vercel.app returned 404). ****Modality:**** jira-native. ****Tester:*** Sprint Testing (orchestration, Stage 3).
+SUMMARY
+  ATC Duplicate feature (FR-014) tested on staging.
+  API endpoint POST /atcs/{id}/duplicate is fully functional.
+  Two defects prevent DoD sign-off:
 
-Full local mirror (source of truth): .context/PBI/epics/EPIC-BK-1-tenancy-identity/stories/STORY-BK-2-sign-up-and-sign-in-with-email-magic-link/acceptance-test-results.md
+- BUG-2 (MAJOR): No UI Duplicate action exists in ATC detail or explorer.
+- BUG-1 (MEDIUM): API body field mismatch — spec says new_title, impl reads title.
 
-### Summary
+TEST CASES
+  TC01: Happy path — POST no body, steps + assertions copied ... PASSED
+  TC02: 0-step ATC duplicate ... BLOCKED (UI enforces min 1 step; test data unavailable)
+  TC03: 0-assertion ATC duplicate ... BLOCKED (same constraint as TC02)
+  TC04: Step content preserved (same text, new IDs) ... PASSED
+  TC05: Assertion content preserved (same text, new IDs) ... PASSED
+  TC06: Source title 198 chars, default title 204 chars, expect 422 ... PASSED
+  TC07: No body — default title = source + (copy) ... PASSED
+  TC08: Empty body — default title applied ... PASSED
+  TC09: Slug freshly computed on copy (not cloned) ... PASSED
+  TC10: Custom title via title field ... PASSED
+  TC11: Custom title via new_title field (per spec FR-014) ... FAILED — BUG-1
+  TC12: Title 3 chars min boundary ... PASSED
+  TC13: Title 2 chars below min, expect 422 ... PASSED
+  TC14: Title 200 chars max boundary ... PASSED
+  TC15: Title 201 chars above max, expect 422 ... PASSED
+  TC16: No auth header, expect 401 ... PASSED
+  TC17: Non-existent source_id, expect 404 ... PASSED
+  TC18: Edit copy step, original step unchanged ... PASSED
 
-17 TCs executed. PASSED 10 · KNOWN 4 (PO scope) · BLOCKED 3 (manual-pending) · FAILED 0. Pass rate excl. blocked/known = 10/10 = 100%. No product defects filed.
+TEST DATA
+  ATC: Login happy path (created via API during session)
+  Workspace/Project/Module/UserStory/AC hierarchy built via API on staging
 
-Green: magic-link send, click, callback exchange, returning-user short-circuit to /projects, atomic workspace+member bootstrap (RPC), open-redirect block, middleware next round-trip, rate-limit 429, 254-char RFC-5321 boundary, client-side invalid-email reject.
+BUGS FOUND
+  BUG-1 (MEDIUM): ATC Library: Duplicate: API field name mismatch — new_title silently ignored
+  BUG-2 (MAJOR): ATC Library: Duplicate: No UI Duplicate action — feature has no UI entry point
 
-### Per-TC results
+OBSERVATIONS
+  DB leg BLOCKED: staging-dhhub MCP not configured (DBHUB_* vars empty in .env).
+  DB integrity verified indirectly via API response payloads and UI navigation.
+  TC02/TC03 BLOCKED: 0-step test data cannot be created via UI; needs dedicated setup.
+  TC06: 204-char default title correctly rejected with 422 validation_failed.
 
-| TC  | Title  | Pri  | Status  |
-| --- | --- | --- | --- |
-| ---- | ------- | ----- | -------- |
-| TC-BK-2-01  | First-time sign-up: send to click to onboarding  | P1  | KNOWN (name/slug pre-fill not implemented)  |
-| TC-BK-2-02  | Returning user to /projects  | P1  | PASSED  |
-| TC-BK-2-03  | Workspace bootstrap via onboarding (atomic)  | P1  | PASSED  |
-| TC-BK-2-04  | Invalid email rejected client-side  | P2  | PASSED  |
-| TC-BK-2-05  | Invalid email rejected server-side  | P1  | KNOWN (422 validation*failed vs AC 400 INVALID*EMAIL)  |
-| TC-BK-2-06  | Magic-link replay blocked  | P1  | KNOWN (Supabase-native otp*expired, not TOKEN*USED)  |
-| TC-BK-2-07  | Expired magic link  | P1  | BLOCKED (no clock fixture)  |
-| TC-BK-2-08  | Callback missing code  | P1  | PASSED  |
-| TC-BK-2-09  | Rate-limit 429  | P1  | PASSED  |
-| TC-BK-2-10  | Email exactly 254 chars accepted  | P2  | PASSED  |
-| TC-BK-2-11  | Email 255 chars rejected  | P2  | KNOWN (server holds; client max-length gap)  |
-| TC-BK-2-12  | Magic link at 14:59 succeeds  | P3  | BLOCKED (no clock fixture)  |
-| TC-BK-2-13  | Magic link at 15:01 fails  | P3  | BLOCKED (no clock fixture)  |
-| TC-BK-2-14  | Open-redirect blocked  | P2  | PASSED  |
-| TC-BK-2-15  | workspace_members atomic with workspaces  | P1  | PASSED  |
-| TC-BK-2-16  | Middleware redirect + next round-trip  | P1  | PASSED  |
-| TC-BK-2-17  | Session cookie attributes  | P1  | PASSED (with hardening note — see below)  |
+RECOMMENDATIONS
 
-### Defects
-
-No product defects filed. TC-17 reclassified FAILED to PASSED-with-note after dev review 2026-05-27.
-
-### TC-17 reclassification (session cookie)
-
-Session cookie sb-ref-auth-token observed with httpOnly=false, secure=false, sameSite=Lax.
-
-- httpOnly=false is by-design of the @supabase/ssr createBrowserClient (the browser SDK reads the session via document.cookie; an HttpOnly cookie would break it). Accepted framework pattern, same risk class as a SPA localStorage token. The original TC expectation of HttpOnly=true was wrong and is corrected. Not a defect.
-- secure=false is a Low pre-prod hardening debt, practically un-exploitable here: vercel.app is on the HSTS preload list and the live deployment returns strict-transport-security max-age=63072000 includeSubDomains preload, so the browser force-upgrades all traffic to HTTPS and the cookie never travels over plaintext.
-- sameSite=Lax is correct.
-- Escalation: if BK moves to a custom prod domain NOT on the HSTS preload list, secure=true plus HSTS become mandatory and this rises to High severity.
-
-### PO scope questions (4 KNOWN, non-blocking)
-
-Shift-left §2.3 recommended a custom UPPER*SNAKE error envelope (INVALID*EMAIL / TOKEN*USED / MISSING*CODE / RATE*LIMITED). The app ships Supabase-native lowercase codes (validation*failed / missing*code / rate*limited / otp_expired) which are functionally correct. The custom envelope was a recommendation, NOT a signed AC. PO decides: firm requirement (future Minor conformance work) or accepted scope (close). Also: onboarding name/slug pre-fill (shift-left §5.5 / PO Q2) is not implemented.
-
-### Manual-pending (3 BLOCKED)
-
-TC-07/12/13 (magic-link TTL boundary at 14:59 / 15:01 / expiry) need a clock-mock or short-TTL Supabase fixture; not automatable in this pass. The /qa page documents a headless PAT auth shortcut (no email) that can accelerate future API-layer automation (Stage 5), but expiry still needs a time fixture.
-
-### Verdict
-
-GO-with-debt. All 10 P1 PASS; no P1 FAIL remains. Transition fired: qa*sign*off (in*test to qa*approved). QA sign-off by Sprint Testing 2026-05-27, against URL override [https://upexbunkai.vercel.app](https://upexbunkai.vercel.app/).
+1. Implement UI Duplicate action (BUG-2) — DoD blocker, Priority 1.
+2. Align API field name: new_title vs title (BUG-1) — Priority 2.
+3. Configure staging-dhhub MCP (DBHUB_* env vars) to enable DB leg.
+4. Stage 5 automation candidates: TC01 (happy path), TC06 (boundary), TC16 (auth), TC18 (isolation).
 
 ---
 _Synced from Jira by sync-jira-issues_

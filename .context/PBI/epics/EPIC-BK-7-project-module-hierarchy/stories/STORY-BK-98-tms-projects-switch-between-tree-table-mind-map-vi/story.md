@@ -3,7 +3,7 @@
 **Jira Key:** [BK-98](https://jira.upexgalaxy.com/browse/BK-98)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** QA Approved
+**Status:** Ready For Release
 **Priority:** Medium
 **Story Points:** 1
 
@@ -48,7 +48,7 @@ Renders into the ***Projects**** screen — master-design-plan §4.3, mockup `sc
 ## Metadata
 
 - **Created:** 6/9/2026
-- **Updated:** 6/9/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** design-fidelity, hotfix-documented, projects-explorer, view-switcher

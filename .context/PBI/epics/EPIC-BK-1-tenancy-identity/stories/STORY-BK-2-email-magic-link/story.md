@@ -3,9 +3,10 @@
 **Jira Key:** [BK-2](https://jira.upexgalaxy.com/browse/BK-2)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** QA Approved
+**Status:** Ready For Release
 **Priority:** Medium
 **Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -125,7 +126,7 @@ For Design (2):
 
 - OAuth → BK-3
 - Invite acceptance + bypass branch → BK-5
-- Workspace switching → [https://upexgalaxy69.atlassian.net/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6)
+- Workspace switching → [https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6)
 - UX 5.2, 5.4, 5.6, 5.9, branded email template → "Auth UX Polish" follow-up Story
 - Token-invalidation-on-resend → separate security Story (if PO greenlights)
 
@@ -135,10 +136,33 @@ For Design (2):
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
+
+---
+
+## Traceability
+
+### Story (1)
+
+- [BK-166](https://jira.upexgalaxy.com/browse/BK-166): Authentication | Sign up and sign in with email and password _(Ready For Release)_
+
+---
+
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 5/29/2026
+- **Updated:** 6/21/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** auth, mvp, shift-left-2026-05-25, shift-left-reviewed, wave-1

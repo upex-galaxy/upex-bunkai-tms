@@ -3,7 +3,7 @@
 **Jira Key:** [BK-23](https://jira.upexgalaxy.com/browse/BK-23)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Ready For QA
+**Status:** BLOCKED
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -38,10 +38,18 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
 ## Traceability
+
+### Defects (3)
+
+- [BK-184](https://jira.upexgalaxy.com/browse/BK-184): ATC Library: Duplicate: API field name mismatch — spec says new_title, implementation reads title _(Open)_
+- [BK-185](https://jira.upexgalaxy.com/browse/BK-185): ATC Library: Duplicate: No UI Duplicate action — feature has no UI entry point on staging _(Open)_
+- [BK-185](https://jira.upexgalaxy.com/browse/BK-185): ATC Library: Duplicate: No UI Duplicate action — feature has no UI entry point on staging _(Open)_
 
 ### Bug (1)
 
@@ -49,16 +57,16 @@
 
 ### Story (1)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(QA Approved)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(Ready For Release)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/22/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
-- **Assignee:** Benjamin Segovia
+- **Assignee:** Ely
 - **Labels:** atc, clone, mvp, wave-2
 
 ---

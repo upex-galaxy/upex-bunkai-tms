@@ -3,7 +3,7 @@
 **Jira Key:** [BK-9](https://jira.upexgalaxy.com/browse/BK-9)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** QA Approved
+**Status:** Ready For Release
 **Priority:** Medium
 **Story Points:** 13
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -91,10 +91,10 @@
 
 ### Storys (4)
 
-- [BK-8](https://jira.upexgalaxy.com/browse/BK-8): TMS-Project | Create a project inside a workspace _(QA Approved)_
-- [BK-10](https://jira.upexgalaxy.com/browse/BK-10): TMS-Module | Rename and soft-delete a module _(QA Approved)_
-- [BK-11](https://jira.upexgalaxy.com/browse/BK-11): TMS-Module | Move a module to a different parent _(QA Approved)_
-- [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(Ready For QA)_
+- [BK-8](https://jira.upexgalaxy.com/browse/BK-8): TMS-Project | Create a project inside a workspace _(Ready For Release)_
+- [BK-10](https://jira.upexgalaxy.com/browse/BK-10): TMS-Module | Rename and soft-delete a module _(Ready For Release)_
+- [BK-11](https://jira.upexgalaxy.com/browse/BK-11): TMS-Module | Move a module to a different parent _(Ready For Release)_
+- [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(QA Approved)_
 
 ### Improvement (1)
 
@@ -105,7 +105,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/14/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** hierarchy, mvp, shift-left-2026-06-02, shift-left-reviewed, wave-1

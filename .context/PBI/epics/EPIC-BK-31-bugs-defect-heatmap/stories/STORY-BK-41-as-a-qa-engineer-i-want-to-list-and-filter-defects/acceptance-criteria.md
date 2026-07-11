@@ -2,53 +2,65 @@
 
 > Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
-```
-Scenario: List defects for a module including its sub-modules
-  Given the module "Checkout" has sub-modules "Promo codes" and "Payment"
-  And there are 3 defects under "Promo codes" and 2 under "Payment"
-  When Elena selects the module "Checkout"
-  Then she sees all 5 defects in the list
-  And the defects from both sub-modules are included
-```
+```gherkin
+# BK-41 - TMS-Defect List | List and filter defects by module, status, severity
+# Endpoint under test: GET /api/v1/bugs
+# Auth: PAT scope bugs:read; RLS via project_membership
 
-```
-Scenario: Filter by severity and status combined
-  Given the module "Checkout" has 5 defects: 2 are P1 and open, 1 is P1 and resolved, and 2 are P3 and open
-  When Elena filters by severity "P1" and status "open"
-  Then the list shows only the 2 defects that are both P1 and open
-  And the other 3 defects are hidden from the list
-```
+Feature: Defect List and Filter
 
-```
-Scenario: Counts by severity and status reflect the current view
-  Given the module "Checkout" with no filters applied shows 5 defects
-  When Elena looks at the summary counts
-  Then she sees "P1: 3, P2: 0, P3: 2, P4: 0" by severity
-  And she sees "open: 4, in progress: 0, resolved: 1, closed: 0" by status
-```
+  Scenario: List defects scoped to a chosen module
+    Given a project P with module M and at least one filed bug whose module_id = M
+    When the QA calls GET /api/v1/bugs?project*id=P&module*id=M with a PAT that is a member of P
+    Then the response is 200 with data containing every bug of M
+    And aggregates.by*severity and aggregates.by*status are present and consistent with data
 
-```
-Scenario: Counts recompute when a filter is applied
-  Given the module "Checkout" shows 5 defects with counts "open: 4, resolved: 1"
-  When Elena filters by status "open"
-  Then the list shows the 4 open defects
-  And the status counts update to "open: 4, in progress: 0, resolved: 0, closed: 0"
-```
+  Scenario: Module filter includes nested sub-modules recursively
+    Given a module M with descendant sub-module M2 at depth 2 and M3 at depth 6
+    And bugs filed against M2 and M3
+    When the QA calls GET /api/v1/bugs?project*id=P&module*id=M
+    Then data contains the bugs of M, M2 and M3
+    And no bug of any sibling or unrelated module is present in data
 
-```
-Scenario: A filter combination with no matches shows an empty state
-  Given the module "Checkout" has no defects with severity "P4"
-  When Elena filters by severity "P4"
-  Then the list shows the message "No defects match these filters"
-  And the severity counts show "P4: 0"
-```
+  Scenario: Filter by status only
+    Given bugs with statuses open, in_progress, resolved and closed for project P
+    When the QA calls GET /api/v1/bugs?project*id=P&status=in*progress
+    Then data contains only the in_progress bugs
+    And aggregates.by*status reflects the in*progress subset size
 
-```
-Scenario: A module with no defects at all shows an empty state
-  Given the module "Wishlist" has no defects and no sub-modules with defects
-  When Elena selects the module "Wishlist"
-  Then she sees the message "No defects match these filters"
-  And all severity and status counts show 0
+  Scenario: Filter by severity only
+    Given bugs with severities P1, P2, P3 and P4 for project P
+    When the QA calls GET /api/v1/bugs?project_id=P&severity=P2
+    Then data contains only P2 bugs
+    And aggregates.by_severity reflects the P2 subset size
+
+  Scenario: Combined status and severity filter
+    Given a mix of bugs across all statuses and severities for project P
+    When the QA calls GET /api/v1/bugs?project_id=P&status=open&severity=P1
+    Then data contains only bugs where status is open AND severity is P1
+    And both aggregates reflect the same combined subset
+
+  Scenario: Aggregates reflect the filtered set, not only the current page
+    Given 150 bugs match the active filter
+    When the QA calls GET /api/v1/bugs?project_id=P&limit=100
+    Then the response data page may contain 100 bugs
+    And aggregates.by*status and aggregates.by*severity count the full 150 matching bugs
+
+  Scenario: Empty result shows a clear no-defects-match state
+    Given a filter that matches zero bugs
+    When the QA calls GET /api/v1/bugs?project_id=P&status=closed and no closed bug exists
+    Then the response is 200
+    And data is an empty array
+    And aggregates.by*severity and aggregates.by*status are all zero
+    And the UI can render a clear "no defects match" state instead of a blank screen
+
+  Scenario: Archived module defects are hidden by default
+    Given module M is archived or soft-deleted
+    And bugs exist under module M or its descendants
+    When the QA calls GET /api/v1/bugs?project*id=P&module*id=M without include_archived=true
+    Then archived-module bugs are not included in data
+    And aggregates.by*severity and aggregates.by*status do not count archived-module bugs
+    And a future include_archived=true option may opt in to archived-module reporting if PO and Dev approve it
 ```
 
 ---

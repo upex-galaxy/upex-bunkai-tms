@@ -3,7 +3,7 @@
 **Jira Key:** [BK-166](https://jira.upexgalaxy.com/browse/BK-166)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** BLOCKED
+**Status:** Ready For Release
 **Priority:** Medium
 **Story Points:** -
 
@@ -88,7 +88,7 @@ This adds password as the ***third*** sign-in method on the login screen, alongs
 
 ### Bug (1)
 
-- [BK-177](https://jira.upexgalaxy.com/browse/BK-177): BK-1: Auth: Staging deployment missing email-first password sign-in UI and 2 of 4 BK-166 API routes _(Open)_
+- [BK-177](https://jira.upexgalaxy.com/browse/BK-177): BK-1: Auth: Staging deployment missing email-first password sign-in UI and 2 of 4 BK-166 API routes _(REJECTED)_
 
 ### Story (1)
 
@@ -99,7 +99,7 @@ This adds password as the ***third*** sign-in method on the login screen, alongs
 ## Metadata
 
 - **Created:** 6/21/2026
-- **Updated:** 6/24/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** auth, mvp, shift-left-reviewed, wave-1

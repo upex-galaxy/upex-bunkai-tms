@@ -1,9 +1,9 @@
 # BUG: [BK-17] Staging Jira import fails instantly with jira_unauthorized — ATLASSIAN_* credentials not configured in staging deployment
 
 **Jira Key:** [BK-142](https://jira.upexgalaxy.com/browse/BK-142)
-**Priority:** Medium
+**Priority:** Highest
 **Status:** Closed
-**Components:** None
+**Components:** User Stories & Acceptance Criteria
 **Severity:** Crítica
 **Error Type:** Integration
 **Test Environment:** Staging
@@ -77,7 +77,7 @@ The job transitions `queued -> running -> completed`, the worker successfully ca
 
 ## 🔍 Root Cause
 
-**Category:** Config/Env Error 
+**Category:** Configuration Error 
 
 ---
 
@@ -104,7 +104,7 @@ None. This is an environment-level configuration blocker — no application-leve
 ## Metadata
 
 - **Created:** 6/15/2026
-- **Updated:** 6/21/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 

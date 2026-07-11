@@ -1,9 +1,9 @@
 # BUG: BK-8: Non-Latin (CJK/Cyrillic) project names rejected as name_no_alphanumeric
 
 **Jira Key:** [BK-56](https://jira.upexgalaxy.com/browse/BK-56)
-**Priority:** Medium
+**Priority:** Low
 **Status:** Duplicated
-**Components:** None
+**Components:** Project & Module Hierarchy
 **Severity:** Menor
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -87,7 +87,7 @@ Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. La
 ## Metadata
 
 - **Created:** 6/3/2026
-- **Updated:** 6/10/2026
+- **Updated:** 6/25/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** bk-8, sprint-defect, wave-1

@@ -3,7 +3,10 @@
 **Jira Key:** [BK-68](https://jira.upexgalaxy.com/browse/BK-68)
 **Priority:** Low
 **Status:** Closed
-**Components:** None
+**Components:** Project & Module Hierarchy
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
 **Fix Type:** Bugfix
 
 ---
@@ -29,7 +32,7 @@ ACTUAL: The Create Module submit button is enabled when the module name is exact
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 6/14/2026
+- **Updated:** 6/26/2026
 - **Reporter:** Andrés Daniel Cumare Morales
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** bk-9, client-side, ux, validation

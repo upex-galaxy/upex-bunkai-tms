@@ -1,9 +1,9 @@
 # BUG: Auth: Login: Magic-link OTP email has no code-entry field on staging
 
 **Jira Key:** [BK-175](https://jira.upexgalaxy.com/browse/BK-175)
-**Priority:** Medium
+**Priority:** Highest
 **Status:** Open
-**Components:** None
+**Components:** Tenancy & Identity
 **Severity:** Crítica
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -62,6 +62,12 @@ The user should be able to either click a magic link or enter the OTP code shown
 
 ---
 
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
 ## 🧫 Evidence
 
 See attached screenshot `01-login-blocked-no-otp-field.png` — the "Check your inbox" screen with zero `<input>` elements found via `document.querySelectorAll('input')`.
@@ -77,7 +83,7 @@ See attached screenshot `01-login-blocked-no-otp-field.png` — the "Check your 
 ## Metadata
 
 - **Created:** 6/22/2026
-- **Updated:** 6/22/2026
+- **Updated:** 7/6/2026
 - **Reporter:** Benjamin Segovia
 - **Assignee:** Benjamin Segovia
 
