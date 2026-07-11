@@ -82,6 +82,28 @@ Authoritative detail: `business-data-map.md`. Short forms here for terminology c
 | **Project Environment** | A named deployment target a Run executes against (e.g. Staging, Production), scoped to a single Project (`project_environments`). Names are unique per Project (case-insensitive), 1–50 chars after trim; seeded **Staging** + **Production** per Project. Managed (add / rename / remove) from the project explorer rail (BK-148); removal is blocked while any Run references it, preserving run history. Prose form "environment" / "Project environment"; code form `project_environments` / `environment_id`. |
 | **Bug** | Native defect record anchored to Module + ATC + Run — lives inside the test cycle, not delegated to Jira (optional one-way Jira sync). |
 
+Post-MVP entities (epics BK-201 / BK-208 / BK-210 / BK-221 / BK-224), added 2026-07-11:
+
+| Entity | Definition |
+| --- | --- |
+| **Test Plan** | Named grouping of Tests inside a Project for a goal, cycle, or release. Membership is curated — a Test may belong to multiple plans. Progress is derived from members' latest run outcomes. Closing a plan captures an outcome summary and makes it read-only. **Not the ATP** (Acceptance Test Plan, §1) — the ATP is the per-US QA documentation artifact; a Test Plan is the TMS grouping entity. Never shorten either to bare "plan" (see §4). |
+| **Milestone** | Named goal with a target date inside a Project. Aggregates Test Plans; readiness is derived from plan progress. Overdue when the target date passes unmet. |
+| **Notification** | Record of a workspace event delivered to a member's inbox. Respects entity visibility (RLS) — a member is never notified about entities they cannot see. |
+| **Notification Inbox** | Per-user list of Notifications with unread state. |
+| **Event Type** | Category of notifiable event: run lifecycle, bug lifecycle, mention. |
+| **Email Digest** | Periodic email summarizing a member's unread Notifications. |
+| **Channel** | Real-time conversation space scoped to a Workspace or a Project. Visibility follows membership. |
+| **Message** | Single chat entry authored by a member inside a Channel. Editable by its author for 15 minutes; deletion leaves a deleted-message placeholder. |
+| **Mention** | @-reference to a member inside a Message. Triggers a Notification. |
+| **Rich Link** | Entity reference (ATC / Test / Run) rendered in chat as a card with title + status. Permission-aware: resolves only for members who can see the entity. |
+| **Execution Mode** | How a Run was executed: `manual` \| `automated`. |
+| **Automation Status** | Per-Test attribute: `manual-only` \| `candidate` \| `automated`. Deliberately **simpler than the Workflow Status (TC)** lifecycle (§2, Draft → In Design → … → Deprecated) — that lifecycle governs the QA-side documentation/automation process of a TC; Automation Status is the coarse product-layer flag on a Test. Do not conflate the two. |
+| **CI Results File** | Machine-readable test-results report produced by a CI pipeline (e.g. JUnit XML), uploadable to create an automated Run. |
+| **Billing Plan (Tier)** | Workspace subscription level: Free \| Team \| Enterprise. Always say "Billing Plan" or "Tier" — never bare "Plan", which collides with **Test Plan** (see §4). |
+| **Seat** | One active workspace member counted against the Tier limit. |
+| **Subscription** | The workspace's active paid arrangement: renewal date, payment method. |
+| **Invoice** | Billing document for one charge period, downloadable. |
+
 ---
 
 ## 4. Anti-glossary — terms to never use
@@ -93,6 +115,7 @@ Authoritative detail: `business-data-map.md`. Short forms here for terminology c
 | "test case" for an ATC chain | **Test** | In Bunkai a Test is the chain; the chained units are ATCs. Keep the two words distinct. |
 | "test component" | **ATC**, **end-to-end test**, or **integration test** — by context | Ambiguous and generic ("a component of testing" says nothing). If the sentence means the minimal atomic unit that satisfies an AC → **ATC**. If it means the assembled chain walking a journey → **end-to-end test** or **integration test**. Never leave "test component" in specs, ACs, or Jira content. |
 | "reorder a Test by ATC" / "reorder the `atc_id`s" | **reorder the chain by step_id** (chain-step handle) | A Test chain may hold the same `atc_id` at several positions, so an `atc_id` cannot identify a single row. Reorder addresses rows by **step_id** (`test_steps.id`). Speak of `atc_id` only for the resulting *run order*, never as the reorder handle. Recorded during BK-28 (chain reorder). |
+| bare "plan" / "Plan" | **Test Plan**, **Billing Plan (Tier)**, or **ATP** — by context | Three distinct concepts collide on the word: the TMS grouping of Tests (Test Plan, §3), the workspace subscription level (Billing Plan / Tier, §3), and the per-US QA artifact (ATP, §1). Bare "plan" in specs, ACs, or Jira content is ambiguous — always use the full term. Recorded 2026-07-11 with the post-MVP entities (BK-201/208/210/221/224). |
 
 ---
 
