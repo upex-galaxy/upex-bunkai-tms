@@ -298,8 +298,38 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-89 View my workspaces | Settings · Shell switcher | §4.10 |
 | | BK-90 Leave a workspace | **Settings** | §4.10 |
 | **BK-29 QA Credentials** | (epic) | `/qa` page (out of mockup scope) | — |
+| **BK-201 Test Plans & Milestones** | BK-202 Create a test plan grouping tests | **Test Plans index + Plan detail** (new, Project scope) | ⚠️ wireframe pending |
+| | BK-203 Add/remove tests from a plan | **Plan detail** (test picker) | ⚠️ wireframe pending |
+| | BK-204 Track plan progress from run outcomes | **Plan detail — progress view** | ⚠️ wireframe pending |
+| | BK-205 Create a milestone with a target date | **Milestones view** (new, Project scope) | ⚠️ wireframe pending |
+| | BK-206 Assign plans + track milestone progress | **Milestones view** · Plan detail | ⚠️ wireframe pending |
+| | BK-207 Close a plan with an outcome summary | **Plan detail** (close action) · Test Plans index | ⚠️ wireframe pending |
+| **BK-208 Notifications Center** | BK-209 Inbox of workspace events | **Notifications inbox** (new — top-bar bell + panel) | ⚠️ wireframe pending |
+| | BK-211 Run finished/aborted events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
+| | BK-212 Bug assignment/status events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
+| | BK-213 Notification preferences | **Settings — Notification preferences** (extends §4.10 hub) | §4.10 · ⚠️ wireframe pending |
+| | BK-214 Email digest of unread notifications | **Email digest template** (non-app surface — email design) | ⚠️ wireframe pending |
+| **BK-210 Team Chat** | BK-215 Workspace real-time channel | **Team Chat panel** (new — workspace channel) | ⚠️ wireframe pending |
+| | BK-216 Per-project channel | **Team Chat panel** (project channels) | ⚠️ wireframe pending |
+| | BK-217 Mention a teammate | **Chat panel** · Notifications inbox (mention delivery) | ⚠️ wireframe pending |
+| | BK-218 Share ATC/Test/Run as rich link | **Chat panel** — entity rich card | ⚠️ wireframe pending |
+| | BK-219 Edit/delete my own messages | **Chat panel** (message actions) | ⚠️ wireframe pending |
+| | BK-220 Search the message history | **Chat search** (within chat panel) | ⚠️ wireframe pending |
+| **BK-221 Automation & CI Ingestion** | BK-222 Submit automated run via API | API-first, UI-light — renders into existing **Run detail** | `run.jsx` §4.5 |
+| | BK-223 Stream step results during automated run | API-first, UI-light — renders live into existing **Run detail** | `run.jsx` §4.5 |
+| | BK-225 Filter runs by manual/automated | **Test Runs index** — execution-mode badge/filter (extends existing runs view) | ⚠️ wireframe pending |
+| | BK-226 Upload a CI results file | **CI results upload** (modal/flow off the runs view) | ⚠️ wireframe pending |
+| | BK-227 Track automation status of a test | **Test library — automation status** (extends existing test library/list) | ⚠️ wireframe pending |
+| | BK-228 CI-triggered runs linked to commit/branch | **Run detail — CI metadata** (extends run detail) | `run.jsx` §4.5 · ⚠️ wireframe pending |
+| **BK-224 Billing & Plans** | BK-229 View plan, seats & usage | **Settings — Billing overview** (extends §4.10 hub) | §4.10 · ⚠️ wireframe pending |
+| | BK-230 Upgrade to a paid plan | **Billing — plan comparison & checkout** | ⚠️ wireframe pending |
+| | BK-231 Billing details + invoices | **Billing — details & invoices** | ⚠️ wireframe pending |
+| | BK-232 Plan-limit warnings + upgrade path | **Plan-limit warning states** (cross-app banner/modal patterns) | ⚠️ wireframe pending |
+| | BK-233 Downgrade or cancel the subscription | **Billing — downgrade/cancel flow** | ⚠️ wireframe pending |
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
+>
+> **Post-MVP screens (BK-201/208/210/221/224):** none of these screens exist in the mockup set — no §4 spec is authored yet. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9.
 
 ---
 
