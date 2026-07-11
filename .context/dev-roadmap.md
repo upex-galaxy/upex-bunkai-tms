@@ -1,7 +1,7 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-06-24
+> **Last sync**: 2026-07-11
 > **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
@@ -74,8 +74,15 @@ BK-1  Tenancy & Identity ──┬──> BK-7  Project & Module Hierarchy ─�
 | BK-85 | Account & Settings | BK-1 | MVP (parallel) |
 | BK-29 | QA Credentials (`/qa`) | BK-1 | MVP (parallel) |
 | BK-44 | Coverage & Traceability | BK-13/24/30/31 | MVP S6/7 |
+| BK-201 | Test Plans & Milestones | BK-24, BK-30 | Post-MVP P1 |
+| BK-221 | Automation & CI Ingestion | BK-30 (BK-34/35/38/39), BK-88, BK-24 | Post-MVP P1 |
+| BK-208 | Notifications Center | BK-30 (BK-36/39), BK-31, BK-87 | Post-MVP P1 |
+| BK-210 | Team Chat | BK-1, BK-7, BK-208 (BK-209) | Post-MVP P2 |
+| BK-224 | Billing & Plans | BK-1, BK-87 | Post-MVP P2 |
 
-> Phase-2 / Phase-3 epics (self-hosted bundle, agentic protocol, CI adapters, 3D mind-map, SSO, marketplace) are **strategy-layer only** — see `master-implementation-plan.md §2`. Not ticket-broken yet; out of this doc until they enter a sprint.
+> **Post-MVP expansion epics (created in Jira 2026-07-11)** — 5 epics / 28 stories authored future-first (their ACs assume the full MVP chain is shipped). All stories sit in `Backlog` (deliberately NOT `Shift-Left QA` — they are roadmap stories, not refinement-ready), all are 🔒 mockup-gated (see §5), story points intentionally empty. **PO defaults ratified 2026-07-11** (delegated to AI-as-PO): all flagged Business-Rules decisions resolved — see the `## PO Ratification — 2026-07-11` Jira comment on each affected story; domain-glossary §3 gained the 17 new entity terms; master-design-plan §8 has the 28 US→Screen rows. Remaining pre-dev gate: mockups only. Full dependency edges live as Jira `Dependencies`/`Relates` links (49 links, direction-verified); §3.1 holds the compact summary. **Coming-soon epics (deliberately NOT created yet)**: Dashboards & Analytics, Data Import/Export, Entity Comments & Review — promote via `/product-management` when the frontier approaches.
+>
+> Phase-2 / Phase-3 epics (self-hosted bundle, agentic protocol, 3D mind-map, SSO, marketplace) remain **strategy-layer only** — see `master-implementation-plan.md §2`. Note: the former "CI adapters" strategy item is now partially ticket-broken as BK-221.
 
 ---
 
@@ -92,9 +99,9 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
                                  ├──> BK-22 ATC Usage report    (3)
                                  ├──> BK-23 ATC Duplicate       (5)
                                  ├──> BK-32 Test view expanded  (1)
-                                 ├··> BK-21 ATC Propagation     (5) 🟢  (RFD but contract-unratified)
+                                 ├··> BK-21 ATC Propagation ✅  (5)     (dev-done — merged to staging, Ready For QA; contract ratified, ADR-0009)
                                  └──> BK-34 Start manual run ✅  (8) ──┬──> BK-35 Mark step pass/fail (5*) ⚪ Estimation
-                                   (dev-done — gate RELEASED)          ├──> BK-36 Abort run          (8) 🟢
+                                   (dev-done — gate RELEASED)          ├──> BK-36 Abort run ✅        (8)   (dev-done — merged to staging PR #59, Ready For QA)
                                                                        ├──> BK-37 Run history        (3) 🔒 Test Runs mockup
                                                                        ├──> BK-38 Filter proj runs   (3) 🔒 Test Runs mockup
                                                                        └──> BK-39 Finish run verdict (5) 🟢
@@ -125,6 +132,45 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
 
 **No incoming edge (start anytime, gated only by their own readiness):** BK-20, BK-3, BK-86.
 
+### 3.1 Post-MVP expansion cluster — compact edge summary (full links live in Jira)
+
+Created 2026-07-11. `A ──> B` = A depends on B (hard, Jira `Dependencies`); `··>` = soft (Jira `Relates`). All 28 stories 🔒 mockup-gated (§5) — none workable until mockups land, regardless of edges.
+
+```
+BK-201 Test Plans & Milestones:
+  BK-202 Create plan ──> epic BK-24 ─┐   BK-205 Create milestone ──> (free)
+  BK-203 Add/remove tests ──> BK-202 │   BK-206 Assign plans ──> BK-205, BK-204
+  BK-204 Track progress ──> BK-203, epic BK-30
+  BK-207 Close plan ──> BK-202  ··> BK-204
+
+BK-221 Automation & CI Ingestion:
+  BK-222 Submit automated run ──> BK-88, BK-34, BK-39        (entry point of the cluster)
+  BK-223 Stream step results ──> BK-222, BK-88, BK-34, BK-39  ··> BK-35
+  BK-226 Upload CI file ──> BK-222, BK-88
+  BK-228 Commit/branch links ──> BK-226
+  BK-225 Mode filter ──> BK-38  ··> BK-222, BK-227
+  BK-227 Automation status ──> BK-27
+
+BK-208 Notifications Center:
+  BK-209 Inbox ──> (free — first buildable story of the cluster)
+  BK-211 Run events ──> BK-209, BK-39, BK-36
+  BK-212 Bug events ──> BK-209, epic BK-31
+  BK-213 Preferences ──> BK-209, BK-87
+  BK-214 Email digest ──> BK-209  ··> BK-213
+
+BK-210 Team Chat:
+  BK-215 Workspace channel ──> epic BK-1   (gate for the whole epic)
+  BK-216 Project channel ──> BK-215, epic BK-7
+  BK-217 Mentions ──> BK-215, BK-209       (cross-epic: Notifications inbox)
+  BK-218 Rich entity links ──> BK-215  ··> epics BK-13/BK-24/BK-30
+  BK-219 Edit/delete ──> BK-215            BK-220 Search ──> BK-215
+
+BK-224 Billing & Plans:  (epic ──> epic BK-1)
+  BK-229 View plan/usage ──> BK-87
+  BK-230 Upgrade ──> BK-229    BK-232 Limit warnings ──> BK-229
+  BK-231 Invoices ──> BK-230   BK-233 Downgrade/cancel ──> BK-230
+```
+
 ---
 
 ## 4. Execution sprints
@@ -137,10 +183,10 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 |-------------|---------|------------------|-------|
 | **ES0 ✅** | BK-27 | — | Shipped → QA Approved. Released the whole ES1 fan-out. |
 | **ES1 ✅ (fully drained)** | ✅ all shipped: BK-28, BK-22, BK-23, BK-32, BK-20, **BK-33 Test Tags** | BK-27 ✅ | ES1 fan-out drained — reorder/usage/duplicate/view + ATC Search + Test Tags all landed (most QA Approved; BK-22/BK-23 dev-merged, awaiting QA — staging deploy gap per BK-142, code IS on staging). BK-86 (Account) also shipped → QA Approved; BK-3 (OAuth) now AC-synced + parallel. |
-| **ES1.5** | BK-87 (after BK-86 ✅) ; BK-21 (after its 10 Qs) | BK-86 ✅ ; BK-27 ✅ | BK-87 🟢 RFD but 🔒 Settings mockup (§4.10 spec only). BK-21 🟢 RFD but contract-unratified (10 Qs + OpenAPI drift on `PATCH /atcs/{id}` still open). |
+| **ES1.5** | BK-87 (after BK-86 ✅) ; **BK-21 ✅ (shipped)** | BK-86 ✅ ; BK-27 ✅ | BK-87 🟢 RFD but 🔒 Settings mockup (§4.10 spec only). **BK-21 ✅ dev-done 2026-06-25** — 10 contract Qs ratified (ADR-0009) + OpenAPI drift fixed; merged to staging (PR #57) + edit-path unified (PR #58); Ready For QA. |
 | **ES2 ✅ (shipped)** | BK-34 Start manual run | BK-27 ✅ | **Shipped → QA Approved** — released the Runs tail (BK-35/36/37/38/39). |
 | **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | BK-88 🔒 Settings mockup + own 9 Qs. **BK-89 promoted to RFD 2026-06-24** but open Dev contract (add `role` to `GET /workspaces` + active-workspace transport) — resolve before coding. |
-| **ES3 (live frontier)** | BK-36 Abort, BK-39 Finish verdict (both 🟢 workable now) ; BK-35 (⚪ Estimation, blocked) ; BK-37/38 (🔒 mockup) ; BK-90 (after BK-89) | BK-34 ✅ ; BK-89 | **Live frontier**: BK-36 + BK-39 workable now off the BK-34 gate. BK-35 re-estimated 1→5 SP, stays in Estimation (blocked by Q1 PO + Q5 Dev). BK-37/38 🔒 Test Runs mockup. BK-90 🔒 Settings mockup + waits on BK-89 contract. |
+| **ES3 (live frontier)** | BK-36 Abort ✅ (shipped) ; BK-39 Finish verdict (🟢 workable now) ; BK-35 (⚪ Estimation, blocked) ; BK-37/38 (🔒 mockup) ; BK-90 (after BK-89) | BK-34 ✅ ; BK-89 | **Live frontier**: **BK-36 ✅ dev-done 2026-06-25** (migration 0036 `abort_reason` + `bunkai_abort_run`; PR #59 merged to staging; Ready For QA, unassigned — generic shift-left batch, no named QA owner). BK-39 workable now off the BK-34 gate. BK-35 re-estimated 1→5 SP, stays in Estimation (blocked by Q1 PO + Q5 Dev). BK-37/38 🔒 Test Runs mockup. BK-90 🔒 Settings mockup + waits on BK-89 contract. |
 | **ES4+** | epic BK-31 (Bugs), BK-44 (Coverage) | BK-30 complete | 🔒 Bug Reports + Metrics mockups. Beyond current frontier. |
 
 ---
@@ -155,6 +201,11 @@ A story whose primary screen has no mockup **cannot start** until the mockup lan
 | 🟡 **Test Runs index** | ⚠️ wireframe pending | BK-37, BK-38 | needed post-BK-34 |
 | 🟢 **Metrics** | §4.7 (no mockup) | epic BK-44 | far from frontier |
 | 🟢 **Bug Reports** | §4.6 (no mockup) | epic BK-31 | far from frontier |
+| 🟢 **Test Plans & Milestones** (plan list · plan detail/progress · milestone board) | ❌ none — design intent in each story's Mockup/Business-Rules fields | BK-202..BK-207 | post-MVP; user to generate mockups from story specs |
+| 🟢 **Automation & CI** (runs mode badges · CI upload · automation status) | ❌ none — design intent in story fields | BK-222..BK-228 | post-MVP; API stories (BK-222/223) UI-light |
+| 🟢 **Notifications** (bell + inbox panel · prefs sub-view · email digest) | ❌ none — design intent in story fields | BK-209..BK-214 | post-MVP |
+| 🟢 **Team Chat** (channel panel · composer · search) | ❌ none — design intent in story fields | BK-215..BK-220 | post-MVP |
+| 🟢 **Billing** (settings billing section · tier compare · invoices) | ❌ none — design intent in story fields | BK-229..BK-233 | post-MVP |
 
 > Mockups with screens already drawn (`login.jsx`, `app.jsx`, `project.jsx`, `editor.jsx`, `run.jsx`, `home.jsx`) cover every ES1/ES2 story — no mockup blocks the immediate frontier **except Settings**.
 
@@ -195,7 +246,7 @@ These are gating questions / contract decisions captured during shift-left refin
 | BK-23 | Answer 8 contract Qs (role gate, title overflow, API mismatch). |
 | BK-88 | Answer 4 PO + 5 dev Qs (ATP marks them planning blockers). |
 | BK-89 | **Promoted to RFD 2026-06-24; open Dev contract**: add `role` to `GET /api/v1/workspaces` + active-workspace transport decision (API field vs localStorage vs session, undecided) — resolve before coding. Comment posted on the issue. |
-| BK-21 | Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`. **Still unratified as of 2026-06-24** — RFD status but contract/OpenAPI open (soft-blocked). |
+| BK-21 | ~~Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`.~~ **RESOLVED + SHIPPED (2026-06-25)** — 10 Qs ratified (ADR-0009: reference-based propagation, optional If-Match, `{atc,version,affected_test_count}`, immutable anchors, no layer-policy gate, distinct-Test count); OpenAPI drift fixed; merged to staging (PR #57) + edit-path unification (PR #58). Ready For QA, assigned Ramiro. |
 | BK-35 | **Re-estimated 1→5 SP 2026-06-24; still in Estimation** pending Q1 (PO: ATC verdict when steps pending) + Q5 (Dev: realtime transport + latency SLA). Comment posted. |
 | Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
 
