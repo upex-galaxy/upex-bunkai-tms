@@ -1,7 +1,7 @@
 # Sprint 2 — In-Sprint Development Tracker
 
 > Purpose: track dev progress per ticket; cross-ticket aggregate for AI session resume.
-> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-24
+> Sprint: 2 (Jira: "Bunkai (69) Sprint 2", id 339, board 7) | Tech Lead: Ely | Window: 2026-06-09 → 2026-07-06 | Last Updated: 2026-06-25
 > Goal: "Finalizar un Producto Funcional con Módulos de Story, Test, ATC y Accounting."
 >
 > **Authoritative build order (bug waves + story frontier):** `.context/PBI/sprint-sequence.md`.
@@ -13,8 +13,8 @@
 | ------ | ----- | ------------ |
 | Bugs Open | 0 | **CLEARED** — all 16 fixed + 5 dup-closed in Sprint-2 bug waves (now Ready For QA / QA-side) |
 | Improvements Open | 1 | BK-97 (Medium, story-sized — deferred to planning session) |
-| Stories Ready For Dev | ~9 | YES — all reassigned to Ely 2026-06-24: BK-36 · BK-39 · BK-3 · BK-21 · BK-87 · BK-38 · BK-88 · BK-90 · BK-89. **Many are mockup/contract gated** (BK-87/88/90/38 🔒 mockup; BK-21 contract-unratified; BK-89 open Dev contract). Cleanly workable now: **BK-36, BK-39, BK-3**. |
-| Stories Ready For QA (dev done, awaiting QA) | 5 | NO — QA hands: BK-148 · BK-22 · BK-14 · BK-23 · BK-20 |
+| Stories Ready For Dev | ~7 | YES — reassigned to Ely 2026-06-24: BK-39 · BK-3 · BK-87 · BK-38 · BK-88 · BK-90 · BK-89. **Many are mockup/contract gated** (BK-87/88/90/38 🔒 mockup; BK-89 open Dev contract). Cleanly workable now: **BK-39, BK-3**. (BK-21 + BK-36 shipped 2026-06-25 → moved to Ready For QA.) |
+| Stories Ready For QA (dev done, awaiting QA) | 7 | NO — QA hands: BK-148 · BK-22 · BK-14 · BK-23 · BK-20 · BK-21 (2026-06-25, assignee Ramiro Majdalani) · **BK-36 (2026-06-25, unassigned — generic shift-left batch, no named QA owner)** |
 | Stories in Estimation | 1 | BK-35 Mark step pass/fail — re-estimated 1→5 SP, blocked by Q1 (PO) + Q5 (Dev) |
 | Stories Backlog | — | BK-37 Run History (unrefined, no mockup, no ATP) |
 | QA Approved | ~18 | BK-98 · BK-27 · **BK-34 (released Runs tail)** · BK-33 · BK-86 · BK-147 · BK-19 · BK-18 · BK-17 · BK-9 · BK-10 · BK-11 · BK-8 · BK-5 · BK-6 · BK-15 · BK-16 |
@@ -55,16 +55,16 @@ Then: BK-51 (reserved slugs) · BK-52 (route not workspace-scoped) · BK-53 (CJK
 
 ATC/Test wave + Runs gate SHIPPED (see Done table): BK-27 (gate) → BK-20/22/23 → BK-28/32 → BK-33 → BK-34 (Runs-tail gate, QA Approved) + BK-86. Live linear order now:
 
-1. **BK-36** Abort run — workable now off the BK-34 gate.
+1. ~~**BK-36** Abort run~~ — **SHIPPED 2026-06-25** (PR #59 → staging; Ready For QA). See Done table.
 2. **BK-39** Finish run verdict — workable now off the BK-34 gate.
 3. **BK-3** OAuth — AC field now synced (2026-06-24), cleared for dev.
-4. _[decision-gated]_ **BK-89** — after `role` field + active-workspace contract resolved; **BK-21** — after 10 contract Qs + OpenAPI drift ratified.
+4. _[decision-gated]_ **BK-89** — after `role` field + active-workspace contract resolved. (**BK-21 SHIPPED 2026-06-25** — contract ratified + merged to staging; see Done table.)
 
 **Excluded (do NOT pull yet):**
 - Settings cluster **BK-87 / BK-88 / BK-90** 🔒 — Settings mockup not authored (no design contract per Rule #15).
 - **BK-37 / BK-38** 🔒 — Test Runs index mockup not authored.
 - **BK-35** — in Estimation (re-estimated 1→5 SP); blocked by Q1 (PO) + Q5 (Dev).
-- **BK-21** — RFD but contract-unratified (10 propagation Qs + OpenAPI drift on `PATCH /atcs/{id}` open).
+- ~~**BK-21**~~ — **SHIPPED 2026-06-25** (contract ratified, ADR-0009; merged to staging PR #57 + #58; Ready For QA).
 - **BK-89** — promoted RFD 2026-06-24 (no longer superseded — BK-101 was a dup, deleted from Jira; BK-89 stands), but open Dev contract before coding.
 
 Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own Stage 1). Full order in `sprint-sequence.md`.
@@ -92,6 +92,8 @@ Deferred improvement: BK-97 (ADR-0001 follow-up, story-sized — needs its own S
 | BK-34 | Start manual run — opens the Runs tail | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved — the gate that released the Runs tail (BK-35/36/37/38/39).** Impl detail not captured in this tracker. |
 | BK-86 | Account / sign-out | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved.** Settings-cluster root (unblocks BK-87). Impl detail not captured in this tracker. |
 | BK-147 | App Shell | Ely | — | merged prior/parallel session — detail not captured | yes | — | **QA Approved.** Impl detail not captured in this tracker. |
+| BK-21 | ATC Propagation — cascade ATC edits to all tests (affected count + atc.updated event) | Ely | #57 + #58 | 2026-06-25 | 2026-06-25 | — | **Ready For QA**, assignee **Ramiro Majdalani** (shift-left QA owner). Contract ratified (10 Qs → ADR-0009: reference-based propagation, optional If-Match, `{atc,version,affected_test_count}` response, immutable anchors, NO layer-policy gate — `tests` has no such column, distinct-Test count). Migration 0035 (`bunkai_update_atc` computes real `affected_test_ids` in-tx; return shape unchanged = backward-compat on shared DB) applied via `apply_migration`. OpenAPI drift fixed (X-If-Match, 200 shape, 403/404/409/422; openapi.json regenerated). PR #58 unified the web editor onto `bunkai_update_atc` (UI edits now emit the event; story picker locked since US is immutable). `bun test` 472 pass; merge commits 1d06b6b / 7c8f6e5. QA hand-off comment posted. Code-level review only — UI/E2E delegated to QA. |
+| BK-36 | Abort a run in progress with a reason | Ely | #59 | 2026-06-25 | 2026-06-25 | — | **Ready For QA**, **unassigned** (generic shift-left batch session — no named QA owner; per policy NOT left on dev, NOT guessed). Migration 0036: `runs.abort_reason` (+ CHECK reason⇔aborted) + `bunkai_abort_run` SECURITY DEFINER (member+ gate 42501, status='running' guard 45204, reason 3–500 backstop 45205, FOR UPDATE first-wins, `run.aborted` audit); re-created `bunkai_run_json` with reason. Applied via `apply_migration` + `types:gen`. API `POST /api/v1/runs/{id}/abort` (run:execute, AC-exact reason copy, 45204→409/45205→422) + openapi. UI: RunnerView danger Abort button (member+ & running), confirm modal (reason textarea + counter + client validation), optimistic update, abort-reason display + `aborted` chip; page `canAbort` role gate. Verify: types ✅ lint ✅ openapi ✅; RPC functional test (DB fixture rolled back, 0 leaks) AC1/AC2/AC3 ✅. Adversarial review GO-WITH-FIXES (1 fix, 2 false-pos); compliance matrix PASS (AC4 exempt→BK-37). Merge commit 1104362 (admin bypass, user-authorized). Code-level review only — UI/E2E delegated to QA on staging. |
 | BK-142 | [BK-17] Staging Jira import `jira_unauthorized` — ATLASSIAN_* creds missing in Vercel `staging` Custom Env | Ely | — (env config, no PR/branch) | 2026-06-21 (redeploy) | — | **Ready For QA**, root_cause=Config/Env Error, fix=Bugfix, assignee Andrés (reporter). NOT a UI/API defect — the 3 Jira creds (`ATLASSIAN_URL`/`EMAIL`/`API_TOKEN`, read at runtime in `lib/jira/client.ts:120`) were absent from **every** Vercel scope. Key gotcha: the `staging` branch deploys to a Vercel **Custom Environment named `staging`** (not generic `Preview`), so the prior QA attempt that set vars on "Preview" never reached the staging runtime. Fix: set all 3 (encrypted, from `.env`) on **Production + staging** scopes, redeployed latest staging deployment (`target=staging`, status Ready). Generic `Preview` scope blocked by Vercel CLI 54.5 non-interactive branch-disambiguation quirk → follow-up only. Production scope set; applies on next `main` promotion (no forced prod redeploy per request). |
 
 ### Blocked
@@ -110,9 +112,9 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 | Total Sprint Tickets | 62 |
 | Open bugs at sprint start | 20 (+2 improvements) |
 | Bugs fixed (Ready For QA) | 16 — Waves 1–4 (BK-84, 83, 99, 100, 60, 61, 62, 58, 51, 52, 53, 57, 59, 67, 68, 69) + 5 dup-closed (92, 93, 54, 55, 56) |
-| Remaining dev-side | Live frontier: BK-36 Abort → BK-39 Finish verdict → BK-3 OAuth (AC synced); decision-gated BK-89/BK-21 (bug work done; BK-97 improvement still deferred) |
-| Stories merged this sprint | 10 — BK-27/33/34/86/147 (QA Approved) + BK-20/22/23/28/32 (Ready For QA) |
-| Staging-deployed | PRs #32–#38 (bugs) + #40, #41, #42, #44, #45, #46 (stories) |
+| Remaining dev-side | Live frontier: BK-39 Finish verdict → BK-3 OAuth (AC synced); decision-gated BK-89 (BK-21 + BK-36 shipped 2026-06-25; BK-97 improvement still deferred) |
+| Stories merged this sprint | 12 — BK-27/33/34/86/147 (QA Approved) + BK-20/22/23/28/32/21/**36** (Ready For QA) |
+| Staging-deployed | PRs #32–#38 (bugs) + #40, #41, #42, #44, #45, #46, #57, #58, **#59** (stories) |
 | Prod-deployed | 0 |
 
 ## Operational Notes (carry-over from Sprint 1 — still honor)
@@ -127,6 +129,27 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 8. **Design fidelity (Rule #15)**: any UI work → read `.context/design/master-design-plan.md` first.
 
 ## Session Log
+
+### 2026-06-25 — BK-36 Abort run shipped (PR #59)
+- **Full sprint loop** Plan→Code→Review→PR→merge→staging deploy on BK-36 "Abort a run in progress with a reason". Operates on the BK-34 run/run_step rows (gate QA Approved).
+- **Migration 0036** (applied via `apply_migration` to `fmbpikzpkafptqximhxn`, then `types:gen`): `runs.abort_reason` nullable + `runs_abort_reason_chk` CHECK (reason⇔aborted, existing rows satisfy it — no backfill); `bunkai_abort_run` SECURITY DEFINER — member+ gate (42501), `status='running'` guard (45204), reason 3–500 backstop (45205), `FOR UPDATE` first-wins idempotency, `run.aborted` audit, skips pending run_steps + run_atcs, preserves recorded results, **never touches `atcs` template**; re-created `bunkai_run_json` with `abort_reason`.
+- **SQLSTATE**: 45203 was RESERVED (token_expired) in 0031 → used 45204/45205.
+- **API** `POST /api/v1/runs/{id}/abort` (run:execute). AC-exact reason copy comes from a manual `safeParse`+`ApiError` in the route, because `handler.ts` flattens ZodError to a generic message. Maps 45204→409 / 45205→422. OpenAPI regenerated (#59 path).
+- **UI** RunnerView: danger Abort button (member+ & running only), confirm modal (reason textarea + counter + client validation), optimistic state update, abort-reason display + `aborted` status chip; run page derives `canAbort` from workspace role (viewers rejected server-side too).
+- **Verify**: types ✅ lint ✅ openapi ✅. RPC functional test via a DB DO-block fixture that RAISEs at the end → rolls back the whole fixture (0 leaked rows) while surfacing assertions: AC1 (run=aborted, pending→skipped, passed preserved), AC3 (closed→45204), AC2 (short→45205) all ✅.
+- **Review**: independent adversarial pass → GO-WITH-FIXES; 1 legit fix applied (errors.ts 45205 length-agnostic message), 2 dismissed as false-positives (with reasons). Spec Compliance Matrix PASS (AC4 history list `exempt` → BK-37 owns that surface; data delivered).
+- **Merge** commit 1104362 via admin bypass (staging REVIEW_REQUIRED; user-authorized). Staging Vercel deploy success. Prod gated (not deployed).
+- **Jira**: Ready For Dev → In Progress → In Review → **Ready For QA**; **unassigned** (generic shift-left batch, no named QA owner — per policy not left on dev, not guessed); QA hand-off comment posted (PR #59 + branch + staging URL).
+- Live-UI interactive click-through deferred to QA on staging (browser MCP unavailable this session); PR preview deploy covers it.
+
+### 2026-06-25 — BK-21 ATC Propagation shipped (PR #57) + edit-path unification (PR #58)
+- **Contract ratified (acting PO/tech-lead)**: 10 shift-left propagation Qs + OpenAPI drift resolved → **ADR-0009**. Key calls: propagation is reference-based (visible next read), If-Match optional, response `{atc,version,affected_test_count}`, anchors immutable, **no layer-policy gate** (`tests` has no `layer_policy` column — architect's 422 had nothing to enforce), affected count = DISTINCT Tests.
+- **Discovery**: most of BK-21 already shipped in BK-18 (If-Match, version bump, 409, tx child-replace, `atc.updated`). Real gap = `affected_test_ids` hard-coded `[]` (events.md note stale; `test_steps` shipped in 0024), response shape, OpenAPI drift. `bunkai_atc_usage` (0029) reused for the count.
+- **Migration 0035** `bunkai_update_atc`: computes real `affected_test_ids` in-tx for the event; **return shape unchanged** = backward-compatible on the shared remote DB. Applied via `apply_migration` (verified `to_jsonb('{}'::uuid[])` = `[]`, refuting a reviewer false-positive). No prod break (deployed route still gets bare ATC json).
+- **PR #57** (merge 1d06b6b): route returns `{atc,version,affected_test_count}`; OpenAPI both sources + `openapi.json`; editor toast "N Tests updated"; `lib/atcs/errors.test.ts` (409/403/404/422/500). `bun test` 472 pass.
+- **PR #58** (merge 7c8f6e5): unified the web editor save onto `bunkai_update_atc` so UI edits ALSO emit `atc.updated` (legacy `bunkai_save_atc` never did). Story picker locked (US immutable). Removed dead `saveAtc` wrapper.
+- **Jira**: BK-21 Ready For Dev → In Progress → In Review → **Ready For QA**; re-assigned **Ramiro Majdalani** (shift-left QA owner, verified via editJiraIssue); QA hand-off comment posted (PR + contract table + ATP test focus).
+- Both merges via admin-bypass (staging requires REVIEW_REQUIRED; user-authorized). Prod gated (not deployed). Tech-debt from this story (UI event gap) was resolved in-session via PR #58.
 
 ### 2026-06-24 — Roadmap audit + Jira hygiene
 - **Gate release confirmed**: **BK-34 Start manual run is QA Approved** → the Runs tail (BK-35/36/37/38/39) is officially RELEASED. BK-33 (Test Tags), BK-86 (Account), BK-147 (App Shell) also QA Approved this cycle.
