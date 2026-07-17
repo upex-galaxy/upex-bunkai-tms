@@ -6,19 +6,24 @@ import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { z } from 'zod';
 
-// POST /api/v1/auth/confirm — completes a verification-first sign-up (BK-166).
+// POST /api/v1/auth/confirm — completes a verification-first sign-up (BK-166),
+// and also confirms a magic-link email OTP (BK-175).
 //
-// Verifies the email OTP from `signup` via the public `verifyOtp` path,
-// which (on the SSR client) establishes the session cookies, then mints a fresh
-// PAT in the same call. The response is byte-for-byte the signin shape
-// `{ user, session, pat, warning }` so a CLI / agent gets both the Supabase
-// session AND the long-lived Bearer token in one round trip — the point where
-// new accounts first obtain credentials (signup itself issues none).
+// Verifies the email OTP via the public `verifyOtp` path, which (on the SSR
+// client) establishes the session cookies, then mints a fresh PAT in the same
+// call. The response is byte-for-byte the signin shape `{ user, session, pat,
+// warning }` so a CLI / agent gets both the Supabase session AND the
+// long-lived Bearer token in one round trip.
+//
+// `type` selects which Supabase OTP flow the token belongs to: 'signup' (the
+// BK-166 sign-up confirmation code, default — preserves existing callers) or
+// 'email' (the BK-175 magic-link OTP issued by `signInWithOtp`).
 
 const BodySchema = z.object({
   email: z.string().email().max(254),
-  // Supabase signup OTP is a numeric code; this project emits 6-to-8 digits.
+  // Supabase OTP is a numeric code; this project emits 6-to-8 digits.
   token: z.string().regex(/^\d{6,8}$/, 'Verification code must be 6 to 8 digits.'),
+  type: z.enum(['signup', 'email']).default('signup'),
   // Optional PAT controls — defaults give the CLI read+write+run power.
   // workspace:admin is accepted as an input value but rejected at runtime by
   // assertNoGlobalAdminScope below (ADR-0005); it cannot be minted here.
@@ -31,10 +36,10 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
-  const { email, token, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
+  const { email, token, type, pat_name, pat_scopes, pat_expires_in_days } = BodySchema.parse(payload);
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type });
 
   if (error?.status === 429) {
     throw new ApiError('rate_limited', error.message, { status: 429 });
@@ -55,7 +60,7 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const pat = await mintPat({
     admin,
     userId: data.user.id,
-    name: pat_name ?? 'cli-signup-confirm',
+    name: pat_name ?? (type === 'email' ? 'cli-magic-link-confirm' : 'cli-signup-confirm'),
     scopes,
     expiresInDays: pat_expires_in_days ?? null,
   });

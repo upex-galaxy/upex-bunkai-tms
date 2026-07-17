@@ -3,11 +3,12 @@
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { ArrowRight } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
+const OTP_REGEX = /^\d{6,8}$/;
 
 interface MagicLinkApiError { error?: { message?: string } }
 
@@ -16,27 +17,35 @@ interface MagicLinkApiError { error?: { message?: string } }
 // fails the production build with a "should be wrapped in a suspense
 // boundary" error.
 export function MagicLinkForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/projects';
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isValid = EMAIL_REGEX.test(email);
+  const isCodeValid = OTP_REGEX.test(code);
+
+  const requestCode = async () => {
+    const response = await fetch('/api/v1/auth/magic-link', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, next }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as MagicLinkApiError | null;
+      throw new Error(body?.error?.message ?? `Magic-link request failed (${response.status})`);
+    }
+  };
 
   const sendMagicLink = async () => {
     if (!isValid || submitting) { return; }
     setSubmitting(true);
     try {
-      const response = await fetch('/api/v1/auth/magic-link', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, next }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as MagicLinkApiError | null;
-        toast.error(body?.error?.message ?? `Magic-link request failed (${response.status})`);
-        return;
-      }
+      await requestCode();
+      setCode('');
       setSent(true);
     }
     catch (err) {
@@ -48,24 +57,128 @@ export function MagicLinkForm() {
     }
   };
 
+  const resendCode = async () => {
+    if (submitting) { return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await requestCode();
+      toast.success('A new code is on its way to your inbox.');
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error requesting a new code';
+      toast.error(message);
+    }
+    finally {
+      setSubmitting(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    if (!isCodeValid || submitting) { return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/v1/auth/confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, token: code, type: 'email' }),
+      });
+      if (response.ok) {
+        router.refresh();
+        router.push(next);
+        return;
+      }
+      if (response.status === 429) {
+        setError('Too many attempts. Please wait a moment and retry.');
+        return;
+      }
+      if (response.status === 401) {
+        setError('That code is invalid or expired.');
+        return;
+      }
+      const body = (await response.json().catch(() => null)) as MagicLinkApiError | null;
+      setError(body?.error?.message ?? `Verification failed (${response.status}).`);
+    }
+    catch (err) {
+      setError(err instanceof Error ? err.message : 'Unexpected error verifying code.');
+    }
+    finally {
+      setSubmitting(false);
+    }
+  };
+
   if (sent) {
     return (
-      <div className="rounded-3 border border-signal-pass/30 bg-signal-pass-bg p-3 text-sm text-fg-1">
-        <div className="font-semibold text-signal-pass">Check your inbox</div>
-        <div className="mt-1 text-fg-2">
-          A sign-in link was sent to
-          {' '}
-          <span className="font-mono text-fg-0">{email}</span>
-          .
+      <form
+        className="flex flex-col gap-2 rounded-3 border border-signal-pass/30 bg-signal-pass-bg p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void verifyCode();
+        }}
+      >
+        <div className="text-sm">
+          <div className="font-semibold text-signal-pass">Check your inbox</div>
+          <div className="mt-1 text-fg-2">
+            A sign-in code was sent to
+            {' '}
+            <span className="font-mono text-fg-0">{email}</span>
+            .
+          </div>
         </div>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-fg-2">
+            Verification code
+          </span>
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={8}
+            data-testid="login-magic-link-otp"
+            autoComplete="one-time-code"
+            placeholder="Verification code"
+            value={code}
+            onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+            className="h-10 text-md tracking-[0.4em]"
+            autoFocus
+          />
+        </label>
+        {error
+          ? (
+              <p data-testid="login-magic-link-error" role="alert" className="text-xs leading-relaxed text-signal-fail">
+                {error}
+              </p>
+            )
+          : null}
+        <Button
+          type="submit"
+          data-testid="login-magic-link-verify"
+          variant="primary"
+          size="lg"
+          disabled={!isCodeValid || submitting}
+          className="w-full justify-center"
+        >
+          {submitting ? 'Verifying…' : 'Verify and continue'}
+          <ArrowRight size={14} />
+        </Button>
         <button
           type="button"
-          onClick={() => setSent(false)}
-          className="mt-3 text-xs text-fg-3 underline-offset-2 hover:text-fg-1 hover:underline"
+          data-testid="login-magic-link-resend"
+          onClick={() => void resendCode()}
+          disabled={submitting}
+          className="self-start text-xs text-fg-3 underline-offset-2 hover:text-fg-1 hover:underline disabled:opacity-50"
+        >
+          Request a new code
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSent(false); setError(null); }}
+          className="self-start text-xs text-fg-3 underline-offset-2 hover:text-fg-1 hover:underline"
         >
           Use a different email
         </button>
-      </div>
+      </form>
     );
   }
 

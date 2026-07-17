@@ -4,6 +4,10 @@ const BodySchema = z
   .object({
     email: z.string().email().max(254).openapi({ example: 'qa.user@example.com' }),
     token: z.string().regex(/^\d{6,8}$/).openapi({ description: 'Numeric email OTP, 6 to 8 digits.', example: '12345678' }),
+    type: z
+      .enum(['signup', 'email'])
+      .default('signup')
+      .openapi({ description: 'OTP flow the token belongs to: signup (sign-up confirmation) or email (magic-link sign-in).', example: 'signup' }),
     pat_name: z.string().min(1).max(80).optional(),
     pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),
     pat_expires_in_days: z.number().int().positive().max(365).optional(),
@@ -39,7 +43,7 @@ registry.registerPath({
   tags: ['Auth'],
   summary: 'Verify email OTP → session + auto-minted PAT',
   description:
-    'Completes a verification-first sign-up by verifying the email OTP (a 6-to-8-digit numeric code). On success it establishes the Supabase session AND mints a fresh Bearer PAT in a single response — the same shape as POST /api/v1/auth/signin — so a new account can immediately authenticate subsequent requests.',
+    'Verifies an email OTP (a 6-to-8-digit numeric code) for either a sign-up confirmation or a magic-link sign-in (`type`). On success it establishes the Supabase session AND mints a fresh Bearer PAT in a single response — the same shape as POST /api/v1/auth/signin — so the account can immediately authenticate subsequent requests.',
   request: {
     body: {
       required: true,
