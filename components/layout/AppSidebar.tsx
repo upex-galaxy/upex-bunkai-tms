@@ -96,7 +96,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     { id: 'runs', icon: Play, label: 'Test Runs', href: null },
     { id: 'bugs', icon: Bug, label: 'Bug Reports', href: null },
     { id: 'metrics', icon: BarChart3, label: 'Metrics', href: null },
-    { id: 'settings', icon: Settings, label: 'Settings', href: null },
+    { id: 'settings', icon: Settings, label: 'Settings', href: '/settings' },
   ];
 
   const isActive = (href: string | null) =>
@@ -383,6 +383,16 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
                 </span>
               </DropdownMenu.Label>
               <DropdownMenu.Separator className="my-1 h-px bg-stroke-2" />
+              <DropdownMenu.Item asChild>
+                <Link
+                  href="/settings"
+                  data-testid="account-menu-settings"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-2 px-2 py-1.5 text-sm text-fg-1 outline-none data-[highlighted]:bg-surface-2"
+                >
+                  <Settings size={14} className="text-fg-3" />
+                  Settings
+                </Link>
+              </DropdownMenu.Item>
               <DropdownMenu.Item
                 data-testid="account-sign-out"
                 disabled={busy}
