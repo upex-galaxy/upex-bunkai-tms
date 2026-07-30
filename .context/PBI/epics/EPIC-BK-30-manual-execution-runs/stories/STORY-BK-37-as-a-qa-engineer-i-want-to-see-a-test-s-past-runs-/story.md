@@ -3,9 +3,9 @@
 **Jira Key:** [BK-37](https://jira.upexgalaxy.com/browse/BK-37)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** 1
+**Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
@@ -31,6 +31,34 @@
 
 ---
 
+## QA Refinements (Shift-Left Analysis)
+
+***Full ATP DRAFT***: see the Acceptance Test Plan (ATP) field on this Story.
+
+### Edge Cases Identified
+
+- Outcome filter matches 0 runs — needs a distinct empty message
+- Test has exactly the page-size number of runs (no "load more" shown)
+- Test has page-size + 1 runs (load-more appends exactly 1)
+- Test with only an in-progress Run, 0 terminal Runs
+- Two runs sharing the identical "ran at" timestamp (sort tie-break)
+
+### Clarified Business Rules (suggested additions)
+
+- State the page size explicitly (e.g. "beyond the first 50") instead of only an illustrative number in AC4
+- Add an explicit rule: in-progress Runs are excluded from "past runs" history; only terminal Runs (passed/failed/aborted) appear
+
+### Open Questions for PO / Dev
+
+1. ***PO*** — Are in-progress ("running") Runs included in "past runs" history, or is history strictly terminal?
+2. ***PO*** — Is 50 (from the AC4 example) the actual page-size contract, or just illustrative?
+3. ***PO*** — Does the outcome filter stay applied when loading older runs (pagination + filter composition)?
+4. ***Dev*** — No GET endpoint exists yet to list/filter/paginate a Test's Runs (`runs/route.ts` is POST-only; `runs/[id]/route.ts` is single-Run GET-only). Needs scoping before implementation.
+5. ***Dev*** — What is the tie-break sort key for identical "ran at" timestamps?
+6. ***Dev*** — Is "No runs yet for this Test" the only empty-state string, or does a 0-match filter need distinct copy?
+
+---
+
 ## Fields
 
 > Each rich-text field is a separate file in this folder.
@@ -40,6 +68,7 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
@@ -54,9 +83,10 @@
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/21/2026
 - **Reporter:** Ely
-- **Assignee:** Juan Ignacio Marmo
+- **Assignee:** Ely
+- **Labels:** shift-left-2026-07-21, shift-left-reviewed
 
 ---
 

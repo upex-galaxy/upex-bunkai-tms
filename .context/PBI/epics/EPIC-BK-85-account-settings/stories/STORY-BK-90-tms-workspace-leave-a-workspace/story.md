@@ -55,7 +55,7 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-06-10, shift-left-reviewed
