@@ -29,8 +29,10 @@ externally-produced **screen mockups** (Claude Design / Open Design / any protot
 stories so `/sprint-development` builds each UI story against its agreed screen. This is the design
 SYSTEM (`DESIGN.md` = tokens/components) vs SCREEN design (`master-design-plan.md` = per-screen specs
 + US→Screen map) split. The screen phase is **always opt-in** — the AI asks every time and never
-auto-runs it — and is **gated on the user supplying mockups** (the AI delegates their creation to the
-external tool; it does not generate screens itself). Full procedure: `references/screen-design-mapping.md`.
+auto-runs it — and the mockups always come from the external tool (the AI never hand-writes them).
+When the **Open Design MCP** is available, the delegation is autonomous: the AI commissions the runs
+itself, QAs and exports the results into the drop zone (Mode A); otherwise it hands the user a brief
+and pauses (Mode B). Full procedure: `references/screen-design-mapping.md`.
 
 ---
 
@@ -218,10 +220,13 @@ zone, US→Screen mapping, the plan's section layout, and the external-tool dele
 Quick shape:
 
 1. **Ask** (AskUserQuestion): map screens into a master design plan? Yes / No / Not now. No → skip.
-2. **Brief + wait** if `.context/designs/<project>/` is empty — generate a portable design brief
-   (`references/screen-design-brief.md`: frozen `DESIGN.md` tokens inlined + the batch's US/AC +
-   per-tool export instructions), save it as `BRIEF.md` in the batch folder, hand it to the user
-   to paste into Claude Design / Open Design, PAUSE with session-resume (mirrors Paths C/D).
+2. **Brief + delegate** if `.context/designs/<project>/` is empty — generate a portable design
+   brief (`references/screen-design-brief.md`) and save it as `BRIEF.md` in the batch folder, then:
+   **Mode A (preferred)** — Open Design MCP available (or preflight can bring it up,
+   `references/open-design-app.md`): the AI commissions one run per screen itself, QAs and exports
+   the results into the batch folder; user pulled in only for early review. **Mode B (fallback)** —
+   hand the brief to the user to paste into Claude Design / Open Design, PAUSE with session-resume
+   (mirrors Paths C/D).
 3. **Build** `.context/design/master-design-plan.md` from the mockups + backlog: per-screen specs,
    a frozen-token reference to `DESIGN.md`, a US→Screen map, a divergence register.
 4. **Confirm** with the user before writing; re-runs UPSERT (incremental / just-in-time per feature).
@@ -263,7 +268,7 @@ On successful completion (all verification items pass), the orchestrator runs Ar
 - **D4.** NEVER ship a token rename without a migration path for component consumers — silent rename breaks every downstream import + `tailwind.config.js` reference.
 - **D5.** NEVER override design tokens inline (`style={{ color: '#fff' }}`, `className="text-[#1A1C1E]"`) in components — the escape hatch becomes the rule and the token system rots.
 - **D6.** NEVER let a designer hand off a Figma URL alone — require the exported token JSON or a built `DESIGN.md`; design intent must be machine-readable for downstream scaffolds.
-- **D7.** NEVER auto-run the optional screen phase or generate screen mockups yourself — it is always an explicit user opt-in, and the mockups always come from an external tool the user supplies into `.context/designs/<project>/` (see `references/screen-design-mapping.md`).
+- **D7.** NEVER auto-run the optional screen phase or hand-author screen mockups yourself — the phase is always an explicit user opt-in, and the mockups always come from the external tool: either supplied by the user into `.context/designs/<project>/` (Mode B) or commissioned by the AI through the Open Design MCP and exported there (Mode A — sanctioned delegation, see `references/screen-design-mapping.md` S1). What stays banned is the orchestrating AI writing mockup markup itself.
 
 ---
 

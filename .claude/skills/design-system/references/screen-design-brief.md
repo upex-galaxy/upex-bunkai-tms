@@ -50,6 +50,13 @@ Mechanics:
 
 - Ask the user before generating: "¿Sigues en el mismo proyecto de {tool} o empiezas uno nuevo?"
   Same project → FOLLOW-UP mode.
+- **Cross-tool continuity does NOT exist.** FOLLOW-UP assumes the SAME tool project holds the
+  token memory. If the earlier screens came from a different tool (e.g. batch 1 in Claude Design,
+  batch 2 in Open Design), the new tool knows nothing: keep the FOLLOW-UP framing for consistency
+  language ("match the existing screens") but RE-INLINE the full frozen contract (B7 does not
+  apply across tools). With Open Design specifically, prefer attaching the repo design system as a
+  `user:<slug>` package (see `open-design-app.md` §repo → OD) over pasting tokens into the brief —
+  package beats prose.
 - Record the mode + tool project name in the BRIEF.md header (`Tool session:` line) so the next
   brief knows continuity exists.
 - **Tool memory is convenience, NOT contract.** The repo-side validation never relaxes: every
@@ -163,6 +170,42 @@ named by `{screen-slug}`, into the same destination folder.
 When the files are in place, come back to the agent session and confirm — the screen-mapping
 phase resumes automatically (session checkpoint is waiting).
 ```
+
+## MCP consumption — per-screen prompt slices (Mode A)
+
+When the delegation runs MCP-driven (`screen-design-mapping.md` step 2 Mode A), the brief is not
+pasted anywhere by a human: the orchestrating AI slices it into ONE `start_run` prompt per screen.
+`BRIEF.md` is still saved whole (provenance + the batch's single source of truth); the slices are
+derived from it, never diverge from it.
+
+Anatomy of each per-screen prompt (order matters, all in the product's artifact language):
+
+1. **Mission line** — "Screen N of M for this project: {human name}" + 1-line product register
+   (from §Product context). Numbering gives the tool's project memory a sense of series.
+2. **Design-system reminder** — 1 short paragraph: the project has the `user:<slug>` design system
+   attached; use NATIVE token names ({3-4 exemplar names}); no new tokens. Do NOT re-paste the
+   token tables — the attached package carries them.
+3. **File contract** — exact `{screen-slug}.html`, self-contained, target viewport. The slug is
+   what lets the repo map file → §4 spec later; treat it as an API.
+4. **Functional intent** — the screen's capability bullets from §Screens requested, verbatim
+   spirit (verbs and outcomes, never widgets).
+5. **States** — the AC-demanded states; on screens 2+ add "consistent with the states treatment
+   you used on screen 1" so the batch stays coherent.
+6. **Hard constraints** — the brief's Hard constraints block, compressed, PLUS the standing rules
+   learned on earlier screens (see below).
+
+Standing rules & drift control:
+
+- **UI copy language is a hard constraint, not an assumption.** The inner design agent mirrors the
+  ORCHESTRATION conversation's language — if you orchestrate in Spanish, screen copy can come out
+  Spanish even with an English prompt. State "UI copy in {product language}" explicitly in EVERY
+  prompt. On the first violation, send a translate-only refinement run and have it persist the
+  rule tool-side (Open Design accepts `rule-proposal` cards that auto-verify on later runs).
+- **Screens 2+ cite screen 1** — "reuse the shell anatomy of `{screen-1-slug}.html`, with {section}
+  active". This is why runs are sequential, never parallel.
+- **Refinements are runs, not edits.** A defect in a generated screen (wrong language, missing
+  state, off-contract value) is fixed by a follow-up `start_run` describing the correction — never
+  by the orchestrator editing the HTML (S1).
 
 ## Procedure
 

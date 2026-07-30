@@ -8,9 +8,16 @@
 ## Core principle — delegation, not generation
 
 The AI does **NOT** generate screen mockups. Screen design is an inherently external maneuver:
-the user produces prototypes in a dedicated tool and downloads them into the repo. This skill
-**orchestrates the handoff** (tell the user what to do, wait, then build the plan from what lands)
-— exactly like Paths C / D already do for `DESIGN.md`.
+a dedicated design tool produces the prototypes, and they land in the repo. This skill
+**orchestrates the delegation** — in one of two modes:
+
+- **MCP-driven (preferred when available)**: Open Design's MCP is registered → the AI commissions
+  the runs itself (`start_run` per screen), Open Design's own pipeline generates, the AI polls,
+  QAs, and exports the results into the drop zone. Autonomous end-to-end; the human is pulled in
+  only for early review and taste calls. This still honors the principle: the GENERATOR is Open
+  Design's inner agent + skill, never the orchestrating AI hand-writing HTML.
+- **Manual handoff (fallback)**: no MCP → tell the user what to do (brief out), wait, then build
+  the plan from what lands — exactly like Paths C / D do for `DESIGN.md`.
 
 Supported external tools (document both; the user picks):
 
@@ -46,8 +53,20 @@ standalone invocation), ALWAYS ask — never assume. Suggested prompt (AskUserQu
 ## Procedure (when opted in)
 
 1. **Check the drop zone.** Look for mockups under `.context/designs/<project-slug>/`.
-2. **If empty → generate a design brief, delegate + PAUSE.** Do NOT print generic "go design"
-   instructions — load `references/screen-design-brief.md` and follow its procedure:
+2. **If empty → generate a design brief, then pick the delegation mode.** Load
+   `references/screen-design-brief.md` and produce + save `BRIEF.md` either way (provenance is
+   mode-independent). Then:
+
+   **Mode A — MCP-driven (preferred).** If the Open Design MCP is available (or can be brought up
+   via the deterministic preflight in `references/open-design-app.md` §Preflight), run the
+   autonomous flow from `references/open-design-app.md` §"Flujo MCP autónomo": mirror the repo
+   design system as `user:<slug>` if not yet done, `create_project` with it attached, one
+   `start_run` per screen using the per-screen prompt slices (`screen-design-brief.md` §MCP),
+   poll → QA → export each result into the drop zone yourself. Ping the user with the first
+   screen's previewUrl for an early direction check; finish the batch autonomously. No PAUSE
+   needed — checkpoints in `progress.md` still record each run (runId + status) for resume.
+
+   **Mode B — manual handoff + PAUSE (fallback).** No MCP and no way to bring it up:
    - Build a portable brief seeded with the `DESIGN.md` frozen tokens (inlined values), the
      batch's user stories + AC-visible behaviors, and per-tool export instructions
      (Claude Design chat pane / Open Design brief form / any prototyper).
@@ -93,8 +112,11 @@ the mockup + `DESIGN.md` tokens. If the plan is absent, it falls back to `DESIGN
 
 ## Anti-patterns — NEVER do these
 
-- **S1.** NEVER generate or invent screen mockups. Delegate to the external tool and wait for the
-  artifacts. A made-up screen defeats the entire fidelity contract.
+- **S1.** NEVER hand-author or invent screen mockups yourself (no `Write`/`write_file` of design
+  HTML). Delegate to the external tool and wait for its artifacts. Commissioning Open Design runs
+  via MCP IS sanctioned delegation — OD's pipeline generates, you orchestrate. What stays banned is
+  the orchestrating AI writing the mockup markup itself (including "fixing" a run by hand-editing
+  its output — send a refinement run instead). A made-up screen defeats the entire fidelity contract.
 - **S2.** NEVER run this phase without an explicit user opt-in. It is always a question, never a default.
 - **S3.** NEVER duplicate `DESIGN.md` token values into the master design plan — reference them. The
   plan owns *screens*; `DESIGN.md` owns *tokens/components*.

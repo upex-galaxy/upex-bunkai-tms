@@ -155,6 +155,94 @@ Cuatro de esas escriben o borran (`write_file`, `delete_file`, `delete_project`,
 
 El MCP requiere que la app esté abierta: si el daemon no corre, las tool calls fallan. `get_artifact` y `get_file` resuelven contra el proyecto/archivo **activo en la UI** cuando omitís `project`, lo que hace muy barato el "traeme el diseño que tengo abierto".
 
+### Preflight determinístico (app cerrada / MCP caído)
+
+Antes de cualquier flujo MCP, corré esta escalera en orden. No improvises: cada peldaño tiene un
+remedio concreto.
+
+1. **¿Tools MCP visibles?** Si `mcp__open-design__*` no aparece en la sesión → el server no está
+   registrado. Registralo (config de Settings → MCP server, ver arriba) y avisá al user que
+   **reinicie la sesión del agente** (los MCP se cargan al arranque). No hay workaround mid-session.
+2. **¿Daemon vivo?** Probá una tool barata (`list_projects`). Si falla con "cannot reach daemon":
+   la app está cerrada. Lanzala vos mismo y esperá el health:
+
+   ```bash
+   open -ga "Open Design"    # -g: no roba foco al user
+   LOG="$HOME/Library/Application Support/Open Design/namespaces/release-stable/logs/daemon/latest.log"
+   for i in $(seq 1 30); do
+     URL=$(grep -o '"url":"http://[^"]*"' "$LOG" | tail -1 | cut -d'"' -f4)
+     [ -n "$URL" ] && curl -sf "$URL/api/health" >/dev/null && echo "daemon OK: $URL" && break
+     sleep 2
+   done
+   ```
+
+   Re-probá `list_projects` después del health OK.
+3. **¿App instalada?** Si `open -ga` falla (no existe `/Applications/Open Design.app`) → instalación
+   Vía 1 (arriba). Eso requiere descarga + verificación de firma: reportá al user, no lo hagas a
+   ciegas si la red o los permisos no están.
+4. **¿MCP imposible pero daemon alcanzable?** El daemon expone REST (`$URL/api/...`, mismas
+   operaciones que las tools). Último recurso programático: `curl` contra esa API con los mismos
+   payloads (los paths se ven en el log del daemon). Documentado como escape hatch, no como camino
+   primario — el MCP es el contrato estable.
+5. **¿Nada de lo anterior?** Degradá al flujo manual original: generá `BRIEF.md`, pausá, el user
+   itera en la UI y te avisa (contrato de espera de siempre).
+
+### Flujo MCP autónomo — screen mockups end-to-end (verificado 2026-07-30)
+
+Camino estándar cuando la fase screen-mapping (skill `design-system`) corre con el MCP disponible.
+El agente **comisiona** los diseños a Open Design; nunca los escribe él (S1 sigue vigente: el que
+genera es el pipeline de OD — `start_run` spawnea su propio agente interno con la skill de OD).
+Prerequisito: el design system del repo instalado como paquete de usuario `user:<slug>` (sección
+"repo → OD" arriba) — así toda generación hereda los tokens reales.
+
+1. **Proyecto**: `create_project` con `designSystem: "user:<slug>"` e `id` slug del batch (p.ej.
+   `<producto>-<batch-slug>`). Verificá `designSystemId` en la respuesta. `400
+   DESIGN_SYSTEM_NOT_PUBLISHED` → PATCH publish (sección repo → OD) y reintentá.
+2. **Skill de OD**: para screens de aplicación usá `frontend-design` ("application screens,
+   production-grade"). A 0.16.x NO existen `web-prototype` ni `dashboard` — no los cites. Ojo:
+   `list_skills` devuelve ~200KB; no lo leas entero, grepeá el archivo persistido que deja el
+   harness (`grep '"id":' <persisted>.txt`).
+3. **Un run por screen, secuencial**: `start_run {project, skill, agent, prompt}` con el prompt =
+   rebanada per-screen del `BRIEF.md` (anatomía en `screen-design-brief.md` §MCP). Secuencial, no
+   paralelo: los screens 2..N deben citar "reuse the shell anatomy of screen 1" y eso requiere que
+   el anterior exista en la conversación del proyecto (misma `conversationId` = memoria acumulada).
+4. **Poll paciente**: `get_run(runId)` cada 30–60s. **El archivo puede aparecer en
+   `data/projects/<project>/` ANTES del status terminal** — el agente interno escribe y sigue
+   puliendo. NO exportes con `status: running`; esperá `succeeded`. Watcher barato sin quemar
+   contexto (bash no puede llamar MCP): backgroundeá un loop que tailee el events log del run y
+   salga al ver el result:
+
+   ```bash
+   LOG="$HOME/Library/Application Support/Open Design/namespaces/release-stable/data/runs/<runId>/events.jsonl"
+   for i in $(seq 1 60); do
+     tail -5 "$LOG" 2>/dev/null | grep -q '"type":"result"' && echo TERMINAL && exit 0
+     sleep 20
+   done
+   ```
+
+5. **QA del artifact al cerrar cada run**: leé `agentMessage` (self-report del agente interno) y
+   corré sanity greps sobre el archivo: idioma del copy, `lang=`, hex fuera del token block,
+   presencia del slug exacto. **Gotcha real**: el agente interno hereda el idioma de la
+   conversación — si orquestás en español, el copy de UI puede salir en español aunque el prompt
+   esté en inglés. Antídoto: constraint explícito "UI copy in ENGLISH" en TODOS los prompts + al
+   primer desvío un run de corrección que además persista la regla (OD soporta `rule-proposal`
+   cards que quedan como regla del proyecto y se auto-verifican en runs siguientes).
+6. **Runs manuales del user intercalados**: el user puede disparar sus propios runs desde la UI
+   (p.ej. la skill de OD `impeccable-design-polish` sobre un screen). Antes de exportar, re-listá
+   los runs por mtime (`ls -lt .../data/runs | head`) y esperá el terminal del ÚLTIMO run que toque
+   el archivo — exportar en medio del polish del user pisa su trabajo.
+7. **Export al repo**: `cp` desde `data/projects/<project>/<slug>.html` a
+   `.context/designs/<project-slug>/<batch-slug>/` (el drop zone de la fase screen-mapping). El
+   MCP no escribe fuera de su data root; el `cp` es tuyo. Después del batch completo: UPSERT de
+   `master-design-plan.md` §1/§4/§8 como siempre.
+8. **Review humano**: cada `get_run` terminal trae `previewUrl` (y a veces `studioUrl` — ese
+   mostralo SIEMPRE como link markdown clickeable). Pasáselo al user tras el primer screen para
+   validación temprana de dirección; no esperes al batch entero para descubrir un rumbo torcido.
+
+Presupuesto de tiempo real: 2–6 min por screen con `claude` como agente interno (5–30 min es el
+rango que documenta OD). Los runs de refinamiento (traducción, polish) son mucho más cortos que los
+de generación.
+
 **README drift**: el README anuncia `od mcp install <agent>` para auto-registrar en claude/codex/cursor/etc. Ese subcomando **no existe en 0.16.1**; el registro es manual como arriba. Re-chequealo en releases futuros antes de citarlo.
 
 ## Instalar TU design system como paquete de usuario (repo → OD)
