@@ -2173,6 +2173,85 @@
         },
         "required": ["tags"]
       },
+      "RunHistoryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunHistoryItem"
+            },
+            "description": "The page, ordered newest first (started_at desc, id desc)."
+          },
+          "totals": {
+            "$ref": "#/components/schemas/RunHistoryTotals"
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next (older) page, or null when this is the last page. Echo it back verbatim as `?cursor=`; never construct or parse one."
+          }
+        },
+        "required": ["items", "totals", "next_cursor"]
+      },
+      "RunHistoryItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "aborted"],
+            "description": "Terminal outcome. `running` never appears — an in-progress Run is not a past run."
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": ["string", "null"],
+            "description": "The project environment the Run targeted."
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "environment_id",
+          "environment_name",
+          "executor_mode",
+          "started_at",
+          "finished_at"
+        ]
+      },
+      "RunHistoryTotals": {
+        "type": "object",
+        "properties": {
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "aborted": {
+            "type": "integer"
+          }
+        },
+        "required": ["passed", "failed", "aborted"],
+        "description": "ALL-TIME counts over every terminal Run of the Test. Deliberately invariant under both `outcome` and pagination — filtering the list never changes these numbers."
+      },
       "Run": {
         "type": "object",
         "properties": {
@@ -6353,6 +6432,116 @@
           },
           "422": {
             "description": "A tag exceeds 50 chars, contains a comma, or more than 20 tags supplied (`validation_failed`, `details.reason: tags_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/{id}/runs": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "List a Test's past Runs, newest first, filterable by outcome",
+        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/runs/{id}` — the PAT scope catalog has no run-read scope). One SECURITY DEFINER RPC resolves the Test's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Returns TERMINAL Runs only (`passed` / `failed` / `aborted`) ordered `started_at desc, id desc` — an in-progress Run is neither listed nor counted. Pagination is KEYSET, not offset: `next_cursor` encodes the `(started_at, id)` of the last row, so a Run landing mid-scroll can neither skip nor duplicate a row, and the `id` tie-break keeps runs sharing a `started_at` in a stable total order. The `outcome` filter composes with pagination server-side — page 2 of a filtered history contains only that outcome. `totals` is all-time and filter-invariant. A Test with no terminal Runs returns an empty `items` with zeroed `totals` (never a 404).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Test whose Run history to read."
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["passed", "failed", "aborted"]
+            },
+            "description": "Narrow the list to one terminal outcome. `running` is NOT an accepted value (422) — an in-progress Run is not an outcome."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 50
+            },
+            "description": "Page size, 1..50 (default 50). Out of range is rejected (422); the RPC additionally clamps for direct callers."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of Run history (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Test id (not a UUID) or an undecodable `cursor` (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test not found (also returned for a Test outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — `outcome` outside passed/failed/aborted (incl. `running`), or `limit` outside 1..50 (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {
