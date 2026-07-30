@@ -35,7 +35,8 @@ Every user story that touches UI MUST:
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
-| Bug Reports / Metrics / Test Runs / Settings | 0% | ❌ Missing (no data model) |
+| Bug Reports / Metrics / Test Runs | 0% | ❌ Missing (no data model) |
+| Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -182,8 +183,24 @@ Nav badge `3`. Run list/index. Active runs partially shown on Home dashboard tab
 ### 4.9 ATC Library — ⚠️ (project-scoped, not global)
 Nav badge `623`. Impl has ATC CRUD nested under project (`projects/[slug]/atcs/*`) but no **global cross-project library**. **Priority: P3** — promote to global view.
 
-### 4.10 Settings — ❌ (0%)
-Nav item. Closest = `workspaces/[id]/members` (members only). **Priority: P3.**
+### 4.10 Settings — ❌ build 0% · ✅ mockups ready (2026-07-30)
+Nav item. Closest impl = `workspaces/[id]/members` (members only). **The 🔒 mockup gate is LIFTED**: a
+5-screen suite was generated via Open Design (MCP-driven Mode A, project `bunkai-bk-85-account-settings`,
+design system `user:bunkai`) and lives in `.context/designs/bunkai-test-management-tool/bk-85-account-settings/`
+(provenance: `BRIEF.md` in the same folder). All screens share one Settings shell (48px rail + 216px
+settings nav + topbar), English copy, frozen §2 tokens verbatim, `:focus-visible` 1px `--accent`.
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `settings-account.html` | `/settings`, `/settings/account` | Hub landing. Identity card (own name/email/`USR-id`/role, Sign out ghost); dense workspaces table (active = dot + "active" text); Danger zone (delete account: `alertdialog`, typed-email confirm); states strip: loading / empty (identity intact + `$ bunkai workspace create` terminal + create/join CTAs) / error (identity still renders, retriable) / session-expired. Future sections in nav announced "soon", non-focusable. |
+| `settings-tokens.html` | `/settings/tokens` | PAT list (name mono + `PAT-id`, scope chips, workspace, created, expires; secret never listed; expiring row = `--blocked` chip + text; revoked row = strikethrough + fail chip). Two-step issuance modal: name + 4 fixed scopes + optional workspace + optional expiry → secret shown ONCE (`role="alert"` "never shown again", one-click copy + aria-live). Revoke: `alertdialog` naming exact token, row flips instantly. States: empty (what tokens are for + first-issue CTA) / secret-revealed / loading / error. No edit path — revoke + reissue (footer copy). |
+| `settings-workspaces.html` | `/settings/workspaces` | Membership list (role chips Owner/Admin/Member/Viewer, active = dot + text; only ACTIVE memberships). Sole-owner row: NO leave button — lock + "Can't leave" (`--blocked`) + reason visible before trying. Leave: `alertdialog` naming exact workspace, typed-name confirm; post-leave live (row gone, next workspace becomes active, aria-live announce). States: single-workspace (no ambiguity) / post-leave / loading / error. |
+| `account-menu-overlay.html` | shell overlay (any signed-in page) | Global-shell account menu over a dimmed Explorer page. Trigger = avatar button in rail (`aria-haspopup`/`aria-expanded`). Open menu: identity header (name + email mono), role + `WS-id · name` context row, items Settings / Personal access tokens / Sign out (real links across the suite). Full keyboard: roving tabindex, arrows wrap, Home/End, Esc + focus return, Tab closes. Sign out → `/signin` landing (no chrome, brand-clarification line) — no confirm (cheap to revert). States: closed affordance / open / keyboard-focused item / signed-out. |
+| `settings-coming-soon.html` | any unshipped `/settings/*` | Honest dead-end pattern (example: `/settings/members`, chip `not shipped`). One-liner of what the section will do, "planned, no committed date", `GET → 200 · never a 404` mono line, real links back to live sections. "Every planned section" card: Members / Notifications / Billing / Environments each with one-liner + route + `soon` tag. Nav treatment: live = link; soon = `aria-disabled` div, skipped by Tab, textual tag — structural difference, never color-only. Zero fake forms/controls/JS. |
+
+Build order note: BK-87 builds the hub shell + account (first two files), BK-88 tokens, BK-89/90
+workspaces; the overlay is BK-86 (already shipped live — validate against `account-menu-overlay.html`
+for fidelity polish). D11's future tech-story (relocate Environments into Settings) remains deferred.
 
 ---
 
@@ -292,11 +309,11 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-48 Filter chain by verdict/module | Metrics · Traceability | §4.7 |
 | | BK-49 Activity stream (read feed) | **Home** recent-activity | `home.jsx` §4.2 |
 | | BK-50 Export assembled chain | Metrics/Traceability (export) | §4.7 |
-| **BK-85 Account & Settings** | BK-86 View identity/role + sign-out | **Shell** user block · Settings | `app.jsx` §3 |
-| | BK-87 Settings hub + account view | **Settings** | §4.10 |
-| | BK-88 Manage personal access tokens | **Settings** | §4.10 |
-| | BK-89 View my workspaces | Settings · Shell switcher | §4.10 |
-| | BK-90 Leave a workspace | **Settings** | §4.10 |
+| **BK-85 Account & Settings** | BK-86 View identity/role + sign-out | **Shell** user block · Settings | `app.jsx` §3 · `bk-85-account-settings/account-menu-overlay.html` |
+| | BK-87 Settings hub + account view | **Settings** | §4.10 · `bk-85-account-settings/settings-account.html` + `settings-coming-soon.html` |
+| | BK-88 Manage personal access tokens | **Settings** | §4.10 · `bk-85-account-settings/settings-tokens.html` |
+| | BK-89 View my workspaces | Settings · Shell switcher | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
+| | BK-90 Leave a workspace | **Settings** | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
 | **BK-29 QA Credentials** | (epic) | `/qa` page (out of mockup scope) | — |
 | **BK-201 Test Plans & Milestones** | BK-202 Create a test plan grouping tests | **Test Plans index + Plan detail** (new, Project scope) | ⚠️ wireframe pending |
 | | BK-203 Add/remove tests from a plan | **Plan detail** (test picker) | ⚠️ wireframe pending |

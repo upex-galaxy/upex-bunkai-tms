@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunkai — Settings · Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens Bunkai (contrato congelado, verbatim) ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: var(--font-mono); }
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+::selection { background: var(--accent-glow); }
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 48px 216px minmax(0, 1fr);
+  height: 100vh;
+  min-width: 1120px;
+}
+
+/* Rail (chrome global de la app) */
+.rail {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) 0;
+  gap: var(--space-2);
+}
+.rail-logo {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  font-family: var(--font-jp);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg-0);
+  margin-bottom: var(--space-4);
+  user-select: none;
+}
+.rail-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-2);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn:active { background: var(--bg-5); }
+.rail-btn[aria-current="page"] { background: var(--bg-5); color: var(--fg-0); }
+.rail-btn svg { width: 16px; height: 16px; }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+/* Nav de configuración */
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-3);
+  gap: var(--space-1);
+  overflow-y: auto;
+}
+.snav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-back:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-back svg { width: 14px; height: 14px; }
+.snav-back .kbd { margin-left: auto; }
+
+.snav-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+}
+.snav-group {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  padding: var(--space-4) var(--space-3) var(--space-1);
+}
+.snav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-item svg { width: 14px; height: 14px; flex: none; }
+.snav-item:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-item[aria-current="page"] {
+  background: var(--bg-5);
+  color: var(--fg-0);
+  font-weight: 500;
+}
+.snav-item.is-soon {
+  color: var(--fg-4);
+  cursor: default;
+}
+.snav-item.is-soon:hover { background: transparent; color: var(--fg-4); }
+.soon-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-4);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Main ─────────────────────────────────────────────────────────── */
+.main {
+  overflow-y: auto;
+  background: var(--bg-0);
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 44px;
+  padding: 0 var(--space-12);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.crumb { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumb strong { color: var(--fg-1); font-weight: 500; }
+.route-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+}
+
+.content {
+  max-width: 880px;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.page-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--fg-0);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+}
+.page-head p { font-size: var(--text-base); color: var(--muted); }
+
+/* ── Componentes ──────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.card-head h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.card-head svg { width: 14px; height: 14px; color: var(--fg-3); }
+.card-head .spacer { margin-left: auto; }
+.card-body { padding: var(--space-6); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn svg { width: 14px; height: 14px; }
+
+.btn[data-variant="primary"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-on);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.btn[data-variant="danger"] {
+  background: transparent;
+  border-color: var(--fail);
+  color: var(--fail);
+}
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); }
+.btn[data-variant="danger"]:disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 18px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--fg-3); flex: none; }
+.chip[data-state="active"] { border-color: var(--stroke-strong); color: var(--fg-0); }
+.chip[data-state="active"] .dot { background: var(--pass); }
+.chip[data-signal="fail"] { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+.chip[data-signal="fail"] .dot { background: var(--fail); }
+.chip[data-signal="running"] { color: var(--running); background: var(--running-bg); border-color: transparent; }
+.chip[data-signal="running"] .dot { background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+.chip[data-signal="blocked"] { color: var(--blocked); background: var(--blocked-bg); border-color: transparent; }
+.chip[data-signal="blocked"] .dot { background: var(--blocked); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .chip[data-signal="running"] .dot, .sk, .caret { animation: none !important; }
+}
+
+/* Identidad */
+.identity {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  align-items: center;
+}
+.avatar {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-3);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.identity-name { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.identity-email { font-family: var(--font-mono); font-size: var(--text-control); color: var(--muted); margin-top: 2px; }
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--stroke-1);
+}
+.field label {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  margin-bottom: var(--space-2);
+}
+.field .value { font-size: var(--text-base); color: var(--fg-1); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.field .value.mono { font-family: var(--font-mono); font-size: var(--text-control); }
+
+/* Tabla workspaces */
+.ws-table { width: 100%; }
+.ws-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 80px 110px 80px;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.ws-row:last-child { border-bottom: none; }
+.ws-row:hover { background: var(--bg-3); }
+.ws-row.head {
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+.ws-row.head:hover { background: transparent; }
+.ws-name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.ws-name .nm { font-weight: 500; color: var(--fg-0); font-size: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.ws-cell { font-size: var(--text-control); color: var(--fg-2); }
+.ws-cell.mono { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+
+/* Zona de riesgo */
+.danger-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.danger-row .txt { flex: 1; min-width: 0; }
+.danger-row .txt strong { display: block; font-size: var(--text-base); font-weight: 600; color: var(--fg-0); }
+.danger-row .txt span { font-size: var(--text-control); color: var(--muted); }
+
+/* ── Franja de estados ────────────────────────────────────────────── */
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-top: var(--space-3); }
+.states-head h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--fg-3); }
+.states-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.state-panel { display: flex; flex-direction: column; }
+.state-label {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.state-label .desc { font-size: var(--text-sm); color: var(--fg-3); }
+.state-body { padding: var(--space-6); flex: 1; }
+
+/* Skeleton */
+.sk {
+  background: var(--bg-3);
+  border-radius: var(--r-1);
+  animation: pulse 1.6s var(--ease-standard) infinite;
+}
+.sk-row { display: grid; grid-template-columns: minmax(0,1fr) 90px 70px; gap: var(--space-4); margin-bottom: var(--space-4); }
+.sk-row:last-child { margin-bottom: 0; }
+
+/* Empty / terminal */
+.term {
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--muted);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0 var(--space-5);
+}
+.term .p { color: var(--fg-3); }
+.caret {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--fg-2);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+
+.state-title { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-base); font-weight: 600; color: var(--fg-0); }
+.state-title svg { width: 16px; height: 16px; color: var(--fg-3); flex: none; }
+.state-title.err svg { color: var(--fail); }
+.state-text { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-2); }
+.state-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5); }
+.err-detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fail);
+  background: var(--fail-bg);
+  border-radius: var(--r-1);
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-0) 72%, transparent);
+  display: none;
+  place-items: center;
+  z-index: 50;
+}
+.overlay.open { display: grid; }
+.modal {
+  width: 440px;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-3);
+  border-radius: var(--r-4);
+  box-shadow: var(--shadow-pop);
+  padding: var(--space-6);
+}
+.modal h3 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); display: flex; align-items: center; gap: var(--space-3); }
+.modal h3 svg { width: 16px; height: 16px; color: var(--fail); }
+.modal p { font-size: var(--text-base); color: var(--fg-2); margin-top: var(--space-4); }
+.modal p .obj { font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-0); background: var(--bg-5); border-radius: var(--r-1); padding: 1px 5px; }
+.modal .hint { font-size: var(--text-control); color: var(--fg-3); margin-top: var(--space-5); }
+.input {
+  width: 100%;
+  height: 30px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--fg-0);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.modal-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+
+/* Nota de estado accesible */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Rail: chrome global de la app -->
+  <nav class="rail" aria-label="Main navigation" data-od-id="app-rail">
+    <div class="rail-logo" title="Bunkai (分解)" aria-hidden="true">分</div>
+    <button class="rail-btn" type="button" title="Explorer" aria-label="Explorer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Runs" aria-label="Runs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 5 4-5 4V8z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Reports" aria-label="Reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 14v3"/><path d="M12 9v8"/><path d="M17 5v12"/></svg>
+    </button>
+    <button class="rail-btn" type="button" aria-current="page" title="Settings" aria-label="Settings (current section)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+    <div class="rail-avatar" title="Elena Vargas" aria-hidden="true">EV</div>
+  </nav>
+
+  <!-- Nav de configuración -->
+  <nav class="snav" aria-label="Settings sections" data-od-id="settings-nav">
+    <a class="snav-back" href="#app" data-od-id="back-to-app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Back to app
+      <span class="kbd">Esc</span>
+    </a>
+    <div class="snav-title">Settings</div>
+
+    <div class="snav-group">Available</div>
+    <a class="snav-item" href="#account" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+      Account
+    </a>
+    <a class="snav-item" href="#tokens">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+      Tokens
+    </a>
+    <a class="snav-item" href="#workspaces">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Workspaces
+    </a>
+
+    <div class="snav-group">Coming soon</div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Members <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      Notifications <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Billing <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Environments <span class="soon-tag">soon</span>
+    </div>
+  </nav>
+
+  <!-- Contenido -->
+  <main class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumb">
+        Settings <span aria-hidden="true">/</span> <strong>Account</strong>
+      </div>
+      <span class="route-chip">/settings/account</span>
+      <div class="topbar-right">
+        <span class="crumb">Command palette</span>
+        <span class="kbd">⌘K</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <div class="page-head" data-od-id="page-head">
+        <h1>Account</h1>
+        <p>Your identity and workspaces in Bunkai.</p>
+      </div>
+
+      <!-- Identidad -->
+      <section class="card" aria-labelledby="h-identity" data-od-id="identity-card">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+          <h2 id="h-identity">Identity</h2>
+          <span class="spacer"></span>
+          <button class="btn" data-variant="ghost" type="button" data-od-id="sign-out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+            Sign out
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="identity">
+            <div class="avatar" aria-hidden="true">EV</div>
+            <div>
+              <div class="identity-name">Elena Vargas</div>
+              <div class="identity-email">elena.vargas@upex.io</div>
+            </div>
+            <span class="chip"><span class="dot" aria-hidden="true"></span>USR-0042</span>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Role in active workspace</label>
+              <div class="value"><span class="chip">QA Lead</span> in <span class="mono" style="font-size: var(--text-sm); color: var(--muted);">WS-001 · UPEX Core</span></div>
+            </div>
+            <div class="field">
+              <label>Member since</label>
+              <div class="value mono">2025-11-03</div>
+            </div>
+            <div class="field">
+              <label>Last active</label>
+              <div class="value mono">2026-07-30 08:52 UTC</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workspaces -->
+      <section class="card" aria-labelledby="h-ws" data-od-id="workspaces-card">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <h2 id="h-ws">Your workspaces</h2>
+          <span class="spacer"></span>
+          <span class="chip">3 workspaces</span>
+        </div>
+        <div class="ws-table" role="table" aria-label="Workspaces you belong to">
+          <div class="ws-row head" role="row">
+            <span role="columnheader">Workspace</span>
+            <span role="columnheader">Your role</span>
+            <span role="columnheader">Members</span>
+            <span role="columnheader">Since</span>
+            <span role="columnheader"><span class="visually-hidden">Actions</span></span>
+          </div>
+          <div class="ws-row" role="row" data-od-id="ws-row-upex-core">
+            <span class="ws-name" role="cell"><span class="nm">UPEX Core</span><span class="ws-id">WS-001</span><span class="chip" data-state="active"><span class="dot" aria-hidden="true"></span>active</span></span>
+            <span class="ws-cell" role="cell"><span class="chip">QA Lead</span></span>
+            <span class="ws-cell mono" role="cell">12</span>
+            <span class="ws-cell mono" role="cell">2025-11-03</span>
+            <span class="ws-cell" role="cell"><button class="btn" data-variant="ghost" type="button">Open</button></span>
+          </div>
+          <div class="ws-row" role="row" data-od-id="ws-row-bunkai-interno">
+            <span class="ws-name" role="cell"><span class="nm">Bunkai Interno</span><span class="ws-id">WS-014</span></span>
+            <span class="ws-cell" role="cell"><span class="chip">Admin</span></span>
+            <span class="ws-cell mono" role="cell">5</span>
+            <span class="ws-cell mono" role="cell">2026-01-19</span>
+            <span class="ws-cell" role="cell"><button class="btn" data-variant="ghost" type="button">Open</button></span>
+          </div>
+          <div class="ws-row" role="row" data-od-id="ws-row-cliente-andes">
+            <span class="ws-name" role="cell"><span class="nm">Cliente Andes</span><span class="ws-id">WS-022</span></span>
+            <span class="ws-cell" role="cell"><span class="chip">Member</span></span>
+            <span class="ws-cell mono" role="cell">28</span>
+            <span class="ws-cell mono" role="cell">2026-04-07</span>
+            <span class="ws-cell" role="cell"><button class="btn" data-variant="ghost" type="button">Open</button></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Zona de riesgo -->
+      <section class="card" aria-labelledby="h-danger" data-od-id="danger-zone">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21.3h16a2 2 0 0 0 1.7-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <h2 id="h-danger">Danger zone</h2>
+        </div>
+        <div class="card-body">
+          <div class="danger-row">
+            <div class="txt">
+              <strong>Delete account</strong>
+              <span>Removes your user and its access to every workspace. Workspace test data is not touched.</span>
+            </div>
+            <button class="btn" data-variant="danger" type="button" id="delete-open" data-od-id="delete-account-btn">Delete account</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Estados de referencia -->
+      <section aria-labelledby="h-states" data-od-id="states-strip">
+        <div class="states-head">
+          <h2 id="h-states">States</h2>
+          <p>QA reference: how the workspace area responds in each situation. Identity never disappears except when the session expires.</p>
+        </div>
+        <div class="states-grid" style="margin-top: var(--space-5);">
+
+          <!-- Loading -->
+          <div class="card state-panel" data-od-id="state-loading">
+            <div class="state-label">
+              <span class="chip" data-signal="running"><span class="dot" aria-hidden="true"></span>state:loading</span>
+              <span class="desc">Account and workspaces still fetching</span>
+            </div>
+            <div class="state-body" aria-label="Loading state example">
+              <div class="sk-row"><span class="sk" style="height:12px; width:60%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <div class="sk-row"><span class="sk" style="height:12px; width:45%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <div class="sk-row"><span class="sk" style="height:12px; width:70%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <p class="state-text">No global spinners: per-row skeletons, navigation stays usable.</p>
+            </div>
+          </div>
+
+          <!-- Empty -->
+          <div class="card state-panel" data-od-id="state-empty">
+            <div class="state-label">
+              <span class="chip"><span class="dot" aria-hidden="true"></span>state:empty</span>
+              <span class="desc">No workspaces yet</span>
+            </div>
+            <div class="state-body">
+              <div class="state-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                You don't belong to any workspace yet
+              </div>
+              <p class="state-text">Your identity already exists. Create your own workspace or ask your team for an invite.</p>
+              <div class="term"><span class="p">$</span> bunkai workspace create<span class="caret" aria-hidden="true"></span></div>
+              <div class="state-actions">
+                <button class="btn" data-variant="primary" type="button">Create workspace</button>
+                <button class="btn" type="button">Join with an invite</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div class="card state-panel" data-od-id="state-error">
+            <div class="state-label">
+              <span class="chip" data-signal="fail"><span class="dot" aria-hidden="true"></span>state:error</span>
+              <span class="desc">Workspace query fails</span>
+            </div>
+            <div class="state-body" id="error-body" aria-live="polite">
+              <div class="state-title err">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                We couldn't load your workspaces
+              </div>
+              <p class="state-text">Your identity loaded fine; only this query failed. Retry or check service status.</p>
+              <div class="err-detail">GET /api/v1/me/workspaces → 502 Bad Gateway · req_8f3ka1</div>
+              <div class="state-actions">
+                <button class="btn" type="button" id="retry-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                  Retry
+                </button>
+                <button class="btn" data-variant="ghost" type="button">Service status</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sesión expirada -->
+          <div class="card state-panel" data-od-id="state-session-expired">
+            <div class="state-label">
+              <span class="chip" data-signal="blocked"><span class="dot" aria-hidden="true"></span>state:session-expired</span>
+              <span class="desc">Session ended, full-screen takeover</span>
+            </div>
+            <div class="state-body">
+              <div class="state-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+                Your session expired
+              </div>
+              <p class="state-text">Session closed at <span class="mono" style="color: var(--fg-2);">2026-07-30 09:14 UTC</span> due to inactivity. Sign in again to continue; nothing you did was lost.</p>
+              <div class="state-actions">
+                <button class="btn" data-variant="primary" type="button">Sign in again</button>
+                <span class="state-text" style="margin-top:0;">You'll return to <span class="mono">/settings/account</span></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Confirmación de borrado -->
+<div class="overlay" id="delete-overlay" role="presentation">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="del-title" aria-describedby="del-desc" data-od-id="delete-confirm-modal">
+    <h3 id="del-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21.3h16a2 2 0 0 0 1.7-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Delete account
+    </h3>
+    <p id="del-desc">You are about to permanently delete the account <span class="obj">elena.vargas@upex.io</span> (<span class="obj">USR-0042</span>). You will lose access to your 3 workspaces. This action cannot be undone.</p>
+    <label class="hint" for="del-input">Type the account's exact email to confirm:</label>
+    <input class="input" id="del-input" type="text" autocomplete="off" spellcheck="false" placeholder="elena.vargas@upex.io">
+    <div class="modal-actions">
+      <button class="btn" type="button" id="delete-cancel">Cancel</button>
+      <button class="btn" data-variant="danger" type="button" id="delete-confirm" disabled>Delete <span class="mono">elena.vargas@upex.io</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var EMAIL = 'elena.vargas@upex.io';
+  var overlay = document.getElementById('delete-overlay');
+  var openBtn = document.getElementById('delete-open');
+  var cancelBtn = document.getElementById('delete-cancel');
+  var confirmBtn = document.getElementById('delete-confirm');
+  var input = document.getElementById('del-input');
+  var lastFocus = null;
+
+  function openModal() {
+    lastFocus = document.activeElement;
+    overlay.classList.add('open');
+    input.value = '';
+    confirmBtn.disabled = true;
+    input.focus();
+  }
+  function closeModal() {
+    overlay.classList.remove('open');
+    if (lastFocus) lastFocus.focus();
+  }
+
+  openBtn.addEventListener('click', openModal);
+  cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('mousedown', function (e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+  });
+  // Trampa de foco mínima dentro del diálogo
+  overlay.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab') return;
+    var focusables = overlay.querySelectorAll('input, button:not(:disabled)');
+    var first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  input.addEventListener('input', function () {
+    confirmBtn.disabled = input.value.trim() !== EMAIL;
+  });
+  confirmBtn.addEventListener('click', function () {
+    closeModal();
+  });
+
+  // Demo del reintento: error → skeleton 1.2s → error de nuevo.
+  // Delegación en el contenedor para sobrevivir al reemplazo del DOM.
+  var errorBody = document.getElementById('error-body');
+  var errorHTML = errorBody.innerHTML;
+  var retrying = false;
+  errorBody.addEventListener('click', function (e) {
+    if (retrying || !e.target.closest('#retry-btn')) return;
+    retrying = true;
+    errorBody.innerHTML =
+      '<div class="sk-row"><span class="sk" style="height:12px; width:60%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>' +
+      '<div class="sk-row"><span class="sk" style="height:12px; width:45%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>' +
+      '<p class="state-text">Retrying workspace query...</p>';
+    setTimeout(function () {
+      errorBody.innerHTML = errorHTML;
+      retrying = false;
+    }, 1200);
+  });
+})();
+</script>
+</body>
+</html>

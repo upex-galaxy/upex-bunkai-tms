@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunkai — Settings · Tokens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens Bunkai (contrato congelado, verbatim) ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: var(--font-mono); }
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+::selection { background: var(--accent-glow); }
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 48px 216px minmax(0, 1fr);
+  height: 100vh;
+  min-width: 1120px;
+}
+
+.rail {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) 0;
+  gap: var(--space-2);
+}
+.rail-logo {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  font-family: var(--font-jp);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg-0);
+  margin-bottom: var(--space-4);
+  user-select: none;
+}
+.rail-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-2);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn:active { background: var(--bg-5); }
+.rail-btn[aria-current="page"] { background: var(--bg-5); color: var(--fg-0); }
+.rail-btn svg { width: 16px; height: 16px; }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-3);
+  gap: var(--space-1);
+  overflow-y: auto;
+}
+.snav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-back:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-back svg { width: 14px; height: 14px; }
+.snav-back .kbd { margin-left: auto; }
+
+.snav-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+}
+.snav-group {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  padding: var(--space-4) var(--space-3) var(--space-1);
+}
+.snav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-item svg { width: 14px; height: 14px; flex: none; }
+.snav-item:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-item[aria-current="page"] {
+  background: var(--bg-5);
+  color: var(--fg-0);
+  font-weight: 500;
+}
+.snav-item.is-soon {
+  color: var(--fg-4);
+  cursor: default;
+}
+.snav-item.is-soon:hover { background: transparent; color: var(--fg-4); }
+.soon-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-4);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Main ─────────────────────────────────────────────────────────── */
+.main {
+  overflow-y: auto;
+  background: var(--bg-0);
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 44px;
+  padding: 0 var(--space-12);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.crumb { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumb strong { color: var(--fg-1); font-weight: 500; }
+.route-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+}
+
+.content {
+  max-width: 980px;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.page-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--fg-0);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+}
+.page-head p { font-size: var(--text-base); color: var(--muted); }
+
+/* ── Componentes ──────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.card-head h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.card-head svg { width: 14px; height: 14px; color: var(--fg-3); }
+.card-head .spacer { margin-left: auto; }
+.card-body { padding: var(--space-6); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn svg { width: 14px; height: 14px; }
+
+.btn[data-variant="primary"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-on);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.btn[data-variant="danger"] {
+  background: transparent;
+  border-color: var(--fail);
+  color: var(--fail);
+}
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); }
+.btn[data-variant="danger"]:disabled,
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 18px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--fg-3); flex: none; }
+.chip[data-state="active"] { border-color: var(--stroke-strong); color: var(--fg-0); }
+.chip[data-state="active"] .dot { background: var(--pass); }
+.chip[data-signal="pass"] { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+.chip[data-signal="pass"] .dot { background: var(--pass); }
+.chip[data-signal="fail"] { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+.chip[data-signal="fail"] .dot { background: var(--fail); }
+.chip[data-signal="running"] { color: var(--running); background: var(--running-bg); border-color: transparent; }
+.chip[data-signal="running"] .dot { background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+.chip[data-signal="blocked"] { color: var(--blocked); background: var(--blocked-bg); border-color: transparent; }
+.chip[data-signal="blocked"] .dot { background: var(--blocked); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .chip[data-signal="running"] .dot, .sk, .caret { animation: none !important; }
+}
+
+/* ── Tabla de tokens ──────────────────────────────────────────────── */
+.tk-table { width: 100%; }
+.tk-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.45fr) 118px 84px 96px 92px;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.tk-row:last-child { border-bottom: none; }
+.tk-row:hover { background: var(--bg-3); }
+.tk-row.head {
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+.tk-row.head:hover { background: transparent; }
+
+.tk-name { min-width: 0; }
+.tk-name .nm {
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  font-weight: 600;
+  color: var(--fg-0);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.tk-name .id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); margin-top: 2px; }
+.tk-scopes { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.tk-cell { font-size: var(--text-control); color: var(--fg-2); min-width: 0; }
+.tk-cell.mono { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+.tk-cell .sub { display: block; font-size: var(--text-xs); color: var(--fg-3); margin-top: 1px; }
+.tk-actions { display: flex; justify-content: flex-end; }
+
+.tk-row[data-revoked] .tk-name .nm { color: var(--fg-3); text-decoration: line-through; text-decoration-color: var(--fg-4); }
+.tk-row[data-revoked] .tk-scopes .chip { color: var(--fg-4); background: transparent; border-color: var(--stroke-1); }
+.tk-row[data-revoked] .tk-cell { color: var(--fg-4); }
+.tk-row[data-revoked] .tk-cell.mono { color: var(--fg-4); }
+.tk-row[data-revoked]:hover { background: transparent; }
+.revoked-note { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); text-align: right; }
+
+/* Aviso "cómo se usa" bajo la tabla */
+.tk-foot {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--stroke-1);
+  font-size: var(--text-control);
+  color: var(--fg-3);
+}
+.tk-foot .code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+}
+
+/* ── Franja de estados ────────────────────────────────────────────── */
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-top: var(--space-3); }
+.states-head h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--fg-3); }
+.states-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.state-panel { display: flex; flex-direction: column; }
+.state-label {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.state-label .desc { font-size: var(--text-sm); color: var(--fg-3); }
+.state-body { padding: var(--space-6); flex: 1; }
+
+.sk {
+  background: var(--bg-3);
+  border-radius: var(--r-1);
+  animation: pulse 1.6s var(--ease-standard) infinite;
+}
+.sk-row { display: grid; grid-template-columns: minmax(0,1fr) 90px 70px; gap: var(--space-4); margin-bottom: var(--space-4); }
+.sk-row:last-child { margin-bottom: 0; }
+
+.term {
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--muted);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0 var(--space-5);
+}
+.term .p { color: var(--fg-3); }
+.caret {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--fg-2);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+
+.state-title { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-base); font-weight: 600; color: var(--fg-0); }
+.state-title svg { width: 16px; height: 16px; color: var(--fg-3); flex: none; }
+.state-title.err svg { color: var(--fail); }
+.state-text { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-2); }
+.state-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5); }
+.err-detail {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fail);
+  background: var(--fail-bg);
+  border-radius: var(--r-1);
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+/* ── Secret reveal (una sola vez) ─────────────────────────────────── */
+.secret-warn {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  background: var(--blocked-bg);
+  border: 1px solid var(--blocked);
+  border-radius: var(--r-2);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-control);
+  color: var(--fg-1);
+}
+.secret-warn svg { width: 14px; height: 14px; color: var(--blocked); flex: none; margin-top: 1px; }
+.secret-warn strong { color: var(--fg-0); font-weight: 600; }
+.secret-line {
+  display: flex; align-items: stretch; gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.secret-box {
+  flex: 1; min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--fg-0);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-3);
+  border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.copy-ok { color: var(--pass); display: inline-flex; align-items: center; gap: var(--space-1); }
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-0) 72%, transparent);
+  display: none;
+  place-items: center;
+  z-index: 50;
+}
+.overlay.open { display: grid; }
+.modal {
+  width: 480px;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-3);
+  border-radius: var(--r-4);
+  box-shadow: var(--shadow-pop);
+  padding: var(--space-6);
+}
+.modal h3 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); display: flex; align-items: center; gap: var(--space-3); }
+.modal h3 svg { width: 16px; height: 16px; flex: none; }
+.modal h3 .i-danger { color: var(--fail); }
+.modal h3 .i-pass { color: var(--pass); }
+.modal h3 .i-neutral { color: var(--fg-3); }
+.modal p { font-size: var(--text-base); color: var(--fg-2); margin-top: var(--space-4); }
+.modal p .obj { font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-0); background: var(--bg-5); border-radius: var(--r-1); padding: 1px 5px; }
+.modal .hint { font-size: var(--text-control); color: var(--fg-3); margin-top: var(--space-5); display: block; }
+.modal-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+
+.input, .select {
+  width: 100%;
+  height: 30px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--fg-0);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover, .select:hover { border-color: var(--stroke-3); }
+.input:focus, .select:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.select { appearance: none; cursor: pointer; }
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: "";
+  position: absolute; right: 10px; top: 50%;
+  width: 6px; height: 6px;
+  border-right: 1.5px solid var(--fg-3);
+  border-bottom: 1.5px solid var(--fg-3);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  margin-top: var(--space-5);
+}
+.form-label:first-of-type { margin-top: var(--space-5); }
+.form-note { font-size: var(--text-sm); color: var(--fg-4); margin-top: var(--space-1); }
+
+fieldset.scopes { border: none; margin-top: var(--space-2); }
+fieldset.scopes legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.scope-opt {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3) var(--space-3);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.scope-opt:hover { background: var(--bg-4); border-color: var(--stroke-2); }
+.scope-opt:has(input:checked) { border-color: var(--stroke-strong); background: var(--bg-2); }
+.scope-opt input {
+  width: 14px; height: 14px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.scope-opt .s-name { font-family: var(--font-mono); font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.scope-opt .s-desc { font-size: var(--text-sm); color: var(--muted); margin-top: 1px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Rail: chrome global de la app -->
+  <nav class="rail" aria-label="Main navigation" data-od-id="app-rail">
+    <div class="rail-logo" title="Bunkai (分解)" aria-hidden="true">分</div>
+    <button class="rail-btn" type="button" title="Explorer" aria-label="Explorer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Runs" aria-label="Runs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 5 4-5 4V8z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Reports" aria-label="Reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 14v3"/><path d="M12 9v8"/><path d="M17 5v12"/></svg>
+    </button>
+    <button class="rail-btn" type="button" aria-current="page" title="Settings" aria-label="Settings (current section)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+    <div class="rail-avatar" title="Elena Vargas" aria-hidden="true">EV</div>
+  </nav>
+
+  <!-- Nav de configuración -->
+  <nav class="snav" aria-label="Settings sections" data-od-id="settings-nav">
+    <a class="snav-back" href="#app" data-od-id="back-to-app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Back to app
+      <span class="kbd">Esc</span>
+    </a>
+    <div class="snav-title">Settings</div>
+
+    <div class="snav-group">Available</div>
+    <a class="snav-item" href="#account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+      Account
+    </a>
+    <a class="snav-item" href="#tokens" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+      Tokens
+    </a>
+    <a class="snav-item" href="#workspaces">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Workspaces
+    </a>
+
+    <div class="snav-group">Coming soon</div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Members <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      Notifications <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Billing <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Environments <span class="soon-tag">soon</span>
+    </div>
+  </nav>
+
+  <!-- Contenido -->
+  <main class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumb">
+        Settings <span aria-hidden="true">/</span> <strong>Tokens</strong>
+      </div>
+      <span class="route-chip">/settings/tokens</span>
+      <div class="topbar-right">
+        <span class="crumb">Command palette</span>
+        <span class="kbd">⌘K</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <div class="page-head" data-od-id="page-head">
+        <h1>Personal access tokens</h1>
+        <p>Authenticate the Bunkai CLI and your CI against your account.</p>
+      </div>
+
+      <!-- Lista de tokens -->
+      <section class="card" aria-labelledby="h-tokens" data-od-id="tokens-card">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+          <h2 id="h-tokens">Your tokens</h2>
+          <span class="chip" id="tk-count">3 active</span>
+          <span class="spacer"></span>
+          <button class="btn" data-variant="primary" type="button" id="new-token-open" data-od-id="new-token-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New token
+          </button>
+        </div>
+        <div class="tk-table" role="table" aria-label="Personal access tokens" id="tk-table">
+          <div class="tk-row head" role="row">
+            <span role="columnheader">Token</span>
+            <span role="columnheader">Scopes</span>
+            <span role="columnheader">Workspace</span>
+            <span role="columnheader">Created</span>
+            <span role="columnheader">Expires</span>
+            <span role="columnheader"><span class="visually-hidden">Actions</span></span>
+          </div>
+
+          <div class="tk-row" role="row" data-token="ci-deploy" data-pat="PAT-007" data-od-id="token-row-ci-deploy">
+            <span class="tk-name" role="cell">
+              <span class="nm">ci-deploy</span>
+              <span class="id">PAT-007</span>
+            </span>
+            <span class="tk-scopes" role="cell">
+              <span class="chip">atc:read</span><span class="chip">run:execute</span>
+            </span>
+            <span class="tk-cell" role="cell">UPEX Core<span class="sub mono">WS-001</span></span>
+            <span class="tk-cell mono" role="cell">2026-06-12</span>
+            <span class="tk-cell mono" role="cell">2026-09-10</span>
+            <span class="tk-actions" role="cell">
+              <button class="btn" data-variant="ghost" type="button" data-revoke aria-label="Revoke token ci-deploy (PAT-007)">Revoke</button>
+            </span>
+          </div>
+
+          <div class="tk-row" role="row" data-token="local-cli" data-pat="PAT-004" data-od-id="token-row-local-cli">
+            <span class="tk-name" role="cell">
+              <span class="nm">local-cli</span>
+              <span class="id">PAT-004</span>
+            </span>
+            <span class="tk-scopes" role="cell">
+              <span class="chip">atc:read</span><span class="chip">atc:write</span>
+            </span>
+            <span class="tk-cell" role="cell">All workspaces</span>
+            <span class="tk-cell mono" role="cell">2026-03-28</span>
+            <span class="tk-cell mono" role="cell">never</span>
+            <span class="tk-actions" role="cell">
+              <button class="btn" data-variant="ghost" type="button" data-revoke aria-label="Revoke token local-cli (PAT-004)">Revoke</button>
+            </span>
+          </div>
+
+          <div class="tk-row" role="row" data-token="release-bot" data-pat="PAT-006" data-od-id="token-row-release-bot">
+            <span class="tk-name" role="cell">
+              <span class="nm">release-bot</span>
+              <span class="id">PAT-006</span>
+            </span>
+            <span class="tk-scopes" role="cell">
+              <span class="chip">atc:read</span><span class="chip">run:execute</span><span class="chip">workspace:admin</span>
+            </span>
+            <span class="tk-cell" role="cell">Bunkai Interno<span class="sub mono">WS-014</span></span>
+            <span class="tk-cell mono" role="cell">2026-05-02</span>
+            <span class="tk-cell" role="cell">
+              <span class="chip" data-signal="blocked"><span class="dot" aria-hidden="true"></span>2026-08-01</span>
+              <span class="sub">expires in 2 days</span>
+            </span>
+            <span class="tk-actions" role="cell">
+              <button class="btn" data-variant="ghost" type="button" data-revoke aria-label="Revoke token release-bot (PAT-006)">Revoke</button>
+            </span>
+          </div>
+
+          <div class="tk-row" role="row" data-token="old-laptop" data-pat="PAT-002" data-revoked data-od-id="token-row-old-laptop">
+            <span class="tk-name" role="cell">
+              <span class="nm">old-laptop <span class="chip" data-signal="fail"><span class="dot" aria-hidden="true"></span>revoked</span></span>
+              <span class="id">PAT-002</span>
+            </span>
+            <span class="tk-scopes" role="cell">
+              <span class="chip">atc:read</span>
+            </span>
+            <span class="tk-cell" role="cell">All workspaces</span>
+            <span class="tk-cell mono" role="cell">2025-12-09</span>
+            <span class="tk-cell mono" role="cell">—</span>
+            <span class="revoked-note" role="cell">revoked 2026-04-15</span>
+          </div>
+        </div>
+        <div class="tk-foot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Secrets are shown once, at creation, and start with <span class="code">bk_pat_</span>. Tokens can't be edited — revoke and issue a new one. Use them as <span class="code">BUNKAI_TOKEN</span> in CI or via <span class="code">bunkai auth login --token</span>.
+        </div>
+      </section>
+
+      <!-- Estados de referencia -->
+      <section aria-labelledby="h-states" data-od-id="states-strip">
+        <div class="states-head">
+          <h2 id="h-states">States</h2>
+          <p>QA reference: how the token list responds in each situation. The secret appears exactly once, at issuance.</p>
+        </div>
+        <div class="states-grid" style="margin-top: var(--space-5);">
+
+          <!-- Empty -->
+          <div class="card state-panel" data-od-id="state-empty">
+            <div class="state-label">
+              <span class="chip"><span class="dot" aria-hidden="true"></span>state:empty</span>
+              <span class="desc">No tokens yet</span>
+            </div>
+            <div class="state-body">
+              <div class="state-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+                No personal access tokens
+              </div>
+              <p class="state-text">Tokens let the Bunkai CLI and your CI act as you without your password. Issue one, store the secret in your CI vault, and revoke it any time.</p>
+              <div class="term"><span class="p">$</span> bunkai auth login --token bk_pat_...<span class="caret" aria-hidden="true"></span></div>
+              <div class="state-actions">
+                <button class="btn" data-variant="primary" type="button" id="empty-new-token">Issue your first token</button>
+                <button class="btn" data-variant="ghost" type="button">CLI docs</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secret revelado una vez -->
+          <div class="card state-panel" data-od-id="state-secret-revealed">
+            <div class="state-label">
+              <span class="chip" data-signal="pass"><span class="dot" aria-hidden="true"></span>state:secret-revealed</span>
+              <span class="desc">Right after issuance, shown exactly once</span>
+            </div>
+            <div class="state-body">
+              <div class="secret-warn" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21.3h16a2 2 0 0 0 1.7-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span><strong>Store this token now.</strong> For your security it will never be shown again. If you lose it, revoke it and issue a new one.</span>
+              </div>
+              <div class="secret-line">
+                <div class="secret-box" id="sample-secret">bk_pat_9fKx2mQ7vLc4Tz8RwJ1nB6yHd3AsE5gU</div>
+                <button class="btn" type="button" id="sample-copy" aria-label="Copy token secret to clipboard">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy
+                </button>
+              </div>
+              <p class="state-text" id="sample-copy-note" aria-live="polite">One click copies the full secret. The list will only ever show name, scopes and dates.</p>
+            </div>
+          </div>
+
+          <!-- Loading -->
+          <div class="card state-panel" data-od-id="state-loading">
+            <div class="state-label">
+              <span class="chip" data-signal="running"><span class="dot" aria-hidden="true"></span>state:loading</span>
+              <span class="desc">Token list still fetching</span>
+            </div>
+            <div class="state-body" aria-label="Loading state example">
+              <div class="sk-row"><span class="sk" style="height:12px; width:60%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <div class="sk-row"><span class="sk" style="height:12px; width:45%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <div class="sk-row"><span class="sk" style="height:12px; width:70%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>
+              <p class="state-text">No global spinners: per-row skeletons, "New token" stays reachable.</p>
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div class="card state-panel" data-od-id="state-error">
+            <div class="state-label">
+              <span class="chip" data-signal="fail"><span class="dot" aria-hidden="true"></span>state:error</span>
+              <span class="desc">Token query fails</span>
+            </div>
+            <div class="state-body" id="error-body" aria-live="polite">
+              <div class="state-title err">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                We couldn't load your tokens
+              </div>
+              <p class="state-text">Existing tokens keep working; only this view failed. Retry or check service status.</p>
+              <div class="err-detail">GET /api/v1/me/tokens → 502 Bad Gateway · req_2xw90b</div>
+              <div class="state-actions">
+                <button class="btn" type="button" id="retry-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                  Retry
+                </button>
+                <button class="btn" data-variant="ghost" type="button">Service status</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Emisión de token: paso 1 (form) y paso 2 (secret una sola vez) -->
+<div class="overlay" id="issue-overlay" role="presentation">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="issue-title" data-od-id="issue-token-modal">
+    <div id="issue-step-form">
+      <h3 id="issue-title">
+        <svg class="i-neutral" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+        New personal access token
+      </h3>
+
+      <label class="form-label" for="issue-name">Token name</label>
+      <input class="input" id="issue-name" type="text" autocomplete="off" spellcheck="false" placeholder="ci-deploy" maxlength="40">
+      <p class="form-note">Lowercase and hyphens. Names the machine that will use it.</p>
+
+      <span class="form-label" id="scopes-label">Scopes — at least one</span>
+      <fieldset class="scopes" aria-labelledby="scopes-label">
+        <legend>Scopes</legend>
+        <label class="scope-opt">
+          <input type="checkbox" name="scope" value="atc:read">
+          <span><span class="s-name">atc:read</span><span class="s-desc">Read test cases, modules and their history.</span></span>
+        </label>
+        <label class="scope-opt">
+          <input type="checkbox" name="scope" value="atc:write">
+          <span><span class="s-name">atc:write</span><span class="s-desc">Create and edit test cases and modules.</span></span>
+        </label>
+        <label class="scope-opt">
+          <input type="checkbox" name="scope" value="run:execute">
+          <span><span class="s-name">run:execute</span><span class="s-desc">Trigger runs and report step results.</span></span>
+        </label>
+        <label class="scope-opt">
+          <input type="checkbox" name="scope" value="workspace:admin">
+          <span><span class="s-name">workspace:admin</span><span class="s-desc">Manage workspace settings and members.</span></span>
+        </label>
+      </fieldset>
+
+      <label class="form-label" for="issue-ws">Workspace — optional</label>
+      <div class="select-wrap">
+        <select class="select" id="issue-ws">
+          <option value="" selected>All workspaces</option>
+          <option value="WS-001">WS-001 · UPEX Core</option>
+          <option value="WS-014">WS-014 · Bunkai Interno</option>
+          <option value="WS-022">WS-022 · Cliente Andes</option>
+        </select>
+      </div>
+
+      <label class="form-label" for="issue-exp">Expiry — optional</label>
+      <div class="select-wrap">
+        <select class="select" id="issue-exp">
+          <option value="30">30 days · 2026-08-29</option>
+          <option value="90" selected>90 days · 2026-10-28</option>
+          <option value="365">1 year · 2027-07-30</option>
+          <option value="never">No expiry</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" type="button" id="issue-cancel">Cancel</button>
+        <button class="btn" data-variant="primary" type="button" id="issue-create" disabled>Create token</button>
+      </div>
+    </div>
+
+    <div id="issue-step-secret" hidden>
+      <h3 id="secret-title">
+        <svg class="i-pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Token created
+      </h3>
+      <p><span class="obj" id="secret-name">ci-deploy</span> <span class="obj" id="secret-pat">PAT-008</span> is ready to use.</p>
+      <div class="secret-warn" role="alert" style="margin-top: var(--space-5);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21.3h16a2 2 0 0 0 1.7-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span><strong>Store this token now.</strong> This is the only time Bunkai will show it. It can never be retrieved again — if you lose it, revoke it and issue a new one.</span>
+      </div>
+      <div class="secret-line">
+        <div class="secret-box" id="secret-value">bk_pat_…</div>
+        <button class="btn" type="button" id="secret-copy" aria-label="Copy token secret to clipboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+      <p class="hint" id="secret-copy-note" aria-live="polite">Copy it to your CI vault or password manager before closing.</p>
+      <div class="modal-actions">
+        <button class="btn" data-variant="primary" type="button" id="secret-done">Done — I stored it</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmación de revocación -->
+<div class="overlay" id="revoke-overlay" role="presentation">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="rv-title" aria-describedby="rv-desc" data-od-id="revoke-confirm-modal">
+    <h3 id="rv-title">
+      <svg class="i-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21.3h16a2 2 0 0 0 1.7-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Revoke token
+    </h3>
+    <p id="rv-desc">You are about to revoke <span class="obj" id="rv-name">ci-deploy</span> (<span class="obj" id="rv-pat">PAT-007</span>). Any CLI or CI job using it will stop authenticating immediately. This cannot be undone — issue a new token instead.</p>
+    <div class="modal-actions">
+      <button class="btn" type="button" id="rv-cancel">Cancel</button>
+      <button class="btn" data-variant="danger" type="button" id="rv-confirm">Revoke <span class="mono" id="rv-btn-name">ci-deploy</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="visually-hidden" aria-live="polite" id="live-region"></div>
+
+<script>
+(function () {
+  var liveRegion = document.getElementById('live-region');
+
+  /* ── Utilidades de modal (apertura, cierre, trampa de foco) ────── */
+  var lastFocus = null;
+  function openOverlay(overlay, focusEl) {
+    lastFocus = document.activeElement;
+    overlay.classList.add('open');
+    if (focusEl) focusEl.focus();
+  }
+  function closeOverlay(overlay) {
+    overlay.classList.remove('open');
+    if (lastFocus) lastFocus.focus();
+  }
+  function trapFocus(overlay) {
+    overlay.addEventListener('keydown', function (e) {
+      if (e.key !== 'Tab') return;
+      var focusables = overlay.querySelectorAll('input:not([hidden]), select, button:not(:disabled)');
+      var visible = [];
+      for (var i = 0; i < focusables.length; i++) {
+        if (focusables[i].offsetParent !== null) visible.push(focusables[i]);
+      }
+      if (!visible.length) return;
+      var first = visible[0], last = visible[visible.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
+  /* ── Emisión de token ──────────────────────────────────────────── */
+  var issueOverlay = document.getElementById('issue-overlay');
+  var stepForm = document.getElementById('issue-step-form');
+  var stepSecret = document.getElementById('issue-step-secret');
+  var nameInput = document.getElementById('issue-name');
+  var wsSelect = document.getElementById('issue-ws');
+  var expSelect = document.getElementById('issue-exp');
+  var createBtn = document.getElementById('issue-create');
+  var scopeInputs = issueOverlay.querySelectorAll('input[name="scope"]');
+  var nextPat = 8;
+
+  trapFocus(issueOverlay);
+
+  function resetIssueForm() {
+    nameInput.value = '';
+    for (var i = 0; i < scopeInputs.length; i++) scopeInputs[i].checked = false;
+    wsSelect.value = '';
+    expSelect.value = '90';
+    createBtn.disabled = true;
+    stepForm.hidden = false;
+    stepSecret.hidden = true;
+  }
+  function openIssue() {
+    resetIssueForm();
+    openOverlay(issueOverlay, nameInput);
+  }
+  document.getElementById('new-token-open').addEventListener('click', openIssue);
+  document.getElementById('empty-new-token').addEventListener('click', openIssue);
+  document.getElementById('issue-cancel').addEventListener('click', function () { closeOverlay(issueOverlay); });
+
+  function validateIssue() {
+    var anyScope = false;
+    for (var i = 0; i < scopeInputs.length; i++) if (scopeInputs[i].checked) anyScope = true;
+    createBtn.disabled = !(nameInput.value.trim().length > 0 && anyScope);
+  }
+  nameInput.addEventListener('input', validateIssue);
+  for (var i = 0; i < scopeInputs.length; i++) scopeInputs[i].addEventListener('change', validateIssue);
+
+  function makeSecret() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    var body = '';
+    var buf = new Uint32Array(32);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(buf);
+      for (var i = 0; i < 32; i++) body += chars[buf[i] % chars.length];
+    } else {
+      for (var j = 0; j < 32; j++) body += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return 'bk_pat_' + body;
+  }
+
+  var pendingToken = null;
+
+  document.getElementById('issue-create').addEventListener('click', function () {
+    var name = nameInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+    var scopes = [];
+    for (var i = 0; i < scopeInputs.length; i++) if (scopeInputs[i].checked) scopes.push(scopeInputs[i].value);
+    var wsVal = wsSelect.value;
+    var wsLabel = wsVal ? wsSelect.options[wsSelect.selectedIndex].text : 'All workspaces';
+    var expMap = { '30': '2026-08-29', '90': '2026-10-28', '365': '2027-07-30', 'never': 'never' };
+    pendingToken = {
+      name: name,
+      pat: 'PAT-' + String(nextPat).padStart(3, '0'),
+      scopes: scopes,
+      wsVal: wsVal,
+      wsLabel: wsLabel,
+      created: '2026-07-30',
+      expires: expMap[expSelect.value]
+    };
+    nextPat++;
+    document.getElementById('secret-name').textContent = pendingToken.name;
+    document.getElementById('secret-pat').textContent = pendingToken.pat;
+    document.getElementById('secret-value').textContent = makeSecret();
+    document.getElementById('secret-copy-note').textContent = 'Copy it to your CI vault or password manager before closing.';
+    stepForm.hidden = true;
+    stepSecret.hidden = false;
+    document.getElementById('secret-copy').focus();
+    liveRegion.textContent = 'Token ' + pendingToken.name + ' created. The secret is shown once — copy it now.';
+  });
+
+  function wireCopy(btnId, getText, noteId) {
+    var btn = document.getElementById(btnId);
+    var original = btn.innerHTML;
+    btn.addEventListener('click', function () {
+      var text = getText();
+      function ok() {
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--pass);"><path d="M20 6 9 17l-5-5"/></svg>Copied';
+        document.getElementById(noteId).textContent = 'Copied to clipboard.';
+        setTimeout(function () { btn.innerHTML = original; }, 2000);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, ok);
+      } else { ok(); }
+    });
+  }
+  wireCopy('secret-copy', function () { return document.getElementById('secret-value').textContent; }, 'secret-copy-note');
+  wireCopy('sample-copy', function () { return document.getElementById('sample-secret').textContent; }, 'sample-copy-note');
+
+  /* Cerrar el paso de secret = insertar la fila (sin secret) */
+  var tkTable = document.getElementById('tk-table');
+  var countChip = document.getElementById('tk-count');
+  var activeCount = 3;
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function updateCount() {
+    countChip.textContent = activeCount + ' active';
+  }
+  function insertRow(t) {
+    var row = document.createElement('div');
+    row.className = 'tk-row';
+    row.setAttribute('role', 'row');
+    row.setAttribute('data-token', t.name);
+    row.setAttribute('data-pat', t.pat);
+    var scopeChips = '';
+    for (var i = 0; i < t.scopes.length; i++) scopeChips += '<span class="chip">' + esc(t.scopes[i]) + '</span>';
+    var wsCell = t.wsVal
+      ? esc(t.wsLabel.split(' · ')[1] || t.wsLabel) + '<span class="sub mono">' + esc(t.wsVal) + '</span>'
+      : 'All workspaces';
+    row.innerHTML =
+      '<span class="tk-name" role="cell">' +
+        '<span class="nm">' + esc(t.name) + ' <span class="chip" data-state="active"><span class="dot" aria-hidden="true"></span>new</span></span>' +
+        '<span class="id">' + esc(t.pat) + '</span>' +
+      '</span>' +
+      '<span class="tk-scopes" role="cell">' + scopeChips + '</span>' +
+      '<span class="tk-cell" role="cell">' + wsCell + '</span>' +
+      '<span class="tk-cell mono" role="cell">' + esc(t.created) + '</span>' +
+      '<span class="tk-cell mono" role="cell">' + esc(t.expires) + '</span>' +
+      '<span class="tk-actions" role="cell">' +
+        '<button class="btn" data-variant="ghost" type="button" data-revoke aria-label="Revoke token ' + esc(t.name) + ' (' + esc(t.pat) + ')">Revoke</button>' +
+      '</span>';
+    var headRow = tkTable.querySelector('.tk-row.head');
+    headRow.insertAdjacentElement('afterend', row);
+    activeCount++;
+    updateCount();
+  }
+  document.getElementById('secret-done').addEventListener('click', function () {
+    if (pendingToken) { insertRow(pendingToken); pendingToken = null; }
+    closeOverlay(issueOverlay);
+  });
+
+  /* ── Revocación ────────────────────────────────────────────────── */
+  var revokeOverlay = document.getElementById('revoke-overlay');
+  var rvName = document.getElementById('rv-name');
+  var rvPat = document.getElementById('rv-pat');
+  var rvBtnName = document.getElementById('rv-btn-name');
+  var rvConfirm = document.getElementById('rv-confirm');
+  var rvCancel = document.getElementById('rv-cancel');
+  var rowToRevoke = null;
+
+  trapFocus(revokeOverlay);
+
+  tkTable.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-revoke]');
+    if (!btn) return;
+    rowToRevoke = btn.closest('.tk-row');
+    var name = rowToRevoke.getAttribute('data-token');
+    var pat = rowToRevoke.getAttribute('data-pat');
+    rvName.textContent = name;
+    rvPat.textContent = pat;
+    rvBtnName.textContent = name;
+    openOverlay(revokeOverlay, rvCancel);
+  });
+  rvCancel.addEventListener('click', function () { closeOverlay(revokeOverlay); });
+  rvConfirm.addEventListener('click', function () {
+    if (rowToRevoke) {
+      var name = rowToRevoke.getAttribute('data-token');
+      rowToRevoke.setAttribute('data-revoked', '');
+      var nm = rowToRevoke.querySelector('.nm');
+      var newChip = nm.querySelector('.chip[data-state="active"]');
+      if (newChip) newChip.remove();
+      nm.insertAdjacentHTML('beforeend', ' <span class="chip" data-signal="fail"><span class="dot" aria-hidden="true"></span>revoked</span>');
+      var actions = rowToRevoke.querySelector('.tk-actions');
+      actions.outerHTML = '<span class="revoked-note" role="cell">revoked 2026-07-30</span>';
+      activeCount--;
+      updateCount();
+      liveRegion.textContent = 'Token ' + name + ' revoked. It no longer authenticates.';
+      rowToRevoke = null;
+    }
+    closeOverlay(revokeOverlay);
+  });
+
+  /* Cierre por Escape y clic fuera, para ambos overlays */
+  [issueOverlay, revokeOverlay].forEach(function (ov) {
+    ov.addEventListener('mousedown', function (e) {
+      if (e.target === ov) closeOverlay(ov);
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (issueOverlay.classList.contains('open')) closeOverlay(issueOverlay);
+    else if (revokeOverlay.classList.contains('open')) closeOverlay(revokeOverlay);
+  });
+
+  /* Demo del reintento: error → skeleton 1.2s → error de nuevo. */
+  var errorBody = document.getElementById('error-body');
+  var errorHTML = errorBody.innerHTML;
+  var retrying = false;
+  errorBody.addEventListener('click', function (e) {
+    if (retrying || !e.target.closest('#retry-btn')) return;
+    retrying = true;
+    errorBody.innerHTML =
+      '<div class="sk-row"><span class="sk" style="height:12px; width:60%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>' +
+      '<div class="sk-row"><span class="sk" style="height:12px; width:45%;"></span><span class="sk" style="height:12px;"></span><span class="sk" style="height:12px;"></span></div>' +
+      '<p class="state-text">Retrying token query...</p>';
+    setTimeout(function () {
+      errorBody.innerHTML = errorHTML;
+      retrying = false;
+    }, 1200);
+  });
+})();
+</script>
+</body>
+</html>

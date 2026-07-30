@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunkai — Settings · Members (coming soon)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens Bunkai (contrato congelado, verbatim) ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: var(--font-mono); }
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+::selection { background: var(--accent-glow); }
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 48px 216px minmax(0, 1fr);
+  height: 100vh;
+  min-width: 1120px;
+}
+
+.rail {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) 0;
+  gap: var(--space-2);
+}
+.rail-logo {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  font-family: var(--font-jp);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg-0);
+  margin-bottom: var(--space-4);
+  user-select: none;
+}
+.rail-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-2);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn:active { background: var(--bg-5); }
+.rail-btn[aria-current="page"] { background: var(--bg-5); color: var(--fg-0); }
+.rail-btn svg { width: 16px; height: 16px; }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-3);
+  gap: var(--space-1);
+  overflow-y: auto;
+}
+.snav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-back:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-back svg { width: 14px; height: 14px; }
+.snav-back .kbd { margin-left: auto; }
+
+.snav-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+}
+.snav-group {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  padding: var(--space-4) var(--space-3) var(--space-1);
+}
+.snav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2);
+  font-size: var(--text-control);
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.snav-item svg { width: 14px; height: 14px; flex: none; }
+.snav-item:hover { background: var(--bg-4); color: var(--fg-0); }
+.snav-item[aria-current="page"] {
+  background: var(--bg-5);
+  color: var(--fg-0);
+  font-weight: 500;
+}
+.snav-item.is-soon {
+  color: var(--fg-4);
+  cursor: default;
+}
+.snav-item.is-soon:hover { background: transparent; color: var(--fg-4); }
+.snav-item.is-soon.is-here {
+  background: var(--bg-2);
+  color: var(--fg-3);
+}
+.snav-item.is-soon.is-here:hover { background: var(--bg-2); color: var(--fg-3); }
+.soon-tag {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-4);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+  letter-spacing: 0.04em;
+}
+.is-here .soon-tag { color: var(--fg-3); border-color: var(--stroke-3); }
+
+/* ── Main ─────────────────────────────────────────────────────────── */
+.main {
+  overflow-y: auto;
+  background: var(--bg-0);
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 44px;
+  padding: 0 var(--space-12);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.crumb { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumb strong { color: var(--fg-1); font-weight: 500; }
+.route-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+}
+
+.content {
+  max-width: 880px;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.page-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--fg-0);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+}
+.page-head p { font-size: var(--text-base); color: var(--muted); }
+
+/* ── Componentes ──────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.card-head h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.card-head svg { width: 14px; height: 14px; color: var(--fg-3); }
+.card-head .spacer { margin-left: auto; }
+.card-body { padding: var(--space-6); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn svg { width: 14px; height: 14px; }
+.btn[data-variant="primary"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-on);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 18px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--fg-3); flex: none; }
+.chip[data-state="active"] { border-color: var(--stroke-strong); color: var(--fg-0); }
+.chip[data-state="active"] .dot { background: var(--pass); }
+.chip[data-signal="pass"] { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+.chip[data-signal="pass"] .dot { background: var(--pass); }
+.chip[data-signal="skipped"] { color: var(--skipped); background: var(--skipped-bg); border-color: transparent; }
+.chip[data-signal="skipped"] .dot { background: var(--skipped); }
+
+/* ── Coming soon: explicación principal ───────────────────────────── */
+.cs-hero { display: flex; align-items: flex-start; gap: var(--space-5); }
+.cs-icon {
+  width: 40px; height: 40px;
+  flex: none;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  color: var(--fg-2);
+}
+.cs-icon svg { width: 18px; height: 18px; }
+.cs-hero h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.cs-hero .lead { font-size: var(--text-base); color: var(--fg-2); margin-top: var(--space-2); max-width: 62ch; }
+.cs-hero .sub { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-3); max-width: 62ch; }
+
+.route-line {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-5);
+  overflow-wrap: anywhere;
+}
+.route-line .ok { color: var(--pass); }
+.cs-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
+
+/* ── Lista de secciones futuras ───────────────────────────────────── */
+.fut-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 170px 52px;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.fut-row:last-child { border-bottom: none; }
+.fut-row.is-here { background: var(--bg-3); }
+.fut-icon {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  color: var(--fg-3);
+}
+.fut-row.is-here .fut-icon { color: var(--fg-1); border-color: var(--stroke-3); }
+.fut-icon svg { width: 14px; height: 14px; }
+.fut-txt { min-width: 0; }
+.fut-txt .nm { font-size: var(--text-base); font-weight: 600; color: var(--fg-0); display: flex; align-items: center; gap: var(--space-3); }
+.fut-txt .ds { font-size: var(--text-control); color: var(--muted); margin-top: 1px; }
+.fut-route { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); text-align: right; }
+.fut-tag { justify-self: end; }
+.here-chip { font-size: var(--text-xs); }
+
+/* ── Franja de estados ────────────────────────────────────────────── */
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-top: var(--space-3); }
+.states-head h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--fg-3); }
+.states-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.state-panel { display: flex; flex-direction: column; }
+.state-label {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.state-label .desc { font-size: var(--text-sm); color: var(--fg-3); }
+.state-body { padding: var(--space-6); flex: 1; }
+.state-text { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-4); }
+
+/* Fragmento de nav para el panel comparativo */
+.nav-frag {
+  width: 216px;
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.demo-focus { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Rail: chrome global de la app -->
+  <nav class="rail" aria-label="Main navigation" data-od-id="app-rail">
+    <div class="rail-logo" title="Bunkai (分解)" aria-hidden="true">分</div>
+    <button class="rail-btn" type="button" title="Explorer" aria-label="Explorer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Runs" aria-label="Runs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 5 4-5 4V8z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Reports" aria-label="Reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 14v3"/><path d="M12 9v8"/><path d="M17 5v12"/></svg>
+    </button>
+    <button class="rail-btn" type="button" aria-current="page" title="Settings" aria-label="Settings (current section)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+    <div class="rail-avatar" title="Elena Vargas" aria-hidden="true">EV</div>
+  </nav>
+
+  <!-- Nav de configuración -->
+  <nav class="snav" aria-label="Settings sections" data-od-id="settings-nav">
+    <a class="snav-back" href="#app" data-od-id="back-to-app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Back to app
+      <span class="kbd">Esc</span>
+    </a>
+    <div class="snav-title">Settings</div>
+
+    <div class="snav-group">Available</div>
+    <a class="snav-item" href="settings-account.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+      Account
+    </a>
+    <a class="snav-item" href="settings-tokens.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+      Tokens
+    </a>
+    <a class="snav-item" href="settings-workspaces.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Workspaces
+    </a>
+
+    <div class="snav-group">Coming soon</div>
+    <div class="snav-item is-soon is-here" aria-disabled="true" data-od-id="nav-members-here">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Members<span class="visually-hidden"> (current page, not available yet)</span> <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      Notifications <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Billing <span class="soon-tag">soon</span>
+    </div>
+    <div class="snav-item is-soon" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Environments <span class="soon-tag">soon</span>
+    </div>
+  </nav>
+
+  <!-- Contenido -->
+  <main class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumb">
+        Settings <span aria-hidden="true">/</span> <strong>Members</strong>
+      </div>
+      <span class="route-chip">/settings/members</span>
+      <span class="chip" data-signal="skipped"><span class="dot" aria-hidden="true"></span>not shipped</span>
+      <div class="topbar-right">
+        <span class="crumb">Command palette</span>
+        <span class="kbd">⌘K</span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <div class="page-head" data-od-id="page-head">
+        <h1>Members</h1>
+        <p>Coming soon — this section hasn't shipped yet.</p>
+      </div>
+
+      <!-- Explicación principal: callejón sin salida informativo -->
+      <section class="card" aria-labelledby="h-cs" data-od-id="coming-soon-card">
+        <div class="card-body">
+          <div class="cs-hero">
+            <div class="cs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+              <h2 id="h-cs">Members isn't available yet <span class="chip" data-signal="skipped"><span class="dot" aria-hidden="true"></span>not shipped</span></h2>
+              <p class="lead">When it ships, you'll invite teammates to a workspace and manage their roles — Owner, Admin, Member, Viewer — from here.</p>
+              <p class="sub">Your link worked and nothing is wrong: this section just isn't in the product yet. It's planned, with no committed date. Until then, invites are handled by your workspace admin from the CLI.</p>
+            </div>
+          </div>
+          <div class="route-line">GET /settings/members <span aria-hidden="true">→</span> <span class="ok">200</span> · rendered as coming-soon — a planned section is never a 404</div>
+          <div class="cs-actions">
+            <a class="btn" data-variant="primary" href="settings-account.html" data-od-id="back-to-account">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+              Back to Account
+            </a>
+            <a class="btn" data-variant="ghost" href="settings-tokens.html">Tokens</a>
+            <a class="btn" data-variant="ghost" href="settings-workspaces.html">Workspaces</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- El patrón generaliza: todas las secciones futuras -->
+      <section class="card" aria-labelledby="h-fut" data-od-id="future-sections-card">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+          <h2 id="h-fut">Every planned section</h2>
+          <span class="spacer"></span>
+          <span class="chip">4 planned</span>
+        </div>
+        <div role="list" aria-label="Planned settings sections">
+          <div class="fut-row is-here" role="listitem" data-od-id="future-members">
+            <span class="fut-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <span class="fut-txt">
+              <span class="nm">Members <span class="chip here-chip" data-state="active"><span class="dot" aria-hidden="true"></span>this page</span></span>
+              <span class="ds">Invite teammates and manage their workspace roles.</span>
+            </span>
+            <span class="fut-route">/settings/members</span>
+            <span class="fut-tag soon-tag">soon</span>
+          </div>
+          <div class="fut-row" role="listitem" data-od-id="future-notifications">
+            <span class="fut-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+            <span class="fut-txt">
+              <span class="nm">Notifications</span>
+              <span class="ds">Choose what Bunkai tells you about runs, failures and mentions.</span>
+            </span>
+            <span class="fut-route">/settings/notifications</span>
+            <span class="fut-tag soon-tag">soon</span>
+          </div>
+          <div class="fut-row" role="listitem" data-od-id="future-billing">
+            <span class="fut-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+            <span class="fut-txt">
+              <span class="nm">Billing</span>
+              <span class="ds">Plan, seats and invoices for the workspaces you own.</span>
+            </span>
+            <span class="fut-route">/settings/billing</span>
+            <span class="fut-tag soon-tag">soon</span>
+          </div>
+          <div class="fut-row" role="listitem" data-od-id="future-environments">
+            <span class="fut-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span>
+            <span class="fut-txt">
+              <span class="nm">Environments</span>
+              <span class="ds">Define the targets your runs execute against — staging, prod, ephemeral.</span>
+            </span>
+            <span class="fut-route">/settings/environments</span>
+            <span class="fut-tag soon-tag">soon</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Estados de referencia -->
+      <section aria-labelledby="h-states" data-od-id="states-strip">
+        <div class="states-head">
+          <h2 id="h-states">States</h2>
+          <p>QA reference: how not-yet-shipped sections behave in the nav versus live ones. Same pattern for all four routes.</p>
+        </div>
+        <div class="states-grid" style="margin-top: var(--space-5);">
+
+          <!-- Nav: viva vs futura -->
+          <div class="card state-panel" data-od-id="state-nav-entries">
+            <div class="state-label">
+              <span class="chip"><span class="dot" aria-hidden="true"></span>state:nav-entries</span>
+              <span class="desc">Live link vs planned entry, side by side</span>
+            </div>
+            <div class="state-body" style="display:flex; gap: var(--space-6); align-items:flex-start;">
+              <div class="nav-frag" aria-hidden="true">
+                <span class="snav-item" style="background: var(--bg-4); color: var(--fg-0);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg>
+                  Account
+                </span>
+                <span class="snav-item demo-focus">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+                  Tokens
+                </span>
+                <span class="snav-item is-soon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Members <span class="soon-tag">soon</span>
+                </span>
+              </div>
+              <p class="state-text" style="margin-top:0;">Live sections are links: hover fill, keyboard focus ring, Tab reaches them. Planned entries are not links — dimmed to the disabled text tier, <span class="mono" style="font-size: var(--text-sm); color: var(--fg-2);">aria-disabled="true"</span>, skipped by Tab, and tagged <span class="soon-tag" style="margin-left:0;">soon</span> in text, not color alone. You know before selecting.</p>
+            </div>
+          </div>
+
+          <!-- Deep link -->
+          <div class="card state-panel" data-od-id="state-deep-link">
+            <div class="state-label">
+              <span class="chip" data-signal="skipped"><span class="dot" aria-hidden="true"></span>state:deep-link</span>
+              <span class="desc">Landing on a planned route anyway</span>
+            </div>
+            <div class="state-body">
+              <div class="route-line" style="margin-top:0;">GET /settings/billing <span aria-hidden="true">→</span> <span class="ok">200</span> · coming-soon page, Billing highlighted in nav</div>
+              <p class="state-text">Old bookmarks, pasted links and the command palette can all reach a planned route. Each renders this same page with its own name, one-line purpose and the same exits back to live sections — never an error, never a blank pane. The nav marks where you are even though the entry isn't clickable.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

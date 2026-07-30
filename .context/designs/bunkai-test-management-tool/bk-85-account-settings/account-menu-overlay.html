@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunkai — Account menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens Bunkai (contrato congelado, verbatim) ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: var(--font-mono); }
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+::selection { background: var(--accent-glow); }
+
+/* ── Escenario: shell global en una página normal de la app ───────── */
+.stage {
+  position: relative;
+  height: 66vh;
+  min-height: 560px;
+  min-width: 1120px;
+  display: grid;
+  grid-template-columns: 48px 216px minmax(0, 1fr);
+  border-bottom: 1px solid var(--stroke-2);
+  overflow: hidden;
+}
+
+.rail {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) 0;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 20;
+}
+.rail-logo {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  font-family: var(--font-jp);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg-0);
+  margin-bottom: var(--space-4);
+  user-select: none;
+}
+.rail-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-2);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn:active { background: var(--bg-5); }
+.rail-btn[aria-current="page"] { background: var(--bg-5); color: var(--fg-0); }
+.rail-btn svg { width: 16px; height: 16px; }
+.rail-spacer { flex: 1; }
+
+/* Affordance cerrada: el avatar es un botón real */
+.avatar-btn {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fg-1);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.avatar-btn:hover { border-color: var(--stroke-strong); color: var(--fg-0); }
+.avatar-btn[aria-expanded="true"] {
+  background: var(--bg-5);
+  border-color: var(--stroke-strong);
+  color: var(--fg-0);
+}
+
+/* Sidebar del explorador (contenido de fondo) */
+.side {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  padding: var(--space-4) var(--space-3);
+  overflow: hidden;
+}
+.side-head {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  padding: 0 var(--space-3) var(--space-2);
+}
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 26px;
+  padding: 0 var(--space-3);
+  border-radius: var(--r-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.tree-item svg { width: 13px; height: 13px; color: var(--fg-3); flex: none; }
+.tree-item .lbl { overflow: hidden; text-overflow: ellipsis; }
+.tree-item .st { width: 6px; height: 6px; border-radius: var(--radius-pill); margin-left: auto; flex: none; }
+.tree-item .st[data-s="pass"] { background: var(--pass); }
+.tree-item .st[data-s="fail"] { background: var(--fail); }
+.tree-item .st[data-s="skipped"] { background: var(--skipped); }
+.tree-item.sel { background: var(--bg-4); color: var(--fg-0); }
+.tree-item.in { padding-left: var(--space-8); }
+
+/* Área principal del explorador (contenido de fondo) */
+.editor { display: flex; flex-direction: column; overflow: hidden; background: var(--bg-0); }
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 44px;
+  padding: 0 var(--space-6);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--stroke-1);
+  flex: none;
+}
+.crumb { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumb strong { color: var(--fg-1); font-weight: 500; }
+.crumb .mono { font-size: var(--text-sm); }
+.route-chip {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  padding: 2px 6px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+  padding: 1px 5px;
+}
+
+.tabs { display: flex; border-bottom: 1px solid var(--stroke-1); background: var(--bg-1); flex: none; }
+.tab {
+  display: flex; align-items: center; gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-5);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  border-right: 1px solid var(--stroke-1);
+}
+.tab.on { background: var(--bg-0); color: var(--fg-0); box-shadow: 0 -1px 0 var(--accent) inset; }
+.tab .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); }
+
+.doc { padding: var(--space-6); overflow: hidden; }
+.doc h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--fg-0);
+  line-height: var(--leading-tight);
+  display: flex; align-items: center; gap: var(--space-4);
+}
+.doc .meta { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
+
+.step-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 90px;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--stroke-1);
+  font-size: var(--text-control);
+  color: var(--fg-2);
+}
+.step-row .sid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.step-row .res { justify-self: end; }
+.steps { margin-top: var(--space-6); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 18px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--fg-3); flex: none; }
+.chip[data-state="active"] { border-color: var(--stroke-strong); color: var(--fg-0); }
+.chip[data-state="active"] .dot { background: var(--pass); }
+.chip[data-signal="pass"] { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+.chip[data-signal="pass"] .dot { background: var(--pass); }
+.chip[data-signal="fail"] { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+.chip[data-signal="fail"] .dot { background: var(--fail); }
+.chip[data-signal="running"] { color: var(--running); background: var(--running-bg); border-color: transparent; }
+.chip[data-signal="running"] .dot { background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+.chip[data-layer="UI"] { color: var(--layer-ui); background: transparent; border-color: var(--stroke-2); }
+.chip[data-layer="API"] { color: var(--layer-api); background: transparent; border-color: var(--stroke-2); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .chip[data-signal="running"] .dot, .sk { animation: none !important; }
+}
+
+/* Scrim: pista atenuada del contenido mientras el menú está abierto */
+.scrim {
+  position: absolute;
+  inset: 0 0 0 48px;
+  background: color-mix(in srgb, var(--bg-0) 55%, transparent);
+  z-index: 10;
+  display: none;
+}
+.stage.menu-open .scrim { display: block; }
+
+/* ── Menú de cuenta ───────────────────────────────────────────────── */
+.menu-pop {
+  position: absolute;
+  left: 56px;
+  bottom: 10px;
+  width: 268px;
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-3);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop);
+  z-index: 30;
+}
+.menu-pop[hidden] { display: none; }
+
+.menu-id {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.menu-id .av {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-4);
+  border: 1px solid var(--stroke-strong);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.menu-id .nm { font-size: var(--text-base); font-weight: 600; color: var(--fg-0); }
+.menu-id .em {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.menu-ctx {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+}
+
+.menu-list { padding: var(--space-2); }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-2);
+  font-family: var(--font-body);
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--fg-1);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.menu-item:hover { background: var(--bg-4); color: var(--fg-0); }
+.menu-item svg { width: 14px; height: 14px; color: var(--fg-3); flex: none; }
+.menu-item:hover svg { color: var(--fg-1); }
+.menu-item .hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+}
+.menu-sep { height: 1px; background: var(--stroke-1); margin: var(--space-2) var(--space-2); }
+.menu-foot {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--stroke-1);
+  font-size: var(--text-xs);
+  color: var(--fg-4);
+}
+.menu-foot .kbd { color: var(--fg-3); }
+
+/* Réplicas estáticas en la franja de estados */
+.menu-pop.is-demo { position: static; width: 268px; }
+.demo-focus { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* ── Vista /signin (aterrizaje tras sign-out) ─────────────────────── */
+.signin {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg-0);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+.stage.signed-out .signin { display: flex; }
+.wordmark { display: flex; align-items: baseline; gap: var(--space-3); }
+.wordmark .jp { font-family: var(--font-jp); font-weight: 700; font-size: 26px; color: var(--fg-0); }
+.wordmark .lat { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: var(--fg-0); }
+.signin-card {
+  width: 340px;
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+}
+.signin-note {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control);
+  color: var(--fg-2);
+  margin-bottom: var(--space-5);
+}
+.signin-note svg { width: 14px; height: 14px; color: var(--fg-3); flex: none; }
+.signin-note .mono { color: var(--muted); font-size: var(--text-sm); }
+.form-label {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  margin-top: var(--space-5);
+}
+.form-label:first-of-type { margin-top: 0; }
+.input {
+  width: 100%;
+  height: 30px;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-control);
+  color: var(--fg-0);
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.signin-actions { margin-top: var(--space-6); display: flex; align-items: center; gap: var(--space-4); }
+.brand-line { font-size: var(--text-sm); color: var(--fg-4); }
+.brand-line .mono { color: var(--fg-3); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-on);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+
+/* ── Franja de estados ────────────────────────────────────────────── */
+.content {
+  max-width: 980px;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.states-head h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--fg-3); }
+.states-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+}
+.state-panel { display: flex; flex-direction: column; }
+.state-label {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.state-label .desc { font-size: var(--text-sm); color: var(--fg-3); }
+.state-body { padding: var(--space-6); flex: 1; }
+.state-text { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-4); }
+
+.rail-frag {
+  width: 48px;
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--r-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+.rail-frag .gap { height: 26px; width: 32px; border-radius: var(--r-2); background: var(--bg-2); }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- Escenario: página normal de la app con el menú de cuenta abierto -->
+<div class="stage menu-open" id="stage" data-od-id="app-stage">
+
+  <!-- Rail: chrome global -->
+  <nav class="rail" aria-label="Main navigation" data-od-id="app-rail">
+    <div class="rail-logo" title="Bunkai (分解)" aria-hidden="true">分</div>
+    <button class="rail-btn" type="button" aria-current="page" title="Explorer" aria-label="Explorer (current section)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Runs" aria-label="Runs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 5 4-5 4V8z"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Reports" aria-label="Reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 14v3"/><path d="M12 9v8"/><path d="M17 5v12"/></svg>
+    </button>
+    <button class="rail-btn" type="button" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+    <!-- Affordance cerrada: iniciales, siempre al fondo del rail -->
+    <button class="avatar-btn" type="button" id="account-trigger"
+            aria-haspopup="menu" aria-expanded="true" aria-controls="account-menu"
+            aria-label="Account menu — Elena Vargas" data-od-id="account-trigger">EV</button>
+  </nav>
+
+  <!-- Contenido de la app (pista atenuada bajo el scrim) -->
+  <aside class="side" aria-hidden="true" data-od-id="app-side-tree">
+    <div class="side-head">UPEX Core · Explorer</div>
+    <div class="tree-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg><span class="lbl">MOD-012 auth</span></div>
+    <div class="tree-item in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg><span class="lbl">ATC-049 login-ok</span><span class="st" data-s="pass"></span></div>
+    <div class="tree-item in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg><span class="lbl">ATC-050 login-bad-pw</span><span class="st" data-s="fail"></span></div>
+    <div class="tree-item in sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg><span class="lbl">ATC-051 session-expiry</span><span class="st" data-s="skipped"></span></div>
+    <div class="tree-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg><span class="lbl">MOD-014 tokens</span></div>
+    <div class="tree-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg><span class="lbl">MOD-020 reports</span></div>
+  </aside>
+
+  <div class="editor" aria-hidden="true" data-od-id="app-editor">
+    <header class="topbar">
+      <div class="crumb"><span class="mono">UPEX Core</span> <span aria-hidden="true">/</span> <span class="mono">MOD-012</span> <span aria-hidden="true">/</span> <strong class="mono">ATC-051</strong></div>
+      <span class="route-chip">/explorer</span>
+      <div class="topbar-right">
+        <span class="crumb">Command palette</span>
+        <span class="kbd">⌘K</span>
+      </div>
+    </header>
+    <div class="tabs">
+      <div class="tab on"><span class="dot" style="background: var(--skipped);"></span>ATC-051</div>
+      <div class="tab"><span class="dot" style="background: var(--pass);"></span>ATC-049</div>
+      <div class="tab"><span class="dot" style="background: var(--running);"></span>RUN-451</div>
+    </div>
+    <div class="doc">
+      <h1>Session expiry redirects to sign-in <span class="chip" data-layer="UI">UI</span></h1>
+      <div class="meta">
+        <span class="chip">ATC-051</span>
+        <span class="chip"><span class="dot" aria-hidden="true"></span>not run</span>
+        <span class="chip" data-signal="running"><span class="dot" aria-hidden="true"></span>RUN-451 in progress</span>
+      </div>
+      <div class="steps">
+        <div class="step-row"><span class="sid">S-01</span><span>Sign in as a Member and stay idle past the session TTL</span><span class="res chip" data-signal="pass"><span class="dot" aria-hidden="true"></span>pass</span></div>
+        <div class="step-row"><span class="sid">S-02</span><span>Trigger any API call from the open tab</span><span class="res chip" data-signal="pass"><span class="dot" aria-hidden="true"></span>pass</span></div>
+        <div class="step-row"><span class="sid">S-03</span><span>Assert redirect to /signin with return path preserved</span><span class="res chip" data-signal="fail"><span class="dot" aria-hidden="true"></span>fail</span></div>
+        <div class="step-row"><span class="sid">S-04</span><span>Sign back in and assert the return path restores</span><span class="res chip"><span class="dot" aria-hidden="true"></span>not run</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scrim sobre el contenido mientras el menú está abierto -->
+  <div class="scrim" id="scrim"></div>
+
+  <!-- Menú de cuenta (render principal: abierto) -->
+  <div class="menu-pop" id="menu-pop" data-od-id="account-menu-popover">
+    <div class="menu-id">
+      <span class="av" aria-hidden="true">EV</span>
+      <span>
+        <span class="nm">Elena Vargas</span>
+        <span class="em">elena.vargas@upex.io</span>
+      </span>
+    </div>
+    <div class="menu-ctx">
+      <span class="chip">Member</span>
+      <span>in WS-001 · UPEX Core</span>
+    </div>
+    <div class="menu-list" role="menu" id="account-menu" aria-labelledby="account-trigger">
+      <a class="menu-item" role="menuitem" tabindex="0" href="settings-account.html" id="mi-settings" data-od-id="menu-item-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+        Settings
+        <span class="hint">/settings</span>
+      </a>
+      <a class="menu-item" role="menuitem" tabindex="-1" href="settings-tokens.html" data-od-id="menu-item-tokens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+        Personal access tokens
+        <span class="hint">/settings/tokens</span>
+      </a>
+      <div class="menu-sep" role="separator"></div>
+      <button class="menu-item" role="menuitem" tabindex="-1" type="button" id="mi-signout" data-od-id="menu-item-signout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        Sign out
+        <span class="hint">/signin</span>
+      </button>
+    </div>
+    <div class="menu-foot">
+      <span class="kbd">↑</span><span class="kbd">↓</span> navigate
+      <span class="kbd">Enter</span> activate
+      <span class="kbd">Esc</span> close
+    </div>
+  </div>
+
+  <!-- Aterrizaje tras sign-out -->
+  <div class="signin" id="signin-view" data-od-id="signin-view">
+    <div class="wordmark"><span class="jp">分解</span><span class="lat">Bunkai</span></div>
+    <div class="signin-card">
+      <div class="signin-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        You signed out. <span class="mono">2026-07-30 10:22 UTC</span>
+      </div>
+      <label class="form-label" for="si-email">Email</label>
+      <input class="input" id="si-email" type="email" autocomplete="username" spellcheck="false" value="elena.vargas@upex.io">
+      <label class="form-label" for="si-pw">Password</label>
+      <input class="input" id="si-pw" type="password" autocomplete="current-password" placeholder="········">
+      <div class="signin-actions">
+        <button class="btn" data-variant="primary" type="button" id="si-submit">Sign in</button>
+        <span class="route-chip">/signin</span>
+      </div>
+    </div>
+    <p class="brand-line">Bunkai <span class="mono">分解</span> — the real Japanese martial-arts term, not the anime word.</p>
+  </div>
+
+</div>
+
+<!-- Estados de referencia -->
+<div class="content">
+  <section aria-labelledby="h-states" data-od-id="states-strip">
+    <div class="states-head">
+      <h2 id="h-states">States</h2>
+      <p>QA reference: the account surface as it appears closed, open, and under keyboard focus. Above, the live menu — try ↑ ↓ Enter Esc.</p>
+    </div>
+    <div class="states-grid" style="margin-top: var(--space-5);">
+
+      <!-- Affordance cerrada -->
+      <div class="card state-panel" data-od-id="state-closed">
+        <div class="state-label">
+          <span class="chip"><span class="dot" aria-hidden="true"></span>state:closed</span>
+          <span class="desc">The affordance at rest, bottom of the rail on every page</span>
+        </div>
+        <div class="state-body" style="display:flex; gap: var(--space-6); align-items:flex-start;">
+          <div class="rail-frag" aria-hidden="true">
+            <span class="gap"></span>
+            <span class="gap"></span>
+            <span class="avatar-btn" style="cursor:default;">EV</span>
+          </div>
+          <p class="state-text" style="margin-top:0;">Initials, always the last slot of the rail. Click or <span class="kbd">Enter</span> opens the menu; <span class="kbd">↓</span> opens it and focuses the first item, <span class="kbd">↑</span> the last. Hover strengthens the border — the same affordance on every signed-in page.</p>
+        </div>
+      </div>
+
+      <!-- Menú abierto -->
+      <div class="card state-panel" data-od-id="state-open">
+        <div class="state-label">
+          <span class="chip" data-state="active"><span class="dot" aria-hidden="true"></span>state:open</span>
+          <span class="desc">Identity first, then the two exits</span>
+        </div>
+        <div class="state-body">
+          <div class="menu-pop is-demo" aria-hidden="true">
+            <div class="menu-id">
+              <span class="av">EV</span>
+              <span>
+                <span class="nm">Elena Vargas</span>
+                <span class="em">elena.vargas@upex.io</span>
+              </span>
+            </div>
+            <div class="menu-ctx"><span class="chip">Member</span><span>in WS-001 · UPEX Core</span></div>
+            <div class="menu-list">
+              <span class="menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>Settings<span class="hint">/settings</span></span>
+              <span class="menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>Personal access tokens<span class="hint">/settings/tokens</span></span>
+              <div class="menu-sep"></div>
+              <span class="menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sign out<span class="hint">/signin</span></span>
+            </div>
+          </div>
+          <p class="state-text">Exact email and role in the active workspace, both verifiable at a glance. Routes ride along in mono.</p>
+        </div>
+      </div>
+
+      <!-- Ítem con foco de teclado -->
+      <div class="card state-panel" data-od-id="state-keyboard-focus">
+        <div class="state-label">
+          <span class="chip" data-signal="running"><span class="dot" aria-hidden="true"></span>state:keyboard-focus</span>
+          <span class="desc">Roving focus inside the menu</span>
+        </div>
+        <div class="state-body">
+          <div class="menu-pop is-demo" aria-hidden="true">
+            <div class="menu-ctx" style="border-bottom:1px solid var(--stroke-1);"><span class="chip">Member</span><span>in WS-001 · UPEX Core</span></div>
+            <div class="menu-list">
+              <span class="menu-item demo-focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/><circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>Settings<span class="hint">/settings</span></span>
+              <span class="menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>Personal access tokens<span class="hint">/settings/tokens</span></span>
+              <div class="menu-sep"></div>
+              <span class="menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sign out<span class="hint">/signin</span></span>
+            </div>
+          </div>
+          <p class="state-text">Focused item: 1px accent outline at 1px offset — the product-wide focus contract, never removed. One item holds <span class="kbd">Tab</span> position (roving tabindex); arrows move without leaving the menu.</p>
+        </div>
+      </div>
+
+      <!-- Aterrizaje tras sign-out -->
+      <div class="card state-panel" data-od-id="state-signed-out">
+        <div class="state-label">
+          <span class="chip" data-signal="pass"><span class="dot" aria-hidden="true"></span>state:signed-out</span>
+          <span class="desc">Sign out lands on /signin</span>
+        </div>
+        <div class="state-body">
+          <div class="wordmark" style="margin-bottom: var(--space-4);"><span class="jp" style="font-size:18px;">分解</span><span class="lat" style="font-size:15px;">Bunkai</span></div>
+          <div class="signin-note" style="margin-bottom: var(--space-3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            You signed out. <span class="mono">2026-07-30 10:22 UTC</span>
+          </div>
+          <p class="state-text" style="margin-top:0;">Immediate, no confirmation — signing out is cheap to reverse, unlike revoking or leaving. Email field arrives prefilled; the session's work is already saved server-side. Try it live: Sign out in the menu above swaps the whole stage to <span class="mono" style="font-size: var(--text-sm); color: var(--fg-2);">/signin</span>.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<div class="visually-hidden" aria-live="polite" id="live-region"></div>
+
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var trigger = document.getElementById('account-trigger');
+  var pop = document.getElementById('menu-pop');
+  var menu = document.getElementById('account-menu');
+  var liveRegion = document.getElementById('live-region');
+  var items = Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]'));
+
+  function isOpen() { return stage.classList.contains('menu-open'); }
+
+  function setRoving(idx) {
+    for (var i = 0; i < items.length; i++) {
+      items[i].tabIndex = (i === idx) ? 0 : -1;
+    }
+  }
+
+  function openMenu(focusIdx) {
+    stage.classList.add('menu-open');
+    pop.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (typeof focusIdx === 'number') {
+      setRoving(focusIdx);
+      items[focusIdx].focus();
+    }
+  }
+  function closeMenu(returnFocus) {
+    stage.classList.remove('menu-open');
+    pop.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    setRoving(0);
+    if (returnFocus !== false) trigger.focus();
+  }
+
+  /* Trigger: clic alterna; flechas abren enfocando primero/último */
+  trigger.addEventListener('click', function () {
+    if (isOpen()) closeMenu();
+    else openMenu(0);
+  });
+  trigger.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); openMenu(0); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); openMenu(items.length - 1); }
+  });
+
+  /* Navegación dentro del menú: roving focus */
+  menu.addEventListener('keydown', function (e) {
+    var idx = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      var n = (idx + 1) % items.length;
+      setRoving(n); items[n].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      var p = (idx - 1 + items.length) % items.length;
+      setRoving(p); items[p].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault(); setRoving(0); items[0].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault(); setRoving(items.length - 1); items[items.length - 1].focus();
+    } else if (e.key === 'Tab') {
+      /* Patrón de menú: Tab cierra y devuelve el foco al trigger */
+      e.preventDefault();
+      closeMenu();
+    }
+  });
+
+  /* Esc cierra desde cualquier parte; clic fuera cierra sin robar foco */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && isOpen()) closeMenu();
+  });
+  document.addEventListener('mousedown', function (e) {
+    if (!isOpen()) return;
+    if (pop.contains(e.target) || trigger.contains(e.target)) return;
+    closeMenu(false);
+  });
+
+  /* Sign out → aterriza en /signin */
+  var signinView = document.getElementById('signin-view');
+  document.getElementById('mi-signout').addEventListener('click', function () {
+    closeMenu(false);
+    stage.classList.add('signed-out');
+    document.getElementById('si-pw').value = '';
+    document.getElementById('si-submit').focus();
+    liveRegion.textContent = 'Signed out. You are on /signin.';
+  });
+
+  /* Sign in → vuelve a la app autenticada */
+  document.getElementById('si-submit').addEventListener('click', function () {
+    stage.classList.remove('signed-out');
+    liveRegion.textContent = 'Signed in as elena.vargas@upex.io. Back in UPEX Core.';
+    trigger.focus();
+  });
+
+  /* Estado inicial: menú abierto como render principal, sin robar foco */
+  setRoving(0);
+})();
+</script>
+</body>
+</html>
