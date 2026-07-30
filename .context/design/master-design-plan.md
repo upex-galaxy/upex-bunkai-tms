@@ -36,7 +36,7 @@ Every user story that touches UI MUST:
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
 | Bug Reports (+ Defect Heatmap) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.6) |
-| Metrics | 0% | ❌ Missing (no data model) |
+| Metrics | 0% | ❌ Missing (no data model) · ✅ mockups ready 2026-07-30 (§4.7) |
 | Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 
@@ -200,8 +200,28 @@ Test Runner's Report-bug drawer, not this screen; BK-43 (sync) renders the sync-
 `bug-detail.html`. **Priority: P1** — all 4 BK-31 stories are Ready For Dev and were blocked only by
 this mockup gate; that block is now lifted.
 
-### 4.7 Metrics — ❌ (0%)
-Nav item, no badge. No mockup screen provided (only implied). Coverage % surfaces on Home. **Priority: P3** — needs design spec authored (no mockup) + metrics data.
+### 4.7 Metrics — ❌ build 0% · ✅ mockups ready (2026-07-30)
+Nav item, no badge. No data model — was previously "only implied", no mockup screen. **The 🔒
+mockup gate is LIFTED**: a 2-screen set was generated via Open Design (MCP-driven Mode A, project
+`bunkai-bk-44-metrics-coverage`, design system `user:bunkai`) and lives in
+`.context/designs/bunkai-test-management-tool/bk-44-metrics-coverage/` (provenance: `BRIEF.md` in
+the same folder). Both screens share the App Shell, English copy, frozen §2 tokens verbatim,
+`:focus-visible` 1px `--accent`, and reuse §4.6's Bug Reports heatmap grammar (Clean/Low/
+Elevated/Hotspot tiers + absolute week-over-week delta) for the defect-density panel rather than
+re-deriving one. Coverage % also still surfaces on Home (§4.2, unchanged).
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `metrics-dashboard.html` | `/projects/[projectSlug]/metrics` | KPI row (AC coverage %, executed coverage %, modules fully covered, median recovery cycle). Coverage-by-module table with a segmented All / Coverage gaps / Never run filter — "never run" (ATCs bound, zero executions) reads distinctly from "no coverage" (nothing bound); segmented coverage bars encode executed (`--pass`) vs. bound-never-run (`--skipped`) vs. unbound (empty track). Fully-covered modules get a calm, distinct chip treatment. No-coverage panel lists ACs/modules with zero linked ATCs. Recovery-cycle table per user story: resolved cycles (mono duration), "not yet green" in-progress cycles (`--running` + elapsed-so-far, pulsing), and "no cycle · never failed" (`--skipped`, distinct from both). Defect-density panel reuses §4.6's heatmap tier/trend grammar verbatim. Each section links out to `traceability-chain.html`. States strip: default / fully-covered module / never-run filter vs. no-coverage (two distinct empty states) / in-progress vs. no-cycle recovery states / loading skeleton / error with retry. |
+| `traceability-chain.html` | `/projects/[projectSlug]/traceability` | Full US→AC→ATC→Test→Run→Bug chain for one selected user story, single-page, no extra navigation: per-AC cards over a shared 4-column grid (ATC+layer chip / Test / latest Run outcome chip + `RUN-###`/date / linked Defects with ID+title+status). "No data yet" (dotted `--skipped` pill, e.g. AC has ATCs but no test/run recorded yet) is visually distinct from "uncovered" (`--fail` strip, AC has zero ATCs bound) — never a broken/null cell either way. Combinable filters (result multi-select, module, date range) with an active-filter chip summary + `aria-live` count + one-action Clear all; zero-match state ("filters excluded everything") reads distinct from the zero-coverage empty state (data doesn't exist at all); inverted date range is rejected inline without breaking other filters. Export snapshot is the screen's one mutating action — single accent button, produces a point-in-time export carrying its own real timestamp (confirmation toast, mono filename), explicitly not live-updating. States strip: full chain / partial chain / mixed AC coverage (covered + uncovered ACs on the same story) / zero-AC story / zero-coverage story (ACs exist, no ATCs anywhere) / filtered-with-results / filtered-zero-match / invalid date range / loading / error with retry. |
+
+Build order note: BK-46 (coverage gaps + never-run filter) and BK-47 (time-to-green) both render
+`metrics-dashboard.html`; BK-45 (full chain render) and BK-48 (filter the chain) both render
+`traceability-chain.html`; BK-50 (export) renders the export action on `traceability-chain.html`;
+BK-49 (activity stream) renders into `home.jsx`, not either of these screens (unchanged from
+before). **Priority: P1** — BK-45/BK-46 are Ready For Dev and were blocked only by this mockup
+gate; that block is now lifted. BK-47/BK-48 remain Shift-Left QA, BK-50 remains in Estimation —
+unaffected by mockup readiness.
 
 ### 4.8 Test Runs — ❌ build 0% · ✅ mockups ready (2026-07-30)
 Nav badge `3`. Active runs partially shown on Home dashboard table. **The 🔒 mockup gate is
@@ -345,12 +365,12 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
 | | BK-42 Defect heatmap | **Bug Reports** (heatmap view, placement note §4.6) | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
 | | BK-43 Sync defects to Jira | Bug Reports (integration) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
-| **BK-44 Coverage & Traceability** | BK-45 US→bug evidence chain | **Metrics** · Projects traceability | §4.7 |
-| | BK-46 Surface untested ACs/modules | **Metrics** · Home coverage card | `home.jsx` |
-| | BK-47 Time-to-green per US | **Metrics** | §4.7 |
-| | BK-48 Filter chain by verdict/module | Metrics · Traceability | §4.7 |
+| **BK-44 Coverage & Traceability** | BK-45 US→bug evidence chain | **Traceability** | §4.7 · `bk-44-metrics-coverage/traceability-chain.html` |
+| | BK-46 Surface untested ACs/modules | **Metrics** · Home coverage card | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html`, `home.jsx` |
+| | BK-47 Time-to-green per US | **Metrics** | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html` |
+| | BK-48 Filter chain by verdict/module | **Traceability** | §4.7 · `bk-44-metrics-coverage/traceability-chain.html` |
 | | BK-49 Activity stream (read feed) | **Home** recent-activity | `home.jsx` §4.2 |
-| | BK-50 Export assembled chain | Metrics/Traceability (export) | §4.7 |
+| | BK-50 Export assembled chain | **Traceability** (export) | §4.7 · `bk-44-metrics-coverage/traceability-chain.html` |
 | **BK-85 Account & Settings** | BK-86 View identity/role + sign-out | **Shell** user block · Settings | `app.jsx` §3 · `bk-85-account-settings/account-menu-overlay.html` |
 | | BK-87 Settings hub + account view | **Settings** | §4.10 · `bk-85-account-settings/settings-account.html` + `settings-coming-soon.html` |
 | | BK-88 Manage personal access tokens | **Settings** | §4.10 · `bk-85-account-settings/settings-tokens.html` |

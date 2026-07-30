@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Metrics · Coverage &amp; Cycle Time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* ─── Surface ─────────────────────────────────────────────────────
+   * DESIGN.md §3.1. --bg is the deepest page layer; --surface is the
+   * default card panel (--bg-2), the surface a generated artifact
+   * should reach for first. */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ──────────────────────────────────────────────────
+   * DESIGN.md §3.2, bound by role: strongest → body → secondary →
+   * tertiary. The disabled tier (--fg-4) has no schema slot and is
+   * re-exported as an extension below. */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ──────────────────────────────────────────────────────
+   * DESIGN.md §3.3. White-alpha strokes, never solid greys, so panels
+   * stack correctly over any surface step. */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ──────────────────────────────────────────────────────
+   * Vermillion, a nod to the hanko stamp around the 分解 kanji.
+   * DESIGN.md §2 principle 4 is a hard rule: "Status carries color;
+   * nothing else does. Accent is reserved for primary actions and
+   * focus rings." No decorative vermillion. */
+  --accent: #d9543f;                   /* --accent — primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover (brightens) */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — documented pressed bg */
+
+  /* ─── Semantic ────────────────────────────────────────────────────
+   * DESIGN.md §3.5 signal palette. These are the ONLY globally
+   * meaningful colors in the product besides the accent. The full
+   * five-state palette with its background tints is re-exported below;
+   * "skipped" and "running" have no schema slot. */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ──────────────────────────────────────────────────
+   * DESIGN.md §4. Inter for prose, JetBrains Mono wherever an ID lives
+   * (ATC-001, RUN-451, MOD-014) — principle 3 makes that mandatory,
+   * not stylistic. Noto Serif JP is wordmark-only and is exported as
+   * an extension so no artifact reaches for it as a text face. */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type ramp — DESIGN.md §4. Base is 13px, and the whole ramp tops out
+   * at 22px: this is a dense tool, so hierarchy comes from weight and
+   * color tier, not from size. The 12/12.5px control tier (buttons,
+   * inputs, table cells) is the most-used size in the product and has
+   * no schema slot; it is exported as --text-control below. */
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;                /* DESIGN.md §4 body line-height */
+  --leading-tight: 1.2;                /* [authored] no heading leading in DESIGN.md */
+  --tracking-display: 0;               /* normal — DESIGN.md specifies tracking only
+                                        * for the 10.5px label tier (+0.04em) and the
+                                        * wordmark, never for display headings */
+
+  /* ─── Spacing ─────────────────────────────────────────────────────
+   * DESIGN.md §5: implicit 4px grid, real gaps 4/6/8/10/12/16/20/24,
+   * padding on primary surfaces caps at 16, nothing exceeds 24. The
+   * slot names are the schema's; the values are Bunkai's. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  /* Section rhythm — [authored]. Bunkai is an application shell, not a
+   * marketing page, so DESIGN.md never specifies section bands. Values
+   * stay inside the 24px ceiling to keep the density rule intact. */
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ──────────────────────────────────────────────────────
+   * DESIGN.md §5. Peaks at 10px. Register is "engineer's terminal",
+   * not consumer app — do not round past --radius-xl. */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ───────────────────────────────────────────────────
+   * DESIGN.md §5. Low elevation with a 1px inset highlight on top —
+   * that inset is what makes a Bunkai panel read as machined rather
+   * than dropped. Never flatten it to a plain drop shadow. */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  /* Focus — DESIGN.md §10 is prescriptive: 1px solid accent, 1px offset,
+   * on every interactive element, never removed without replacement.
+   * Expressed as a ring so the schema slot resolves; the outline form
+   * is the canonical one. */
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ──────────────────────────────────────────────────────
+   * DESIGN.md §8. 120ms for color/background/border/transform, 200ms
+   * for progress-bar fill. Navigation must feel instantaneous: no page
+   * transitions, no route fade over 80ms. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ───────────────────────────────────────────────────
+   * [authored] Bunkai's shell is full-bleed (sidebar + editor area,
+   * VS Code layout), so DESIGN.md defines no page container. These
+   * exist only so the schema slot resolves for artifacts that need a
+   * centered reading column. */
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ══════════════════════
+   * Everything below is brand-specific and has no schema slot. These
+   * are the names the real codebase and mockups use, so an artifact
+   * that references them ports into the repo without a rename pass.
+   * All values byte-exact with app/globals.css. */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5.
+   * Color is never the sole signal: pair every state with text and an
+   * icon in dense views (DESIGN.md §10). */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* The most-used text size in the product: buttons, inputs, table
+   * cells. DESIGN.md §4 lists it as the 12 / 12.5px tier. */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 — tighter i/l and
+   * better number forms. Apply on the body element. */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+/* Reduced motion — DESIGN.md §10. The caret blink and the running-dot
+ * pulse are the two animations that must stop. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  min-width: 1280px;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  overflow: hidden;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; border-radius: var(--r-1); }
+.mono { font-family: var(--font-mono); }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7;
+      stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic-16 { width: 16px; height: 16px; }
+.ic-18 { width: 18px; height: 18px; }
+a { color: inherit; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column;
+  padding: var(--space-6) var(--space-4);
+  gap: var(--space-6);
+}
+.brand { display: flex; align-items: baseline; gap: var(--space-3); padding: 0 var(--space-2); }
+.brand-jp { font-family: var(--font-jp); font-weight: 700; font-size: 18px; color: var(--fg-0); }
+.brand-latin { font-family: var(--font-body); font-weight: 700; font-size: 14px;
+               letter-spacing: -0.01em; color: var(--fg-0); }
+.project-pill {
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-control);
+}
+.project-pill .mono { color: var(--fg-2); font-size: var(--text-sm); }
+.project-pill strong { font-weight: 500; color: var(--fg-1); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+             color: var(--fg-3); padding: 0 var(--space-3); margin-bottom: var(--space-2); }
+.nav-item {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-2);
+  color: var(--fg-2); font-size: var(--text-control); font-weight: 500;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.nav-item:hover { background: var(--bg-4); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); }
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.kbd-hint { display: flex; align-items: center; gap: var(--space-3);
+            color: var(--fg-3); font-size: var(--text-sm); padding: 0 var(--space-3); }
+.kbd { font-family: var(--font-mono); font-size: var(--text-sm);
+       background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+       border-radius: var(--r-1); padding: 1px 5px; color: var(--fg-2); }
+.user-row { display: flex; align-items: center; gap: var(--space-3);
+            padding: var(--space-2) var(--space-3); font-size: var(--text-control); color: var(--fg-2); }
+.avatar { width: 20px; height: 20px; border-radius: var(--r-1);
+          background: var(--bg-5); color: var(--fg-1);
+          font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+          display: grid; place-items: center; }
+
+/* ── Main ─────────────────────────────────────────────────────────── */
+.main { overflow-y: auto; height: 100vh; }
+.page { padding: var(--space-8) var(--space-12) var(--space-12); display: flex; flex-direction: column; gap: var(--space-6); }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-6); }
+.crumb { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); margin-bottom: var(--space-2); }
+.crumb .sep { color: var(--fg-4); padding: 0 var(--space-1); }
+h1 { font-size: var(--text-3xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); line-height: var(--leading-tight); }
+.head-meta { font-size: var(--text-control); color: var(--fg-3); margin-top: var(--space-2); }
+.head-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+/* ── Buttons / chips ──────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-body); font-size: var(--text-control); font-weight: 500;
+  color: var(--fg-1); background: var(--bg-3);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-1); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500;
+  border-radius: var(--r-1); padding: 2px var(--space-2);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.chip[data-status="pass"]    { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="fail"]    { color: var(--fail); background: var(--fail-bg); }
+.chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+.chip[data-status="running"] { color: var(--running); background: var(--running-bg); }
+.dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; flex: none; }
+.dot[data-status="running"] { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .dot[data-status="running"] { animation: none; } }
+
+/* ── Cards / sections ─────────────────────────────────────────────── */
+.card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6);
+             padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--stroke-1); }
+.card-title { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.card-sub { font-size: var(--text-sm); color: var(--fg-3); margin-top: 2px; }
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6);
+             padding: var(--space-4) var(--space-6); border-top: 1px solid var(--stroke-1);
+             font-size: var(--text-sm); color: var(--fg-3); }
+.trace-link { display: inline-flex; align-items: center; gap: var(--space-2);
+              font-size: var(--text-sm); font-weight: 500; color: var(--fg-2);
+              text-decoration: none; border-radius: var(--r-1);
+              transition: color var(--motion-fast) var(--ease-standard); }
+.trace-link:hover { color: var(--fg-0); text-decoration: underline; }
+
+/* ── KPI row ──────────────────────────────────────────────────────── */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-5); }
+.kpi { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
+.kpi-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+             color: var(--fg-3); font-weight: 500; }
+.kpi-value { font-family: var(--font-mono); font-size: var(--text-4xl); font-weight: 600;
+             color: var(--fg-0); line-height: var(--leading-tight); }
+.kpi-value small { font-size: var(--text-lg); color: var(--fg-3); font-weight: 500; }
+.kpi-sub { font-size: var(--text-sm); color: var(--fg-2); }
+.kpi-sub .mono { color: var(--fg-1); }
+.bar { height: 4px; border-radius: var(--radius-pill); background: var(--bg-4); overflow: hidden; display: flex; }
+.bar span { height: 100%; transition: width var(--motion-base) var(--ease-standard); }
+.bar .b-exec { background: var(--pass); }
+.bar .b-notrun { background: var(--skipped); }
+
+/* ── Coverage grid ────────────────────────────────────────────────── */
+.cov-grid { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-5); align-items: start; }
+
+/* Segmented filter */
+.seg { display: inline-flex; background: var(--bg-3); border: 1px solid var(--stroke-2);
+       border-radius: var(--r-2); padding: 2px; gap: 2px; }
+.seg button {
+  font-family: var(--font-body); font-size: var(--text-control); font-weight: 500;
+  color: var(--fg-2); background: transparent; border: none; border-radius: var(--r-1);
+  padding: 3px var(--space-4); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.seg .count { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.seg button[aria-pressed="true"] .count { color: var(--fg-2); }
+.filter-meta { font-size: var(--text-sm); color: var(--fg-3); }
+.filter-meta .mono { color: var(--fg-2); }
+
+/* Note strips */
+.note { display: flex; align-items: flex-start; gap: var(--space-3);
+        margin: var(--space-4) var(--space-6) 0;
+        border-radius: var(--r-2); padding: var(--space-3) var(--space-4);
+        font-size: var(--text-control); }
+.note[data-kind="notrun"] { background: var(--skipped-bg); border: 1px solid var(--stroke-2); color: var(--fg-2); }
+.note[data-kind="notrun"] .ic { color: var(--skipped); margin-top: 1px; }
+.note strong { color: var(--fg-1); font-weight: 600; }
+.note[hidden] { display: none; }
+
+/* Module table */
+table { width: 100%; border-collapse: collapse; }
+th { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+     color: var(--fg-3); font-weight: 500; text-align: left;
+     padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1); }
+td { font-size: var(--text-control); color: var(--fg-1);
+     padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1);
+     vertical-align: middle; }
+tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+tbody tr:hover { background: var(--bg-3); }
+tbody tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; }
+.mod-cell { display: flex; align-items: baseline; gap: var(--space-3); }
+.mod-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.mod-name { font-weight: 500; color: var(--fg-1); }
+.cov-frac { font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-1); white-space: nowrap; }
+.cov-frac .of { color: var(--fg-3); }
+td .bar { width: 120px; }
+.nr-count { font-family: var(--font-mono); color: var(--fg-2); display: inline-flex; align-items: center; gap: var(--space-2); }
+.nr-count .ic { width: 12px; height: 12px; color: var(--skipped); }
+.nr-zero { color: var(--fg-4); }
+.legend { display: flex; gap: var(--space-6); align-items: center; font-size: var(--text-sm); color: var(--fg-2); }
+.legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: var(--space-2); vertical-align: 0; }
+.legend .l-exec i { background: var(--pass); }
+.legend .l-notrun i { background: var(--skipped); }
+.legend .l-unbound i { background: var(--bg-4); }
+tr[data-hidden="true"] { display: none; }
+
+/* No-coverage panel */
+.nocov-list { list-style: none; }
+.nocov-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4);
+                 padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1); }
+.nocov-list li:last-child { border-bottom: none; }
+.nocov-main { min-width: 0; }
+.nocov-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.nocov-id .ctx { color: var(--fg-4); }
+.nocov-title { font-size: var(--text-control); color: var(--fg-1); margin-top: 2px; }
+.nocov-meta { font-size: var(--text-sm); color: var(--fg-3); margin-top: 2px; }
+
+/* ── Cycle + density grid ─────────────────────────────────────────── */
+.cycle-grid { display: grid; grid-template-columns: 1fr 460px; gap: var(--space-5); align-items: start; }
+.cy-time { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); white-space: nowrap; }
+.cy-none { color: var(--fg-4); font-family: var(--font-mono); }
+.cy-dur { font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-0); font-weight: 500; white-space: nowrap; }
+.cy-dur.ongoing { color: var(--running); font-weight: 400; }
+.cy-story { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cy-story .title { font-weight: 500; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+
+/* Defect density heatmap */
+.hm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); padding: var(--space-6); }
+.hm-cell { border-radius: var(--r-2); border: 1px solid var(--stroke-2);
+           padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.hm-cell[data-tier="clean"]    { background: var(--pass-bg); }
+.hm-cell[data-tier="low"]      { background: var(--skipped-bg); }
+.hm-cell[data-tier="elevated"] { background: var(--blocked-bg); }
+.hm-cell[data-tier="hotspot"]  { background: var(--fail-bg); }
+.hm-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hm-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.hm-tier { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.hm-cell[data-tier="clean"] .hm-tier    { color: var(--pass); }
+.hm-cell[data-tier="low"] .hm-tier      { color: var(--skipped); }
+.hm-cell[data-tier="elevated"] .hm-tier { color: var(--blocked); }
+.hm-cell[data-tier="hotspot"] .hm-tier  { color: var(--fail); }
+.hm-count { font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 600; color: var(--fg-0); line-height: 1; }
+.hm-count small { font-size: var(--text-sm); font-weight: 400; color: var(--fg-3); }
+.hm-name { font-size: var(--text-sm); color: var(--fg-2); }
+.hm-trend { display: flex; align-items: center; gap: var(--space-2);
+            font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.hm-trend .ic { width: 12px; height: 12px; color: var(--fg-3); }
+.hm-caveat { font-size: var(--text-sm); color: var(--blocked); display: flex; align-items: center; gap: var(--space-2); }
+.hm-caveat .ic { width: 12px; height: 12px; }
+.hm-legend { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); font-size: var(--text-sm); color: var(--fg-2); }
+.hm-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: var(--space-2); border: 1px solid var(--stroke-2); }
+.hm-legend .t-clean i { background: var(--pass-bg); } .hm-legend .t-low i { background: var(--skipped-bg); }
+.hm-legend .t-elev i { background: var(--blocked-bg); } .hm-legend .t-hot i { background: var(--fail-bg); }
+.hm-legend .mono { color: var(--fg-3); }
+
+/* ── Loading skeleton ─────────────────────────────────────────────── */
+.sk { background: var(--bg-3); border-radius: var(--r-1); animation: sk-pulse 1.6s ease-in-out infinite; }
+@keyframes sk-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-card { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.sk-rows { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+
+/* ── Error state ──────────────────────────────────────────────────── */
+.error-panel { padding: var(--space-12); display: flex; flex-direction: column; align-items: center;
+               gap: var(--space-4); text-align: center; }
+.error-panel .ic-18 { color: var(--fail); }
+.error-title { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.error-msg { font-size: var(--text-control); color: var(--muted); max-width: 380px; }
+.error-code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3);
+              background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+              padding: 2px var(--space-3); }
+
+/* ── View-state switching ─────────────────────────────────────────── */
+body[data-state="default"] #view-loading, body[data-state="default"] #view-error { display: none; }
+body[data-state="loading"] #view-default, body[data-state="loading"] #view-error { display: none; }
+body[data-state="error"] #view-default, body[data-state="error"] #view-loading { display: none; }
+
+.state-switch { position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 10;
+                background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+                box-shadow: var(--shadow-pop); padding: var(--space-3) var(--space-4);
+                display: flex; align-items: center; gap: var(--space-4); }
+.state-switch .label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-3); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+           overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+</style>
+</head>
+<body data-state="default">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></symbol>
+  <symbol id="i-flat" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+</svg>
+
+<!-- ── App shell sidebar ─────────────────────────────────────────── -->
+<aside class="sidebar" data-od-id="app-sidebar">
+  <div class="brand" data-od-id="brand-wordmark">
+    <span class="brand-jp" lang="ja">分解</span><span class="brand-latin">Bunkai</span>
+  </div>
+  <div class="project-pill"><span class="mono">BK-44</span><strong>bunkai-core</strong></div>
+  <nav class="nav" aria-label="Global navigation" data-od-id="global-nav">
+    <div class="nav-label">Workspace</div>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-home"/></svg>Overview</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-file"/></svg>Test Cases</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-play"/></svg>Runs</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-bug"/></svg>Bug Reports</a>
+    <a class="nav-item" href="#" aria-current="page" data-od-id="nav-metrics"><svg class="ic ic-16"><use href="#i-chart"/></svg>Metrics</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-branch"/></svg>Traceability</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-settings"/></svg>Settings</a>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="kbd-hint"><span class="kbd">⌘K</span> Command palette</div>
+    <div class="user-row"><span class="avatar">EY</span> ely@upex.dev</div>
+  </div>
+</aside>
+
+<!-- ── Main area ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ══ DEFAULT VIEW ══ -->
+  <div class="page" id="view-default">
+    <header class="page-head" data-od-id="page-header">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>metrics</div>
+        <h1 data-od-id="page-title">Coverage &amp; Cycle Time</h1>
+        <div class="head-meta">Read-only reporting surface · computed from linked ATCs and run history</div>
+      </div>
+      <div class="head-actions">
+        <span class="chip" data-status="skipped"><svg class="ic" style="width:12px;height:12px"><use href="#i-cal"/></svg>Last 30 days</span>
+        <a class="btn" href="#" data-od-id="open-traceability">Open Traceability<svg class="ic"><use href="#i-out"/></svg></a>
+      </div>
+    </header>
+
+    <!-- KPI row -->
+    <section class="kpis" aria-label="Coverage summary" data-od-id="kpi-row">
+      <div class="card kpi" data-od-id="kpi-ac-coverage">
+        <div class="kpi-label">AC coverage</div>
+        <div class="kpi-value">77<small>%</small></div>
+        <div class="bar" role="img" aria-label="77 percent of acceptance criteria have at least one linked ATC; 59 percent executed, 18 percent bound but never run">
+          <span class="b-exec" style="width:58.7%"></span><span class="b-notrun" style="width:18.6%"></span>
+        </div>
+        <div class="kpi-sub"><span class="mono">58 / 75</span> acceptance criteria have ≥1 linked ATC</div>
+      </div>
+      <div class="card kpi" data-od-id="kpi-executed-coverage">
+        <div class="kpi-label">Executed coverage</div>
+        <div class="kpi-value">59<small>%</small></div>
+        <div class="bar" role="img" aria-label="59 percent of acceptance criteria verified in at least one run">
+          <span class="b-exec" style="width:58.7%"></span>
+        </div>
+        <div class="kpi-sub"><span class="mono">44 / 75</span> ACs verified in ≥1 run</div>
+      </div>
+      <div class="card kpi" data-od-id="kpi-full-modules">
+        <div class="kpi-label">Fully covered modules</div>
+        <div class="kpi-value">2 <small>/ 8</small></div>
+        <div class="kpi-sub"><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Every AC bound and executed</span></div>
+      </div>
+      <div class="card kpi" data-od-id="kpi-median-cycle">
+        <div class="kpi-label">Median recovery cycle</div>
+        <div class="kpi-value">15h 35m</div>
+        <div class="kpi-sub"><span class="mono">3</span> resolved cycles · first fail → first green</div>
+      </div>
+    </section>
+
+    <!-- Coverage by module + no-coverage panel -->
+    <section class="cov-grid" data-od-id="coverage-section">
+      <div class="card" data-od-id="coverage-module-table">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Coverage by module</div>
+            <div class="card-sub">Executed vs. bound-but-never-run vs. unbound acceptance criteria</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-4)">
+            <span class="filter-meta" id="filter-count" aria-live="polite"><span class="mono">8 of 8</span> modules</span>
+            <div class="seg" role="group" aria-label="Filter modules" data-od-id="module-filter">
+              <button type="button" data-filter="all" aria-pressed="true">All <span class="count">8</span></button>
+              <button type="button" data-filter="gaps" aria-pressed="false">Coverage gaps <span class="count">4</span></button>
+              <button type="button" data-filter="notrun" aria-pressed="false">Never run <span class="count">5</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="note" data-kind="notrun" id="note-notrun" hidden>
+          <svg class="ic"><use href="#i-clock"/></svg>
+          <div><strong>Bound, never executed.</strong> These modules have ATCs linked, but none of those ATCs has ever run.
+          This is not the same as <strong>no coverage</strong>: modules with nothing bound at all are listed in the
+          "No coverage" panel on the right.</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Module</th>
+              <th scope="col">ACs bound</th>
+              <th scope="col">Coverage</th>
+              <th scope="col" class="num">Never run</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="sr-only">Traceability</span></th>
+            </tr>
+          </thead>
+          <tbody id="mod-tbody">
+            <tr data-unc="0" data-nr="0" data-bound="12">
+              <td><span class="mod-cell"><span class="mod-id">MOD-001</span><span class="mod-name">Authentication</span></span></td>
+              <td><span class="cov-frac">12 <span class="of">/ 12</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="12 of 12 executed"><span class="b-exec" style="width:100%"></span></div></td>
+              <td class="num"><span class="nr-count nr-zero">0</span></td>
+              <td><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Fully covered</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-001 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="2" data-nr="3" data-bound="14">
+              <td><span class="mod-cell"><span class="mod-id">MOD-002</span><span class="mod-name">Checkout</span></span></td>
+              <td><span class="cov-frac">14 <span class="of">/ 16</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="11 executed, 3 never run, 2 unbound of 16"><span class="b-exec" style="width:68.7%"></span><span class="b-notrun" style="width:18.8%"></span></div></td>
+              <td class="num"><span class="nr-count"><svg class="ic"><use href="#i-clock"/></svg>3</span></td>
+              <td><span class="chip" data-status="fail">2 uncovered</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-002 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="0" data-nr="6" data-bound="6">
+              <td><span class="mod-cell"><span class="mod-id">MOD-003</span><span class="mod-name">Search</span></span></td>
+              <td><span class="cov-frac">6 <span class="of">/ 6</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="0 executed, 6 bound but never run"><span class="b-notrun" style="width:100%"></span></div></td>
+              <td class="num"><span class="nr-count"><svg class="ic"><use href="#i-clock"/></svg>6</span></td>
+              <td><span class="chip" data-status="skipped"><svg class="ic" style="width:11px;height:11px"><use href="#i-clock"/></svg>Bound, never run</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-003 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="2" data-nr="1" data-bound="8">
+              <td><span class="mod-cell"><span class="mod-id">MOD-004</span><span class="mod-name">User Profile</span></span></td>
+              <td><span class="cov-frac">8 <span class="of">/ 10</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="7 executed, 1 never run, 2 unbound of 10"><span class="b-exec" style="width:70%"></span><span class="b-notrun" style="width:10%"></span></div></td>
+              <td class="num"><span class="nr-count"><svg class="ic"><use href="#i-clock"/></svg>1</span></td>
+              <td><span class="chip" data-status="fail">2 uncovered</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-004 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="8" data-nr="0" data-bound="0">
+              <td><span class="mod-cell"><span class="mod-id">MOD-005</span><span class="mod-name">Notifications</span></span></td>
+              <td><span class="cov-frac">0 <span class="of">/ 8</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="0 of 8 bound"></div></td>
+              <td class="num"><span class="nr-count nr-zero">—</span></td>
+              <td><span class="chip" data-status="fail"><svg class="ic" style="width:11px;height:11px"><use href="#i-alert"/></svg>No coverage</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-005 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="0" data-nr="0" data-bound="9">
+              <td><span class="mod-cell"><span class="mod-id">MOD-006</span><span class="mod-name">Billing</span></span></td>
+              <td><span class="cov-frac">9 <span class="of">/ 9</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="9 of 9 executed"><span class="b-exec" style="width:100%"></span></div></td>
+              <td class="num"><span class="nr-count nr-zero">0</span></td>
+              <td><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Fully covered</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-006 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="5" data-nr="2" data-bound="4">
+              <td><span class="mod-cell"><span class="mod-id">MOD-007</span><span class="mod-name">Audit Export</span></span></td>
+              <td><span class="cov-frac">4 <span class="of">/ 9</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="2 executed, 2 never run, 5 unbound of 9"><span class="b-exec" style="width:22.2%"></span><span class="b-notrun" style="width:22.2%"></span></div></td>
+              <td class="num"><span class="nr-count"><svg class="ic"><use href="#i-clock"/></svg>2</span></td>
+              <td><span class="chip" data-status="fail">5 uncovered</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-007 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+            <tr data-unc="0" data-nr="2" data-bound="5">
+              <td><span class="mod-cell"><span class="mod-id">MOD-008</span><span class="mod-name">Session Management</span></span></td>
+              <td><span class="cov-frac">5 <span class="of">/ 5</span></span></td>
+              <td><div class="bar seg-bar" role="img" aria-label="3 executed, 2 bound but never run of 5"><span class="b-exec" style="width:60%"></span><span class="b-notrun" style="width:40%"></span></div></td>
+              <td class="num"><span class="nr-count"><svg class="ic"><use href="#i-clock"/></svg>2</span></td>
+              <td><span class="chip" data-status="skipped"><svg class="ic" style="width:11px;height:11px"><use href="#i-clock"/></svg>2 never run</span></td>
+              <td><a class="trace-link" href="#" aria-label="MOD-008 in Traceability">Trace<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="card-foot">
+          <div class="legend" aria-hidden="false">
+            <span class="l-exec"><i></i>Executed</span>
+            <span class="l-notrun"><i></i>Bound, never run</span>
+            <span class="l-unbound"><i></i>No ATC bound</span>
+          </div>
+          <a class="trace-link" href="#">Full evidence chain in Traceability<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a>
+        </div>
+      </div>
+
+      <!-- No coverage panel -->
+      <div class="card" data-od-id="no-coverage-panel">
+        <div class="card-head">
+          <div>
+            <div class="card-title">No coverage</div>
+            <div class="card-sub">Zero linked ATCs: nothing bound at all</div>
+          </div>
+          <span class="chip" data-status="fail">17 ACs</span>
+        </div>
+        <ul class="nocov-list">
+          <li>
+            <div class="nocov-main">
+              <div class="nocov-id">MOD-005 <span class="ctx">· module</span></div>
+              <div class="nocov-title">Notifications</div>
+              <div class="nocov-meta">Entire module unbound · 8 ACs exposed</div>
+            </div>
+            <span class="chip" data-status="fail">0 ATCs</span>
+          </li>
+          <li>
+            <div class="nocov-main">
+              <div class="nocov-id">AC-1204 <span class="ctx">· US-112</span></div>
+              <div class="nocov-title">Export audit log as CSV</div>
+            </div>
+            <span class="chip" data-status="fail">0 ATCs</span>
+          </li>
+          <li>
+            <div class="nocov-main">
+              <div class="nocov-id">AC-1188 <span class="ctx">· US-107</span></div>
+              <div class="nocov-title">Rate-limit repeated login attempts</div>
+            </div>
+            <span class="chip" data-status="fail">0 ATCs</span>
+          </li>
+          <li>
+            <div class="nocov-main">
+              <div class="nocov-id">AC-1163 <span class="ctx">· US-118</span></div>
+              <div class="nocov-title">Cart survives session expiry</div>
+            </div>
+            <span class="chip" data-status="fail">0 ATCs</span>
+          </li>
+          <li>
+            <div class="nocov-main">
+              <div class="nocov-id">AC-1151 <span class="ctx">· US-110</span></div>
+              <div class="nocov-title">Reject avatar uploads over 5 MB</div>
+            </div>
+            <span class="chip" data-status="fail">0 ATCs</span>
+          </li>
+        </ul>
+        <div class="card-foot">
+          <span><span class="mono" style="color:var(--fg-2)">12</span> more uncovered ACs</span>
+          <a class="trace-link" href="#">All 17 in Traceability<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cycle time + defect density -->
+    <section class="cycle-grid" data-od-id="cycle-density-section">
+      <div class="card" data-od-id="cycle-time-table">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Recovery cycle by user story</div>
+            <div class="card-sub">Elapsed time from first failing run to first fully-passing run</div>
+          </div>
+          <span class="filter-meta"><span class="mono">7</span> stories with run history</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">User story</th>
+              <th scope="col">Module</th>
+              <th scope="col">First fail</th>
+              <th scope="col">First green</th>
+              <th scope="col">Cycle</th>
+              <th scope="col">State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="cy-story"><span class="mod-id">US-104</span><span class="title">Password reset flow</span></span></td>
+              <td><span class="mod-id">MOD-001</span></td>
+              <td><span class="cy-time">Jul 18, 09:12</span></td>
+              <td><span class="cy-time">Jul 21, 14:03</span></td>
+              <td><span class="cy-dur">3d 4h 51m</span></td>
+              <td><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Recovered</span></td>
+            </tr>
+            <tr>
+              <td><span class="cy-story"><span class="mod-id">US-118</span><span class="title">Cart totals rounding</span></span></td>
+              <td><span class="mod-id">MOD-002</span></td>
+              <td><span class="cy-time">Jul 22, 16:40</span></td>
+              <td><span class="cy-time">Jul 23, 08:15</span></td>
+              <td><span class="cy-dur">15h 35m</span></td>
+              <td><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Recovered</span></td>
+            </tr>
+            <tr>
+              <td><span class="cy-story"><span class="mod-id">US-110</span><span class="title">Profile avatar upload</span></span></td>
+              <td><span class="mod-id">MOD-004</span></td>
+              <td><span class="cy-time">Jul 14, 10:30</span></td>
+              <td><span class="cy-time">Jul 14, 17:55</span></td>
+              <td><span class="cy-dur">7h 25m</span></td>
+              <td><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Recovered</span></td>
+            </tr>
+            <tr data-od-id="cycle-row-ongoing">
+              <td><span class="cy-story"><span class="mod-id">US-121</span><span class="title">Coupon stacking rules</span></span></td>
+              <td><span class="mod-id">MOD-002</span></td>
+              <td><span class="cy-time">Jul 25, 11:02</span></td>
+              <td><span class="cy-none" aria-label="No passing run yet">—</span></td>
+              <td><span class="cy-dur ongoing">5d 2h so far</span></td>
+              <td><span class="chip" data-status="running"><span class="dot" data-status="running"></span>Not yet green</span></td>
+            </tr>
+            <tr>
+              <td><span class="cy-story"><span class="mod-id">US-129</span><span class="title">Invoice webhook retries</span></span></td>
+              <td><span class="mod-id">MOD-006</span></td>
+              <td><span class="cy-time">Jul 28, 19:47</span></td>
+              <td><span class="cy-none" aria-label="No passing run yet">—</span></td>
+              <td><span class="cy-dur ongoing">1d 17h so far</span></td>
+              <td><span class="chip" data-status="running"><span class="dot" data-status="running"></span>Not yet green</span></td>
+            </tr>
+            <tr data-od-id="cycle-row-none">
+              <td><span class="cy-story"><span class="mod-id">US-102</span><span class="title">Login with SSO</span></span></td>
+              <td><span class="mod-id">MOD-001</span></td>
+              <td><span class="cy-none" aria-label="Never failed">—</span></td>
+              <td><span class="cy-time">Jul 12, 08:20</span></td>
+              <td><span class="cy-none">—</span></td>
+              <td><span class="chip" data-status="skipped">No cycle · never failed</span></td>
+            </tr>
+            <tr>
+              <td><span class="cy-story"><span class="mod-id">US-115</span><span class="title">Invoice PDF download</span></span></td>
+              <td><span class="mod-id">MOD-006</span></td>
+              <td><span class="cy-none" aria-label="Never failed">—</span></td>
+              <td><span class="cy-time">Jul 16, 13:44</span></td>
+              <td><span class="cy-none">—</span></td>
+              <td><span class="chip" data-status="skipped">No cycle · never failed</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="card-foot">
+          <span>"So far" clocks measure from first fail to now: an open cycle, not a final number</span>
+          <a class="trace-link" href="#">Run evidence in Traceability<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a>
+        </div>
+      </div>
+
+      <!-- Defect density heatmap -->
+      <div class="card" data-od-id="defect-density-heatmap">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Defect density</div>
+            <div class="card-sub"><span class="mono">42</span> open defects across <span class="mono">8</span> modules · week-over-week</div>
+          </div>
+        </div>
+        <div class="hm-grid">
+          <div class="hm-cell" data-tier="hotspot" data-od-id="hm-mod-002">
+            <div class="hm-top"><span class="hm-id">MOD-002</span><span class="hm-tier">Hotspot</span></div>
+            <div class="hm-count">14 <small>defects</small></div>
+            <div class="hm-name">Checkout</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-up"/></svg>Rising +3</div>
+          </div>
+          <div class="hm-cell" data-tier="hotspot" data-od-id="hm-mod-007">
+            <div class="hm-top"><span class="hm-id">MOD-007</span><span class="hm-tier">Hotspot</span></div>
+            <div class="hm-count">11 <small>defects</small></div>
+            <div class="hm-name">Audit Export</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-up"/></svg>Rising +1</div>
+          </div>
+          <div class="hm-cell" data-tier="elevated" data-od-id="hm-mod-006">
+            <div class="hm-top"><span class="hm-id">MOD-006</span><span class="hm-tier">Elevated</span></div>
+            <div class="hm-count">8 <small>defects</small></div>
+            <div class="hm-name">Billing</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-down"/></svg>Falling −2</div>
+          </div>
+          <div class="hm-cell" data-tier="elevated" data-od-id="hm-mod-004">
+            <div class="hm-top"><span class="hm-id">MOD-004</span><span class="hm-tier">Elevated</span></div>
+            <div class="hm-count">6 <small>defects</small></div>
+            <div class="hm-name">User Profile</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-up"/></svg>Rising +2</div>
+          </div>
+          <div class="hm-cell" data-tier="low" data-od-id="hm-mod-008">
+            <div class="hm-top"><span class="hm-id">MOD-008</span><span class="hm-tier">Low</span></div>
+            <div class="hm-count">2 <small>defects</small></div>
+            <div class="hm-name">Session Management</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-flat"/></svg>Flat ±0</div>
+          </div>
+          <div class="hm-cell" data-tier="low" data-od-id="hm-mod-001">
+            <div class="hm-top"><span class="hm-id">MOD-001</span><span class="hm-tier">Low</span></div>
+            <div class="hm-count">1 <small>defect</small></div>
+            <div class="hm-name">Authentication</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-down"/></svg>Falling −1</div>
+          </div>
+          <div class="hm-cell" data-tier="clean" data-od-id="hm-mod-003">
+            <div class="hm-top"><span class="hm-id">MOD-003</span><span class="hm-tier">Clean</span></div>
+            <div class="hm-count">0 <small>defects</small></div>
+            <div class="hm-name">Search</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-flat"/></svg>Flat ±0</div>
+            <div class="hm-caveat"><svg class="ic"><use href="#i-clock"/></svg>ATCs bound, never run</div>
+          </div>
+          <div class="hm-cell" data-tier="clean" data-od-id="hm-mod-005">
+            <div class="hm-top"><span class="hm-id">MOD-005</span><span class="hm-tier">Clean</span></div>
+            <div class="hm-count">0 <small>defects</small></div>
+            <div class="hm-name">Notifications</div>
+            <div class="hm-trend"><svg class="ic"><use href="#i-flat"/></svg>Flat ±0</div>
+            <div class="hm-caveat"><svg class="ic"><use href="#i-alert"/></svg>No coverage, untested</div>
+          </div>
+        </div>
+        <div class="card-foot" style="flex-direction:column;align-items:flex-start;gap:var(--space-3)">
+          <div class="hm-legend">
+            <span class="t-clean"><i></i>Clean <span class="mono">0</span></span>
+            <span class="t-low"><i></i>Low <span class="mono">1–4</span></span>
+            <span class="t-elev"><i></i>Elevated <span class="mono">5–9</span></span>
+            <span class="t-hot"><i></i>Hotspot <span class="mono">10+</span></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;width:100%;gap:var(--space-4)">
+            <span>Same tiering as the Bug Reports heatmap</span>
+            <a class="trace-link" href="#">Defects in Traceability<svg class="ic" style="width:11px;height:11px"><use href="#i-out"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ LOADING VIEW (skeleton) ══ -->
+  <div class="page" id="view-loading" aria-busy="true" aria-label="Loading metrics" data-od-id="view-loading">
+    <header class="page-head">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>metrics</div>
+        <h1>Coverage &amp; Cycle Time</h1>
+        <div class="head-meta">Loading metrics…</div>
+      </div>
+    </header>
+    <section class="kpis" aria-hidden="true">
+      <div class="card sk-card"><div class="sk" style="width:90px;height:10px"></div><div class="sk" style="width:64px;height:22px"></div><div class="sk" style="width:100%;height:4px"></div><div class="sk" style="width:150px;height:10px"></div></div>
+      <div class="card sk-card"><div class="sk" style="width:110px;height:10px"></div><div class="sk" style="width:64px;height:22px"></div><div class="sk" style="width:100%;height:4px"></div><div class="sk" style="width:130px;height:10px"></div></div>
+      <div class="card sk-card"><div class="sk" style="width:130px;height:10px"></div><div class="sk" style="width:48px;height:22px"></div><div class="sk" style="width:160px;height:14px"></div></div>
+      <div class="card sk-card"><div class="sk" style="width:120px;height:10px"></div><div class="sk" style="width:88px;height:22px"></div><div class="sk" style="width:140px;height:10px"></div></div>
+    </section>
+    <section class="cov-grid" aria-hidden="true">
+      <div class="card sk-rows">
+        <div class="sk" style="width:180px;height:14px"></div>
+        <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:100%;height:12px"></div>
+        <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:100%;height:12px"></div>
+        <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:62%;height:12px"></div>
+      </div>
+      <div class="card sk-rows">
+        <div class="sk" style="width:120px;height:14px"></div>
+        <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:100%;height:12px"></div>
+        <div class="sk" style="width:78%;height:12px"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ ERROR VIEW ══ -->
+  <div class="page" id="view-error" data-od-id="view-error">
+    <header class="page-head">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>metrics</div>
+        <h1>Coverage &amp; Cycle Time</h1>
+      </div>
+    </header>
+    <div class="card error-panel" role="alert" data-od-id="error-panel">
+      <svg class="ic ic-18"><use href="#i-alert"/></svg>
+      <div class="error-title">Couldn't load metrics</div>
+      <div class="error-msg">The metrics service didn't respond within 10 seconds. Your test cases and run history are unaffected — this is a reporting failure only.</div>
+      <span class="error-code">GET /api/projects/BK-44/metrics · 504 Gateway Timeout</span>
+      <button type="button" class="btn" data-variant="primary" id="btn-retry" data-od-id="retry-button">
+        <svg class="ic"><use href="#i-refresh"/></svg>Retry
+      </button>
+    </div>
+  </div>
+</main>
+
+<!-- Prototype-only state preview. Not part of the product UI. -->
+<div class="state-switch" data-od-id="state-switcher">
+  <span class="label">Preview state</span>
+  <div class="seg" role="group" aria-label="Preview screen state">
+    <button type="button" data-state-btn="default" aria-pressed="true">Default</button>
+    <button type="button" data-state-btn="loading" aria-pressed="false">Loading</button>
+    <button type="button" data-state-btn="error" aria-pressed="false">Error</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // Module filter — "gaps" (unbound ACs exist) vs "notrun" (bound but never executed).
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#mod-tbody tr'));
+  var filterBtns = Array.prototype.slice.call(document.querySelectorAll('[data-filter]'));
+  var countEl = document.getElementById('filter-count');
+  var noteNotrun = document.getElementById('note-notrun');
+
+  function applyFilter(mode) {
+    var visible = 0;
+    rows.forEach(function (tr) {
+      var unc = +tr.dataset.unc, nr = +tr.dataset.nr, bound = +tr.dataset.bound;
+      var show = mode === 'all' ||
+        (mode === 'gaps' && unc > 0) ||
+        (mode === 'notrun' && nr > 0 && bound > 0);
+      tr.dataset.hidden = show ? 'false' : 'true';
+      if (show) visible++;
+    });
+    filterBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.filter === mode ? 'true' : 'false');
+    });
+    noteNotrun.hidden = mode !== 'notrun';
+    countEl.innerHTML = '<span class="mono">' + visible + ' of ' + rows.length + '</span> modules';
+  }
+  filterBtns.forEach(function (b) {
+    b.addEventListener('click', function () { applyFilter(b.dataset.filter); });
+  });
+
+  // Prototype state switcher: default / loading / error.
+  var stateBtns = Array.prototype.slice.call(document.querySelectorAll('[data-state-btn]'));
+  function setState(s) {
+    document.body.dataset.state = s;
+    stateBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.stateBtn === s ? 'true' : 'false');
+    });
+  }
+  stateBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setState(b.dataset.stateBtn); });
+  });
+
+  // Retry: show the skeleton briefly, then resolve to the populated view.
+  document.getElementById('btn-retry').addEventListener('click', function () {
+    setState('loading');
+    setTimeout(function () { setState('default'); }, 900);
+  });
+})();
+</script>
+</body>
+</html>

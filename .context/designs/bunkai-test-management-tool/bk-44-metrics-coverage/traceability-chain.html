@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Traceability · Evidence Chain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* ─── Surface ─────────────────────────────────────────────────────
+   * DESIGN.md §3.1. --bg is the deepest page layer; --surface is the
+   * default card panel (--bg-2), the surface a generated artifact
+   * should reach for first. */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ──────────────────────────────────────────────────
+   * DESIGN.md §3.2, bound by role: strongest → body → secondary →
+   * tertiary. The disabled tier (--fg-4) has no schema slot and is
+   * re-exported as an extension below. */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ──────────────────────────────────────────────────────
+   * DESIGN.md §3.3. White-alpha strokes, never solid greys, so panels
+   * stack correctly over any surface step. */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ──────────────────────────────────────────────────────
+   * Vermillion, a nod to the hanko stamp around the 分解 kanji.
+   * DESIGN.md §2 principle 4 is a hard rule: "Status carries color;
+   * nothing else does. Accent is reserved for primary actions and
+   * focus rings." No decorative vermillion. */
+  --accent: #d9543f;                   /* --accent — primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover (brightens) */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — documented pressed bg */
+
+  /* ─── Semantic ────────────────────────────────────────────────────
+   * DESIGN.md §3.5 signal palette. These are the ONLY globally
+   * meaningful colors in the product besides the accent. The full
+   * five-state palette with its background tints is re-exported below;
+   * "skipped" and "running" have no schema slot. */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ──────────────────────────────────────────────────
+   * DESIGN.md §4. Inter for prose, JetBrains Mono wherever an ID lives
+   * (ATC-001, RUN-451, MOD-014) — principle 3 makes that mandatory,
+   * not stylistic. Noto Serif JP is wordmark-only and is exported as
+   * an extension so no artifact reaches for it as a text face. */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type ramp — DESIGN.md §4. Base is 13px, and the whole ramp tops out
+   * at 22px: this is a dense tool, so hierarchy comes from weight and
+   * color tier, not from size. The 12/12.5px control tier (buttons,
+   * inputs, table cells) is the most-used size in the product and has
+   * no schema slot; it is exported as --text-control below. */
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;                /* DESIGN.md §4 body line-height */
+  --leading-tight: 1.2;                /* [authored] no heading leading in DESIGN.md */
+  --tracking-display: 0;               /* normal — DESIGN.md specifies tracking only
+                                        * for the 10.5px label tier (+0.04em) and the
+                                        * wordmark, never for display headings */
+
+  /* ─── Spacing ─────────────────────────────────────────────────────
+   * DESIGN.md §5: implicit 4px grid, real gaps 4/6/8/10/12/16/20/24,
+   * padding on primary surfaces caps at 16, nothing exceeds 24. The
+   * slot names are the schema's; the values are Bunkai's. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  /* Section rhythm — [authored]. Bunkai is an application shell, not a
+   * marketing page, so DESIGN.md never specifies section bands. Values
+   * stay inside the 24px ceiling to keep the density rule intact. */
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ──────────────────────────────────────────────────────
+   * DESIGN.md §5. Peaks at 10px. Register is "engineer's terminal",
+   * not consumer app — do not round past --radius-xl. */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ───────────────────────────────────────────────────
+   * DESIGN.md §5. Low elevation with a 1px inset highlight on top —
+   * that inset is what makes a Bunkai panel read as machined rather
+   * than dropped. Never flatten it to a plain drop shadow. */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  /* Focus — DESIGN.md §10 is prescriptive: 1px solid accent, 1px offset,
+   * on every interactive element, never removed without replacement.
+   * Expressed as a ring so the schema slot resolves; the outline form
+   * is the canonical one. */
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ──────────────────────────────────────────────────────
+   * DESIGN.md §8. 120ms for color/background/border/transform, 200ms
+   * for progress-bar fill. Navigation must feel instantaneous: no page
+   * transitions, no route fade over 80ms. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ───────────────────────────────────────────────────
+   * [authored] Bunkai's shell is full-bleed (sidebar + editor area,
+   * VS Code layout), so DESIGN.md defines no page container. These
+   * exist only so the schema slot resolves for artifacts that need a
+   * centered reading column. */
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ══════════════════════
+   * Everything below is brand-specific and has no schema slot. These
+   * are the names the real codebase and mockups use, so an artifact
+   * that references them ports into the repo without a rename pass.
+   * All values byte-exact with app/globals.css. */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5.
+   * Color is never the sole signal: pair every state with text and an
+   * icon in dense views (DESIGN.md §10). */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* The most-used text size in the product: buttons, inputs, table
+   * cells. DESIGN.md §4 lists it as the 12 / 12.5px tier. */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 — tighter i/l and
+   * better number forms. Apply on the body element. */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+/* Reduced motion — DESIGN.md §10. The caret blink and the running-dot
+ * pulse are the two animations that must stop. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  min-width: 1280px;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  color-scheme: dark;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  overflow: hidden;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; border-radius: var(--r-1); }
+.mono { font-family: var(--font-mono); }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7;
+      stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic-16 { width: 16px; height: 16px; }
+.ic-18 { width: 18px; height: 18px; }
+.ic-11 { width: 11px; height: 11px; }
+a { color: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+           overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Sidebar (same anatomy as metrics-dashboard.html) ─────────────── */
+.sidebar { background: var(--bg-1); border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column; padding: var(--space-6) var(--space-4); gap: var(--space-6); }
+.brand { display: flex; align-items: baseline; gap: var(--space-3); padding: 0 var(--space-2); }
+.brand-jp { font-family: var(--font-jp); font-weight: 700; font-size: 18px; color: var(--fg-0); }
+.brand-latin { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; color: var(--fg-0); }
+.project-pill { display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4); font-size: var(--text-control); }
+.project-pill .mono { color: var(--fg-2); font-size: var(--text-sm); }
+.project-pill strong { font-weight: 500; color: var(--fg-1); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+             color: var(--fg-3); padding: 0 var(--space-3); margin-bottom: var(--space-2); }
+.nav-item { display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+  color: var(--fg-2); font-size: var(--text-control); font-weight: 500; text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.nav-item:hover { background: var(--bg-4); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); }
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.kbd-hint { display: flex; align-items: center; gap: var(--space-3);
+            color: var(--fg-3); font-size: var(--text-sm); padding: 0 var(--space-3); }
+.kbd { font-family: var(--font-mono); font-size: var(--text-sm);
+       background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+       border-radius: var(--r-1); padding: 1px 5px; color: var(--fg-2); }
+.user-row { display: flex; align-items: center; gap: var(--space-3);
+            padding: var(--space-2) var(--space-3); font-size: var(--text-control); color: var(--fg-2); }
+.avatar { width: 20px; height: 20px; border-radius: var(--r-1); background: var(--bg-5); color: var(--fg-1);
+          font-family: var(--font-mono); font-size: 9px; font-weight: 600; display: grid; place-items: center; }
+
+/* ── Main / header ────────────────────────────────────────────────── */
+.main { overflow-y: auto; height: 100vh; }
+.page { padding: var(--space-8) var(--space-12) var(--space-12); display: flex; flex-direction: column; gap: var(--space-6); }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-6); }
+.crumb { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); margin-bottom: var(--space-2); }
+.crumb .sep { color: var(--fg-4); padding: 0 var(--space-1); }
+h1 { font-size: var(--text-3xl); font-weight: 700; color: var(--fg-0); line-height: var(--leading-tight); }
+.head-meta { font-size: var(--text-control); color: var(--fg-3); margin-top: var(--space-2); }
+.head-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+/* ── Buttons / chips / inputs ─────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-body); font-size: var(--text-control); font-weight: 500;
+  color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); cursor: pointer; text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-1); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500; border-radius: var(--r-1);
+  padding: 2px var(--space-2); border: 1px solid transparent; white-space: nowrap; }
+.chip[data-status="pass"]    { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="fail"]    { color: var(--fail); background: var(--fail-bg); }
+.chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+.chip[data-status="running"] { color: var(--running); background: var(--running-bg); }
+.chip[data-layer] { font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+.chip[data-layer="ui"]   { color: var(--layer-ui);   background: color-mix(in srgb, var(--layer-ui) 12%, transparent); }
+.chip[data-layer="api"]  { color: var(--layer-api);  background: color-mix(in srgb, var(--layer-api) 12%, transparent); }
+.chip[data-layer="unit"] { color: var(--layer-unit); background: color-mix(in srgb, var(--layer-unit) 12%, transparent); }
+.dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; flex: none; }
+.input, .select { font-family: var(--font-body); font-size: var(--text-control); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-3); transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.input:hover, .select:hover { border-color: var(--stroke-3); }
+.input:focus, .select:focus { border-color: var(--accent); background: var(--bg-3); outline: none; }
+.input[aria-invalid="true"] { border-color: var(--fail); }
+.input[type="date"] { font-family: var(--font-mono); font-size: var(--text-sm); }
+
+/* ── Cards ────────────────────────────────────────────────────────── */
+.card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); }
+.seg { display: inline-flex; background: var(--bg-3); border: 1px solid var(--stroke-2);
+       border-radius: var(--r-2); padding: 2px; gap: 2px; }
+.seg button { font-family: var(--font-body); font-size: var(--text-control); font-weight: 500;
+  color: var(--fg-2); background: transparent; border: none; border-radius: var(--r-1);
+  padding: 3px var(--space-4); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.seg .mono { font-size: var(--text-sm); }
+
+/* ── Filter bar ───────────────────────────────────────────────────── */
+.filter-bar { display: flex; flex-direction: column; gap: 0; }
+.filter-row { display: flex; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap;
+              padding: var(--space-5) var(--space-6); }
+.f-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.f-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+           color: var(--fg-3); font-weight: 500; }
+.result-toggles { display: flex; gap: var(--space-2); }
+.result-toggles button { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-body); font-size: var(--text-control); font-weight: 500; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-3); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.result-toggles button:hover { border-color: var(--stroke-3); background: var(--bg-3); }
+.result-toggles button[aria-pressed="true"] { background: var(--bg-5); border-color: var(--stroke-strong); color: var(--fg-0); }
+.result-toggles .dot[data-s="pass"] { background: var(--pass); }
+.result-toggles .dot[data-s="fail"] { background: var(--fail); }
+.result-toggles .dot[data-s="blocked"] { background: var(--blocked); }
+.result-toggles .dot[data-s="skipped"] { background: var(--skipped); }
+.date-pair { display: flex; align-items: center; gap: var(--space-2); }
+.date-pair .to { font-size: var(--text-sm); color: var(--fg-3); }
+.date-error { display: flex; align-items: center; gap: var(--space-2);
+  color: var(--fail); font-size: var(--text-sm); margin-top: var(--space-2); }
+.date-error[hidden] { display: none; }
+.f-spacer { flex: 1; }
+.active-summary { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  border-top: 1px solid var(--stroke-1); padding: var(--space-3) var(--space-6);
+  font-size: var(--text-sm); color: var(--fg-3); }
+.active-summary[hidden] { display: none; }
+.active-summary .f-chip { display: inline-flex; align-items: center; gap: var(--space-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+  padding: 1px var(--space-2); color: var(--fg-2); font-size: var(--text-sm); }
+.active-summary .f-chip .mono { color: var(--fg-1); }
+
+/* ── Chain ────────────────────────────────────────────────────────── */
+.chain-cols { display: grid; grid-template-columns: 300px 230px 230px 1fr; gap: var(--space-4);
+  padding: 0 calc(var(--space-6) + 1px); font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3); font-weight: 500; }
+.chain-cols span { display: flex; align-items: center; gap: var(--space-2); }
+.chain-cols .ic { width: 11px; height: 11px; color: var(--fg-4); }
+.ac-card { overflow: hidden; }
+.ac-head { display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1); background: var(--bg-2); }
+.ac-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.ac-title { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.ac-meta { margin-left: auto; font-size: var(--text-sm); color: var(--fg-3); display: inline-flex; align-items: center; gap: var(--space-3); }
+.ac-meta .mono { color: var(--fg-2); }
+.ac-meta .fnote, #row-count { font-family: var(--font-mono); font-size: var(--text-sm); }
+.chain-row { display: grid; grid-template-columns: 300px 230px 230px 1fr; gap: var(--space-4);
+  padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1); align-items: start;
+  transition: background var(--motion-fast) var(--ease-standard); }
+.chain-row:hover { background: var(--bg-3); }
+.chain-row:last-child { border-bottom: none; }
+.chain-row[data-hidden="true"] { display: none; }
+.cell-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.cell-title { font-size: var(--text-control); color: var(--fg-1); margin-top: 1px; }
+.cell-sub { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-4); margin-top: 2px; }
+.atc-top { display: flex; align-items: center; gap: var(--space-3); }
+.run-line { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.run-meta { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.defect { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.defect + .defect { margin-top: var(--space-2); }
+.defect .cell-title { margin-top: 0; }
+.none-cell { font-size: var(--text-sm); color: var(--fg-4); }
+.ph { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); color: var(--skipped); background: var(--skipped-bg);
+  border: 1px dashed var(--stroke-3); border-radius: var(--r-1); padding: 2px var(--space-3); }
+.ph .ic { width: 11px; height: 11px; }
+.uncovered-strip { display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-6); background: var(--fail-bg); color: var(--fail);
+  font-size: var(--text-control); font-weight: 500; }
+.uncovered-strip .ic { color: var(--fail); }
+.uncovered-strip .why { color: var(--fg-2); font-weight: 400; }
+
+/* Story head */
+.story { display: flex; flex-direction: column; gap: var(--space-4); }
+.story[hidden] { display: none; }
+.story-head { display: flex; align-items: center; gap: var(--space-6); padding: var(--space-5) var(--space-6); }
+.story-id { font-family: var(--font-mono); font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.story-title { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.story-mod { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.story-counts { margin-left: auto; display: flex; align-items: center; gap: var(--space-4);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.story-counts .sep { color: var(--fg-4); }
+.rollup { display: flex; gap: var(--space-2); }
+
+/* Empty states */
+.empty-panel { padding: var(--space-12); display: flex; flex-direction: column; align-items: center;
+               gap: var(--space-3); text-align: center; }
+.empty-panel .ic-18 { color: var(--fg-3); }
+.empty-panel[data-tone="gap"] .ic-18 { color: var(--fail); }
+.empty-title { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.empty-msg { font-size: var(--text-control); color: var(--muted); max-width: 440px; }
+.banner { display: flex; align-items: flex-start; gap: var(--space-3);
+  border-radius: var(--r-2); padding: var(--space-3) var(--space-4); font-size: var(--text-control); }
+.banner[data-tone="gap"] { background: var(--fail-bg); border: 1px solid var(--stroke-2); color: var(--fg-1); }
+.banner[data-tone="gap"] .ic { color: var(--fail); margin-top: 1px; }
+.banner strong { color: var(--fg-0); }
+#filtered-empty[hidden] { display: none; }
+
+/* Toast */
+.toast { position: fixed; right: var(--space-6); bottom: 76px; z-index: 20; max-width: 420px;
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-5) var(--space-6);
+  display: flex; gap: var(--space-4); align-items: flex-start; }
+.toast[hidden] { display: none; }
+.toast .ic-16 { color: var(--pass); margin-top: 2px; }
+.toast-title { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.toast-body { font-size: var(--text-sm); color: var(--muted); margin-top: 2px; }
+.toast-file { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+  padding: 1px var(--space-2); margin-top: var(--space-2); display: inline-block; }
+.toast .btn { margin-left: auto; }
+
+/* Skeleton / error / state switch (same grammar as screen 1) */
+.sk { background: var(--bg-3); border-radius: var(--r-1); animation: sk-pulse 1.6s ease-in-out infinite; }
+@keyframes sk-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-rows { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.error-panel { padding: var(--space-12); display: flex; flex-direction: column; align-items: center;
+               gap: var(--space-4); text-align: center; }
+.error-panel .ic-18 { color: var(--fail); }
+.error-title { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.error-msg { font-size: var(--text-control); color: var(--muted); max-width: 380px; }
+.error-code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 2px var(--space-3); }
+body[data-state="default"] #view-loading, body[data-state="default"] #view-error { display: none; }
+body[data-state="loading"] #view-default, body[data-state="loading"] #view-error { display: none; }
+body[data-state="error"] #view-default, body[data-state="error"] #view-loading { display: none; }
+.state-switch { position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 10;
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-3) var(--space-4);
+  display: flex; align-items: center; gap: var(--space-4); }
+.state-switch .label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-3); }
+</style>
+</head>
+<body data-state="default">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3 3 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-flat" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+</svg>
+
+<!-- ── App shell sidebar (identical anatomy to screen 1) ─────────── -->
+<aside class="sidebar" data-od-id="app-sidebar">
+  <div class="brand" data-od-id="brand-wordmark">
+    <span class="brand-jp" lang="ja">分解</span><span class="brand-latin">Bunkai</span>
+  </div>
+  <div class="project-pill"><span class="mono">BK-44</span><strong>bunkai-core</strong></div>
+  <nav class="nav" aria-label="Global navigation" data-od-id="global-nav">
+    <div class="nav-label">Workspace</div>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-home"/></svg>Overview</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-file"/></svg>Test Cases</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-play"/></svg>Runs</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-bug"/></svg>Bug Reports</a>
+    <a class="nav-item" href="metrics-dashboard.html"><svg class="ic ic-16"><use href="#i-chart"/></svg>Metrics</a>
+    <a class="nav-item" href="#" aria-current="page" data-od-id="nav-traceability"><svg class="ic ic-16"><use href="#i-branch"/></svg>Traceability</a>
+    <a class="nav-item" href="#"><svg class="ic ic-16"><use href="#i-settings"/></svg>Settings</a>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="kbd-hint"><span class="kbd">⌘K</span> Command palette</div>
+    <div class="user-row"><span class="avatar">EY</span> ely@upex.dev</div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- ══ DEFAULT VIEW ══ -->
+  <div class="page" id="view-default">
+    <header class="page-head" data-od-id="page-header">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>traceability<span class="sep">/</span><span id="crumb-story">US-104</span></div>
+        <h1 data-od-id="page-title">Evidence Chain</h1>
+        <div class="head-meta">Story → AC → ATC → Test → Latest run → Defect · read-only reporting surface</div>
+      </div>
+      <div class="head-actions">
+        <a class="btn" data-variant="ghost" href="metrics-dashboard.html" data-od-id="back-to-metrics"><svg class="ic"><use href="#i-chart"/></svg>Metrics dashboard</a>
+        <button type="button" class="btn" data-variant="primary" id="btn-export" data-od-id="export-snapshot">
+          <svg class="ic"><use href="#i-download"/></svg>Export snapshot
+        </button>
+      </div>
+    </header>
+
+    <!-- Story picker -->
+    <div style="display:flex;align-items:center;gap:var(--space-4)" data-od-id="story-picker">
+      <span class="f-label">User story</span>
+      <div class="seg" role="group" aria-label="Select user story">
+        <button type="button" data-story="us104" aria-pressed="true"><span class="mono">US-104</span> Password reset</button>
+        <button type="button" data-story="us118" aria-pressed="false"><span class="mono">US-118</span> Cart totals</button>
+        <button type="button" data-story="us127" aria-pressed="false"><span class="mono">US-127</span> Digests</button>
+        <button type="button" data-story="us131" aria-pressed="false"><span class="mono">US-131</span> Invoice theming</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card filter-bar" data-od-id="filter-bar">
+      <div class="filter-row">
+        <div class="f-group">
+          <span class="f-label" id="lbl-result">Result</span>
+          <div class="result-toggles" role="group" aria-labelledby="lbl-result">
+            <button type="button" data-result="pass" aria-pressed="false"><span class="dot" data-s="pass"></span>Pass</button>
+            <button type="button" data-result="fail" aria-pressed="false"><span class="dot" data-s="fail"></span>Fail</button>
+            <button type="button" data-result="blocked" aria-pressed="false"><span class="dot" data-s="blocked"></span>Blocked</button>
+            <button type="button" data-result="skipped" aria-pressed="false"><span class="dot" data-s="skipped"></span>Skipped</button>
+          </div>
+        </div>
+        <div class="f-group">
+          <label class="f-label" for="f-module">Module</label>
+          <select class="select" id="f-module">
+            <option value="all">All modules</option>
+            <option value="MOD-001">MOD-001 · Authentication</option>
+            <option value="MOD-002">MOD-002 · Checkout</option>
+            <option value="MOD-008">MOD-008 · Session Management</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <span class="f-label" id="lbl-dates">Latest run between</span>
+          <div class="date-pair" role="group" aria-labelledby="lbl-dates">
+            <input class="input" type="date" id="f-from" aria-label="From date">
+            <span class="to">to</span>
+            <input class="input" type="date" id="f-to" aria-label="To date">
+          </div>
+          <div class="date-error" id="date-error" hidden role="alert">
+            <svg class="ic ic-11"><use href="#i-alert"/></svg>From date is after to date. Date filter ignored until fixed.
+          </div>
+        </div>
+        <div class="f-spacer"></div>
+        <span class="filter-meta" id="row-count" aria-live="polite" style="font-size:var(--text-sm);color:var(--fg-3)"></span>
+      </div>
+      <div class="active-summary" id="active-summary" hidden data-od-id="active-filter-summary">
+        <svg class="ic ic-11" style="color:var(--fg-3)"><use href="#i-filter"/></svg>
+        <span>Active filters:</span>
+        <span id="summary-chips" style="display:inline-flex;gap:var(--space-2);flex-wrap:wrap"></span>
+        <button type="button" class="btn" data-variant="ghost" id="btn-clear" style="margin-left:auto" data-od-id="clear-filters">
+          <svg class="ic ic-11"><use href="#i-x"/></svg>Clear all
+        </button>
+      </div>
+    </div>
+
+    <!-- ── US-104: fully covered, mixed results, defects ── -->
+    <section class="story" id="story-us104" data-od-id="story-us104">
+      <div class="card story-head">
+        <span class="story-id">US-104</span>
+        <span class="story-title">Password reset flow</span>
+        <span class="story-mod">MOD-001 · Authentication</span>
+        <span class="story-counts">
+          <span>3 ACs</span><span class="sep">·</span><span>5 ATCs</span><span class="sep">·</span>
+          <span>5 tests</span><span class="sep">·</span><span>5 runs</span><span class="sep">·</span><span>3 defects</span>
+        </span>
+        <span class="rollup">
+          <span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>2</span>
+          <span class="chip" data-status="fail"><svg class="ic ic-11"><use href="#i-x"/></svg>1</span>
+          <span class="chip" data-status="blocked"><svg class="ic ic-11"><use href="#i-alert"/></svg>1</span>
+          <span class="chip" data-status="skipped"><svg class="ic ic-11"><use href="#i-flat"/></svg>1</span>
+        </span>
+      </div>
+
+      <div class="chain-cols" aria-hidden="true">
+        <span>ATC · layer</span><span>Test</span><span>Latest run</span><span>Defects</span>
+      </div>
+
+      <div class="card ac-card">
+        <div class="ac-head">
+          <span class="ac-id">AC-0931</span>
+          <span class="ac-title">Reset email is sent within 60 s of the request</span>
+          <span class="ac-meta"><span class="fnote" hidden></span><span><span class="mono">2</span> ATCs</span></span>
+        </div>
+        <div class="chain-row" data-status="pass" data-module="MOD-001" data-date="2026-07-21">
+          <div><div class="atc-top"><span class="cell-id">ATC-014</span><span class="chip" data-layer="api">API</span></div>
+            <div class="cell-title">Request reset email for a known account</div><div class="cell-sub">MOD-001</div></div>
+          <div><span class="cell-id">TEST-201</span><div class="cell-title">auth/reset-request.spec</div></div>
+          <div><div class="run-line"><span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>Pass</span></div>
+            <div class="run-meta">RUN-451 · Jul 21, 14:03</div></div>
+          <div><div class="defect"><span class="cell-id">BUG-0991</span><span class="cell-title">Reset mail throttled by relay</span>
+            <span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>Fixed</span></div></div>
+        </div>
+        <div class="chain-row" data-status="pass" data-module="MOD-001" data-date="2026-07-21">
+          <div><div class="atc-top"><span class="cell-id">ATC-015</span><span class="chip" data-layer="api">API</span></div>
+            <div class="cell-title">Reset email contains a single-use link</div><div class="cell-sub">MOD-001</div></div>
+          <div><span class="cell-id">TEST-202</span><div class="cell-title">auth/reset-token.spec</div></div>
+          <div><div class="run-line"><span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>Pass</span></div>
+            <div class="run-meta">RUN-451 · Jul 21, 14:03</div></div>
+          <div><span class="none-cell">None linked</span></div>
+        </div>
+      </div>
+
+      <div class="card ac-card">
+        <div class="ac-head">
+          <span class="ac-id">AC-0932</span>
+          <span class="ac-title">Expired link shows a renewal prompt, not an error</span>
+          <span class="ac-meta"><span class="fnote" hidden></span><span><span class="mono">2</span> ATCs</span></span>
+        </div>
+        <div class="chain-row" data-status="fail" data-module="MOD-001" data-date="2026-07-24">
+          <div><div class="atc-top"><span class="cell-id">ATC-016</span><span class="chip" data-layer="ui">UI</span></div>
+            <div class="cell-title">Expired token renders the renewal screen</div><div class="cell-sub">MOD-001</div></div>
+          <div><span class="cell-id">TEST-203</span><div class="cell-title">reset-expiry.e2e</div></div>
+          <div><div class="run-line"><span class="chip" data-status="fail"><svg class="ic ic-11"><use href="#i-x"/></svg>Fail</span></div>
+            <div class="run-meta">RUN-455 · Jul 24, 09:40</div></div>
+          <div><div class="defect"><span class="cell-id">BUG-1108</span><span class="cell-title">Expired link returns 500 instead of prompt</span>
+            <span class="chip" data-status="fail"><svg class="ic ic-11"><use href="#i-bug"/></svg>Open</span></div></div>
+        </div>
+        <div class="chain-row" data-status="blocked" data-module="MOD-008" data-date="2026-07-24">
+          <div><div class="atc-top"><span class="cell-id">ATC-017</span><span class="chip" data-layer="unit">Unit</span></div>
+            <div class="cell-title">Token expiry boundary holds at exactly 24 h</div><div class="cell-sub">MOD-008</div></div>
+          <div><span class="cell-id">TEST-204</span><div class="cell-title">session/token-expiry.unit</div></div>
+          <div><div class="run-line"><span class="chip" data-status="blocked"><svg class="ic ic-11"><use href="#i-alert"/></svg>Blocked</span></div>
+            <div class="run-meta">RUN-455 · Jul 24, 09:40</div></div>
+          <div><div class="defect"><span class="cell-id">BUG-1042</span><span class="cell-title">Clock skew flakes expiry boundary test</span>
+            <span class="chip" data-status="running"><span class="dot"></span>In review</span></div></div>
+        </div>
+      </div>
+
+      <div class="card ac-card">
+        <div class="ac-head">
+          <span class="ac-id">AC-0933</span>
+          <span class="ac-title">Password strength meter is enforced on the new password</span>
+          <span class="ac-meta"><span class="fnote" hidden></span><span><span class="mono">1</span> ATC</span></span>
+        </div>
+        <div class="chain-row" data-status="skipped" data-module="MOD-001" data-date="2026-07-18">
+          <div><div class="atc-top"><span class="cell-id">ATC-018</span><span class="chip" data-layer="ui">UI</span></div>
+            <div class="cell-title">Weak password is rejected with meter feedback</div><div class="cell-sub">MOD-001</div></div>
+          <div><span class="cell-id">TEST-205</span><div class="cell-title">reset-strength.e2e</div></div>
+          <div><div class="run-line"><span class="chip" data-status="skipped"><svg class="ic ic-11"><use href="#i-flat"/></svg>Skipped</span></div>
+            <div class="run-meta">RUN-449 · Jul 18, 08:55</div></div>
+          <div><span class="none-cell">None linked</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── US-118: mixed coverage + partial chain ── -->
+    <section class="story" id="story-us118" hidden data-od-id="story-us118">
+      <div class="card story-head">
+        <span class="story-id">US-118</span>
+        <span class="story-title">Cart totals rounding</span>
+        <span class="story-mod">MOD-002 · Checkout</span>
+        <span class="story-counts">
+          <span>3 ACs</span><span class="sep">·</span><span>3 ATCs</span><span class="sep">·</span>
+          <span>2 tests</span><span class="sep">·</span><span>1 run</span><span class="sep">·</span><span>0 defects</span>
+        </span>
+        <span class="rollup">
+          <span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>1</span>
+        </span>
+      </div>
+
+      <div class="chain-cols" aria-hidden="true">
+        <span>ATC · layer</span><span>Test</span><span>Latest run</span><span>Defects</span>
+      </div>
+
+      <div class="card ac-card">
+        <div class="ac-head">
+          <span class="ac-id">AC-1163</span>
+          <span class="ac-title">Totals round half-to-even at display time</span>
+          <span class="ac-meta"><span class="fnote" hidden></span><span><span class="mono">1</span> ATC</span></span>
+        </div>
+        <div class="chain-row" data-status="pass" data-module="MOD-002" data-date="2026-07-28">
+          <div><div class="atc-top"><span class="cell-id">ATC-042</span><span class="chip" data-layer="unit">Unit</span></div>
+            <div class="cell-title">Half-to-even rounding on cart subtotal</div><div class="cell-sub">MOD-002</div></div>
+          <div><span class="cell-id">TEST-310</span><div class="cell-title">cart/rounding.unit</div></div>
+          <div><div class="run-line"><span class="chip" data-status="pass"><svg class="ic ic-11"><use href="#i-check"/></svg>Pass</span></div>
+            <div class="run-meta">RUN-460 · Jul 28, 11:20</div></div>
+          <div><span class="none-cell">None linked</span></div>
+        </div>
+      </div>
+
+      <div class="card ac-card" data-od-id="ac-partial-chain">
+        <div class="ac-head">
+          <span class="ac-id">AC-1164</span>
+          <span class="ac-title">Rounding is consistent across currency locales</span>
+          <span class="ac-meta"><span class="fnote" hidden></span><span><span class="mono">2</span> ATCs</span></span>
+        </div>
+        <div class="chain-row" data-status="none" data-module="MOD-002" data-date="">
+          <div><div class="atc-top"><span class="cell-id">ATC-043</span><span class="chip" data-layer="api">API</span></div>
+            <div class="cell-title">Locale-formatted totals match rounded values</div><div class="cell-sub">MOD-002</div></div>
+          <div><span class="cell-id">TEST-311</span><div class="cell-title">cart/locale-rounding.spec</div></div>
+          <div><span class="ph"><svg class="ic"><use href="#i-clock"/></svg>No run recorded yet</span></div>
+          <div><span class="ph"><svg class="ic"><use href="#i-clock"/></svg>Awaiting first run</span></div>
+        </div>
+        <div class="chain-row" data-status="none" data-module="MOD-002" data-date="">
+          <div><div class="atc-top"><span class="cell-id">ATC-044</span><span class="chip" data-layer="ui">UI</span></div>
+            <div class="cell-title">Displayed total matches receipt total per locale</div><div class="cell-sub">MOD-002</div></div>
+          <div><span class="ph"><svg class="ic"><use href="#i-clock"/></svg>No test written yet</span></div>
+          <div><span class="ph"><svg class="ic"><use href="#i-clock"/></svg>Awaiting test</span></div>
+          <div><span class="ph"><svg class="ic"><use href="#i-clock"/></svg>Awaiting test</span></div>
+        </div>
+      </div>
+
+      <div class="card ac-card" data-od-id="ac-uncovered">
+        <div class="ac-head">
+          <span class="ac-id">AC-1165</span>
+          <span class="ac-title">Rounding rule is documented in the receipt footnote</span>
+          <span class="ac-meta"><span><span class="mono">0</span> ATCs</span></span>
+        </div>
+        <div class="uncovered-strip">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          Uncovered
+          <span class="why">· 0 ATCs bound: no verification exists for this criterion. Bind an ATC in the Test Cases screen to start a chain.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── US-127: has ACs, zero coverage anywhere ── -->
+    <section class="story" id="story-us127" hidden data-od-id="story-us127">
+      <div class="card story-head">
+        <span class="story-id">US-127</span>
+        <span class="story-title">Notification digests</span>
+        <span class="story-mod">MOD-005 · Notifications</span>
+        <span class="story-counts"><span>3 ACs</span><span class="sep">·</span><span>0 ATCs</span></span>
+      </div>
+      <div class="banner" data-tone="gap" data-od-id="zero-coverage-banner">
+        <svg class="ic"><use href="#i-alert"/></svg>
+        <div><strong>No coverage anywhere on this story.</strong> 3 acceptance criteria exist, but none of them has an ATC bound.
+        There is no chain to trace yet: every criterion below is an open verification gap.</div>
+      </div>
+      <div class="card ac-card">
+        <div class="ac-head"><span class="ac-id">AC-1310</span><span class="ac-title">Daily digest sends at the user's local 08:00</span>
+          <span class="ac-meta"><span><span class="mono">0</span> ATCs</span></span></div>
+        <div class="uncovered-strip"><svg class="ic"><use href="#i-alert"/></svg>Uncovered<span class="why">· 0 ATCs bound</span></div>
+      </div>
+      <div class="card ac-card">
+        <div class="ac-head"><span class="ac-id">AC-1311</span><span class="ac-title">Digest groups events by project</span>
+          <span class="ac-meta"><span><span class="mono">0</span> ATCs</span></span></div>
+        <div class="uncovered-strip"><svg class="ic"><use href="#i-alert"/></svg>Uncovered<span class="why">· 0 ATCs bound</span></div>
+      </div>
+      <div class="card ac-card">
+        <div class="ac-head"><span class="ac-id">AC-1312</span><span class="ac-title">Unsubscribe link is present in every digest</span>
+          <span class="ac-meta"><span><span class="mono">0</span> ATCs</span></span></div>
+        <div class="uncovered-strip"><svg class="ic"><use href="#i-alert"/></svg>Uncovered<span class="why">· 0 ATCs bound</span></div>
+      </div>
+    </section>
+
+    <!-- ── US-131: zero ACs at all ── -->
+    <section class="story" id="story-us131" hidden data-od-id="story-us131">
+      <div class="card story-head">
+        <span class="story-id">US-131</span>
+        <span class="story-title">Dark-mode invoice theming</span>
+        <span class="story-mod">MOD-006 · Billing</span>
+        <span class="story-counts"><span>0 ACs</span></span>
+      </div>
+      <div class="card empty-panel" data-od-id="zero-ac-empty">
+        <svg class="ic ic-18"><use href="#i-file"/></svg>
+        <div class="empty-title">No acceptance criteria yet</div>
+        <div class="empty-msg">This story has no acceptance criteria defined, so there is nothing for the chain to trace.
+        This is different from a coverage gap: criteria are authored first, in the story editor, and the chain builds from there.</div>
+      </div>
+    </section>
+
+    <!-- Filters excluded everything (data exists, filtered out) -->
+    <div class="card empty-panel" id="filtered-empty" hidden data-od-id="filtered-empty">
+      <svg class="ic ic-18"><use href="#i-filter"/></svg>
+      <div class="empty-title">Filters excluded everything</div>
+      <div class="empty-msg"><span class="mono" id="fe-count">0</span> chain entries exist for <span class="mono" id="fe-story">US-104</span>,
+      and the active filters match none of them. The data is still there: this is a filter result, not a coverage gap.</div>
+      <button type="button" class="btn" id="btn-clear-2"><svg class="ic ic-11"><use href="#i-x"/></svg>Clear all filters</button>
+    </div>
+  </div>
+
+  <!-- ══ LOADING VIEW ══ -->
+  <div class="page" id="view-loading" aria-busy="true" aria-label="Loading evidence chain" data-od-id="view-loading">
+    <header class="page-head">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>traceability</div>
+        <h1>Evidence Chain</h1>
+        <div class="head-meta">Loading chain…</div>
+      </div>
+    </header>
+    <div class="card sk-rows" aria-hidden="true">
+      <div class="sk" style="width:320px;height:14px"></div>
+      <div class="sk" style="width:100%;height:12px"></div>
+    </div>
+    <div class="card sk-rows" aria-hidden="true">
+      <div class="sk" style="width:260px;height:14px"></div>
+      <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:100%;height:12px"></div>
+      <div class="sk" style="width:70%;height:12px"></div>
+    </div>
+    <div class="card sk-rows" aria-hidden="true">
+      <div class="sk" style="width:300px;height:14px"></div>
+      <div class="sk" style="width:100%;height:12px"></div><div class="sk" style="width:84%;height:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ ERROR VIEW ══ -->
+  <div class="page" id="view-error" data-od-id="view-error">
+    <header class="page-head">
+      <div>
+        <div class="crumb">bunkai-core<span class="sep">/</span>traceability</div>
+        <h1>Evidence Chain</h1>
+      </div>
+    </header>
+    <div class="card error-panel" role="alert" data-od-id="error-panel">
+      <svg class="ic ic-18"><use href="#i-alert"/></svg>
+      <div class="error-title">Couldn't load the evidence chain</div>
+      <div class="error-msg">The traceability service didn't respond within 10 seconds. Your stories, tests, and runs are unaffected: this is a reporting failure only.</div>
+      <span class="error-code">GET /api/projects/BK-44/trace/US-104 · 504 Gateway Timeout</span>
+      <button type="button" class="btn" data-variant="primary" id="btn-retry" data-od-id="retry-button">
+        <svg class="ic"><use href="#i-refresh"/></svg>Retry
+      </button>
+    </div>
+  </div>
+</main>
+
+<!-- Export confirmation -->
+<div class="toast" id="toast" hidden role="status" data-od-id="export-toast">
+  <svg class="ic ic-16"><use href="#i-check"/></svg>
+  <div>
+    <div class="toast-title">Snapshot exported</div>
+    <div class="toast-body">Read-only capture of the <span class="mono" id="toast-story">US-104</span> chain as of
+      <span class="mono" id="toast-time"></span>. Later changes to the live chain will not appear in this snapshot.</div>
+    <span class="toast-file" id="toast-file"></span>
+  </div>
+  <button type="button" class="btn" data-variant="ghost" id="toast-dismiss" aria-label="Dismiss notification">
+    <svg class="ic ic-11"><use href="#i-x"/></svg>
+  </button>
+</div>
+
+<!-- Prototype-only state preview. Not part of the product UI. -->
+<div class="state-switch" data-od-id="state-switcher">
+  <span class="label">Preview state</span>
+  <div class="seg" role="group" aria-label="Preview screen state">
+    <button type="button" data-state-btn="default" aria-pressed="true">Default</button>
+    <button type="button" data-state-btn="loading" aria-pressed="false">Loading</button>
+    <button type="button" data-state-btn="error" aria-pressed="false">Error</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  var STORY_LABEL = { us104: 'US-104', us118: 'US-118', us127: 'US-127', us131: 'US-131' };
+  var currentStory = 'us104';
+
+  var resultBtns = $$('.result-toggles button');
+  var moduleSel = $('#f-module');
+  var fromIn = $('#f-from'), toIn = $('#f-to');
+  var dateErr = $('#date-error');
+  var summary = $('#active-summary'), summaryChips = $('#summary-chips');
+  var rowCount = $('#row-count');
+  var filteredEmpty = $('#filtered-empty');
+
+  function activeResults() {
+    return resultBtns.filter(function (b) { return b.getAttribute('aria-pressed') === 'true'; })
+      .map(function (b) { return b.dataset.result; });
+  }
+
+  function dateRange() {
+    var from = fromIn.value, to = toIn.value;
+    var invalid = !!(from && to && from > to);
+    dateErr.hidden = !invalid;
+    fromIn.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    toIn.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+    // An inverted range is surfaced as an error and ignored, never applied.
+    return invalid ? { from: '', to: '', invalid: true } : { from: from, to: to, invalid: false };
+  }
+
+  function applyFilters() {
+    var results = activeResults();
+    var mod = moduleSel.value;
+    var dr = dateRange();
+    var filtering = results.length > 0 || mod !== 'all' || !!dr.from || !!dr.to;
+
+    var section = $('#story-' + currentStory);
+    var rows = $$('.chain-row', section);
+    var visible = 0;
+
+    rows.forEach(function (row) {
+      var show = true;
+      if (mod !== 'all' && row.dataset.module !== mod) show = false;
+      if (show && results.length && results.indexOf(row.dataset.status) === -1) show = false;
+      if (show && (dr.from || dr.to)) {
+        var d = row.dataset.date;
+        if (!d) show = false;
+        else if (dr.from && d < dr.from) show = false;
+        else if (dr.to && d > dr.to) show = false;
+      }
+      row.dataset.hidden = show ? 'false' : 'true';
+      if (show) visible++;
+    });
+
+    // Per-AC "n of m shown" note; hide AC cards whose rows are all filtered out.
+    $$('.ac-card', section).forEach(function (card) {
+      var cardRows = $$('.chain-row', card);
+      if (!cardRows.length) { card.hidden = filtering && rows.length > 0 && visible === 0; return; }
+      var shown = cardRows.filter(function (r) { return r.dataset.hidden !== 'true'; }).length;
+      var note = $('.fnote', card);
+      if (note) {
+        note.hidden = !filtering;
+        note.textContent = filtering ? shown + ' of ' + cardRows.length + ' shown ·' : '';
+      }
+      card.hidden = filtering && shown === 0;
+    });
+
+    // Zero matches on a story that has data → "filters excluded everything".
+    var zeroMatch = filtering && rows.length > 0 && visible === 0;
+    section.querySelectorAll('.chain-cols, .story-head, .banner').forEach(function (el) {
+      el.hidden = zeroMatch && el.classList.contains('chain-cols');
+    });
+    filteredEmpty.hidden = !zeroMatch;
+    $('#fe-count').textContent = rows.length;
+    $('#fe-story').textContent = STORY_LABEL[currentStory];
+
+    rowCount.textContent = rows.length
+      ? (filtering ? visible + ' of ' + rows.length + ' chain entries shown' : rows.length + ' chain entries')
+      : '';
+
+    // Active-filter summary chips.
+    summary.hidden = !filtering;
+    if (filtering) {
+      var chips = [];
+      if (results.length) chips.push('Result: <span class="mono">' + results.join(', ') + '</span>');
+      if (mod !== 'all') chips.push('Module: <span class="mono">' + mod + '</span>');
+      if (dr.from) chips.push('From <span class="mono">' + dr.from + '</span>');
+      if (dr.to) chips.push('To <span class="mono">' + dr.to + '</span>');
+      summaryChips.innerHTML = chips.map(function (c) { return '<span class="f-chip">' + c + '</span>'; }).join('');
+    }
+  }
+
+  function clearFilters() {
+    resultBtns.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+    moduleSel.value = 'all';
+    fromIn.value = ''; toIn.value = '';
+    applyFilters();
+  }
+
+  resultBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      applyFilters();
+    });
+  });
+  moduleSel.addEventListener('change', applyFilters);
+  fromIn.addEventListener('change', applyFilters);
+  toIn.addEventListener('change', applyFilters);
+  $('#btn-clear').addEventListener('click', clearFilters);
+  $('#btn-clear-2').addEventListener('click', clearFilters);
+
+  // Story switching.
+  var storyBtns = $$('[data-story]');
+  storyBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      currentStory = b.dataset.story;
+      storyBtns.forEach(function (x) {
+        x.setAttribute('aria-pressed', x.dataset.story === currentStory ? 'true' : 'false');
+      });
+      $$('.story').forEach(function (s) { s.hidden = s.id !== 'story-' + currentStory; });
+      $('#crumb-story').textContent = STORY_LABEL[currentStory];
+      applyFilters();
+    });
+  });
+
+  // Export snapshot: stamp the exact moment; the snapshot never updates.
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  $('#btn-export').addEventListener('click', function () {
+    var now = new Date();
+    var stamp = MONTHS[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() +
+      ', ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    var fileStamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
+      '-' + pad(now.getHours()) + pad(now.getMinutes());
+    $('#toast-story').textContent = STORY_LABEL[currentStory];
+    $('#toast-time').textContent = stamp;
+    $('#toast-file').textContent = 'trace-' + STORY_LABEL[currentStory].toLowerCase() + '-' + fileStamp + '.json';
+    $('#toast').hidden = false;
+  });
+  $('#toast-dismiss').addEventListener('click', function () {
+    $('#toast').hidden = true;
+    $('#btn-export').focus();
+  });
+
+  // Prototype state switcher: default / loading / error.
+  var stateBtns = $$('[data-state-btn]');
+  function setState(s) {
+    document.body.dataset.state = s;
+    stateBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.stateBtn === s ? 'true' : 'false');
+    });
+  }
+  stateBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setState(b.dataset.stateBtn); });
+  });
+  $('#btn-retry').addEventListener('click', function () {
+    setState('loading');
+    setTimeout(function () { setState('default'); }, 900);
+  });
+
+  applyFilters();
+})();
+</script>
+</body>
+</html>
