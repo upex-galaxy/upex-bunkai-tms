@@ -42,6 +42,7 @@ Every user story that touches UI MUST:
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 | Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
+| Notifications Center (post-MVP, 3-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.13) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -351,6 +352,23 @@ Backlog, post-MVP. This batch is forward design for the post-MVP P1 frontier (mo
 not an unblock for any story in flight today. **Priority: post-MVP P1** — second in the epic-backbone
 post-MVP order, per the mockup roadmap, right after §4.11 Test Plans & Milestones.
 
+### 4.13 Notifications Center — post-MVP · ❌ build 0% · ✅ mockups ready (2026-07-30)
+All BK-208 stories parked Backlog (post-MVP). **The 🔒 mockup gate is LIFTED**: a 3-screen set was
+generated via Open Design (MCP-driven Mode A, project `bunkai-bk-208-notifications`, design system
+`user:bunkai`) and lives in `.context/designs/bunkai-test-management-tool/bk-208-notifications/`
+(provenance: `BRIEF.md` in the same folder). English copy, frozen §2 tokens verbatim,
+`:focus-visible` 1px `--accent`, unread state never color-only.
+
+| Screen file | Route / surface | Spec highlights |
+|---|---|---|
+| `notifications-inbox.html` | in-app inbox (top-bar bell + panel), global app shell | Workspace-event inbox: run finished/aborted (BK-211) and bug assignment/status (BK-212) events render with their established entity vocabulary (`RUN-xxx` / `BUG-xxx` mono chips + signal tokens paired with text); unread = structural marker + text, mark-read/mark-all affordances; states strip per batch convention. |
+| `settings-notifications.html` | `/settings/notifications` — extends the §4.10 Settings hub | Notification preferences (BK-213): settings shell verbatim (rail + settings nav + topbar) with "Notifications" now LIVE in the nav (Members/Billing/Environments stay "soon"); per-event-type and per-channel controls, states strip. Cross-reference: §4.10 build order — whoever builds the hub first hosts this section. |
+| `email-digest-template.html` | email surface (non-app) | Unread digest (BK-214): email-safe constrained layout, still token-faithful; send rule surfaced in the design ("Daily at 17:00 workspace time · only when unread count > 0 — a zero-unread digest is never sent"). |
+
+Provenance note: the batch's final screen completed in OD moments before the orchestrating agent hit
+a session limit; export + this spec were completed by the main session against the verified
+`succeeded` run states (all 3 runs exit 0, artifacts intact). No refinement runs were needed.
+
 ---
 
 ## 5. Divergences — gaps to correct, UI-first
@@ -470,11 +488,11 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-205 Create a milestone with a target date | **Milestones view** (new, Project scope) | §4.11 · `bk-201-test-plans-milestones/milestones-board.html` |
 | | BK-206 Assign plans + track milestone progress | **Milestones view** · Plan detail | §4.11 · `bk-201-test-plans-milestones/milestones-board.html` |
 | | BK-207 Close a plan with an outcome summary | **Plan detail** (close action) · Test Plans index | §4.11 · `bk-201-test-plans-milestones/plan-detail.html` + `test-plans-index.html` |
-| **BK-208 Notifications Center** | BK-209 Inbox of workspace events | **Notifications inbox** (new — top-bar bell + panel) | ⚠️ wireframe pending |
-| | BK-211 Run finished/aborted events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
-| | BK-212 Bug assignment/status events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
-| | BK-213 Notification preferences | **Settings — Notification preferences** (extends §4.10 hub) | §4.10 · ⚠️ wireframe pending |
-| | BK-214 Email digest of unread notifications | **Email digest template** (non-app surface — email design) | ⚠️ wireframe pending |
+| **BK-208 Notifications Center** | BK-209 Inbox of workspace events | **Notifications inbox** (new — top-bar bell + panel) | §4.13 · `bk-208-notifications/notifications-inbox.html` |
+| | BK-211 Run finished/aborted events | Notifications inbox (event producer — renders into BK-209 inbox) | §4.13 · `bk-208-notifications/notifications-inbox.html` |
+| | BK-212 Bug assignment/status events | Notifications inbox (event producer — renders into BK-209 inbox) | §4.13 · `bk-208-notifications/notifications-inbox.html` |
+| | BK-213 Notification preferences | **Settings — Notification preferences** (extends §4.10 hub) | §4.10 · §4.13 · `bk-208-notifications/settings-notifications.html` |
+| | BK-214 Email digest of unread notifications | **Email digest template** (non-app surface — email design) | §4.13 · `bk-208-notifications/email-digest-template.html` |
 | **BK-210 Team Chat** | BK-215 Workspace real-time channel | **Team Chat panel** (new — workspace channel) | ⚠️ wireframe pending |
 | | BK-216 Per-project channel | **Team Chat panel** (project channels) | ⚠️ wireframe pending |
 | | BK-217 Mention a teammate | **Chat panel** · Notifications inbox (mention delivery) | ⚠️ wireframe pending |
@@ -495,7 +513,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
 >
-> **Post-MVP screens (BK-208/210/224):** none of these screens exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12.
+> **Post-MVP screens (BK-210/224):** these screens do not exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12. **BK-208 Notifications Center is done** — 3-screen set shipped 2026-07-30, see §4.13.
 
 ---
 
