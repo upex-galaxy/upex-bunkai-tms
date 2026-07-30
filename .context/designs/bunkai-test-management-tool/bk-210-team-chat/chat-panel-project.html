@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Project Team Chat · Screen 2/4</title>
+<style>
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .spin, .caret { animation: none !important; }
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-0); color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  padding: var(--space-12); min-width: 1440px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic.lg { width: 16px; height: 16px; }
+.ic.xs { width: 12px; height: 12px; }
+kbd {
+  font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px; letter-spacing: 0.01em;
+}
+.sr { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+
+/* ─── Sheet chrome (spec frames, not product UI) ───────────────────── */
+.sheet-head { max-width: 1440px; margin: 0 auto var(--space-12); display: flex; align-items: baseline; gap: var(--space-5); }
+.sheet-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.sheet-head .mono-meta { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.frame { max-width: 1440px; margin: 0 auto var(--space-12); }
+.frame-label {
+  font: 500 var(--text-xs)/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: var(--space-2);
+}
+.frame-cap { font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); max-width: 72ch; }
+.frame-row { display: flex; gap: var(--space-12); align-items: flex-start; flex-wrap: wrap; }
+
+/* ─── App Shell (frame 01 context) ─────────────────────────────────── */
+.shell {
+  display: grid; grid-template-columns: 48px 1fr 380px; height: 720px; width: 100%;
+  background: var(--bg-0); border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden;
+}
+.rail { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; align-items: center; padding: var(--space-4) 0; gap: var(--space-2); }
+.rail .mark { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); margin-bottom: var(--space-4); }
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center; position: relative;
+  color: var(--fg-3); border-radius: var(--r-2); transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { color: var(--fg-1); background: var(--bg-3); }
+.rail-btn[aria-pressed="true"] { color: var(--fg-0); background: var(--bg-3); }
+.rail-badge {
+  position: absolute; top: -2px; right: -2px; min-width: 14px; height: 14px; padding: 0 3px;
+  font: 500 10px/14px var(--font-mono); text-align: center; color: var(--fg-0);
+  background: var(--bg-5); border: 1px solid var(--stroke-3); border-radius: var(--radius-pill);
+}
+.editor-mock { background: var(--bg-0); display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--stroke-1); }
+.tabs { display: flex; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); }
+.tab {
+  font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); padding: var(--space-3) var(--space-6);
+  border-right: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-2);
+}
+.tab[data-active] { color: var(--fg-1); background: var(--bg-0); box-shadow: 0 1px 0 var(--bg-0); }
+.ghost-rows { flex: 1; padding: var(--space-6); opacity: 0.45; display: flex; flex-direction: column; gap: var(--space-3); }
+.ghost-rows .gr { height: 28px; background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-2); }
+.ghost-rows .gr.w60 { width: 60%; } .ghost-rows .gr.w80 { width: 80%; }
+.editor-note { font: 400 var(--text-xs)/1 var(--font-mono); color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 var(--space-6) var(--space-5); }
+
+/* ─── Chat panel ───────────────────────────────────────────────────── */
+.panel {
+  width: 380px; background: var(--bg-1); display: flex; flex-direction: column;
+  position: relative; min-height: 0; height: 100%;
+}
+.panel.standalone { height: 520px; border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden; box-shadow: var(--shadow-card); }
+.p-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5);
+  background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); flex: none; min-height: 45px;
+}
+.p-head .ch-ic { color: var(--muted); }
+.p-sub { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.live { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--text-sm)/1 var(--font-body); color: var(--muted); margin-left: auto; }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot.on { background: var(--pass); }
+.dot.off { background: transparent; border: 1px solid var(--fg-4); }
+
+/* Channel switcher trigger */
+.ch-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2); margin-left: calc(-1 * var(--space-2));
+  border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.ch-btn:hover { background: var(--bg-3); }
+.ch-btn .chev { color: var(--meta); }
+.ch-cur { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.ch-cur .p-sub { white-space: nowrap; }
+.ch-name-h { font: 600 var(--text-lg)/1 var(--font-display); color: var(--fg-0); white-space: nowrap; }
+.upill {
+  min-width: 15px; padding: 0 4px; font: 500 10px/15px var(--font-mono); text-align: center;
+  color: var(--fg-0); background: var(--bg-5); border: 1px solid var(--stroke-3); border-radius: var(--radius-pill);
+}
+.upill[hidden] { display: none; }
+
+/* Channel switcher popover */
+.switch-pop {
+  position: absolute; top: 45px; left: var(--space-4); width: 288px; z-index: 35;
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-1);
+}
+.switch-pop[hidden] { display: none; }
+.sw-group {
+  display: flex; align-items: center; gap: var(--space-2);
+  font: 500 var(--text-xs)/1 var(--font-mono); color: var(--meta); text-transform: uppercase;
+  letter-spacing: 0.08em; padding: var(--space-3) var(--space-3) var(--space-2);
+}
+.ch-item {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; text-align: left;
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+  font: 400 var(--text-control)/1.3 var(--font-body); color: var(--fg-1);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.ch-item .ic { color: var(--muted); }
+.ch-item:hover { background: var(--bg-4); }
+.ch-item[aria-selected="true"] { background: var(--bg-4); }
+.ch-item .nm { font-weight: 500; color: var(--fg-1); }
+.ch-item.unread .nm { font-weight: 600; color: var(--fg-0); }
+.ch-item .proj { font-size: var(--text-xs); color: var(--meta); margin-left: 2px; }
+.ch-meta { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); }
+.ch-meta .cur-ic { color: var(--fg-1); }
+.sw-note {
+  display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-2); border-top: 1px solid var(--stroke-1);
+  font-size: var(--text-xs); color: var(--meta);
+}
+.sw-note .ic { margin-top: 1px; }
+
+/* Auto-follow banner */
+.follow {
+  display: none; align-items: center; gap: var(--space-2); flex: none;
+  margin: var(--space-2) var(--space-4) 0; padding: var(--space-2) var(--space-3);
+  background: var(--running-bg); border: 1px solid rgba(79, 140, 247, 0.4); border-radius: var(--r-2);
+  font: 500 var(--text-sm)/1.3 var(--font-body); color: var(--running);
+}
+.follow.show { display: flex; }
+.follow b { font-weight: 600; }
+.follow .btn { margin-left: auto; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-control)/1 var(--font-body);
+  color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); letter-spacing: 0.02em;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hover); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-3); color: var(--fg-1); }
+.btn[data-variant="danger"] { background: transparent; border-color: var(--fail); color: var(--fail); }
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); }
+.btn.sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
+.btn.icon-only { padding: var(--space-2); }
+.btn[disabled] { color: var(--fg-4); background: var(--bg-2); border-color: var(--stroke-1); cursor: not-allowed; box-shadow: none; }
+
+/* Message list */
+.msg-scroll { flex: 1; overflow-y: auto; padding: var(--space-3) 0 var(--space-4); scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; min-height: 0; }
+.day-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); }
+.day-div::before, .day-div::after { content: ""; flex: 1; height: 1px; background: var(--stroke-1); }
+.day-div span { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.begin {
+  margin: var(--space-2) var(--space-5) var(--space-4); padding: var(--space-4) var(--space-5);
+  background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-3);
+  font-size: var(--text-sm); color: var(--muted);
+}
+.begin b { color: var(--fg-1); font-weight: 600; }
+.loader { display: none; align-items: center; gap: var(--space-2); justify-content: center; padding: var(--space-3); font: 500 var(--text-sm)/1 var(--font-body); color: var(--running); }
+.loader.show { display: flex; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msg { display: grid; grid-template-columns: 26px 1fr; gap: var(--space-3); padding: var(--space-1) var(--space-5); position: relative; }
+.msg:hover, .msg:focus-within { background: var(--bg-2); }
+.msg + .msg:not(.cont) { margin-top: var(--space-2); }
+.avatar {
+  width: 26px; height: 26px; display: grid; place-items: center; margin-top: 2px;
+  font: 500 10px/1 var(--font-mono); color: var(--fg-1); letter-spacing: 0.02em;
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-2); flex: none;
+}
+.avatar.sm { width: 20px; height: 20px; font-size: 9px; margin: 0; }
+.msg.cont .avatar, .msg.tomb .avatar { visibility: hidden; height: 0; margin: 0; border: 0; }
+.stone { display: inline-flex; align-items: center; gap: var(--space-2); font-style: italic; font-size: var(--text-control); border-radius: var(--r-2); padding: var(--space-2) var(--space-3); }
+.stone.own-del { color: var(--muted); background: var(--skipped-bg); border: 1px dashed var(--stroke-2); }
+.m-h { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.name { font: 600 var(--text-base)/1.3 var(--font-display); color: var(--fg-0); }
+.you-tag {
+  font: 500 10px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px;
+}
+.time { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.edited { font: 400 var(--text-sm)/1 var(--font-body); color: var(--muted); font-style: italic; }
+.text { color: var(--fg-1); overflow-wrap: anywhere; }
+.mention {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-0);
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.mention.self { background: var(--accent-soft); border-color: var(--accent-glow); color: var(--accent-hi); }
+.idchip {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.acts {
+  position: absolute; top: -10px; right: var(--space-5); display: flex; gap: var(--space-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px;
+  box-shadow: var(--shadow-card); opacity: 0; pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.msg:hover .acts, .msg:focus-within .acts { opacity: 1; pointer-events: auto; }
+.acts button { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-1); color: var(--muted); }
+.acts button:hover { background: var(--bg-4); color: var(--fg-0); }
+.acts button.a-del:hover { color: var(--fail); background: var(--fail-bg); }
+
+/* Inline edit */
+.editbox { margin-top: var(--space-1); }
+.e-bar { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.e-bar .hint { margin-right: auto; }
+
+/* Empty channel state */
+.msg-scroll.is-empty { display: flex; flex-direction: column; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-8); text-align: center; }
+.empty .ic.lg { width: 18px; height: 18px; color: var(--fg-3); }
+.empty h3 { font: 600 var(--text-lg)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.empty p { font-size: var(--text-control); color: var(--muted); max-width: 36ch; }
+.caret-line { display: inline-flex; align-items: center; gap: var(--space-2); font: 400 var(--text-control)/1 var(--font-mono); color: var(--meta); margin-top: var(--space-2); }
+.caret { display: inline-block; width: 7px; height: 13px; background: var(--fg-3); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* Composer */
+.composer { flex: none; position: relative; padding: var(--space-4) var(--space-5) var(--space-5); background: var(--bg-1); border-top: 1px solid var(--stroke-1); }
+.input, textarea.ta {
+  width: 100%; font: 400 var(--text-control)/1.5 var(--font-body); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4); resize: none;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { border-color: var(--accent); background: var(--bg-3); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+.c-bar { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.hint { font-size: var(--text-sm); color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.c-bar .hint { margin-right: auto; }
+
+/* Mention popup */
+.mention-pop {
+  position: absolute; left: var(--space-5); right: var(--space-5); bottom: calc(100% + var(--space-1));
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-1); z-index: 30;
+}
+.m-item {
+  display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: var(--space-3);
+  width: 100%; text-align: left; padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+}
+.m-item:hover { background: var(--bg-4); }
+.m-item[aria-selected="true"] { background: var(--bg-5); }
+.m-name { font: 500 var(--text-control)/1.2 var(--font-display); color: var(--fg-0); }
+.m-handle { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.m-role { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.m-item[aria-selected="true"] .m-role, .m-item[aria-selected="true"] .m-handle { color: var(--fg-1); }
+
+/* Roster flyout */
+.roster {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 300px; z-index: 20;
+  background: var(--bg-2); border-left: 1px solid var(--stroke-3); box-shadow: var(--shadow-pop);
+  display: flex; flex-direction: column;
+}
+.roster[hidden] { display: none; }
+.r-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-1); }
+.r-head h3 { font: 600 var(--text-base)/1 var(--font-display); color: var(--fg-0); }
+.r-head .count { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.r-head button { margin-left: auto; }
+.r-body { overflow-y: auto; padding: var(--space-2) 0 var(--space-4); }
+.r-group { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--meta); text-transform: uppercase; letter-spacing: 0.08em; padding: var(--space-4) var(--space-5) var(--space-2); }
+.r-item { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-5); }
+.r-item:hover { background: var(--bg-3); }
+.r-name { font: 500 var(--text-control)/1.3 var(--font-display); color: var(--fg-0); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.r-item.offline .r-name { color: var(--muted); }
+.chip-role {
+  display: inline-flex; align-items: center; gap: 3px; font: 500 10px/1 var(--font-body);
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 2px 5px;
+}
+.chip-role.admin { color: var(--fg-1); border-color: var(--stroke-strong); }
+.r-pres { display: inline-flex; align-items: center; gap: var(--space-1); font: 400 var(--text-sm)/1 var(--font-body); color: var(--muted); }
+
+/* Delete confirmation */
+.overlay { position: absolute; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: var(--space-6); }
+.overlay[hidden] { display: none; }
+.modal { width: 100%; max-width: 320px; background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-4); box-shadow: var(--shadow-pop); padding: var(--space-6); }
+.modal h3 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); margin-bottom: var(--space-3); }
+.modal p { font-size: var(--text-control); color: var(--fg-1); }
+.modal .quote {
+  margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); font-size: var(--text-control); color: var(--muted);
+  background: var(--bg-2); border: 1px solid var(--stroke-1); border-left: 2px solid var(--stroke-strong); overflow-wrap: anywhere;
+}
+.modal .sub { color: var(--muted); font-size: var(--text-sm); }
+.modal-acts { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+  <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
+</svg>
+
+<header class="sheet-head">
+  <h1>Project Team Chat</h1>
+  <span class="mono-meta">chat-panel-project.html · screen 2/4 · 1440 · dark</span>
+</header>
+
+<!-- ══ 01 · DEFAULT — project channel open in the App Shell ══════════ -->
+<section class="frame" id="frame-01" data-od-id="frame-default">
+  <div class="frame-label">01 · Default — #atlas-checkout open, switcher closed, 3 unread in #meridian-api</div>
+  <p class="frame-cap">Same panel shell as screen 1, now channel-aware. The header channel name is the switcher trigger: click or Enter opens it, arrow keys move, Enter switches, Esc closes. Messages, roster and mentions are scoped to the open project. Interactive demo: ~6s after load you "navigate" to the Meridian API project in the editor — the panel follows into #meridian-api (its unread badge clears) and offers a jump back to #general; ~10s in, a new #general message raises its unread badge in the switcher.</p>
+  <div class="shell">
+    <nav class="rail" aria-label="App navigation" data-od-id="app-rail">
+      <span class="mark" aria-hidden="true">分</span>
+      <button class="rail-btn" aria-label="Dashboard"><svg class="ic lg"><use href="#i-grid"/></svg></button>
+      <button class="rail-btn" aria-label="Test suites"><svg class="ic lg"><use href="#i-folder"/></svg></button>
+      <button class="rail-btn" aria-label="Runs"><svg class="ic lg"><use href="#i-term"/></svg></button>
+      <button class="rail-btn" aria-pressed="true" id="railChat" aria-label="Team chat, 3 unread messages">
+        <svg class="ic lg"><use href="#i-chat"/></svg><span class="rail-badge" id="railBadge">3</span>
+      </button>
+    </nav>
+    <div class="editor-mock" aria-hidden="true">
+      <div class="tabs" id="edTabs">
+        <span class="tab" data-active><svg class="ic xs"><use href="#i-check"/></svg>ATC-204</span>
+        <span class="tab">RUN-467</span>
+        <span class="tab">MOD-021</span>
+      </div>
+      <div class="ghost-rows"><div class="gr"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div></div>
+      <div class="editor-note" id="edNote">Atlas Checkout · editor area — dimmed for context</div>
+    </div>
+
+    <aside class="panel" id="panel1" data-od-id="chat-panel" aria-label="Team chat panel">
+      <header class="p-head" data-od-id="chat-header">
+        <button class="ch-btn" id="chBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="swpop" data-od-id="channel-switcher-trigger">
+          <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+          <span class="ch-cur"><span class="ch-name-h" id="chName">atlas-checkout</span><span class="p-sub" id="chSub">Project · Atlas Checkout</span></span>
+          <span class="upill" id="trigBadge">3<span class="sr"> unread messages in other channels</span></span>
+          <svg class="ic xs chev"><use href="#i-chev-d"/></svg>
+          <span class="sr">Switch channel</span>
+        </button>
+        <span class="live" id="liveChip"><span class="dot on"></span>Live</span>
+        <button class="btn sm" id="rosterBtn" aria-expanded="false" aria-controls="roster1" data-od-id="roster-toggle">
+          <svg class="ic"><use href="#i-users"/></svg><span id="memCount">5</span><span class="sr"> members — open roster</span>
+        </button>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </header>
+
+      <div class="switch-pop" id="swpop" role="listbox" aria-label="Switch channel" data-od-id="channel-switcher" hidden></div>
+
+      <div class="follow" id="follow" role="status" data-od-id="follow-banner">
+        <svg class="ic"><use href="#i-compass"/></svg>
+        <span id="followTxt">Following your view · <b>Meridian API</b></span>
+        <button class="btn sm" id="followBack">#general</button>
+      </div>
+
+      <div class="msg-scroll" id="list" data-od-id="message-list" aria-live="polite"></div>
+
+      <footer class="composer" data-od-id="composer">
+        <div class="mention-pop" id="mpop" role="listbox" aria-label="Mention a teammate" hidden></div>
+        <textarea id="ta" class="input ta" rows="2" placeholder="Message #atlas-checkout — type @ to mention" aria-label="Message #atlas-checkout"></textarea>
+        <div class="c-bar">
+          <span class="hint"><kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> line · <kbd>@</kbd> mention</span>
+          <button class="btn" data-variant="primary" id="sendBtn">Send<svg class="ic"><use href="#i-send"/></svg></button>
+        </div>
+      </footer>
+
+      <aside class="roster" id="roster1" data-od-id="roster-flyout" aria-label="Members of #atlas-checkout" hidden>
+        <div class="r-head"><svg class="ic"><use href="#i-users"/></svg><h3>Members</h3><span class="count" id="rCount">5</span>
+          <button class="btn icon-only" data-variant="ghost" id="rosterClose" aria-label="Close member roster"><svg class="ic"><use href="#i-x"/></svg></button></div>
+        <div class="r-body" id="rosterBody"></div>
+      </aside>
+
+      <div class="overlay" id="delOverlay" hidden>
+        <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="delTitle" aria-describedby="delQuote">
+          <h3 id="delTitle">Delete message?</h3>
+          <p>This permanently deletes your message in <b id="delCh">#atlas-checkout</b>:</p>
+          <blockquote class="quote" id="delQuote"></blockquote>
+          <p class="sub">This can't be undone. Admins keep an audit record of the deletion.</p>
+          <div class="modal-acts">
+            <button class="btn" id="delCancel">Cancel</button>
+            <button class="btn" data-variant="danger" id="delConfirm"><svg class="ic"><use href="#i-trash"/></svg>Delete message</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ══ 02–03 ═════════════════════════════════════════════════════════ -->
+<div class="frame frame-row">
+
+<section id="frame-02" data-od-id="frame-switcher">
+  <div class="frame-label">02 · Switcher expanded — #general pinned, unread badge, access-scoped list</div>
+  <p class="frame-cap">Opened from the header trigger. #general stays pinned under Workspace; project channels list below it — only projects Rin can access. Zephyr Web exists in this workspace but Rin is not a member, so it never appears. #meridian-api shows a 3-count badge (number + pill shape, not color alone); the focused item carries the 1px accent focus outline. Arrow keys move, Enter switches, Esc closes.</p>
+  <aside class="panel standalone" aria-label="Team chat panel with channel switcher open">
+    <header class="p-head">
+      <button class="ch-btn" aria-haspopup="listbox" aria-expanded="true">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+        <span class="ch-cur"><span class="ch-name-h">atlas-checkout</span><span class="p-sub">Project · Atlas Checkout</span></span>
+        <span class="upill">3<span class="sr"> unread messages in other channels</span></span>
+        <svg class="ic xs chev"><use href="#i-chev-d"/></svg>
+        <span class="sr">Switch channel</span>
+      </button>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>5<span class="sr"> members — open roster</span></button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="switch-pop" role="listbox" aria-label="Switch channel">
+      <div class="sw-group"><svg class="ic xs"><use href="#i-pin"/></svg>Workspace</div>
+      <button class="ch-item" role="option" aria-selected="false">
+        <svg class="ic"><use href="#i-hash"/></svg><span class="nm">general</span>
+        <span class="ch-meta"><svg class="ic xs"><use href="#i-pin"/></svg><span class="sr">Pinned</span></span>
+      </button>
+      <div class="sw-group">Projects — 3</div>
+      <button class="ch-item" role="option" aria-selected="true">
+        <svg class="ic"><use href="#i-hash"/></svg><span class="nm">atlas-checkout</span><span class="proj">Atlas Checkout</span>
+        <span class="ch-meta"><svg class="ic xs cur-ic"><use href="#i-check"/></svg><span class="sr">Current channel</span></span>
+      </button>
+      <button class="ch-item unread" role="option" aria-selected="false" style="outline:1px solid var(--accent);outline-offset:1px">
+        <svg class="ic"><use href="#i-hash"/></svg><span class="nm">meridian-api</span><span class="proj">Meridian API</span>
+        <span class="ch-meta"><span class="upill">3<span class="sr"> unread messages</span></span></span>
+      </button>
+      <button class="ch-item" role="option" aria-selected="false">
+        <svg class="ic"><use href="#i-hash"/></svg><span class="nm">helios-mobile</span><span class="proj">Helios Mobile</span>
+      </button>
+      <div class="sw-note"><svg class="ic xs"><use href="#i-lock"/></svg><span>Only projects you can access are listed. Ask a project admin to be added.</span></div>
+    </div>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">MT</span><div class="m-b">
+        <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:04</time></div>
+        <p class="text">Sprint check: <span class="idchip">ATC-204</span> and <span class="idchip">ATC-209</span> are still unassigned for the checkout flow.</p></div></div>
+      <div class="msg own"><span class="avatar">RO</span><div class="m-b">
+        <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:06</time></div>
+        <p class="text">Taking <span class="idchip">ATC-204</span>. Will run it against <span class="idchip">RUN-467</span> results first.</p></div></div>
+      <div class="msg"><span class="avatar">DP</span><div class="m-b">
+        <div class="m-h"><span class="name">Devon Park</span><time class="time">09:10</time></div>
+        <p class="text"><span class="mention self">@rin</span> heads up — <span class="idchip">RUN-467</span> has 2 fails in <span class="idchip">MOD-021</span>, both look like the coupon rounding bug.</p></div></div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #atlas-checkout — type @ to mention" aria-label="Message #atlas-checkout"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send · <kbd>@</kbd> mention</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+
+<section id="frame-03" data-od-id="frame-empty">
+  <div class="frame-label">03 · Empty project channel — #helios-mobile, no messages yet</div>
+  <p class="frame-cap">A project channel with no history. The empty state names the channel, states who can see it, and points at the composer. Terminal caret blinks (disabled under reduced motion). Composer is fully live: send, @mention against the 3 Helios members, keyboard hints.</p>
+  <aside class="panel standalone" aria-label="Team chat panel, empty project channel">
+    <header class="p-head">
+      <button class="ch-btn" aria-haspopup="listbox" aria-expanded="false">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+        <span class="ch-cur"><span class="ch-name-h">helios-mobile</span><span class="p-sub">Project · Helios Mobile</span></span>
+        <svg class="ic xs chev"><use href="#i-chev-d"/></svg>
+        <span class="sr">Switch channel</span>
+      </button>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>3<span class="sr"> members — open roster</span></button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="msg-scroll is-empty">
+      <div class="empty" data-od-id="empty-state">
+        <svg class="ic lg"><use href="#i-hash"/></svg>
+        <h3>No messages yet</h3>
+        <p>This is the start of <b>#helios-mobile</b>. Everything posted here is visible to the 3 members of the Helios Mobile project only.</p>
+        <span class="caret-line">bunkai chat --channel helios-mobile<span class="caret"></span></span>
+        <p>Type below and press <b>Enter</b> to start the conversation.</p>
+      </div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #helios-mobile — type @ to mention" aria-label="Message #helios-mobile"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> line · <kbd>@</kbd> mention</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var SELF = { h: 'rin', n: 'Rin Okada', i: 'RO', r: 'QA Engineer' };
+  var USERS = {
+    mika:  { h: 'mika',  n: 'Mika Tanaka',  i: 'MT', r: 'Admin' },
+    devon: { h: 'devon', n: 'Devon Park',   i: 'DP', r: 'Developer' },
+    sae:   { h: 'sae',   n: 'Sae Ito',      i: 'SI', r: 'QA Engineer' },
+    priya: { h: 'priya', n: 'Priya Nair',   i: 'PN', r: 'Developer' },
+    tomas: { h: 'tomas', n: 'Tomás Vega',   i: 'TV', r: 'QA Engineer' },
+    casey: { h: 'casey', n: 'Casey Morgan', i: 'CM', r: 'Viewer' },
+    lena:  { h: 'lena',  n: 'Lena Fischer', i: 'LF', r: 'Admin' },
+    rin:   SELF
+  };
+  var PRESENT = { mika: 1, devon: 1, sae: 1, priya: 1, rin: 1 };
+  /* Channels Rin can access. Zephyr Web exists in the workspace but Rin is
+     not a member, so it has no entry here and never renders. */
+  var CH = {
+    general: {
+      name: 'general', sub: 'Workspace', project: null, pinned: true,
+      members: ['mika', 'rin', 'devon', 'sae', 'priya', 'tomas', 'casey', 'lena'],
+      msgs: [
+        { u: 'mika',  t: 'Reminder: workspace triage moved to 10:30 today.', time: '08:55' },
+        { u: 'lena',  t: 'Release notes for v0.9.2 are up — skim before standup.', time: '08:58' },
+        { u: 'tomas', t: 'Flaky-test dashboard now sorts by failure rate. RUN-449 is off the list.', time: '09:02' }
+      ],
+      older: []
+    },
+    atlas: {
+      name: 'atlas-checkout', sub: 'Project · Atlas Checkout', project: 'Atlas Checkout',
+      members: ['mika', 'rin', 'devon', 'sae', 'priya'],
+      msgs: [
+        { u: 'mika',  t: 'Sprint check: ATC-204 and ATC-209 are still unassigned for the checkout flow.', time: '09:04' },
+        { u: 'rin',   t: 'Taking ATC-204. Will run it against RUN-467 results first.', time: '09:06', own: true },
+        { u: 'devon', t: '@rin heads up — RUN-467 has 2 fails in MOD-021, both look like the coupon rounding bug.', time: '09:10' },
+        { u: 'devon', t: 'Repro steps are on the run page.', time: '09:10', cont: true },
+        { u: 'sae',   t: '@rin can you confirm whether ATC-209 covers the guest checkout path too?', time: '09:15' },
+        { u: 'rin',   t: 'It does as of yesterday — added steps 6-8. RUN-471 picks it up tonight.', time: '09:18', own: true }
+      ],
+      older: [
+        { div: 'Yesterday · Jul 29' },
+        { u: 'priya', t: 'Deployed the checkout fix to staging. CI is green on MOD-021.', time: '16:40' },
+        { u: 'mika',  t: 'Nice — scheduling RUN-467 for tonight.', time: '17:05' }
+      ]
+    },
+    meridian: {
+      name: 'meridian-api', sub: 'Project · Meridian API', project: 'Meridian API',
+      members: ['rin', 'devon', 'priya', 'lena'],
+      msgs: [
+        { u: 'devon', t: 'Contract tests for the rates endpoint are in: ATC-311 through ATC-314.', time: '09:26' },
+        { u: 'priya', t: 'RUN-508 is queued behind the nightly. Should start around 09:45.', time: '09:28' },
+        { u: 'devon', t: '@rin once RUN-508 finishes, MOD-030 needs a triage pass — 4 new fails expected.', time: '09:30' }
+      ],
+      older: []
+    },
+    helios: {
+      name: 'helios-mobile', sub: 'Project · Helios Mobile', project: 'Helios Mobile',
+      members: ['rin', 'sae', 'tomas'],
+      msgs: [], older: []
+    }
+  };
+  var ORDER = ['general', 'atlas', 'meridian', 'helios'];
+  var unread = { general: 0, atlas: 0, meridian: 3, helios: 0 };
+  var open = 'atlas';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var list = $('list'), ta = $('ta'), mpop = $('mpop');
+  var swpop = $('swpop'), chBtn = $('chBtn'), followBar = $('follow');
+  function dk(k) { return 'bunkai-chat-draft-' + k; }
+  /* localStorage can throw in sandboxed previews — never let a draft kill the panel */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function rich(t) {
+    return esc(t)
+      .replace(/@([a-z0-9_]+)/gi, function (m, h) {
+        if (!USERS[h.toLowerCase()]) return m;
+        var cls = h.toLowerCase() === SELF.h ? 'mention self' : 'mention';
+        return '<span class="' + cls + '">@' + h.toLowerCase() + '</span>';
+      })
+      .replace(/\b([A-Z]{2,4}-\d{2,4})\b/g, '<span class="idchip">$1</span>')
+      .replace(/\n/g, '<br>');
+  }
+  function now() { return new Date().toTimeString().slice(0, 5); }
+  var ACTS = '<div class="acts"><button class="a-edit" aria-label="Edit message"><svg class="ic"><use href="#i-pencil"/></svg></button><button class="a-del" aria-label="Delete message"><svg class="ic"><use href="#i-trash"/></svg></button></div>';
+
+  function msgHTML(m) {
+    var u = USERS[m.u], own = !!m.own;
+    var head = m.cont ? '' :
+      '<div class="m-h"><span class="name">' + u.n + '</span>' +
+      (own ? '<span class="you-tag">you</span>' : '') +
+      '<time class="time">' + m.time + '</time><span class="edited"' + (m.edited ? '' : ' hidden') + '>(edited)</span></div>';
+    return '<span class="avatar"' + (m.cont ? ' aria-hidden="true"' : '') + '>' + (m.cont ? '' : u.i) + '</span>' +
+      '<div class="m-b">' + head + '<p class="text">' + rich(m.t) + '</p></div>' + (own ? ACTS : '');
+  }
+  function msgEl(m) {
+    var el = document.createElement('div');
+    el.className = 'msg' + (m.own ? ' own' : '') + (m.cont ? ' cont' : '');
+    el.setAttribute('data-raw', m.t);
+    el.innerHTML = msgHTML(m);
+    return el;
+  }
+  function beginHTML(k) {
+    var c = CH[k];
+    return c.project
+      ? 'Start of <b>#' + c.name + '</b> · Created with the ' + c.project + ' project · Visible to its ' + c.members.length + ' project members only.'
+      : 'Start of <b>#' + c.name + '</b> · Workspace-wide channel · Created Mar 12, 2026.';
+  }
+  function renderList(k) {
+    var c = CH[k];
+    list.innerHTML = '';
+    list.classList.toggle('is-empty', !c.msgs.length);
+    if (!c.msgs.length) {
+      list.innerHTML = '<div class="empty" data-od-id="empty-state">' +
+        '<svg class="ic lg"><use href="#i-hash"/></svg><h3>No messages yet</h3>' +
+        '<p>This is the start of <b>#' + c.name + '</b>. Everything posted here is visible to the ' +
+        c.members.length + ' members of the ' + c.project + ' project only.</p>' +
+        '<span class="caret-line">bunkai chat --channel ' + c.name + '<span class="caret"></span></span>' +
+        '<p>Type below and press <b>Enter</b> to start the conversation.</p></div>';
+      return;
+    }
+    var loader = document.createElement('div');
+    loader.className = 'loader'; loader.id = 'loader';
+    loader.innerHTML = '<svg class="ic spin"><use href="#i-loader"/></svg>Loading earlier messages';
+    list.appendChild(loader);
+    if (c.histLoaded || !c.older.length) {
+      var b = document.createElement('div');
+      b.className = 'begin'; b.innerHTML = beginHTML(k);
+      list.appendChild(b);
+      c.older.forEach(function (row) { list.appendChild(row.div ? dayDiv(row.div) : msgEl(row)); });
+    }
+    list.appendChild(dayDiv('Today · Jul 30'));
+    c.msgs.forEach(function (m) { list.appendChild(msgEl(m)); });
+    list.scrollTop = list.scrollHeight;
+  }
+  function dayDiv(label) {
+    var d = document.createElement('div');
+    d.className = 'day-div';
+    d.innerHTML = '<span>' + label + '</span>';
+    return d;
+  }
+
+  /* ── Badges ── */
+  function unreadElsewhere() {
+    return ORDER.reduce(function (n, k) { return n + (k === open ? 0 : unread[k]); }, 0);
+  }
+  function updateBadges() {
+    var n = unreadElsewhere();
+    var tb = $('trigBadge'), rb = $('railBadge');
+    tb.hidden = !n;
+    tb.innerHTML = n + '<span class="sr"> unread messages in other channels</span>';
+    rb.hidden = !n;
+    rb.textContent = n;
+    $('railChat').setAttribute('aria-label', 'Team chat' + (n ? ', ' + n + ' unread messages' : ''));
+  }
+
+  /* ── Channel switcher ── */
+  function itemHTML(k) {
+    var c = CH[k], n = unread[k];
+    var meta = '';
+    if (k === open) meta = '<svg class="ic xs cur-ic"><use href="#i-check"/></svg><span class="sr">Current channel</span>';
+    else if (n) meta = '<span class="upill">' + n + '<span class="sr"> unread messages</span></span>';
+    else if (c.pinned) meta = '<svg class="ic xs"><use href="#i-pin"/></svg><span class="sr">Pinned</span>';
+    return '<button class="ch-item' + (n && k !== open ? ' unread' : '') + '" role="option" data-k="' + k +
+      '" aria-selected="' + (k === open) + '"><svg class="ic"><use href="#i-hash"/></svg>' +
+      '<span class="nm">' + c.name + '</span>' +
+      (c.project ? '<span class="proj">' + c.project + '</span>' : '') +
+      (meta ? '<span class="ch-meta">' + meta + '</span>' : '') + '</button>';
+  }
+  function renderSwitch() {
+    swpop.innerHTML =
+      '<div class="sw-group"><svg class="ic xs"><use href="#i-pin"/></svg>Workspace</div>' + itemHTML('general') +
+      '<div class="sw-group">Projects — 3</div>' + itemHTML('atlas') + itemHTML('meridian') + itemHTML('helios') +
+      '<div class="sw-note"><svg class="ic xs"><use href="#i-lock"/></svg><span>Only projects you can access are listed. Ask a project admin to be added.</span></div>';
+  }
+  function openSwitch() {
+    renderSwitch();
+    swpop.hidden = false;
+    chBtn.setAttribute('aria-expanded', 'true');
+    var cur = swpop.querySelector('[aria-selected="true"]') || swpop.querySelector('.ch-item');
+    if (cur) cur.focus();
+  }
+  function closeSwitch(refocus) {
+    if (swpop.hidden) return;
+    swpop.hidden = true;
+    chBtn.setAttribute('aria-expanded', 'false');
+    if (refocus) chBtn.focus();
+  }
+  chBtn.addEventListener('click', function () { swpop.hidden ? openSwitch() : closeSwitch(true); });
+  chBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); openSwitch(); }
+  });
+  swpop.addEventListener('keydown', function (e) {
+    var items = Array.prototype.slice.call(swpop.querySelectorAll('.ch-item'));
+    var i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeSwitch(true); }
+    else if (e.key === 'Tab') { closeSwitch(false); }
+  });
+  swpop.addEventListener('click', function (e) {
+    var b = e.target.closest('.ch-item');
+    if (b) switchChannel(b.getAttribute('data-k'), { manual: true });
+  });
+  document.addEventListener('click', function (e) {
+    if (!swpop.hidden && !swpop.contains(e.target) && !chBtn.contains(e.target)) closeSwitch(false);
+  });
+
+  /* ── Switch channel (manual pick or auto-follow) ── */
+  function switchChannel(k, o) {
+    o = o || {};
+    if (!CH[k]) return;
+    lsSet(dk(open), ta.value);
+    open = k;
+    unread[k] = 0; /* opening a channel clears its unread badge */
+    var c = CH[k];
+    $('chName').textContent = c.name;
+    $('chSub').textContent = c.sub;
+    $('memCount').textContent = c.members.length;
+    $('rCount').textContent = c.members.length;
+    $('delCh').textContent = '#' + c.name;
+    ta.placeholder = 'Message #' + c.name + ' — type @ to mention';
+    ta.setAttribute('aria-label', 'Message #' + c.name);
+    $('roster1').setAttribute('aria-label', 'Members of #' + c.name);
+    ta.value = lsGet(dk(k)) || '';
+    if (o.follow && c.project) {
+      $('followTxt').innerHTML = 'Following your view · <b>' + c.project + '</b>';
+      followBar.classList.add('show');
+    } else {
+      followBar.classList.remove('show');
+    }
+    closePop();
+    renderList(k);
+    renderRoster(k);
+    updateBadges();
+    closeSwitch(o.manual && !o.fromBar);
+  }
+  $('followBack').addEventListener('click', function () {
+    switchChannel('general', { manual: true, fromBar: true });
+    ta.focus();
+  });
+
+  /* ── Send ── */
+  function send() {
+    var t = ta.value.trim();
+    if (!t) return;
+    var m = { u: 'rin', t: t, time: now(), own: true };
+    CH[open].msgs.push(m);
+    if (list.classList.contains('is-empty')) renderList(open);
+    else { list.appendChild(msgEl(m)); list.scrollTop = list.scrollHeight; }
+    ta.value = '';
+    lsDel(dk(open));
+    closePop();
+    ta.focus();
+  }
+  $('sendBtn').addEventListener('click', send);
+
+  /* ── Mention autocomplete — scoped to the open channel's members ── */
+  var mOpen = false, mList = [], mIdx = 0, mStart = -1;
+  function mentionables() {
+    return CH[open].members.filter(function (h) { return h !== SELF.h; }).map(function (h) { return USERS[h]; });
+  }
+  function renderPop() {
+    mpop.innerHTML = mList.map(function (u, i) {
+      return '<button class="m-item" role="option" aria-selected="' + (i === mIdx) + '" data-h="' + u.h + '">' +
+        '<span class="avatar sm">' + u.i + '</span><span class="m-name">' + u.n + '</span>' +
+        '<span class="m-handle">@' + u.h + '</span><span class="m-role">' + u.r + '</span></button>';
+    }).join('');
+  }
+  function openPop() { mpop.hidden = false; mOpen = true; renderPop(); }
+  function closePop() { mpop.hidden = true; mOpen = false; }
+  function checkMention() {
+    var caret = ta.selectionStart;
+    var head = ta.value.slice(0, caret);
+    var m = /(^|\s)@([a-z0-9_]*)$/i.exec(head);
+    if (!m) { closePop(); return; }
+    var q = m[2].toLowerCase();
+    mStart = caret - m[2].length - 1;
+    mList = mentionables().filter(function (u) {
+      return u.h.indexOf(q) === 0 || u.n.toLowerCase().indexOf(q) === 0;
+    });
+    if (!mList.length) { closePop(); return; }
+    mIdx = Math.min(mIdx, mList.length - 1);
+    openPop();
+  }
+  function pick(u) {
+    var caret = ta.selectionStart;
+    ta.value = ta.value.slice(0, mStart) + '@' + u.h + ' ' + ta.value.slice(caret);
+    var pos = mStart + u.h.length + 2;
+    closePop();
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+    lsSet(dk(open), ta.value);
+  }
+  ta.addEventListener('input', function () {
+    lsSet(dk(open), ta.value);
+    mIdx = 0;
+    checkMention();
+  });
+  ta.addEventListener('keydown', function (e) {
+    if (mOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); mIdx = (mIdx + 1) % mList.length; renderPop(); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); mIdx = (mIdx - 1 + mList.length) % mList.length; renderPop(); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pick(mList[mIdx]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closePop(); return; }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  mpop.addEventListener('click', function (e) {
+    var b = e.target.closest('.m-item');
+    if (b) pick(USERS[b.getAttribute('data-h')]);
+  });
+
+  /* ── Edit / Delete (own messages) ── */
+  list.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var msg = b.closest('.msg');
+    if (b.classList.contains('a-edit')) startEdit(msg);
+    if (b.classList.contains('a-del')) askDelete(msg);
+  });
+  function startEdit(msg) {
+    if (msg.querySelector('.editbox')) return;
+    var p = msg.querySelector('.text');
+    var raw = msg.getAttribute('data-raw') || p.textContent;
+    var box = document.createElement('div');
+    box.className = 'editbox';
+    box.innerHTML = '<textarea class="input ta e-ta" rows="2" aria-label="Edit message">' + esc(raw) + '</textarea>' +
+      '<div class="e-bar"><span class="hint"><kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel</span>' +
+      '<button class="btn sm" data-variant="ghost">Cancel</button>' +
+      '<button class="btn sm" data-variant="primary">Save</button></div>';
+    p.replaceWith(box);
+    var eta = box.querySelector('.e-ta');
+    eta.focus();
+    eta.setSelectionRange(raw.length, raw.length);
+    function finish(save) {
+      var nv = eta.value.trim();
+      var np = document.createElement('p');
+      np.className = 'text';
+      if (save && nv && nv !== raw) {
+        msg.setAttribute('data-raw', nv);
+        np.innerHTML = rich(nv);
+        msg.querySelector('.edited').hidden = false;
+      } else {
+        np.innerHTML = rich(raw);
+      }
+      box.replaceWith(np);
+      msg.querySelector('.a-edit').focus();
+    }
+    box.querySelector('[data-variant="primary"]').addEventListener('click', function () { finish(true); });
+    box.querySelector('[data-variant="ghost"]').addEventListener('click', function () { finish(false); });
+    eta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+  }
+  var ov = $('delOverlay'), delTarget = null, delReturn = null;
+  function askDelete(msg) {
+    delTarget = msg;
+    delReturn = document.activeElement;
+    $('delQuote').textContent = '"' + (msg.getAttribute('data-raw') || '').slice(0, 90) + '" — ' + msg.querySelector('.time').textContent;
+    ov.hidden = false;
+    $('delCancel').focus();
+  }
+  function closeDel() { ov.hidden = true; delTarget = null; if (delReturn) delReturn.focus(); }
+  $('delCancel').addEventListener('click', closeDel);
+  $('delConfirm').addEventListener('click', function () {
+    if (!delTarget) return;
+    var time = delTarget.querySelector('.time').textContent;
+    delTarget.classList.add('tomb');
+    delTarget.querySelector('.m-b').innerHTML =
+      '<div class="m-h"><span class="name">' + SELF.n + '</span><span class="you-tag">you</span><time class="time">' + time + '</time></div>' +
+      '<p class="stone own-del"><svg class="ic"><use href="#i-trash"/></svg>You deleted this message</p>';
+    var acts = delTarget.querySelector('.acts');
+    if (acts) acts.remove();
+    delTarget = null;
+    ov.hidden = true;
+    ta.focus();
+  });
+  ov.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeDel(); return; }
+    if (e.key === 'Tab') {
+      var f = [$('delCancel'), $('delConfirm')];
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[1]) { e.preventDefault(); f[0].focus(); }
+    }
+  });
+
+  /* ── Load older history on scroll-to-top ── */
+  list.addEventListener('scroll', function () {
+    var c = CH[open];
+    if (list.scrollTop > 48 || c.histLoaded || c.histLoading || !c.older.length) return;
+    c.histLoading = true;
+    var loader = $('loader');
+    if (loader) loader.classList.add('show');
+    setTimeout(function () {
+      c.histLoaded = true;
+      c.histLoading = false;
+      var h0 = list.scrollHeight, top0 = list.scrollTop;
+      renderList(open);
+      list.scrollTop = top0 + list.scrollHeight - h0;
+    }, 450);
+  });
+
+  /* ── Roster — scoped to the open channel's project members ── */
+  var roster = $('roster1'), rosterBtn = $('rosterBtn');
+  var ROLE_IC = { 'Admin': 'i-shield', 'Developer': 'i-term', 'QA Engineer': 'i-check', 'Viewer': 'i-eye' };
+  function rItem(u, on) {
+    var you = u.h === SELF.h;
+    return '<div class="r-item' + (on ? '' : ' offline') + '"><span class="avatar sm">' + u.i + '</span>' +
+      '<span class="r-name">' + u.n + (you ? '<span class="you-tag">you</span>' : '') +
+      '<span class="chip-role' + (u.r === 'Admin' ? ' admin' : '') + '"><svg class="ic xs"><use href="#' + (ROLE_IC[u.r] || 'i-check') + '"/></svg>' +
+      (u.r === 'QA Engineer' ? 'QA' : u.r) + '</span></span>' +
+      '<span class="r-pres"><span class="dot ' + (on ? 'on' : 'off') + '"></span>' + (on ? 'Online' : 'Offline') + '</span></div>';
+  }
+  function renderRoster(k) {
+    var ms = CH[k].members.map(function (h) { return USERS[h]; });
+    var on = ms.filter(function (u) { return PRESENT[u.h]; });
+    var off = ms.filter(function (u) { return !PRESENT[u.h]; });
+    $('rosterBody').innerHTML =
+      '<div class="r-group">Online — ' + on.length + '</div>' + on.map(function (u) { return rItem(u, true); }).join('') +
+      (off.length ? '<div class="r-group">Offline — ' + off.length + '</div>' + off.map(function (u) { return rItem(u, false); }).join('') : '');
+  }
+  function toggleRoster(o) {
+    roster.hidden = !o;
+    rosterBtn.setAttribute('aria-expanded', String(o));
+    if (o) $('rosterClose').focus(); else rosterBtn.focus();
+  }
+  rosterBtn.addEventListener('click', function () { toggleRoster(roster.hidden); });
+  $('rosterClose').addEventListener('click', function () { toggleRoster(false); });
+  roster.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleRoster(false); });
+
+  /* ── Auto-follow demo: route change → panel follows the project ── */
+  setTimeout(function () {
+    $('edNote').textContent = 'Meridian API · editor area — dimmed for context';
+    $('edTabs').innerHTML =
+      '<span class="tab" data-active><svg class="ic xs"><use href="#i-check"/></svg>RUN-508</span>' +
+      '<span class="tab">ATC-311</span><span class="tab">MOD-030</span>';
+    switchChannel('meridian', { follow: true });
+  }, 6000);
+  /* New activity in #general while you're in a project channel → unread badge */
+  setTimeout(function () {
+    var m = { u: 'sae', t: 'Triage moved again — 11:00, same room. cc @rin', time: '09:34' };
+    if (open === 'general') {
+      CH.general.msgs.push(m);
+      list.appendChild(msgEl(m));
+      list.scrollTop = list.scrollHeight;
+    } else {
+      CH.general.msgs.push(m);
+      unread.general += 1;
+      updateBadges();
+      if (!swpop.hidden) renderSwitch();
+    }
+  }, 10000);
+
+  /* ── Init ── */
+  ta.value = lsGet(dk(open)) || '';
+  renderList(open);
+  renderRoster(open);
+  updateBadges();
+})();
+</script>
+</body>
+</html>

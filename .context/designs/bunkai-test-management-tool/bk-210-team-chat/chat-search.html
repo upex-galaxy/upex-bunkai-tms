@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Chat Search · Screen 4/4</title>
+<style>
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .caret-cur, .jump-target { animation: none !important; }
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-0); color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  padding: var(--space-12); min-width: 1440px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic.lg { width: 16px; height: 16px; }
+.ic.xs { width: 12px; height: 12px; }
+kbd {
+  font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px; letter-spacing: 0.01em;
+}
+
+/* ─── Sheet chrome (spec frames, not product UI) ───────────────────── */
+.sheet-head { max-width: 1440px; margin: 0 auto var(--space-12); display: flex; align-items: baseline; gap: var(--space-5); }
+.sheet-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.sheet-head .mono-meta { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.frame { max-width: 1440px; margin: 0 auto var(--space-12); }
+.frame-label {
+  font: 500 var(--text-xs)/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: var(--space-2);
+}
+.frame-cap { font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); max-width: 72ch; }
+.frame-row { display: flex; gap: var(--space-12); align-items: flex-start; flex-wrap: wrap; }
+
+/* ─── App Shell (frame 01 context) ─────────────────────────────────── */
+.shell {
+  display: grid; grid-template-columns: 48px 1fr 380px; height: 720px; width: 100%;
+  background: var(--bg-0); border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden;
+}
+.rail { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; align-items: center; padding: var(--space-4) 0; gap: var(--space-2); }
+.rail .mark { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); margin-bottom: var(--space-4); }
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center; position: relative;
+  color: var(--fg-3); border-radius: var(--r-2); transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { color: var(--fg-1); background: var(--bg-3); }
+.rail-btn[aria-pressed="true"] { color: var(--fg-0); background: var(--bg-3); }
+.editor-mock { background: var(--bg-0); display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--stroke-1); }
+.tabs { display: flex; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); }
+.tab {
+  font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); padding: var(--space-3) var(--space-6);
+  border-right: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-2);
+}
+.tab[data-active] { color: var(--fg-1); background: var(--bg-0); box-shadow: 0 1px 0 var(--bg-0); }
+.ghost-rows { flex: 1; padding: var(--space-6); opacity: 0.45; display: flex; flex-direction: column; gap: var(--space-3); }
+.ghost-rows .gr { height: 28px; background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-2); }
+.ghost-rows .gr.w60 { width: 60%; } .ghost-rows .gr.w80 { width: 80%; }
+.editor-note { font: 400 var(--text-xs)/1 var(--font-mono); color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 var(--space-6) var(--space-5); }
+
+/* ─── Chat panel (identical anatomy to screen 1) ───────────────────── */
+.panel {
+  width: 380px; background: var(--bg-1); display: flex; flex-direction: column;
+  position: relative; min-height: 0; height: 100%; overflow: hidden;
+}
+.panel.standalone { height: 560px; border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden; box-shadow: var(--shadow-card); }
+.p-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5);
+  background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); flex: none;
+}
+.p-head .ch-ic { color: var(--muted); }
+.p-head h2 { font: 600 var(--text-lg)/1 var(--font-display); color: var(--fg-0); }
+.p-sub { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.live { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--text-sm)/1 var(--font-body); color: var(--muted); margin-left: auto; }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot.on { background: var(--pass); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-control)/1 var(--font-body);
+  color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); letter-spacing: 0.02em;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hover); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-3); color: var(--fg-1); }
+.btn.sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
+.btn.icon-only { padding: var(--space-2); }
+
+/* Message list (frame 05 + under-overlay context) */
+.msg-scroll { flex: 1; overflow-y: auto; padding: var(--space-3) 0 var(--space-4); scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; min-height: 0; }
+.day-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); }
+.day-div::before, .day-div::after { content: ""; flex: 1; height: 1px; background: var(--stroke-1); }
+.day-div span { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.msg { display: grid; grid-template-columns: 26px 1fr; gap: var(--space-3); padding: var(--space-1) var(--space-5); position: relative; }
+.msg:hover, .msg:focus-within { background: var(--bg-2); }
+.msg + .msg:not(.cont) { margin-top: var(--space-2); }
+.avatar {
+  width: 26px; height: 26px; display: grid; place-items: center; margin-top: 2px;
+  font: 500 10px/1 var(--font-mono); color: var(--fg-1); letter-spacing: 0.02em;
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-2); flex: none;
+}
+.avatar.sm { width: 20px; height: 20px; font-size: 9px; margin: 0; }
+.m-h { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.name { font: 600 var(--text-base)/1.3 var(--font-display); color: var(--fg-0); }
+.you-tag {
+  font: 500 10px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px;
+}
+.time { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.text { color: var(--fg-1); overflow-wrap: anywhere; }
+.mention {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-0);
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.idchip {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+
+/* Jump target — result landing. Vermillion wash + 1px ring fades out
+ * after ~2.4s; the ring + brief motionless dwell make it findable even
+ * while the color is fading (never color alone: the row also keeps
+ * :target-style ring until the fade ends). */
+.msg.jump-target {
+  animation: jumpfade 5s var(--ease-standard) infinite;
+  background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-glow);
+}
+/* Spec-sheet loop: in the product this plays once (~2.4s) after the jump.
+ * Looping here so the fade is observable at any time; reduced-motion
+ * freezes it at the fully-highlighted state. */
+@keyframes jumpfade {
+  0%, 45%  { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-glow); }
+  70%, 88% { background: transparent; box-shadow: inset 0 0 0 1px transparent; }
+  100%     { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-glow); }
+}
+
+/* Composer */
+.composer { flex: none; position: relative; padding: var(--space-4) var(--space-5) var(--space-5); background: var(--bg-1); border-top: 1px solid var(--stroke-1); }
+.input, textarea.ta {
+  width: 100%; font: 400 var(--text-control)/1.5 var(--font-body); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4); resize: none;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { border-color: var(--accent); background: var(--bg-3); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+.c-bar { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.hint { font-size: var(--text-sm); color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.c-bar .hint { margin-right: auto; }
+
+/* ═══ Search overlay — this screen's addition ══════════════════════ */
+/* Opens over the same panel: header stays, overlay covers list+composer.
+ * Same surfaces (bg-1/bg-2/bg-3), popover shadow marks it as a layer. */
+.search-ov {
+  position: absolute; top: 49px; left: 0; right: 0; bottom: 0; z-index: 35;
+  background: var(--bg-1); border-top: 1px solid var(--stroke-3); box-shadow: var(--shadow-pop);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.s-bar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-3); flex: none; }
+.s-field { position: relative; flex: 1; display: flex; align-items: center; }
+.s-field .ic { position: absolute; left: var(--space-3); color: var(--muted); pointer-events: none; }
+.s-input { padding-left: 28px; font-family: var(--font-mono); }
+.s-bar kbd { flex: none; }
+
+/* Filter chips */
+.s-filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: 0 var(--space-5) var(--space-3); flex: none; }
+.fchip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font: 500 var(--text-sm)/1 var(--font-body); letter-spacing: 0.01em; color: var(--muted);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.fchip:hover { background: var(--bg-3); border-color: var(--stroke-3); color: var(--fg-1); }
+.fchip .ic { color: var(--fg-3); }
+.fchip.set { color: var(--fg-0); background: var(--bg-3); border-color: var(--stroke-strong); }
+.fchip.set .val { font: 500 var(--text-sm)/1 var(--font-mono); }
+.fchip.set .ic { color: var(--muted); }
+.fchip.set:hover .ic { color: var(--fg-0); }
+.s-clear { font-size: var(--text-sm); }
+
+/* Meta row: count + scope */
+.s-meta {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-5); flex: none;
+  border-top: 1px solid var(--stroke-1); border-bottom: 1px solid var(--stroke-1); background: var(--bg-2);
+}
+.s-count { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.s-scope { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1); font: 400 var(--text-xs)/1 var(--font-body); color: var(--muted); }
+.s-scope .ic { color: var(--fg-3); }
+
+/* Result list */
+.s-results { flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; }
+.res {
+  display: block; width: 100%; text-align: left; padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.res:hover { background: var(--bg-2); }
+.res[aria-selected="true"] { background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--stroke-strong); }
+.res-h { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
+.res-ch {
+  display: inline-flex; align-items: center; gap: 3px;
+  font: 500 11px/1 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 2px 5px;
+}
+.res-ch .ic { width: 10px; height: 10px; color: var(--muted); }
+.res[aria-selected="true"] .res-ch { background: var(--bg-4); }
+.res-author { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-control)/1 var(--font-display); color: var(--fg-0); }
+.res-date { margin-left: auto; font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.res-snip { display: block; font-size: var(--text-control); color: var(--fg-1); overflow-wrap: anywhere; padding-left: 28px; }
+.res-snip .ell { color: var(--fg-4); }
+.res-jump { display: none; }
+.res[aria-selected="true"] .res-jump {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  margin-left: var(--space-2); font: 400 var(--text-xs)/1 var(--font-body); color: var(--muted);
+}
+
+/* Match highlight — weight + underline + tint, never color alone */
+mark.hl {
+  background: var(--accent-soft); color: var(--fg-0); font-weight: 600;
+  text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 1px;
+  text-underline-offset: 2px; border-radius: 2px; padding: 0 1px;
+}
+mark.hl .idchip { font-weight: 600; color: var(--fg-0); border-color: var(--stroke-strong); }
+
+/* Empty states */
+.s-empty { flex: 1; display: grid; place-content: center; justify-items: center; gap: var(--space-3); padding: var(--space-6); text-align: center; }
+.s-empty .big { width: 18px; height: 18px; color: var(--fg-3); }
+.s-empty h4 { font: 600 var(--text-base)/1.3 var(--font-display); color: var(--fg-0); }
+.s-empty p { font-size: var(--text-control); color: var(--muted); max-width: 30ch; }
+.s-empty .term { font: 400 var(--text-control)/1 var(--font-mono); color: var(--muted); display: inline-flex; align-items: center; gap: 2px; }
+.caret-cur { display: inline-block; width: 7px; height: 13px; background: var(--fg-3); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.s-empty .acts { display: flex; gap: var(--space-3); margin-top: var(--space-1); }
+
+/* Overlay footer — keyboard path */
+.s-foot {
+  flex: none; display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5); border-top: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.s-foot .hint { margin-right: auto; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-search-x" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8.5" y1="8.5" x2="13.5" y2="13.5"/><line x1="13.5" y1="8.5" x2="8.5" y2="13.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-enter" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+</svg>
+
+<header class="sheet-head">
+  <h1>Chat Search Overlay</h1>
+  <span class="mono-meta">chat-search.html · screen 4/4 · 1440 · dark</span>
+</header>
+
+<!-- ══ 01 · DEFAULT — overlay just opened, in the App Shell ══════════ -->
+<section class="frame" id="frame-01" data-od-id="frame-default">
+  <div class="frame-label">01 · Default — overlay open, empty query</div>
+  <p class="frame-cap">Opened from the magnifier in the panel header (or Cmd/Ctrl+F with the panel focused). The overlay layers over the same panel — header stays put, list and composer are covered. Input focused, filters unset, no results yet. Esc returns to #general exactly where you left it. The scope line names only channels you can access; results outside that set are never fetched, counted, or hinted at.</p>
+  <div class="shell">
+    <nav class="rail" aria-label="App navigation" data-od-id="app-rail">
+      <span class="mark" aria-hidden="true">分</span>
+      <button class="rail-btn" aria-label="Dashboard"><svg class="ic lg"><use href="#i-grid"/></svg></button>
+      <button class="rail-btn" aria-label="Test suites"><svg class="ic lg"><use href="#i-folder"/></svg></button>
+      <button class="rail-btn" aria-label="Runs"><svg class="ic lg"><use href="#i-term"/></svg></button>
+      <button class="rail-btn" aria-pressed="true" aria-label="Team chat"><svg class="ic lg"><use href="#i-chat"/></svg></button>
+    </nav>
+    <div class="editor-mock" aria-hidden="true">
+      <div class="tabs">
+        <span class="tab" data-active>ATC-118</span>
+        <span class="tab">MOD-014</span>
+        <span class="tab">RUN-452</span>
+      </div>
+      <div class="ghost-rows"><div class="gr"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div></div>
+      <div class="editor-note">Editor area — dimmed for context</div>
+    </div>
+
+    <aside class="panel" data-od-id="chat-panel" aria-label="Team chat panel with search open">
+      <header class="p-head" data-od-id="chat-header">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+        <h2>general</h2>
+        <span class="p-sub">Workspace</span>
+        <span class="live"><span class="dot on"></span>Live</span>
+        <button class="btn icon-only" data-variant="ghost" aria-pressed="true" aria-label="Search messages" data-od-id="search-toggle"><svg class="ic"><use href="#i-search"/></svg></button>
+        <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </header>
+
+      <div class="msg-scroll" aria-hidden="true">
+        <div class="day-div"><span>Today · Jul 30</span></div>
+        <div class="msg"><span class="avatar">MT</span><div><div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:12</time></div>
+          <p class="text">Morning. <span class="idchip">RUN-452</span> finished overnight: 3 fails, all in the auth module.</p></div></div>
+      </div>
+      <footer class="composer" aria-hidden="true">
+        <textarea class="input ta" rows="2" placeholder="Message #general" tabindex="-1"></textarea>
+      </footer>
+
+      <div class="search-ov" role="dialog" aria-label="Search messages" data-od-id="search-overlay">
+        <div class="s-bar" data-od-id="search-bar">
+          <div class="s-field">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input class="input s-input" type="search" placeholder="Search messages" aria-label="Search message text across your channels" autofocus style="border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow);">
+          </div>
+          <kbd>Esc</kbd>
+          <button class="btn icon-only" data-variant="ghost" aria-label="Close search and return to channel"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="s-filters" data-od-id="search-filters" aria-label="Result filters">
+          <button class="fchip" aria-haspopup="listbox" aria-expanded="false">Channel<svg class="ic xs"><use href="#i-chev"/></svg></button>
+          <button class="fchip" aria-haspopup="listbox" aria-expanded="false">Author<svg class="ic xs"><use href="#i-chev"/></svg></button>
+          <button class="fchip" aria-haspopup="dialog" aria-expanded="false">Date range<svg class="ic xs"><use href="#i-chev"/></svg></button>
+        </div>
+        <div class="s-meta">
+          <span class="s-count">Ready</span>
+          <span class="s-scope"><svg class="ic xs"><use href="#i-lock"/></svg>Searching your 6 channels</span>
+        </div>
+        <div class="s-empty" data-od-id="empty-default">
+          <svg class="big ic"><use href="#i-search"/></svg>
+          <h4>Search across your channels</h4>
+          <p>Message text, authors, and IDs like <span class="idchip">ATC-118</span> are all matchable.</p>
+          <span class="term">&gt; type to search<span class="caret-cur"></span></span>
+        </div>
+        <div class="s-foot">
+          <span class="hint"><kbd>&#8593;&#8595;</kbd> select · <kbd>Enter</kbd> jump to message · <kbd>Esc</kbd> back to #general</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ══ 02–04 · Result states ═════════════════════════════════════════ -->
+<div class="frame frame-row">
+
+<section id="frame-02" data-od-id="frame-results">
+  <div class="frame-label">02 · Populated — matches across channels</div>
+  <p class="frame-cap">Query "selector timeout". Every row: channel badge, author, date, snippet with the match in weight + underline + tint (never color alone). Second row is keyboard-selected; Enter or click jumps to it. Count and scope stay pinned above the scrolling list.</p>
+  <aside class="panel standalone" aria-label="Chat search, results">
+    <header class="p-head">
+      <svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn icon-only" data-variant="ghost" aria-pressed="true" aria-label="Search messages"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="search-ov" role="dialog" aria-label="Search messages">
+      <div class="s-bar">
+        <div class="s-field">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input class="input s-input" type="search" value="selector timeout" aria-label="Search message text across your channels">
+        </div>
+        <kbd>Esc</kbd>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close search and return to channel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="s-filters" aria-label="Result filters">
+        <button class="fchip" aria-haspopup="listbox" aria-expanded="false">Channel<svg class="ic xs"><use href="#i-chev"/></svg></button>
+        <button class="fchip" aria-haspopup="listbox" aria-expanded="false">Author<svg class="ic xs"><use href="#i-chev"/></svg></button>
+        <button class="fchip" aria-haspopup="dialog" aria-expanded="false">Date range<svg class="ic xs"><use href="#i-chev"/></svg></button>
+      </div>
+      <div class="s-meta">
+        <span class="s-count">14 matches · 5 channels</span>
+        <span class="s-scope"><svg class="ic xs"><use href="#i-lock"/></svg>Searching your 6 channels</span>
+      </div>
+      <div class="s-results" role="listbox" aria-label="Search results" data-od-id="result-list">
+        <button class="res" role="option" aria-selected="false" data-od-id="result-row-general">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>general</span>
+            <span class="res-author"><span class="avatar sm">DP</span>Devon Park</span>
+            <time class="res-date">Jul 30 · 09:14</time></span>
+          <span class="res-snip">Looking now. Two of them are the same <mark class="hl">selector timeout</mark>.</span>
+        </button>
+        <button class="res" role="option" aria-selected="true">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>qa-core</span>
+            <span class="res-author"><span class="avatar sm">MT</span>Mika Tanaka</span>
+            <time class="res-date">Jul 29 · 16:02</time></span>
+          <span class="res-snip"><span class="idchip">ATC-131</span> keeps failing with a <mark class="hl">selector timeout</mark> on the login form — flaky or real?<span class="res-jump"><svg class="ic xs"><use href="#i-enter"/></svg>jump</span></span>
+        </button>
+        <button class="res" role="option" aria-selected="false">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>qa-core</span>
+            <span class="res-author"><span class="avatar sm">RO</span>Rin Okada</span>
+            <time class="res-date">Jul 29 · 16:10</time></span>
+          <span class="res-snip"><span class="ell">…</span>bumped the wait to 8s and the <mark class="hl">selector timeout</mark> went away on <span class="idchip">RUN-448</span><span class="ell">…</span></span>
+        </button>
+        <button class="res" role="option" aria-selected="false">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>frontend</span>
+            <span class="res-author"><span class="avatar sm">SI</span>Sae Ito</span>
+            <time class="res-date">Jul 28 · 11:47</time></span>
+          <span class="res-snip">The modal renders late, so any <mark class="hl">selector</mark> that fires before hydration hits the <mark class="hl">timeout</mark> path.</span>
+        </button>
+        <button class="res" role="option" aria-selected="false">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>run-triage</span>
+            <span class="res-author"><span class="avatar sm">LK</span>Lena Kruse</span>
+            <time class="res-date">Jul 25 · 14:33</time></span>
+          <span class="res-snip">Triage rule: two identical <mark class="hl">selector timeout</mark>s in one run collapse into a single <span class="idchip">MOD-014</span> ticket.</span>
+        </button>
+        <button class="res" role="option" aria-selected="false">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>release</span>
+            <span class="res-author"><span class="avatar sm">DP</span>Devon Park</span>
+            <time class="res-date">Jul 22 · 10:05</time></span>
+          <span class="res-snip"><span class="ell">…</span>holding the cut until the <mark class="hl">selector timeout</mark> spike on <span class="idchip">RUN-441</span> is explained.</span>
+        </button>
+      </div>
+      <div class="s-foot">
+        <span class="hint"><kbd>&#8593;&#8595;</kbd> select · <kbd>Enter</kbd> jump to message · <kbd>Esc</kbd> back to #general</span>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section id="frame-03" data-od-id="frame-filtered">
+  <div class="frame-label">03 · Filtered — channel + author + date at once</div>
+  <p class="frame-cap">Same query with all three filters set. Set chips switch to value + remove affordance (stronger border and text, not color); Clear all resets them. Count re-states the active scope so the shorter list reads as filtered, not broken.</p>
+  <aside class="panel standalone" aria-label="Chat search, filtered results">
+    <header class="p-head">
+      <svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn icon-only" data-variant="ghost" aria-pressed="true" aria-label="Search messages"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="search-ov" role="dialog" aria-label="Search messages">
+      <div class="s-bar">
+        <div class="s-field">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input class="input s-input" type="search" value="selector timeout" aria-label="Search message text across your channels">
+        </div>
+        <kbd>Esc</kbd>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close search and return to channel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="s-filters" aria-label="Result filters" data-od-id="filters-active">
+        <button class="fchip set" aria-label="Channel filter: qa-core. Remove"><svg class="ic xs"><use href="#i-hash"/></svg><span class="val">qa-core</span><svg class="ic xs"><use href="#i-x"/></svg></button>
+        <button class="fchip set" aria-label="Author filter: Rin Okada. Remove"><svg class="ic xs"><use href="#i-user"/></svg><span class="val">R. Okada</span><svg class="ic xs"><use href="#i-x"/></svg></button>
+        <button class="fchip set" aria-label="Date filter: July 22 to 30. Remove"><svg class="ic xs"><use href="#i-cal"/></svg><span class="val">Jul 22–30</span><svg class="ic xs"><use href="#i-x"/></svg></button>
+        <button class="btn sm s-clear" data-variant="ghost">Clear all</button>
+      </div>
+      <div class="s-meta">
+        <span class="s-count">2 matches · filtered</span>
+        <span class="s-scope"><svg class="ic xs"><use href="#i-lock"/></svg>Searching your 6 channels</span>
+      </div>
+      <div class="s-results" role="listbox" aria-label="Search results, filtered">
+        <button class="res" role="option" aria-selected="true">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>qa-core</span>
+            <span class="res-author"><span class="avatar sm">RO</span>Rin Okada</span>
+            <time class="res-date">Jul 29 · 16:10</time></span>
+          <span class="res-snip"><span class="ell">…</span>bumped the wait to 8s and the <mark class="hl">selector timeout</mark> went away on <span class="idchip">RUN-448</span><span class="ell">…</span><span class="res-jump"><svg class="ic xs"><use href="#i-enter"/></svg>jump</span></span>
+        </button>
+        <button class="res" role="option" aria-selected="false">
+          <span class="res-h"><span class="res-ch"><svg class="ic"><use href="#i-hash"/></svg>qa-core</span>
+            <span class="res-author"><span class="avatar sm">RO</span>Rin Okada</span>
+            <time class="res-date">Jul 24 · 09:58</time></span>
+          <span class="res-snip">Retried <span class="idchip">ATC-118</span> twice — same <mark class="hl">selector timeout</mark>, so it's not the runner.</span>
+        </button>
+      </div>
+      <div class="s-foot">
+        <span class="hint"><kbd>&#8593;&#8595;</kbd> select · <kbd>Enter</kbd> jump to message · <kbd>Esc</kbd> back to #general</span>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section id="frame-04" data-od-id="frame-no-matches">
+  <div class="frame-label">04 · No matches — empty state with a way out</div>
+  <p class="frame-cap">Query + tight filters return nothing. The state names the query and the narrowing filters, then offers the two honest fixes: loosen the words or clear the filters. Same lock-scoped footer — a zero never implies hidden channels hold the answer.</p>
+  <aside class="panel standalone" aria-label="Chat search, no matches">
+    <header class="p-head">
+      <svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn icon-only" data-variant="ghost" aria-pressed="true" aria-label="Search messages"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="search-ov" role="dialog" aria-label="Search messages">
+      <div class="s-bar">
+        <div class="s-field">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input class="input s-input" type="search" value="payment gateway regression" aria-label="Search message text across your channels">
+        </div>
+        <kbd>Esc</kbd>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close search and return to channel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="s-filters" aria-label="Result filters">
+        <button class="fchip set" aria-label="Channel filter: qa-core. Remove"><svg class="ic xs"><use href="#i-hash"/></svg><span class="val">qa-core</span><svg class="ic xs"><use href="#i-x"/></svg></button>
+        <button class="fchip" aria-haspopup="listbox" aria-expanded="false">Author<svg class="ic xs"><use href="#i-chev"/></svg></button>
+        <button class="fchip set" aria-label="Date filter: last 7 days. Remove"><svg class="ic xs"><use href="#i-cal"/></svg><span class="val">Last 7 days</span><svg class="ic xs"><use href="#i-x"/></svg></button>
+        <button class="btn sm s-clear" data-variant="ghost">Clear all</button>
+      </div>
+      <div class="s-meta">
+        <span class="s-count">0 matches</span>
+        <span class="s-scope"><svg class="ic xs"><use href="#i-lock"/></svg>Searching your 6 channels</span>
+      </div>
+      <div class="s-empty" data-od-id="empty-no-matches">
+        <svg class="big ic"><use href="#i-search-x"/></svg>
+        <h4>No matches for "payment gateway regression"</h4>
+        <p>Nothing in <span class="idchip">#qa-core</span> from the last 7 days matches. Try fewer or broader words, or widen the filters.</p>
+        <span class="acts">
+          <button class="btn sm">Clear filters</button>
+          <button class="btn sm" data-variant="ghost">Search all your channels</button>
+        </span>
+      </div>
+      <div class="s-foot">
+        <span class="hint"><kbd>&#8593;&#8595;</kbd> select · <kbd>Enter</kbd> jump to message · <kbd>Esc</kbd> back to #general</span>
+      </div>
+    </div>
+  </aside>
+</section>
+</div>
+
+<!-- ══ 05 · After the jump ═══════════════════════════════════════════ -->
+<section class="frame" id="frame-05" data-od-id="frame-jump">
+  <div class="frame-label">05 · Result opened — landed in #qa-core, message flagged</div>
+  <p class="frame-cap">Enter on the selected row closed the overlay, switched the panel to #qa-core, and scrolled Jul 29 into view. The target message holds a vermillion wash + 1px ring for ~2.4s, then fades to the normal row — long enough to spot, quiet enough to forget. Esc from the overlay would instead have returned to #general untouched.</p>
+  <div class="frame-row">
+    <aside class="panel standalone" aria-label="Chat panel, jumped to search result">
+      <header class="p-head">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>qa-core</h2><span class="p-sub">Workspace</span>
+        <span class="live"><span class="dot on"></span>Live</span>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Search messages"><svg class="ic"><use href="#i-search"/></svg></button>
+        <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>5</button>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </header>
+      <div class="msg-scroll" data-od-id="jump-message-list">
+        <div class="day-div"><span>Tue · Jul 29</span></div>
+        <div class="msg"><span class="avatar">MT</span><div>
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">16:02</time></div>
+          <p class="text"><span class="idchip">ATC-131</span> keeps failing with a selector timeout on the login form — flaky or real?</p></div></div>
+        <div class="msg jump-target" data-od-id="jump-target-message"><span class="avatar">RO</span><div>
+          <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">16:10</time></div>
+          <p class="text">For the record: bumped the wait to 8s and the selector timeout went away on <span class="idchip">RUN-448</span>. Watching tonight's run before closing.</p></div></div>
+        <div class="msg"><span class="avatar">MT</span><div>
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">16:12</time></div>
+          <p class="text">Good. If it holds, fold the fix into <span class="idchip">MOD-014</span> and close <span class="idchip">ATC-131</span> as flaky.</p></div></div>
+        <div class="msg"><span class="avatar">LK</span><div>
+          <div class="m-h"><span class="name">Lena Kruse</span><time class="time">16:20</time></div>
+          <p class="text">Logging that decision in the run notes so triage sees it tomorrow.</p></div></div>
+      </div>
+      <footer class="composer">
+        <textarea class="input ta" rows="2" placeholder="Message #qa-core — type @ to mention" aria-label="Message #qa-core"></textarea>
+        <div class="c-bar">
+          <span class="hint"><kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> line</span>
+          <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-enter"/></svg></button>
+        </div>
+      </footer>
+    </aside>
+  </div>
+</section>
+
+</body>
+</html>

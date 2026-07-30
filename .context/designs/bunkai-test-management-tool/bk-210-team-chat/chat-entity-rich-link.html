@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Team Chat · Entity Rich Links · Screen 3/4</title>
+<style>
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-0); color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  padding: var(--space-12); min-width: 1440px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic.lg { width: 16px; height: 16px; }
+.ic.xs { width: 12px; height: 12px; }
+kbd {
+  font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px; letter-spacing: 0.01em;
+}
+
+/* ─── Sheet chrome (spec frames, not product UI) ───────────────────── */
+.sheet-head { max-width: 1440px; margin: 0 auto var(--space-12); display: flex; align-items: baseline; gap: var(--space-5); }
+.sheet-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.sheet-head .mono-meta { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.frame { max-width: 1440px; margin: 0 auto var(--space-12); }
+.frame-label {
+  font: 500 var(--text-xs)/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: var(--space-2);
+}
+.frame-cap { font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); max-width: 72ch; }
+.frame-row { display: flex; gap: var(--space-12); align-items: flex-start; flex-wrap: wrap; }
+
+/* ─── App Shell (frame 01 context) ─────────────────────────────────── */
+.shell {
+  display: grid; grid-template-columns: 48px 1fr 380px; height: 1000px; width: 100%;
+  background: var(--bg-0); border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden;
+}
+.rail { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; align-items: center; padding: var(--space-4) 0; gap: var(--space-2); }
+.rail .mark { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); margin-bottom: var(--space-4); }
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center; position: relative;
+  color: var(--fg-3); border-radius: var(--r-2); transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { color: var(--fg-1); background: var(--bg-3); }
+.rail-btn[aria-pressed="true"] { color: var(--fg-0); background: var(--bg-3); }
+.editor-mock { background: var(--bg-0); display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--stroke-1); }
+.tabs { display: flex; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); }
+.tab {
+  font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); padding: var(--space-3) var(--space-6);
+  border-right: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-2);
+}
+.tab[data-active] { color: var(--fg-1); background: var(--bg-0); box-shadow: 0 1px 0 var(--bg-0); }
+.ghost-rows { flex: 1; padding: var(--space-6); opacity: 0.45; display: flex; flex-direction: column; gap: var(--space-3); }
+.ghost-rows .gr { height: 28px; background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-2); }
+.ghost-rows .gr.w60 { width: 60%; } .ghost-rows .gr.w80 { width: 80%; }
+.editor-note { font: 400 var(--text-xs)/1 var(--font-mono); color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 var(--space-6) var(--space-5); }
+
+/* ─── Chat panel ───────────────────────────────────────────────────── */
+.panel {
+  width: 380px; background: var(--bg-1); display: flex; flex-direction: column;
+  position: relative; min-height: 0; height: 100%;
+}
+.panel.standalone { height: 620px; border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden; box-shadow: var(--shadow-card); }
+.p-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5);
+  background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); flex: none;
+}
+.p-head .ch-ic { color: var(--muted); }
+.p-head h2 { font: 600 var(--text-lg)/1 var(--font-display); color: var(--fg-0); }
+.p-sub { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.live { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--text-sm)/1 var(--font-body); color: var(--muted); margin-left: auto; }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot.on { background: var(--pass); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-control)/1 var(--font-body);
+  color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); letter-spacing: 0.02em;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hover); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-3); color: var(--fg-1); }
+.btn.sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
+.btn.icon-only { padding: var(--space-2); }
+
+/* Message list */
+.msg-scroll { flex: 1; overflow-y: auto; padding: var(--space-3) 0 var(--space-4); scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; min-height: 0; }
+.day-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); }
+.day-div::before, .day-div::after { content: ""; flex: 1; height: 1px; background: var(--stroke-1); }
+.day-div span { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.state-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-1); }
+.state-div::after { content: ""; flex: 1; height: 1px; background: var(--stroke-1); }
+.state-div span { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.msg { display: grid; grid-template-columns: 26px 1fr; gap: var(--space-3); padding: var(--space-1) var(--space-5); position: relative; }
+.msg:hover, .msg:focus-within { background: var(--bg-2); }
+.msg + .msg:not(.cont) { margin-top: var(--space-2); }
+.avatar {
+  width: 26px; height: 26px; display: grid; place-items: center; margin-top: 2px;
+  font: 500 10px/1 var(--font-mono); color: var(--fg-1); letter-spacing: 0.02em;
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-2); flex: none;
+}
+.msg.cont .avatar { visibility: hidden; height: 0; margin: 0; border: 0; }
+.m-b { min-width: 0; }
+.m-h { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.name { font: 600 var(--text-base)/1.3 var(--font-display); color: var(--fg-0); }
+.you-tag {
+  font: 500 10px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px;
+}
+.time { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.text { color: var(--fg-1); overflow-wrap: anywhere; }
+.mention {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-0);
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.mention.self { background: var(--accent-soft); border-color: var(--accent-glow); color: var(--accent-hi); }
+.idchip {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+
+/* ─── Entity rich-link card ────────────────────────────────────────── */
+.elink {
+  display: block; width: 100%; max-width: 316px; margin-top: var(--space-2); position: relative;
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  padding: var(--space-3) var(--space-4); text-decoration: none; color: inherit;
+  box-shadow: var(--shadow-card); text-align: left;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+a.elink { cursor: pointer; }
+a.elink:hover { background: var(--bg-3); border-color: var(--stroke-3); }
+a.elink:active { background: var(--bg-4); }
+.e-top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.e-type { color: var(--muted); }
+.e-title {
+  font: 500 var(--text-control)/1.3 var(--font-display); color: var(--fg-0);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.e-arrow {
+  position: absolute; right: var(--space-4); bottom: var(--space-3);
+  color: var(--fg-4); opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard);
+}
+a.elink:hover .e-arrow, a.elink:focus-visible .e-arrow { opacity: 1; color: var(--fg-1); }
+.e-sub {
+  display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-1);
+  padding-left: 20px; /* aligns under the id-chip, past the 14px type icon + gap */
+  font: 400 var(--text-sm)/1.3 var(--font-body); color: var(--muted); min-width: 0;
+}
+.e-sub .env { font: 500 var(--text-sm)/1.2 var(--font-mono); color: var(--muted); }
+.e-sub .sep { color: var(--fg-4); }
+
+/* Status / verdict chip — color always paired with icon + text */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font: 500 10px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.07em;
+  border-radius: var(--r-1); padding: 3px 6px;
+}
+.chip[data-status="pass"]    { color: var(--pass); background: var(--pass-bg); border: 1px solid rgba(47, 182, 115, 0.25); }
+.chip[data-status="fail"]    { color: var(--fail); background: var(--fail-bg); border: 1px solid rgba(229, 72, 77, 0.25); }
+.chip[data-status="ready"]   { color: var(--pass); background: var(--pass-bg); border: 1px solid rgba(47, 182, 115, 0.25); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); border: 1px solid rgba(138, 145, 160, 0.25); }
+
+/* Placeholder variants — same footprint, visibly inert */
+.elink.inert {
+  background: var(--skipped-bg); border-style: dashed; box-shadow: none; cursor: default;
+}
+.elink.inert .e-title { color: var(--muted); font-style: italic; font-weight: 400; }
+.elink.inert .e-type { color: var(--fg-3); }
+.elink.inert .e-sub { color: var(--meta); }
+.elink.inert .idchip { color: var(--muted); background: transparent; border-style: dashed; }
+
+/* Composer */
+.composer { flex: none; position: relative; padding: var(--space-4) var(--space-5) var(--space-5); background: var(--bg-1); border-top: 1px solid var(--stroke-1); }
+.input, textarea.ta {
+  width: 100%; font: 400 var(--text-control)/1.5 var(--font-body); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4); resize: none;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { border-color: var(--accent); background: var(--bg-3); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+.c-bar { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.hint { font-size: var(--text-sm); color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.c-bar .hint { margin-right: auto; }
+
+/* ─── Entity picker popover ────────────────────────────────────────── */
+.ref-pop {
+  position: absolute; left: var(--space-5); right: var(--space-5); bottom: calc(100% + var(--space-1));
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); z-index: 30; overflow: hidden;
+}
+.ref-pop[hidden] { display: none; }
+.rp-head {
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-1);
+  font: 500 var(--text-xs)/1 var(--font-mono); color: var(--meta); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.rp-search { position: relative; padding: var(--space-2) var(--space-3) var(--space-2); }
+.rp-search .ic { position: absolute; left: calc(var(--space-3) + 9px); top: 50%; transform: translateY(-50%); color: var(--fg-3); pointer-events: none; }
+.rp-search .input { padding-left: 30px; font-family: var(--font-mono); background: var(--bg-2); }
+.rp-list { padding: var(--space-1); max-height: 220px; overflow-y: auto; }
+.rp-item {
+  display: grid; grid-template-columns: 16px auto 1fr auto; align-items: center; gap: var(--space-3);
+  width: 100%; text-align: left; padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+}
+.rp-item:hover { background: var(--bg-4); }
+.rp-item[aria-selected="true"] { background: var(--bg-5); }
+.rp-item .ic { color: var(--muted); }
+.rp-title { font: 500 var(--text-control)/1.2 var(--font-display); color: var(--fg-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-kind { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.rp-item[aria-selected="true"] .rp-kind { color: var(--fg-1); }
+.rp-empty { padding: var(--space-3) var(--space-4); font-size: var(--text-sm); color: var(--muted); font-style: italic; }
+.rp-foot { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-4) var(--space-3); border-top: 1px solid var(--stroke-1); }
+
+/* Anatomy spec column */
+.spec-card { width: 380px; }
+.spec-notes { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+.spec-notes li {
+  list-style: none; display: grid; grid-template-columns: auto 1fr; gap: var(--space-3);
+  font-size: var(--text-sm); color: var(--muted); align-items: baseline;
+}
+.spec-notes .n {
+  font: 500 var(--text-xs)/16px var(--font-mono); color: var(--fg-1); text-align: center;
+  width: 16px; height: 16px; background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+}
+.spec-notes b { color: var(--fg-1); font-weight: 500; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-file-check" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7.5L4.7 20.6a1 1 0 0 0 .9 1.4h12.8a1 1 0 0 0 .9-1.4L14 9.5V2"/><path d="M8.5 2h7"/><path d="M7 16.5h10"/></symbol>
+  <symbol id="i-arrow-out" viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></symbol>
+</svg>
+
+<header class="sheet-head">
+  <h1>Team Chat — Entity Rich Links</h1>
+  <span class="mono-meta">chat-entity-rich-link.html · screen 3/4 · 1440 · dark</span>
+</header>
+
+<!-- ══ 01 · Rich-link card states inside the docked panel ════════════ -->
+<section class="frame" id="frame-01" data-od-id="frame-card-states">
+  <div class="frame-label">01 · Shared-entity cards — all five states in the message list</div>
+  <p class="frame-cap">Pasting a Bunkai URL or id unfurls into a rich card in place. Resolved cards are links: hover raises the surface and reveals the open-arrow; click navigates to the entity in the editor area. Restricted and deleted references keep the exact card footprint but render inert — dashed border, grey tint, no title, no navigation.</p>
+  <div class="shell">
+    <nav class="rail" aria-label="App navigation" data-od-id="app-rail">
+      <span class="mark" aria-hidden="true">分</span>
+      <button class="rail-btn" aria-label="Dashboard"><svg class="ic lg"><use href="#i-grid"/></svg></button>
+      <button class="rail-btn" aria-label="Test suites"><svg class="ic lg"><use href="#i-folder"/></svg></button>
+      <button class="rail-btn" aria-label="Runs"><svg class="ic lg"><use href="#i-term"/></svg></button>
+      <button class="rail-btn" aria-pressed="true" aria-label="Team chat"><svg class="ic lg"><use href="#i-chat"/></svg></button>
+    </nav>
+    <div class="editor-mock" aria-hidden="true">
+      <div class="tabs">
+        <span class="tab" data-active><svg class="ic xs"><use href="#i-check"/></svg>ATC-118</span>
+        <span class="tab">MOD-014</span>
+        <span class="tab">RUN-452</span>
+      </div>
+      <div class="ghost-rows"><div class="gr"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div><div class="gr w80"></div></div>
+      <div class="editor-note">Editor area — dimmed for context</div>
+    </div>
+
+    <aside class="panel" data-od-id="chat-panel" aria-label="Team chat panel">
+      <header class="p-head" data-od-id="chat-header">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+        <h2>general</h2>
+        <span class="p-sub">Workspace</span>
+        <span class="live"><span class="dot on"></span>Live</span>
+        <button class="btn sm" aria-expanded="false" data-od-id="roster-toggle"><svg class="ic"><use href="#i-users"/></svg>8</button>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </header>
+
+      <div class="msg-scroll" data-od-id="message-list">
+        <div class="day-div"><span>Today · Jul 30</span></div>
+
+        <div class="state-div"><span>A · Resolved run — verdict pass</span></div>
+        <div class="msg"><span class="avatar">MT</span><div class="m-b">
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:12</time></div>
+          <p class="text">Smoke is green again after the fix. Full evidence in the run:</p>
+          <a class="elink" href="#run-451" data-od-id="card-run-pass" aria-label="Open RUN-451, Checkout smoke suite, verdict pass, in Kaiju Web">
+            <span class="e-top">
+              <svg class="ic e-type"><use href="#i-term"/></svg>
+              <span class="idchip">RUN-451</span>
+              <span class="e-title">Checkout smoke suite</span>
+              <span class="chip" data-status="pass"><svg class="ic xs"><use href="#i-check"/></svg>Pass</span>
+              <svg class="ic e-arrow"><use href="#i-arrow-out"/></svg>
+            </span>
+            <span class="e-sub">Kaiju Web<span class="sep">·</span><span class="env">staging</span><span class="sep">·</span>45/45 steps</span>
+          </a>
+        </div></div>
+
+        <div class="state-div"><span>B · Resolved run — verdict fail</span></div>
+        <div class="msg"><span class="avatar">DP</span><div class="m-b">
+          <div class="m-h"><span class="name">Devon Park</span><time class="time">09:18</time></div>
+          <p class="text">Auth is still red after the rerun, same three cases:</p>
+          <a class="elink" href="#run-452" data-od-id="card-run-fail" aria-label="Open RUN-452, Auth module regression, verdict fail, in Kaiju Web">
+            <span class="e-top">
+              <svg class="ic e-type"><use href="#i-term"/></svg>
+              <span class="idchip">RUN-452</span>
+              <span class="e-title">Auth module regression</span>
+              <span class="chip" data-status="fail"><svg class="ic xs"><use href="#i-x"/></svg>Fail</span>
+              <svg class="ic e-arrow"><use href="#i-arrow-out"/></svg>
+            </span>
+            <span class="e-sub">Kaiju Web<span class="sep">·</span><span class="env">staging</span><span class="sep">·</span>3/45 steps failed</span>
+          </a>
+        </div></div>
+
+        <div class="state-div"><span>C · Resolved ATC — workflow status</span></div>
+        <div class="msg"><span class="avatar">SI</span><div class="m-b">
+          <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:26</time></div>
+          <p class="text"><span class="mention self">@rin</span> rewrote the expired-session case, it's out of draft now:</p>
+          <a class="elink" href="#atc-118" data-od-id="card-atc-ready" aria-label="Open ATC-118, Login with expired session token, status Ready, in Kaiju Web">
+            <span class="e-top">
+              <svg class="ic e-type"><use href="#i-file-check"/></svg>
+              <span class="idchip">ATC-118</span>
+              <span class="e-title">Login with expired session token</span>
+              <span class="chip" data-status="ready"><svg class="ic xs"><use href="#i-check"/></svg>Ready</span>
+              <svg class="ic e-arrow"><use href="#i-arrow-out"/></svg>
+            </span>
+            <span class="e-sub">Kaiju Web<span class="sep">·</span>UI layer<span class="sep">·</span>12 steps</span>
+          </a>
+        </div></div>
+
+        <div class="state-div"><span>D · Restricted access — details never leak</span></div>
+        <div class="msg"><span class="avatar">MT</span><div class="m-b">
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:31</time></div>
+          <p class="text">The upstream flake the platform team is tracking, for anyone with access:</p>
+          <div class="elink inert" role="note" data-od-id="card-restricted" aria-label="Restricted reference: you don't have access to this project">
+            <span class="e-top">
+              <svg class="ic e-type"><use href="#i-lock"/></svg>
+              <span class="e-title">Restricted reference</span>
+              <span class="chip" data-status="skipped"><svg class="ic xs"><use href="#i-lock"/></svg>No access</span>
+            </span>
+            <span class="e-sub">You don't have permission to view this project</span>
+          </div>
+          <p class="text" style="margin-top: var(--space-2)">Ask their lead if you need it for triage.</p>
+        </div></div>
+
+        <div class="state-div"><span>E · Deleted entity — text around it survives</span></div>
+        <div class="msg"><span class="avatar">RO</span><div class="m-b">
+          <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:37</time></div>
+          <p class="text">Comparing against <span class="idchip">RUN-390</span> from last week —</p>
+          <div class="elink inert" role="note" data-od-id="card-deleted" aria-label="RUN-390 is no longer available: the linked run was deleted">
+            <span class="e-top">
+              <svg class="ic e-type"><use href="#i-x-circle"/></svg>
+              <span class="idchip">RUN-390</span>
+              <span class="e-title">No longer available</span>
+              <span class="chip" data-status="skipped"><svg class="ic xs"><use href="#i-trash"/></svg>Deleted</span>
+            </span>
+            <span class="e-sub">The linked run was deleted from Bunkai</span>
+          </div>
+          <p class="text" style="margin-top: var(--space-2)">— the step timings I quoted in the thread above still stand.</p>
+        </div></div>
+      </div>
+
+      <footer class="composer" data-od-id="composer">
+        <textarea class="input ta" rows="2" placeholder="Message #general — type @ to mention" aria-label="Message #general"></textarea>
+        <div class="c-bar">
+          <span class="hint"><kbd>@</kbd> mention · <kbd>#</kbd> reference</span>
+          <button class="btn icon-only" aria-label="Insert entity reference" aria-expanded="false" title="Insert entity reference"><svg class="ic"><use href="#i-link"/></svg></button>
+          <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button>
+        </div>
+      </footer>
+    </aside>
+  </div>
+</section>
+
+<!-- ══ 02 + 03 ═══════════════════════════════════════════════════════ -->
+<div class="frame frame-row">
+
+<section id="frame-02" data-od-id="frame-picker">
+  <div class="frame-label">02 · Composer entity picker — insert without pasting</div>
+  <p class="frame-cap">Opened with the link button or by typing <b>#</b> in the composer. Search matches id and title across ATC / Test / Run; the query below is live — try it. Enter or click inserts the id-chip into the message.</p>
+  <aside class="panel standalone" aria-label="Team chat panel with entity picker open">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">SI</span><div class="m-b">
+        <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:41</time></div>
+        <p class="text">Which run had the token-refresh flake? Link it here so triage has it.</p></div></div>
+    </div>
+    <footer class="composer">
+      <div class="ref-pop" id="refPop" role="listbox" aria-label="Insert an entity reference">
+        <div class="rp-head"><svg class="ic xs"><use href="#i-link"/></svg>Insert reference</div>
+        <div class="rp-search">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input class="input" id="rpSearch" type="text" value="auth" aria-label="Search ATC, Test, and Run references" placeholder="Search by id or title">
+        </div>
+        <div class="rp-list" id="rpList">
+          <button class="rp-item" role="option" aria-selected="true" data-id="ATC-118">
+            <svg class="ic"><use href="#i-file-check"/></svg><span class="idchip">ATC-118</span>
+            <span class="rp-title">Login with expired auth session</span><span class="rp-kind">ATC</span>
+          </button>
+          <button class="rp-item" role="option" aria-selected="false" data-id="TEST-841">
+            <svg class="ic"><use href="#i-flask"/></svg><span class="idchip">TEST-841</span>
+            <span class="rp-title">Auth token refresh — happy path</span><span class="rp-kind">Test</span>
+          </button>
+          <button class="rp-item" role="option" aria-selected="false" data-id="RUN-452">
+            <svg class="ic"><use href="#i-term"/></svg><span class="idchip">RUN-452</span>
+            <span class="rp-title">Auth module regression · staging</span><span class="rp-kind">Run</span>
+          </button>
+          <button class="rp-item" role="option" aria-selected="false" data-id="RUN-448">
+            <svg class="ic"><use href="#i-term"/></svg><span class="idchip">RUN-448</span>
+            <span class="rp-title">Auth smoke · nightly · production</span><span class="rp-kind">Run</span>
+          </button>
+        </div>
+        <div class="rp-empty" id="rpEmpty" hidden>No ATC, Test, or Run matches this search</div>
+        <div class="rp-foot hint"><kbd>↑↓</kbd> navigate · <kbd>Enter</kbd> insert · <kbd>Esc</kbd> dismiss</div>
+      </div>
+      <textarea class="input ta" id="ta2" rows="2" aria-label="Message #general">The flake triage notes are in </textarea>
+      <div class="c-bar">
+        <span class="hint"><kbd>@</kbd> mention · <kbd>#</kbd> reference</span>
+        <button class="btn icon-only" aria-label="Close entity reference picker" aria-expanded="true" id="refBtn" title="Insert entity reference"><svg class="ic"><use href="#i-link"/></svg></button>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button>
+      </div>
+    </footer>
+  </aside>
+</section>
+
+<section id="frame-03" class="spec-card" data-od-id="frame-anatomy">
+  <div class="frame-label">03 · Card anatomy — spec</div>
+  <p class="frame-cap">One row: type icon, id-chip, title, status chip. Project as the subtle second line. Verdict and status always pair color with an icon and a text label — never color alone.</p>
+  <a class="elink" href="#run-451" style="max-width:380px" aria-label="Open RUN-451, Checkout smoke suite, verdict pass, in Kaiju Web">
+    <span class="e-top">
+      <svg class="ic e-type"><use href="#i-term"/></svg>
+      <span class="idchip">RUN-451</span>
+      <span class="e-title">Checkout smoke suite</span>
+      <span class="chip" data-status="pass"><svg class="ic xs"><use href="#i-check"/></svg>Pass</span>
+      <svg class="ic e-arrow"><use href="#i-arrow-out"/></svg>
+    </span>
+    <span class="e-sub">Kaiju Web<span class="sep">·</span><span class="env">staging</span><span class="sep">·</span>45/45 steps</span>
+  </a>
+  <ul class="spec-notes">
+    <li><span class="n">1</span><span><b>Type icon</b> — 14px Lucide line icon in <b>--fg-2</b> tier: terminal for Run, file-check for ATC, flask for Test.</span></li>
+    <li><span class="n">2</span><span><b>Id-chip</b> — the same JetBrains Mono chip used for inline <span class="idchip">ATC-118</span> references in running text. One idiom everywhere.</span></li>
+    <li><span class="n">3</span><span><b>Title</b> — entity name, single line, ellipsized. Cards cap at 316px inside the 380px panel.</span></li>
+    <li><span class="n">4</span><span><b>Status chip</b> — signal palette tint + icon + label. Pass/fail for Run verdicts; workflow states for ATC.</span></li>
+    <li><span class="n">5</span><span><b>Second line</b> — project, then environment (mono) and step counts for runs; layer for ATCs. Secondary text tier.</span></li>
+    <li><span class="n">6</span><span><b>Inert variants</b> — dashed border, grey tint, italic title, no shadow, no hover, no pointer. Restricted shows no id, title, or project; deleted keeps the id already visible in the message.</span></li>
+  </ul>
+</section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Resolved cards: demo navigation affordance without leaving the sheet.
+  document.querySelectorAll("a.elink").forEach(function (card) {
+    card.addEventListener("click", function (e) { e.preventDefault(); });
+  });
+
+  // Entity picker: live search + keyboard selection + insert into composer.
+  var search = document.getElementById("rpSearch");
+  var list = document.getElementById("rpList");
+  var empty = document.getElementById("rpEmpty");
+  var ta = document.getElementById("ta2");
+  if (!search || !list || !ta) return;
+
+  var items = Array.prototype.slice.call(list.querySelectorAll(".rp-item"));
+
+  function visibleItems() {
+    return items.filter(function (it) { return !it.hidden; });
+  }
+  function select(item) {
+    items.forEach(function (it) { it.setAttribute("aria-selected", String(it === item)); });
+  }
+  function filter() {
+    var q = search.value.trim().toLowerCase();
+    items.forEach(function (it) {
+      var hay = (it.dataset.id + " " + it.querySelector(".rp-title").textContent).toLowerCase();
+      it.hidden = q !== "" && hay.indexOf(q) === -1;
+    });
+    var vis = visibleItems();
+    empty.hidden = vis.length > 0;
+    if (!vis.some(function (it) { return it.getAttribute("aria-selected") === "true"; })) {
+      select(vis[0] || null);
+    }
+  }
+  function insert(item) {
+    if (!item) return;
+    ta.value = ta.value.replace(/\s*$/, "") + " " + item.dataset.id + " ";
+    ta.focus();
+  }
+
+  search.addEventListener("input", filter);
+  search.addEventListener("keydown", function (e) {
+    var vis = visibleItems();
+    var idx = vis.findIndex(function (it) { return it.getAttribute("aria-selected") === "true"; });
+    if (e.key === "ArrowDown") { e.preventDefault(); select(vis[Math.min(idx + 1, vis.length - 1)]); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); select(vis[Math.max(idx - 1, 0)]); }
+    else if (e.key === "Enter") { e.preventDefault(); insert(vis[idx]); }
+  });
+  items.forEach(function (it) {
+    it.addEventListener("click", function () { select(it); insert(it); });
+  });
+})();
+</script>
+</body>
+</html>

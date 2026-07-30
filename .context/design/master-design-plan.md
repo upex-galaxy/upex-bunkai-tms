@@ -43,6 +43,7 @@ Every user story that touches UI MUST:
 | Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
 | Notifications Center (post-MVP, 3-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.13) |
+| Team Chat (post-MVP, 4-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.14) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -371,6 +372,32 @@ a session limit; export + this spec were completed by the main session against t
 
 ---
 
+### 4.14 Team Chat — post-MVP · ❌ build 0% · ✅ mockups ready (2026-07-30)
+All BK-210 stories parked Backlog (post-MVP). **The ⚠️ wireframe-pending flag in §8 is LIFTED**: a
+4-screen set was generated via Open Design (REST-driven Mode A, design system `user:bunkai`) and
+lives in `.context/designs/bunkai-test-management-tool/bk-210-team-chat/` (provenance: `BRIEF.md`
+in the same folder). Screen 1 ran in project `bunkai-bk-210-team-chat`; screens 2–4 each ran in a
+dedicated satellite project (`bunkai-bk-210-team-chat-2/-3/-4`) after the primary project's
+follow-up-run channel stopped forwarding new messages to the agent (repeatable daemon glitch, not a
+design defect) — each satellite prompt inlined screen 1's concrete shell anatomy (panel/header/
+message-list/composer class-level structure) so visual continuity held without relying on OD's
+cross-run memory. English copy, frozen §2 tokens verbatim, `:focus-visible` 1px `--accent`, no
+color-only signals.
+
+| Screen file | Route / surface | Spec highlights |
+|---|---|---|
+| `chat-panel-workspace.html` | global panel/dock in the App Shell — workspace channel | BK-215 real-time general channel: header (channel + roster toggle + close), newest-at-bottom message list with own/collapsed-sender treatment, `@mention` autocomplete pill (BK-217, stronger fill when self-mentioned), `ATC-xxx`/`RUN-xxx` mono id-chips inline, composer with Enter/Shift+Enter/@ hint row; states cover read-only viewer composer, inline edit-in-progress, own-delete tombstone, admin-delete tombstone (BK-219), and a reconnect-catch-up sequence. |
+| `chat-panel-project.html` | panel within `/projects/[projectSlug]` — project channel | BK-216 per-project channel: adds a channel switcher above the shared shell (general pinned + accessible project channels with unread badges that clear on open); reuses screen 1's message/composer/roster anatomy verbatim, scoped to project membership. |
+| `chat-entity-rich-link.html` | component inside the chat panel (both channel types) | BK-218 rich cards for ATC/Test/Run references: icon + title + status/verdict row with project name as a second line, resolved-card states plus same-footprint restricted (no access) and deleted (entity gone) placeholders, composer-side entity picker popover. |
+| `chat-search.html` | overlay within the chat panel | BK-220 message-history search: input + channel/author/date filter chips + result list (channel badge, author, date, highlighted snippet) over the same panel shell; default/populated/filtered/no-matches states, jump-to-message-in-context on select. |
+
+Cross-epic note: BK-217 mention delivery renders into the Notifications inbox (§4.13,
+`notifications-inbox.html`) — that screen's entity-chip and signal-token idiom is the one this
+batch's mention pills and rich-link id-chips deliberately reuse, so the two surfaces read as one
+system.
+
+---
+
 ## 5. Divergences — gaps to correct, UI-first
 
 **Guiding principle (2026-06-08):** **maximize UI fidelity to the mockup WITHOUT triggering backend refactors.** The mockup wins at the *presentation layer*. Where matching the mockup would only require frontend work (layout, components, render), close the gap. Where it would require reverting/rebuilding schema, APIs, or auth infra, **adapt the UI on top of the existing backend** instead — keep the data model, change only what renders. A gap is "to correct" only to the extent it's a frontend change.
@@ -493,12 +520,12 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-212 Bug assignment/status events | Notifications inbox (event producer — renders into BK-209 inbox) | §4.13 · `bk-208-notifications/notifications-inbox.html` |
 | | BK-213 Notification preferences | **Settings — Notification preferences** (extends §4.10 hub) | §4.10 · §4.13 · `bk-208-notifications/settings-notifications.html` |
 | | BK-214 Email digest of unread notifications | **Email digest template** (non-app surface — email design) | §4.13 · `bk-208-notifications/email-digest-template.html` |
-| **BK-210 Team Chat** | BK-215 Workspace real-time channel | **Team Chat panel** (new — workspace channel) | ⚠️ wireframe pending |
-| | BK-216 Per-project channel | **Team Chat panel** (project channels) | ⚠️ wireframe pending |
-| | BK-217 Mention a teammate | **Chat panel** · Notifications inbox (mention delivery) | ⚠️ wireframe pending |
-| | BK-218 Share ATC/Test/Run as rich link | **Chat panel** — entity rich card | ⚠️ wireframe pending |
-| | BK-219 Edit/delete my own messages | **Chat panel** (message actions) | ⚠️ wireframe pending |
-| | BK-220 Search the message history | **Chat search** (within chat panel) | ⚠️ wireframe pending |
+| **BK-210 Team Chat** | BK-215 Workspace real-time channel | **Team Chat panel** (new — workspace channel) | §4.14 · `bk-210-team-chat/chat-panel-workspace.html` |
+| | BK-216 Per-project channel | **Team Chat panel** (project channels) | §4.14 · `bk-210-team-chat/chat-panel-project.html` |
+| | BK-217 Mention a teammate | **Chat panel** · Notifications inbox (mention delivery) | §4.14 · `bk-210-team-chat/chat-panel-workspace.html` · §4.13 `bk-208-notifications/notifications-inbox.html` |
+| | BK-218 Share ATC/Test/Run as rich link | **Chat panel** — entity rich card | §4.14 · `bk-210-team-chat/chat-entity-rich-link.html` |
+| | BK-219 Edit/delete my own messages | **Chat panel** (message actions) | §4.14 · `bk-210-team-chat/chat-panel-workspace.html` |
+| | BK-220 Search the message history | **Chat search** (within chat panel) | §4.14 · `bk-210-team-chat/chat-search.html` |
 | **BK-221 Automation & CI Ingestion** | BK-222 Submit automated run via API | API-first, UI-light — renders into existing **Run detail** | `run.jsx` §4.5 |
 | | BK-223 Stream step results during automated run | API-first, UI-light — renders live into existing **Run detail** | `run.jsx` §4.5 |
 | | BK-225 Filter runs by manual/automated | **Test Runs index** — execution-mode badge/filter (extends existing runs view) | §4.12 · `bk-221-automation-ci/test-runs-index--ci-extension.html` |
@@ -513,7 +540,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
 >
-> **Post-MVP screens (BK-210/224):** these screens do not exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12. **BK-208 Notifications Center is done** — 3-screen set shipped 2026-07-30, see §4.13.
+> **Post-MVP screens (BK-224):** these screens do not exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12. **BK-208 Notifications Center is done** — 3-screen set shipped 2026-07-30, see §4.13. **BK-210 Team Chat is done** — 4-screen set shipped 2026-07-30, see §4.14.
 
 ---
 

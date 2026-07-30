@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Workspace Team Chat · Screen 1/4</title>
+<style>
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .dot[data-status="running"], .spin { animation: none !important; }
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-0); color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  padding: var(--space-12); min-width: 1440px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic.lg { width: 16px; height: 16px; }
+.ic.xs { width: 12px; height: 12px; }
+kbd {
+  font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px; letter-spacing: 0.01em;
+}
+
+/* ─── Sheet chrome (spec frames, not product UI) ───────────────────── */
+.sheet-head { max-width: 1440px; margin: 0 auto var(--space-12); display: flex; align-items: baseline; gap: var(--space-5); }
+.sheet-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.sheet-head .mono-meta { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.frame { max-width: 1440px; margin: 0 auto var(--space-12); }
+.frame-label {
+  font: 500 var(--text-xs)/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: var(--space-2);
+}
+.frame-cap { font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); max-width: 72ch; }
+.frame-row { display: flex; gap: var(--space-12); align-items: flex-start; flex-wrap: wrap; }
+
+/* ─── App Shell (frame 01 context) ─────────────────────────────────── */
+.shell {
+  display: grid; grid-template-columns: 48px 1fr 380px; height: 720px; width: 100%;
+  background: var(--bg-0); border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden;
+}
+.rail { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; align-items: center; padding: var(--space-4) 0; gap: var(--space-2); }
+.rail .mark { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); margin-bottom: var(--space-4); }
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center; position: relative;
+  color: var(--fg-3); border-radius: var(--r-2); transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { color: var(--fg-1); background: var(--bg-3); }
+.rail-btn[aria-pressed="true"] { color: var(--fg-0); background: var(--bg-3); }
+.rail-badge {
+  position: absolute; top: -2px; right: -2px; min-width: 14px; height: 14px; padding: 0 3px;
+  font: 500 10px/14px var(--font-mono); text-align: center; color: var(--fg-0);
+  background: var(--bg-5); border: 1px solid var(--stroke-3); border-radius: var(--radius-pill);
+}
+.editor-mock { background: var(--bg-0); display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--stroke-1); }
+.tabs { display: flex; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); }
+.tab {
+  font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); padding: var(--space-3) var(--space-6);
+  border-right: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-2);
+}
+.tab[data-active] { color: var(--fg-1); background: var(--bg-0); box-shadow: 0 1px 0 var(--bg-0); }
+.ghost-rows { flex: 1; padding: var(--space-6); opacity: 0.45; display: flex; flex-direction: column; gap: var(--space-3); }
+.ghost-rows .gr { height: 28px; background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-2); }
+.ghost-rows .gr.w60 { width: 60%; } .ghost-rows .gr.w80 { width: 80%; }
+.editor-note { font: 400 var(--text-xs)/1 var(--font-mono); color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 var(--space-6) var(--space-5); }
+
+/* ─── Chat panel ───────────────────────────────────────────────────── */
+.panel {
+  width: 380px; background: var(--bg-1); display: flex; flex-direction: column;
+  position: relative; min-height: 0; height: 100%;
+}
+.panel.standalone { height: 520px; border: 1px solid var(--stroke-2); border-radius: var(--r-4); overflow: hidden; box-shadow: var(--shadow-card); }
+.p-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5);
+  background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); flex: none;
+}
+.p-head .ch-ic { color: var(--muted); }
+.p-head h2 { font: 600 var(--text-lg)/1 var(--font-display); color: var(--fg-0); }
+.p-sub { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.live { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--text-sm)/1 var(--font-body); color: var(--muted); margin-left: auto; }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot.on { background: var(--pass); }
+.dot.off { background: transparent; border: 1px solid var(--fg-4); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-control)/1 var(--font-body);
+  color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); letter-spacing: 0.02em;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hover); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-3); color: var(--fg-1); }
+.btn[data-variant="danger"] { background: transparent; border-color: var(--fail); color: var(--fail); }
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); }
+.btn.sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
+.btn.icon-only { padding: var(--space-2); }
+.btn[disabled] { color: var(--fg-4); background: var(--bg-2); border-color: var(--stroke-1); cursor: not-allowed; box-shadow: none; }
+
+/* Message list */
+.msg-scroll { flex: 1; overflow-y: auto; padding: var(--space-3) 0 var(--space-4); scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; min-height: 0; }
+.day-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); }
+.day-div::before, .day-div::after { content: ""; flex: 1; height: 1px; background: var(--stroke-1); }
+.day-div span { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.sync-div { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); }
+.sync-div::before, .sync-div::after { content: ""; flex: 1; height: 1px; background: rgba(47, 182, 115, 0.35); }
+.sync-div span { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--text-xs)/1 var(--font-mono); color: var(--pass); text-transform: uppercase; letter-spacing: 0.06em; }
+.begin {
+  margin: var(--space-2) var(--space-5) var(--space-4); padding: var(--space-4) var(--space-5);
+  background: var(--bg-2); border: 1px solid var(--stroke-1); border-radius: var(--r-3);
+  font-size: var(--text-sm); color: var(--muted);
+}
+.begin b { color: var(--fg-1); font-weight: 600; }
+.loader { display: none; align-items: center; gap: var(--space-2); justify-content: center; padding: var(--space-3); font: 500 var(--text-sm)/1 var(--font-body); color: var(--running); }
+.loader.show { display: flex; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msg { display: grid; grid-template-columns: 26px 1fr; gap: var(--space-3); padding: var(--space-1) var(--space-5); position: relative; }
+.msg:hover, .msg:focus-within { background: var(--bg-2); }
+.msg + .msg:not(.cont) { margin-top: var(--space-2); }
+.avatar {
+  width: 26px; height: 26px; display: grid; place-items: center; margin-top: 2px;
+  font: 500 10px/1 var(--font-mono); color: var(--fg-1); letter-spacing: 0.02em;
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-2); flex: none;
+}
+.avatar.sm { width: 20px; height: 20px; font-size: 9px; margin: 0; }
+.msg.tomb .avatar, .msg.cont .avatar { visibility: hidden; height: 0; margin: 0; border: 0; }
+.m-h { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.name { font: 600 var(--text-base)/1.3 var(--font-display); color: var(--fg-0); }
+.you-tag {
+  font: 500 10px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px;
+}
+.time { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.edited { font: 400 var(--text-sm)/1 var(--font-body); color: var(--muted); font-style: italic; }
+.text { color: var(--fg-1); overflow-wrap: anywhere; }
+.mention {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-0);
+  background: var(--bg-4); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.mention.self { background: var(--accent-soft); border-color: var(--accent-glow); color: var(--accent-hi); }
+.idchip {
+  font: 500 var(--text-control)/1.2 var(--font-mono); color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 4px; white-space: nowrap;
+}
+.acts {
+  position: absolute; top: -10px; right: var(--space-5); display: flex; gap: var(--space-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px;
+  box-shadow: var(--shadow-card); opacity: 0; pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.msg:hover .acts, .msg:focus-within .acts { opacity: 1; pointer-events: auto; }
+.acts button { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-1); color: var(--muted); }
+.acts button:hover { background: var(--bg-4); color: var(--fg-0); }
+.acts button.a-del:hover { color: var(--fail); background: var(--fail-bg); }
+
+/* Tombstones */
+.stone { display: inline-flex; align-items: center; gap: var(--space-2); font-style: italic; font-size: var(--text-control); border-radius: var(--r-2); padding: var(--space-2) var(--space-3); }
+.stone.own-del { color: var(--muted); background: var(--skipped-bg); border: 1px dashed var(--stroke-2); }
+.stone.admin-del { color: var(--fg-1); background: var(--blocked-bg); border: 1px solid rgba(232, 168, 56, 0.25); }
+.stone.admin-del .ic { color: var(--blocked); }
+.stone-sub { display: block; font-style: normal; font-size: var(--text-sm); color: var(--muted); margin-top: var(--space-1); }
+
+/* Inline edit */
+.editbox { margin-top: var(--space-1); }
+.e-bar { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.e-bar .hint { margin-right: auto; }
+
+/* Composer */
+.composer { flex: none; position: relative; padding: var(--space-4) var(--space-5) var(--space-5); background: var(--bg-1); border-top: 1px solid var(--stroke-1); }
+.input, textarea.ta {
+  width: 100%; font: 400 var(--text-control)/1.5 var(--font-body); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-3) var(--space-4); resize: none;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { border-color: var(--accent); background: var(--bg-3); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+.input[disabled] { background: var(--bg-1); border-color: var(--stroke-1); color: var(--fg-4); cursor: not-allowed; }
+.c-bar { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.hint { font-size: var(--text-sm); color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.c-bar .hint { margin-right: auto; }
+.ro-note {
+  display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4); background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2); font-size: var(--text-control); color: var(--fg-1);
+}
+.ro-note .ic { color: var(--muted); margin-top: 1px; }
+.ro-note b { color: var(--fg-0); font-weight: 600; }
+.ro-note span { color: var(--muted); }
+
+/* Mention popup */
+.mention-pop {
+  position: absolute; left: var(--space-5); right: var(--space-5); bottom: calc(100% + var(--space-1));
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-1); z-index: 30;
+}
+.m-item {
+  display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: var(--space-3);
+  width: 100%; text-align: left; padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+}
+.m-item:hover { background: var(--bg-4); }
+.m-item[aria-selected="true"] { background: var(--bg-5); }
+.m-name { font: 500 var(--text-control)/1.2 var(--font-display); color: var(--fg-0); }
+.m-handle { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.m-role { font: 400 var(--text-xs)/1 var(--font-body); color: var(--meta); text-transform: uppercase; letter-spacing: 0.06em; }
+.m-item[aria-selected="true"] .m-role, .m-item[aria-selected="true"] .m-handle { color: var(--fg-1); }
+
+/* Roster flyout */
+.roster {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 300px; z-index: 20;
+  background: var(--bg-2); border-left: 1px solid var(--stroke-3); box-shadow: var(--shadow-pop);
+  display: flex; flex-direction: column;
+}
+.roster[hidden] { display: none; }
+.r-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-1); }
+.r-head h3 { font: 600 var(--text-base)/1 var(--font-display); color: var(--fg-0); }
+.r-head .count { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--muted); }
+.r-head button { margin-left: auto; }
+.r-body { overflow-y: auto; padding: var(--space-2) 0 var(--space-4); }
+.r-group { font: 500 var(--text-xs)/1 var(--font-mono); color: var(--meta); text-transform: uppercase; letter-spacing: 0.08em; padding: var(--space-4) var(--space-5) var(--space-2); }
+.r-item { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-5); }
+.r-item:hover { background: var(--bg-3); }
+.r-name { font: 500 var(--text-control)/1.3 var(--font-display); color: var(--fg-0); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.r-item.offline .r-name { color: var(--muted); }
+.chip-role {
+  display: inline-flex; align-items: center; gap: 3px; font: 500 10px/1 var(--font-body);
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 2px 5px;
+}
+.chip-role.admin { color: var(--fg-1); border-color: var(--stroke-strong); }
+.r-pres { display: inline-flex; align-items: center; gap: var(--space-1); font: 400 var(--text-sm)/1 var(--font-body); color: var(--muted); }
+
+/* Connection banner */
+.conn {
+  position: absolute; top: 45px; left: var(--space-5); right: var(--space-5); z-index: 25;
+  display: none; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-2); font: 500 var(--text-control)/1.3 var(--font-body); box-shadow: var(--shadow-card);
+}
+.conn.show { display: flex; }
+.conn[data-state="offline"] { background: var(--bg-3); border: 1px solid rgba(232, 168, 56, 0.4); color: var(--blocked); }
+.conn[data-state="online"] { background: var(--bg-3); border: 1px solid rgba(47, 182, 115, 0.4); color: var(--pass); }
+
+/* Delete confirmation */
+.overlay { position: absolute; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: var(--space-6); }
+.overlay[hidden] { display: none; }
+.modal { width: 100%; max-width: 320px; background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-4); box-shadow: var(--shadow-pop); padding: var(--space-6); }
+.modal h3 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); margin-bottom: var(--space-3); }
+.modal p { font-size: var(--text-control); color: var(--fg-1); }
+.modal .quote {
+  margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); font-size: var(--text-control); color: var(--muted);
+  background: var(--bg-2); border: 1px solid var(--stroke-1); border-left: 2px solid var(--stroke-strong); overflow-wrap: anywhere;
+}
+.modal .sub { color: var(--muted); font-size: var(--text-sm); }
+.modal-acts { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+.dim { opacity: 0.5; pointer-events: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-wifi-off" viewBox="0 0 24 24"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+  <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></symbol>
+</svg>
+
+<header class="sheet-head">
+  <h1>Workspace Team Chat</h1>
+  <span class="mono-meta">chat-panel-workspace.html · screen 1/4 · 1440 · dark</span>
+</header>
+
+<!-- ══ 01 · DEFAULT — panel docked in the App Shell ══════════════════ -->
+<section class="frame" id="frame-01" data-od-id="frame-default">
+  <div class="frame-label">01 · Default — #general open, live, history loaded</div>
+  <p class="frame-cap">Panel anatomy (reused by screens 2–4): header (channel + live status + roster toggle + close), scrollable message list newest-at-bottom, composer pinned to bottom. Interactive: send, @mention (arrow keys + Enter), hover/focus a message you own for edit/delete, scroll to top to load older history. A brief connection-loss sequence plays once, ~6s after load.</p>
+  <div class="shell">
+    <nav class="rail" aria-label="App navigation" data-od-id="app-rail">
+      <span class="mark" aria-hidden="true">分</span>
+      <button class="rail-btn" aria-label="Dashboard"><svg class="ic lg"><use href="#i-grid"/></svg></button>
+      <button class="rail-btn" aria-label="Test suites"><svg class="ic lg"><use href="#i-folder"/></svg></button>
+      <button class="rail-btn" aria-label="Runs"><svg class="ic lg"><use href="#i-term"/></svg></button>
+      <button class="rail-btn" aria-pressed="true" aria-label="Team chat, 2 unread messages">
+        <svg class="ic lg"><use href="#i-chat"/></svg><span class="rail-badge">2</span>
+      </button>
+    </nav>
+    <div class="editor-mock" aria-hidden="true">
+      <div class="tabs">
+        <span class="tab" data-active><svg class="ic xs"><use href="#i-check"/></svg>ATC-118</span>
+        <span class="tab">MOD-014</span>
+        <span class="tab">RUN-452</span>
+      </div>
+      <div class="ghost-rows"><div class="gr"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div><div class="gr w80"></div><div class="gr"></div><div class="gr w60"></div></div>
+      <div class="editor-note">Editor area — dimmed for context</div>
+    </div>
+
+    <aside class="panel" id="panel1" data-od-id="chat-panel" aria-label="Team chat panel">
+      <header class="p-head" data-od-id="chat-header">
+        <svg class="ic ch-ic"><use href="#i-hash"/></svg>
+        <h2>general</h2>
+        <span class="p-sub">Workspace</span>
+        <span class="live" id="liveChip"><span class="dot on"></span>Live</span>
+        <button class="btn sm" id="rosterBtn" aria-expanded="false" aria-controls="roster1" data-od-id="roster-toggle">
+          <svg class="ic"><use href="#i-users"/></svg>8
+        </button>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button>
+      </header>
+
+      <div class="conn" id="conn" role="status" aria-live="polite"></div>
+
+      <div class="msg-scroll" id="list" data-od-id="message-list" aria-live="polite">
+        <div class="loader" id="loader"><svg class="ic spin"><use href="#i-loader"/></svg>Loading earlier messages</div>
+        <div class="day-div" id="todayDiv"><span>Today · Jul 30</span></div>
+
+        <div class="msg"><span class="avatar">MT</span><div class="m-b">
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:12</time><span class="edited" hidden>(edited)</span></div>
+          <p class="text">Morning. <span class="idchip">RUN-452</span> finished overnight: 3 fails, all in the auth module.</p></div></div>
+
+        <div class="msg"><span class="avatar">DP</span><div class="m-b">
+          <div class="m-h"><span class="name">Devon Park</span><time class="time">09:14</time><span class="edited" hidden>(edited)</span></div>
+          <p class="text">Looking now. Two of them are the same selector timeout.</p></div></div>
+
+        <div class="msg cont"><span class="avatar" aria-hidden="true"></span><div class="m-b">
+          <p class="text">The third looks like a real regression in <span class="idchip">MOD-014</span>.</p></div></div>
+
+        <div class="msg"><span class="avatar">SI</span><div class="m-b">
+          <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:31</time><span class="edited" hidden>(edited)</span></div>
+          <p class="text"><span class="mention self">@rin</span> can you re-run <span class="idchip">ATC-118</span> on staging before we triage?</p></div></div>
+
+        <div class="msg own" data-raw="On it. Staging is on v0.9.2, right?"><span class="avatar">RO</span><div class="m-b">
+          <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:33</time><span class="edited" hidden>(edited)</span></div>
+          <p class="text">On it. Staging is on v0.9.2, right?</p></div>
+          <div class="acts"><button class="a-edit" aria-label="Edit message"><svg class="ic"><use href="#i-pencil"/></svg></button><button class="a-del" aria-label="Delete message"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+
+        <div class="msg"><span class="avatar">MT</span><div class="m-b">
+          <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:35</time><span class="edited" hidden>(edited)</span></div>
+          <p class="text">Yes, v0.9.2 since last night.</p></div></div>
+
+        <div class="msg own" data-raw="ATC-118 passed on staging. Logging results to RUN-452 now."><span class="avatar">RO</span><div class="m-b">
+          <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:40</time><span class="edited">(edited)</span></div>
+          <p class="text"><span class="idchip">ATC-118</span> passed on staging. Logging results to <span class="idchip">RUN-452</span> now.</p></div>
+          <div class="acts"><button class="a-edit" aria-label="Edit message"><svg class="ic"><use href="#i-pencil"/></svg></button><button class="a-del" aria-label="Delete message"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>
+      </div>
+
+      <footer class="composer" data-od-id="composer">
+        <div class="mention-pop" id="mpop" role="listbox" aria-label="Mention a teammate" hidden></div>
+        <textarea id="ta" class="input ta" rows="2" placeholder="Message #general — type @ to mention" aria-label="Message #general"></textarea>
+        <div class="c-bar">
+          <span class="hint"><kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> line · <kbd>@</kbd> mention</span>
+          <button class="btn" data-variant="primary" id="sendBtn">Send<svg class="ic"><use href="#i-send"/></svg></button>
+        </div>
+      </footer>
+
+      <aside class="roster" id="roster1" data-od-id="roster-flyout" aria-label="Members of #general" hidden>
+        <div class="r-head"><svg class="ic"><use href="#i-users"/></svg><h3>Members</h3><span class="count">8</span>
+          <button class="btn icon-only" data-variant="ghost" id="rosterClose" aria-label="Close member roster"><svg class="ic"><use href="#i-x"/></svg></button></div>
+        <div class="r-body" id="rosterBody"></div>
+      </aside>
+
+      <div class="overlay" id="delOverlay" hidden>
+        <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="delTitle" aria-describedby="delQuote">
+          <h3 id="delTitle">Delete message?</h3>
+          <p>This permanently deletes your message in <b>#general</b>:</p>
+          <blockquote class="quote" id="delQuote"></blockquote>
+          <p class="sub">This can't be undone. Admins keep an audit record of the deletion.</p>
+          <div class="modal-acts">
+            <button class="btn" id="delCancel">Cancel</button>
+            <button class="btn" data-variant="danger" id="delConfirm"><svg class="ic"><use href="#i-trash"/></svg>Delete message</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ══ 02–04 ═════════════════════════════════════════════════════════ -->
+<div class="frame frame-row" style="max-width:1440px;margin:0 auto var(--space-12)">
+
+<section id="frame-02" data-od-id="frame-readonly">
+  <div class="frame-label">02 · Read-only composer — Viewer role</div>
+  <p class="frame-cap">Viewing as Casey Morgan (Viewer). Full history readable; composer disabled with an explicit reason.</p>
+  <aside class="panel standalone" aria-label="Team chat panel, read-only">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">MT</span><div class="m-b">
+        <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:12</time></div>
+        <p class="text">Morning. <span class="idchip">RUN-452</span> finished overnight: 3 fails, all in the auth module.</p></div></div>
+      <div class="msg"><span class="avatar">DP</span><div class="m-b">
+        <div class="m-h"><span class="name">Devon Park</span><time class="time">09:14</time></div>
+        <p class="text">Looking now. Two of them are the same selector timeout.</p></div></div>
+      <div class="msg"><span class="avatar">SI</span><div class="m-b">
+        <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:31</time></div>
+        <p class="text"><span class="mention">@rin</span> can you re-run <span class="idchip">ATC-118</span> on staging before we triage?</p></div></div>
+    </div>
+    <footer class="composer">
+      <div class="ro-note"><svg class="ic"><use href="#i-lock"/></svg>
+        <div><b>Read-only</b> — <span>your Viewer role can't post in <b>#general</b>. Ask an admin (<span class="mention">@mika</span> or <span class="mention">@lena</span>) for posting access.</span></div></div>
+      <textarea class="input ta" rows="2" disabled placeholder="Posting is disabled for the Viewer role" aria-label="Message composer, disabled: Viewer role is read-only"></textarea>
+      <div class="c-bar"><span class="hint"><svg class="ic xs"><use href="#i-eye"/></svg>Viewing as Casey Morgan · Viewer</span>
+        <button class="btn" data-variant="primary" disabled>Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+
+<section id="frame-03" data-od-id="frame-edit">
+  <div class="frame-label">03 · Inline edit in progress</div>
+  <p class="frame-cap">Own message in edit mode. Enter saves, Esc cancels; saved edits show "(edited)" (see message above the editor).</p>
+  <aside class="panel standalone" aria-label="Team chat panel, editing a message">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">SI</span><div class="m-b">
+        <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:31</time></div>
+        <p class="text"><span class="mention">@rin</span> can you re-run <span class="idchip">ATC-118</span> on staging before we triage?</p></div></div>
+      <div class="msg own"><span class="avatar">RO</span><div class="m-b">
+        <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:33</time><span class="edited">(edited)</span></div>
+        <p class="text">On it. Staging is on v0.9.2, right?</p></div></div>
+      <div class="msg own"><span class="avatar">RO</span><div class="m-b">
+        <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:40</time></div>
+        <div class="editbox">
+          <textarea class="input ta" rows="2" aria-label="Edit message">ATC-118 passed on staging. Logging results to RUN-452 now.</textarea>
+          <div class="e-bar"><span class="hint"><kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel</span>
+            <button class="btn sm" data-variant="ghost">Cancel</button>
+            <button class="btn sm" data-variant="primary">Save</button></div>
+        </div></div></div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #general — type @ to mention" aria-label="Message #general"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+
+<section id="frame-04" data-od-id="frame-tombstone-own">
+  <div class="frame-label">04 · Own-delete tombstone</div>
+  <p class="frame-cap">The author deleted their own message. Original text is gone; neutral dashed tombstone, trash icon + text.</p>
+  <aside class="panel standalone" aria-label="Team chat panel, deleted message">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">MT</span><div class="m-b">
+        <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:35</time></div>
+        <p class="text">Yes, v0.9.2 since last night.</p></div></div>
+      <div class="msg tomb"><span class="avatar">RO</span><div class="m-b">
+        <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:38</time></div>
+        <p class="stone own-del"><svg class="ic"><use href="#i-trash"/></svg>You deleted this message</p></div></div>
+      <div class="msg"><span class="avatar">DP</span><div class="m-b">
+        <div class="m-h"><span class="name">Devon Park</span><time class="time">09:41</time></div>
+        <p class="text">Regression confirmed. Filing it against <span class="idchip">MOD-014</span> with repro steps.</p></div></div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #general — type @ to mention" aria-label="Message #general"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+</div>
+
+<!-- ══ 05–07 ═════════════════════════════════════════════════════════ -->
+<div class="frame frame-row" style="max-width:1440px;margin:0 auto var(--space-12)">
+
+<section id="frame-05" data-od-id="frame-tombstone-admin">
+  <div class="frame-label">05 · Admin-delete tombstone — author's own view</div>
+  <p class="frame-cap">An admin removed Rin's message. The author sees who removed it and why; other members see only "Message removed by an admin". Amber tint + shield icon + text, never color alone.</p>
+  <aside class="panel standalone" aria-label="Team chat panel, message removed by admin">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="false"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">SI</span><div class="m-b">
+        <div class="m-h"><span class="name">Sae Ito</span><time class="time">09:19</time></div>
+        <p class="text">Careful with credentials in here, this channel syncs to the audit log.</p></div></div>
+      <div class="msg tomb"><span class="avatar">RO</span><div class="m-b">
+        <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:21</time></div>
+        <p class="stone admin-del"><svg class="ic"><use href="#i-shield"/></svg>
+          <span>Removed by an admin (<span class="mention">@mika</span>)<span class="stone-sub">Reason: contained staging credentials · Only you and admins see this notice</span></span></p></div></div>
+      <div class="msg"><span class="avatar">MT</span><div class="m-b">
+        <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:22</time></div>
+        <p class="text">Rotated the staging password just in case. DM me if you need it.</p></div></div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #general — type @ to mention" aria-label="Message #general"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+  </aside>
+</section>
+
+<section id="frame-06" data-od-id="frame-roster">
+  <div class="frame-label">06 · Roster flyout — roles + presence</div>
+  <p class="frame-cap">Opened from the header toggle. Presence = dot + label; role = icon + text chip. Esc or the close button dismisses it.</p>
+  <aside class="panel standalone" aria-label="Team chat panel with member roster open">
+    <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+      <span class="live"><span class="dot on"></span>Live</span>
+      <button class="btn sm" aria-expanded="true"><svg class="ic"><use href="#i-users"/></svg>8</button>
+      <button class="btn icon-only" data-variant="ghost" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+    <div class="msg-scroll">
+      <div class="day-div"><span>Today · Jul 30</span></div>
+      <div class="msg"><span class="avatar">MT</span><div class="m-b">
+        <div class="m-h"><span class="name">Mika Tanaka</span><time class="time">09:12</time></div>
+        <p class="text">Morning. <span class="idchip">RUN-452</span> finished overnight.</p></div></div>
+    </div>
+    <footer class="composer">
+      <textarea class="input ta" rows="2" placeholder="Message #general" aria-label="Message #general"></textarea>
+      <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send</span>
+        <button class="btn" data-variant="primary">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+    </footer>
+    <aside class="roster" aria-label="Members of #general">
+      <div class="r-head"><svg class="ic"><use href="#i-users"/></svg><h3>Members</h3><span class="count">8</span>
+        <button class="btn icon-only" data-variant="ghost" aria-label="Close member roster"><svg class="ic"><use href="#i-x"/></svg></button></div>
+      <div class="r-body">
+        <div class="r-group">Online — 5</div>
+        <div class="r-item"><span class="avatar sm">MT</span><span class="r-name">Mika Tanaka<span class="chip-role admin"><svg class="ic xs"><use href="#i-shield"/></svg>Admin</span></span><span class="r-pres"><span class="dot on"></span>Online</span></div>
+        <div class="r-item"><span class="avatar sm">RO</span><span class="r-name">Rin Okada<span class="you-tag">you</span><span class="chip-role"><svg class="ic xs"><use href="#i-check"/></svg>QA</span></span><span class="r-pres"><span class="dot on"></span>Online</span></div>
+        <div class="r-item"><span class="avatar sm">DP</span><span class="r-name">Devon Park<span class="chip-role"><svg class="ic xs"><use href="#i-term"/></svg>Developer</span></span><span class="r-pres"><span class="dot on"></span>Online</span></div>
+        <div class="r-item"><span class="avatar sm">SI</span><span class="r-name">Sae Ito<span class="chip-role"><svg class="ic xs"><use href="#i-check"/></svg>QA</span></span><span class="r-pres"><span class="dot on"></span>Online</span></div>
+        <div class="r-item"><span class="avatar sm">PN</span><span class="r-name">Priya Nair<span class="chip-role"><svg class="ic xs"><use href="#i-term"/></svg>Developer</span></span><span class="r-pres"><span class="dot on"></span>Online</span></div>
+        <div class="r-group">Offline — 3</div>
+        <div class="r-item offline"><span class="avatar sm">TV</span><span class="r-name">Tomás Vega<span class="chip-role"><svg class="ic xs"><use href="#i-check"/></svg>QA</span></span><span class="r-pres"><span class="dot off"></span>Offline</span></div>
+        <div class="r-item offline"><span class="avatar sm">CM</span><span class="r-name">Casey Morgan<span class="chip-role"><svg class="ic xs"><use href="#i-eye"/></svg>Viewer</span></span><span class="r-pres"><span class="dot off"></span>Offline</span></div>
+        <div class="r-item offline"><span class="avatar sm">LF</span><span class="r-name">Lena Fischer<span class="chip-role admin"><svg class="ic xs"><use href="#i-shield"/></svg>Admin</span></span><span class="r-pres"><span class="dot off"></span>Offline</span></div>
+      </div>
+    </aside>
+  </aside>
+</section>
+
+<section id="frame-07" data-od-id="frame-delete-confirm">
+  <div class="frame-label">07 · Delete confirmation — names the message</div>
+  <p class="frame-cap">Destructive confirm quotes the exact message being deleted. Cancel is the initial focus; Esc cancels.</p>
+  <aside class="panel standalone" aria-label="Team chat panel with delete confirmation">
+    <div class="dim" style="display:flex;flex-direction:column;height:100%">
+      <header class="p-head"><svg class="ic ch-ic"><use href="#i-hash"/></svg><h2>general</h2><span class="p-sub">Workspace</span>
+        <span class="live"><span class="dot on"></span>Live</span>
+        <button class="btn sm" tabindex="-1"><svg class="ic"><use href="#i-users"/></svg>8</button>
+        <button class="btn icon-only" data-variant="ghost" tabindex="-1" aria-label="Close chat panel"><svg class="ic"><use href="#i-x"/></svg></button></header>
+      <div class="msg-scroll">
+        <div class="day-div"><span>Today · Jul 30</span></div>
+        <div class="msg own"><span class="avatar">RO</span><div class="m-b">
+          <div class="m-h"><span class="name">Rin Okada</span><span class="you-tag">you</span><time class="time">09:33</time></div>
+          <p class="text">On it. Staging is on v0.9.2, right?</p></div></div>
+      </div>
+      <footer class="composer">
+        <textarea class="input ta" rows="2" tabindex="-1" placeholder="Message #general" aria-label="Message #general"></textarea>
+        <div class="c-bar"><span class="hint"><kbd>Enter</kbd> send</span>
+          <button class="btn" data-variant="primary" tabindex="-1">Send<svg class="ic"><use href="#i-send"/></svg></button></div>
+      </footer>
+    </div>
+    <div class="overlay">
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="delTitle7">
+        <h3 id="delTitle7">Delete message?</h3>
+        <p>This permanently deletes your message in <b>#general</b>:</p>
+        <blockquote class="quote">"On it. Staging is on v0.9.2, right?" — 09:33</blockquote>
+        <p class="sub">This can't be undone. Admins keep an audit record of the deletion.</p>
+        <div class="modal-acts">
+          <button class="btn">Cancel</button>
+          <button class="btn" data-variant="danger"><svg class="ic"><use href="#i-trash"/></svg>Delete message</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var SELF = { h: 'rin', n: 'Rin Okada', i: 'RO' };
+  var USERS = [
+    { h: 'mika',  n: 'Mika Tanaka',  i: 'MT', r: 'Admin' },
+    { h: 'devon', n: 'Devon Park',   i: 'DP', r: 'Developer' },
+    { h: 'sae',   n: 'Sae Ito',      i: 'SI', r: 'QA Engineer' },
+    { h: 'priya', n: 'Priya Nair',   i: 'PN', r: 'Developer' },
+    { h: 'tomas', n: 'Tomás Vega',   i: 'TV', r: 'QA Engineer' },
+    { h: 'casey', n: 'Casey Morgan', i: 'CM', r: 'Viewer' },
+    { h: 'lena',  n: 'Lena Fischer', i: 'LF', r: 'Admin' }
+  ];
+  var $ = function (id) { return document.getElementById(id); };
+  var list = $('list'), ta = $('ta'), mpop = $('mpop'), loader = $('loader');
+  var DRAFT_KEY = 'bunkai-chat-draft-general';
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function rich(t) {
+    return esc(t)
+      .replace(/@([a-z0-9_]+)/gi, function (m, h) {
+        var known = h.toLowerCase() === SELF.h || USERS.some(function (u) { return u.h === h.toLowerCase(); });
+        if (!known) return m;
+        var cls = h.toLowerCase() === SELF.h ? 'mention self' : 'mention';
+        return '<span class="' + cls + '">@' + h.toLowerCase() + '</span>';
+      })
+      .replace(/\b([A-Z]{2,4}-\d{2,4})\b/g, '<span class="idchip">$1</span>')
+      .replace(/\n/g, '<br>');
+  }
+  function now() { return new Date().toTimeString().slice(0, 5); }
+  var ACTS = '<div class="acts"><button class="a-edit" aria-label="Edit message"><svg class="ic"><use href="#i-pencil"/></svg></button><button class="a-del" aria-label="Delete message"><svg class="ic"><use href="#i-trash"/></svg></button></div>';
+
+  function msgHTML(u, text, own, time) {
+    return '<span class="avatar">' + u.i + '</span><div class="m-b"><div class="m-h"><span class="name">' + u.n + '</span>' +
+      (own ? '<span class="you-tag">you</span>' : '') +
+      '<time class="time">' + (time || now()) + '</time><span class="edited" hidden>(edited)</span></div>' +
+      '<p class="text">' + rich(text) + '</p></div>' + (own ? ACTS : '');
+  }
+  function addMsg(u, text, own, time) {
+    var el = document.createElement('div');
+    el.className = 'msg' + (own ? ' own' : '');
+    el.setAttribute('data-raw', text);
+    el.innerHTML = msgHTML(u, text, own, time);
+    list.appendChild(el);
+    return el;
+  }
+  function scrollBottom() { list.scrollTop = list.scrollHeight; }
+
+  /* ── Send ── */
+  function send() {
+    var t = ta.value.trim();
+    if (!t) return;
+    addMsg(SELF, t, true);
+    ta.value = '';
+    localStorage.removeItem(DRAFT_KEY);
+    closePop();
+    scrollBottom();
+    ta.focus();
+  }
+  $('sendBtn').addEventListener('click', send);
+
+  /* ── Draft persistence across sessions ── */
+  ta.value = localStorage.getItem(DRAFT_KEY) || '';
+
+  /* ── Mention autocomplete ── */
+  var mOpen = false, mList = [], mIdx = 0, mStart = -1;
+  function renderPop() {
+    mpop.innerHTML = mList.map(function (u, i) {
+      return '<button class="m-item" role="option" aria-selected="' + (i === mIdx) + '" data-h="' + u.h + '">' +
+        '<span class="avatar sm">' + u.i + '</span><span class="m-name">' + u.n + '</span>' +
+        '<span class="m-handle">@' + u.h + '</span><span class="m-role">' + u.r + '</span></button>';
+    }).join('');
+  }
+  function openPop() { mpop.hidden = false; mOpen = true; renderPop(); }
+  function closePop() { mpop.hidden = true; mOpen = false; }
+  function checkMention() {
+    var caret = ta.selectionStart;
+    var head = ta.value.slice(0, caret);
+    var m = /(^|\s)@([a-z0-9_]*)$/i.exec(head);
+    if (!m) { closePop(); return; }
+    var q = m[2].toLowerCase();
+    mStart = caret - m[2].length - 1;
+    mList = USERS.filter(function (u) {
+      return u.h.indexOf(q) === 0 || u.n.toLowerCase().indexOf(q) === 0;
+    });
+    if (!mList.length) { closePop(); return; }
+    mIdx = Math.min(mIdx, mList.length - 1);
+    openPop();
+  }
+  function pick(u) {
+    var caret = ta.selectionStart;
+    ta.value = ta.value.slice(0, mStart) + '@' + u.h + ' ' + ta.value.slice(caret);
+    var pos = mStart + u.h.length + 2;
+    closePop();
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+    localStorage.setItem(DRAFT_KEY, ta.value);
+  }
+  ta.addEventListener('input', function () {
+    localStorage.setItem(DRAFT_KEY, ta.value);
+    mIdx = 0;
+    checkMention();
+  });
+  ta.addEventListener('keydown', function (e) {
+    if (mOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); mIdx = (mIdx + 1) % mList.length; renderPop(); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); mIdx = (mIdx - 1 + mList.length) % mList.length; renderPop(); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pick(mList[mIdx]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closePop(); return; }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  mpop.addEventListener('click', function (e) {
+    var b = e.target.closest('.m-item');
+    if (!b) return;
+    pick(USERS.filter(function (u) { return u.h === b.getAttribute('data-h'); })[0]);
+  });
+
+  /* ── Edit / Delete (own messages) ── */
+  list.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var msg = b.closest('.msg');
+    if (b.classList.contains('a-edit')) startEdit(msg);
+    if (b.classList.contains('a-del')) askDelete(msg);
+  });
+  function startEdit(msg) {
+    if (msg.querySelector('.editbox')) return;
+    var p = msg.querySelector('.text');
+    var raw = msg.getAttribute('data-raw') || p.textContent;
+    var box = document.createElement('div');
+    box.className = 'editbox';
+    box.innerHTML = '<textarea class="input ta e-ta" rows="2" aria-label="Edit message">' + esc(raw) + '</textarea>' +
+      '<div class="e-bar"><span class="hint"><kbd>Enter</kbd> save · <kbd>Esc</kbd> cancel</span>' +
+      '<button class="btn sm" data-variant="ghost">Cancel</button>' +
+      '<button class="btn sm" data-variant="primary">Save</button></div>';
+    p.replaceWith(box);
+    var eta = box.querySelector('.e-ta');
+    eta.focus();
+    eta.setSelectionRange(raw.length, raw.length);
+    function finish(save) {
+      var nv = eta.value.trim();
+      var np = document.createElement('p');
+      np.className = 'text';
+      if (save && nv && nv !== raw) {
+        msg.setAttribute('data-raw', nv);
+        np.innerHTML = rich(nv);
+        msg.querySelector('.edited').hidden = false;
+      } else {
+        np.innerHTML = rich(raw);
+      }
+      box.replaceWith(np);
+      msg.querySelector('.a-edit').focus();
+    }
+    box.querySelector('[data-variant="primary"]').addEventListener('click', function () { finish(true); });
+    box.querySelector('[data-variant="ghost"]').addEventListener('click', function () { finish(false); });
+    eta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+  }
+  var ov = $('delOverlay'), delTarget = null, delReturn = null;
+  function askDelete(msg) {
+    delTarget = msg;
+    delReturn = document.activeElement;
+    $('delQuote').textContent = '"' + (msg.getAttribute('data-raw') || '').slice(0, 90) + '" — ' + msg.querySelector('.time').textContent;
+    ov.hidden = false;
+    $('delCancel').focus();
+  }
+  function closeDel() { ov.hidden = true; delTarget = null; if (delReturn) delReturn.focus(); }
+  $('delCancel').addEventListener('click', closeDel);
+  $('delConfirm').addEventListener('click', function () {
+    if (!delTarget) return;
+    var time = delTarget.querySelector('.time').textContent;
+    delTarget.classList.add('tomb');
+    delTarget.querySelector('.m-b').innerHTML =
+      '<div class="m-h"><span class="name">' + SELF.n + '</span><span class="you-tag">you</span><time class="time">' + time + '</time></div>' +
+      '<p class="stone own-del"><svg class="ic"><use href="#i-trash"/></svg>You deleted this message</p>';
+    var acts = delTarget.querySelector('.acts');
+    if (acts) acts.remove();
+    delTarget = null;
+    ov.hidden = true;
+    ta.focus();
+  });
+  ov.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeDel(); return; }
+    if (e.key === 'Tab') {
+      var f = [$('delCancel'), $('delConfirm')];
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[1]) { e.preventDefault(); f[0].focus(); }
+    }
+  });
+
+  /* ── Load older history on scroll-to-top ── */
+  var histLoaded = false, histLoading = false;
+  var OLDER = [
+    ['div', 'Yesterday · Jul 29'],
+    ['msg', USERS[3], 'Pushed the selector fix for the login suite. CI is green again.', '17:48'],
+    ['msg', USERS[0], 'Nice. Closing out RUN-449 then.', '18:02']
+  ];
+  list.addEventListener('scroll', function () {
+    if (list.scrollTop > 48 || histLoaded || histLoading) return;
+    histLoading = true;
+    loader.classList.add('show');
+    setTimeout(function () {
+      var h0 = list.scrollHeight;
+      var frag = document.createDocumentFragment();
+      var begin = document.createElement('div');
+      begin.className = 'begin';
+      begin.innerHTML = 'Start of <b>#general</b> · Channel created Mar 12, 2026. Earlier history loads as you scroll and your read position is kept across sessions.';
+      frag.appendChild(begin);
+      OLDER.forEach(function (row) {
+        if (row[0] === 'div') {
+          var d = document.createElement('div');
+          d.className = 'day-div';
+          d.innerHTML = '<span>' + row[1] + '</span>';
+          frag.appendChild(d);
+        } else {
+          var el = document.createElement('div');
+          el.className = 'msg';
+          el.setAttribute('data-raw', row[2]);
+          el.innerHTML = msgHTML(row[1], row[2], false, row[3]);
+          frag.appendChild(el);
+        }
+      });
+      list.insertBefore(frag, $('todayDiv'));
+      loader.classList.remove('show');
+      histLoaded = true;
+      histLoading = false;
+      list.scrollTop += list.scrollHeight - h0;
+    }, 450);
+  });
+
+  /* ── Roster flyout ── */
+  var roster = $('roster1'), rosterBtn = $('rosterBtn');
+  var ROLE_IC = { 'Admin': 'i-shield', 'Developer': 'i-term', 'QA Engineer': 'i-check', 'Viewer': 'i-eye' };
+  var PRESENT = { mika: 1, devon: 1, sae: 1, priya: 1 };
+  function rItem(u, on, you) {
+    return '<div class="r-item' + (on ? '' : ' offline') + '"><span class="avatar sm">' + u.i + '</span>' +
+      '<span class="r-name">' + u.n + (you ? '<span class="you-tag">you</span>' : '') +
+      '<span class="chip-role' + (u.r === 'Admin' ? ' admin' : '') + '"><svg class="ic xs"><use href="#' + (ROLE_IC[u.r] || 'i-check') + '"/></svg>' +
+      (u.r === 'QA Engineer' ? 'QA' : u.r) + '</span></span>' +
+      '<span class="r-pres"><span class="dot ' + (on ? 'on' : 'off') + '"></span>' + (on ? 'Online' : 'Offline') + '</span></div>';
+  }
+  var onHTML = rItem(USERS[0], true) + rItem({ h: 'rin', n: 'Rin Okada', i: 'RO', r: 'QA Engineer' }, true, true) +
+    rItem(USERS[1], true) + rItem(USERS[2], true) + rItem(USERS[3], true);
+  var offHTML = rItem(USERS[4], false) + rItem(USERS[5], false) + rItem(USERS[6], false);
+  $('rosterBody').innerHTML = '<div class="r-group">Online — 5</div>' + onHTML + '<div class="r-group">Offline — 3</div>' + offHTML;
+  function toggleRoster(open) {
+    roster.hidden = !open;
+    rosterBtn.setAttribute('aria-expanded', String(open));
+    if (open) $('rosterClose').focus(); else rosterBtn.focus();
+  }
+  rosterBtn.addEventListener('click', function () { toggleRoster(roster.hidden); });
+  $('rosterClose').addEventListener('click', function () { toggleRoster(false); });
+  roster.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleRoster(false); });
+
+  /* ── Reconnect sequence: offline → synced messages in order ── */
+  var conn = $('conn'), liveChip = $('liveChip');
+  function banner(state, html) {
+    conn.setAttribute('data-state', state);
+    conn.innerHTML = html;
+    conn.classList.add('show');
+  }
+  setTimeout(function () {
+    banner('offline', '<svg class="ic"><use href="#i-wifi-off"/></svg>Connection lost — retrying. Messages keep arriving and sync on reconnect.');
+    liveChip.innerHTML = '<span class="dot off"></span>Offline';
+  }, 6000);
+  setTimeout(function () {
+    banner('online', '<svg class="ic"><use href="#i-wifi"/></svg>Reconnected — 2 messages synced in order.');
+    liveChip.innerHTML = '<span class="dot on"></span>Live';
+    var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+    var d = document.createElement('div');
+    d.className = 'sync-div';
+    d.innerHTML = '<span><svg class="ic xs"><use href="#i-wifi"/></svg>2 messages while disconnected — synced</span>';
+    list.appendChild(d);
+    addMsg(USERS[1], 'Regression confirmed. Filing it against MOD-014 with repro steps.', false, '09:52');
+    addMsg(USERS[2], 'Thanks @rin. Triage at 10:30 then.', false, '09:53');
+    if (nearBottom) scrollBottom();
+  }, 9500);
+  setTimeout(function () { conn.classList.remove('show'); }, 13000);
+
+  scrollBottom();
+})();
+</script>
+</body>
+</html>
