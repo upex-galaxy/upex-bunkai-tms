@@ -35,7 +35,8 @@ Every user story that touches UI MUST:
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
-| Bug Reports / Metrics | 0% | ❌ Missing (no data model) |
+| Bug Reports (+ Defect Heatmap) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.6) |
+| Metrics | 0% | ❌ Missing (no data model) |
 | Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 
@@ -172,8 +173,32 @@ Mockup: `screens/run.jsx` · Impl: none
 Required: run header (RUN-1839 + test name + SegProgress stepper "Step 3 of 6" + pass/fail/blk counts + Pause/Abort), left Test Outline (step list w/ pass/fail icons + layer chips + executor card), main step detail ("FOLLOW THESE STEPS" ordered sub-steps + "← now"), **Pass / Fail / Block** verdict buttons (P/F/B kbd), Notes & evidence (textarea + Attach + URL), **Report bug** right drawer (title, severity P1–P4 segmented, module auto-from-context, description, steps-to-reproduce copied from active step, tags), keyboard footer (P/F/B/⌘↵/⌘B).
 **Blocked by:** runs + bugs data models. **Priority: P2.**
 
-### 4.6 Bug Reports — ❌ (0%)
-Nav badge `33`. No route, no data model. Mockup detail comes from the runner's Report-bug drawer (severity P1–P4, module, repro, tags, `linked:RUN-xxxx`). **Priority: P3** (define bugs domain first).
+### 4.6 Bug Reports — ❌ build 0% · ✅ mockups ready (2026-07-30)
+Nav badge `33`. No route, no data model. **The 🔒 mockup gate is LIFTED**: a 2-screen set was
+generated via Open Design (MCP-driven Mode A, project `bunkai-bk-31-bug-reports`, design system
+`user:bunkai`) and lives in `.context/designs/bunkai-test-management-tool/bk-31-bug-reports/`
+(provenance: `BRIEF.md` in the same folder). Both screens share the App Shell (sidebar with "Bug
+Reports" active, topbar), English copy, frozen §2 tokens verbatim, `:focus-visible` 1px `--accent`,
+severity/status color always paired with text/icon. Filing itself is still covered by the runner's
+Report-bug drawer (`run.jsx`, BK-40) — not redesigned here.
+
+**Placement note (BK-42 defect heatmap):** BK-42 had no single natural screen in the nav (§8
+previously listed "Metrics · Bug Reports"). Folded into `bug-reports-index.html` as a second
+selectable view (List / Heatmap) rather than deferred to the future Metrics batch, since BK-42 was
+Ready For Dev and the epic pairs "Bugs & Defect Heatmap" together by name. If a future Metrics
+screen (§4.7) also wants a heatmap summary panel, it should reference this screen's heatmap
+treatment rather than re-derive one.
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `bug-reports-index.html` | `/projects/[projectSlug]/bugs` | List view: module filter (selecting a module rolls up all nested sub-modules by path prefix), status (open/in progress/resolved/closed) and severity (P1–P4) toggle chips, combinable; live severity/status counts over the full filtered set (not just the page); full module path shown for disambiguation; run-link column (`RUN-xxx` or a "—" with sr-only text for standalone defects). Heatmap view (same screen, view switch): one cell per active module with full path, defect count, and week-over-week trend; 7d/30d/90d window (30d default); count buckets Clean/Low/Elevated/Hotspot with a text legend/tag (never color-only); zero-to-N trend reads "Rising +N", zero-to-zero reads "Flat ±0" (no infinite percentages); freshness cue. States strip: list default / filtered-combined / no-match (zeroed counts, not an error) / heatmap 30d / heatmap 7d / heatmap zero-flat boundary / loading skeleton / error with per-view Retry. |
+| `bug-detail.html` | `/projects/[projectSlug]/bugs/[bugId]` | Read-only single-defect record, reuses screen 1's shell + chip language. Header: id, severity chip, status chip, title, full module path, filed-by/date. Description, mono numbered steps-to-reproduce with the failing step highlighted (`--fail-bg` + "Failed here" tag), Expected vs Actual boxes, evidence list (`N / 10`, each row openable). Right rail: Details kv (severity/status/module/layer/environment/reporter/filed), Origin (linked `ATC-xxx` + `RUN-xxx` with "Failed at step N" cross-reference), External tracker panel. No edit/status-transition controls (out of scope — BK-40's editing-after-filing note). States strip: default (synced + linked run) / standalone (no run, "Filed manually" quiet state, not an error) / sync-failed (badge in header + failure-reason card, rest of record intact) / no-integration-configured (tracker panel absent entirely, no badge, no error). |
+
+Build order note: BK-41 (list/filter + counts) and BK-42 (heatmap) both render `bug-reports-index.html`
+(the two views of one screen); BK-40 (file from failing step) continues to render into the
+Test Runner's Report-bug drawer, not this screen; BK-43 (sync) renders the sync-status states on
+`bug-detail.html`. **Priority: P1** — all 4 BK-31 stories are Ready For Dev and were blocked only by
+this mockup gate; that block is now lifted.
 
 ### 4.7 Metrics — ❌ (0%)
 Nav item, no badge. No mockup screen provided (only implied). Coverage % surfaces on Home. **Priority: P3** — needs design spec authored (no mockup) + metrics data.
@@ -316,10 +341,10 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-37 View a test's past runs | **Test Runs** index (per-test history) | §4.8 · `bk-30-test-runs-index/test-run-history.html` |
 | | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | §4.8 · `bk-30-test-runs-index/test-runs-index.html` |
 | | BK-39 Finish a run with a final verdict | **Test Runner** (finish/verdict) | `run.jsx` §4.5 |
-| **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) | `run.jsx` §4.5 |
-| | BK-41 List/filter defects | **Bug Reports** | §4.6 |
-| | BK-42 Defect heatmap | **Metrics** · Bug Reports | §4.7 |
-| | BK-43 Sync defects to Jira | Bug Reports (integration) | §4.6 |
+| **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) · Bug Reports (read view) | `run.jsx` §4.5 · §4.6 · `bk-31-bug-reports/bug-detail.html` |
+| | BK-41 List/filter defects | **Bug Reports** | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
+| | BK-42 Defect heatmap | **Bug Reports** (heatmap view, placement note §4.6) | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
+| | BK-43 Sync defects to Jira | Bug Reports (integration) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | **BK-44 Coverage & Traceability** | BK-45 US→bug evidence chain | **Metrics** · Projects traceability | §4.7 |
 | | BK-46 Surface untested ACs/modules | **Metrics** · Home coverage card | `home.jsx` |
 | | BK-47 Time-to-green per US | **Metrics** | §4.7 |

@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1">
+<title>Bunkai — BUG-101 · Bug detail</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;              /* buttons, inputs, table cells */
+
+  --font-jp: "Noto Serif JP", serif;   /* wordmark only */
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+  .caret { animation: none !important; }
+}
+
+/* ── Base (identical register to bug-reports-index.html) ──────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  background: var(--bg-0);
+  color: var(--fg-1);
+  min-width: 1280px;
+}
+.mono { font-family: var(--font-mono); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.icon { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.icon-16 { width: 16px; height: 16px; }
+.icon-18 { width: 18px; height: 18px; }
+
+/* ── States strip (design-reference harness, not product UI) ─────── */
+.states {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-1); border-bottom: 1px dashed var(--stroke-3);
+}
+.states-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-2); font-weight: 600; margin-right: var(--space-3);
+}
+.state-chip {
+  font-family: var(--font-mono); font-size: var(--text-sm);
+  padding: 3px 8px; border-radius: var(--r-1);
+  border: 1px solid var(--stroke-2); color: var(--fg-2); background: var(--bg-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.state-chip:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.state-chip[aria-pressed="true"] {
+  background: var(--bg-5); border-color: var(--stroke-strong); color: var(--fg-0);
+}
+
+/* ── App shell ─────────────────────────────────────────────────────── */
+.shell { display: flex; min-height: calc(100vh - 33px); }
+.sidebar {
+  width: 220px; flex: none; background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column;
+}
+.side-logo {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+}
+.side-logo .kanji { font-family: var(--font-jp); font-weight: 700; font-size: 17px; color: var(--fg-0); }
+.side-logo .latin { font-weight: 700; letter-spacing: -0.01em; font-size: var(--text-lg); color: var(--fg-0); }
+.side-logo .ver { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-2); margin-left: auto; }
+.nav { display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); }
+.nav-item {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-2) var(--space-4); border-radius: var(--r-2);
+  font-size: var(--text-control); font-weight: 500; color: var(--fg-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+  text-align: left;
+}
+.nav-item:hover { background: var(--bg-4); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); }
+.side-foot {
+  margin-top: auto; padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: var(--text-sm); color: var(--fg-2);
+}
+.avatar {
+  width: 20px; height: 20px; border-radius: var(--radius-pill);
+  background: var(--bg-4); color: var(--fg-1); font-size: 10.5px; font-weight: 600;
+  display: grid; place-items: center; border: 1px solid var(--stroke-2);
+}
+
+/* ── Topbar ────────────────────────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 44px; flex: none; display: flex; align-items: center;
+  gap: var(--space-4); padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-2); }
+.crumbs .sep { color: var(--fg-3); }
+.crumbs .here { color: var(--fg-0); font-weight: 500; }
+.crumbs .here.mono { font-weight: 600; }
+.cmdk {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-3);
+  padding: 4px 8px 4px 10px; border-radius: var(--r-2);
+  border: 1px solid var(--stroke-2); background: var(--bg-2);
+  font-size: var(--text-control); color: var(--fg-2); min-width: 200px;
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.cmdk:hover { border-color: var(--stroke-3); background: var(--bg-3); }
+.kbd {
+  margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs);
+  padding: 1px 5px; border-radius: var(--r-1); color: var(--fg-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────── */
+.content { padding: var(--space-8) var(--space-8) var(--space-12); display: flex; flex-direction: column; gap: var(--space-6); }
+
+.dhead { display: flex; flex-direction: column; gap: var(--space-3); }
+.dhead-id { display: flex; align-items: center; gap: var(--space-3); }
+.dhead-id .bugid { font-family: var(--font-mono); font-size: var(--text-lg); font-weight: 600; color: var(--fg-2); }
+.dhead h1 {
+  font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 700;
+  letter-spacing: var(--tracking-display); color: var(--fg-0);
+  line-height: var(--leading-tight); max-width: 70ch;
+}
+.dhead-meta { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.mod-path { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.mod-path .leaf { color: var(--fg-0); font-weight: 600; }
+.mod-path .code { color: var(--fg-3); }
+.meta-sep { width: 1px; height: 14px; background: var(--stroke-2); }
+.filed { font-size: var(--text-sm); color: var(--fg-2); }
+.filed .mono { color: var(--fg-1); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em;
+  padding: 1px 8px; border-radius: var(--radius-pill); border: 1px solid transparent;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-tone="fail"]    { color: var(--fail); background: var(--fail-bg); }
+.chip[data-tone="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-tone="running"] { color: var(--running); background: var(--running-bg); }
+.chip[data-tone="pass"]    { color: var(--pass); background: var(--pass-bg); }
+.chip[data-tone="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+.chip.sev { font-family: var(--font-mono); }
+.chip .icon { width: 11px; height: 11px; }
+.chip.layer[data-layer="UI"]   { color: var(--layer-ui);   background: rgba(139, 109, 240, 0.10); }
+.chip.layer[data-layer="API"]  { color: var(--layer-api);  background: var(--running-bg); }
+.chip.layer[data-layer="Unit"] { color: var(--layer-unit); background: var(--pass-bg); }
+
+/* ── Layout grid ───────────────────────────────────────────────────── */
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start; }
+.col { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+
+.panel {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card);
+}
+.panel-h {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.panel-h h2 {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--fg-2);
+}
+.panel-h .count { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-2); }
+.panel-h .hnote { margin-left: auto; font-size: var(--text-xs); color: var(--fg-2); }
+.panel-b { padding: var(--space-5) var(--space-6); }
+.prose { font-size: var(--text-base); color: var(--fg-1); max-width: 72ch; }
+.prose + .prose { margin-top: var(--space-3); }
+
+/* Steps to reproduce */
+.steps { list-style: none; counter-reset: step; display: flex; flex-direction: column; }
+.steps li {
+  counter-increment: step;
+  display: flex; gap: var(--space-4); align-items: baseline;
+  font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-1);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+}
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-size: var(--text-sm); color: var(--fg-2); flex: none; width: 22px;
+}
+.steps li.failed { background: var(--fail-bg); }
+.steps li.failed::before { color: var(--fail); }
+.fail-tag {
+  margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-body); font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 600; color: var(--fail);
+}
+.fail-tag .icon { width: 11px; height: 11px; }
+
+/* Expected vs actual */
+.expact { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.expact .box { border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-4) var(--space-5); }
+.expact .lbl {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; margin-bottom: var(--space-2);
+}
+.expact .box.exp .lbl { color: var(--pass); }
+.expact .box.act .lbl { color: var(--fail); }
+.expact .box.act { background: var(--fail-bg); border-color: var(--stroke-3); }
+.expact p { font-size: var(--text-control); color: var(--fg-1); }
+
+/* Evidence */
+.evidence { display: flex; flex-direction: column; }
+.ev-row {
+  display: flex; align-items: center; gap: var(--space-4); width: 100%;
+  padding: var(--space-3) var(--space-6); text-align: left;
+  border-bottom: 1px solid var(--stroke-1);
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.ev-row:last-child { border-bottom: 0; }
+.ev-row:hover { background: var(--bg-3); }
+.ev-row .icon { color: var(--fg-2); }
+.ev-name { font-family: var(--font-mono); font-size: var(--text-control); color: var(--fg-1); }
+.ev-meta { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-2); margin-left: auto; }
+.ev-open { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-2); }
+.ev-row:hover .ev-open { color: var(--fg-0); }
+
+/* Right rail: key-value details */
+.kv { display: flex; flex-direction: column; }
+.kv-row {
+  display: grid; grid-template-columns: 104px 1fr; gap: var(--space-4);
+  padding: var(--space-3) var(--space-6); align-items: baseline;
+  border-bottom: 1px solid var(--stroke-1);
+}
+.kv-row:last-child { border-bottom: 0; }
+.kv-k { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: var(--fg-2); }
+.kv-v { font-size: var(--text-control); color: var(--fg-1); min-width: 0; overflow-wrap: break-word; }
+.kv-v.mono { font-size: var(--text-sm); }
+.kv-v .code { color: var(--fg-3); }
+
+/* Origin (run / ATC) */
+.origin-b { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5) var(--space-6); }
+.origin-line { font-size: var(--text-sm); color: var(--fg-2); }
+.reflink {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-3) var(--space-4); text-align: left;
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.reflink:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.reflink .refid { font-family: var(--font-mono); font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.reflink .reftitle { font-size: var(--text-sm); color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reflink .icon { color: var(--fg-2); }
+.reflink .go { margin-left: auto; }
+.no-origin {
+  display: flex; gap: var(--space-3); align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  border: 1px dashed var(--stroke-2); border-radius: var(--r-2);
+  font-size: var(--text-sm); color: var(--fg-2);
+}
+.no-origin .icon { color: var(--fg-2); margin-top: 1px; }
+.no-origin strong { color: var(--fg-1); font-weight: 600; }
+
+/* Sync */
+.sync-b { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-6); }
+.sync-badge {
+  display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start;
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em;
+  padding: 2px 9px; border-radius: var(--radius-pill);
+}
+.sync-badge[data-tone="pass"] { color: var(--pass); background: var(--pass-bg); }
+.sync-badge[data-tone="fail"] { color: var(--fail); background: var(--fail-bg); }
+.sync-badge .icon { width: 11px; height: 11px; }
+.sync-line { font-size: var(--text-sm); color: var(--fg-2); }
+.sync-line .mono { color: var(--fg-1); }
+.ext-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start;
+  font-family: var(--font-mono); font-size: var(--text-control); font-weight: 500;
+  padding: 4px 10px; border-radius: var(--r-2); color: var(--fg-0);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  box-shadow: var(--shadow-card);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.ext-btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.ext-btn .icon { width: 12px; height: 12px; color: var(--fg-2); }
+
+/* Header sync-failed badge slot */
+#head-sync .sync-badge { align-self: center; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.2l2 2.5H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 24 24"><path d="m8.5 3 1.7 1.8"/><path d="M13.8 4.8 15.5 3"/><path d="M9 7.5v-.7a3 3 0 1 1 6 0v.7"/><path d="M17 11.5a4 4 0 0 0-4-4h-2a4 4 0 0 0-4 4V14a5 5 0 0 0 10 0z"/><path d="M12 19v-8"/><path d="M7 12.5H3.5"/><path d="M20.5 12.5H17"/><path d="M7.5 17.5 5 19.5"/><path d="m16.5 17.5 2.5 2"/><path d="M7.5 8.5 5 6.5"/><path d="m16.5 8.5 2.5-2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-6"/><path d="M13 17V7"/><path d="M18 17v-3"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-6M4 9V3"/><path d="M12 21v-9M12 6V3"/><path d="M20 21v-4M20 11V3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="9" r="2"/><circle cx="20" cy="14" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2.5-2.5a5 5 0 0 0-7-7L11.5 5.5"/><path d="M14 11a5 5 0 0 0-7.5-.5L4 13a5 5 0 0 0 7 7l1.5-1.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5"/><path d="M12 17.5h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5L19.5 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m21 15-4.5-4.5L9 18"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9.5 5 2.5-5 2.5z"/></symbol>
+    <symbol id="i-atc" viewBox="0 0 24 24"><path d="M9 11.5 11 13.5 15 9"/><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 16.5h16"/></symbol>
+  </defs>
+</svg>
+
+<!-- States strip: design-reference harness (not product UI) -->
+<div class="states" role="group" aria-label="Screen states (design reference)" data-od-id="states-strip">
+  <span class="states-label">States</span>
+  <button class="state-chip" data-state="default" aria-pressed="true">default:synced+run</button>
+  <button class="state-chip" data-state="standalone" aria-pressed="false">standalone:no-run</button>
+  <button class="state-chip" data-state="sync-failed" aria-pressed="false">sync:failed</button>
+  <button class="state-chip" data-state="no-integration" aria-pressed="false">sync:not-configured</button>
+</div>
+
+<div class="shell">
+  <!-- Sidebar (identical to bug-reports-index.html) -->
+  <aside class="sidebar" data-od-id="app-sidebar">
+    <div class="side-logo">
+      <span class="kanji" lang="ja">分解</span>
+      <span class="latin">Bunkai</span>
+      <span class="ver">v0.9</span>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-home"/></svg>Home</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-folder"/></svg>Projects</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-book"/></svg>ATC Library</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-play"/></svg>Test Runs</button>
+      <button class="nav-item" aria-current="page" data-od-id="nav-bug-reports"><svg class="icon icon-16"><use href="#i-bug"/></svg>Bug Reports</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-chart"/></svg>Metrics</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-sliders"/></svg>Settings</button>
+    </nav>
+    <div class="side-foot">
+      <span class="avatar">E</span>
+      <span>Ely · QA</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar" data-od-id="app-topbar">
+      <div class="crumbs">
+        <span>Projects</span><span class="sep">/</span>
+        <span>Kaiten Commerce</span><span class="sep">/</span>
+        <span>Bug Reports</span><span class="sep">/</span>
+        <span class="here mono" id="crumb-id">BUG-101</span>
+      </div>
+      <button class="cmdk" data-od-id="command-palette-button">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <span>Search or jump to…</span>
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content">
+      <!-- Header -->
+      <div class="dhead" data-od-id="defect-header">
+        <div class="dhead-id">
+          <span class="bugid" id="head-id">BUG-101</span>
+          <span id="head-sev"></span>
+          <span id="head-status"></span>
+          <span id="head-sync"></span>
+        </div>
+        <h1 id="head-title">—</h1>
+        <div class="dhead-meta">
+          <span class="mod-path" id="head-module"></span>
+          <span class="meta-sep"></span>
+          <span class="filed" id="head-filed"></span>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <!-- Main column -->
+        <div class="col">
+          <section class="panel" data-od-id="description-panel">
+            <div class="panel-h"><h2>Description</h2></div>
+            <div class="panel-b" id="desc-body"></div>
+          </section>
+
+          <section class="panel" data-od-id="steps-panel">
+            <div class="panel-h"><h2>Steps to reproduce</h2><span class="hnote" id="steps-note"></span></div>
+            <div class="panel-b">
+              <ol class="steps" id="steps-list"></ol>
+            </div>
+          </section>
+
+          <section class="panel" data-od-id="expected-actual-panel">
+            <div class="panel-h"><h2>Expected vs actual</h2></div>
+            <div class="panel-b">
+              <div class="expact">
+                <div class="box exp">
+                  <span class="lbl"><svg class="icon"><use href="#i-check"/></svg>Expected</span>
+                  <p id="expected-text"></p>
+                </div>
+                <div class="box act">
+                  <span class="lbl"><svg class="icon"><use href="#i-x"/></svg>Actual</span>
+                  <p id="actual-text"></p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" data-od-id="evidence-panel">
+            <div class="panel-h">
+              <h2>Evidence</h2>
+              <span class="count" id="ev-count"></span>
+              <span class="hnote">Up to 10 attachments per defect</span>
+            </div>
+            <div class="evidence" id="evidence-list"></div>
+          </section>
+        </div>
+
+        <!-- Right rail -->
+        <div class="col">
+          <section class="panel" data-od-id="details-panel">
+            <div class="panel-h"><h2>Details</h2></div>
+            <div class="kv" id="details-kv"></div>
+          </section>
+
+          <section class="panel" data-od-id="origin-panel">
+            <div class="panel-h"><h2>Origin</h2></div>
+            <div class="origin-b" id="origin-body"></div>
+          </section>
+
+          <section class="panel" id="sync-panel" data-od-id="sync-panel">
+            <div class="panel-h"><h2>External tracker</h2></div>
+            <div class="sync-b" id="sync-body"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ── Records — one per screen state ───────────────────────────────── */
+const BASE_101 = {
+  id: "BUG-101",
+  title: "Card tokenization fails for Amex on retry",
+  sev: "P1",
+  status: "open",
+  modulePath: "Checkout / Payments / Cards",
+  moduleCode: "MOD-013",
+  layer: "API",
+  env: "Chrome 126 · macOS 15.5 · build 8f3c2e1",
+  reporter: "M. Sato",
+  filed: "2026-07-28 14:02 UTC",
+  filedRel: "2 days ago",
+  description: [
+    "Retrying a failed Amex payment resends the single-use token that the gateway already consumed on the first attempt. The gateway rejects it with 400 INVALID_TOKEN and the order is stranded in \"pending capture\".",
+    "Reproduces on every retry after a gateway 5xx. Visa and Mastercard are unaffected because their retry path requests a fresh token."
+  ],
+  steps: [
+    "Open checkout with a cart total of 128.00 USD",
+    "Select the saved Amex card ending 1005",
+    "Submit payment — gateway returns 502 on the first attempt",
+    "Press \"Retry payment\" on the failure banner",
+    "Tokenization request returns 400 INVALID_TOKEN"
+  ],
+  failStep: 4,
+  expected: "Retry requests a fresh single-use token before resubmitting; the charge succeeds on the second attempt.",
+  actual: "Retry resends the consumed token. The gateway rejects it with 400 INVALID_TOKEN and the order stays in \"pending capture\".",
+  run: {
+    id: "RUN-451",
+    label: "Regression · Checkout · 2026-07-28",
+    atc: { id: "ATC-0142", title: "Tokenize card with retry after gateway 5xx", layer: "API", failedStep: 4 }
+  },
+  evidence: [
+    { name: "tokenization-fail-amex.png", kind: "image", meta: "PNG · 412 KB" },
+    { name: "console-2026-07-28.log",     kind: "file",  meta: "LOG · 88 KB" },
+    { name: "network-trace.har",          kind: "file",  meta: "HAR · 1.2 MB" },
+    { name: "retry-flow-recording.mp4",   kind: "video", meta: "MP4 · 6.4 MB" },
+    { name: "gateway-response.json",      kind: "file",  meta: "JSON · 4 KB" },
+    { name: "cards-matrix.csv",           kind: "file",  meta: "CSV · 12 KB" }
+  ],
+  sync: { state: "synced", ext: "KTN-482", tracker: "Jira", time: "2026-07-30 14:31 UTC" }
+};
+
+const RECORDS = {
+  "default": BASE_101,
+
+  "standalone": {
+    id: "BUG-112",
+    title: "Remember-me cookie ignores expiry",
+    sev: "P2",
+    status: "open",
+    modulePath: "Auth / Sessions",
+    moduleCode: "MOD-031",
+    layer: "UI",
+    env: "Firefox 128 · Windows 11 · build 51d9a04",
+    reporter: "L. Ferreira",
+    filed: "2026-07-26 09:18 UTC",
+    filedRel: "4 days ago",
+    description: [
+      "The session cookie is persisted with a 30-day expiry even when \"Remember me\" is left unchecked at sign-in. Sessions survive a full browser restart when the user asked for a session-only login."
+    ],
+    steps: [
+      "Sign in with \"Remember me\" unchecked",
+      "Inspect the session cookie in DevTools — Expires should read \"Session\"",
+      "Quit and relaunch the browser",
+      "Navigate to the dashboard"
+    ],
+    failStep: null,
+    expected: "The session ends when the browser exits; the user lands on the sign-in screen after relaunch.",
+    actual: "The cookie carries a 30-day expiry regardless of the checkbox; the user is still signed in after relaunch.",
+    run: null,
+    evidence: [
+      { name: "cookie-expiry-devtools.png", kind: "image", meta: "PNG · 268 KB" },
+      { name: "signin-remember-off.png",    kind: "image", meta: "PNG · 190 KB" },
+      { name: "repro-notes.md",             kind: "file",  meta: "MD · 2 KB" }
+    ],
+    sync: { state: "synced", ext: "KTN-495", tracker: "Jira", time: "2026-07-30 11:07 UTC" }
+  },
+
+  "sync-failed": Object.assign({}, BASE_101, {
+    sync: { state: "failed", tracker: "Jira", time: "2026-07-30 14:29 UTC", reason: "401 Unauthorized" }
+  }),
+
+  "no-integration": Object.assign({}, BASE_101, {
+    sync: { state: "none" }
+  })
+};
+
+const STATUS_META = {
+  open:        { label: "Open",        tone: "fail" },
+  in_progress: { label: "In progress", tone: "running" },
+  resolved:    { label: "Resolved",    tone: "pass" },
+  closed:      { label: "Closed",      tone: "skipped" }
+};
+const SEV_META = {
+  P1: { label: "Critical", tone: "fail" },
+  P2: { label: "Major",    tone: "blocked" },
+  P3: { label: "Minor",    tone: "running" },
+  P4: { label: "Trivial",  tone: "skipped" }
+};
+const EV_ICON = { image: "i-image", video: "i-video", file: "i-file" };
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function chipHTML(tone, text, mono) {
+  return '<span class="chip' + (mono ? " sev" : "") + '" data-tone="' + tone + '">' +
+    '<span class="dot"></span>' + text + "</span>";
+}
+function splitPath(path) {
+  const parts = path.split(" / ");
+  const leaf = parts.pop();
+  return { prefix: parts.length ? parts.join(" / ") + " / " : "", leaf };
+}
+
+/* ── Render ───────────────────────────────────────────────────────── */
+function render(rec) {
+  document.title = "Bunkai — " + rec.id + " · Bug detail";
+
+  /* Header */
+  $("#crumb-id").textContent = rec.id;
+  $("#head-id").textContent = rec.id;
+  const sev = SEV_META[rec.sev], st = STATUS_META[rec.status];
+  $("#head-sev").innerHTML = chipHTML(sev.tone, rec.sev + " · " + sev.label, true);
+  $("#head-status").innerHTML = chipHTML(st.tone, st.label, false);
+  $("#head-sync").innerHTML = rec.sync.state === "failed"
+    ? '<span class="sync-badge" data-tone="fail"><svg class="icon"><use href="#i-alert"/></svg>Sync failed</span>'
+    : "";
+  $("#head-title").textContent = rec.title;
+  const p = splitPath(rec.modulePath);
+  $("#head-module").innerHTML = p.prefix + '<span class="leaf">' + p.leaf + "</span>" +
+    ' <span class="code">· ' + rec.moduleCode + "</span>";
+  $("#head-filed").innerHTML = "Filed <span class=\"mono\">" + rec.filed + "</span> · " +
+    rec.filedRel + " · by " + rec.reporter;
+
+  /* Description */
+  $("#desc-body").innerHTML = rec.description.map(d => '<p class="prose">' + d + "</p>").join("");
+
+  /* Steps */
+  $("#steps-note").textContent = rec.run
+    ? "Copied from " + rec.run.atc.id + " at filing time"
+    : "Written by the reporter";
+  $("#steps-list").innerHTML = rec.steps.map((s, i) => {
+    const failed = rec.failStep === i + 1;
+    return '<li class="' + (failed ? "failed" : "") + '"><span>' + s + "</span>" +
+      (failed ? '<span class="fail-tag"><svg class="icon"><use href="#i-x"/></svg>Failed here</span>' : "") +
+      "</li>";
+  }).join("");
+
+  /* Expected vs actual */
+  $("#expected-text").textContent = rec.expected;
+  $("#actual-text").textContent = rec.actual;
+
+  /* Evidence */
+  $("#ev-count").textContent = rec.evidence.length + " / 10";
+  $("#evidence-list").innerHTML = rec.evidence.map(ev =>
+    '<button class="ev-row">' +
+    '<svg class="icon"><use href="#' + EV_ICON[ev.kind] + '"/></svg>' +
+    '<span class="ev-name">' + ev.name + "</span>" +
+    '<span class="ev-meta">' + ev.meta + "</span>" +
+    '<span class="ev-open"><svg class="icon"><use href="#i-ext"/></svg>Open</span>' +
+    "</button>"
+  ).join("");
+
+  /* Details rail */
+  $("#details-kv").innerHTML =
+    kvRow("Defect", '<span class="mono">' + rec.id + "</span>") +
+    kvRow("Severity", chipHTML(sev.tone, rec.sev + " · " + sev.label, true)) +
+    kvRow("Status", chipHTML(st.tone, st.label, false)) +
+    kvRow("Module", '<span class="mono kv-v">' + p.prefix + '<b>' + p.leaf + "</b>" +
+      ' <span class="code">· ' + rec.moduleCode + "</span></span>") +
+    kvRow("Layer", '<span class="chip layer" data-layer="' + rec.layer + '"><span class="dot"></span>' + rec.layer + "</span>") +
+    kvRow("Environment", '<span class="mono">' + rec.env + "</span>") +
+    kvRow("Reported by", rec.reporter) +
+    kvRow("Filed", '<span class="mono">' + rec.filed + "</span>");
+
+  /* Origin */
+  if (rec.run) {
+    $("#origin-body").innerHTML =
+      '<p class="origin-line">Filed from a failing test in <span class="mono">' + rec.run.id + "</span>:</p>" +
+      '<button class="reflink" data-od-id="linked-atc">' +
+      '<svg class="icon"><use href="#i-atc"/></svg>' +
+      '<span><span class="refid">' + rec.run.atc.id + '</span><br>' +
+      '<span class="reftitle">' + rec.run.atc.title + "</span></span>" +
+      '<svg class="icon go"><use href="#i-ext"/></svg></button>' +
+      '<button class="reflink" data-od-id="originating-run">' +
+      '<svg class="icon"><use href="#i-play"/></svg>' +
+      '<span><span class="refid">' + rec.run.id + '</span><br>' +
+      '<span class="reftitle">' + rec.run.label + "</span></span>" +
+      '<svg class="icon go"><use href="#i-ext"/></svg></button>' +
+      '<p class="origin-line">Failed at step <span class="mono">' +
+      String(rec.run.atc.failedStep).padStart(2, "0") + "</span> — highlighted in the steps above.</p>";
+  } else {
+    $("#origin-body").innerHTML =
+      '<div class="no-origin"><svg class="icon"><use href="#i-info"/></svg>' +
+      "<span><strong>Filed manually.</strong> This defect was reported directly — no test run or ATC is linked. That's expected for issues found outside a run.</span></div>";
+  }
+
+  /* Sync */
+  const sy = rec.sync;
+  $("#sync-panel").classList.toggle("hidden", sy.state === "none");
+  if (sy.state === "synced") {
+    $("#sync-body").innerHTML =
+      '<span class="sync-badge" data-tone="pass"><svg class="icon"><use href="#i-check"/></svg>Synced to ' + sy.tracker + "</span>" +
+      '<button class="ext-btn" data-od-id="external-item"><svg class="icon"><use href="#i-ext"/></svg>' + sy.ext + "</button>" +
+      '<p class="sync-line">Last synced <span class="mono">' + sy.time + "</span></p>";
+  } else if (sy.state === "failed") {
+    $("#sync-body").innerHTML =
+      '<span class="sync-badge" data-tone="fail"><svg class="icon"><use href="#i-alert"/></svg>Sync failed</span>' +
+      '<p class="sync-line">' + sy.tracker + ' rejected the last push (<span class="mono">' + sy.reason + "</span>) at <span class=\"mono\">" + sy.time + "</span>.</p>" +
+      '<p class="sync-line">The defect is fully saved in Bunkai and stays usable. Sync retries automatically once the connection is fixed in Settings.</p>';
+  }
+}
+
+function kvRow(k, v) {
+  return '<div class="kv-row"><span class="kv-k">' + k + '</span><span class="kv-v">' + v + "</span></div>";
+}
+
+/* ── States strip ─────────────────────────────────────────────────── */
+$$(".state-chip").forEach(b => b.addEventListener("click", () => {
+  $$(".state-chip").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  render(RECORDS[b.dataset.state]);
+}));
+
+render(RECORDS["default"]);
+</script>
+</body>
+</html>

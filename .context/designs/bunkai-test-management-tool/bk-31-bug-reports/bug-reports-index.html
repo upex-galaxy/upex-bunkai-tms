@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1">
+<title>Bunkai — Bug Reports</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;              /* buttons, inputs, table cells */
+
+  --font-jp: "Noto Serif JP", serif;   /* wordmark only */
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+  .caret, .skel { animation: none !important; }
+}
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  background: var(--bg-0);
+  color: var(--fg-1);
+  min-width: 1280px;
+}
+.mono { font-family: var(--font-mono); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.icon { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.icon-16 { width: 16px; height: 16px; }
+.icon-18 { width: 18px; height: 18px; }
+
+/* ── States strip (design reference harness, not product UI) ─────── */
+.states {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-1); border-bottom: 1px dashed var(--stroke-3);
+}
+.states-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-2); font-weight: 600; margin-right: var(--space-3);
+}
+.state-chip {
+  font-family: var(--font-mono); font-size: var(--text-sm);
+  padding: 3px 8px; border-radius: var(--r-1);
+  border: 1px solid var(--stroke-2); color: var(--fg-2); background: var(--bg-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.state-chip:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.state-chip[aria-pressed="true"] {
+  background: var(--bg-5); border-color: var(--stroke-strong); color: var(--fg-0);
+}
+
+/* ── App shell ─────────────────────────────────────────────────────── */
+.shell { display: flex; min-height: calc(100vh - 33px); }
+.sidebar {
+  width: 220px; flex: none; background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column;
+}
+.side-logo {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+}
+.side-logo .kanji { font-family: var(--font-jp); font-weight: 700; font-size: 17px; color: var(--fg-0); }
+.side-logo .latin { font-weight: 700; letter-spacing: -0.01em; font-size: var(--text-lg); color: var(--fg-0); }
+.side-logo .ver { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-2); margin-left: auto; }
+.nav { display: flex; flex-direction: column; gap: 1px; padding: var(--space-2) var(--space-3); }
+.nav-item {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-2) var(--space-4); border-radius: var(--r-2);
+  font-size: var(--text-control); font-weight: 500; color: var(--fg-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+  text-align: left;
+}
+.nav-item:hover { background: var(--bg-4); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); }
+.nav-item .icon { color: inherit; }
+.side-foot {
+  margin-top: auto; padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-3);
+  font-size: var(--text-sm); color: var(--fg-2);
+}
+.avatar {
+  width: 20px; height: 20px; border-radius: var(--radius-pill);
+  background: var(--bg-4); color: var(--fg-1); font-size: 10.5px; font-weight: 600;
+  display: grid; place-items: center; border: 1px solid var(--stroke-2);
+}
+
+/* ── Topbar ────────────────────────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 44px; flex: none; display: flex; align-items: center;
+  gap: var(--space-4); padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-2); }
+.crumbs .sep { color: var(--fg-3); }
+.crumbs .here { color: var(--fg-0); font-weight: 500; }
+.cmdk {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-3);
+  padding: 4px 8px 4px 10px; border-radius: var(--r-2);
+  border: 1px solid var(--stroke-2); background: var(--bg-2);
+  font-size: var(--text-control); color: var(--fg-2); min-width: 200px;
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background var(--motion-fast) var(--ease-standard);
+}
+.cmdk:hover { border-color: var(--stroke-3); background: var(--bg-3); }
+.kbd {
+  margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs);
+  padding: 1px 5px; border-radius: var(--r-1); color: var(--fg-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px;
+}
+
+/* ── Page ──────────────────────────────────────────────────────────── */
+.content { padding: var(--space-8) var(--space-8) var(--space-12); display: flex; flex-direction: column; gap: var(--space-6); }
+.page-head { display: flex; align-items: baseline; gap: var(--space-4); }
+.page-head h1 { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 700; letter-spacing: var(--tracking-display); color: var(--fg-0); line-height: var(--leading-tight); }
+.page-sub { font-size: var(--text-control); color: var(--fg-2); }
+.page-sub .mono { color: var(--fg-1); }
+
+.seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px; gap: 2px; }
+.seg button {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500; color: var(--fg-2);
+  padding: 3px 10px; border-radius: var(--r-1);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.view-seg { margin-left: auto; }
+
+/* ── Toolbar / filters ─────────────────────────────────────────────── */
+.toolbar {
+  display: flex; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap;
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card);
+}
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--fg-2);
+}
+.select {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: var(--text-control); color: var(--fg-1);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: 5px 28px 5px 10px; min-width: 260px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa1ab' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+}
+.select:hover { border-color: var(--stroke-3); }
+.select:focus { border-color: var(--accent); background-color: var(--bg-3); outline: none; }
+.select:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.field-hint { font-size: var(--text-xs); color: var(--fg-2); }
+
+.chip-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chip-toggle {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em;
+  padding: 3px 9px; border-radius: var(--r-1);
+  border: 1px solid var(--stroke-2); background: var(--bg-2); color: var(--fg-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.chip-toggle .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; opacity: 0.55; }
+.chip-toggle:hover { border-color: var(--stroke-3); background: var(--bg-4); }
+.chip-toggle[aria-pressed="true"] { border-color: var(--stroke-strong); color: var(--fg-0); background: var(--bg-4); }
+.chip-toggle[aria-pressed="true"] .dot { opacity: 1; }
+.chip-toggle[data-tone="fail"][aria-pressed="true"]     { color: var(--fail); background: var(--fail-bg); border-color: var(--fail); }
+.chip-toggle[data-tone="blocked"][aria-pressed="true"]  { color: var(--blocked); background: var(--blocked-bg); border-color: var(--blocked); }
+.chip-toggle[data-tone="running"][aria-pressed="true"]  { color: var(--running); background: var(--running-bg); border-color: var(--running); }
+.chip-toggle[data-tone="pass"][aria-pressed="true"]     { color: var(--pass); background: var(--pass-bg); border-color: var(--pass); }
+.chip-toggle[data-tone="skipped"][aria-pressed="true"]  { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped); }
+.chip-toggle .mono { font-family: var(--font-mono); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500;
+  padding: 5px 12px; border-radius: var(--r-2);
+  border: 1px solid var(--stroke-2); background: var(--bg-3); color: var(--fg-1);
+  box-shadow: var(--shadow-card);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; box-shadow: none; }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); }
+
+/* ── Counts strip ──────────────────────────────────────────────────── */
+.counts {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  font-size: var(--text-sm);
+}
+.counts .total { font-family: var(--font-mono); color: var(--fg-0); font-weight: 600; font-size: var(--text-control); }
+.counts .of { color: var(--fg-2); }
+.counts .div { width: 1px; height: 14px; background: var(--stroke-2); margin: 0 var(--space-2); }
+.count-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  border: 1px solid var(--stroke-2); font-weight: 500; letter-spacing: 0.02em;
+}
+.count-chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.count-chip .n { font-family: var(--font-mono); font-weight: 600; }
+.count-chip[data-tone="fail"]    { color: var(--fail); background: var(--fail-bg); }
+.count-chip[data-tone="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.count-chip[data-tone="running"] { color: var(--running); background: var(--running-bg); }
+.count-chip[data-tone="pass"]    { color: var(--pass); background: var(--pass-bg); }
+.count-chip[data-tone="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+.count-chip[data-zero="true"] { opacity: 0.6; }
+
+/* ── Table ─────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden;
+}
+table.bugs { width: 100%; border-collapse: collapse; }
+table.bugs th {
+  text-align: left; font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 600; color: var(--fg-2);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-2); background: var(--bg-3);
+  white-space: nowrap;
+}
+table.bugs td {
+  font-size: var(--text-control); padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); vertical-align: middle;
+}
+table.bugs tbody tr:last-child td { border-bottom: 0; }
+table.bugs tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+table.bugs tbody tr:hover { background: var(--bg-3); }
+td.c-id { font-family: var(--font-mono); color: var(--fg-2); white-space: nowrap; width: 92px; }
+td.c-title { color: var(--fg-1); max-width: 420px; }
+td.c-mod { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); white-space: nowrap; }
+td.c-mod .leaf { color: var(--fg-1); }
+td.c-sev, td.c-status { white-space: nowrap; }
+td.c-run { white-space: nowrap; width: 120px; }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em;
+  padding: 1px 8px; border-radius: var(--radius-pill); border: 1px solid transparent;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-tone="fail"]    { color: var(--fail); background: var(--fail-bg); }
+.chip[data-tone="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-tone="running"] { color: var(--running); background: var(--running-bg); }
+.chip[data-tone="pass"]    { color: var(--pass); background: var(--pass-bg); }
+.chip[data-tone="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+.chip.sev { font-family: var(--font-mono); }
+.runchip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-1);
+  padding: 1px 8px; border-radius: var(--r-1);
+  border: 1px solid var(--stroke-2); background: var(--bg-3);
+}
+.runchip .icon { width: 11px; height: 11px; color: var(--fg-2); }
+.no-run { color: var(--fg-4); }
+
+/* ── Empty / loading / error ───────────────────────────────────────── */
+.bigstate {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: 56px var(--space-8); text-align: center;
+}
+.bigstate .icon-18 { color: var(--fg-2); width: 22px; height: 22px; }
+.bigstate h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.bigstate p { font-size: var(--text-control); color: var(--fg-2); max-width: 46ch; }
+.bigstate .mono { color: var(--fg-1); }
+.bigstate .actions { margin-top: var(--space-2); display: flex; gap: var(--space-3); }
+.errorbox .icon-18 { color: var(--fail); }
+.errcode { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fail); background: var(--fail-bg); padding: 1px 8px; border-radius: var(--r-1); }
+
+.skel-wrap { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.skel { background: var(--bg-4); border-radius: var(--r-2); animation: skpulse 1.6s var(--ease-standard) infinite; }
+.skel.row { height: 30px; }
+.skel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); padding: var(--space-6); }
+.skel.cell { height: 128px; border-radius: var(--r-3); }
+.skel:nth-child(2) { animation-delay: 0.15s; }
+.skel:nth-child(3) { animation-delay: 0.3s; }
+.skel:nth-child(4) { animation-delay: 0.45s; }
+.skel:nth-child(5) { animation-delay: 0.6s; }
+.skel:nth-child(6) { animation-delay: 0.75s; }
+@keyframes skpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.loading-note { display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-6) var(--space-5); font-size: var(--text-control); color: var(--fg-2); }
+
+/* ── Heatmap ───────────────────────────────────────────────────────── */
+.hm-head { display: flex; align-items: flex-end; gap: var(--space-6); flex-wrap: wrap; }
+.asof {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2);
+}
+.asof .icon { width: 12px; height: 12px; }
+.caret { display: inline-block; width: 6px; height: 12px; background: var(--fg-2); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.hm-legend { display: flex; align-items: center; gap: var(--space-4); font-size: var(--text-sm); color: var(--fg-2); flex-wrap: wrap; }
+.hm-legend .lg { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sw { width: 10px; height: 10px; border-radius: var(--r-1); border: 1px solid var(--stroke-2); background: var(--bg-2); flex: none; }
+.sw[data-heat="clean"]    { border-style: dashed; }
+.sw[data-heat="low"]      { background: var(--bg-4); }
+.sw[data-heat="elevated"] { background: var(--blocked-bg); border-color: var(--blocked); }
+.sw[data-heat="hotspot"]  { background: var(--fail-bg); border-color: var(--fail); }
+.hm-legend .trendnote { color: var(--fg-2); }
+
+.hm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+.hm-cell {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+.hm-cell[data-heat="clean"]    { border-style: dashed; box-shadow: none; }
+.hm-cell[data-heat="low"]      { background: var(--bg-3); }
+.hm-cell[data-heat="elevated"] { background: var(--blocked-bg); border-color: var(--stroke-3); }
+.hm-cell[data-heat="hotspot"]  { background: var(--fail-bg); border-color: var(--stroke-strong); }
+.hm-cell.boundary-hit { outline: 1px solid var(--running); outline-offset: 2px; }
+.hm-top { display: flex; align-items: flex-start; gap: var(--space-3); }
+.hm-path { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); line-height: 1.5; }
+.hm-path .leaf { color: var(--fg-0); font-weight: 600; }
+.heat-tag {
+  margin-left: auto; flex: none;
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; padding: 1px 7px; border-radius: var(--radius-pill);
+  border: 1px solid var(--stroke-2); color: var(--fg-2);
+}
+.heat-tag[data-heat="hotspot"]  { color: var(--fail); border-color: var(--fail); background: var(--fail-bg); }
+.heat-tag[data-heat="elevated"] { color: var(--blocked); border-color: var(--blocked); background: var(--blocked-bg); }
+.heat-tag[data-heat="clean"]    { color: var(--pass); border-color: var(--pass); background: var(--pass-bg); }
+.hm-mid { display: flex; align-items: baseline; gap: var(--space-3); }
+.hm-count { font-family: var(--font-mono); font-size: var(--text-4xl); font-weight: 700; color: var(--fg-0); line-height: 1; }
+.hm-cell[data-heat="clean"] .hm-count { color: var(--fg-2); }
+.hm-unit { font-size: var(--text-sm); color: var(--fg-2); }
+.hm-foot { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; }
+.trend { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em; }
+.trend .icon { width: 12px; height: 12px; }
+.trend[data-dir="up"]   { color: var(--fail); }
+.trend[data-dir="down"] { color: var(--pass); }
+.trend[data-dir="flat"] { color: var(--skipped); }
+.trend .delta { font-family: var(--font-mono); }
+.hm-id { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-3); }
+
+.note {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  background: var(--running-bg); border: 1px solid var(--running);
+  border-radius: var(--r-2); font-size: var(--text-control); color: var(--fg-1);
+}
+.note .icon { color: var(--running); margin-top: 1px; }
+.note .mono { color: var(--fg-0); }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.2l2 2.5H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 24 24"><path d="m8.5 3 1.7 1.8"/><path d="M13.8 4.8 15.5 3"/><path d="M9 7.5v-.7a3 3 0 1 1 6 0v.7"/><path d="M17 11.5a4 4 0 0 0-4-4h-2a4 4 0 0 0-4 4V14a5 5 0 0 0 10 0z"/><path d="M12 19v-8"/><path d="M7 12.5H3.5"/><path d="M20.5 12.5H17"/><path d="M7.5 17.5 5 19.5"/><path d="m16.5 17.5 2.5 2"/><path d="M7.5 8.5 5 6.5"/><path d="m16.5 8.5 2.5-2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-6"/><path d="M13 17V7"/><path d="M18 17v-3"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-6M4 9V3"/><path d="M12 21v-9M12 6V3"/><path d="M20 21v-4M20 11V3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="9" r="2"/><circle cx="20" cy="14" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2.5-2.5a5 5 0 0 0-7-7L11.5 5.5"/><path d="M14 11a5 5 0 0 0-7.5-.5L4 13a5 5 0 0 0 7 7l1.5-1.5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12.5h-6l-2 3h-4l-2-3H2"/><path d="M5.4 5.1 2 12.5V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5L18.6 5.1A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5"/><path d="M12 17.5h.01"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M7 7l10 10"/><path d="M17 9v8H9"/></symbol>
+    <symbol id="i-flat" viewBox="0 0 24 24"><path d="M4 12h14"/><path d="m14 8 4 4-4 4"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></symbol>
+  </defs>
+</svg>
+
+<!-- States strip: design-reference harness (not product UI) -->
+<div class="states" role="group" aria-label="Screen states (design reference)" data-od-id="states-strip">
+  <span class="states-label">States</span>
+  <button class="state-chip" data-state="list-default" aria-pressed="true">list:default</button>
+  <button class="state-chip" data-state="list-filtered" aria-pressed="false">list:filtered</button>
+  <button class="state-chip" data-state="list-empty" aria-pressed="false">list:no-match</button>
+  <button class="state-chip" data-state="hm-default" aria-pressed="false">heatmap:30d</button>
+  <button class="state-chip" data-state="hm-window" aria-pressed="false">heatmap:7d</button>
+  <button class="state-chip" data-state="hm-boundary" aria-pressed="false">heatmap:zero-flat</button>
+  <button class="state-chip" data-state="loading" aria-pressed="false">loading</button>
+  <button class="state-chip" data-state="error" aria-pressed="false">error:retry</button>
+</div>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" data-od-id="app-sidebar">
+    <div class="side-logo">
+      <span class="kanji" lang="ja">分解</span>
+      <span class="latin">Bunkai</span>
+      <span class="ver">v0.9</span>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-home"/></svg>Home</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-folder"/></svg>Projects</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-book"/></svg>ATC Library</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-play"/></svg>Test Runs</button>
+      <button class="nav-item" aria-current="page" data-od-id="nav-bug-reports"><svg class="icon icon-16"><use href="#i-bug"/></svg>Bug Reports</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-chart"/></svg>Metrics</button>
+      <button class="nav-item"><svg class="icon icon-16"><use href="#i-sliders"/></svg>Settings</button>
+    </nav>
+    <div class="side-foot">
+      <span class="avatar">E</span>
+      <span>Ely · QA</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar" data-od-id="app-topbar">
+      <div class="crumbs">
+        <span>Projects</span><span class="sep">/</span>
+        <span>Kaiten Commerce</span><span class="sep">/</span>
+        <span class="here">Bug Reports</span>
+      </div>
+      <button class="cmdk" data-od-id="command-palette-button">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <span>Search or jump to…</span>
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content">
+      <div class="page-head" data-od-id="page-head">
+        <h1>Bug Reports</h1>
+        <span class="page-sub"><span class="mono" id="total-count">22</span> defects across <span class="mono">9</span> modules</span>
+        <div class="seg view-seg" role="group" aria-label="View" data-od-id="view-switch">
+          <button id="view-list" aria-pressed="true"><svg class="icon"><use href="#i-list"/></svg>List</button>
+          <button id="view-heatmap" aria-pressed="false"><svg class="icon"><use href="#i-grid"/></svg>Heatmap</button>
+        </div>
+      </div>
+
+      <!-- List toolbar -->
+      <div class="toolbar" id="list-toolbar" data-od-id="list-toolbar">
+        <div class="field" data-od-id="module-filter">
+          <label class="field-label" for="module-select">Module</label>
+          <select class="select mono" id="module-select">
+            <option value="">All modules</option>
+            <option value="Checkout">Checkout — MOD-010</option>
+            <option value="Checkout / Cart">&nbsp;&nbsp;Checkout / Cart — MOD-011</option>
+            <option value="Checkout / Payments">&nbsp;&nbsp;Checkout / Payments — MOD-012</option>
+            <option value="Checkout / Payments / Cards">&nbsp;&nbsp;&nbsp;&nbsp;Checkout / Payments / Cards — MOD-013</option>
+            <option value="Billing">Billing — MOD-020</option>
+            <option value="Billing / Payments">&nbsp;&nbsp;Billing / Payments — MOD-021</option>
+            <option value="Billing / Invoices">&nbsp;&nbsp;Billing / Invoices — MOD-022</option>
+            <option value="Auth">Auth — MOD-030</option>
+            <option value="Auth / Sessions">&nbsp;&nbsp;Auth / Sessions — MOD-031</option>
+            <option value="Auth / SSO">&nbsp;&nbsp;Auth / SSO — MOD-032</option>
+            <option value="Reporting">Reporting — MOD-040</option>
+            <option value="Reporting / Exports">&nbsp;&nbsp;Reporting / Exports — MOD-041</option>
+            <option value="Notifications">Notifications — MOD-050</option>
+            <option value="Notifications / Email">&nbsp;&nbsp;Notifications / Email — MOD-051</option>
+          </select>
+          <span class="field-hint">Includes all nested sub-modules</span>
+        </div>
+        <div class="field" data-od-id="status-filter">
+          <span class="field-label" id="status-label">Status</span>
+          <div class="chip-row" role="group" aria-labelledby="status-label">
+            <button class="chip-toggle" data-filter="status" data-value="open" data-tone="fail" aria-pressed="false"><span class="dot"></span>Open</button>
+            <button class="chip-toggle" data-filter="status" data-value="in_progress" data-tone="running" aria-pressed="false"><span class="dot"></span>In progress</button>
+            <button class="chip-toggle" data-filter="status" data-value="resolved" data-tone="pass" aria-pressed="false"><span class="dot"></span>Resolved</button>
+            <button class="chip-toggle" data-filter="status" data-value="closed" data-tone="skipped" aria-pressed="false"><span class="dot"></span>Closed</button>
+          </div>
+        </div>
+        <div class="field" data-od-id="severity-filter">
+          <span class="field-label" id="sev-label">Severity</span>
+          <div class="chip-row" role="group" aria-labelledby="sev-label">
+            <button class="chip-toggle" data-filter="sev" data-value="P1" data-tone="fail" aria-pressed="false"><span class="dot"></span><span class="mono">P1</span>&nbsp;Critical</button>
+            <button class="chip-toggle" data-filter="sev" data-value="P2" data-tone="blocked" aria-pressed="false"><span class="dot"></span><span class="mono">P2</span>&nbsp;Major</button>
+            <button class="chip-toggle" data-filter="sev" data-value="P3" data-tone="running" aria-pressed="false"><span class="dot"></span><span class="mono">P3</span>&nbsp;Minor</button>
+            <button class="chip-toggle" data-filter="sev" data-value="P4" data-tone="skipped" aria-pressed="false"><span class="dot"></span><span class="mono">P4</span>&nbsp;Trivial</button>
+          </div>
+        </div>
+        <button class="btn" data-variant="ghost" id="reset-filters" data-od-id="reset-filters">Reset filters</button>
+      </div>
+
+      <!-- Heatmap toolbar -->
+      <div class="hm-head hidden" id="hm-toolbar" data-od-id="heatmap-toolbar">
+        <div class="field" data-od-id="window-switch">
+          <span class="field-label" id="win-label">Window</span>
+          <div class="seg" role="group" aria-labelledby="win-label">
+            <button data-window="7" aria-pressed="false">7d</button>
+            <button data-window="30" aria-pressed="true">30d</button>
+            <button data-window="90" aria-pressed="false">90d</button>
+          </div>
+        </div>
+        <div class="field" data-od-id="heatmap-legend">
+          <span class="field-label">Density · defects in window</span>
+          <div class="hm-legend">
+            <span class="lg"><span class="sw" data-heat="clean"></span>Clean 0</span>
+            <span class="lg"><span class="sw" data-heat="low"></span>Low 1–2</span>
+            <span class="lg"><span class="sw" data-heat="elevated"></span>Elevated 3–4</span>
+            <span class="lg"><span class="sw" data-heat="hotspot"></span>Hotspot 5+</span>
+            <span class="trendnote">· Trend compares recent vs prior half of window</span>
+          </div>
+        </div>
+        <div class="asof" data-od-id="heatmap-asof">
+          <svg class="icon"><use href="#i-clock"/></svg>
+          <span>as of 2026-07-30 14:32 UTC · refresh in 4m</span>
+          <span class="caret"></span>
+        </div>
+      </div>
+
+      <!-- Counts strip (list view) -->
+      <div class="counts" id="counts-strip" aria-live="polite" data-od-id="counts-strip"></div>
+
+      <!-- Boundary note (heatmap boundary state) -->
+      <div class="note hidden" id="boundary-note" data-od-id="boundary-note">
+        <svg class="icon"><use href="#i-info"/></svg>
+        <span>Boundary check — <span class="mono">Reporting / Exports</span> has 0 defects in both halves of the window: trend reads <strong>Flat</strong> and the cell reads <strong>Clean 0</strong>. A module going from 0 to any defects reads <strong>Rising +n</strong> (absolute delta, never a percentage).</span>
+      </div>
+
+      <!-- List panel -->
+      <div class="panel" id="list-panel" data-od-id="bug-table-panel">
+        <table class="bugs" id="bug-table" data-od-id="bug-table">
+          <thead>
+            <tr>
+              <th scope="col">Bug</th>
+              <th scope="col">Title</th>
+              <th scope="col">Module</th>
+              <th scope="col">Severity</th>
+              <th scope="col">Status</th>
+              <th scope="col">Run</th>
+            </tr>
+          </thead>
+          <tbody id="bug-tbody"></tbody>
+        </table>
+        <div class="bigstate hidden" id="empty-state" role="status" data-od-id="empty-state">
+          <svg class="icon icon-18"><use href="#i-inbox"/></svg>
+          <h2>No defects match the current filters</h2>
+          <p><span class="mono">0 of 22</span> defects in view. The combination of module, status and severity excludes everything — this is a valid result, not an error.</p>
+          <div class="actions">
+            <button class="btn" data-variant="ghost" id="clear-from-empty">Clear filters</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heatmap panel -->
+      <div class="hm-grid hidden" id="hm-grid" data-od-id="heatmap-grid"></div>
+
+      <!-- Loading -->
+      <div class="panel hidden" id="loading-panel" role="status" data-od-id="loading-state">
+        <div id="loading-body"></div>
+        <div class="loading-note"><span class="caret"></span><span>Loading defects for <span class="mono">Kaiten Commerce</span>…</span></div>
+      </div>
+
+      <!-- Error -->
+      <div class="panel hidden" id="error-panel" data-od-id="error-state">
+        <div class="bigstate errorbox" role="alert">
+          <svg class="icon icon-18"><use href="#i-alert"/></svg>
+          <h2>Couldn't load bug reports</h2>
+          <p><span class="errcode">GET /api/projects/kaiten/bugs → 504</span></p>
+          <p>The defects service didn't respond within 10s. Your filters and window are preserved — retrying won't reset them.</p>
+          <div class="actions">
+            <button class="btn" data-variant="primary" id="retry-btn"><svg class="icon"><use href="#i-retry"/></svg>Retry</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ── Data ─────────────────────────────────────────────────────────── */
+const MODULES = [
+  { id: "MOD-011", path: "Checkout / Cart" },
+  { id: "MOD-012", path: "Checkout / Payments" },
+  { id: "MOD-013", path: "Checkout / Payments / Cards" },
+  { id: "MOD-021", path: "Billing / Payments" },
+  { id: "MOD-022", path: "Billing / Invoices" },
+  { id: "MOD-031", path: "Auth / Sessions" },
+  { id: "MOD-032", path: "Auth / SSO" },
+  { id: "MOD-041", path: "Reporting / Exports" },
+  { id: "MOD-051", path: "Notifications / Email" }
+];
+const MOD_BY_ID = Object.fromEntries(MODULES.map(m => [m.id, m]));
+
+/* age = days since the defect was filed */
+const BUGS = [
+  { id: "BUG-101", title: "Card tokenization fails for Amex on retry",        mod: "MOD-013", sev: "P1", status: "open",        run: "RUN-451", age: 2 },
+  { id: "BUG-102", title: "3DS challenge iframe never resolves on Safari 17", mod: "MOD-013", sev: "P1", status: "in_progress", run: "RUN-451", age: 5 },
+  { id: "BUG-122", title: "Expiry validation accepts a past month",           mod: "MOD-013", sev: "P2", status: "open",        run: "RUN-451", age: 3 },
+  { id: "BUG-121", title: "CVV field accepts 5-digit paste",                  mod: "MOD-013", sev: "P3", status: "open",        run: null,      age: 4 },
+  { id: "BUG-119", title: "Wallet pay sheet dismisses silently on timeout",   mod: "MOD-013", sev: "P3", status: "open",        run: null,      age: 11 },
+  { id: "BUG-103", title: "Duplicate charge when network drops mid-capture",  mod: "MOD-012", sev: "P1", status: "open",        run: "RUN-449", age: 1 },
+  { id: "BUG-104", title: "JPY totals off by 0.01 after currency rounding",   mod: "MOD-012", sev: "P2", status: "open",        run: null,      age: 9 },
+  { id: "BUG-118", title: "Capture retry ignores idempotency key",            mod: "MOD-012", sev: "P2", status: "resolved",    run: "RUN-449", age: 40 },
+  { id: "BUG-105", title: "Cart badge count stale after item removal",        mod: "MOD-011", sev: "P3", status: "resolved",    run: "RUN-440", age: 12 },
+  { id: "BUG-106", title: "Promo code field accepts whitespace-only input",   mod: "MOD-011", sev: "P4", status: "open",        run: null,      age: 20 },
+  { id: "BUG-117", title: "Price flickers on rapid quantity change",          mod: "MOD-011", sev: "P3", status: "closed",      run: "RUN-441", age: 35 },
+  { id: "BUG-107", title: "Refund webhook gives up after 3 retries",          mod: "MOD-021", sev: "P2", status: "in_progress", run: "RUN-447", age: 3 },
+  { id: "BUG-108", title: "Payment method list unsorted after adding a card", mod: "MOD-021", sev: "P3", status: "open",        run: null,      age: 6 },
+  { id: "BUG-109", title: "Invoice PDF renders blank above 100 line items",   mod: "MOD-022", sev: "P2", status: "open",        run: "RUN-445", age: 18 },
+  { id: "BUG-120", title: "Invoice number sequence gaps after rollback",      mod: "MOD-022", sev: "P3", status: "in_progress", run: "RUN-446", age: 16 },
+  { id: "BUG-110", title: "VAT label truncated in DE locale",                 mod: "MOD-022", sev: "P4", status: "closed",      run: null,      age: 28 },
+  { id: "BUG-111", title: "Session survives password change",                 mod: "MOD-031", sev: "P1", status: "resolved",    run: "RUN-438", age: 22 },
+  { id: "BUG-112", title: "Remember-me cookie ignores expiry",                mod: "MOD-031", sev: "P2", status: "open",        run: null,      age: 4 },
+  { id: "BUG-113", title: "SSO redirect loop when IdP clock is skewed",       mod: "MOD-032", sev: "P2", status: "in_progress", run: "RUN-450", age: 2 },
+  { id: "BUG-114", title: "SAML assertion accepted twice on replay",          mod: "MOD-032", sev: "P1", status: "open",        run: "RUN-450", age: 6 },
+  { id: "BUG-115", title: "Digest email sent twice across DST boundary",      mod: "MOD-051", sev: "P2", status: "open",        run: "RUN-452", age: 1 },
+  { id: "BUG-116", title: "Unsubscribe link 404s for pre-2025 accounts",      mod: "MOD-051", sev: "P3", status: "open",        run: null,      age: 3 }
+];
+
+const STATUS_META = {
+  open:        { label: "Open",        tone: "fail" },
+  in_progress: { label: "In progress", tone: "running" },
+  resolved:    { label: "Resolved",    tone: "pass" },
+  closed:      { label: "Closed",      tone: "skipped" }
+};
+const SEV_META = {
+  P1: { label: "Critical", tone: "fail" },
+  P2: { label: "Major",    tone: "blocked" },
+  P3: { label: "Minor",    tone: "running" },
+  P4: { label: "Trivial",  tone: "skipped" }
+};
+
+/* ── State ────────────────────────────────────────────────────────── */
+const state = {
+  view: "list",            // list | heatmap
+  module: "",              // path prefix, "" = all
+  statuses: new Set(),     // empty = all
+  sevs: new Set(),         // empty = all
+  window: 30,              // 7 | 30 | 90
+  mode: "normal",          // normal | loading | error
+  boundary: false          // heatmap boundary annotation
+};
+
+const PRESETS = {
+  "list-default":  { view: "list", module: "", statuses: [], sevs: [], window: 30, mode: "normal", boundary: false },
+  "list-filtered": { view: "list", module: "Checkout / Payments", statuses: ["open", "in_progress"], sevs: ["P1", "P2"], window: 30, mode: "normal", boundary: false },
+  "list-empty":    { view: "list", module: "Auth / Sessions", statuses: ["closed"], sevs: ["P4"], window: 30, mode: "normal", boundary: false },
+  "hm-default":    { view: "heatmap", module: "", statuses: [], sevs: [], window: 30, mode: "normal", boundary: false },
+  "hm-window":     { view: "heatmap", module: "", statuses: [], sevs: [], window: 7, mode: "normal", boundary: false },
+  "hm-boundary":   { view: "heatmap", module: "", statuses: [], sevs: [], window: 30, mode: "normal", boundary: true },
+  "loading":       { mode: "loading" },
+  "error":         { mode: "error" }
+};
+
+/* ── Helpers ──────────────────────────────────────────────────────── */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function inModuleScope(bug) {
+  if (!state.module) return true;
+  const path = MOD_BY_ID[bug.mod].path;
+  return path === state.module || path.startsWith(state.module + " / ");
+}
+function filteredBugs() {
+  return BUGS.filter(b =>
+    inModuleScope(b) &&
+    (state.statuses.size === 0 || state.statuses.has(b.status)) &&
+    (state.sevs.size === 0 || state.sevs.has(b.sev))
+  );
+}
+function splitPath(path) {
+  const parts = path.split(" / ");
+  const leaf = parts.pop();
+  return { prefix: parts.length ? parts.join(" / ") + " / " : "", leaf };
+}
+function heatBucket(n) {
+  if (n === 0) return "clean";
+  if (n <= 2) return "low";
+  if (n <= 4) return "elevated";
+  return "hotspot";
+}
+const HEAT_LABEL = { clean: "Clean", low: "Low", elevated: "Elevated", hotspot: "Hotspot" };
+
+/* Trend: recent half of the window vs the prior half. Absolute deltas
+   only — a module going 0 → n reads "Rising +n", never an infinite %. */
+function moduleWindowStats(modId, win) {
+  const inWin = BUGS.filter(b => b.mod === modId && b.age <= win);
+  const half = win / 2;
+  const recent = inWin.filter(b => b.age <= half).length;
+  const prior = inWin.length - recent;
+  let dir = "flat", word = "Flat", delta = "±0";
+  if (recent > prior) { dir = "up"; word = "Rising"; delta = "+" + (recent - prior); }
+  else if (recent < prior) { dir = "down"; word = "Falling"; delta = "−" + (prior - recent); }
+  return { count: inWin.length, recent, prior, dir, word, delta };
+}
+
+/* ── Renderers ────────────────────────────────────────────────────── */
+function renderCounts(bugs) {
+  const el = $("#counts-strip");
+  const sevChips = Object.keys(SEV_META).map(s => {
+    const n = bugs.filter(b => b.sev === s).length;
+    return '<span class="count-chip" data-tone="' + SEV_META[s].tone + '" data-zero="' + (n === 0) + '">' +
+      '<span class="dot"></span><span class="mono">' + s + '</span><span class="n">' + n + "</span></span>";
+  }).join("");
+  const stChips = Object.keys(STATUS_META).map(s => {
+    const n = bugs.filter(b => b.status === s).length;
+    return '<span class="count-chip" data-tone="' + STATUS_META[s].tone + '" data-zero="' + (n === 0) + '">' +
+      '<span class="dot"></span>' + STATUS_META[s].label + '<span class="n">' + n + "</span></span>";
+  }).join("");
+  el.innerHTML =
+    '<span class="total">' + bugs.length + '</span><span class="of">of 22 in view</span>' +
+    '<span class="div"></span><span class="of">Severity</span>' + sevChips +
+    '<span class="div"></span><span class="of">Status</span>' + stChips;
+}
+
+function renderList() {
+  const bugs = filteredBugs()
+    .slice()
+    .sort((a, b) => a.sev.localeCompare(b.sev) || a.age - b.age);
+  renderCounts(bugs);
+  const tbody = $("#bug-tbody");
+  if (bugs.length === 0) {
+    tbody.innerHTML = "";
+    $("#bug-table").classList.add("hidden");
+    $("#empty-state").classList.remove("hidden");
+    return;
+  }
+  $("#bug-table").classList.remove("hidden");
+  $("#empty-state").classList.add("hidden");
+  tbody.innerHTML = bugs.map(b => {
+    const mod = MOD_BY_ID[b.mod];
+    const p = splitPath(mod.path);
+    const sev = SEV_META[b.sev];
+    const st = STATUS_META[b.status];
+    const run = b.run
+      ? '<span class="runchip"><svg class="icon"><use href="#i-link"/></svg>' + b.run + "</span>"
+      : '<span class="no-run" aria-hidden="true">—</span><span class="sr-only">Not linked to a run</span>';
+    return "<tr>" +
+      '<td class="c-id">' + b.id + "</td>" +
+      '<td class="c-title">' + b.title + "</td>" +
+      '<td class="c-mod">' + p.prefix + '<span class="leaf">' + p.leaf + "</span></td>" +
+      '<td class="c-sev"><span class="chip sev" data-tone="' + sev.tone + '"><span class="dot"></span>' + b.sev + " · " + sev.label + "</span></td>" +
+      '<td class="c-status"><span class="chip" data-tone="' + st.tone + '"><span class="dot"></span>' + st.label + "</span></td>" +
+      '<td class="c-run">' + run + "</td>" +
+      "</tr>";
+  }).join("");
+}
+
+function renderHeatmap() {
+  const grid = $("#hm-grid");
+  grid.innerHTML = MODULES.map(m => {
+    const s = moduleWindowStats(m.id, state.window);
+    const heat = heatBucket(s.count);
+    const p = splitPath(m.path);
+    const boundaryHit = state.boundary && s.count === 0 && s.dir === "flat";
+    const trendIcon = s.dir === "up" ? "i-up" : s.dir === "down" ? "i-down" : "i-flat";
+    return '<div class="hm-cell' + (boundaryHit ? " boundary-hit" : "") + '" data-heat="' + heat + '">' +
+      '<div class="hm-top"><span class="hm-path">' + p.prefix + '<span class="leaf">' + p.leaf + "</span></span>" +
+      '<span class="heat-tag" data-heat="' + heat + '">' + HEAT_LABEL[heat] + "</span></div>" +
+      '<div class="hm-mid"><span class="hm-count">' + s.count + "</span>" +
+      '<span class="hm-unit">defects · ' + state.window + "d</span></div>" +
+      '<div class="hm-foot"><span class="trend" data-dir="' + s.dir + '">' +
+      '<svg class="icon"><use href="#' + trendIcon + '"/></svg>' + s.word +
+      ' <span class="delta">' + s.delta + "</span></span>" +
+      '<span class="hm-id">' + m.id + "</span></div>" +
+      "</div>";
+  }).join("");
+}
+
+function renderLoading() {
+  const body = $("#loading-body");
+  if (state.view === "heatmap") {
+    body.innerHTML = '<div class="skel-grid">' +
+      '<div class="skel cell"></div>'.repeat(6) + "</div>";
+  } else {
+    body.innerHTML = '<div class="skel-wrap">' +
+      '<div class="skel row"></div>'.repeat(6) + "</div>";
+  }
+}
+
+/* ── Master render ────────────────────────────────────────────────── */
+function render() {
+  const isList = state.view === "list";
+  const normal = state.mode === "normal";
+
+  $("#view-list").setAttribute("aria-pressed", String(isList));
+  $("#view-heatmap").setAttribute("aria-pressed", String(!isList));
+  $("#module-select").value = state.module;
+  $$('[data-filter="status"]').forEach(b => b.setAttribute("aria-pressed", String(state.statuses.has(b.dataset.value))));
+  $$('[data-filter="sev"]').forEach(b => b.setAttribute("aria-pressed", String(state.sevs.has(b.dataset.value))));
+  $$("[data-window]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.window) === state.window)));
+
+  $("#list-toolbar").classList.toggle("hidden", !isList);
+  $("#hm-toolbar").classList.toggle("hidden", isList);
+  $("#counts-strip").classList.toggle("hidden", !isList || !normal);
+  $("#boundary-note").classList.toggle("hidden", !(state.boundary && !isList && normal));
+  $("#list-panel").classList.toggle("hidden", !isList || !normal);
+  $("#hm-grid").classList.toggle("hidden", isList || !normal);
+  $("#loading-panel").classList.toggle("hidden", state.mode !== "loading");
+  $("#error-panel").classList.toggle("hidden", state.mode !== "error");
+
+  if (state.mode === "loading") renderLoading();
+  else if (normal && isList) renderList();
+  else if (normal && !isList) renderHeatmap();
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if ("view" in p) {
+    state.view = p.view;
+    state.module = p.module;
+    state.statuses = new Set(p.statuses);
+    state.sevs = new Set(p.sevs);
+    state.window = p.window;
+    state.boundary = p.boundary;
+  }
+  state.mode = p.mode;
+  $$(".state-chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.state === name)));
+  render();
+}
+
+/* ── Events ───────────────────────────────────────────────────────── */
+$$(".state-chip").forEach(b => b.addEventListener("click", () => applyPreset(b.dataset.state)));
+
+$("#view-list").addEventListener("click", () => { state.view = "list"; state.mode = "normal"; render(); });
+$("#view-heatmap").addEventListener("click", () => { state.view = "heatmap"; state.mode = "normal"; render(); });
+
+$("#module-select").addEventListener("change", e => { state.module = e.target.value; render(); });
+
+$$(".chip-toggle").forEach(b => b.addEventListener("click", () => {
+  const set = b.dataset.filter === "status" ? state.statuses : state.sevs;
+  const v = b.dataset.value;
+  set.has(v) ? set.delete(v) : set.add(v);
+  render();
+}));
+
+$$("[data-window]").forEach(b => b.addEventListener("click", () => {
+  state.window = Number(b.dataset.window);
+  render();
+}));
+
+function clearFilters() {
+  state.module = "";
+  state.statuses.clear();
+  state.sevs.clear();
+  render();
+}
+$("#reset-filters").addEventListener("click", clearFilters);
+$("#clear-from-empty").addEventListener("click", clearFilters);
+$("#retry-btn").addEventListener("click", () => { state.mode = "normal"; render(); });
+
+render();
+</script>
+</body>
+</html>
