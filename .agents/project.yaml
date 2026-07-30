@@ -88,7 +88,7 @@ git_strategy:
     hotfix_policy: branch-off-prod-backmerge # branch-off-prod-backmerge | via-integration | none | n/a
   policy: # how strictly protected branches are guarded (set by Strategy Setup Q4; defaults are safe)
     direct_push_to_protected: confirm # forbidden | confirm | allowed
-    admin_bypass: true # team POLICY: may a repo admin bypass PR/protection for urgent changes? actual capability still depends on the GitHub user's role — the skill re-confirms at runtime
+    admin_bypass: true # team POLICY: a repo admin MAY bypass PR/protection for urgent changes — offer is enabled. Actual capability still depends on the GitHub user's role, and git-flow-master re-confirms BOTH (a) operator is really a repo admin and (b) the specific action, at runtime, every time — this flag does not make bypass silent or automatic.
     require_pr_reviews: 0 # null | 0 | N — min approvals before merge to a protected branch (informational)
   branch_prefixes:
     precedence: [feat, fix, refactor, test, docs, chore]
