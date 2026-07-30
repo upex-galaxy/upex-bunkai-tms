@@ -65,6 +65,15 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('validation_failed', 'A final verdict of passed or failed is required.', {
         details: { reason: 'finish_verdict_invalid' },
       });
+    case '45208':
+      // BK-37 — RPC backstop for a run-history outcome filter outside
+      // passed/failed/aborted (notably `running`, which is not an outcome — an
+      // in-progress run is never history). The route's Zod layer rejects it
+      // BEFORE the RPC runs, so an API caller never reaches here; this only
+      // fires for a direct (non-HTTP) RPC caller.
+      throw new ApiError('validation_failed', 'The outcome filter must be one of passed, failed, or aborted.', {
+        details: { reason: 'run_outcome_invalid' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

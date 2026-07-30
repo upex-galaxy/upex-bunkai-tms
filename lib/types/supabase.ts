@@ -1264,6 +1264,17 @@ export interface Database {
       bunkai_is_workspace_admin: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_member: { Args: { ws_id: string }, Returns: boolean }
       bunkai_is_workspace_owner: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_list_test_runs: {
+        Args: {
+          p_actor_user_id: string
+          p_cursor_id?: string
+          p_cursor_started_at?: string
+          p_limit?: number
+          p_outcome?: string
+          p_test_id: string
+        }
+        Returns: Json
+      }
       bunkai_move_acceptance_criterion: {
         Args: { p_id: string, p_new_position: number }
         Returns: Json
