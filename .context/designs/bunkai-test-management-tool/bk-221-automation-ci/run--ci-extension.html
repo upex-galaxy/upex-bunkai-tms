@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai — Run detail (CI metadata extension)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;            /* [authored] */
+  --section-y-phone: 16px;             /* [authored] */
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;    /* [authored] */
+  --container-gutter-tablet: 16px;     /* [authored] */
+  --container-gutter-phone: 12px;      /* [authored] */
+
+  /* ═══ C-extensions — Bunkai's native contract ═════════════════════ */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* Buttons, inputs, table cells — DESIGN.md §4 12/12.5px tier */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1200px;
+}
+.mono { font-family: var(--font-mono); }
+:where(a, button, select, input, [tabindex]):focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+svg.ic { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ Atoms (same vocabulary as screens 1-2) ═════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); height: 28px;
+  padding: 0 var(--space-4); border-radius: var(--r-2); font-size: var(--text-control); font-weight: 500;
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip[data-status="passed"] { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="failed"] { color: var(--fail); background: var(--fail-bg); }
+.chip[data-map="mapped"]    { color: var(--muted); border-color: var(--stroke-2); background: var(--bg-3); }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot[data-k="passed"] { background: var(--pass); }
+.dot[data-k="failed"] { background: var(--fail); }
+.dot[data-k="blocked"] { background: var(--blocked); }
+
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 1px 5px; line-height: 1.3;
+}
+.bar { height: 4px; border-radius: var(--radius-pill); background: var(--bg-4); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar i[data-k="pass"] { background: var(--pass); }
+.bar i[data-k="fail"] { background: var(--fail); }
+
+/* CI reference chip — EXACT treatment from ci-results-upload.html and
+   test-runs-index--ci-extension.html. Linked variant is an <a> with an
+   external-link affordance; plain variant is a <span>. */
+.ci-ref {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.ci-ref .ic { width: 12px; height: 12px; color: var(--fg-3); }
+.ci-ref b { font-weight: 500; color: var(--fg-1); }
+a.ci-ref { cursor: pointer; }
+a.ci-ref:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+a.ci-ref:hover b { color: var(--fg-0); }
+a.ci-ref .ext { width: 10px; height: 10px; color: var(--meta); }
+a.ci-ref:hover .ext { color: var(--fg-1); }
+
+/* ═══ Runner header bar — reproduced from run.jsx, adapted read-only ═ */
+.runner-bar {
+  min-height: 52px; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5); padding: var(--space-2) var(--space-6);
+}
+.rb-left { display: flex; align-items: center; gap: var(--space-4); }
+.rb-div { width: 1px; height: 22px; background: var(--stroke-2); }
+.wordmark { display: flex; align-items: baseline; gap: var(--space-2); }
+.wordmark .jp { font-family: var(--font-jp); font-weight: 700; font-size: 15px; color: var(--fg-0); }
+.wordmark .latin { font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--fg-0); }
+.rb-center { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.rb-line1 { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
+.rb-line1 .rid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+.rb-line1 .tname { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rb-line2 { display: flex; align-items: center; gap: var(--space-4); font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+.rb-line2 .bar { width: 140px; }
+.rb-line2 .tally { display: inline-flex; align-items: center; gap: var(--space-3); }
+.rb-line2 .tally span { display: inline-flex; align-items: center; gap: 4px; }
+.rb-line2 .when { color: var(--muted); }
+.rb-right { display: flex; align-items: center; gap: var(--space-3); }
+
+/* ═══ CI context row — the ADDITIVE element ══════════════════════════ */
+.ci-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: 34px; padding: var(--space-2) var(--space-6);
+  background: var(--bg-1); border-bottom: 1px solid var(--stroke-1);
+}
+.ci-row .lbl {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); margin-right: var(--space-2);
+}
+.ci-row .hint { font-size: var(--text-sm); color: var(--muted); }
+.ci-row .hint .ic { width: 11px; height: 11px; vertical-align: -1.5px; color: var(--fg-3); }
+
+/* ═══ Body — read-only recorded entries (screen-1 mapping vocabulary) ═ */
+.page { max-width: 1024px; margin: 0 auto; padding: var(--space-6) var(--space-12) var(--space-12); }
+.sec-head { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-6) 0 var(--space-3); }
+.sec-head h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.sec-head .n { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.sec-head .src { margin-left: auto; font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+.map-table { border: 1px solid var(--stroke-2); border-radius: var(--r-3); overflow: hidden; background: var(--bg-2); box-shadow: var(--shadow-card); }
+.map-row {
+  display: grid; grid-template-columns: 34px minmax(0,1fr) minmax(0,1fr) 92px 96px;
+  align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--stroke-1); min-height: 34px; font-size: var(--text-control);
+}
+.map-row:first-child { border-top: 0; }
+.map-row.head {
+  background: var(--bg-1); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); min-height: 28px;
+}
+.map-row .pos { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.map-row .nm { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .stp { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .stp .sn { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); margin-right: var(--space-2); }
+
+/* ═══ States strip ═══════════════════════════════════════════════════ */
+.states-wrap { max-width: 1392px; margin: 0 auto; padding: var(--space-12) var(--space-12) 48px; }
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-6); }
+.states-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--meta); }
+.states-grid { display: grid; gap: var(--space-6); }
+.state-card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden; }
+.state-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.state-head .sid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.state-head .st { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.state-head .sd { font-size: var(--text-sm); color: var(--meta); margin-left: auto; text-align: right; }
+.state-body { padding: 0; }
+.state-body .note {
+  padding: var(--space-3) var(--space-6); font-size: var(--text-sm); color: var(--muted);
+  border-top: 1px solid var(--stroke-1);
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6M18 10.2c0 4-5 3.3-9.5 5.6"/></symbol>
+    <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4"/><path d="M2.5 12h6M15.5 12h6"/></symbol>
+    <symbol id="i-pipe" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.4"/><rect x="14" y="13" width="7" height="7" rx="1.4"/><path d="M10 7.5h5.5v5.5"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 6 .4l3-3a4 4 0 0 0-5.6-5.6l-1.7 1.7"/><path d="M14 10a4 4 0 0 0-6-.4l-3 3a4 4 0 0 0 5.6 5.6l1.7-1.7"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></symbol>
+  </defs>
+</svg>
+
+<!-- ═══ Interactive default — finished CI-reported run, full CI context ═ -->
+<header class="runner-bar" data-od-id="runner-header">
+  <div class="rb-left">
+    <button class="btn" data-variant="ghost" data-od-id="exit-btn"><svg class="ic" style="width:13px;height:13px"><use href="#i-back"/></svg>Exit</button>
+    <span class="rb-div"></span>
+    <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+  </div>
+  <div class="rb-center" data-od-id="run-identity">
+    <div class="rb-line1">
+      <span class="rid">RUN-447 · ATC-027</span>
+      <span class="tname">Login — session expiry redirect</span>
+    </div>
+    <div class="rb-line2">
+      <span class="chip" data-status="passed" style="font-family:var(--font-body)"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Passed</span>
+      <span class="bar" role="img" aria-label="Result breakdown: 5 pass, 0 fail"><i data-k="pass" style="width:100%"></i></span>
+      <span class="tally" aria-label="Tally: 5 pass, 0 fail, 0 blocked">
+        <span><span class="dot" data-k="passed"></span>5 pass</span>
+        <span><span class="dot" data-k="failed"></span>0 fail</span>
+        <span><span class="dot" data-k="blocked"></span>0 blocked</span>
+      </span>
+      <span class="when">finished 2026-07-29 11:05 · env ci</span>
+    </div>
+  </div>
+  <div class="rb-right" data-od-id="run-actions">
+    <button class="btn" data-variant="ghost"><svg class="ic" style="width:12px;height:12px"><use href="#i-link"/></svg>Copy link</button>
+    <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-download"/></svg>Download JUnit XML</button>
+  </div>
+</header>
+
+<!-- ADDITIVE: CI context row. Absent entirely on runs with no CI metadata. -->
+<div class="ci-row" data-od-id="ci-context-row">
+  <span class="lbl">CI context</span>
+  <span class="ci-ref" data-od-id="ci-branch"><svg class="ic"><use href="#i-branch"/></svg><b>main</b></span>
+  <a class="ci-ref" data-od-id="ci-commit" href="https://github.com/upex/storefront-web/commit/4b8e017" target="_blank" rel="noopener"
+     aria-label="Open commit 4b8e017 on the repository host in a new tab">
+    <svg class="ic"><use href="#i-commit"/></svg><b>4b8e017</b><svg class="ic ext"><use href="#i-ext"/></svg>
+  </a>
+  <a class="ci-ref" data-od-id="ci-pipeline" href="https://github.com/upex/storefront-web/actions/runs/9174022851" target="_blank" rel="noopener"
+     aria-label="Open pipeline e2e-nightly in a new tab">
+    <svg class="ic"><use href="#i-pipe"/></svg><b>e2e-nightly</b><svg class="ic ext"><use href="#i-ext"/></svg>
+  </a>
+</div>
+
+<main class="page" data-od-id="run-body">
+  <div class="sec-head">
+    <h2>Recorded entries</h2><span class="n">5 of 5 mapped</span>
+    <span class="src">junit.xml · uploaded by CI</span>
+  </div>
+  <div class="map-table" data-od-id="recorded-entries">
+    <div class="map-row head"><span>#</span><span>Report entry</span><span>ATC step</span><span>Result</span><span>Mapping</span></div>
+    <div class="map-row"><span class="pos">1</span><span class="nm">auth.session::expired_token_boot</span><span class="stp"><span class="sn">S1</span>Open app with an expired session token</span><span><span class="chip" data-status="passed"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+    <div class="map-row"><span class="pos">2</span><span class="nm">auth.session::protected_route_redirect</span><span class="stp"><span class="sn">S2</span>Navigate to a protected route</span><span><span class="chip" data-status="passed"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+    <div class="map-row"><span class="pos">3</span><span class="nm">auth.session::login_form_shown</span><span class="stp"><span class="sn">S3</span>Assert redirect lands on /login</span><span><span class="chip" data-status="passed"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+    <div class="map-row"><span class="pos">4</span><span class="nm">auth.session::relogin</span><span class="stp"><span class="sn">S4</span>Sign in again with valid credentials</span><span><span class="chip" data-status="passed"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+    <div class="map-row"><span class="pos">5</span><span class="nm">auth.session::return_to_origin</span><span class="stp"><span class="sn">S5</span>Assert return to the original route</span><span><span class="chip" data-status="passed"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+  </div>
+</main>
+
+<!-- ═══ States strip ═══════════════════════════════════════════════════ -->
+<section class="states-wrap" data-od-id="states-strip" aria-label="Static state reference">
+  <div class="states-head">
+    <h2>States</h2>
+    <p>Static reference — the view above is interactive; these frames are the fixed contract for each state.</p>
+  </div>
+  <div class="states-grid">
+
+    <!-- S1 -->
+    <div class="state-card" data-od-id="state-1-full-ci-context">
+      <div class="state-head"><span class="sid">S1</span><span class="st">Full CI context</span><span class="sd">Branch + linked commit + linked pipeline · finished run with verdict</span></div>
+      <div class="state-body" inert>
+        <header class="runner-bar">
+          <div class="rb-left">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:13px;height:13px"><use href="#i-back"/></svg>Exit</button>
+            <span class="rb-div"></span>
+            <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+          </div>
+          <div class="rb-center">
+            <div class="rb-line1"><span class="rid">RUN-447 · ATC-027</span><span class="tname">Login — session expiry redirect</span></div>
+            <div class="rb-line2">
+              <span class="chip" data-status="passed" style="font-family:var(--font-body)"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Passed</span>
+              <span class="bar"><i data-k="pass" style="width:100%"></i></span>
+              <span class="tally"><span><span class="dot" data-k="passed"></span>5 pass</span><span><span class="dot" data-k="failed"></span>0 fail</span><span><span class="dot" data-k="blocked"></span>0 blocked</span></span>
+              <span class="when">finished 2026-07-29 11:05 · env ci</span>
+            </div>
+          </div>
+          <div class="rb-right">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:12px;height:12px"><use href="#i-link"/></svg>Copy link</button>
+            <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-download"/></svg>Download JUnit XML</button>
+          </div>
+        </header>
+        <div class="ci-row">
+          <span class="lbl">CI context</span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-branch"/></svg><b>main</b></span>
+          <a class="ci-ref"><svg class="ic"><use href="#i-commit"/></svg><b>4b8e017</b><svg class="ic ext"><use href="#i-ext"/></svg></a>
+          <a class="ci-ref"><svg class="ic"><use href="#i-pipe"/></svg><b>e2e-nightly</b><svg class="ic ext"><use href="#i-ext"/></svg></a>
+        </div>
+        <div class="note">Commit opens the repository host's commit page in a new tab; pipeline opens the provided pipeline URL.</div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="state-card" data-od-id="state-2-no-repo-url">
+      <div class="state-head"><span class="sid">S2</span><span class="st">No repository URL configured</span><span class="sd">Commit degrades to plain mono text + inline hint · branch and pipeline unaffected</span></div>
+      <div class="state-body" inert>
+        <header class="runner-bar">
+          <div class="rb-left">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:13px;height:13px"><use href="#i-back"/></svg>Exit</button>
+            <span class="rb-div"></span>
+            <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+          </div>
+          <div class="rb-center">
+            <div class="rb-line1"><span class="rid">RUN-450 · ATC-014</span><span class="tname">Checkout — declined card recovery</span></div>
+            <div class="rb-line2">
+              <span class="chip" data-status="failed" style="font-family:var(--font-body)"><svg class="ic" style="width:11px;height:11px"><use href="#i-x"/></svg>Failed</span>
+              <span class="bar"><i data-k="pass" style="width:75%"></i><i data-k="fail" style="width:25%"></i></span>
+              <span class="tally"><span><span class="dot" data-k="passed"></span>6 pass</span><span><span class="dot" data-k="failed"></span>2 fail</span><span><span class="dot" data-k="blocked"></span>0 blocked</span></span>
+              <span class="when">finished 2026-07-29 22:03 · env ci</span>
+            </div>
+          </div>
+          <div class="rb-right">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:12px;height:12px"><use href="#i-link"/></svg>Copy link</button>
+            <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-download"/></svg>Download JUnit XML</button>
+          </div>
+        </header>
+        <div class="ci-row">
+          <span class="lbl">CI context</span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-branch"/></svg><b>feature/checkout-discounts</b></span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-commit"/></svg><b>9f31c2a</b></span>
+          <span class="hint"><svg class="ic"><use href="#i-info"/></svg> Set a repository URL in project settings to link commits</span>
+          <a class="ci-ref"><svg class="ic"><use href="#i-pipe"/></svg><b>checkout-e2e</b><svg class="ic ext"><use href="#i-ext"/></svg></a>
+        </div>
+        <div class="note">The commit chip carries no href and no external-link icon — plain monospace, never a broken link.</div>
+      </div>
+    </div>
+
+    <!-- S3 -->
+    <div class="state-card" data-od-id="state-3-manual-no-ci">
+      <div class="state-head"><span class="sid">S3</span><span class="st">Manual run — no CI metadata</span><span class="sd">CI context row absent entirely · no gap, no placeholder</span></div>
+      <div class="state-body" inert>
+        <header class="runner-bar" style="border-bottom:1px solid var(--stroke-1)">
+          <div class="rb-left">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:13px;height:13px"><use href="#i-back"/></svg>Exit</button>
+            <span class="rb-div"></span>
+            <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+          </div>
+          <div class="rb-center">
+            <div class="rb-line1"><span class="rid">RUN-451 · ATC-027</span><span class="tname">Login — session expiry redirect</span></div>
+            <div class="rb-line2">
+              <span class="chip" data-status="passed" style="font-family:var(--font-body)"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>Passed</span>
+              <span class="bar"><i data-k="pass" style="width:100%"></i></span>
+              <span class="tally"><span><span class="dot" data-k="passed"></span>5 pass</span><span><span class="dot" data-k="failed"></span>0 fail</span><span><span class="dot" data-k="blocked"></span>0 blocked</span></span>
+              <span class="when">finished 2026-07-30 08:12 · env staging</span>
+            </div>
+          </div>
+          <div class="rb-right">
+            <button class="btn" data-variant="ghost"><svg class="ic" style="width:12px;height:12px"><use href="#i-link"/></svg>Copy link</button>
+            <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-download"/></svg>Export report</button>
+          </div>
+        </header>
+        <div class="note">Human-executed run: the next content region starts directly under the header bar — the CI row never renders as empty chrome.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+'use strict';
+/* Read-only view — the two live affordances are the copy-link action and the
+   external CI links (plain anchors, no JS needed). */
+document.querySelector('[data-od-id="run-actions"] [data-variant="ghost"]').addEventListener('click', function () {
+  const self = this;
+  navigator.clipboard && navigator.clipboard.writeText('https://bunkai.app/prj-004/runs/RUN-447').then(() => {
+    const label = self.lastChild;
+    const prev = label.textContent;
+    label.textContent = 'Copied';
+    setTimeout(() => { label.textContent = prev; }, 1500);
+  });
+});
+</script>
+</body>
+</html>

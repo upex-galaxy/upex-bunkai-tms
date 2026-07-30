@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai — Test automation status (extension)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;            /* [authored] */
+  --section-y-phone: 16px;             /* [authored] */
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;    /* [authored] */
+  --container-gutter-tablet: 16px;     /* [authored] */
+  --container-gutter-phone: 12px;      /* [authored] */
+
+  /* ═══ C-extensions — Bunkai's native contract ═════════════════════ */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* Buttons, inputs, table cells — DESIGN.md §4 12/12.5px tier */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1200px;
+}
+.mono { font-family: var(--font-mono); }
+:where(a, button, select, input, [tabindex]):focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+svg.ic { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ Atoms (same vocabulary as screens 1-3) ═════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); height: 28px;
+  padding: 0 var(--space-4); border-radius: var(--r-2); font-size: var(--text-control); font-weight: 500;
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip[data-status="pass"] { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="fail"] { color: var(--fail); background: var(--fail-bg); }
+.chip[data-status="never"] { color: var(--muted); border-color: var(--stroke-2); background: transparent; }
+.chip[data-layer] { background: transparent; border: 1px solid var(--stroke-2); }
+.chip[data-layer="UI"]   { color: var(--layer-ui); }
+.chip[data-layer="API"]  { color: var(--layer-api); }
+.chip[data-layer="Unit"] { color: var(--layer-unit); }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot[data-k="pass"] { background: var(--pass); }
+.dot[data-k="fail"] { background: var(--fail); }
+
+.tag {
+  display: inline-flex; align-items: center; height: 18px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-family: var(--font-mono); font-size: var(--text-sm);
+  color: var(--muted); background: var(--bg-3); border: 1px solid var(--stroke-2);
+}
+
+/* Automation-status badge — the ADDITIVE element. One tone per status,
+   color always paired with icon + text. Same pill family as chips/tags. */
+.auto-badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.auto-badge .ic { width: 11px; height: 11px; }
+.auto-badge[data-auto="manual"]    { color: var(--skipped); background: var(--skipped-bg); border-color: var(--stroke-2); }
+.auto-badge[data-auto="candidate"] { color: var(--blocked); background: var(--blocked-bg); }
+.auto-badge[data-auto="automated"] { color: var(--running); background: var(--running-bg); }
+/* Interactive (member+) variant: a real <button> with a caret. The viewer
+   variant is a <span> with no caret — structurally different, not "disabled". */
+button.auto-badge { cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard); }
+button.auto-badge:hover { border-color: var(--stroke-3); }
+button.auto-badge .caret-ic { width: 10px; height: 10px; }
+
+/* ═══ Topbar ═════════════════════════════════════════════════════════ */
+.topbar {
+  height: 44px; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6);
+}
+.wordmark { display: flex; align-items: baseline; gap: var(--space-2); }
+.wordmark .jp { font-family: var(--font-jp); font-weight: 700; font-size: 15px; color: var(--fg-0); }
+.wordmark .latin { font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--fg-0); }
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--muted); }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); color: var(--meta); font-size: var(--text-sm); }
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 1px 5px; line-height: 1.3;
+}
+
+.main { padding: var(--space-6) var(--space-12) var(--space-12); max-width: 1392px; margin: 0 auto; }
+.region-head { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-8) 0 var(--space-4); }
+.region-head:first-child { margin-top: 0; }
+.region-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.region-head .sub { font-size: var(--text-control); color: var(--meta); }
+
+/* ═══ Region A — filter bar (TableView pattern) ══════════════════════ */
+.toolbar {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4); background: var(--bg-2);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-3) var(--r-3) 0 0; border-bottom: 0;
+}
+.fpill {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 var(--space-3);
+  border-radius: var(--radius-pill); border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-size: var(--text-sm); color: var(--muted);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.fpill:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.fpill .ic { width: 11px; height: 11px; color: var(--fg-3); }
+.fpill b { font-weight: 500; color: var(--fg-1); }
+/* Automation filter — live counts inside the control; each count is a toggle */
+.auto-filter {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 var(--space-1) 0 var(--space-3);
+  border-radius: var(--radius-pill); border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-size: var(--text-sm); color: var(--muted); gap: var(--space-1);
+}
+.auto-filter .lbl { margin-right: var(--space-1); }
+.auto-filter button {
+  display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 var(--space-2);
+  border-radius: var(--radius-pill); font-size: var(--text-sm); font-weight: 500; color: var(--muted);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.auto-filter button:hover { background: var(--bg-4); color: var(--fg-0); }
+.auto-filter button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.auto-filter button .n { font-family: var(--font-mono); }
+.auto-filter button .sw { width: 7px; height: 7px; border-radius: var(--radius-pill); }
+.auto-filter button[data-v="manual"] .sw { background: var(--skipped); }
+.auto-filter button[data-v="candidate"] .sw { background: var(--blocked); }
+.auto-filter button[data-v="automated"] .sw { background: var(--running); }
+.toolbar .count { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); margin-left: auto; }
+.toolbar .div { width: 1px; height: 16px; background: var(--stroke-2); }
+
+/* ═══ Region A — dense table ═════════════════════════════════════════ */
+.tbl-wrap { border: 1px solid var(--stroke-2); border-radius: 0 0 var(--r-3) var(--r-3); background: var(--bg-2); box-shadow: var(--shadow-card); max-height: 420px; overflow: auto; }
+.trow {
+  display: grid;
+  grid-template-columns: 34px 78px minmax(0, 1fr) 64px 170px 110px 56px 168px;
+  align-items: center; gap: var(--space-3); padding: 0 var(--space-4); height: 36px;
+  border-top: 1px solid var(--stroke-1); font-size: var(--text-control); color: var(--fg-1);
+}
+.trow:first-child { border-top: 0; }
+.trow:not(.head):hover { background: var(--bg-3); }
+.trow.head {
+  position: sticky; top: 0; z-index: 2; background: var(--bg-1); height: 28px;
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); border-top: 0;
+}
+.trow input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); }
+.trow .tid { font-family: var(--font-mono); color: var(--fg-0); font-weight: 500; }
+.trow .ttl { min-width: 0; display: flex; align-items: center; gap: var(--space-3); overflow: hidden; }
+.trow .ttl .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow .module { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow .tags { display: flex; gap: var(--space-1); overflow: hidden; }
+.trow .runsn { font-family: var(--font-mono); color: var(--muted); }
+.tbl-empty { padding: var(--space-12); text-align: center; color: var(--muted); font-size: var(--text-control); }
+
+/* Selection footer — appears when rows are checked */
+.sel-foot {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-4); background: var(--bg-1);
+  border: 1px solid var(--stroke-2); border-top: 0; border-radius: 0 0 var(--r-3) var(--r-3);
+  font-size: var(--text-control); color: var(--muted);
+}
+.sel-foot[hidden] { display: none; }
+.sel-foot b { color: var(--fg-0); font-family: var(--font-mono); }
+.sel-foot .spacer { flex: 1; }
+
+/* ═══ Region B — detail header + right rail (ATCDetail pattern) ══════ */
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-5); }
+.detail-main { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); }
+.detail-head {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--stroke-1);
+}
+.detail-head .did { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+.detail-head h3 { font-size: var(--text-2xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.detail-head .right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+.detail-body { padding: var(--space-6); }
+.detail-body .lbl {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); margin-bottom: var(--space-2);
+}
+.detail-body p { font-size: var(--text-base); color: var(--fg-1); max-width: 65ch; }
+.steps { margin-top: var(--space-5); border: 1px solid var(--stroke-1); border-radius: var(--r-2); overflow: hidden; }
+.steps .s {
+  display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--stroke-1); font-size: var(--text-control); color: var(--fg-1);
+}
+.steps .s:first-child { border-top: 0; }
+.steps .s .sn { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+
+/* Right rail */
+.rail { display: flex; flex-direction: column; gap: var(--space-5); }
+.rail-panel { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); padding: var(--space-5) var(--space-6); }
+.rail-panel h4 {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); margin-bottom: var(--space-4);
+}
+.kv { display: grid; gap: var(--space-2); font-size: var(--text-control); }
+.kv .r { display: flex; justify-content: space-between; gap: var(--space-4); border-bottom: 1px solid var(--stroke-1); padding-bottom: var(--space-2); }
+.kv .r:last-child { border-bottom: 0; padding-bottom: 0; }
+.kv .k { color: var(--meta); }
+.kv .v { color: var(--fg-1); text-align: right; }
+
+/* Status history — append-only chronological list, newest first */
+.hist { display: flex; flex-direction: column; }
+.hist .h {
+  padding: var(--space-3) 0; border-top: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.hist .h:first-child { border-top: 0; padding-top: 0; }
+.hist .h .who { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--text-sm); }
+.hist .h .who .a { font-family: var(--font-mono); color: var(--fg-1); }
+.hist .h .who .ts { font-family: var(--font-mono); color: var(--muted); }
+.hist .h .tr { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--muted); }
+.hist .h .tr .ic { width: 10px; height: 10px; color: var(--fg-3); }
+.hist-note { margin-top: var(--space-4); font-size: var(--text-sm); color: var(--muted); display: flex; gap: var(--space-2); align-items: flex-start; }
+.hist-note .ic { width: 11px; height: 11px; color: var(--fg-3); margin-top: 2px; }
+
+/* Status dropdown menu */
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; min-width: 210px;
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-2);
+  box-shadow: var(--shadow-pop); padding: var(--space-1); display: none;
+}
+.menu.open { display: block; }
+.menu [role="option"] {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-1);
+  font-size: var(--text-control); color: var(--fg-1); text-align: left;
+}
+.menu [role="option"]:hover, .menu [role="option"]:focus-visible { background: var(--bg-4); }
+.menu [role="option"] .sw { width: 7px; height: 7px; border-radius: var(--radius-pill); }
+.menu [role="option"][data-v="manual"] .sw { background: var(--skipped); }
+.menu [role="option"][data-v="candidate"] .sw { background: var(--blocked); }
+.menu [role="option"][data-v="automated"] .sw { background: var(--running); }
+.menu [role="option"] .chk { margin-left: auto; width: 12px; height: 12px; color: var(--fg-0); visibility: hidden; }
+.menu [role="option"][aria-selected="true"] .chk { visibility: visible; }
+.menu .m-note { padding: var(--space-2) var(--space-3); font-size: var(--text-sm); color: var(--muted); border-top: 1px solid var(--stroke-1); margin-top: var(--space-1); }
+
+/* ═══ States strip ═══════════════════════════════════════════════════ */
+.states-wrap { max-width: 1392px; margin: 0 auto; padding: var(--space-12) var(--space-12) 48px; }
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-6); }
+.states-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--meta); }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+.state-card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden; }
+.state-card.wide { grid-column: 1 / -1; }
+.state-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.state-head .sid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.state-head .st { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.state-head .sd { font-size: var(--text-sm); color: var(--meta); margin-left: auto; text-align: right; }
+.state-body { padding: var(--space-5); }
+.state-body .toolbar, .state-body .tbl-wrap { background: var(--bg-1); }
+.state-body .trow.head { background: var(--bg-2); position: static; }
+.state-body .tbl-wrap { max-height: none; overflow: visible; }
+.state-body .menu { position: static; display: block; margin-top: var(--space-2); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.2 7-5.2s5.8 1.6 7 5.2"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4.5"/><circle cx="12" cy="3.5" r="1"/><path d="M9.2 13h.1M14.7 13h.1"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 4c4-2 8 2 12 0v9c-4 2-8-2-12 0"/></symbol>
+    <symbol id="i-caret" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24"><path d="M8 5v14m0 0-3-3m3 3 3-3M16 19V5m0 0-3 3m3-3 3 3"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="1.6"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar" data-od-id="app-topbar">
+  <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <span class="mono">PRJ-004</span><span>Storefront Web</span>
+    <span class="sep">/</span><span class="here">Tests</span>
+  </nav>
+  <div class="topbar-right"><span>Command palette</span><span class="kbd">⌘K</span></div>
+</header>
+
+<main class="main">
+
+  <!-- ═══ REGION A — Test library list ═════════════════════════════════ -->
+  <div class="region-head"><h2 data-od-id="region-a-title">Test library</h2><span class="sub">Dense list — automation-status badge and filter are the additive elements.</span></div>
+
+  <div class="toolbar" data-od-id="library-toolbar">
+    <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>layer: <b>any</b></button>
+    <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>module: <b>any</b></button>
+    <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>tag: <b>any</b></button>
+    <span class="div"></span>
+    <div class="auto-filter" role="group" aria-label="Filter by automation status" id="auto-filter" data-od-id="automation-filter">
+      <span class="lbl">automation:</span>
+      <button aria-pressed="false" data-v="manual"><span class="sw"></span>Manual-only <span class="n" data-n="manual">5</span></button>
+      <button aria-pressed="false" data-v="candidate"><span class="sw"></span>Candidate <span class="n" data-n="candidate">3</span></button>
+      <button aria-pressed="false" data-v="automated"><span class="sw"></span>Automated <span class="n" data-n="automated">4</span></button>
+    </div>
+    <span class="count" id="row-count">12 tests</span>
+    <span class="div"></span>
+    <button class="btn" data-variant="ghost"><svg class="ic" style="width:12px;height:12px"><use href="#i-sort"/></svg>Sort</button>
+    <button class="btn" data-variant="ghost">Group</button>
+  </div>
+
+  <div class="tbl-wrap" data-od-id="test-table">
+    <div id="tbl-body"></div>
+  </div>
+  <div class="sel-foot" id="sel-foot" hidden data-od-id="selection-footer">
+    <span><b id="sel-n">0</b> selected</span>
+    <button class="btn">Set automation status</button>
+    <button class="btn">Add tag</button>
+    <div class="spacer"></div>
+    <button class="btn" data-variant="ghost" id="sel-clear">Clear selection</button>
+  </div>
+
+  <!-- ═══ REGION B — Test detail ═══════════════════════════════════════ -->
+  <div class="region-head"><h2 data-od-id="region-b-title">Test detail</h2><span class="sub">Header badge is the status control (member+); history panel is append-only.</span></div>
+
+  <div class="detail" data-od-id="test-detail">
+    <section class="detail-main">
+      <header class="detail-head" data-od-id="detail-header">
+        <div>
+          <div class="did">ATC-027 · MOD-002 · auth</div>
+          <h3>Login — session expiry redirect</h3>
+        </div>
+        <div class="right">
+          <div class="menu-wrap">
+            <button class="auto-badge" data-auto="automated" id="status-btn" data-od-id="status-dropdown"
+                    aria-haspopup="listbox" aria-expanded="false" aria-label="Automation status: Automated. Change status">
+              <svg class="ic"><use href="#i-bot"/></svg><span id="status-label">Automated</span>
+              <svg class="ic caret-ic"><use href="#i-caret"/></svg>
+            </button>
+            <div class="menu" id="status-menu" role="listbox" aria-label="Automation status">
+              <button role="option" data-v="manual" aria-selected="false"><span class="sw"></span>Manual-only<svg class="ic chk"><use href="#i-check"/></svg></button>
+              <button role="option" data-v="candidate" aria-selected="false"><span class="sw"></span>Automation candidate<svg class="ic chk"><use href="#i-check"/></svg></button>
+              <button role="option" data-v="automated" aria-selected="true"><span class="sw"></span>Automated<svg class="ic chk"><use href="#i-check"/></svg></button>
+              <div class="m-note">Any status can be set — no enforced order. Every change is logged.</div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="detail-body">
+        <div class="lbl">Description</div>
+        <p>Verifies that an expired session token forces a redirect to the login screen and that the user returns to their original route after signing in again.</p>
+        <div class="lbl" style="margin-top:var(--space-5)">Steps</div>
+        <div class="steps">
+          <div class="s"><span class="sn">S1</span>Open app with an expired session token</div>
+          <div class="s"><span class="sn">S2</span>Navigate to a protected route</div>
+          <div class="s"><span class="sn">S3</span>Assert redirect lands on /login</div>
+          <div class="s"><span class="sn">S4</span>Sign in again with valid credentials</div>
+          <div class="s"><span class="sn">S5</span>Assert return to the original route</div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="rail" data-od-id="detail-rail">
+      <div class="rail-panel">
+        <h4>Details</h4>
+        <div class="kv">
+          <div class="r"><span class="k">Module</span><span class="v mono">MOD-002 · auth</span></div>
+          <div class="r"><span class="k">Layer</span><span class="v"><span class="chip" data-layer="API">API</span></span></div>
+          <div class="r"><span class="k">Owner</span><span class="v mono">sara.ito</span></div>
+          <div class="r"><span class="k">Created</span><span class="v mono">2026-07-12</span></div>
+          <div class="r"><span class="k">Last run</span><span class="v mono">RUN-447 · passed</span></div>
+        </div>
+      </div>
+      <div class="rail-panel" data-od-id="status-history-panel">
+        <h4>Automation status history</h4>
+        <div class="hist" id="hist-list">
+          <div class="h">
+            <div class="who"><span class="a">sara.ito</span><span class="ts">2026-07-29 16:20</span></div>
+            <div class="tr">Automation candidate <svg class="ic"><use href="#i-arrow"/></svg> Automated</div>
+          </div>
+          <div class="h">
+            <div class="who"><span class="a">m.reyes</span><span class="ts">2026-07-24 11:02</span></div>
+            <div class="tr">Manual-only <svg class="ic"><use href="#i-arrow"/></svg> Automation candidate</div>
+          </div>
+          <div class="h">
+            <div class="who"><span class="a">sara.ito</span><span class="ts">2026-07-12 09:38</span></div>
+            <div class="tr">Created as Manual-only</div>
+          </div>
+        </div>
+        <div class="hist-note"><svg class="ic"><use href="#i-lock"/></svg>Append-only — entries are never edited or removed.</div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- ═══ States strip ═══════════════════════════════════════════════════ -->
+<section class="states-wrap" data-od-id="states-strip" aria-label="Static state reference">
+  <div class="states-head">
+    <h2>States</h2>
+    <p>Static reference — the regions above are interactive; these frames are the fixed contract for each state.</p>
+  </div>
+  <div class="states-grid">
+
+    <!-- S1 -->
+    <div class="state-card wide" data-od-id="state-1-library-mixed">
+      <div class="state-head"><span class="sid">S1</span><span class="st">Library — mixed statuses</span><span class="sd">Badge on every row · live counts in the automation filter</span></div>
+      <div class="state-body" inert>
+        <div class="toolbar">
+          <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>layer: <b>any</b></button>
+          <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>module: <b>any</b></button>
+          <div class="auto-filter"><span class="lbl">automation:</span>
+            <button aria-pressed="false" data-v="manual"><span class="sw"></span>Manual-only <span class="n">5</span></button>
+            <button aria-pressed="false" data-v="candidate"><span class="sw"></span>Candidate <span class="n">3</span></button>
+            <button aria-pressed="false" data-v="automated"><span class="sw"></span>Automated <span class="n">4</span></button>
+          </div>
+          <span class="count">12 tests</span>
+        </div>
+        <div class="tbl-wrap">
+          <div class="trow head"><span></span><span>ID</span><span>Title</span><span>Layer</span><span>Module</span><span>Last result</span><span>Runs</span><span>Tags</span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-014"></span><span class="tid">ATC-014</span><span class="ttl"><span class="nm">Checkout — declined card recovery</span><span class="auto-badge" data-auto="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span><span><span class="chip" data-layer="UI">UI</span></span><span class="module">MOD-004 · payments</span><span><span class="chip" data-status="fail"><span class="dot" data-k="fail"></span>fail</span></span><span class="runsn">14</span><span class="tags"><span class="tag">smoke</span><span class="tag">p1</span></span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-033"></span><span class="tid">ATC-033</span><span class="ttl"><span class="nm">Search — empty state and filters</span><span class="auto-badge" data-auto="candidate"><svg class="ic"><use href="#i-flag"/></svg>Candidate</span></span><span><span class="chip" data-layer="UI">UI</span></span><span class="module">MOD-007 · catalog</span><span><span class="chip" data-status="pass"><span class="dot" data-k="pass"></span>pass</span></span><span class="runsn">6</span><span class="tags"><span class="tag">regression</span></span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-044"></span><span class="tid">ATC-044</span><span class="ttl"><span class="nm">Password reset — expired token</span><span class="auto-badge" data-auto="manual"><svg class="ic"><use href="#i-user"/></svg>Manual-only</span></span><span><span class="chip" data-layer="API">API</span></span><span class="module">MOD-002 · auth</span><span><span class="chip" data-status="never">never run</span></span><span class="runsn">0</span><span class="tags"><span class="tag">p2</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="state-card wide" data-od-id="state-2-library-filtered">
+      <div class="state-head"><span class="sid">S2</span><span class="st">Library — filtered to Automation candidate</span><span class="sd">Count toggle pressed · list narrowed to 3 of 12</span></div>
+      <div class="state-body" inert>
+        <div class="toolbar">
+          <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>layer: <b>any</b></button>
+          <button class="fpill"><svg class="ic"><use href="#i-filter"/></svg>module: <b>any</b></button>
+          <div class="auto-filter"><span class="lbl">automation:</span>
+            <button aria-pressed="false" data-v="manual"><span class="sw"></span>Manual-only <span class="n">5</span></button>
+            <button aria-pressed="true" data-v="candidate"><span class="sw"></span>Candidate <span class="n">3</span></button>
+            <button aria-pressed="false" data-v="automated"><span class="sw"></span>Automated <span class="n">4</span></button>
+          </div>
+          <span class="count">3 of 12 tests</span>
+        </div>
+        <div class="tbl-wrap">
+          <div class="trow head"><span></span><span>ID</span><span>Title</span><span>Layer</span><span>Module</span><span>Last result</span><span>Runs</span><span>Tags</span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-033"></span><span class="tid">ATC-033</span><span class="ttl"><span class="nm">Search — empty state and filters</span><span class="auto-badge" data-auto="candidate"><svg class="ic"><use href="#i-flag"/></svg>Candidate</span></span><span><span class="chip" data-layer="UI">UI</span></span><span class="module">MOD-007 · catalog</span><span><span class="chip" data-status="pass"><span class="dot" data-k="pass"></span>pass</span></span><span class="runsn">6</span><span class="tags"><span class="tag">regression</span></span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-042"></span><span class="tid">ATC-042</span><span class="ttl"><span class="nm">Wishlist — cross-device sync</span><span class="auto-badge" data-auto="candidate"><svg class="ic"><use href="#i-flag"/></svg>Candidate</span></span><span><span class="chip" data-layer="API">API</span></span><span class="module">MOD-007 · catalog</span><span><span class="chip" data-status="pass"><span class="dot" data-k="pass"></span>pass</span></span><span class="runsn">4</span><span class="tags"><span class="tag">p2</span></span></div>
+          <div class="trow"><span><input type="checkbox" aria-label="Select ATC-055"></span><span class="tid">ATC-055</span><span class="ttl"><span class="nm">Coupon stacking rules</span><span class="auto-badge" data-auto="candidate"><svg class="ic"><use href="#i-flag"/></svg>Candidate</span></span><span><span class="chip" data-layer="Unit">Unit</span></span><span class="module">MOD-004 · payments</span><span><span class="chip" data-status="never">never run</span></span><span class="runsn">0</span><span class="tags"><span class="tag">p1</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3 -->
+    <div class="state-card" data-od-id="state-3-dropdown-open">
+      <div class="state-head"><span class="sid">S3</span><span class="st">Detail — dropdown open (member/admin)</span><span class="sd">All 3 statuses offered · no enforced order</span></div>
+      <div class="state-body" inert>
+        <header class="detail-head" style="border:1px solid var(--stroke-1);border-radius:var(--r-2);background:var(--bg-1)">
+          <div>
+            <div class="did">ATC-027 · MOD-002 · auth</div>
+            <h3 style="font-size:var(--text-xl)">Login — session expiry redirect</h3>
+          </div>
+          <div class="right">
+            <div class="menu-wrap">
+              <button class="auto-badge" data-auto="automated" aria-haspopup="listbox" aria-expanded="true">
+                <svg class="ic"><use href="#i-bot"/></svg>Automated<svg class="ic caret-ic"><use href="#i-caret"/></svg>
+              </button>
+            </div>
+          </div>
+        </header>
+        <div class="menu open" style="max-width:240px;margin-left:auto">
+          <button role="option" data-v="manual" aria-selected="false"><span class="sw"></span>Manual-only<svg class="ic chk"><use href="#i-check"/></svg></button>
+          <button role="option" data-v="candidate" aria-selected="false"><span class="sw"></span>Automation candidate<svg class="ic chk"><use href="#i-check"/></svg></button>
+          <button role="option" data-v="automated" aria-selected="true"><span class="sw"></span>Automated<svg class="ic chk"><use href="#i-check"/></svg></button>
+          <div class="m-note">Any status can be set — no enforced order. Every change is logged.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S4 -->
+    <div class="state-card" data-od-id="state-4-viewer-readonly">
+      <div class="state-head"><span class="sid">S4</span><span class="st">Detail — viewer role</span><span class="sd">Same badge, no dropdown affordance · history read-only</span></div>
+      <div class="state-body" inert>
+        <header class="detail-head" style="border:1px solid var(--stroke-1);border-radius:var(--r-2);background:var(--bg-1)">
+          <div>
+            <div class="did">ATC-027 · MOD-002 · auth</div>
+            <h3 style="font-size:var(--text-xl)">Login — session expiry redirect</h3>
+          </div>
+          <div class="right">
+            <!-- Viewer: a <span>, not a <button> — no caret, no popup semantics -->
+            <span class="auto-badge" data-auto="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span>
+          </div>
+        </header>
+        <div class="rail-panel" style="margin-top:var(--space-4);background:var(--bg-1)">
+          <h4>Automation status history</h4>
+          <div class="hist">
+            <div class="h">
+              <div class="who"><span class="a">sara.ito</span><span class="ts">2026-07-29 16:20</span></div>
+              <div class="tr">Automation candidate <svg class="ic"><use href="#i-arrow"/></svg> Automated</div>
+            </div>
+            <div class="h">
+              <div class="who"><span class="a">m.reyes</span><span class="ts">2026-07-24 11:02</span></div>
+              <div class="tr">Manual-only <svg class="ic"><use href="#i-arrow"/></svg> Automation candidate</div>
+            </div>
+          </div>
+          <div class="hist-note"><svg class="ic"><use href="#i-lock"/></svg>Append-only — entries are never edited or removed.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+'use strict';
+
+const TESTS = [
+  { id: 'ATC-008', name: 'Signup — field validation',           layer: 'UI',   module: 'MOD-002 · auth',     auto: 'manual',    last: 'pass',  runs: 9,  tags: ['smoke'] },
+  { id: 'ATC-014', name: 'Checkout — declined card recovery',   layer: 'UI',   module: 'MOD-004 · payments', auto: 'automated', last: 'fail',  runs: 14, tags: ['smoke', 'p1'] },
+  { id: 'ATC-021', name: 'Cart totals recalculation',           layer: 'Unit', module: 'MOD-004 · payments', auto: 'automated', last: 'pass',  runs: 11, tags: ['regression'] },
+  { id: 'ATC-027', name: 'Login — session expiry redirect',     layer: 'API',  module: 'MOD-002 · auth',     auto: 'automated', last: 'pass',  runs: 12, tags: ['smoke', 'p1'] },
+  { id: 'ATC-033', name: 'Search — empty state and filters',    layer: 'UI',   module: 'MOD-007 · catalog',  auto: 'candidate', last: 'pass',  runs: 6,  tags: ['regression'] },
+  { id: 'ATC-042', name: 'Wishlist — cross-device sync',        layer: 'API',  module: 'MOD-007 · catalog',  auto: 'candidate', last: 'pass',  runs: 4,  tags: ['p2'] },
+  { id: 'ATC-044', name: 'Password reset — expired token',      layer: 'API',  module: 'MOD-002 · auth',     auto: 'manual',    last: 'never', runs: 0,  tags: ['p2'] },
+  { id: 'ATC-051', name: 'Order history pagination',            layer: 'UI',   module: 'MOD-004 · payments', auto: 'manual',    last: 'pass',  runs: 3,  tags: ['regression'] },
+  { id: 'ATC-055', name: 'Coupon stacking rules',               layer: 'Unit', module: 'MOD-004 · payments', auto: 'candidate', last: 'never', runs: 0,  tags: ['p1'] },
+  { id: 'ATC-060', name: 'Address book CRUD',                   layer: 'UI',   module: 'MOD-002 · auth',     auto: 'manual',    last: 'pass',  runs: 5,  tags: ['p2'] },
+  { id: 'ATC-063', name: 'Product gallery zoom',                layer: 'UI',   module: 'MOD-007 · catalog',  auto: 'manual',    last: 'never', runs: 0,  tags: ['p3'] },
+  { id: 'ATC-071', name: 'Inventory sync guard',                layer: 'API',  module: 'MOD-004 · payments', auto: 'automated', last: 'pass',  runs: 8,  tags: ['p1'] }
+];
+
+const AUTO_META = {
+  manual:    { icon: 'i-user', label: 'Manual-only' },
+  candidate: { icon: 'i-flag', label: 'Automation candidate' },
+  automated: { icon: 'i-bot',  label: 'Automated' }
+};
+const AUTO_SHORT = { manual: 'Manual-only', candidate: 'Candidate', automated: 'Automated' };
+
+const $ = (s, r) => (r || document).querySelector(s);
+let autoFilter = null; // null = any
+
+function icon(id, size) {
+  const s = size || 11;
+  return '<svg class="ic" style="width:' + s + 'px;height:' + s + 'px"><use href="#' + id + '"/></svg>';
+}
+function autoBadge(a, short) {
+  return '<span class="auto-badge" data-auto="' + a + '">' + icon(AUTO_META[a].icon) +
+    (short ? AUTO_SHORT[a] : AUTO_META[a].label) + '</span>';
+}
+function lastChip(l) {
+  if (l === 'never') return '<span class="chip" data-status="never">never run</span>';
+  return '<span class="chip" data-status="' + l + '"><span class="dot" data-k="' + l + '"></span>' + l + '</span>';
+}
+
+/* ---- Region A: table ------------------------------------------------ */
+function renderTable() {
+  const rows = TESTS.filter(t => !autoFilter || t.auto === autoFilter);
+  let html = '<div class="trow head"><span></span><span>ID</span><span>Title</span><span>Layer</span><span>Module</span><span>Last result</span><span>Runs</span><span>Tags</span></div>';
+  rows.forEach(t => {
+    html += '<div class="trow">' +
+      '<span><input type="checkbox" data-sel aria-label="Select ' + t.id + '"></span>' +
+      '<span class="tid">' + t.id + '</span>' +
+      '<span class="ttl"><span class="nm">' + t.name + '</span>' + autoBadge(t.auto, true) + '</span>' +
+      '<span><span class="chip" data-layer="' + t.layer + '">' + t.layer + '</span></span>' +
+      '<span class="module">' + t.module + '</span>' +
+      '<span>' + lastChip(t.last) + '</span>' +
+      '<span class="runsn">' + t.runs + '</span>' +
+      '<span class="tags">' + t.tags.map(x => '<span class="tag">' + x + '</span>').join('') + '</span></div>';
+  });
+  if (!rows.length) html += '<div class="tbl-empty">No tests match the current filters.</div>';
+  $('#tbl-body').innerHTML = html;
+  $('#row-count').textContent = autoFilter ? rows.length + ' of ' + TESTS.length + ' tests' : TESTS.length + ' tests';
+  syncSelFoot();
+}
+
+function renderCounts() {
+  ['manual', 'candidate', 'automated'].forEach(k => {
+    $('[data-n="' + k + '"]').textContent = TESTS.filter(t => t.auto === k).length;
+  });
+}
+
+$('#auto-filter').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  autoFilter = autoFilter === b.dataset.v ? null : b.dataset.v;
+  $('#auto-filter').querySelectorAll('button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.v === autoFilter)));
+  renderTable();
+});
+
+/* Selection footer */
+function syncSelFoot() {
+  const n = document.querySelectorAll('#tbl-body [data-sel]:checked').length;
+  $('#sel-foot').hidden = n === 0;
+  $('#sel-n').textContent = n;
+}
+$('#tbl-body').addEventListener('change', e => { if (e.target.matches('[data-sel]')) syncSelFoot(); });
+$('#sel-clear').addEventListener('click', () => {
+  document.querySelectorAll('#tbl-body [data-sel]:checked').forEach(c => { c.checked = false; });
+  syncSelFoot();
+});
+
+/* ---- Region B: status dropdown (member+ role) ----------------------- */
+const btn = $('#status-btn'), menu = $('#status-menu');
+function closeMenu() { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+btn.addEventListener('click', () => {
+  const open = menu.classList.toggle('open');
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) menu.querySelector('[aria-selected="true"]').focus();
+});
+document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeMenu(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && menu.classList.contains('open')) { closeMenu(); btn.focus(); }
+});
+menu.addEventListener('keydown', e => {
+  const opts = Array.from(menu.querySelectorAll('[role="option"]'));
+  const i = opts.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') { e.preventDefault(); (opts[i + 1] || opts[0]).focus(); }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); (opts[i - 1] || opts[opts.length - 1]).focus(); }
+});
+menu.addEventListener('click', e => {
+  const opt = e.target.closest('[role="option"]'); if (!opt) return;
+  const v = opt.dataset.v;
+  const prev = btn.dataset.auto;
+  if (v !== prev) {
+    btn.dataset.auto = v;
+    $('#status-label').textContent = AUTO_META[v].label;
+    btn.querySelector('use').setAttribute('href', '#' + AUTO_META[v].icon);
+    btn.setAttribute('aria-label', 'Automation status: ' + AUTO_META[v].label + '. Change status');
+    menu.querySelectorAll('[role="option"]').forEach(o =>
+      o.setAttribute('aria-selected', String(o.dataset.v === v)));
+    /* Append-only history: prepend the new transition, newest first */
+    const h = document.createElement('div');
+    h.className = 'h';
+    h.innerHTML = '<div class="who"><span class="a">you</span><span class="ts">just now</span></div>' +
+      '<div class="tr">' + AUTO_META[prev].label + ' <svg class="ic"><use href="#i-arrow"/></svg> ' + AUTO_META[v].label + '</div>';
+    $('#hist-list').prepend(h);
+  }
+  closeMenu(); btn.focus();
+});
+
+renderCounts();
+renderTable();
+</script>
+</body>
+</html>

@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai — Upload CI results</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;            /* [authored] */
+  --section-y-phone: 16px;             /* [authored] */
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;    /* [authored] */
+  --container-gutter-tablet: 16px;     /* [authored] */
+  --container-gutter-phone: 12px;      /* [authored] */
+
+  /* ═══ C-extensions — Bunkai's native contract ═════════════════════ */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* Buttons, inputs, table cells — DESIGN.md §4 12/12.5px tier */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1200px;
+}
+.mono { font-family: var(--font-mono); }
+:where(a, button, select, input, textarea, [tabindex]):focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+svg.ic { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ App chrome ═════════════════════════════════════════════════════ */
+.topbar {
+  height: 44px; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6);
+}
+.wordmark { display: flex; align-items: baseline; gap: var(--space-2); }
+.wordmark .jp { font-family: var(--font-jp); font-weight: 700; font-size: 15px; color: var(--fg-0); }
+.wordmark .latin { font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--fg-0); }
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--muted); }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); color: var(--meta); font-size: var(--text-sm); }
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 1px 5px; line-height: 1.3;
+}
+
+/* ═══ Flow layout ════════════════════════════════════════════════════ */
+.flow-wrap { max-width: 1024px; margin: 0 auto; padding: var(--space-12) var(--space-12) var(--space-6); }
+.flow-card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-4);
+  box-shadow: var(--shadow-pop); overflow: hidden;
+}
+.flow-head {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--stroke-1); background: var(--bg-2);
+}
+.flow-head h1 { font-size: var(--text-2xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.flow-head .sub { font-size: var(--text-control); color: var(--meta); }
+.icon-btn {
+  width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-2); color: var(--muted); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.icon-btn:hover { background: var(--bg-4); color: var(--fg-0); }
+
+.stepper { display: flex; gap: var(--space-6); padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--stroke-1); list-style: none; }
+.stepper li { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-control); color: var(--meta); font-weight: 500; }
+.stepper .n {
+  width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: var(--text-sm); border-radius: var(--radius-pill);
+  border: 1px solid var(--stroke-3); color: var(--meta);
+}
+.stepper li[data-state="active"] { color: var(--fg-0); }
+.stepper li[data-state="active"] .n { border-color: var(--stroke-strong); background: var(--bg-4); color: var(--fg-0); }
+.stepper li[data-state="done"] { color: var(--muted); }
+.stepper li[data-state="done"] .n { border-color: transparent; background: var(--pass-bg); color: var(--pass); }
+
+.step-body { padding: var(--space-6); }
+.step-foot {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-6); border-top: 1px solid var(--stroke-1); background: var(--bg-2);
+}
+.step-foot .spacer { flex: 1; }
+.foot-note { font-size: var(--text-control); color: var(--meta); display: flex; align-items: center; gap: var(--space-2); }
+
+/* ═══ Atoms ══════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); height: 28px;
+  padding: 0 var(--space-4); border-radius: var(--r-2); font-size: var(--text-control); font-weight: 500;
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent); border-color: transparent; color: var(--accent-on); font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 1px 2px rgba(0,0,0,0.4);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+.btn:disabled { background: var(--bg-3); border-color: var(--stroke-1); color: var(--fg-4); cursor: not-allowed; box-shadow: none; }
+
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field > label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta);
+}
+.select, .input {
+  height: 30px; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  color: var(--fg-1); font-size: var(--text-control); padding: 0 var(--space-4); font-family: inherit;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.select:hover, .input:hover { border-color: var(--stroke-3); }
+.select:focus, .input:focus { border-color: var(--accent); background: var(--bg-3); }
+.select.mono, .input.mono { font-family: var(--font-mono); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2) 0 5px;
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip[data-status="pass"]     { color: var(--pass);    background: var(--pass-bg); }
+.chip[data-status="fail"]     { color: var(--fail);    background: var(--fail-bg); }
+.chip[data-status="blocked"]  { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-status="skipped"]  { color: var(--skipped); background: var(--skipped-bg); }
+.chip[data-status="running"]  { color: var(--running); background: var(--running-bg); }
+/* Mapping-status vocabulary — reused by screens 2-4 */
+.chip[data-map="mapped"]   { color: var(--muted); border-color: var(--stroke-2); background: var(--bg-3); }
+.chip[data-map="unmapped"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-map="gap"]      { color: var(--skipped); background: transparent; border: 1px dashed var(--stroke-3); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-family: var(--font-mono); font-size: var(--text-sm);
+  color: var(--muted); background: var(--bg-3); border: 1px solid var(--stroke-2);
+}
+.tag[data-tone="accent"] { color: var(--accent-hi); background: var(--accent-soft); border-color: transparent; }
+
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot[data-status="pass"] { background: var(--pass); }
+.dot[data-status="fail"] { background: var(--fail); }
+.dot[data-status="skipped"] { background: var(--skipped); }
+.dot[data-status="running"] { background: var(--running); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px var(--running-bg); } }
+@media (prefers-reduced-motion: reduce) { .dot[data-status="running"] { animation: none; } }
+
+/* CI reference vocabulary — branch / commit / pipeline. Reused by screens 2-4. */
+.ci-ref {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
+}
+.ci-ref .ic { width: 12px; height: 12px; color: var(--fg-3); }
+.ci-ref b { font-weight: 500; color: var(--fg-1); }
+.ci-ref[data-empty] b { color: var(--fg-4); font-weight: 400; }
+
+.bar { height: 4px; border-radius: var(--radius-pill); background: var(--bg-4); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar i[data-k="pass"] { background: var(--pass); }
+.bar i[data-k="fail"] { background: var(--fail); }
+.bar i[data-k="skipped"] { background: var(--skipped); }
+.bar i[data-k="gap"] { background: var(--bg-5); }
+
+/* ═══ Step 1 — choose file ═══════════════════════════════════════════ */
+.pick-row { display: grid; grid-template-columns: 1fr 220px; gap: var(--space-5); margin-bottom: var(--space-6); }
+.dropzone {
+  border: 1px dashed var(--stroke-3); border-radius: var(--r-3); background: var(--bg-2);
+  padding: var(--space-12); display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  text-align: center; cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.dropzone:hover { border-color: var(--stroke-strong); background: var(--bg-3); }
+.dropzone.dragover { border-color: var(--accent); background: var(--bg-3); }
+.dropzone .ic { width: 18px; height: 18px; color: var(--muted); }
+.dropzone .dz-main { font-size: var(--text-base); color: var(--fg-1); }
+.dropzone .dz-main u { color: var(--fg-0); font-weight: 500; text-underline-offset: 2px; }
+.dropzone .dz-meta { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.upload-error {
+  margin-top: var(--space-4); display: flex; gap: var(--space-3); align-items: flex-start;
+  border: 1px solid var(--fail); border-radius: var(--r-2); background: var(--fail-bg);
+  padding: var(--space-4) var(--space-5); font-size: var(--text-control); color: var(--fg-1);
+}
+.upload-error .ic { color: var(--fail); margin-top: 1px; }
+.upload-error b { color: var(--fail); font-weight: 600; }
+.upload-error .mono { color: var(--fg-1); }
+.file-card {
+  display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2); background: var(--bg-3);
+  padding: var(--space-3) var(--space-4); font-size: var(--text-control);
+}
+.file-card .ic { color: var(--muted); }
+.file-card .fname { font-family: var(--font-mono); color: var(--fg-0); }
+.file-card .fsize { font-family: var(--font-mono); color: var(--meta); }
+
+/* ═══ Step 2 — mapping preview ═══════════════════════════════════════ */
+.ctx-bar {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--stroke-1); border-radius: var(--r-2);
+  background: var(--bg-1); margin-bottom: var(--space-5); font-size: var(--text-control); color: var(--muted);
+}
+.ctx-bar .div { width: 1px; height: 14px; background: var(--stroke-2); }
+.map-note { font-size: var(--text-control); color: var(--meta); margin-bottom: var(--space-4); }
+.map-table { border: 1px solid var(--stroke-2); border-radius: var(--r-3); overflow: hidden; }
+.map-row {
+  display: grid; grid-template-columns: 34px minmax(0,1fr) 26px minmax(0,1fr) 92px 96px;
+  align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--stroke-1); min-height: 34px; font-size: var(--text-control);
+}
+.map-row:first-child { border-top: 0; }
+.map-row.head {
+  background: var(--bg-1); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); min-height: 28px;
+}
+.map-row .pos { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.map-row .entry { min-width: 0; }
+.map-row .entry .nm { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .entry .cls { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .arrow { color: var(--fg-4); display: flex; justify-content: center; }
+.map-row .stp { min-width: 0; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row .stp .sn { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); margin-right: var(--space-2); }
+.map-row .none { color: var(--fg-4); font-style: normal; }
+.map-row.is-gap { background: var(--skipped-bg); }
+.sub-head {
+  display: flex; align-items: center; gap: var(--space-3); margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-lg); font-weight: 600; color: var(--fg-0);
+}
+.sub-head .count { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); font-weight: 400; }
+.sub-head .hint { font-size: var(--text-control); font-weight: 400; color: var(--meta); }
+.ack {
+  margin-top: var(--space-6); display: flex; gap: var(--space-3); align-items: flex-start;
+  border: 1px solid var(--blocked); border-radius: var(--r-2); background: var(--blocked-bg);
+  padding: var(--space-4) var(--space-5);
+}
+.ack input[type="checkbox"] { width: 14px; height: 14px; margin-top: 2px; accent-color: var(--accent); }
+.ack label { font-size: var(--text-control); color: var(--fg-1); cursor: pointer; }
+.ack label b { color: var(--blocked); font-weight: 600; }
+
+/* ═══ Step 3 — confirm ═══════════════════════════════════════════════ */
+.confirm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  box-shadow: var(--shadow-card); padding: var(--space-6);
+}
+.card h3 {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta); margin-bottom: var(--space-4);
+}
+.verdict {
+  display: inline-flex; align-items: center; gap: var(--space-3); height: 28px; padding: 0 var(--space-4);
+  border-radius: var(--r-2); font-size: var(--text-lg); font-weight: 600;
+}
+.verdict[data-v="failed"] { color: var(--fail); background: var(--fail-bg); border: 1px solid var(--fail); }
+.verdict[data-v="passed"] { color: var(--pass); background: var(--pass-bg); border: 1px solid var(--pass); }
+.verdict-why { font-size: var(--text-control); color: var(--muted); margin-top: var(--space-3); }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-top: var(--space-4); }
+.stat { border: 1px solid var(--stroke-1); border-radius: var(--r-2); padding: var(--space-3) var(--space-4); background: var(--bg-1); }
+.stat .v { font-family: var(--font-mono); font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.stat .k { font-size: var(--text-sm); color: var(--meta); }
+.cov-line { display: flex; justify-content: space-between; font-size: var(--text-control); color: var(--muted); margin-bottom: var(--space-3); }
+.cov-line b { color: var(--fg-0); font-weight: 600; }
+.legend { display: flex; gap: var(--space-4); margin-top: var(--space-3); font-size: var(--text-sm); color: var(--muted); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.meta-list { display: grid; gap: var(--space-2); font-size: var(--text-control); }
+.meta-list .r { display: flex; justify-content: space-between; gap: var(--space-4); border-bottom: 1px solid var(--stroke-1); padding-bottom: var(--space-2); }
+.meta-list .r:last-child { border-bottom: 0; padding-bottom: 0; }
+.meta-list .k { color: var(--meta); }
+.meta-list .v { color: var(--fg-1); text-align: right; }
+
+/* ═══ Done — runs view ═══════════════════════════════════════════════ */
+.done-note {
+  display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-control);
+  color: var(--fg-1); margin-bottom: var(--space-5);
+}
+.done-note .ic { color: var(--pass); }
+.runs-table { border: 1px solid var(--stroke-2); border-radius: var(--r-3); overflow: hidden; }
+.run-row {
+  display: grid; grid-template-columns: 92px 96px minmax(0,1fr) 120px 150px 90px 110px;
+  align-items: center; gap: var(--space-3); padding: 0 var(--space-4); height: 36px;
+  border-top: 1px solid var(--stroke-1); font-size: var(--text-control); color: var(--fg-1);
+}
+.run-row:first-child { border-top: 0; }
+.run-row.head {
+  background: var(--bg-1); height: 28px; font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 600; color: var(--meta);
+}
+.run-row .rid { font-family: var(--font-mono); color: var(--fg-0); font-weight: 500; }
+.run-row .tref { font-family: var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-row .env, .run-row .when { color: var(--muted); }
+.run-row .cnt { font-family: var(--font-mono); color: var(--muted); }
+.run-row.is-new { background: var(--accent-soft); }
+
+/* ═══ States strip ═══════════════════════════════════════════════════ */
+.states-wrap { max-width: 1392px; margin: 0 auto; padding: var(--space-12) var(--space-12) 48px; }
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-6); }
+.states-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--meta); }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+.state-card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden; }
+.state-card.wide { grid-column: 1 / -1; }
+.state-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.state-head .sid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.state-head .st { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.state-head .sd { font-size: var(--text-sm); color: var(--meta); margin-left: auto; text-align: right; }
+.state-body { padding: var(--space-5); }
+.state-body .dropzone { padding: var(--space-6); }
+.state-body .pick-row { grid-template-columns: 1fr 180px; margin-bottom: var(--space-4); }
+.state-body .map-row { grid-template-columns: 30px minmax(0,1fr) 22px minmax(0,1fr) 84px 90px; }
+.state-body .step-foot { padding: var(--space-4) 0 0; border-top: 1px solid var(--stroke-1); margin-top: var(--space-4); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5"/><path d="M12 17.6v.1"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6M18 10.2c0 4-5 3.3-9.5 5.6"/></symbol>
+    <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4"/><path d="M2.5 12h6M15.5 12h6"/></symbol>
+    <symbol id="i-pipe" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.4"/><rect x="14" y="13" width="7" height="7" rx="1.4"/><path d="M10 7.5h5.5v5.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m0 0-5-5m5 5-5 5"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12h7"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar" data-od-id="app-topbar">
+  <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <span class="mono">PRJ-004</span><span>Storefront Web</span>
+    <span class="sep">/</span><span>Runs</span>
+    <span class="sep">/</span><span class="here">Upload CI results</span>
+  </nav>
+  <div class="topbar-right"><span>Command palette</span><span class="kbd">⌘K</span></div>
+</header>
+
+<main class="flow-wrap">
+  <section class="flow-card" data-od-id="upload-flow" aria-label="Upload CI results">
+    <header class="flow-head">
+      <div>
+        <h1 data-od-id="flow-title">Upload CI results</h1>
+        <div class="sub">Attach a CI report to a Test — the mapping you confirm here is exactly what gets recorded.</div>
+      </div>
+      <div style="margin-left:auto"></div>
+      <button class="icon-btn" id="close-flow" aria-label="Close and discard upload" title="Close (Esc)">
+        <svg class="ic"><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <ol class="stepper" id="stepper" data-od-id="flow-stepper">
+      <li data-step="1" data-state="active"><span class="n">1</span> Report</li>
+      <li data-step="2"><span class="n">2</span> Mapping preview</li>
+      <li data-step="3"><span class="n">3</span> Confirm</li>
+    </ol>
+
+    <!-- STEP 1 — choose file -->
+    <section id="step-file" data-od-id="step-choose-file">
+      <div class="step-body">
+        <div class="pick-row">
+          <div class="field">
+            <label for="sel-test">Test</label>
+            <select class="select mono" id="sel-test" data-od-id="test-picker"></select>
+          </div>
+          <div class="field">
+            <label for="sel-env">Environment</label>
+            <select class="select" id="sel-env" data-od-id="env-picker">
+              <option value="staging">staging</option>
+              <option value="ci" selected>ci</option>
+              <option value="production">production</option>
+              <option value="local">local</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" data-od-id="report-dropzone"
+             aria-label="Drop a JUnit XML report here, or press Enter to browse. One file, 10 megabytes maximum.">
+          <svg class="ic"><use href="#i-upload"/></svg>
+          <div class="dz-main">Drop the CI report here, or <u>browse</u></div>
+          <div class="dz-meta">JUnit XML · one file per upload · 10 MB max</div>
+        </div>
+        <input type="file" id="file-input" accept=".xml,text/xml,application/xml" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" aria-hidden="true" tabindex="-1">
+
+        <div id="file-slot"></div>
+        <div id="error-slot" role="alert" aria-live="assertive"></div>
+      </div>
+      <footer class="step-foot">
+        <div class="foot-note">No run is created until you confirm the mapping in step 3.</div>
+        <div class="spacer"></div>
+        <button class="btn" id="browse-btn">Browse files</button>
+      </footer>
+    </section>
+
+    <!-- STEP 2 — mapping preview -->
+    <section id="step-map" hidden data-od-id="step-mapping-preview">
+      <div class="step-body">
+        <div class="ctx-bar" id="ctx-bar"></div>
+        <p class="map-note">Report entries are matched to ATC steps <strong>by position</strong> — entry 1 to step 1, entry 2 to step 2, and so on. This preview is the contract: what you confirm is exactly what gets recorded.</p>
+        <div id="map-main"></div>
+        <div id="map-unmapped"></div>
+        <div id="ack-slot"></div>
+      </div>
+      <footer class="step-foot">
+        <button class="btn" id="back-to-file">Back</button>
+        <div class="foot-note" id="map-foot-note"></div>
+        <div class="spacer"></div>
+        <button class="btn" data-variant="primary" id="to-confirm">Continue to confirm</button>
+      </footer>
+    </section>
+
+    <!-- STEP 3 — confirm -->
+    <section id="step-confirm" hidden data-od-id="step-confirm">
+      <div class="step-body">
+        <div class="confirm-grid">
+          <div class="card" data-od-id="verdict-card">
+            <h3>Verdict preview</h3>
+            <div id="verdict-slot"></div>
+            <div class="stat-row" id="stat-row"></div>
+          </div>
+          <div class="card" data-od-id="coverage-card">
+            <h3>Coverage</h3>
+            <div id="cov-slot"></div>
+            <div style="border-top:1px solid var(--stroke-1); margin:var(--space-5) 0 var(--space-4)"></div>
+            <div class="meta-list" id="run-meta"></div>
+          </div>
+        </div>
+      </div>
+      <footer class="step-foot">
+        <button class="btn" id="back-to-map">Back</button>
+        <div class="foot-note">Creating the run records every entry shown in the preview — including the ones marked not mapped.</div>
+        <div class="spacer"></div>
+        <button class="btn" data-variant="primary" id="create-run" data-od-id="create-run-btn">Create run</button>
+      </footer>
+    </section>
+
+    <!-- DONE — back on runs view -->
+    <section id="step-done" hidden data-od-id="step-done">
+      <div class="step-body">
+        <div class="done-note">
+          <svg class="ic"><use href="#i-check"/></svg>
+          <span id="done-msg"></span>
+        </div>
+        <div class="runs-table" data-od-id="runs-view">
+          <div class="run-row head"><span>Run</span><span>Verdict</span><span>Test</span><span>Environment</span><span>Source</span><span>Entries</span><span>Created</span></div>
+          <div id="new-run-slot"></div>
+          <div class="run-row">
+            <span class="rid">RUN-451</span>
+            <span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>passed</span></span>
+            <span class="tref">ATC-027 · Login — session expiry redirect</span>
+            <span class="env">staging</span>
+            <span><span class="ci-ref"><svg class="ic"><use href="#i-branch"/></svg><b>main</b></span></span>
+            <span class="cnt">5</span>
+            <span class="when">2 h ago</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-450</span>
+            <span><span class="chip" data-status="fail"><svg class="ic" style="width:11px;height:11px"><use href="#i-x"/></svg>failed</span></span>
+            <span class="tref">ATC-014 · Checkout — declined card recovery</span>
+            <span class="env">ci</span>
+            <span><span class="ci-ref"><svg class="ic"><use href="#i-commit"/></svg><b>9f31c2a</b></span></span>
+            <span class="cnt">8</span>
+            <span class="when">yesterday</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-449</span>
+            <span><span class="chip" data-status="skipped"><svg class="ic" style="width:11px;height:11px"><use href="#i-skip"/></svg>skipped</span></span>
+            <span class="tref">ATC-033 · Search — empty state and filters</span>
+            <span class="env">staging</span>
+            <span><span class="ci-ref" data-empty><svg class="ic"><use href="#i-branch"/></svg><b>manual</b></span></span>
+            <span class="cnt">6</span>
+            <span class="when">2 d ago</span>
+          </div>
+        </div>
+      </div>
+      <footer class="step-foot">
+        <div class="foot-note">Report recorded against the run — the raw XML stays attached for audit.</div>
+        <div class="spacer"></div>
+        <button class="btn" id="upload-another">Upload another report</button>
+      </footer>
+    </section>
+  </section>
+</main>
+
+<!-- ═══ States strip ═══════════════════════════════════════════════════ -->
+<section class="states-wrap" data-od-id="states-strip" aria-label="Static state reference">
+  <div class="states-head">
+    <h2>States</h2>
+    <p>Static reference — the flow above is interactive; these five frames are the fixed contract for each state.</p>
+  </div>
+  <div class="states-grid">
+
+    <!-- S1 -->
+    <div class="state-card" data-od-id="state-1-choose-file">
+      <div class="state-head"><span class="sid">S1</span><span class="st">Choose file — empty</span><span class="sd">Nothing uploaded yet</span></div>
+      <div class="state-body" inert>
+        <div class="pick-row">
+          <div class="field"><label>Test</label><select class="select mono"><option>ATC-014 · Checkout — declined card recovery</option></select></div>
+          <div class="field"><label>Environment</label><select class="select"><option>ci</option></select></div>
+        </div>
+        <div class="dropzone">
+          <svg class="ic"><use href="#i-upload"/></svg>
+          <div class="dz-main">Drop the CI report here, or <u>browse</u></div>
+          <div class="dz-meta">JUnit XML · one file per upload · 10 MB max</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S4 -->
+    <div class="state-card" data-od-id="state-4-rejected-upload">
+      <div class="state-head"><span class="sid">S4</span><span class="st">Rejected upload</span><span class="sd">Wrong type / oversized — no run created</span></div>
+      <div class="state-body" inert>
+        <div class="dropzone" style="padding:var(--space-5)">
+          <svg class="ic"><use href="#i-upload"/></svg>
+          <div class="dz-meta">JUnit XML · one file per upload · 10 MB max</div>
+        </div>
+        <div class="upload-error">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div><b>Unsupported file type.</b> <span class="mono">results-summary.pdf</span> is not a JUnit XML report — only <strong>JUnit XML (.xml)</strong> is accepted. No run was created.</div>
+        </div>
+        <div class="upload-error">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div><b>File too large.</b> <span class="mono">nightly-full.xml</span> is <span class="mono">14.6 MB</span> — the limit is <strong>10 MB</strong> per report. No run was created.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="state-card wide" data-od-id="state-2-full-match">
+      <div class="state-head"><span class="sid">S2</span><span class="st">Mapping preview — full match</span><span class="sd">Every report entry maps cleanly to a step</span></div>
+      <div class="state-body" inert>
+        <div class="ctx-bar">
+          <span class="mono" style="color:var(--fg-1)">ATC-027</span><span>Login — session expiry redirect</span>
+          <span class="div"></span><span>env: ci</span><span class="div"></span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-branch"/></svg><b>main</b></span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-commit"/></svg><b>4b8e017</b></span>
+          <span class="ci-ref"><svg class="ic"><use href="#i-pipe"/></svg><b>e2e-nightly</b></span>
+        </div>
+        <div class="map-table">
+          <div class="map-row head"><span>#</span><span>Report entry</span><span></span><span>ATC step</span><span>Result</span><span>Mapping</span></div>
+          <div class="map-row"><span class="pos">1</span><span class="entry"><span class="nm">auth.session::expired_token_boot</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S1</span>Open app with an expired session token</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row"><span class="pos">2</span><span class="entry"><span class="nm">auth.session::protected_route_redirect</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S2</span>Navigate to a protected route</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row"><span class="pos">3</span><span class="entry"><span class="nm">auth.session::login_form_shown</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S3</span>Assert redirect lands on /login</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row"><span class="pos">4</span><span class="entry"><span class="nm">auth.session::relogin</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S4</span>Sign in again with valid credentials</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row"><span class="pos">5</span><span class="entry"><span class="nm">auth.session::return_to_origin</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S5</span>Assert return to the original route</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+        </div>
+        <div class="step-foot">
+          <button class="btn">Back</button>
+          <div class="foot-note">5 of 5 entries mapped · 5 of 5 steps covered · no acknowledgement needed</div>
+          <div class="spacer"></div>
+          <button class="btn" data-variant="primary">Continue to confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3 -->
+    <div class="state-card wide" data-od-id="state-3-gaps">
+      <div class="state-head"><span class="sid">S3</span><span class="st">Mapping preview — with gaps</span><span class="sd">Unmapped entries + uncovered steps · acknowledgement gates Continue</span></div>
+      <div class="state-body" inert>
+        <div class="map-table">
+          <div class="map-row head"><span>#</span><span>Report entry</span><span></span><span>ATC step</span><span>Result</span><span>Mapping</span></div>
+          <div class="map-row"><span class="pos">1</span><span class="entry"><span class="nm">checkout.decline::add_to_cart</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S1</span>Add item to cart</span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row"><span class="pos">2</span><span class="entry"><span class="nm">checkout.decline::guest_checkout</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S2</span>Proceed to checkout as guest</span><span><span class="chip" data-status="fail"><svg class="ic" style="width:11px;height:11px"><use href="#i-x"/></svg>fail</span></span><span><span class="chip" data-map="mapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>mapped</span></span></div>
+          <div class="map-row is-gap"><span class="pos">—</span><span class="entry"><span class="none">no report entry reached this step</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S3</span>Enter shipping details</span><span><span class="chip" data-status="skipped"><svg class="ic" style="width:11px;height:11px"><use href="#i-skip"/></svg>no result</span></span><span><span class="chip" data-map="gap">coverage gap</span></span></div>
+          <div class="map-row is-gap"><span class="pos">—</span><span class="entry"><span class="none">no report entry reached this step</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="sn">S4</span>Submit declined test card</span><span><span class="chip" data-status="skipped"><svg class="ic" style="width:11px;height:11px"><use href="#i-skip"/></svg>no result</span></span><span><span class="chip" data-map="gap">coverage gap</span></span></div>
+        </div>
+        <div class="sub-head">Not mapped <span class="count">2 report entries</span><span class="hint">— kept on the run, linked to no step</span></div>
+        <div class="map-table">
+          <div class="map-row"><span class="pos">3</span><span class="entry"><span class="nm">checkout.decline::telemetry_beacon</span><span class="cls">extra entry — report has more entries than the Test has steps</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="none">no matching step</span></span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="unmapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-alert"/></svg>not mapped</span></span></div>
+          <div class="map-row"><span class="pos">4</span><span class="entry"><span class="nm">checkout.decline::cleanup_fixtures</span><span class="cls">extra entry — report has more entries than the Test has steps</span></span><span class="arrow"><svg class="ic"><use href="#i-arrow"/></svg></span><span class="stp"><span class="none">no matching step</span></span><span><span class="chip" data-status="pass"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg>pass</span></span><span><span class="chip" data-map="unmapped"><svg class="ic" style="width:11px;height:11px"><use href="#i-alert"/></svg>not mapped</span></span></div>
+        </div>
+        <div class="ack">
+          <input type="checkbox" id="s3-ack">
+          <label for="s3-ack"><b>Required before continuing:</b> record <strong>2 report entries</strong> as not mapped. They stay on the run for audit but are linked to no ATC step.</label>
+        </div>
+        <div class="step-foot">
+          <button class="btn">Back</button>
+          <div class="foot-note"><svg class="ic" style="color:var(--blocked)"><use href="#i-alert"/></svg> Acknowledge the unmapped entries to enable Continue</div>
+          <div class="spacer"></div>
+          <button class="btn" data-variant="primary" disabled>Continue to confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- S5 -->
+    <div class="state-card wide" data-od-id="state-5-confirm">
+      <div class="state-head"><span class="sid">S5</span><span class="st">Confirm</span><span class="sd">Verdict preview + coverage summary before create</span></div>
+      <div class="state-body" inert>
+        <div class="confirm-grid">
+          <div class="card">
+            <h3>Verdict preview</h3>
+            <span class="verdict" data-v="failed"><svg class="ic"><use href="#i-x"/></svg>Run will be recorded as failed</span>
+            <div class="verdict-why">1 failed entry — any failed entry makes the whole run failed.</div>
+            <div class="stat-row">
+              <div class="stat"><div class="v">4</div><div class="k">entries</div></div>
+              <div class="stat"><div class="v">2</div><div class="k">mapped</div></div>
+              <div class="stat"><div class="v">2</div><div class="k">not mapped</div></div>
+              <div class="stat"><div class="v">2</div><div class="k">step gaps</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Coverage</h3>
+            <div class="cov-line"><span>Steps covered</span><b>2 of 4</b></div>
+            <div class="bar"><i data-k="pass" style="width:25%"></i><i data-k="fail" style="width:25%"></i><i data-k="gap" style="width:50%"></i></div>
+            <div class="legend">
+              <span><span class="dot" data-status="pass"></span>pass 1</span>
+              <span><span class="dot" data-status="fail"></span>fail 1</span>
+              <span><span class="dot" style="background:var(--bg-5)"></span>gap 2</span>
+            </div>
+            <div style="border-top:1px solid var(--stroke-1); margin:var(--space-4) 0"></div>
+            <div class="meta-list">
+              <div class="r"><span class="k">Test</span><span class="v mono">ATC-014</span></div>
+              <div class="r"><span class="k">Environment</span><span class="v">ci</span></div>
+              <div class="r"><span class="k">Report</span><span class="v mono">junit-partial.xml · 18.2 KB</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="step-foot">
+          <button class="btn">Back</button>
+          <div class="spacer"></div>
+          <button class="btn" data-variant="primary">Create run</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+'use strict';
+
+const MAX_BYTES = 10 * 1024 * 1024;
+
+const TESTS = [
+  { id: 'ATC-014', name: 'Checkout — declined card recovery', module: 'MOD-004', steps: [
+    'Add item to cart',
+    'Proceed to checkout as guest',
+    'Enter shipping details',
+    'Submit declined test card',
+    'Assert decline banner shows retry action',
+    'Retry payment with a valid card',
+    'Assert order confirmation page',
+    'Verify confirmation email is queued'
+  ]},
+  { id: 'ATC-027', name: 'Login — session expiry redirect', module: 'MOD-002', steps: [
+    'Open app with an expired session token',
+    'Navigate to a protected route',
+    'Assert redirect lands on /login',
+    'Sign in again with valid credentials',
+    'Assert return to the original route'
+  ]},
+  { id: 'ATC-033', name: 'Search — empty state and filters', module: 'MOD-007', steps: [
+    'Open catalog search',
+    'Submit a query with zero results',
+    'Assert empty state with clear-filters action',
+    'Apply category and price filters',
+    'Assert result count matches filters',
+    'Clear all filters'
+  ]}
+];
+
+const $ = (s, r) => (r || document).querySelector(s);
+const state = { file: null, entries: [], props: {}, test: TESTS[0], env: 'ci', acked: false };
+
+/* ---- helpers ------------------------------------------------------- */
+function icon(name, size) {
+  const s = size || 11;
+  return '<svg class="ic" style="width:' + s + 'px;height:' + s + 'px"><use href="#i-' + name + '"/></svg>';
+}
+function esc(t) {
+  return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function fmtSize(b) {
+  return b >= 1024 * 1024 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1024).toFixed(1) + ' KB';
+}
+function statusChip(st) {
+  const map = { pass: ['check', 'pass'], fail: ['x', 'fail'], skipped: ['skip', 'skipped'] };
+  const [ic, label] = map[st] || map.skipped;
+  return '<span class="chip" data-status="' + st + '">' + icon(ic) + label + '</span>';
+}
+function ciRef(kind, value) {
+  const empty = !value;
+  return '<span class="ci-ref"' + (empty ? ' data-empty' : '') + '>' + icon(kind, 12) +
+    '<b>' + esc(value || 'not provided') + '</b></span>';
+}
+
+/* ---- step switching ------------------------------------------------ */
+const steps = { 1: $('#step-file'), 2: $('#step-map'), 3: $('#step-confirm'), 4: $('#step-done') };
+function goto(n) {
+  Object.entries(steps).forEach(([k, el]) => { el.hidden = Number(k) !== n; });
+  document.querySelectorAll('#stepper li').forEach(li => {
+    const s = Number(li.dataset.step);
+    li.dataset.state = n === 4 ? 'done' : (s < n ? 'done' : s === n ? 'active' : '');
+  });
+}
+
+/* ---- populate pickers ---------------------------------------------- */
+const selTest = $('#sel-test');
+TESTS.forEach((t, i) => {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = t.id + ' · ' + t.name;
+  selTest.appendChild(o);
+});
+selTest.addEventListener('change', () => { state.test = TESTS[Number(selTest.value)]; });
+$('#sel-env').addEventListener('change', e => { state.env = e.target.value; });
+
+/* ---- upload + validation ------------------------------------------- */
+const dz = $('#dropzone'), fileInput = $('#file-input');
+const errorSlot = $('#error-slot'), fileSlot = $('#file-slot');
+
+function showError(html) {
+  errorSlot.innerHTML =
+    '<div class="upload-error">' + icon('alert', 14) + '<div>' + html + '</div></div>';
+  fileSlot.innerHTML = '';
+}
+function clearError() { errorSlot.innerHTML = ''; }
+
+function handleFile(file) {
+  clearError();
+  if (!/\.xml$/i.test(file.name)) {
+    showError('<b>Unsupported file type.</b> <span class="mono">' + esc(file.name) +
+      '</span> is not a JUnit XML report — only <strong>JUnit XML (.xml)</strong> is accepted. No run was created.');
+    return;
+  }
+  if (file.size > MAX_BYTES) {
+    showError('<b>File too large.</b> <span class="mono">' + esc(file.name) + '</span> is <span class="mono">' +
+      fmtSize(file.size) + '</span> — the limit is <strong>10 MB</strong> per report. No run was created.');
+    return;
+  }
+  file.text().then(text => {
+    const parsed = parseJUnit(text);
+    if (!parsed) {
+      showError('<b>Not valid JUnit XML.</b> <span class="mono">' + esc(file.name) +
+        '</span> contains no <span class="mono">&lt;testcase&gt;</span> entries. Export the JUnit XML report from your CI job and retry. No run was created.');
+      return;
+    }
+    state.file = file;
+    state.entries = parsed.entries;
+    state.props = parsed.props;
+    state.acked = false;
+    fileSlot.innerHTML = '<div class="file-card">' + icon('file', 14) +
+      '<span class="fname">' + esc(file.name) + '</span><span class="fsize">' + fmtSize(file.size) + '</span>' +
+      '<span class="fsize">· ' + state.entries.length + ' entries parsed</span></div>';
+    renderMapping();
+    goto(2);
+  });
+}
+
+function parseJUnit(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+  const cases = Array.from(doc.querySelectorAll('testcase'));
+  if (!cases.length) return null;
+  const entries = cases.map(tc => {
+    let status = 'pass';
+    if (tc.querySelector(':scope > failure, :scope > error')) status = 'fail';
+    else if (tc.querySelector(':scope > skipped')) status = 'skipped';
+    return {
+      name: tc.getAttribute('name') || '(unnamed)',
+      cls: tc.getAttribute('classname') || '',
+      time: tc.getAttribute('time') || '',
+      status
+    };
+  });
+  const props = {};
+  doc.querySelectorAll('property').forEach(p => {
+    const n = (p.getAttribute('name') || '').toLowerCase();
+    const v = p.getAttribute('value') || '';
+    if (!v) return;
+    if (n.includes('branch')) props.branch = v;
+    else if (/(commit|sha|revision)/.test(n)) props.commit = v.slice(0, 7);
+    else if (/(pipeline|workflow|job)/.test(n)) props.pipeline = v;
+  });
+  return { entries, props };
+}
+
+dz.addEventListener('click', () => fileInput.click());
+dz.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
+$('#browse-btn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); fileInput.value = ''; });
+['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e => {
+  const files = e.dataTransfer.files;
+  if (files.length > 1) {
+    showError('<b>One file per upload.</b> ' + files.length +
+      ' files were dropped — upload a single <strong>JUnit XML</strong> report at a time. No run was created.');
+    return;
+  }
+  if (files[0]) handleFile(files[0]);
+});
+
+/* ---- mapping model ------------------------------------------------- */
+function model() {
+  const steps = state.test.steps, entries = state.entries;
+  const n = Math.min(steps.length, entries.length);
+  return {
+    paired: entries.slice(0, n).map((e, i) => ({ entry: e, step: steps[i], i })),
+    gaps: steps.slice(n).map((s, i) => ({ step: s, i: n + i })),
+    unmapped: entries.slice(n).map((e, i) => ({ entry: e, i: n + i })),
+    verdict: entries.some(e => e.status === 'fail') ? 'failed' : 'passed',
+    covered: n, total: steps.length
+  };
+}
+
+function mapRow(pos, entryHtml, stepHtml, resultHtml, mapHtml, gap) {
+  return '<div class="map-row' + (gap ? ' is-gap' : '') + '"><span class="pos">' + pos + '</span>' +
+    '<span class="entry">' + entryHtml + '</span>' +
+    '<span class="arrow">' + icon('arrow', 13) + '</span>' +
+    '<span class="stp">' + stepHtml + '</span>' +
+    '<span>' + resultHtml + '</span><span>' + mapHtml + '</span></div>';
+}
+
+function renderMapping() {
+  const m = model();
+  $('#ctx-bar').innerHTML =
+    '<span class="mono" style="color:var(--fg-1)">' + state.test.id + '</span><span>' + esc(state.test.name) + '</span>' +
+    '<span class="div"></span><span class="mono">' + state.test.module + '</span>' +
+    '<span class="div"></span><span>env: ' + esc(state.env) + '</span><span class="div"></span>' +
+    ciRef('branch', state.props.branch) + ciRef('commit', state.props.commit) + ciRef('pipe', state.props.pipeline);
+
+  let rows = '<div class="map-row head"><span>#</span><span>Report entry</span><span></span><span>ATC step</span><span>Result</span><span>Mapping</span></div>';
+  m.paired.forEach(p => {
+    rows += mapRow(p.i + 1,
+      '<span class="nm">' + esc(p.entry.name) + '</span>' + (p.entry.cls ? '<span class="cls">' + esc(p.entry.cls) + (p.entry.time ? ' · ' + esc(p.entry.time) + 's' : '') + '</span>' : ''),
+      '<span class="sn">S' + (p.i + 1) + '</span>' + esc(p.step),
+      statusChip(p.entry.status),
+      '<span class="chip" data-map="mapped">' + icon('check') + 'mapped</span>');
+  });
+  m.gaps.forEach(g => {
+    rows += mapRow('—',
+      '<span class="none">no report entry reached this step</span>',
+      '<span class="sn">S' + (g.i + 1) + '</span>' + esc(g.step),
+      '<span class="chip" data-status="skipped">' + icon('skip') + 'no result</span>',
+      '<span class="chip" data-map="gap">coverage gap</span>', true);
+  });
+  $('#map-main').innerHTML = '<div class="map-table">' + rows + '</div>';
+
+  if (m.unmapped.length) {
+    let u = '<div class="sub-head">Not mapped <span class="count">' + m.unmapped.length +
+      ' report ' + (m.unmapped.length === 1 ? 'entry' : 'entries') + '</span><span class="hint">— kept on the run, linked to no step</span></div><div class="map-table">';
+    m.unmapped.forEach(x => {
+      u += mapRow(x.i + 1,
+        '<span class="nm">' + esc(x.entry.name) + '</span><span class="cls">extra entry — report has more entries than the Test has steps</span>',
+        '<span class="none">no matching step</span>',
+        statusChip(x.entry.status),
+        '<span class="chip" data-map="unmapped">' + icon('alert') + 'not mapped</span>');
+    });
+    $('#map-unmapped').innerHTML = u + '</div>';
+    $('#ack-slot').innerHTML =
+      '<div class="ack"><input type="checkbox" id="ack-box"' + (state.acked ? ' checked' : '') + '>' +
+      '<label for="ack-box"><b>Required before continuing:</b> record <strong>' + m.unmapped.length +
+      ' report ' + (m.unmapped.length === 1 ? 'entry' : 'entries') + '</strong> as not mapped. ' +
+      (m.unmapped.length === 1 ? 'It stays' : 'They stay') + ' on the run for audit but ' +
+      (m.unmapped.length === 1 ? 'is' : 'are') + ' linked to no ATC step.</label></div>';
+    $('#ack-box').addEventListener('change', e => { state.acked = e.target.checked; syncMapFoot(m); });
+  } else {
+    $('#map-unmapped').innerHTML = '';
+    $('#ack-slot').innerHTML = '';
+  }
+  syncMapFoot(m);
+}
+
+function syncMapFoot(m) {
+  const btn = $('#to-confirm'), note = $('#map-foot-note');
+  const gated = m.unmapped.length > 0 && !state.acked;
+  btn.disabled = gated;
+  if (gated) {
+    note.innerHTML = '<svg class="ic" style="color:var(--blocked)"><use href="#i-alert"/></svg> Acknowledge the unmapped entries to enable Continue';
+  } else {
+    note.textContent = m.paired.length + ' of ' + state.entries.length + ' entries mapped · ' +
+      m.covered + ' of ' + m.total + ' steps covered' +
+      (m.unmapped.length ? ' · ' + m.unmapped.length + ' unmapped acknowledged' : ' · no acknowledgement needed');
+  }
+}
+
+/* ---- confirm ------------------------------------------------------- */
+function renderConfirm() {
+  const m = model();
+  const fails = state.entries.filter(e => e.status === 'fail').length;
+  const passes = state.entries.filter(e => e.status === 'pass').length;
+  const skips = state.entries.filter(e => e.status === 'skipped').length;
+
+  $('#verdict-slot').innerHTML = m.verdict === 'failed'
+    ? '<span class="verdict" data-v="failed">' + icon('x', 14) + 'Run will be recorded as failed</span>' +
+      '<div class="verdict-why">' + fails + ' failed ' + (fails === 1 ? 'entry' : 'entries') + ' — any failed entry makes the whole run failed.</div>'
+    : '<span class="verdict" data-v="passed">' + icon('check', 14) + 'Run will be recorded as passed</span>' +
+      '<div class="verdict-why">No failed entries in the report.</div>';
+
+  $('#stat-row').innerHTML =
+    '<div class="stat"><div class="v">' + state.entries.length + '</div><div class="k">entries</div></div>' +
+    '<div class="stat"><div class="v">' + m.paired.length + '</div><div class="k">mapped</div></div>' +
+    '<div class="stat"><div class="v">' + m.unmapped.length + '</div><div class="k">not mapped</div></div>' +
+    '<div class="stat"><div class="v">' + m.gaps.length + '</div><div class="k">step gaps</div></div>';
+
+  const covPass = m.paired.filter(p => p.entry.status === 'pass').length;
+  const covFail = m.paired.filter(p => p.entry.status === 'fail').length;
+  const covSkip = m.paired.filter(p => p.entry.status === 'skipped').length;
+  const t = m.total || 1;
+  const w = x => (100 * x / t).toFixed(1) + '%';
+  $('#cov-slot').innerHTML =
+    '<div class="cov-line"><span>Steps covered</span><b>' + m.covered + ' of ' + m.total + '</b></div>' +
+    '<div class="bar" role="img" aria-label="Coverage: ' + covPass + ' pass, ' + covFail + ' fail, ' + covSkip + ' skipped, ' + m.gaps.length + ' gaps">' +
+    '<i data-k="pass" style="width:' + w(covPass) + '"></i><i data-k="fail" style="width:' + w(covFail) + '"></i>' +
+    '<i data-k="skipped" style="width:' + w(covSkip) + '"></i><i data-k="gap" style="width:' + w(m.gaps.length) + '"></i></div>' +
+    '<div class="legend"><span><span class="dot" data-status="pass"></span>pass ' + covPass + '</span>' +
+    '<span><span class="dot" data-status="fail"></span>fail ' + covFail + '</span>' +
+    (covSkip ? '<span><span class="dot" data-status="skipped"></span>skipped ' + covSkip + '</span>' : '') +
+    '<span><span class="dot" style="background:var(--bg-5)"></span>gap ' + m.gaps.length + '</span></div>';
+
+  $('#run-meta').innerHTML =
+    '<div class="r"><span class="k">Test</span><span class="v mono">' + state.test.id + '</span></div>' +
+    '<div class="r"><span class="k">Environment</span><span class="v">' + esc(state.env) + '</span></div>' +
+    '<div class="r"><span class="k">Report</span><span class="v mono">' + esc(state.file.name) + ' · ' + fmtSize(state.file.size) + '</span></div>' +
+    '<div class="r"><span class="k">Result breakdown</span><span class="v mono">' + passes + ' pass / ' + fails + ' fail / ' + skips + ' skipped</span></div>';
+}
+
+/* ---- done ---------------------------------------------------------- */
+function renderDone() {
+  const m = model();
+  $('#done-msg').innerHTML = 'Run <strong class="mono">RUN-452</strong> created from <span class="mono">' +
+    esc(state.file.name) + '</span> — ' + state.entries.length + ' entries recorded, verdict ' + m.verdict + '.';
+  $('#new-run-slot').innerHTML =
+    '<div class="run-row is-new">' +
+    '<span class="rid">RUN-452</span>' +
+    '<span>' + (m.verdict === 'failed' ? statusChip('fail').replace('>fail<', '>failed<') : statusChip('pass').replace('>pass<', '>passed<')) + '</span>' +
+    '<span class="tref">' + state.test.id + ' · ' + esc(state.test.name) + '</span>' +
+    '<span class="env">' + esc(state.env) + '</span>' +
+    '<span>' + (state.props.commit ? ciRef('commit', state.props.commit) : ciRef('branch', state.props.branch)) + '</span>' +
+    '<span class="cnt">' + state.entries.length + '</span>' +
+    '<span class="when">just now <span class="tag" data-tone="accent">new</span></span></div>';
+}
+
+/* ---- navigation wiring --------------------------------------------- */
+$('#back-to-file').addEventListener('click', () => goto(1));
+$('#to-confirm').addEventListener('click', () => { renderConfirm(); goto(3); });
+$('#back-to-map').addEventListener('click', () => goto(2));
+$('#create-run').addEventListener('click', () => { renderDone(); goto(4); });
+
+function resetFlow() {
+  state.file = null; state.entries = []; state.props = {}; state.acked = false;
+  fileSlot.innerHTML = ''; clearError();
+  goto(1);
+  dz.focus();
+}
+$('#close-flow').addEventListener('click', resetFlow);
+$('#upload-another').addEventListener('click', resetFlow);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') resetFlow();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai — Test Runs (execution-mode extension)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — pressed bg */
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;                /* [authored] */
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  --section-y-desktop: 24px;           /* [authored] */
+  --section-y-tablet: 20px;            /* [authored] */
+  --section-y-phone: 16px;             /* [authored] */
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;             /* [authored] */
+  --container-gutter-desktop: 24px;    /* [authored] */
+  --container-gutter-tablet: 16px;     /* [authored] */
+  --container-gutter-phone: 12px;      /* [authored] */
+
+  /* ═══ C-extensions — Bunkai's native contract ═════════════════════ */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5 */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* Buttons, inputs, table cells — DESIGN.md §4 12/12.5px tier */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ═══ Base ═══════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1200px;
+}
+.mono { font-family: var(--font-mono); }
+:where(a, button, select, input, [tabindex]):focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+svg.ic { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ App shell ══════════════════════════════════════════════════════ */
+.shell { display: grid; grid-template-columns: 216px 1fr; min-height: 100vh; }
+.sidebar {
+  background: var(--bg-1); border-right: 1px solid var(--stroke-1);
+  padding: var(--space-5) var(--space-4); display: flex; flex-direction: column; gap: var(--space-6);
+}
+.wordmark { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-3); }
+.wordmark .jp { font-family: var(--font-jp); font-weight: 700; font-size: 15px; color: var(--fg-0); }
+.wordmark .latin { font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--fg-0); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav a {
+  display: flex; align-items: center; gap: var(--space-3); height: 30px; padding: 0 var(--space-3);
+  border-radius: var(--r-2); font-size: var(--text-control); font-weight: 500;
+  color: var(--muted); text-decoration: none;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.nav a .ic { width: 16px; height: 16px; }
+.nav a:hover { background: var(--bg-4); color: var(--fg-0); }
+.nav a[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); }
+.sidebar .foot { margin-top: auto; padding: 0 var(--space-3); font-size: var(--text-sm); color: var(--fg-4); }
+
+.topbar {
+  height: 44px; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6);
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--muted); }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); color: var(--meta); font-size: var(--text-sm); }
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 1px 5px; line-height: 1.3;
+}
+
+.main { padding: var(--space-6) var(--space-12) var(--space-12); }
+
+/* ═══ Page head ══════════════════════════════════════════════════════ */
+.page-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
+.page-head h1 { font-size: var(--text-3xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.page-head .sub { font-size: var(--text-control); color: var(--meta); }
+.page-head .actions { margin-left: auto; display: flex; gap: var(--space-3); }
+
+/* ═══ Atoms (same vocabulary as ci-results-upload.html) ══════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2); height: 28px;
+  padding: 0 var(--space-4); border-radius: var(--r-2); font-size: var(--text-control); font-weight: 500;
+  background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent); border-color: transparent; color: var(--accent-on); font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 1px 2px rgba(0,0,0,0.4);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+.btn:disabled { background: var(--bg-3); border-color: var(--stroke-1); color: var(--fg-4); cursor: not-allowed; box-shadow: none; }
+
+.select {
+  height: 28px; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  color: var(--fg-1); font-size: var(--text-control); padding: 0 var(--space-3); font-family: inherit;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.select:hover { border-color: var(--stroke-3); }
+.select:focus { border-color: var(--accent); background: var(--bg-3); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip[data-status="passed"]  { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="failed"]  { color: var(--fail); background: var(--fail-bg); }
+.chip[data-status="aborted"] { color: var(--blocked); background: var(--blocked-bg); }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.dot[data-k="passed"]  { background: var(--pass); }
+.dot[data-k="failed"]  { background: var(--fail); }
+.dot[data-k="aborted"] { background: var(--blocked); }
+
+/* Segmented control */
+.seg {
+  display: inline-flex; align-items: center; background: var(--bg-2);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px; gap: 2px;
+}
+.seg button {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 var(--space-3);
+  border-radius: var(--r-1); font-size: var(--text-control); font-weight: 500; color: var(--muted);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.seg button:hover { background: var(--bg-4); color: var(--fg-0); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.seg button .ic { width: 12px; height: 12px; }
+
+/* Applied-filter chips */
+.fchip {
+  display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 3px 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+}
+.fchip b { font-weight: 500; color: var(--fg-1); }
+.fchip .v { font-family: var(--font-mono); color: var(--fg-1); }
+.fchip button {
+  display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
+  border-radius: var(--r-1); color: var(--meta);
+}
+.fchip button:hover { background: var(--bg-5); color: var(--fg-0); }
+.fchip button .ic { width: 10px; height: 10px; }
+
+/* Mode badge — DERIVED read-only value (Manual / Automated). CI-vocabulary
+   extension: coarse split of the Executor column, never a replacement. */
+.mode-badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); font-size: var(--text-sm); font-weight: 500; white-space: nowrap;
+}
+.mode-badge .ic { width: 11px; height: 11px; }
+.mode-badge[data-mode="manual"]    { color: var(--muted); border: 1px solid var(--stroke-2); background: var(--bg-3); }
+.mode-badge[data-mode="automated"] { color: var(--fg-1); border: 1px solid var(--stroke-3); background: var(--bg-3); }
+
+/* CI reference chip — same treatment as ci-results-upload.html */
+.ci-ref {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 var(--space-2);
+  border-radius: var(--r-1); border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
+}
+.ci-ref .ic { width: 12px; height: 12px; color: var(--fg-3); }
+.ci-ref b { font-weight: 500; color: var(--fg-1); }
+
+/* ═══ Filter row ═════════════════════════════════════════════════════ */
+.filters {
+  display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5); background: var(--bg-2);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-3); margin-bottom: var(--space-3);
+}
+.f-group { display: flex; align-items: center; gap: var(--space-2); }
+.f-group > label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; color: var(--meta);
+}
+.filters .div { width: 1px; height: 18px; background: var(--stroke-2); }
+.fchips-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); min-height: 20px; }
+.fchips-row:empty { display: none; }
+
+/* ═══ Totals strip ═══════════════════════════════════════════════════ */
+.totals {
+  display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+  font-size: var(--text-control); color: var(--muted); margin-bottom: var(--space-4);
+  padding: 0 var(--space-1);
+}
+.totals .t { display: inline-flex; align-items: center; gap: 5px; }
+.totals .t b { color: var(--fg-0); font-weight: 600; font-family: var(--font-mono); }
+.totals .sep { color: var(--fg-4); }
+.totals .scope { margin-left: auto; color: var(--meta); }
+.totals .scope b { color: var(--fg-1); font-family: var(--font-mono); font-weight: 600; }
+
+/* ═══ Runs table ═════════════════════════════════════════════════════ */
+.runs-table { border: 1px solid var(--stroke-2); border-radius: var(--r-3); overflow: hidden; background: var(--bg-2); box-shadow: var(--shadow-card); }
+.run-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 148px 104px 112px 118px 108px 128px;
+  align-items: center; gap: var(--space-3); padding: 0 var(--space-4); height: 36px;
+  border-top: 1px solid var(--stroke-1); font-size: var(--text-control); color: var(--fg-1);
+}
+.run-row:first-child { border-top: 0; }
+.run-row:not(.head):hover { background: var(--bg-3); }
+.run-row.head {
+  background: var(--bg-1); height: 28px; font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 600; color: var(--meta);
+}
+.run-row .rid { font-family: var(--font-mono); color: var(--fg-0); font-weight: 500; }
+.run-row .test { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-row .test .tid { font-family: var(--font-mono); color: var(--muted); margin-right: var(--space-2); }
+.run-row .module { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-row .env { color: var(--muted); }
+.run-row .exec { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.run-row .exec .ic { width: 12px; height: 12px; color: var(--fg-3); }
+.run-row .ran { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+
+/* ═══ Empty states ═══════════════════════════════════════════════════ */
+.empty-generic { padding: var(--space-12); text-align: center; color: var(--muted); font-size: var(--text-control); }
+.empty-generic .t { color: var(--fg-1); font-weight: 600; font-size: var(--text-lg); margin-bottom: var(--space-2); }
+.empty-generic .btn { margin-top: var(--space-4); }
+
+.empty-auto { padding: var(--space-12); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); text-align: center; }
+.empty-auto .icons { display: flex; gap: var(--space-3); color: var(--muted); }
+.empty-auto .icons .ic { width: 18px; height: 18px; }
+.empty-auto .t { color: var(--fg-0); font-weight: 600; font-size: var(--text-lg); }
+.empty-auto .b { color: var(--muted); font-size: var(--text-control); max-width: 52ch; }
+.empty-auto .b strong { color: var(--fg-1); font-weight: 500; }
+.cli-hint {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted);
+  background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4);
+}
+.cli-hint .p { color: var(--fg-3); }
+.caret { display: inline-block; width: 7px; height: 13px; background: var(--muted); animation: blink 1s steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ═══ States strip ═══════════════════════════════════════════════════ */
+.states-wrap { padding: var(--space-12) var(--space-12) 48px; max-width: 1392px; }
+.states-head { display: flex; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-6); }
+.states-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.states-head p { font-size: var(--text-control); color: var(--meta); }
+.states-grid { display: grid; gap: var(--space-6); }
+.state-card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden; }
+.state-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-1);
+}
+.state-head .sid { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--meta); }
+.state-head .st { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.state-head .sd { font-size: var(--text-sm); color: var(--meta); margin-left: auto; text-align: right; }
+.state-body { padding: var(--space-5); }
+.state-body .filters { background: var(--bg-1); }
+.state-body .runs-table { background: var(--bg-1); }
+.state-body .run-row.head { background: var(--bg-2); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.2 7-5.2s5.8 1.6 7 5.2"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4.5"/><circle cx="12" cy="3.5" r="1"/><path d="M9.2 13h.1M14.7 13h.1"/></symbol>
+    <symbol id="i-pipe" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.4"/><rect x="14" y="13" width="7" height="7" rx="1.4"/><path d="M10 7.5h5.5v5.5"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.2v9.6M18 10.2c0 4-5 3.3-9.5 5.6"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.4"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m10 9 5 3-5 3z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="18" r="1.8"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <aside class="sidebar" data-od-id="app-sidebar">
+    <span class="wordmark"><span class="jp" lang="ja">分解</span><span class="latin">Bunkai</span></span>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#"><svg class="ic"><use href="#i-grid"/></svg>Dashboard</a>
+      <a href="#"><svg class="ic"><use href="#i-file"/></svg>Tests</a>
+      <a href="#" aria-current="page"><svg class="ic"><use href="#i-play"/></svg>Test Runs</a>
+      <a href="#"><svg class="ic"><use href="#i-box"/></svg>Modules</a>
+      <a href="#"><svg class="ic"><use href="#i-sliders"/></svg>Settings</a>
+    </nav>
+    <div class="foot mono">PRJ-004</div>
+  </aside>
+
+  <div>
+    <header class="topbar" data-od-id="app-topbar">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span class="mono">PRJ-004</span><span>Storefront Web</span>
+        <span class="sep">/</span><span class="here">Test Runs</span>
+      </nav>
+      <div class="topbar-right"><span>Command palette</span><span class="kbd">⌘K</span></div>
+    </header>
+
+    <main class="main" data-od-id="test-runs-page">
+      <div class="page-head">
+        <div>
+          <h1 data-od-id="page-title">Test Runs</h1>
+          <div class="sub">Every recorded execution across the project — manual sessions, agent runs and CI reports.</div>
+        </div>
+        <div class="actions">
+          <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-download"/></svg>Export CSV</button>
+          <button class="btn" data-variant="primary"><svg class="ic" style="width:12px;height:12px"><use href="#i-plus"/></svg>New Run</button>
+        </div>
+      </div>
+
+      <!-- Filter row: base filters + additive Mode control -->
+      <div class="filters" data-od-id="filter-row">
+        <div class="f-group">
+          <label for="f-date">Date range</label>
+          <select class="select" id="f-date">
+            <option value="all">All time</option>
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label for="f-module">Module</label>
+          <select class="select mono" id="f-module">
+            <option value="all">All modules</option>
+            <option value="MOD-002">MOD-002 · Auth</option>
+            <option value="MOD-004">MOD-004 · Payments</option>
+            <option value="MOD-007">MOD-007 · Catalog</option>
+          </select>
+        </div>
+        <div class="div"></div>
+        <div class="f-group">
+          <label id="lb-status">Status</label>
+          <div class="seg" role="group" aria-labelledby="lb-status" id="seg-status">
+            <button aria-pressed="false" data-v="passed"><span class="dot" data-k="passed"></span>Passed</button>
+            <button aria-pressed="false" data-v="failed"><span class="dot" data-k="failed"></span>Failed</button>
+            <button aria-pressed="false" data-v="aborted"><span class="dot" data-k="aborted"></span>Aborted</button>
+          </div>
+        </div>
+        <div class="f-group">
+          <label id="lb-exec">Executor</label>
+          <div class="seg" role="group" aria-labelledby="lb-exec" id="seg-exec">
+            <button aria-pressed="false" data-v="human"><svg class="ic"><use href="#i-user"/></svg>Human</button>
+            <button aria-pressed="false" data-v="agent"><svg class="ic"><use href="#i-bot"/></svg>Agent</button>
+            <button aria-pressed="false" data-v="ci"><svg class="ic"><use href="#i-pipe"/></svg>CI</button>
+          </div>
+        </div>
+        <div class="f-group" data-od-id="mode-filter">
+          <label id="lb-mode">Mode</label>
+          <div class="seg" role="group" aria-labelledby="lb-mode" id="seg-mode">
+            <button aria-pressed="true" data-v="all">All</button>
+            <button aria-pressed="false" data-v="manual"><svg class="ic"><use href="#i-user"/></svg>Manual</button>
+            <button aria-pressed="false" data-v="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</button>
+          </div>
+        </div>
+        <div class="div"></div>
+        <button class="btn" data-variant="ghost" id="clear-filters">Clear filters</button>
+      </div>
+
+      <div class="fchips-row" id="fchips" data-od-id="applied-filters" aria-label="Applied filters"></div>
+
+      <div class="totals" id="totals" data-od-id="totals-strip" aria-live="polite"></div>
+
+      <div class="runs-table" id="runs-table" data-od-id="runs-table"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══ States strip ═══════════════════════════════════════════════════ -->
+<section class="states-wrap" data-od-id="states-strip" aria-label="Static state reference">
+  <div class="states-head">
+    <h2>States</h2>
+    <p>Static reference — the screen above is interactive; these frames are the fixed contract for each state.</p>
+  </div>
+  <div class="states-grid">
+
+    <!-- S1 -->
+    <div class="state-card" data-od-id="state-1-default">
+      <div class="state-head"><span class="sid">S1</span><span class="st">Default</span><span class="sd">Full list · Mode badge on every row · Mode filter = All</span></div>
+      <div class="state-body" inert>
+        <div class="totals">
+          <span class="t"><span class="dot" data-k="passed"></span>Passed <b>8</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="failed"></span>Failed <b>4</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="aborted"></span>Aborted <b>2</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-user"/></svg>Manual <b>5</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-bot"/></svg>Automated <b>9</b></span>
+          <span class="scope"><b>14</b> of <b>14</b> runs in current scope</span>
+        </div>
+        <div class="runs-table">
+          <div class="run-row head"><span>Run</span><span>Test</span><span>Module</span><span>Environment</span><span>Executor</span><span>Mode</span><span>Outcome</span><span>Ran</span></div>
+          <div class="run-row">
+            <span class="rid">RUN-452</span>
+            <span class="test"><span class="tid">ATC-014</span>Checkout — declined card recovery</span>
+            <span class="module">MOD-004 Payments</span><span class="env">ci</span>
+            <span class="exec"><svg class="ic"><use href="#i-pipe"/></svg>CI</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="failed"><span class="dot" data-k="failed"></span>Failed</span></span>
+            <span class="ran">2026-07-30 09:41</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-451</span>
+            <span class="test"><span class="tid">ATC-027</span>Login — session expiry redirect</span>
+            <span class="module">MOD-002 Auth</span><span class="env">staging</span>
+            <span class="exec"><svg class="ic"><use href="#i-user"/></svg>Human</span>
+            <span><span class="mode-badge" data-mode="manual"><svg class="ic"><use href="#i-user"/></svg>Manual</span></span>
+            <span><span class="chip" data-status="passed"><span class="dot" data-k="passed"></span>Passed</span></span>
+            <span class="ran">2026-07-30 08:12</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-448</span>
+            <span class="test"><span class="tid">ATC-021</span>Cart totals recalculation</span>
+            <span class="module">MOD-004 Payments</span><span class="env">production</span>
+            <span class="exec"><svg class="ic"><use href="#i-bot"/></svg>Agent</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="passed"><span class="dot" data-k="passed"></span>Passed</span></span>
+            <span class="ran">2026-07-29 15:20</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-449</span>
+            <span class="test"><span class="tid">ATC-033</span>Search — empty state and filters</span>
+            <span class="module">MOD-007 Catalog</span><span class="env">staging</span>
+            <span class="exec"><svg class="ic"><use href="#i-user"/></svg>Human</span>
+            <span><span class="mode-badge" data-mode="manual"><svg class="ic"><use href="#i-user"/></svg>Manual</span></span>
+            <span><span class="chip" data-status="aborted"><span class="dot" data-k="aborted"></span>Aborted</span></span>
+            <span class="ran">2026-07-29 17:44</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2 -->
+    <div class="state-card" data-od-id="state-2-automated-filter">
+      <div class="state-head"><span class="sid">S2</span><span class="st">Mode = Automated + Module = MOD-004</span><span class="sd">Composed filters · totals reflect narrowed scope</span></div>
+      <div class="state-body" inert>
+        <div class="fchips-row">
+          <span class="fchip"><b>Mode</b><span class="v">Automated</span><button aria-label="Remove Mode filter"><svg class="ic"><use href="#i-x"/></svg></button></span>
+          <span class="fchip"><b>Module</b><span class="v">MOD-004</span><button aria-label="Remove Module filter"><svg class="ic"><use href="#i-x"/></svg></button></span>
+        </div>
+        <div class="totals">
+          <span class="t"><span class="dot" data-k="passed"></span>Passed <b>2</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="failed"></span>Failed <b>2</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="aborted"></span>Aborted <b>0</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-user"/></svg>Manual <b>0</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-bot"/></svg>Automated <b>4</b></span>
+          <span class="scope"><b>4</b> of <b>14</b> runs in current scope</span>
+        </div>
+        <div class="runs-table">
+          <div class="run-row head"><span>Run</span><span>Test</span><span>Module</span><span>Environment</span><span>Executor</span><span>Mode</span><span>Outcome</span><span>Ran</span></div>
+          <div class="run-row">
+            <span class="rid">RUN-452</span>
+            <span class="test"><span class="tid">ATC-014</span>Checkout — declined card recovery</span>
+            <span class="module">MOD-004 Payments</span><span class="env">ci</span>
+            <span class="exec"><svg class="ic"><use href="#i-pipe"/></svg>CI</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="failed"><span class="dot" data-k="failed"></span>Failed</span></span>
+            <span class="ran">2026-07-30 09:41</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-450</span>
+            <span class="test"><span class="tid">ATC-014</span>Checkout — declined card recovery</span>
+            <span class="module">MOD-004 Payments</span><span class="env">ci</span>
+            <span class="exec"><svg class="ic"><use href="#i-pipe"/></svg>CI</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="failed"><span class="dot" data-k="failed"></span>Failed</span></span>
+            <span class="ran">2026-07-29 22:03</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-448</span>
+            <span class="test"><span class="tid">ATC-021</span>Cart totals recalculation</span>
+            <span class="module">MOD-004 Payments</span><span class="env">production</span>
+            <span class="exec"><svg class="ic"><use href="#i-bot"/></svg>Agent</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="passed"><span class="dot" data-k="passed"></span>Passed</span></span>
+            <span class="ran">2026-07-29 15:20</span>
+          </div>
+          <div class="run-row">
+            <span class="rid">RUN-442</span>
+            <span class="test"><span class="tid">ATC-021</span>Cart totals recalculation</span>
+            <span class="module">MOD-004 Payments</span><span class="env">ci</span>
+            <span class="exec"><svg class="ic"><use href="#i-pipe"/></svg>CI</span>
+            <span><span class="mode-badge" data-mode="automated"><svg class="ic"><use href="#i-bot"/></svg>Automated</span></span>
+            <span><span class="chip" data-status="passed"><span class="dot" data-k="passed"></span>Passed</span></span>
+            <span class="ran">2026-07-27 13:37</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3 -->
+    <div class="state-card" data-od-id="state-3-automated-empty">
+      <div class="state-head"><span class="sid">S3</span><span class="st">Mode = Automated, zero automated runs</span><span class="sd">Dedicated empty state — distinct from the generic no-match state</span></div>
+      <div class="state-body" inert>
+        <div class="fchips-row">
+          <span class="fchip"><b>Mode</b><span class="v">Automated</span><button aria-label="Remove Mode filter"><svg class="ic"><use href="#i-x"/></svg></button></span>
+        </div>
+        <div class="totals">
+          <span class="t"><span class="dot" data-k="passed"></span>Passed <b>0</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="failed"></span>Failed <b>0</b></span><span class="sep">·</span>
+          <span class="t"><span class="dot" data-k="aborted"></span>Aborted <b>0</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-user"/></svg>Manual <b>14</b></span><span class="sep">·</span>
+          <span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-bot"/></svg>Automated <b>0</b></span>
+          <span class="scope"><b>0</b> of <b>14</b> runs in current scope</span>
+        </div>
+        <div class="runs-table">
+          <div class="empty-auto">
+            <div class="icons"><svg class="ic"><use href="#i-bot"/></svg><svg class="ic"><use href="#i-pipe"/></svg></div>
+            <div class="t">No automated runs reported yet</div>
+            <div class="b">Automated runs appear here when an <strong>agent</strong> executes a Test through the Bunkai API, or when a <strong>CI pipeline</strong> uploads a JUnit XML report against a Test. Manual sessions stay under the Manual mode.</div>
+            <button class="btn"><svg class="ic" style="width:12px;height:12px"><use href="#i-upload"/></svg>Upload CI results</button>
+            <div class="cli-hint"><span class="p">$</span>bunkai report upload --test ATC-014 junit.xml<span class="caret"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+'use strict';
+
+/* Dataset — executor drives the DERIVED mode: human → manual, agent/ci → automated */
+const RUNS = [
+  { id: 'RUN-452', test: 'ATC-014', tname: 'Checkout — declined card recovery', module: 'MOD-004', mname: 'Payments', env: 'ci',         exec: 'ci',    outcome: 'failed',  ran: '2026-07-30 09:41', days: 0 },
+  { id: 'RUN-451', test: 'ATC-027', tname: 'Login — session expiry redirect',   module: 'MOD-002', mname: 'Auth',     env: 'staging',    exec: 'human', outcome: 'passed',  ran: '2026-07-30 08:12', days: 0 },
+  { id: 'RUN-450', test: 'ATC-014', tname: 'Checkout — declined card recovery', module: 'MOD-004', mname: 'Payments', env: 'ci',         exec: 'ci',    outcome: 'failed',  ran: '2026-07-29 22:03', days: 1 },
+  { id: 'RUN-449', test: 'ATC-033', tname: 'Search — empty state and filters',  module: 'MOD-007', mname: 'Catalog',  env: 'staging',    exec: 'human', outcome: 'aborted', ran: '2026-07-29 17:44', days: 1 },
+  { id: 'RUN-448', test: 'ATC-021', tname: 'Cart totals recalculation',         module: 'MOD-004', mname: 'Payments', env: 'production', exec: 'agent', outcome: 'passed',  ran: '2026-07-29 15:20', days: 1 },
+  { id: 'RUN-447', test: 'ATC-027', tname: 'Login — session expiry redirect',   module: 'MOD-002', mname: 'Auth',     env: 'ci',         exec: 'ci',    outcome: 'passed',  ran: '2026-07-29 11:05', days: 1 },
+  { id: 'RUN-446', test: 'ATC-008', tname: 'Signup — field validation',         module: 'MOD-002', mname: 'Auth',     env: 'staging',    exec: 'human', outcome: 'passed',  ran: '2026-07-28 19:31', days: 2 },
+  { id: 'RUN-445', test: 'ATC-033', tname: 'Search — empty state and filters',  module: 'MOD-007', mname: 'Catalog',  env: 'ci',         exec: 'agent', outcome: 'failed',  ran: '2026-07-28 16:58', days: 2 },
+  { id: 'RUN-444', test: 'ATC-014', tname: 'Checkout — declined card recovery', module: 'MOD-004', mname: 'Payments', env: 'staging',    exec: 'human', outcome: 'failed',  ran: '2026-07-28 10:22', days: 2 },
+  { id: 'RUN-443', test: 'ATC-042', tname: 'Wishlist — cross-device sync',      module: 'MOD-007', mname: 'Catalog',  env: 'local',      exec: 'agent', outcome: 'passed',  ran: '2026-07-27 21:14', days: 3 },
+  { id: 'RUN-442', test: 'ATC-021', tname: 'Cart totals recalculation',         module: 'MOD-004', mname: 'Payments', env: 'ci',         exec: 'ci',    outcome: 'passed',  ran: '2026-07-27 13:37', days: 3 },
+  { id: 'RUN-441', test: 'ATC-008', tname: 'Signup — field validation',         module: 'MOD-002', mname: 'Auth',     env: 'production', exec: 'human', outcome: 'passed',  ran: '2026-07-26 18:09', days: 4 },
+  { id: 'RUN-440', test: 'ATC-042', tname: 'Wishlist — cross-device sync',      module: 'MOD-007', mname: 'Catalog',  env: 'ci',         exec: 'ci',    outcome: 'aborted', ran: '2026-07-26 09:55', days: 4 },
+  { id: 'RUN-439', test: 'ATC-027', tname: 'Login — session expiry redirect',   module: 'MOD-002', mname: 'Auth',     env: 'staging',    exec: 'agent', outcome: 'passed',  ran: '2026-07-25 14:47', days: 5 }
+];
+
+const EXEC_META = { human: ['i-user', 'Human'], agent: ['i-bot', 'Agent'], ci: ['i-pipe', 'CI'] };
+const modeOf = r => r.exec === 'human' ? 'manual' : 'automated';
+
+const $ = (s, r) => (r || document).querySelector(s);
+const state = { date: 'all', module: 'all', status: new Set(), exec: new Set(), mode: 'all' };
+
+function icon(id, size) {
+  const s = size || 12;
+  return '<svg class="ic" style="width:' + s + 'px;height:' + s + 'px"><use href="#' + id + '"/></svg>';
+}
+function modeBadge(mode) {
+  return mode === 'manual'
+    ? '<span class="mode-badge" data-mode="manual">' + icon('i-user', 11) + 'Manual</span>'
+    : '<span class="mode-badge" data-mode="automated">' + icon('i-bot', 11) + 'Automated</span>';
+}
+function outcomeChip(o) {
+  const label = o.charAt(0).toUpperCase() + o.slice(1);
+  return '<span class="chip" data-status="' + o + '"><span class="dot" data-k="' + o + '"></span>' + label + '</span>';
+}
+
+/* ---- filtering ----------------------------------------------------- */
+function filtered() {
+  return RUNS.filter(r =>
+    (state.date === 'all' || r.days <= Number(state.date)) &&
+    (state.module === 'all' || r.module === state.module) &&
+    (state.status.size === 0 || state.status.has(r.outcome)) &&
+    (state.exec.size === 0 || state.exec.has(r.exec)) &&
+    (state.mode === 'all' || modeOf(r) === state.mode)
+  );
+}
+
+/* ---- render -------------------------------------------------------- */
+function renderTable() {
+  const rows = filtered();
+  const table = $('#runs-table');
+
+  if (!rows.length) {
+    /* Dedicated automated empty state only when the Automated scope itself is
+       empty (no automated runs pass the OTHER filters) — else generic no-match. */
+    const automatedInScope = RUNS.filter(r => modeOf(r) === 'automated' &&
+      (state.date === 'all' || r.days <= Number(state.date)) &&
+      (state.module === 'all' || r.module === state.module) &&
+      (state.status.size === 0 || state.status.has(r.outcome)) &&
+      (state.exec.size === 0 || state.exec.has(r.exec))).length;
+
+    if (state.mode === 'automated' && automatedInScope === 0) {
+      table.innerHTML =
+        '<div class="empty-auto" data-od-id="empty-automated">' +
+        '<div class="icons">' + icon('i-bot', 18) + icon('i-pipe', 18) + '</div>' +
+        '<div class="t">No automated runs reported yet</div>' +
+        '<div class="b">Automated runs appear here when an <strong>agent</strong> executes a Test through the Bunkai API, or when a <strong>CI pipeline</strong> uploads a JUnit XML report against a Test. Manual sessions stay under the Manual mode.</div>' +
+        '<button class="btn" id="go-upload">' + icon('i-upload') + 'Upload CI results</button>' +
+        '<div class="cli-hint"><span class="p">$</span>bunkai report upload --test ATC-014 junit.xml<span class="caret"></span></div></div>';
+    } else {
+      table.innerHTML =
+        '<div class="empty-generic" data-od-id="empty-generic">' +
+        '<div class="t">No runs match the current filters</div>' +
+        '<div>Widen the date range or remove a filter to see more runs.</div>' +
+        '<button class="btn" id="empty-clear">Clear filters</button></div>';
+      $('#empty-clear').addEventListener('click', clearAll);
+    }
+    return;
+  }
+
+  let html = '<div class="run-row head"><span>Run</span><span>Test</span><span>Module</span><span>Environment</span><span>Executor</span><span>Mode</span><span>Outcome</span><span>Ran</span></div>';
+  rows.forEach(r => {
+    const [eIc, eLabel] = EXEC_META[r.exec];
+    html += '<div class="run-row">' +
+      '<span class="rid">' + r.id + '</span>' +
+      '<span class="test"><span class="tid">' + r.test + '</span>' + r.tname + '</span>' +
+      '<span class="module">' + r.module + ' ' + r.mname + '</span>' +
+      '<span class="env">' + r.env + '</span>' +
+      '<span class="exec">' + icon(eIc) + eLabel + '</span>' +
+      '<span>' + modeBadge(modeOf(r)) + '</span>' +
+      '<span>' + outcomeChip(r.outcome) + '</span>' +
+      '<span class="ran">' + r.ran + '</span></div>';
+  });
+  table.innerHTML = html;
+}
+
+function renderTotals() {
+  const rows = filtered();
+  const c = k => rows.filter(r => r.outcome === k).length;
+  const m = k => rows.filter(r => modeOf(r) === k).length;
+  $('#totals').innerHTML =
+    '<span class="t"><span class="dot" data-k="passed"></span>Passed <b>' + c('passed') + '</b></span><span class="sep">·</span>' +
+    '<span class="t"><span class="dot" data-k="failed"></span>Failed <b>' + c('failed') + '</b></span><span class="sep">·</span>' +
+    '<span class="t"><span class="dot" data-k="aborted"></span>Aborted <b>' + c('aborted') + '</b></span><span class="sep">·</span>' +
+    '<span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-user"/></svg>Manual <b>' + m('manual') + '</b></span><span class="sep">·</span>' +
+    '<span class="t"><svg class="ic" style="width:11px;height:11px;color:var(--fg-3)"><use href="#i-bot"/></svg>Automated <b>' + m('automated') + '</b></span>' +
+    '<span class="scope"><b>' + rows.length + '</b> of <b>' + RUNS.length + '</b> runs in current scope</span>';
+}
+
+function fchip(key, label, value, mono, onRemove) {
+  const el = document.createElement('span');
+  el.className = 'fchip';
+  el.innerHTML = '<b>' + label + '</b><span class="v"' + (mono ? '' : ' style="font-family:var(--font-body)"') + '>' + value + '</span>';
+  const btn = document.createElement('button');
+  btn.setAttribute('aria-label', 'Remove ' + label + ' filter: ' + value);
+  btn.innerHTML = icon('i-x', 10);
+  btn.addEventListener('click', onRemove);
+  el.appendChild(btn);
+  return el;
+}
+
+function renderFchips() {
+  const row = $('#fchips');
+  row.innerHTML = '';
+  if (state.date !== 'all') row.appendChild(fchip('date', 'Date', 'Last ' + state.date + ' days', false, () => { state.date = 'all'; $('#f-date').value = 'all'; sync(); }));
+  if (state.module !== 'all') row.appendChild(fchip('module', 'Module', state.module, true, () => { state.module = 'all'; $('#f-module').value = 'all'; sync(); }));
+  state.status.forEach(s => row.appendChild(fchip('status', 'Status', s.charAt(0).toUpperCase() + s.slice(1), false, () => { state.status.delete(s); sync(); })));
+  state.exec.forEach(e => row.appendChild(fchip('exec', 'Executor', EXEC_META[e][1], false, () => { state.exec.delete(e); sync(); })));
+  if (state.mode !== 'all') row.appendChild(fchip('mode', 'Mode', state.mode.charAt(0).toUpperCase() + state.mode.slice(1), false, () => { state.mode = 'all'; sync(); }));
+}
+
+function syncSegs() {
+  $('#seg-status').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(state.status.has(b.dataset.v))));
+  $('#seg-exec').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(state.exec.has(b.dataset.v))));
+  $('#seg-mode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(state.mode === b.dataset.v)));
+}
+
+function sync() { syncSegs(); renderFchips(); renderTotals(); renderTable(); }
+
+/* ---- wiring -------------------------------------------------------- */
+$('#f-date').addEventListener('change', e => { state.date = e.target.value; sync(); });
+$('#f-module').addEventListener('change', e => { state.module = e.target.value; sync(); });
+$('#seg-status').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.status.has(b.dataset.v) ? state.status.delete(b.dataset.v) : state.status.add(b.dataset.v);
+  sync();
+});
+$('#seg-exec').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.exec.has(b.dataset.v) ? state.exec.delete(b.dataset.v) : state.exec.add(b.dataset.v);
+  sync();
+});
+$('#seg-mode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.mode = b.dataset.v;
+  sync();
+});
+function clearAll() {
+  state.date = 'all'; state.module = 'all'; state.status.clear(); state.exec.clear(); state.mode = 'all';
+  $('#f-date').value = 'all'; $('#f-module').value = 'all';
+  sync();
+}
+$('#clear-filters').addEventListener('click', clearAll);
+
+sync();
+</script>
+</body>
+</html>

@@ -41,6 +41,7 @@ Every user story that touches UI MUST:
 | Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 | Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
+| Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -308,6 +309,50 @@ post-MVP P1** — first in the epic-backbone post-MVP order, per the mockup road
 
 ---
 
+### 4.12 Automation & CI Ingestion — post-MVP · ❌ build 0% · ✅ mockups ready (2026-07-30)
+No nav badge yet (all 4 in-scope stories parked in Backlog — post-MVP work; BK-222/BK-223 excluded
+from mockup scope entirely, see below). **The 🔒 mockup gate is LIFTED**: a 4-file set (1 new screen
++ 3 extension crops) was generated via Open Design (MCP-driven Mode A, project
+`bunkai-bk-221-automation-ci`, design system `user:bunkai`) and lives in
+`.context/designs/bunkai-test-management-tool/bk-221-automation-ci/` (provenance: `BRIEF.md` in the
+same folder). All four files share English copy, frozen §2 tokens verbatim, `:focus-visible` 1px
+`--accent`, and pair every status/mode/verdict signal with a text label alongside its color per the
+standing color-not-sole-signal rule.
+
+**Excluded from mockup scope:** BK-222 (submit automated run via API) and BK-223 (stream step
+results during an automated run) are explicitly API-first, UI-light per the epic scope boundary —
+they render into the existing/future Run detail with no dedicated screen work beyond the CI-metadata
+crop below.
+
+**Extension-crop convention (new in this batch):** 3 of the 4 files are NOT new screens — they are
+targeted crops that reproduce the relevant region of an existing base screen (cited per file) and
+then layer ONLY the additive CI-related elements on top, so a developer reads each file as a precise
+before/after diff rather than a full redesign. The generating agent did not have live repo file
+access (OD runs sandboxed); each base region was reproduced from a detailed textual anatomy
+description authored in `BRIEF.md`, not by reading the actual base file — **a fidelity pass against
+the real base files (`test-runs-index.html`, `run.jsx`, `project.jsx`) is recommended before build**,
+flagged by the generating agent itself in its closing note on the 4th run.
+
+| Screen file | Base screen extended | Route(s) | Spec highlights (checklist source) |
+|---|---|---|---|
+| `ci-results-upload.html` | — (new screen) | modal/flow off `/projects/[projectSlug]/runs` (§4.8) | BK-226. Three-step flow: choose Test + environment + JUnit XML file (drag-drop or browse, 10 MB cap) → mapping preview (report entries matched to ATC steps by position; unmapped entries and uncovered steps surfaced in distinct panels, never dropped; explicit acknowledgement gate before continuing) → confirm (coverage summary + verdict preview, any failed entry drives a "failed" verdict). Rejected-upload state names the supported format and size limit inline, no run created. On success, closes back into the runs view with the new run highlighted. Establishes the batch's reusable CI vocabulary: `.ci-ref` mono chip (branch/commit/pipeline, with a `data-empty` variant), `data-map="mapped\|unmapped\|gap"` row chips, `.verdict[data-v]` pill. States strip: choose-file / full-match preview / preview-with-gaps / rejected-upload / confirm. |
+| `test-runs-index--ci-extension.html` | `test-runs-index.html` (§4.8) — filter row, totals strip, runs table | extends `/projects/[projectSlug]/runs` | BK-225. Reproduces the base screen's Date/Module/Status/Executor filters, totals strip, and Run/Test/Module/Environment/Executor/Outcome/Ran table faithfully, then adds: a derived read-only "Mode" badge per row (Manual for human executor, Automated for agent-or-CI executor — summarizes, does not replace, the existing Executor column); a Mode filter (All/Manual/Automated) composing with the existing filters; per-mode totals in the totals strip ("Manual 12 · Automated 30"); a dedicated empty state for Mode=Automated with zero results (explains no automated runs reported yet, points to agents/CI as the reporting path — distinct from the base screen's generic no-match state). States strip: default-with-badges / Automated-filter-composed-with-another-filter / Automated-filter-zero-results. |
+| `run--ci-extension.html` | `run.jsx` (§4.5) — Test Runner header bar | extends run detail (finished/CI-reported run — no dedicated finished-run-detail screen exists yet; this crop is the first design intent for it, scoped to the CI-metadata addition only) | BK-228. Reproduces the header bar's structure (left identity block, center run/test identity, right actions), adapted from the live-run controls to a finished/read-only run (verdict chip + tally + timestamp), then adds a "CI context" row below the title: branch chip, short commit in JetBrains Mono with an external-link affordance to the repository host, pipeline name linking to its URL. Degrades per the AC: row absent entirely when a run carries no CI metadata; commit renders as plain mono text with an inline "configure repository URL" hint when the project has none configured. Reuses the `.ci-ref` chip from `ci-results-upload.html` verbatim. States strip: full CI context on a Passed run / no-repository-URL degradation / manual run with no CI row. |
+| `project--ci-extension.html` | `project.jsx` (§4.3/§4.4) — `TableView` dense list + `ATCDetail` header/rail pattern | extends the not-yet-designed Test library list + Test detail view (adapts the ATC-scoped list/detail anatomy to a Test-scoped one — no dedicated Test list/detail screen exists yet, `TestDetail` in `project.jsx` is a placeholder; same judgment call as §4.7's "no mockup, only implied" precedent) | BK-227. Two regions in one file. Region A (list): reproduces `TableView`'s filter-pill toolbar + sticky dense table, adds an automation-status badge per row (Manual-only default / Automation candidate / Automated — one tone per status, reusing `--skipped`/`--blocked`/`--running` respectively) and a Status filter pill with live per-status counts. Region B (detail): reproduces `ATCDetail`'s header + right-rail pattern, adds the status badge as a real dropdown control for member+ roles (3 states, no enforced order) vs. a structurally read-only badge (no popup affordance, not just disabled styling) for viewers, plus an append-only "Automation status history" rail panel (author/timestamp/from→to, newest first). Deliberately does not reuse the CI branch/commit/pipeline vocabulary — automation status is independent of CI metadata per the story's business rules. States strip: mixed-status list with counts / list filtered to one status / detail dropdown open (member role) / detail read-only + history (viewer role). |
+
+**Design-agent judgment call flagged:** the "Automated" automation-status tone reuses `--running`
+(blue) — a token whose canonical meaning elsewhere is "run in progress" — rather than introducing a
+new token. Acceptable under the no-new-tokens constraint and visually distinct in context (a Test's
+static property badge vs. a Run's live status), but worth a second look during the build-time
+fidelity pass noted above.
+
+Build order note: none of BK-225–BK-228 are Ready For Dev — the whole epic is deliberately parked
+Backlog, post-MVP. This batch is forward design for the post-MVP P1 frontier (mockup roadmap #6),
+not an unblock for any story in flight today. **Priority: post-MVP P1** — second in the epic-backbone
+post-MVP order, per the mockup roadmap, right after §4.11 Test Plans & Milestones.
+
+---
+
 ## 5. Divergences — gaps to correct, UI-first
 
 **Guiding principle (2026-06-08):** **maximize UI fidelity to the mockup WITHOUT triggering backend refactors.** The mockup wins at the *presentation layer*. Where matching the mockup would only require frontend work (layout, components, render), close the gap. Where it would require reverting/rebuilding schema, APIs, or auth infra, **adapt the UI on top of the existing backend** instead — keep the data model, change only what renders. A gap is "to correct" only to the extent it's a frontend change.
@@ -438,10 +483,10 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-220 Search the message history | **Chat search** (within chat panel) | ⚠️ wireframe pending |
 | **BK-221 Automation & CI Ingestion** | BK-222 Submit automated run via API | API-first, UI-light — renders into existing **Run detail** | `run.jsx` §4.5 |
 | | BK-223 Stream step results during automated run | API-first, UI-light — renders live into existing **Run detail** | `run.jsx` §4.5 |
-| | BK-225 Filter runs by manual/automated | **Test Runs index** — execution-mode badge/filter (extends existing runs view) | ⚠️ wireframe pending |
-| | BK-226 Upload a CI results file | **CI results upload** (modal/flow off the runs view) | ⚠️ wireframe pending |
-| | BK-227 Track automation status of a test | **Test library — automation status** (extends existing test library/list) | ⚠️ wireframe pending |
-| | BK-228 CI-triggered runs linked to commit/branch | **Run detail — CI metadata** (extends run detail) | `run.jsx` §4.5 · ⚠️ wireframe pending |
+| | BK-225 Filter runs by manual/automated | **Test Runs index** — execution-mode badge/filter (extends existing runs view) | §4.12 · `bk-221-automation-ci/test-runs-index--ci-extension.html` |
+| | BK-226 Upload a CI results file | **CI results upload** (modal/flow off the runs view) | §4.12 · `bk-221-automation-ci/ci-results-upload.html` |
+| | BK-227 Track automation status of a test | **Test library — automation status** (extends existing test library/list) | §4.12 · `bk-221-automation-ci/project--ci-extension.html` |
+| | BK-228 CI-triggered runs linked to commit/branch | **Run detail — CI metadata** (extends run detail) | `run.jsx` §4.5 · §4.12 · `bk-221-automation-ci/run--ci-extension.html` |
 | **BK-224 Billing & Plans** | BK-229 View plan, seats & usage | **Settings — Billing overview** (extends §4.10 hub) | §4.10 · ⚠️ wireframe pending |
 | | BK-230 Upgrade to a paid plan | **Billing — plan comparison & checkout** | ⚠️ wireframe pending |
 | | BK-231 Billing details + invoices | **Billing — details & invoices** | ⚠️ wireframe pending |
@@ -450,7 +495,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
 >
-> **Post-MVP screens (BK-208/210/221/224):** none of these screens exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11.
+> **Post-MVP screens (BK-208/210/224):** none of these screens exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12.
 
 ---
 
