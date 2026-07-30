@@ -1,17 +1,22 @@
 import type { MemberRole } from '@lib/types';
 import { IdentityCard } from '@components/settings/IdentityCard';
+import { WorkspacesList, WorkspacesListSkeleton } from '@components/settings/WorkspacesList';
+import { buildWorkspaceRows, countActiveMembersByWorkspace } from '@lib/account/workspaces';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
-// Settings > Account (BK-87 PR1 — TC-AC1, TC-AC3). Identity is real; the
-// workspace section below is a static loading placeholder in this slice
-// (BK-87 branch plan: PR2 swaps it for the real <WorkspacesList>). The page
-// is fully working and honest on its own — never a broken or fake-empty
-// state — per the stacked-to-main contract.
+// Settings > Account (BK-87 — TC-AC1, TC-AC3 from PR1; TC-AC2/6/7 from PR2).
+// Identity and the workspace list are two independent async sections (TD7):
+// identity is awaited directly below so it renders with the rest of the
+// page, while the workspace list is its own async server component
+// (`WorkspacesSection`) inside a dedicated `<Suspense>` boundary further
+// down, so a slow or failing workspace query can never block or blank the
+// identity card next to it.
 export default async function SettingsAccountPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -80,23 +85,70 @@ export default async function SettingsAccountPage() {
         lastActive={lastActive}
       />
 
-      {/* Workspaces — static placeholder in this slice. BK-87 PR2 swaps this
-          for <Suspense><WorkspacesList /></Suspense> (TC-AC2/6/7). */}
-      <section
-        aria-labelledby="settings-workspaces-heading"
-        data-testid="settings-workspaces-placeholder"
-        className="rounded-3 border border-stroke-2 bg-surface-2 shadow-card"
-      >
-        <div className="border-b border-stroke-1 px-4 py-3">
-          <h2 id="settings-workspaces-heading" className="text-sm font-semibold text-fg-0">Workspaces</h2>
-        </div>
-        <div className="flex flex-col gap-2 p-4" aria-hidden="true">
-          <div className="h-3 w-2/3 animate-status-pulse rounded-1 bg-surface-3" />
-          <div className="h-3 w-1/2 animate-status-pulse rounded-1 bg-surface-3" />
-          <div className="h-3 w-3/5 animate-status-pulse rounded-1 bg-surface-3" />
-        </div>
-        <p className="px-4 pb-4 text-sm text-fg-3">Full workspace list is on its way.</p>
-      </section>
+      <Suspense fallback={<WorkspacesListSkeleton />}>
+        <WorkspacesSection userId={user.id} activeWorkspaceId={activeWorkspaceId} />
+      </Suspense>
     </div>
   );
+}
+
+// Workspace membership list (BK-87 PR2 — TC-AC2, TC-AC6, TC-AC7). A separate
+// async server component (not the page itself) so it streams inside its own
+// `<Suspense>` boundary above, independent of the identity fetch. The query
+// shape reuses `onboarding/page.tsx`'s active-membership check (TD5), widened
+// from `.limit(1)` to all rows, joined to `workspaces` and to one grouped
+// member-count query — manual JS join, matching this repo's existing
+// convention (see `workspaces/[id]/members/page.tsx`, `atcs/[atcId]/page.tsx`)
+// rather than a PostgREST embedded-select string.
+//
+// TD7: any failure here is caught locally and rendered as the error state —
+// it must never throw up to the route's `error.tsx`, which would also take
+// down the already-rendered `IdentityCard`.
+async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string, activeWorkspaceId: string | null }) {
+  try {
+    const supabase = await createClient();
+
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('workspace_members')
+      .select('workspace_id, role')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('joined_at', { ascending: true });
+    if (membershipsError) {
+      throw membershipsError;
+    }
+
+    const workspaceIds = (memberships ?? []).map(m => m.workspace_id);
+
+    // The active-member count spans every member of the workspace, not just
+    // rows the caller's own RLS grants them (workspace_members RLS only
+    // exposes other members' rows to admin/owner callers) — so this one
+    // aggregate deliberately goes through the admin client, same as the
+    // identity lookup above. It only ever returns a workspace_id (no PII),
+    // scoped to workspaces the caller already belongs to.
+    const [{ data: workspaceRows, error: workspacesError }, { data: memberCountRows, error: countError }] = workspaceIds.length > 0
+      ? await Promise.all([
+          supabase.from('workspaces').select('id, slug, name').in('id', workspaceIds),
+          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
+        ])
+      : [{ data: [], error: null }, { data: [], error: null }];
+    if (workspacesError) {
+      throw workspacesError;
+    }
+    if (countError) {
+      throw countError;
+    }
+
+    const rows = buildWorkspaceRows({
+      memberships: memberships ?? [],
+      workspaces: workspaceRows ?? [],
+      memberCounts: countActiveMembersByWorkspace(memberCountRows ?? []),
+      activeWorkspaceId,
+    });
+
+    return <WorkspacesList workspaces={rows} />;
+  }
+  catch {
+    return <WorkspacesList workspaces={[]} error />;
+  }
 }
