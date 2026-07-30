@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (docker), Claude Design (claude.ai/design premium), LLM-authored custom. OPCIONAL (siempre opt-in, post-DESIGN.md): mapea screen mockups externos (Claude Design / Open Design) en `.context/design/master-design-plan.md` con specs por-screen + US→screen map que `/sprint-development` consume. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`, `mapear screens`, `master design plan`, `screen design`, `US to screen map`, `design brief`, `brief de diseño`, `prepara el prompt para Claude Design`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
+description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (desktop app), Claude Design (claude.ai/design premium), LLM-authored custom. OPCIONAL (siempre opt-in, post-DESIGN.md): mapea screen mockups externos (Claude Design / Open Design) en `.context/design/master-design-plan.md` con specs por-screen + US→screen map que `/sprint-development` consume. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`, `mapear screens`, `master design plan`, `screen design`, `US to screen map`, `design brief`, `brief de diseño`, `prepara el prompt para Claude Design`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation
@@ -117,7 +117,7 @@ Do NOT use this skill to:
 
 This skill is **project-scope**: no `<scope>` segment. Session state lives directly at `.session/design-system/{plan.md, progress.md}` per `agentic-dev-core/references/session-management.md` §3 + §9.
 
-**Highest-value resume case**: Paths C (Open Design app, Docker iteration) and D (Claude Design at `claude.ai/design`) both PAUSE for external user action — without a persistent session, the skill cannot tell on resume whether it was mid-Path-C waiting for Docker artifacts or mid-Path-D waiting for the exported bundle. Phase 0 + `progress.md` is what makes those paths interruption-resilient.
+**Highest-value resume case**: Paths C (Open Design app, external iteration) and D (Claude Design at `claude.ai/design`) both PAUSE for external user action — without a persistent session, the skill cannot tell on resume whether it was mid-Path-C waiting for Open Design artifacts or mid-Path-D waiting for the exported bundle. Phase 0 + `progress.md` is what makes those paths interruption-resilient.
 
 ## Phase 0 — Resume check (MANDATORY, inline)
 
@@ -128,7 +128,7 @@ Before any path selection or subagent dispatch, run the resume contract from `ag
 3. If it DOES exist:
    1. Read `.session/design-system/plan.md` in full (records the chosen path + completed steps).
    2. Read the tail of `.session/design-system/progress.md` (last ~3 entries — for Paths C/D especially, this is where "waiting for external work" was recorded).
-   3. Surface to the user: chosen path, last completed step, next planned step, any blocking notes (e.g. "waiting for Docker artifact at `design/handoff/`").
+   3. Surface to the user: chosen path, last completed step, next planned step, any blocking notes (e.g. "waiting for exported artifact at `design/handoff/`").
    4. Offer three options and WAIT for input: **resume** (continue from the next planned step on the chosen path) / **restart** (archive current dir to `.session/.archive/<YYYY-MM-DD>-design-system-project-aborted/`, then proceed to Phase 1 fresh — useful if the user switched paths) / **abort**.
 
 Phase 0 is inline — no subagent dispatch.
@@ -154,7 +154,7 @@ After `plan.md` is written and the user confirms the chosen path, transition `st
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | **A — Gallery manual**                       | User wants to browse and pick without the AI deciding. Free, no auth.                                       | `references/gallery-manual.md`        |
 | **B — `getdesign` + LLM-matcher** ⭐ default | PRD exists + you want something off-the-shelf with good quality and zero manual effort. Free, no auth.      | `references/getdesign-matcher.md`     |
-| **C — Open Design app**                      | You want to iterate visually in a local UI before locking tokens. Requires Docker. Free, OSS.               | `references/open-design-app.md`       |
+| **C — Open Design app**                      | You want to iterate visually in a local UI before locking tokens. Desktop app, no Docker needed. Free, OSS. | `references/open-design-app.md`       |
 | **D — Claude Design**                        | You have Claude Pro+ and want best-in-class quality. Requires manual action at `claude.ai/design`. Premium. | `references/claude-design-handoff.md` |
 | **E — LLM-authored custom**                  | Business is very specific and no off-the-shelf matches. Generate from scratch using the Google Labs spec.   | `references/llm-authored.md`          |
 
@@ -164,7 +164,7 @@ After `plan.md` is written and the user confirms the chosen path, transition `st
 2. If the user says "I want to see options" / "ver opciones" → A.
 3. If the user says "custom design" / "diseño custom" / "ninguno me sirve" / "negocio muy nicho" → E.
 4. If the user says "Claude Design" / "Anthropic Labs" → D.
-5. If the user says "Open Design" / "nexu-io" / "Docker" → C.
+5. If the user says "Open Design" / "nexu-io" / "desktop app" / "Docker" → C.
 
 Paths C and D both bridge into Path E for the actual DESIGN.md conversion — the visual iteration is in the external tool, but the final markdown follows the Google Labs spec via the LLM-authored path.
 
@@ -188,7 +188,7 @@ Summary — full procedure in `references/getdesign-matcher.md`.
 ## Other paths — quick pointers
 
 - **Path A (manual gallery)**: read `references/gallery-manual.md`. Print URLs (`designmd.ai/explore`, `npx getdesign list`) and let the user navigate. Skill handles download + lint after the user picks.
-- **Path C (Open Design)**: read `references/open-design-app.md`. Bring up the Docker stack, wait for the user, then convert the produced artifacts to DESIGN.md via Path E as a bridge step.
+- **Path C (Open Design)**: read `references/open-design-app.md`. Install / launch the desktop app (Docker is an alternative, not a requirement), wait for the user, then convert the produced artifacts to DESIGN.md via Path E as a bridge step.
 - **Path D (Claude Design)**: read `references/claude-design-handoff.md`. Print instructions for `claude.ai/design`, wait for the exported bundle at `design/handoff/`, then convert via Path E as a bridge step.
 - **Path E (LLM-authored custom)**: read `references/llm-authored.md`. Generate DESIGN.md from scratch using the embedded spec + `assets/design-md-spec-summary.md` as reference, with Constitution + PRD as input.
 
