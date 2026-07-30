@@ -33,6 +33,7 @@ Every user story that touches UI MUST:
 | Login | ~70% marketing / auth divergent | 🔶 |
 | Projects (Tree/Table/Mindmap + detail) | ~70% | 🔶 Tree/Table/Mind map switcher + Tree detail pane + open-ATC tabs done (BK-98); remaining: run surfaces, mindmap coverage/bug modes, inline filter (data-gated/P2) |
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
+| ATC Library (global promotion) | build 0% | ❌ Still project-scoped in impl (`projects/[slug]/atcs/*`) · ✅ mockup ready 2026-07-30 (§4.9) |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
 | Bug Reports (+ Defect Heatmap) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.6) |
@@ -242,8 +243,25 @@ Test's run history) renders `test-run-history.html`, currently as a standalone r
 Test-detail screen is designed to host it as a tab. **Priority: P1** — BK-38 is Ready For Dev and
 was blocked only by this mockup gate; that block is now lifted.
 
-### 4.9 ATC Library — ⚠️ (project-scoped, not global)
-Nav badge `623`. Impl has ATC CRUD nested under project (`projects/[slug]/atcs/*`) but no **global cross-project library**. **Priority: P3** — promote to global view.
+### 4.9 ATC Library — ⚠️ (project-scoped, not global) · ✅ global-view mockup ready (2026-07-30)
+Nav badge `623`. Impl has ATC CRUD nested under project (`projects/[slug]/atcs/*`) but no **global cross-project library**. **Priority: P3** — promote to global view. **The 🔒 mockup gate is
+LIFTED for the global view**: a 1-screen mockup was generated via Open Design (MCP-driven Mode A,
+project `bunkai-bk-13-atc-library-global`, design system `user:bunkai`) and lives in
+`.context/designs/bunkai-test-management-tool/bk-13-atc-library-global/` (provenance: `BRIEF.md` in
+the same folder). The screen shares the App Shell (sidebar with "ATC Library" active + its `623`
+badge, topbar), English copy, frozen §2 tokens verbatim, `:focus-visible` 1px `--accent`, and pairs
+layer chip color (UI/API/Unit) with its text label per the standing color-not-sole-signal rule.
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `atc-library-global.html` | `/atcs` (workspace-scoped, not nested under a project) | Cross-project ATC index at real scale (623 deterministic rows across 8 projects). Dense rows: mono `ATC-xxx` id, name, owning Project, Module, layer chip (dot + text label, never color alone), mono `US-xxx · AC-x` anchor, "used in N tests" reuse count. Incremental name search (`/` or ⌘K focuses, Esc clears) combines with Project/Module/layer/US-AC-anchor filters (AND); one-gesture "Clear all" restores the full list. Row open is lookup-and-launch only (fires a toast naming the destination Project — no in-place edit, matching this screen's non-editor scope). States strip: default (full 623-row scale) / filtered-combined / search-no-match (explicit "not an error" empty state) / loading skeleton (opacity-pulse) / error (mono `ATC_INDEX_TIMEOUT` + Retry). |
+
+Build order note: BK-20 (search & autocomplete) is the story this screen renders for at the global
+level — its current Jira scope maps to `project.jsx`'s toolbar filter (project-scoped), so this
+mockup is ahead of the story's contracted scope, not a replacement for it; treat as forward design
+for the P3 global-promotion backlog item, not a new obligation on BK-20 as filed. BK-20/BK-23 remain
+`BLOCKED` in Jira for unrelated contract reasons (dev-roadmap §6) — this mockup does not resolve
+that.
 
 ### 4.10 Settings — ❌ build 0% · ✅ mockups ready (2026-07-30)
 Nav item. Closest impl = `workspaces/[id]/members` (members only). **The 🔒 mockup gate is LIFTED**: a
@@ -347,7 +365,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-17 Jira import (JQL/ADF) | **Projects** explorer (import action) | §4.3 |
 | **BK-13 ATC Library** | BK-18 ATC create/edit REST API | (backend — feeds **ATC Editor**) | `editor.jsx` |
 | | BK-19 ATC builder UI (multi-step) | **ATC Editor** | `editor.jsx` §4.4 |
-| | BK-20 ATC search autocomplete | **ATC Library** · Projects toolbar filter | `project.jsx` |
+| | BK-20 ATC search autocomplete | **ATC Library** · Projects toolbar filter | `project.jsx` · §4.9 `bk-13-atc-library-global/atc-library-global.html` (global-view mockup, ahead of current story scope) |
 | | BK-21 ATC edit propagation/versioning | ATC Editor · Tests | `editor.jsx` |
 | | BK-22 ATC usage report ("used in N tests") | **Projects** detail "Used by tests" | `project.jsx` |
 | | BK-23 ATC duplicate/clone | ATC Editor · Explorer context menu | `project.jsx` |

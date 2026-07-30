@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440, initial-scale=1">
+<title>Bunkai — ATC Library</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bunkai/tokens.css
+ *
+ * Compiled semantic tokens for Bunkai (分解) — a test management system for
+ * QA engineers. Dark-canonical, information-density-first, one warm accent.
+ *
+ * PROVENANCE — this file is a MIRROR, not a fresh authoring pass.
+ * Every color, radius, shadow, and font stack below is copied from the
+ * frozen Bunkai design contract and verified byte-exact against the live
+ * implementation (`app/globals.css` + `tailwind.config.ts`) on 2026-07-30.
+ * Do not re-pick these values. If a value here disagrees with the repo,
+ * the repo wins and this file is stale.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ─── Surface ───────────────────────────────────────────────────── */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ────────────────────────────────────────────────── */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ────────────────────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ────────────────────────────────────────────────────── */
+  --accent: #d9543f;                   /* primary action, focus ring */
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  /* ─── Semantic ──────────────────────────────────────────────────── */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ────────────────────────────────────────────────── */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  /* ─── Spacing ───────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ────────────────────────────────────────────────────── */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  /* ─── Elevation ─────────────────────────────────────────────────── */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ────────────────────────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ─────────────────────────────────────────────────── */
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ═══════════════════── */
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .skel td span { animation: none !important; }
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  overflow: hidden;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+::selection { background: var(--accent-glow); }
+svg { flex: none; }
+
+/* ─── Shell ─────────────────────────────────────────────────────────── */
+.shell { display: grid; grid-template-columns: 232px 1fr; height: 100vh; min-width: 1160px; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column;
+  padding: var(--space-5) var(--space-4);
+  gap: var(--space-6);
+}
+.wordmark { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-2); }
+.wordmark .kanji { font-family: var(--font-jp); font-weight: 700; font-size: 15px; color: var(--fg-0); }
+.wordmark .latin { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: -0.01em; color: var(--fg-1); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav a {
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 30px; padding: 0 var(--space-4);
+  border-radius: var(--r-2);
+  color: var(--muted); text-decoration: none;
+  font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.nav a svg { color: var(--fg-3); transition: color var(--motion-fast) var(--ease-standard); }
+.nav a:hover { background: var(--bg-3); color: var(--fg-1); }
+.nav a:hover svg { color: var(--muted); }
+.nav a[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); }
+.nav a[aria-current="page"] svg { color: var(--fg-1); }
+.nav .badge {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  background: var(--bg-5); color: var(--fg-1);
+  padding: 1px 6px; border-radius: var(--r-1);
+}
+.sidebar-foot { margin-top: auto; padding: 0 var(--space-2); font-size: var(--text-xs); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Topbar */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 46px; flex: none;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+  background: var(--bg-1);
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--muted); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.crumbs svg { color: var(--fg-4); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); }
+.palette-hint { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--muted); background: none; border: none; cursor: pointer; padding: 3px 6px; border-radius: var(--r-2); }
+.palette-hint:hover { background: var(--bg-3); color: var(--muted); }
+.kbd {
+  font-family: var(--font-mono); font-size: 11px; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 0 5px; line-height: 16px;
+}
+.avatar {
+  width: 24px; height: 24px; border-radius: var(--radius-pill);
+  background: var(--bg-4); border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--fg-1);
+}
+
+/* ─── Page header ───────────────────────────────────────────────────── */
+.page-head { flex: none; padding: var(--space-6) var(--space-6) var(--space-4); display: flex; align-items: baseline; gap: var(--space-4); }
+.page-head h1 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; letter-spacing: var(--tracking-display); color: var(--fg-0); }
+.page-head .total { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-1); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 1px 7px; }
+.page-head p { font-size: var(--text-control); color: var(--fg-3); }
+
+/* ─── Filter bar ────────────────────────────────────────────────────── */
+.filters {
+  flex: none;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-4);
+  flex-wrap: nowrap;
+}
+.search-wrap { position: relative; width: 264px; flex: none; }
+.search-wrap > svg { position: absolute; left: 8px; top: 50%; translate: 0 -50%; color: var(--fg-3); pointer-events: none; }
+.search-wrap .kbd { position: absolute; right: 6px; top: 50%; translate: 0 -50%; color: var(--muted); }
+.input {
+  width: 100%; height: 28px;
+  background: var(--bg-2); color: var(--fg-1);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  font-family: var(--font-body); font-size: var(--text-control);
+  padding: 0 var(--space-4);
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder { color: var(--fg-4); }
+.input:hover { border-color: var(--stroke-3); }
+.input:focus { background: var(--bg-3); border-color: var(--accent); outline: none; }
+.input:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+#f-search { padding-left: 28px; padding-right: 26px; }
+#f-anchor { font-family: var(--font-mono); font-size: var(--text-sm); width: 168px; }
+.selwrap { position: relative; flex: none; }
+.selwrap > svg { position: absolute; right: 7px; top: 50%; translate: 0 -50%; color: var(--fg-3); pointer-events: none; }
+select.input { appearance: none; -webkit-appearance: none; padding-right: 26px; cursor: pointer; width: auto; min-width: 128px; }
+
+.seg { display: flex; align-items: center; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px; gap: 2px; flex: none; }
+.seg button {
+  display: flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 var(--space-3);
+  background: none; border: none; border-radius: var(--r-1);
+  font-family: var(--font-body); font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em;
+  color: var(--muted); cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.seg button:hover { background: var(--bg-4); color: var(--fg-1); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.seg .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 28px; padding: 0 var(--space-4);
+  background: var(--bg-2); color: var(--fg-1);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  font-family: var(--font-body); font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="ghost"] { background: none; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-3); color: var(--fg-1); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn:disabled { color: var(--fg-4); cursor: default; pointer-events: none; }
+#clear-all { margin-left: auto; }
+
+/* ─── Status line ───────────────────────────────────────────────────── */
+.statusline {
+  flex: none;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-6) var(--space-3);
+  font-size: var(--text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+.statusline .right { margin-left: auto; }
+
+/* ─── List ──────────────────────────────────────────────────────────── */
+.list-scroll { flex: 1; overflow: auto; border-top: 1px solid var(--stroke-1); }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--bg-1);
+  font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--stroke-2);
+}
+th.c-id { width: 84px; } th.c-proj { width: 152px; } th.c-mod { width: 128px; }
+th.c-layer { width: 88px; } th.c-anchor { width: 148px; } th.c-uses { width: 96px; } th.c-open { width: 76px; }
+thead th:first-child, tbody td:first-child { padding-left: var(--space-6); }
+tbody tr {
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+tbody tr:hover { background: var(--bg-2); }
+tbody tr:active { background: var(--bg-3); }
+tbody td {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--stroke-1);
+  font-size: var(--text-control);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  height: 33px;
+}
+td.c-id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+td.c-name { color: var(--fg-1); font-weight: 500; }
+td.c-name mark { background: var(--accent-glow); color: var(--fg-0); border-radius: 2px; padding: 0 1px; }
+td.c-proj { color: var(--muted); }
+td.c-mod { color: var(--muted); }
+td.c-anchor { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+td.c-uses { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+td.c-uses .u { color: var(--muted); font-family: var(--font-body); font-size: var(--text-sm); }
+td.c-open { color: var(--muted); }
+td.c-open .open-hint { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.02em; opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard); }
+tbody tr:hover .open-hint, tbody tr:focus-visible .open-hint { opacity: 1; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 1px 7px; border-radius: var(--r-1);
+  font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-layer="UI"]   { color: var(--layer-ui);   background: rgba(139, 109, 240, 0.10); }
+.chip[data-layer="API"]  { color: var(--layer-api);  background: var(--running-bg); }
+.chip[data-layer="Unit"] { color: var(--layer-unit); background: var(--pass-bg); }
+
+/* ─── Skeleton (loading) ────────────────────────────────────────────── */
+.skel td span {
+  display: inline-block; height: 9px; border-radius: var(--r-1);
+  background: var(--bg-3);
+  animation: pulse 1.2s var(--ease-standard) infinite alternate;
+}
+@keyframes pulse { from { opacity: 0.45; } to { opacity: 1; } }
+.skel { cursor: default; }
+.skel:hover { background: none; }
+
+/* ─── Panels (empty / error) ────────────────────────────────────────── */
+.panel-wrap { display: grid; place-items: center; padding: 64px var(--space-6); }
+.card.panel {
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  width: 380px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+}
+.card.panel svg { color: var(--fg-3); }
+.card.panel.err svg { color: var(--fail); }
+.card.panel h2 { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.card.panel p { font-size: var(--text-control); color: var(--muted); }
+.card.panel p code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-1); background: var(--bg-3); border-radius: var(--r-1); padding: 0 4px; }
+.card.panel .actions { display: flex; gap: var(--space-3); margin-top: var(--space-2); }
+.hidden { display: none !important; }
+
+/* ─── Toast ─────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 10;
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-control); color: var(--fg-1);
+  opacity: 0; translate: 0 6px; pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-standard), translate var(--motion-fast) var(--ease-standard);
+}
+.toast.show { opacity: 1; translate: 0 0; }
+.toast code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-0); }
+</style>
+</head>
+<body>
+<div class="shell" data-od-id="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="wordmark" data-od-id="wordmark">
+      <span class="kanji" lang="ja">分解</span><span class="latin">Bunkai</span>
+    </div>
+    <nav class="nav" aria-label="Main navigation" data-od-id="sidebar-nav">
+      <a href="#home">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        Home
+      </a>
+      <a href="#projects">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+        Projects
+      </a>
+      <a href="#atc-library" aria-current="page" data-od-id="nav-atc-library">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+        ATC Library
+        <span class="badge" aria-label="623 ATCs in workspace">623</span>
+      </a>
+      <a href="#test-runs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5Z"/></svg>
+        Test Runs
+      </a>
+      <a href="#bug-reports">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="4"/><path d="M9 8 6.5 5.5M15 8l2.5-2.5M4 13h4m8 0h4M5.5 19.5 8 17m8 0 2.5 2.5"/></svg>
+        Bug Reports
+      </a>
+      <a href="#metrics">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M3 20h18"/></svg>
+        Metrics
+      </a>
+      <a href="#settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="var(--bg-1)"/><circle cx="15" cy="12" r="2" fill="var(--bg-1)"/><circle cx="7" cy="17" r="2" fill="var(--bg-1)"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-foot">Acme QA · Workspace</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs">
+        <span>Acme QA</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        <span class="here">ATC Library</span>
+      </div>
+      <div class="topbar-right">
+        <button class="palette-hint" id="palette-hint" aria-label="Open command palette, Command K">
+          Command palette <span class="kbd">⌘</span><span class="kbd">K</span>
+        </button>
+        <div class="avatar" aria-label="Signed in as EY">EY</div>
+      </div>
+    </header>
+
+    <div class="page-head" data-od-id="page-head">
+      <h1>ATC Library</h1>
+      <span class="total" id="total-chip">623</span>
+      <p>Every reusable test fragment across the workspace. Opening one lands in its Project.</p>
+    </div>
+
+    <div class="filters" role="search" aria-label="Search and filter ATCs" data-od-id="filter-bar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
+        <input class="input" id="f-search" type="text" placeholder="Search ATCs by name or ID" aria-label="Search ATCs by name or ID" autocomplete="off" spellcheck="false">
+        <span class="kbd" aria-hidden="true">/</span>
+      </div>
+      <div class="selwrap">
+        <select class="input" id="f-project" aria-label="Filter by Project"><option value="">All Projects</option></select>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="selwrap">
+        <select class="input" id="f-module" aria-label="Filter by Module"><option value="">All Modules</option></select>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="seg" role="group" aria-label="Filter by layer" id="f-layer">
+        <button type="button" data-layer="" aria-pressed="true">All layers</button>
+        <button type="button" data-layer="UI" aria-pressed="false"><span class="dot" style="background:var(--layer-ui)"></span>UI</button>
+        <button type="button" data-layer="API" aria-pressed="false"><span class="dot" style="background:var(--layer-api)"></span>API</button>
+        <button type="button" data-layer="Unit" aria-pressed="false"><span class="dot" style="background:var(--layer-unit)"></span>Unit</button>
+      </div>
+      <input class="input" id="f-anchor" type="text" placeholder="US-041 / AC-3" aria-label="Filter by User Story or Acceptance Criterion ID" autocomplete="off" spellcheck="false">
+      <button class="btn" data-variant="ghost" id="clear-all" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        Clear all
+      </button>
+    </div>
+
+    <div class="statusline" data-od-id="result-status">
+      <span id="result-count" role="status" aria-live="polite">Loading ATCs…</span>
+      <span class="right">Sample workspace data</span>
+    </div>
+
+    <div class="list-scroll" id="list-scroll" data-od-id="atc-list">
+      <table id="atc-table" aria-label="ATCs across all Projects">
+        <thead>
+          <tr>
+            <th class="c-id" scope="col">ID</th>
+            <th scope="col">Name</th>
+            <th class="c-proj" scope="col">Project</th>
+            <th class="c-mod" scope="col">Module</th>
+            <th class="c-layer" scope="col">Layer</th>
+            <th class="c-anchor" scope="col">Anchor</th>
+            <th class="c-uses" scope="col">Used in</th>
+            <th class="c-open" scope="col" aria-label="Open"></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+
+      <div class="panel-wrap hidden" id="empty-state" data-od-id="empty-state">
+        <div class="card panel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5M8.5 8.5l5 5m0-5-5 5"/></svg>
+          <h2>No ATCs found</h2>
+          <p id="empty-detail">Nothing in the workspace matches the current search and filters. This is not an error — the library is intact.</p>
+          <div class="actions">
+            <button class="btn" id="empty-clear">Clear search &amp; filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-wrap hidden" id="error-state" data-od-id="error-state">
+        <div class="card panel err">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V13"/><path d="M12 16.2v.1"/></svg>
+          <h2>Couldn't load the ATC Library</h2>
+          <p>The workspace query failed: <code>ATC_INDEX_TIMEOUT</code>. Your ATCs are safe — retry the fetch.</p>
+          <div class="actions">
+            <button class="btn" data-variant="primary" id="retry-btn">Retry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
+
+<script>
+/* Deterministic sample data — 623 ATCs across 8 projects. */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rng = mulberry32(20260730);
+
+const PROJECTS = [
+  { name: 'Checkout Web',       modules: ['Cart', 'Payment Form', 'Coupons', 'Address'] },
+  { name: 'Payments API',       modules: ['Charges', 'Refunds', 'Webhooks', 'Disputes'] },
+  { name: 'Identity',           modules: ['Login', 'MFA', 'Sessions', 'Password Reset'] },
+  { name: 'Merchant Dashboard', modules: ['Reports', 'Payouts', 'Team', 'Preferences'] },
+  { name: 'Mobile App',         modules: ['Onboarding', 'Wallet', 'Push', 'Offline Sync'] },
+  { name: 'Billing',            modules: ['Invoices', 'Subscriptions', 'Tax', 'Dunning'] },
+  { name: 'Notifications',      modules: ['Email', 'SMS', 'Templates', 'Digest'] },
+  { name: 'Data Platform',      modules: ['Ingestion', 'Exports', 'Audit Log', 'Metrics'] }
+];
+const VERBS = ['Validate','Reject','Persist','Render','Retry','Expire','Sync','Paginate','Sort','Cache','Authorize','Rate-limit','Roll back','Export','Mask','Normalize','Dedupe','Escalate','Reconcile','Debounce'];
+const OBJECTS = ['session token','refund request','invoice draft','webhook signature','card fingerprint','user avatar','search index','audit event','currency rounding','OTP challenge','CSV export','pagination cursor','empty cart','stale cache entry','permission grant','email bounce','retry queue','locale fallback','file upload','discount code','payout batch','push payload','tax rate','trial downgrade'];
+const CONDS = ['on expiry','after 3 failures','with empty payload','under rate limit','across time zones','when offline','with a duplicate ID','at 100k rows','on first login','after downgrade','with mixed currencies','on partial capture','',''];
+
+const pick = arr => arr[Math.floor(rng() * arr.length)];
+const pad3 = n => String(n).padStart(3, '0');
+
+const ATCS = [];
+for (let i = 1; i <= 623; i++) {
+  const proj = pick(PROJECTS);
+  const r = rng();
+  const layer = r < 0.42 ? 'UI' : r < 0.78 ? 'API' : 'Unit';
+  const cond = pick(CONDS);
+  ATCS.push({
+    id: 'ATC-' + pad3(i),
+    name: (pick(VERBS) + ' ' + pick(OBJECTS) + (cond ? ' ' + cond : '')),
+    project: proj.name,
+    module: pick(proj.modules),
+    layer,
+    us: 'US-' + pad3(1 + Math.floor(rng() * 160)),
+    ac: 'AC-' + (1 + Math.floor(rng() * 6)),
+    uses: 1 + Math.floor(Math.pow(rng(), 1.8) * 38)
+  });
+}
+
+/* ── State ── */
+const state = { q: '', project: '', module: '', layer: '', anchor: '' };
+let loaded = false;
+
+const $ = id => document.getElementById(id);
+const rowsEl = $('rows'), countEl = $('result-count');
+const searchEl = $('f-search'), projEl = $('f-project'), modEl = $('f-module'), anchorEl = $('f-anchor');
+const layerSeg = $('f-layer'), clearBtn = $('clear-all');
+
+/* Selects */
+PROJECTS.forEach(p => projEl.add(new Option(p.name, p.name)));
+function fillModules() {
+  const keep = state.module;
+  modEl.length = 1;
+  const src = state.project ? PROJECTS.filter(p => p.name === state.project) : PROJECTS;
+  const seen = new Set();
+  src.forEach(p => p.modules.forEach(m => { if (!seen.has(m)) { seen.add(m); modEl.add(new Option(m, m)); } }));
+  modEl.value = seen.has(keep) ? keep : '';
+  state.module = modEl.value;
+}
+fillModules();
+
+/* ── Filtering + render ── */
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function filtered() {
+  const q = state.q.toLowerCase(), a = state.anchor.toLowerCase();
+  return ATCS.filter(t =>
+    (!q || t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)) &&
+    (!state.project || t.project === state.project) &&
+    (!state.module || t.module === state.module) &&
+    (!state.layer || t.layer === state.layer) &&
+    (!a || (t.us + ' ' + t.ac).toLowerCase().includes(a))
+  );
+}
+function hasFilters() { return !!(state.q || state.project || state.module || state.layer || state.anchor); }
+
+function render() {
+  if (!loaded) return;
+  const list = filtered();
+  clearBtn.disabled = !hasFilters();
+  countEl.textContent = 'Showing ' + list.length + ' of ' + ATCS.length + ' ATCs';
+  $('error-state').classList.add('hidden');
+  if (list.length === 0) {
+    rowsEl.innerHTML = '';
+    $('atc-table').classList.add('hidden');
+    $('empty-state').classList.remove('hidden');
+    return;
+  }
+  $('atc-table').classList.remove('hidden');
+  $('empty-state').classList.add('hidden');
+  const re = state.q ? new RegExp('(' + escRe(state.q) + ')', 'ig') : null;
+  rowsEl.innerHTML = list.map(t => {
+    const name = re ? t.name.replace(re, '<mark>$1</mark>') : t.name;
+    return '<tr tabindex="0" data-id="' + t.id + '" aria-label="' + t.id + ' ' + t.name + ' — open in ' + t.project + '">' +
+      '<td class="c-id">' + t.id + '</td>' +
+      '<td class="c-name" title="' + t.name + '">' + name + '</td>' +
+      '<td class="c-proj">' + t.project + '</td>' +
+      '<td class="c-mod">' + t.module + '</td>' +
+      '<td class="c-layer"><span class="chip" data-layer="' + t.layer + '"><span class="dot"></span>' + t.layer + '</span></td>' +
+      '<td class="c-anchor">' + t.us + ' · ' + t.ac + '</td>' +
+      '<td class="c-uses">' + t.uses + ' <span class="u">' + (t.uses === 1 ? 'test' : 'tests') + '</span></td>' +
+      '<td class="c-open"><span class="open-hint" aria-hidden="true">Open' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>' +
+      '</span></td></tr>';
+  }).join('');
+}
+
+/* ── Loading / error ── */
+function showLoading() {
+  loaded = false;
+  $('atc-table').classList.remove('hidden');
+  $('empty-state').classList.add('hidden');
+  $('error-state').classList.add('hidden');
+  countEl.textContent = 'Loading ATCs…';
+  rowsEl.setAttribute('aria-busy', 'true');
+  let sk = '';
+  for (let i = 0; i < 18; i++) {
+    const w = 140 + Math.floor(rng() * 180);
+    sk += '<tr class="skel" aria-hidden="true"><td class="c-id"><span style="width:52px"></span></td>' +
+      '<td><span style="width:' + w + 'px"></span></td><td class="c-proj"><span style="width:88px"></span></td>' +
+      '<td class="c-mod"><span style="width:64px"></span></td><td class="c-layer"><span style="width:36px"></span></td>' +
+      '<td class="c-anchor"><span style="width:80px"></span></td><td class="c-uses"><span style="width:44px"></span></td><td class="c-open"></td></tr>';
+  }
+  rowsEl.innerHTML = sk;
+}
+function showError() {
+  loaded = false;
+  rowsEl.innerHTML = '';
+  rowsEl.removeAttribute('aria-busy');
+  $('atc-table').classList.add('hidden');
+  $('empty-state').classList.add('hidden');
+  $('error-state').classList.remove('hidden');
+  countEl.textContent = 'The ATC query failed';
+}
+function finishLoad() {
+  loaded = true;
+  rowsEl.removeAttribute('aria-busy');
+  render();
+}
+
+/* ── Events ── */
+let deb;
+searchEl.addEventListener('input', () => {
+  clearTimeout(deb);
+  deb = setTimeout(() => { state.q = searchEl.value.trim(); render(); }, 60);
+});
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && searchEl.value) { searchEl.value = ''; state.q = ''; render(); e.stopPropagation(); }
+});
+anchorEl.addEventListener('input', () => {
+  clearTimeout(deb);
+  deb = setTimeout(() => { state.anchor = anchorEl.value.trim(); render(); }, 60);
+});
+projEl.addEventListener('change', () => { state.project = projEl.value; fillModules(); render(); });
+modEl.addEventListener('change', () => { state.module = modEl.value; render(); });
+layerSeg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.layer = b.dataset.layer;
+  layerSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+function clearAll() {
+  searchEl.value = ''; anchorEl.value = ''; projEl.value = ''; modEl.value = '';
+  Object.assign(state, { q: '', project: '', module: '', layer: '', anchor: '' });
+  layerSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(!x.dataset.layer)));
+  fillModules(); render(); searchEl.focus();
+}
+clearBtn.addEventListener('click', clearAll);
+$('empty-clear').addEventListener('click', clearAll);
+
+/* Open = launch into owning Project (never edits in place) */
+const toast = $('toast');
+let toastTimer;
+function openAtc(id) {
+  const t = ATCS.find(x => x.id === id); if (!t) return;
+  toast.innerHTML = 'Opening <code>' + t.id + '</code>&nbsp;in ' + t.project + ' › ' + t.module + '…';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+rowsEl.addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]'); if (tr) openAtc(tr.dataset.id);
+});
+rowsEl.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) { e.preventDefault(); openAtc(tr.dataset.id); }
+});
+
+/* Keyboard: "/" or Cmd/Ctrl+K focuses search */
+document.addEventListener('keydown', e => {
+  const inField = /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
+  if ((e.key === '/' && !inField) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) {
+    e.preventDefault(); searchEl.focus(); searchEl.select();
+  }
+});
+$('palette-hint').addEventListener('click', () => { searchEl.focus(); searchEl.select(); });
+
+/* Retry path */
+$('retry-btn').addEventListener('click', () => {
+  if (location.hash === '#error') history.replaceState(null, '', location.pathname);
+  showLoading();
+  setTimeout(finishLoad, 700);
+});
+
+/* Init — #loading and #error hashes preview those states */
+if (location.hash === '#error') {
+  showLoading();
+  setTimeout(showError, 700);
+} else if (location.hash === '#loading') {
+  showLoading();
+} else {
+  showLoading();
+  setTimeout(finishLoad, 700);
+}
+</script>
+</body>
+</html>
