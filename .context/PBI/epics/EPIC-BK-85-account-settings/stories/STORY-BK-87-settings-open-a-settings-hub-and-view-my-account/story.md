@@ -3,7 +3,7 @@
 **Jira Key:** [BK-87](https://jira.upexgalaxy.com/browse/BK-87)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** In Progress
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 2
 
@@ -47,7 +47,7 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 - **Created:** 6/7/2026
 - **Updated:** 7/30/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** pinto.lucas.nahuel
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed
 
 ---

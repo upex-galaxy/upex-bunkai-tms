@@ -62,5 +62,36 @@ Mockup — Settings — coming-soon pattern for future sections. Source: .contex
 
 ---
 
+### Automation for Jira - 7/30/2026, 6:02:50 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 7/30/2026, 6:14:33 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 7/30/2026, 7:12:30 PM
+
+## Ready for QA — Settings hub + Account view deployed to staging
+
+Both slices merged to `staging`:
+
+- PR1 (shell, nav, auth guard, identity): https://github.com/upex-galaxy/upex-bunkai-tms/pull/63 — branch `feat/BK-87-settings-hub-shell`
+- PR2 (workspace membership list): https://github.com/upex-galaxy/upex-bunkai-tms/pull/64 — branch `feat/BK-87-settings-workspace-list`
+
+***Covers***: TC-AC1 through TC-AC7 (identity display, workspace list with role + active indicator, navigation from the account menu + direct URL, unauthenticated redirect, session expiry, empty-state CTA, retriable error on workspace-list failure).
+
+***Out of scope for this story*** (per `out-of-scope.md`, unchanged): Tokens (BK-88) and Workspaces management (BK-89/90) render as honest "coming soon" placeholders in the nav; sign-out stays exclusive to BK-86.
+
+***Fixed during review***: a workspace member-count bug (undercounted to 1 for non-owner/admin members due to an RLS-scoped query) — caught by adversarial review before merge, not shipped. Full adjudication in the repo at `.context/PBI/epics/EPIC-BK-85-account-settings/stories/STORY-BK-87-settings-open-a-settings-hub-and-view-my-account/review.md`.
+
+[~712020:95661e32-6438-40cd-9a2c-06396f5dd6b0] over to you for QA verification on staging.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
