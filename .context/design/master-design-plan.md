@@ -40,6 +40,7 @@ Every user story that touches UI MUST:
 | Metrics | 0% | ❌ Missing (no data model) · ✅ mockups ready 2026-07-30 (§4.7) |
 | Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
+| Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -282,6 +283,29 @@ Build order note: BK-87 builds the hub shell + account (first two files), BK-88 
 workspaces; the overlay is BK-86 (already shipped live — validate against `account-menu-overlay.html`
 for fidelity polish). D11's future tech-story (relocate Environments into Settings) remains deferred.
 
+### 4.11 Test Plans & Milestones — post-MVP · ❌ build 0% · ✅ mockups ready (2026-07-30)
+No nav badge yet (all 6 stories parked in Backlog, not Shift-Left QA — future-authored work; the
+epic assumes the full MVP chain ships first). **The 🔒 mockup gate is LIFTED**: a 3-screen set was
+generated via Open Design (MCP-driven Mode A, project `bunkai-bk-201-test-plans`, design system
+`user:bunkai`) and lives in `.context/designs/bunkai-test-management-tool/bk-201-test-plans-milestones/`
+(provenance: `BRIEF.md` in the same folder). All three screens share the App Shell (sidebar with
+"Test Plans" or "Milestones" active, topbar), English copy, frozen §2 tokens verbatim,
+`:focus-visible` 1px `--accent`, and pair every outcome/status/overdue signal with a text label
+alongside its color per the standing color-not-sole-signal rule. Briefed from each story's Jira
+Scope/AC/Mockup fields (no existing screen to anchor to — dev-roadmap §5 confirmed no prior mockup
+intent for this epic).
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `test-plans-index.html` | `/projects/[projectSlug]/plans` | Project-scoped Test Plans list: name, goal/release tag, status chip (Open/Closed, dot+text), live test count, creator; Open/Closed segmented filter with live counts. "New plan" dialog: name (required, unique per project case-insensitive, inline duplicate/blank message), optional description, optional goal. Viewer role sees the list with the create action structurally absent (locked note), not just hidden. States strip: default / empty (guides first-plan creation) / create-validation / filtered / loading / error. |
+| `plan-detail.html` | `/projects/[projectSlug]/plans/[planId]` | One Test Plan's full working surface (extends screen 1's shell one level deeper — BK-202 identity/inline-edit, BK-203 membership, BK-204 progress, BK-207 close). Add-tests picker (search, multi-select, already-included tests marked, confirm-count bar); per-row remove (plan-only, test untouched elsewhere — a Test may belong to many Plans); per-member-test outcome chip (passed/failed/aborted/in-progress/not-run, dot+text) with run timestamp, click-through to that test's latest run; aggregate progress header (per-outcome counts + percent-passed bar), computed only from existing run outcomes, refreshed on view. Close flow: required verdict (passed/failed) + optional summary, confirmation names the exact plan and states the not-run-test count before finalizing; closed state is fully read-only (locked banner, frozen verdict/summary/closed-by/closed-at/progress-snapshot, every mutating control removed) — creator/admin-only close, viewer sees content only. States strip: default / empty-membership / empty-progress (no percent) / add-tests-picker / close-confirmation / closed-locked / role-gated / loading / error. |
+| `milestones-board.html` | `/projects/[projectSlug]/milestones` | Project-scoped Milestones list + detail (BK-205 create/edit, BK-206 attach/readiness; reuses screen 1's shell with "Milestones" active). List: name, target date, days-remaining chip, creator; overdue milestones (target date passed + readiness <100%) get a structural overdue block, never color-only. Create/edit: name (required, unique per project) + required target date (today or later, past date rejected with a clear message) + optional description. Attach/detach existing Plans via a picker (a Plan may attach to more than one Milestone); overall readiness bar/summary + per-plan breakdown row, recalculated live on attach/detach; empty-readiness state (no plans attached) shows an invitation, never a percentage; plan rows click through to `plan-detail.html`. Viewer role: content visible, all mutating actions structurally absent. States strip: default / empty-list / create-validation / empty-readiness / populated-readiness / overdue / loading / error. |
+
+Build order note: none of BK-202–BK-207 are Ready For Dev — the whole epic is deliberately parked
+Backlog until the MVP chain (Runs, Tests) ships first. This batch is forward design for the
+post-MVP P1 frontier (dev-roadmap §5), not an unblock for any story in flight today. **Priority:
+post-MVP P1** — first in the epic-backbone post-MVP order, per the mockup roadmap.
+
 ---
 
 ## 5. Divergences — gaps to correct, UI-first
@@ -395,12 +419,12 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-89 View my workspaces | Settings · Shell switcher | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
 | | BK-90 Leave a workspace | **Settings** | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
 | **BK-29 QA Credentials** | (epic) | `/qa` page (out of mockup scope) | — |
-| **BK-201 Test Plans & Milestones** | BK-202 Create a test plan grouping tests | **Test Plans index + Plan detail** (new, Project scope) | ⚠️ wireframe pending |
-| | BK-203 Add/remove tests from a plan | **Plan detail** (test picker) | ⚠️ wireframe pending |
-| | BK-204 Track plan progress from run outcomes | **Plan detail — progress view** | ⚠️ wireframe pending |
-| | BK-205 Create a milestone with a target date | **Milestones view** (new, Project scope) | ⚠️ wireframe pending |
-| | BK-206 Assign plans + track milestone progress | **Milestones view** · Plan detail | ⚠️ wireframe pending |
-| | BK-207 Close a plan with an outcome summary | **Plan detail** (close action) · Test Plans index | ⚠️ wireframe pending |
+| **BK-201 Test Plans & Milestones** | BK-202 Create a test plan grouping tests | **Test Plans index + Plan detail** (new, Project scope) | §4.11 · `bk-201-test-plans-milestones/test-plans-index.html` + `plan-detail.html` |
+| | BK-203 Add/remove tests from a plan | **Plan detail** (test picker) | §4.11 · `bk-201-test-plans-milestones/plan-detail.html` |
+| | BK-204 Track plan progress from run outcomes | **Plan detail — progress view** | §4.11 · `bk-201-test-plans-milestones/plan-detail.html` |
+| | BK-205 Create a milestone with a target date | **Milestones view** (new, Project scope) | §4.11 · `bk-201-test-plans-milestones/milestones-board.html` |
+| | BK-206 Assign plans + track milestone progress | **Milestones view** · Plan detail | §4.11 · `bk-201-test-plans-milestones/milestones-board.html` |
+| | BK-207 Close a plan with an outcome summary | **Plan detail** (close action) · Test Plans index | §4.11 · `bk-201-test-plans-milestones/plan-detail.html` + `test-plans-index.html` |
 | **BK-208 Notifications Center** | BK-209 Inbox of workspace events | **Notifications inbox** (new — top-bar bell + panel) | ⚠️ wireframe pending |
 | | BK-211 Run finished/aborted events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
 | | BK-212 Bug assignment/status events | Notifications inbox (event producer — renders into BK-209 inbox) | ⚠️ wireframe pending |
@@ -426,7 +450,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
 >
-> **Post-MVP screens (BK-201/208/210/221/224):** none of these screens exist in the mockup set — no §4 spec is authored yet. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9.
+> **Post-MVP screens (BK-208/210/221/224):** none of these screens exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11.
 
 ---
 

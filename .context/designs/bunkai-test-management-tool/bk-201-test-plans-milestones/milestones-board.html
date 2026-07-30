@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Milestones · BK-201</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Bunkai tokens — user:bunkai package, verbatim ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .sk, .dot-run { animation: none !important; }
+}
+
+/* ── Base (same anatomy as screens 1-2) ────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+html, body { height: 100%; }
+body { background: var(--bg-0); color: var(--fg-1); font: 400 var(--text-base)/var(--leading-body) var(--font-body); font-feature-settings: var(--font-feature-settings); min-width: 1180px; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+svg { flex: none; }
+.shell { display: grid; grid-template-columns: 224px 1fr; height: 100vh; }
+
+/* Sidebar */
+.sidebar { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; padding: var(--space-5) var(--space-4); gap: var(--space-6); }
+.brand { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-2); }
+.brand-jp { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); }
+.brand-latin { font: 700 var(--text-lg)/1 var(--font-display); letter-spacing: -0.01em; color: var(--fg-0); }
+.brand-project { margin-left: auto; font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); padding: var(--space-2) var(--space-2) var(--space-1); }
+.nav-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--r-2); color: var(--fg-2); font-size: var(--text-control); font-weight: 500; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.nav-item:hover { background: var(--bg-3); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.nav-item svg { color: var(--fg-3); }
+.nav-item[aria-current="page"] svg { color: var(--fg-1); }
+.kbd { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--stroke-2); border-bottom-width: 2px; border-radius: var(--r-1); padding: 2px 5px; }
+.sidebar-foot { margin-top: auto; padding: var(--space-3) var(--space-2) 0; border-top: 1px solid var(--stroke-1); }
+.role-badge { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--fg-3); }
+.role-badge b { color: var(--fg-2); font-weight: 500; }
+.role-badge .avatar { width: 20px; height: 20px; border-radius: var(--radius-pill); background: var(--bg-4); border: 1px solid var(--stroke-2); display: grid; place-items: center; font: 500 9px/1 var(--font-mono); color: var(--fg-2); letter-spacing: 0.02em; }
+
+/* Topbar */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar { height: 44px; flex: none; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6); }
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumbs .mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.crumbs button.crumb-link { border-radius: var(--r-1); color: var(--fg-3); font-size: inherit; }
+.crumbs button.crumb-link:hover { color: var(--fg-1); text-decoration: underline; text-underline-offset: 2px; }
+.palette-btn { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-1) var(--space-3); color: var(--fg-3); font-size: var(--text-control); transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.palette-btn:hover { border-color: var(--stroke-3); background: var(--bg-3); color: var(--fg-2); }
+
+/* Content */
+.content { flex: 1; overflow-y: auto; padding: var(--space-8) var(--space-12); }
+.page-head { display: flex; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.page-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--fg-0); }
+.page-sub { margin-top: var(--space-1); font-size: var(--text-control); color: var(--fg-3); }
+.page-sub .mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.page-actions { margin-left: auto; display: flex; align-items: flex-start; gap: var(--space-3); }
+.back-link { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); font-weight: 500; color: var(--fg-3); border-radius: var(--r-1); margin-bottom: var(--space-5); }
+.back-link:hover { color: var(--fg-1); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em; background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-2) var(--space-4); line-height: 1.4; transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); }
+.btn:disabled { color: var(--fg-4); background: var(--bg-2); border-color: var(--stroke-1); cursor: not-allowed; }
+.btn svg { color: currentColor; }
+
+/* Chips / tags (same idiom as screens 1-2) */
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; border-radius: var(--r-1); padding: 3px var(--space-3); border: 1px solid transparent; }
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-status="open"] { color: var(--running); background: var(--running-bg); border-color: var(--running-bg); }
+.chip[data-status="closed"] { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped-bg); }
+.chip[data-status="ontrack"] { color: var(--fg-2); background: var(--bg-3); border-color: var(--stroke-2); }
+.chip[data-status="overdue"] { color: var(--fail); background: var(--fail-bg); border-color: var(--fail-bg); }
+.chip[data-status="attached"] { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped-bg); }
+.tag { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-mono); letter-spacing: 0.01em; color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 3px var(--space-2); }
+
+/* Tables (same row idiom) */
+.card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); }
+table { width: 100%; border-collapse: collapse; }
+thead th { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); text-align: left; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); }
+tbody tr { border-top: 1px solid var(--stroke-1); transition: background var(--motion-fast) var(--ease-standard); }
+tbody tr:first-child { border-top: 0; }
+tbody tr:hover { background: var(--bg-3); }
+tbody td { padding: var(--space-4) var(--space-5); font-size: var(--text-control); vertical-align: middle; }
+tbody tr[data-ms] { cursor: pointer; }
+.ms-id, .plan-id { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.row-name { color: var(--fg-0); font-weight: 500; }
+.row-desc { margin-top: 2px; font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; max-width: 44ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-date { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1); letter-spacing: 0.01em; }
+.cell-days { font: 400 var(--text-sm)/1.4 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.cell-creator { color: var(--fg-2); }
+.row-caret { color: var(--fg-4); text-align: right; }
+tbody tr:hover .row-caret { color: var(--fg-2); }
+.mini-ready { display: flex; align-items: center; gap: var(--space-3); }
+.mini-ready .pct { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1); width: 34px; }
+.mini-ready .plans-n { font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; }
+.bar { display: flex; height: 4px; border-radius: var(--radius-pill); overflow: hidden; background: var(--bg-4); }
+.bar .fill { background: var(--pass); transition: width var(--motion-base) var(--ease-standard); }
+.bar.mini { width: 72px; flex: none; }
+.no-data { color: var(--fg-4); font-size: var(--text-sm); }
+
+/* Detail header */
+.ms-head { display: flex; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.ms-title-row { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-1); flex-wrap: wrap; }
+.ms-title-row h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--fg-0); }
+.ms-desc { margin-top: var(--space-2); max-width: 64ch; font-size: var(--text-base); color: var(--fg-2); }
+.ms-meta { margin-top: var(--space-3); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); }
+.ms-meta .mono { font-family: var(--font-mono); }
+.ms-actions { margin-left: auto; display: flex; align-items: flex-start; gap: var(--space-3); flex: none; }
+.role-note { display: flex; align-items: center; gap: var(--space-3); border: 1px dashed var(--stroke-3); border-radius: var(--r-2); background: var(--bg-2); padding: var(--space-2) var(--space-4); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); max-width: 340px; }
+.role-note svg { color: var(--fg-3); }
+.role-note b { color: var(--fg-2); font-weight: 500; }
+
+/* Overdue note (detail) */
+.overdue-note { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--fail-bg); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); padding: var(--space-4) var(--space-6); margin-bottom: var(--space-6); font-size: var(--text-control); color: var(--fg-1); }
+.overdue-note svg { color: var(--fail); margin-top: 1px; }
+.overdue-note .mono { font-family: var(--font-mono); }
+.overdue-note b { color: var(--fg-0); font-weight: 600; }
+
+/* Readiness card */
+.ready-card { padding: var(--space-6); display: flex; align-items: center; gap: var(--space-12); margin-bottom: var(--space-6); }
+.pct-block { flex: none; display: flex; flex-direction: column; gap: 2px; min-width: 132px; }
+.pct-num { font: 500 var(--text-4xl)/1 var(--font-mono); color: var(--fg-0); }
+.pct-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); }
+.ready-bar-block { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.ready-note { font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); }
+.ready-empty { color: var(--fg-3); font-size: var(--text-control); display: flex; align-items: center; gap: var(--space-3); }
+
+/* Section head */
+.section-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+.section-head h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.section-head .count { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); }
+.plan-link { color: var(--fg-0); font-weight: 500; border-radius: var(--r-1); }
+.plan-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.icon-btn { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-1); color: var(--fg-3); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.icon-btn:hover { background: var(--bg-4); color: var(--fail); }
+
+/* Empty states */
+.empty { border: 1px dashed var(--stroke-3); border-radius: var(--r-3); padding: var(--space-12); text-align: center; background: var(--bg-2); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.empty h3 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.empty p { max-width: 54ch; color: var(--fg-2); font-size: var(--text-control); }
+.empty .cli { display: flex; align-items: center; gap: 2px; font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); margin-top: var(--space-2); }
+.caret { display: inline-block; width: 7px; height: 13px; background: var(--fg-3); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+
+/* Loading / error */
+.sk-row { display: grid; grid-template-columns: 70px 1fr 90px 90px 110px 90px; gap: var(--space-6); align-items: center; padding: var(--space-5); border-top: 1px solid var(--stroke-1); }
+.sk-row:first-child { border-top: 0; }
+.sk { height: 10px; border-radius: var(--r-1); background: var(--bg-4); animation: pulse 1.6s var(--ease-standard) infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+.loading-note { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; }
+.dot-run { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+.error-panel { border: 1px solid var(--stroke-2); border-radius: var(--r-3); background: var(--bg-2); box-shadow: var(--shadow-card); padding: var(--space-12); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.error-panel .err-icon { width: 32px; height: 32px; border-radius: var(--r-2); background: var(--fail-bg); display: grid; place-items: center; color: var(--fail); }
+.error-panel h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.error-panel .err-detail { font: 400 var(--text-sm)/1.5 var(--font-mono); color: var(--fg-3); background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--r-1); padding: var(--space-2) var(--space-4); }
+.error-panel p { color: var(--fg-2); font-size: var(--text-control); max-width: 48ch; }
+
+/* Modals / forms (same dialog pattern as screens 1-2) */
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; z-index: 40; }
+.modal { width: 460px; background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-4); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; max-height: 82vh; }
+.modal-head { display: flex; align-items: center; padding: var(--space-6) var(--space-6) 0; flex: none; }
+.modal-head h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.modal-head .mono { font-family: var(--font-mono); font-size: var(--text-lg); }
+.modal-close { margin-left: auto; color: var(--fg-3); border-radius: var(--r-1); display: grid; place-items: center; width: 24px; height: 24px; }
+.modal-close:hover { color: var(--fg-1); background: var(--bg-4); }
+.modal-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); overflow-y: auto; }
+.modal-foot { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-6) var(--space-6); flex: none; }
+.modal-foot .grow { margin-right: auto; font-size: var(--text-sm); color: var(--fg-2); letter-spacing: 0.01em; }
+.modal-foot .grow .mono { font-family: var(--font-mono); }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-2); }
+.field label .opt { color: var(--fg-4); }
+.input, .textarea { font: 400 var(--text-control)/1.4 var(--font-body); color: var(--fg-0); background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-2) var(--space-3); width: 100%; transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.input::placeholder, .textarea::placeholder { color: var(--fg-4); }
+.input:hover, .textarea:hover { border-color: var(--stroke-3); }
+.input:focus, .textarea:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.input[aria-invalid="true"] { border-color: var(--fail); }
+.input.mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.textarea { resize: vertical; min-height: 56px; }
+.field-error { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fail); }
+.field-hint { font-size: var(--text-sm); color: var(--fg-4); letter-spacing: 0.01em; }
+
+/* Attach picker */
+.picker-list { border: 1px solid var(--stroke-2); border-radius: var(--r-2); background: var(--bg-2); max-height: 264px; overflow-y: auto; }
+.pick-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--stroke-1); font-size: var(--text-control); }
+.pick-row:first-child { border-top: 0; }
+.pick-row:hover { background: var(--bg-3); }
+.pick-row input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); flex: none; }
+.pick-row .plan-id { width: 72px; flex: none; }
+.pick-row .pick-name { flex: 1; min-width: 0; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-row .pick-pct { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); flex: none; }
+.pick-row[data-attached="true"] .pick-name { color: var(--fg-3); }
+.picker-none { padding: var(--space-6); text-align: center; color: var(--fg-3); font-size: var(--text-control); }
+
+/* Toast + prototype panel */
+.toast { position: fixed; left: 50%; bottom: var(--space-12); transform: translateX(-50%); background: var(--bg-4); border: 1px solid var(--stroke-3); border-radius: var(--r-2); box-shadow: var(--shadow-pop); color: var(--fg-1); font-size: var(--text-control); padding: var(--space-3) var(--space-6); display: flex; align-items: center; gap: var(--space-3); z-index: 50; }
+.toast .mono { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.proto { position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 30; background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-pop); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); width: 288px; }
+.proto-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-4); }
+.proto-row { display: flex; align-items: center; gap: var(--space-3); }
+.proto-row > span { font-size: var(--text-sm); color: var(--fg-3); width: 36px; letter-spacing: 0.01em; }
+.seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px; gap: 2px; }
+.seg button { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; color: var(--fg-3); padding: 3px var(--space-3); border-radius: var(--r-1); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-4); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.proto .seg { flex: 1; }
+.proto .seg button { flex: 1; justify-content: center; padding: 3px var(--space-1); }
+
+[hidden] { display: none !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar" data-od-id="sidebar" aria-label="Project navigation">
+    <div class="brand" data-od-id="brand">
+      <span class="brand-jp" lang="ja">分解</span>
+      <span class="brand-latin">Bunkai</span>
+      <span class="brand-project" title="Project key">BK-201</span>
+    </div>
+    <nav class="nav" aria-label="Project sections">
+      <span class="nav-label">Project</span>
+      <a class="nav-item" href="#/dashboard" data-od-id="nav-dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="#/test-cases" data-od-id="nav-test-cases">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+        Test Cases
+      </a>
+      <a class="nav-item" href="test-plans-index.html" data-od-id="nav-test-plans">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12l2 2 4-4"/></svg>
+        Test Plans
+      </a>
+      <a class="nav-item" href="#/runs" data-od-id="nav-runs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        Runs
+      </a>
+      <a class="nav-item" href="#/milestones" aria-current="page" data-od-id="nav-milestones">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V3"/><path d="M4 4h14l-3 4 3 4H4"/></svg>
+        Milestones
+      </a>
+      <a class="nav-item" href="#/modules" data-od-id="nav-modules">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M12 11L4 6.5"/><path d="M12 11l8-4.5"/><path d="M12 11v9"/></svg>
+        Modules
+      </a>
+      <span class="nav-label">Workspace</span>
+      <a class="nav-item" href="#/settings" data-od-id="nav-settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.7-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.7 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.7.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.7v.1a1.6 1.6 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-foot" data-od-id="sidebar-user">
+      <div class="role-badge">
+        <span class="avatar" id="user-avatar" aria-hidden="true">AK</span>
+        <span><b id="user-name">Alex Kim</b> · <span id="user-role">QA Lead</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs" aria-label="Breadcrumb" id="crumbs">
+        <span class="mono">bunkai</span><span class="sep">/</span>
+        <span class="mono">BK-201</span><span class="sep">/</span>
+        <button class="crumb-link" id="crumb-milestones" hidden>Milestones</button>
+        <span class="here" id="crumb-here">Milestones</span>
+        <span class="sep" id="crumb-sep" hidden>/</span>
+        <span class="here mono" id="crumb-ms" hidden></span>
+      </div>
+      <button class="palette-btn" id="palette-btn" data-od-id="command-palette-hint" aria-label="Open command palette">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Search or jump to
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content" data-od-id="content">
+
+      <!-- Loading -->
+      <section id="view-loading" hidden data-od-id="loading-state" aria-label="Loading milestones">
+        <div class="card">
+          <div class="loading-note"><span class="dot-run"></span>Loading milestones…</div>
+          <div class="sk-row"><span class="sk" style="width:52px"></span><span class="sk" style="width:55%"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:60px"></span><span class="sk" style="width:90px"></span><span class="sk" style="width:70px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:52px"></span><span class="sk" style="width:42%"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:60px"></span><span class="sk" style="width:90px"></span><span class="sk" style="width:70px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:52px"></span><span class="sk" style="width:48%"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:60px"></span><span class="sk" style="width:90px"></span><span class="sk" style="width:70px"></span></div>
+        </div>
+      </section>
+
+      <!-- Error -->
+      <section id="view-error" hidden data-od-id="error-state">
+        <div class="error-panel" role="alert">
+          <span class="err-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </span>
+          <h2>Couldn't load milestones</h2>
+          <p>The request failed before any data arrived. Your milestones are intact — retry when the connection recovers.</p>
+          <span class="err-detail">GET /api/projects/BK-201/milestones → 502 Bad Gateway</span>
+          <button class="btn" id="retry-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Retry
+          </button>
+        </div>
+      </section>
+
+      <!-- List -->
+      <section id="view-list" data-od-id="milestones-list">
+        <div class="page-head" data-od-id="page-head">
+          <div>
+            <h1>Milestones</h1>
+            <p class="page-sub" id="list-sub"></p>
+          </div>
+          <div class="page-actions" id="list-actions">
+            <button class="btn" data-variant="primary" id="new-ms-btn" data-od-id="new-milestone-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              New milestone
+              <span class="kbd" style="background:transparent;border-color:var(--stroke-strong);color:var(--accent-on)">N</span>
+            </button>
+            <div class="role-note" id="list-viewer-note" hidden data-od-id="viewer-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span><b>Viewer role</b> — read-only. Creating milestones requires Editor access.</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="list-card">
+          <table data-od-id="milestones-table">
+            <thead>
+              <tr>
+                <th scope="col" style="width:84px">Milestone</th>
+                <th scope="col">Name</th>
+                <th scope="col" style="width:120px">Target date</th>
+                <th scope="col" style="width:150px">Time left</th>
+                <th scope="col" style="width:190px">Readiness</th>
+                <th scope="col" style="width:140px">Created by</th>
+                <th scope="col" style="width:36px"><span class="visually-hidden">Open</span></th>
+              </tr>
+            </thead>
+            <tbody id="ms-tbody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="list-empty" hidden data-od-id="milestones-empty">
+          <h3>No milestones yet</h3>
+          <p>A milestone is a named delivery goal with a target date. Attach Test Plans to it and Bunkai aggregates their readiness into one number you can hold a release against.</p>
+          <span class="cli" aria-hidden="true">$ bunkai milestone create&nbsp;<span class="caret"></span></span>
+          <button class="btn" data-variant="primary" id="empty-new-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Create first milestone
+          </button>
+          <div class="role-note" id="empty-viewer-note" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><b>Viewer role</b> — ask a project Editor to create the first milestone.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Detail -->
+      <section id="view-detail" hidden data-od-id="milestone-detail">
+        <button class="back-link" id="back-to-list">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          Milestones
+        </button>
+
+        <div class="ms-head" data-od-id="milestone-head">
+          <div id="ms-display">
+            <span class="ms-id" id="d-id"></span>
+            <div class="ms-title-row">
+              <h1 id="d-name"></h1>
+              <span class="tag" id="d-date-tag"></span>
+              <span id="d-status-chip"></span>
+            </div>
+            <p class="ms-desc" id="d-desc"></p>
+            <p class="ms-meta" id="d-meta"></p>
+          </div>
+          <div class="ms-actions" id="ms-actions" data-od-id="milestone-actions">
+            <button class="btn" data-variant="ghost" id="edit-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+              Edit details
+            </button>
+            <button class="btn" data-variant="primary" id="attach-btn" data-od-id="attach-plans-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Attach plans
+              <span class="kbd" style="background:transparent;border-color:var(--stroke-strong);color:var(--accent-on)">A</span>
+            </button>
+            <div class="role-note" id="detail-viewer-note" hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span><b>Viewer role</b> — read-only. Editing and attaching plans require Editor access.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline edit -->
+        <form class="card" id="edit-form" hidden style="padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-4);max-width:640px;margin-bottom:var(--space-6)" data-od-id="edit-form" novalidate>
+          <div class="field">
+            <label for="edit-name">Name</label>
+            <input class="input" id="edit-name" type="text" autocomplete="off" aria-describedby="edit-name-error" required>
+            <p class="field-error" id="edit-name-error" hidden role="alert"></p>
+          </div>
+          <div class="field">
+            <label for="edit-date">Target date</label>
+            <input class="input mono" id="edit-date" type="date" aria-describedby="edit-date-error" required>
+            <p class="field-error" id="edit-date-error" hidden role="alert"></p>
+          </div>
+          <div class="field">
+            <label for="edit-desc">Description <span class="opt">· optional</span></label>
+            <textarea class="textarea" id="edit-desc"></textarea>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:var(--space-3)">
+            <button type="button" class="btn" data-variant="ghost" id="edit-cancel">Cancel</button>
+            <button type="submit" class="btn" data-variant="primary">Save changes</button>
+          </div>
+        </form>
+
+        <!-- Overdue note -->
+        <div class="overdue-note" id="overdue-note" hidden role="note" data-od-id="overdue-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <span id="overdue-note-text"></span>
+        </div>
+
+        <!-- Readiness -->
+        <div class="card ready-card" id="ready-card" data-od-id="readiness-card">
+          <div class="pct-block" id="ready-pct-block">
+            <span class="pct-num" id="ready-num">—</span>
+            <span class="pct-label" id="ready-label">overall readiness</span>
+          </div>
+          <div class="ready-bar-block" id="ready-bar-block">
+            <div class="bar" id="ready-bar" role="img" aria-label=""><span class="fill" id="ready-fill"></span></div>
+            <span class="ready-note" id="ready-note"></span>
+          </div>
+          <div class="ready-empty" id="ready-empty" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 13l4-4 4 4 5-5"/></svg>
+            No readiness yet — attach at least one Test Plan and its progress rolls up here.
+          </div>
+        </div>
+
+        <!-- Attached plans -->
+        <div class="section-head" data-od-id="attached-head">
+          <h2>Attached Test Plans</h2>
+          <span class="count" id="attached-count">0</span>
+        </div>
+        <div class="card" id="attached-card" data-od-id="attached-table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" style="width:96px">Plan</th>
+                <th scope="col">Name</th>
+                <th scope="col" style="width:100px">Status</th>
+                <th scope="col" style="width:120px">Tests passed</th>
+                <th scope="col" style="width:190px">Plan progress</th>
+                <th scope="col" style="width:44px" id="th-detach"><span class="visually-hidden">Detach</span></th>
+              </tr>
+            </thead>
+            <tbody id="attached-tbody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="attached-empty" hidden data-od-id="attached-empty">
+          <h3>No plans attached yet</h3>
+          <p>Attach the Test Plans that gate this milestone. Their pass rates roll up into one readiness number, and detaching a plan here never changes the plan itself.</p>
+          <button class="btn" data-variant="primary" id="empty-attach-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Attach Test Plans
+          </button>
+          <div class="role-note" id="attached-viewer-note" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><b>Viewer role</b> — ask a project Editor to attach plans to this milestone.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Create milestone -->
+<div class="overlay" id="create-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title" data-od-id="create-milestone-modal">
+    <div class="modal-head">
+      <h2 id="create-title">New milestone</h2>
+      <button class="modal-close" id="create-x" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <form id="create-form" novalidate style="display:contents">
+      <div class="modal-body">
+        <div class="field">
+          <label for="c-name">Name</label>
+          <input class="input" id="c-name" type="text" placeholder="e.g. Release 2.5 GA" autocomplete="off" aria-describedby="c-name-error" required>
+          <p class="field-error" id="c-name-error" hidden role="alert"></p>
+          <p class="field-hint">Must be unique within BK-201 (case-insensitive).</p>
+        </div>
+        <div class="field">
+          <label for="c-date">Target date</label>
+          <input class="input mono" id="c-date" type="date" aria-describedby="c-date-error" required>
+          <p class="field-error" id="c-date-error" hidden role="alert"></p>
+          <p class="field-hint">Today or later — a milestone can't target the past.</p>
+        </div>
+        <div class="field">
+          <label for="c-desc">Description <span class="opt">· optional</span></label>
+          <textarea class="textarea" id="c-desc" placeholder="What ships when this milestone is met"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-variant="ghost" id="create-cancel">Cancel</button>
+        <button type="submit" class="btn" data-variant="primary">Create milestone</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Attach plans picker -->
+<div class="overlay" id="picker-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title" data-od-id="attach-plans-picker">
+    <div class="modal-head">
+      <h2 id="picker-title">Attach plans to <span class="mono" id="picker-ms-id">MS-001</span></h2>
+      <button class="modal-close" id="picker-x" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="picker-search">Search Test Plans in BK-201</label>
+        <input class="input" id="picker-search" type="text" placeholder="Filter by name or PLAN id" autocomplete="off">
+      </div>
+      <div class="picker-list" id="picker-list" role="group" aria-label="Test Plan results"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="grow" id="picker-count"><span class="mono">0</span> selected</span>
+      <button type="button" class="btn" data-variant="ghost" id="picker-cancel">Cancel</button>
+      <button type="button" class="btn" data-variant="primary" id="picker-attach" disabled>Attach plans</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<!-- Prototype-only controls (not part of product UI) -->
+<aside class="proto" data-od-id="prototype-panel" aria-label="Prototype controls">
+  <span class="proto-label">Prototype · demo controls</span>
+  <div class="proto-row">
+    <span id="proto-state-label">State</span>
+    <div class="seg" role="group" aria-labelledby="proto-state-label" id="proto-state">
+      <button aria-pressed="true" data-state="list">List</button>
+      <button aria-pressed="false" data-state="empty">Empty</button>
+      <button aria-pressed="false" data-state="detail">Detail</button>
+      <button aria-pressed="false" data-state="overdue">Overdue</button>
+      <button aria-pressed="false" data-state="loading">Load</button>
+      <button aria-pressed="false" data-state="error">Error</button>
+    </div>
+  </div>
+  <div class="proto-row">
+    <span id="proto-role-label">Role</span>
+    <div class="seg" role="group" aria-labelledby="proto-role-label" id="proto-role">
+      <button aria-pressed="true" data-role="editor">QA Lead</button>
+      <button aria-pressed="false" data-role="viewer">Viewer</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Fixed "today" so the prototype is deterministic: Jul 30, 2026 ── */
+  var TODAY = new Date(2026, 6, 30);
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtDate(iso) {
+    var p = iso.split('-');
+    return MONTHS[+p[1] - 1] + ' ' + (+p[2]) + ', ' + p[0];
+  }
+  function daysFromToday(iso) {
+    var p = iso.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return Math.round((d - TODAY) / 86400000);
+  }
+
+  /* ── Data ── */
+  var PLANS = [
+    { id: 'PLAN-001', name: 'Release 1.4 regression', status: 'open', tests: 128, passed: 97 },
+    { id: 'PLAN-002', name: 'Payments API hardening', status: 'open', tests: 54, passed: 41 },
+    { id: 'PLAN-003', name: 'Mobile smoke suite', status: 'open', tests: 32, passed: 12 },
+    { id: 'PLAN-004', name: 'Release 1.3 regression', status: 'closed', tests: 141, passed: 141 },
+    { id: 'PLAN-005', name: 'Auth migration verification', status: 'closed', tests: 47, passed: 44 },
+    { id: 'PLAN-006', name: 'Nightly CI triage', status: 'open', tests: 210, passed: 156 },
+    { id: 'PLAN-007', name: 'Release 2.4 regression', status: 'open', tests: 8, passed: 3 }
+  ];
+  var DEFAULT_MS = [
+    { id: 'MS-001', name: 'Release 2.4 GA', date: '2026-08-14', desc: 'Everything that gates the 2.4 general-availability cut: regression, payments hardening and the cart-merge path.', creator: 'Mika Tanaka', created: 'Jul 12', plans: ['PLAN-007', 'PLAN-002'] },
+    { id: 'MS-002', name: 'Payments compliance audit', date: '2026-09-04', desc: 'External PSP audit window — evidence pack is built from these plan results.', creator: 'Dan Okafor', created: 'Jul 15', plans: ['PLAN-002', 'PLAN-006'] },
+    { id: 'MS-003', name: 'Mobile app 1.0', date: '2026-10-02', desc: 'First store release of the native app.', creator: 'Priya Nair', created: 'Jul 18', plans: ['PLAN-003'] },
+    { id: 'MS-004', name: 'Legacy checkout sunset', date: '2026-07-22', desc: 'Old checkout switched off once its replacement paths are proven.', creator: 'Sam Reyes', created: 'Jun 30', plans: ['PLAN-003', 'PLAN-005'] }
+  ];
+  var nextMsNum = 5;
+  var state = {
+    role: 'editor',
+    view: 'list', // list | detail | loading | error
+    milestones: DEFAULT_MS.map(function (m) { return Object.assign({}, m, { plans: m.plans.slice() }); }),
+    current: null, // milestone id in detail view
+    editing: false
+  };
+  var picker = { selected: {}, query: '' };
+  var lastFocus = null, toastTimer = null, activeOverlay = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function showToast(html) {
+    var t = $('toast');
+    t.innerHTML = html; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 3600);
+  }
+  function planById(id) { return PLANS.find(function (p) { return p.id === id; }); }
+  function msById(id) { return state.milestones.find(function (m) { return m.id === id; }); }
+  function canMutate() { return state.role === 'editor'; }
+
+  function readiness(ms) {
+    var tests = 0, passed = 0;
+    ms.plans.forEach(function (pid) {
+      var p = planById(pid);
+      if (p) { tests += p.tests; passed += p.passed; }
+    });
+    return { tests: tests, passed: passed, pct: tests ? Math.round((passed / tests) * 100) : null };
+  }
+  function isOverdue(ms) {
+    var r = readiness(ms);
+    return daysFromToday(ms.date) < 0 && (r.pct === null || r.pct < 100);
+  }
+  function timeChip(ms) {
+    var d = daysFromToday(ms.date);
+    if (isOverdue(ms)) {
+      return '<span class="chip" data-status="overdue">' +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' +
+        'Overdue by ' + Math.abs(d) + (Math.abs(d) === 1 ? ' day' : ' days') + '</span>';
+    }
+    if (d === 0) return '<span class="chip" data-status="ontrack">Due today</span>';
+    return '<span class="chip" data-status="ontrack">' + d + (d === 1 ? ' day left' : ' days left') + '</span>';
+  }
+
+  /* ── List view ── */
+  function renderList() {
+    var ms = state.milestones;
+    var overdueN = ms.filter(isOverdue).length;
+    $('list-sub').innerHTML = '<span class="mono">' + ms.length + '</span> milestones · <span class="mono">' + overdueN + '</span> overdue';
+    $('new-ms-btn').hidden = !canMutate();
+    $('list-viewer-note').hidden = canMutate();
+    $('empty-new-btn').hidden = !canMutate();
+    $('empty-viewer-note').hidden = canMutate();
+
+    var has = ms.length > 0;
+    $('list-card').hidden = !has;
+    $('list-empty').hidden = has;
+
+    $('ms-tbody').innerHTML = ms.map(function (m) {
+      var r = readiness(m);
+      var ready = r.pct === null
+        ? '<span class="no-data">No plans attached</span>'
+        : '<div class="mini-ready"><span class="pct">' + r.pct + '%</span><div class="bar mini"><span class="fill" style="width:' + r.pct + '%"></span></div><span class="plans-n">' + m.plans.length + (m.plans.length === 1 ? ' plan' : ' plans') + '</span></div>';
+      return '<tr tabindex="0" data-ms="' + m.id + '" aria-label="Open ' + m.id + ' — ' + esc(m.name) + (isOverdue(m) ? ', overdue' : '') + '">' +
+        '<td><span class="ms-id">' + m.id + '</span></td>' +
+        '<td><span class="row-name">' + esc(m.name) + '</span>' + (m.desc ? '<div class="row-desc">' + esc(m.desc) + '</div>' : '') + '</td>' +
+        '<td><span class="cell-date">' + fmtDate(m.date) + '</span></td>' +
+        '<td>' + timeChip(m) + '</td>' +
+        '<td>' + ready + '</td>' +
+        '<td class="cell-creator">' + esc(m.creator) + '</td>' +
+        '<td class="row-caret"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ── Detail view ── */
+  function renderDetail() {
+    var m = msById(state.current);
+    if (!m) return;
+    var r = readiness(m);
+    var overdue = isOverdue(m);
+
+    $('d-id').textContent = m.id;
+    $('d-name').textContent = m.name;
+    $('d-date-tag').textContent = 'Target · ' + fmtDate(m.date);
+    $('d-status-chip').innerHTML = timeChip(m);
+    $('d-desc').textContent = m.desc;
+    $('d-desc').hidden = !m.desc;
+    $('d-meta').innerHTML = 'Created by ' + esc(m.creator) + ' · ' + m.created + ' · <span class="mono">' + m.plans.length + '</span> plans attached';
+    document.title = 'Bunkai — ' + m.id + ' · ' + m.name;
+
+    $('crumb-here').hidden = true;
+    $('crumb-milestones').hidden = false;
+    $('crumb-sep').hidden = false;
+    $('crumb-ms').hidden = false;
+    $('crumb-ms').textContent = m.id;
+
+    $('edit-btn').hidden = !canMutate();
+    $('attach-btn').hidden = !canMutate();
+    $('detail-viewer-note').hidden = canMutate();
+
+    // Overdue note — structural flag, not just color
+    $('overdue-note').hidden = !overdue;
+    if (overdue) {
+      $('overdue-note-text').innerHTML = '<b>This milestone is overdue.</b> Its target date <span class="mono">' +
+        fmtDate(m.date) + '</span> passed ' + Math.abs(daysFromToday(m.date)) + ' days ago and readiness is at ' +
+        (r.pct === null ? '0' : r.pct) + '% — move the target date or finish the attached plans.';
+    }
+
+    // Readiness
+    var empty = m.plans.length === 0;
+    $('ready-pct-block').hidden = empty;
+    $('ready-bar-block').hidden = empty;
+    $('ready-empty').hidden = !empty;
+    if (!empty) {
+      $('ready-num').textContent = r.pct + '%';
+      $('ready-label').textContent = 'overall readiness';
+      $('ready-fill').style.width = r.pct + '%';
+      $('ready-bar').setAttribute('aria-label', 'Overall readiness ' + r.pct + ' percent: ' + r.passed + ' of ' + r.tests + ' tests passed');
+      $('ready-note').innerHTML = '<span class="mono">' + r.passed + '</span> of <span class="mono">' + r.tests +
+        '</span> tests passed across ' + m.plans.length + (m.plans.length === 1 ? ' plan' : ' plans') +
+        ' · recalculated live as plans are attached or detached.';
+    }
+
+    // Attached plans table
+    $('attached-count').textContent = m.plans.length;
+    $('attached-card').hidden = empty;
+    $('attached-empty').hidden = !empty;
+    $('empty-attach-btn').hidden = !canMutate();
+    $('attached-viewer-note').hidden = canMutate();
+    $('th-detach').hidden = !canMutate();
+
+    $('attached-tbody').innerHTML = m.plans.map(function (pid) {
+      var p = planById(pid);
+      var pct = Math.round((p.passed / p.tests) * 100);
+      var detach = canMutate()
+        ? '<td><button class="icon-btn" data-detach="' + p.id + '" aria-label="Detach ' + p.id + ' from this milestone" title="Detach from this milestone">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>'
+        : '<td hidden></td>';
+      return '<tr>' +
+        '<td><span class="plan-id">' + p.id + '</span></td>' +
+        '<td><a class="plan-link" href="plan-detail.html" aria-label="Open ' + p.id + ' — ' + esc(p.name) + '">' + esc(p.name) + '</a></td>' +
+        '<td><span class="chip" data-status="' + p.status + '"><span class="dot" aria-hidden="true"></span>' + (p.status === 'open' ? 'Open' : 'Closed') + '</span></td>' +
+        '<td><span class="cell-date">' + p.passed + '/' + p.tests + '</span></td>' +
+        '<td><div class="mini-ready"><span class="pct">' + pct + '%</span><div class="bar mini"><span class="fill" style="width:' + pct + '%"></span></div></div></td>' +
+        detach +
+      '</tr>';
+    }).join('');
+  }
+
+  function setView(v) {
+    state.view = v;
+    $('view-loading').hidden = v !== 'loading';
+    $('view-error').hidden = v !== 'error';
+    $('view-list').hidden = v !== 'list';
+    $('view-detail').hidden = v !== 'detail';
+    if (v !== 'detail') {
+      $('crumb-here').hidden = false;
+      $('crumb-milestones').hidden = true;
+      $('crumb-sep').hidden = true;
+      $('crumb-ms').hidden = true;
+      document.title = 'Bunkai — Milestones · BK-201';
+      if (state.editing) cancelEdit(false);
+    }
+    if (v === 'list') renderList();
+    if (v === 'detail') renderDetail();
+  }
+  function openDetail(id) {
+    state.current = id;
+    setView('detail');
+  }
+  $('back-to-list').addEventListener('click', function () { setView('list'); });
+  $('crumb-milestones').addEventListener('click', function () { setView('list'); });
+
+  /* ── List interactions ── */
+  $('ms-tbody').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr[data-ms]');
+    if (tr) openDetail(tr.dataset.ms);
+  });
+  $('ms-tbody').addEventListener('keydown', function (e) {
+    var tr = e.target.closest('tr[data-ms]');
+    if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDetail(tr.dataset.ms); }
+  });
+
+  /* ── Modal helpers ── */
+  function openOverlay(el, focusEl, trigger) {
+    lastFocus = trigger || document.activeElement;
+    activeOverlay = el;
+    el.hidden = false;
+    focusEl.focus();
+  }
+  function closeOverlay() {
+    if (!activeOverlay) return;
+    activeOverlay.hidden = true;
+    activeOverlay = null;
+    if (lastFocus) lastFocus.focus();
+  }
+  document.querySelectorAll('.overlay').forEach(function (ov) {
+    ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeOverlay(); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (activeOverlay) {
+      if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); return; }
+      if (e.key === 'Tab') {
+        var f = activeOverlay.querySelectorAll('button, input, textarea, a[href]');
+        var list = Array.prototype.filter.call(f, function (el) { return !el.disabled && el.offsetParent !== null; });
+        var first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    if (state.editing && e.key === 'Escape') { e.preventDefault(); cancelEdit(true); return; }
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if ((e.key === 'n' || e.key === 'N') && canMutate() && state.view === 'list') { e.preventDefault(); openCreate($('new-ms-btn')); }
+    if ((e.key === 'a' || e.key === 'A') && canMutate() && state.view === 'detail') { e.preventDefault(); openPicker($('attach-btn')); }
+  });
+
+  /* ── Create milestone ── */
+  function fieldError(inputId, errId, msg) {
+    var el = $(errId);
+    el.hidden = false;
+    el.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>' + esc(msg);
+    $(inputId).setAttribute('aria-invalid', 'true');
+  }
+  function clearFieldError(inputId, errId) {
+    $(errId).hidden = true;
+    $(inputId).setAttribute('aria-invalid', 'false');
+  }
+  function validateMs(name, dateIso, excludeId) {
+    var errs = {};
+    if (!name) errs.name = 'Milestone name is required.';
+    else {
+      var dup = state.milestones.some(function (m) {
+        return m.id !== excludeId && m.name.toLowerCase() === name.toLowerCase();
+      });
+      if (dup) errs.name = 'A milestone named "' + name + '" already exists in this project.';
+    }
+    if (!dateIso) errs.date = 'Target date is required.';
+    else if (daysFromToday(dateIso) < 0) errs.date = "Target date can't be in the past — pick today or later.";
+    return errs;
+  }
+  function openCreate(trigger) {
+    if (!canMutate()) return;
+    $('create-form').reset();
+    clearFieldError('c-name', 'c-name-error');
+    clearFieldError('c-date', 'c-date-error');
+    $('c-date').min = '2026-07-30';
+    openOverlay($('create-overlay'), $('c-name'), trigger);
+  }
+  $('new-ms-btn').addEventListener('click', function () { openCreate(this); });
+  $('empty-new-btn').addEventListener('click', function () { openCreate(this); });
+  $('create-x').addEventListener('click', closeOverlay);
+  $('create-cancel').addEventListener('click', closeOverlay);
+  $('c-name').addEventListener('input', function () { clearFieldError('c-name', 'c-name-error'); });
+  $('c-date').addEventListener('input', function () { clearFieldError('c-date', 'c-date-error'); });
+  $('create-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('c-name').value.trim();
+    var date = $('c-date').value;
+    var errs = validateMs(name, date, null);
+    if (errs.name) fieldError('c-name', 'c-name-error', errs.name);
+    if (errs.date) fieldError('c-date', 'c-date-error', errs.date);
+    if (errs.name) { $('c-name').focus(); return; }
+    if (errs.date) { $('c-date').focus(); return; }
+    var ms = {
+      id: 'MS-' + String(nextMsNum++).padStart(3, '0'),
+      name: name, date: date, desc: $('c-desc').value.trim(),
+      creator: 'Alex Kim', created: 'Jul 30', plans: []
+    };
+    state.milestones.push(ms);
+    closeOverlay();
+    renderList();
+    showToast('<span class="mono">' + ms.id + '</span> ' + esc(ms.name) + ' created — target ' + fmtDate(ms.date) + '.');
+  });
+
+  /* ── Inline edit (detail) ── */
+  function startEdit() {
+    if (!canMutate()) return;
+    var m = msById(state.current);
+    state.editing = true;
+    $('edit-name').value = m.name;
+    $('edit-date').value = m.date;
+    $('edit-date').min = '2026-07-30';
+    $('edit-desc').value = m.desc;
+    clearFieldError('edit-name', 'edit-name-error');
+    clearFieldError('edit-date', 'edit-date-error');
+    $('edit-form').hidden = false;
+    $('ms-display').hidden = true;
+    $('ms-actions').hidden = true;
+    $('edit-name').focus();
+  }
+  function cancelEdit(refocus) {
+    state.editing = false;
+    $('edit-form').hidden = true;
+    $('ms-display').hidden = false;
+    $('ms-actions').hidden = false;
+    if (refocus) $('edit-btn').focus();
+  }
+  $('edit-btn').addEventListener('click', startEdit);
+  $('edit-cancel').addEventListener('click', function () { cancelEdit(true); });
+  $('edit-name').addEventListener('input', function () { clearFieldError('edit-name', 'edit-name-error'); });
+  $('edit-date').addEventListener('input', function () { clearFieldError('edit-date', 'edit-date-error'); });
+  $('edit-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = msById(state.current);
+    var name = $('edit-name').value.trim();
+    var date = $('edit-date').value;
+    var errs = validateMs(name, date, m.id);
+    if (errs.name) fieldError('edit-name', 'edit-name-error', errs.name);
+    if (errs.date) fieldError('edit-date', 'edit-date-error', errs.date);
+    if (errs.name) { $('edit-name').focus(); return; }
+    if (errs.date) { $('edit-date').focus(); return; }
+    m.name = name; m.date = date; m.desc = $('edit-desc').value.trim();
+    cancelEdit(true);
+    renderDetail();
+    showToast('<span class="mono">' + m.id + '</span> details updated.');
+  });
+
+  /* ── Attach picker ── */
+  function renderPicker() {
+    var m = msById(state.current);
+    var attached = {};
+    m.plans.forEach(function (id) { attached[id] = true; });
+    var q = picker.query.toLowerCase();
+    var rows = PLANS.filter(function (p) {
+      return !q || p.id.toLowerCase().indexOf(q) >= 0 || p.name.toLowerCase().indexOf(q) >= 0;
+    });
+    var list = $('picker-list');
+    if (!rows.length) {
+      list.innerHTML = '<div class="picker-none">No Test Plans match "' + esc(picker.query) + '" in BK-201.</div>';
+    } else {
+      list.innerHTML = rows.map(function (p) {
+        var pct = Math.round((p.passed / p.tests) * 100);
+        if (attached[p.id]) {
+          return '<label class="pick-row" data-attached="true">' +
+            '<input type="checkbox" checked disabled aria-label="' + p.id + ' is already attached to this milestone">' +
+            '<span class="plan-id">' + p.id + '</span>' +
+            '<span class="pick-name">' + esc(p.name) + '</span>' +
+            '<span class="chip" data-status="attached">Already attached</span>' +
+          '</label>';
+        }
+        var checked = picker.selected[p.id] ? ' checked' : '';
+        return '<label class="pick-row">' +
+          '<input type="checkbox" data-pick="' + p.id + '"' + checked + ' aria-label="Select ' + p.id + ' — ' + esc(p.name) + '">' +
+          '<span class="plan-id">' + p.id + '</span>' +
+          '<span class="pick-name">' + esc(p.name) + '</span>' +
+          '<span class="pick-pct">' + p.passed + '/' + p.tests + ' · ' + pct + '%</span>' +
+        '</label>';
+      }).join('');
+    }
+    var n = Object.keys(picker.selected).length;
+    $('picker-count').innerHTML = '<span class="mono">' + n + '</span> selected';
+    $('picker-attach').disabled = n === 0;
+    $('picker-attach').textContent = n > 0 ? 'Attach ' + n + (n === 1 ? ' plan' : ' plans') : 'Attach plans';
+  }
+  function openPicker(trigger) {
+    if (!canMutate()) return;
+    picker.selected = {};
+    picker.query = '';
+    $('picker-search').value = '';
+    $('picker-ms-id').textContent = state.current;
+    openOverlay($('picker-overlay'), $('picker-search'), trigger);
+    renderPicker();
+  }
+  $('attach-btn').addEventListener('click', function () { openPicker(this); });
+  $('empty-attach-btn').addEventListener('click', function () { openPicker(this); });
+  $('picker-x').addEventListener('click', closeOverlay);
+  $('picker-cancel').addEventListener('click', closeOverlay);
+  $('picker-search').addEventListener('input', function () { picker.query = this.value; renderPicker(); });
+  $('picker-list').addEventListener('change', function (e) {
+    var cb = e.target.closest('input[data-pick]');
+    if (!cb) return;
+    if (cb.checked) picker.selected[cb.dataset.pick] = true;
+    else delete picker.selected[cb.dataset.pick];
+    var n = Object.keys(picker.selected).length;
+    $('picker-count').innerHTML = '<span class="mono">' + n + '</span> selected';
+    $('picker-attach').disabled = n === 0;
+    $('picker-attach').textContent = n > 0 ? 'Attach ' + n + (n === 1 ? ' plan' : ' plans') : 'Attach plans';
+  });
+  $('picker-attach').addEventListener('click', function () {
+    var ids = Object.keys(picker.selected);
+    if (!ids.length) return;
+    var m = msById(state.current);
+    ids.forEach(function (id) { if (m.plans.indexOf(id) < 0) m.plans.push(id); });
+    closeOverlay();
+    renderDetail();
+    showToast(ids.length + (ids.length === 1 ? ' plan' : ' plans') + ' attached to <span class="mono">' + m.id + '</span> — readiness recalculated.');
+  });
+
+  /* ── Detach ── */
+  $('attached-tbody').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-detach]');
+    if (!b) return;
+    var m = msById(state.current);
+    m.plans = m.plans.filter(function (id) { return id !== b.dataset.detach; });
+    renderDetail();
+    showToast('<span class="mono">' + b.dataset.detach + '</span> detached from <span class="mono">' + m.id + '</span>. The plan itself and its other milestones are unchanged.');
+  });
+
+  /* ── Retry / chrome ── */
+  $('retry-btn').addEventListener('click', function () {
+    setView('loading');
+    setTimeout(function () { setView('list'); showToast('Reconnected — <span class="mono">' + state.milestones.length + '</span> milestones loaded.'); }, 1100);
+  });
+  $('palette-btn').addEventListener('click', function () {
+    showToast('<span class="mono">⌘K</span> command palette lives in the app shell — not wired in this screen.');
+  });
+
+  /* ── Prototype controls ── */
+  function resetData() {
+    state.milestones = DEFAULT_MS.map(function (m) { return Object.assign({}, m, { plans: m.plans.slice() }); });
+  }
+  $('proto-state').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-state]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    var s = btn.dataset.state;
+    if (s === 'list') { resetData(); setView('list'); }
+    else if (s === 'empty') { state.milestones = []; setView('list'); }
+    else if (s === 'detail') { resetData(); openDetail('MS-001'); }
+    else if (s === 'overdue') { resetData(); openDetail('MS-004'); }
+    else setView(s);
+  });
+  $('proto-role').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-role]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    state.role = btn.dataset.role;
+    var viewer = state.role === 'viewer';
+    $('user-name').textContent = viewer ? 'Rin Sato' : 'Alex Kim';
+    $('user-role').textContent = viewer ? 'Viewer' : 'QA Lead';
+    $('user-avatar').textContent = viewer ? 'RS' : 'AK';
+    if (state.editing) cancelEdit(false);
+    if (activeOverlay) closeOverlay();
+    if (state.view === 'list') renderList();
+    if (state.view === 'detail') renderDetail();
+  });
+
+  /* ── Init ── */
+  setView('list');
+})();
+</script>
+</body>
+</html>

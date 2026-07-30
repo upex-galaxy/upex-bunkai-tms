@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — Test Plans · BK-201</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Bunkai tokens — user:bunkai package, verbatim ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .caret, .sk { animation: none !important; }
+}
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1180px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+svg { flex: none; }
+
+.shell { display: grid; grid-template-columns: 224px 1fr; height: 100vh; }
+
+/* ── Sidebar ───────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column;
+  padding: var(--space-5) var(--space-4);
+  gap: var(--space-6);
+}
+.brand { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-2); }
+.brand-jp { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); }
+.brand-latin { font: 700 var(--text-lg)/1 var(--font-display); letter-spacing: -0.01em; color: var(--fg-0); }
+.brand-project {
+  margin-left: auto; font: 500 var(--text-sm)/1 var(--font-mono);
+  color: var(--fg-3); letter-spacing: 0.01em;
+}
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--fg-3); padding: var(--space-2) var(--space-2) var(--space-1);
+}
+.nav-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+  color: var(--fg-2); font-size: var(--text-control); font-weight: 500;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.nav-item:hover { background: var(--bg-3); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.nav-item svg { color: var(--fg-3); }
+.nav-item[aria-current="page"] svg { color: var(--fg-1); }
+.nav-kbd { margin-left: auto; }
+.kbd {
+  font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px;
+}
+.sidebar-foot { margin-top: auto; padding: var(--space-3) var(--space-2) 0; border-top: 1px solid var(--stroke-1); }
+.role-badge { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--fg-3); }
+.role-badge b { color: var(--fg-2); font-weight: 500; }
+.role-badge .avatar {
+  width: 20px; height: 20px; border-radius: var(--radius-pill);
+  background: var(--bg-4); border: 1px solid var(--stroke-2);
+  display: grid; place-items: center;
+  font: 500 9px/1 var(--font-mono); color: var(--fg-2); letter-spacing: 0.02em;
+}
+
+/* ── Topbar ────────────────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 44px; flex: none; background: var(--bg-1);
+  border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5);
+  padding: 0 var(--space-6);
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumbs .mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.palette-btn {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-1) var(--space-3); color: var(--fg-3); font-size: var(--text-control);
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.palette-btn:hover { border-color: var(--stroke-3); background: var(--bg-3); color: var(--fg-2); }
+
+/* ── Content ───────────────────────────────────────────────────────── */
+.content { flex: 1; overflow-y: auto; padding: var(--space-8) var(--space-12); }
+.page-head { display: flex; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.page-head h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--fg-0); }
+.page-sub { margin-top: var(--space-1); font-size: var(--text-control); color: var(--fg-3); }
+.page-sub .mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.page-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-4); line-height: 1.4;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-on);
+  box-shadow: var(--elev-raised);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); }
+.btn svg { color: currentColor; }
+
+/* Viewer note — structural replacement of create action */
+.role-note {
+  display: flex; align-items: center; gap: var(--space-3);
+  border: 1px dashed var(--stroke-3); border-radius: var(--r-2);
+  background: var(--bg-2); padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3);
+}
+.role-note svg { color: var(--fg-3); }
+.role-note b { color: var(--fg-2); font-weight: 500; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: var(--space-5); margin-bottom: var(--space-5); }
+.seg {
+  display: inline-flex; background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2); padding: 2px; gap: 2px;
+}
+.seg button {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  color: var(--fg-3); padding: 3px var(--space-4); border-radius: var(--r-1);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-4); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.seg .count { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); }
+.seg button[aria-pressed="true"] .count { color: var(--fg-2); }
+.toolbar-meta { margin-left: auto; font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; }
+
+/* Table */
+.card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-3); text-align: left; padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--stroke-2); background: var(--bg-1);
+}
+tbody tr { border-top: 1px solid var(--stroke-1); transition: background var(--motion-fast) var(--ease-standard); cursor: pointer; }
+tbody tr:first-child { border-top: 0; }
+tbody tr:hover { background: var(--bg-3); }
+tbody td { padding: var(--space-4) var(--space-5); font-size: var(--text-control); vertical-align: middle; }
+.plan-id { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.plan-name-link { color: var(--fg-0); font-weight: 500; border-radius: var(--r-1); }
+.plan-name-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.plan-desc { margin-top: 2px; font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag {
+  display: inline-flex; align-items: center;
+  font: 500 var(--text-sm)/1 var(--font-mono); letter-spacing: 0.01em;
+  color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 3px var(--space-2);
+}
+.no-goal { color: var(--fg-4); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+  border-radius: var(--r-1); padding: 3px var(--space-3); border: 1px solid transparent;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-status="open"] { color: var(--running); background: var(--running-bg); border-color: var(--running-bg); }
+.chip[data-status="closed"] { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped-bg); }
+.cell-num { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-1); }
+.cell-num .unit { color: var(--fg-3); font-weight: 400; }
+.cell-creator { color: var(--fg-2); }
+.row-caret { color: var(--fg-4); text-align: right; }
+tbody tr:hover .row-caret { color: var(--fg-2); }
+
+/* Filtered-empty strip */
+.filter-empty { padding: var(--space-8) var(--space-6); text-align: center; color: var(--fg-3); font-size: var(--text-control); }
+.filter-empty .mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+
+/* ── Empty state ───────────────────────────────────────────────────── */
+.empty {
+  border: 1px dashed var(--stroke-3); border-radius: var(--r-3);
+  padding: var(--space-12); text-align: center; background: var(--bg-2);
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+}
+.empty h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.empty p { max-width: 52ch; color: var(--fg-2); font-size: var(--text-control); }
+.empty .cli { display: flex; align-items: center; gap: 2px; font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); margin-top: var(--space-2); }
+.caret { display: inline-block; width: 7px; height: 13px; background: var(--fg-3); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.empty .btn { margin-top: var(--space-2); }
+
+/* ── Loading skeleton ──────────────────────────────────────────────── */
+.sk-row { display: grid; grid-template-columns: 90px 1fr 70px 80px 60px 110px; gap: var(--space-6); align-items: center; padding: var(--space-5); border-top: 1px solid var(--stroke-1); }
+.sk-row:first-child { border-top: 0; }
+.sk { height: 10px; border-radius: var(--r-1); background: var(--bg-4); animation: pulse 1.6s var(--ease-standard) infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+.loading-note { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; }
+.loading-note .dot-run { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+
+/* ── Error state ───────────────────────────────────────────────────── */
+.error-panel {
+  border: 1px solid var(--stroke-2); border-radius: var(--r-3); background: var(--bg-2);
+  box-shadow: var(--shadow-card); padding: var(--space-12); text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+}
+.error-panel .err-icon { width: 32px; height: 32px; border-radius: var(--r-2); background: var(--fail-bg); display: grid; place-items: center; color: var(--fail); }
+.error-panel h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.error-panel .err-detail { font: 400 var(--text-sm)/1.5 var(--font-mono); color: var(--fg-3); background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--r-1); padding: var(--space-2) var(--space-4); }
+.error-panel p { color: var(--fg-2); font-size: var(--text-control); max-width: 48ch; }
+
+/* ── Modal ─────────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  display: grid; place-items: center; z-index: 40;
+}
+.modal {
+  width: 440px; background: var(--bg-3); border: 1px solid var(--stroke-3);
+  border-radius: var(--r-4); box-shadow: var(--shadow-pop);
+}
+.modal-head { display: flex; align-items: center; padding: var(--space-6) var(--space-6) 0; }
+.modal-head h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.modal-close { margin-left: auto; color: var(--fg-3); border-radius: var(--r-1); display: grid; place-items: center; width: 24px; height: 24px; }
+.modal-close:hover { color: var(--fg-1); background: var(--bg-4); }
+.modal-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field label {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--fg-2);
+}
+.field label .opt { color: var(--fg-4); letter-spacing: 0.06em; }
+.input, .textarea {
+  font: 400 var(--text-control)/1.4 var(--font-body); color: var(--fg-0);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-2) var(--space-3); width: 100%;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.input::placeholder, .textarea::placeholder { color: var(--fg-4); }
+.input:hover, .textarea:hover { border-color: var(--stroke-3); }
+.input:focus, .textarea:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.input[aria-invalid="true"] { border-color: var(--fail); }
+.input[aria-invalid="true"]:focus { box-shadow: 0 0 0 2px var(--fail-bg); }
+.input.mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.textarea { resize: vertical; min-height: 56px; }
+.field-error {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fail);
+}
+.field-hint { font-size: var(--text-sm); color: var(--fg-4); letter-spacing: 0.01em; }
+.modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3);
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+/* ── Toast ─────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: var(--space-12); transform: translateX(-50%);
+  background: var(--bg-4); border: 1px solid var(--stroke-3); border-radius: var(--r-2);
+  box-shadow: var(--shadow-pop); color: var(--fg-1);
+  font-size: var(--text-control); padding: var(--space-3) var(--space-6);
+  display: flex; align-items: center; gap: var(--space-3); z-index: 50;
+}
+.toast .mono { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.toast[hidden] { display: none; }
+
+/* ── Prototype controls (not product UI) ───────────────────────────── */
+.proto {
+  position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 30;
+  background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-3);
+  box-shadow: var(--shadow-pop); padding: var(--space-4) var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-3); width: 232px;
+}
+.proto-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-4); }
+.proto-row { display: flex; align-items: center; gap: var(--space-3); }
+.proto-row > span { font-size: var(--text-sm); color: var(--fg-3); width: 40px; letter-spacing: 0.01em; }
+.proto .seg { flex: 1; }
+.proto .seg button { flex: 1; justify-content: center; padding: 3px var(--space-2); font-size: 11px; }
+
+[hidden] { display: none !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+  <aside class="sidebar" data-od-id="sidebar" aria-label="Project navigation">
+    <div class="brand" data-od-id="brand">
+      <span class="brand-jp" lang="ja">分解</span>
+      <span class="brand-latin">Bunkai</span>
+      <span class="brand-project" title="Project key">BK-201</span>
+    </div>
+    <nav class="nav" aria-label="Project sections">
+      <span class="nav-label">Project</span>
+      <a class="nav-item" href="#/dashboard" data-od-id="nav-dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="#/test-cases" data-od-id="nav-test-cases">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+        Test Cases
+      </a>
+      <a class="nav-item" href="#/test-plans" aria-current="page" data-od-id="nav-test-plans">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12l2 2 4-4"/></svg>
+        Test Plans
+      </a>
+      <a class="nav-item" href="#/runs" data-od-id="nav-runs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        Runs
+      </a>
+      <a class="nav-item" href="#/modules" data-od-id="nav-modules">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M12 11L4 6.5"/><path d="M12 11l8-4.5"/><path d="M12 11v9"/></svg>
+        Modules
+      </a>
+      <span class="nav-label">Workspace</span>
+      <a class="nav-item" href="#/settings" data-od-id="nav-settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.7-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.7 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.7.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.7v.1a1.6 1.6 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-foot" data-od-id="sidebar-user">
+      <div class="role-badge">
+        <span class="avatar" id="user-avatar" aria-hidden="true">AK</span>
+        <span><b id="user-name">Alex Kim</b> · <span id="user-role">QA Lead</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ────────────────────────────────────────────────────── -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs" aria-label="Breadcrumb">
+        <span class="mono">bunkai</span><span class="sep">/</span>
+        <span class="mono">BK-201</span><span class="sep">/</span>
+        <span class="here">Test Plans</span>
+      </div>
+      <button class="palette-btn" id="palette-btn" data-od-id="command-palette-hint" aria-label="Open command palette">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Search or jump to
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content" data-od-id="content">
+      <div class="page-head" data-od-id="page-head">
+        <div>
+          <h1>Test Plans</h1>
+          <p class="page-sub" id="page-sub"><span class="mono">6</span> plans · <span class="mono">4</span> open · <span class="mono">2</span> closed</p>
+        </div>
+        <div class="page-actions" id="page-actions" data-od-id="page-actions">
+          <button class="btn" data-variant="primary" id="new-plan-btn" data-od-id="new-plan-button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            New plan
+            <span class="kbd" style="background:transparent;border-color:var(--stroke-strong);color:var(--accent-on)">N</span>
+          </button>
+          <div class="role-note" id="viewer-note" hidden data-od-id="viewer-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><b>Viewer role</b> — read-only. Creating plans requires Editor access.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Default / filtered list -->
+      <section id="view-list" data-od-id="plans-list">
+        <div class="toolbar" data-od-id="plans-toolbar">
+          <div class="seg" role="group" aria-label="Filter plans by status" id="status-filter" data-od-id="status-filter">
+            <button aria-pressed="true" data-filter="all">All <span class="count" id="count-all">6</span></button>
+            <button aria-pressed="false" data-filter="open">Open <span class="count" id="count-open">4</span></button>
+            <button aria-pressed="false" data-filter="closed">Closed <span class="count" id="count-closed">2</span></button>
+          </div>
+          <span class="toolbar-meta" id="toolbar-meta">Sorted by last activity</span>
+        </div>
+        <div class="card">
+          <table data-od-id="plans-table">
+            <thead>
+              <tr>
+                <th scope="col" style="width:96px">Plan</th>
+                <th scope="col">Name</th>
+                <th scope="col" style="width:110px">Goal / release</th>
+                <th scope="col" style="width:110px">Status</th>
+                <th scope="col" style="width:90px">Tests</th>
+                <th scope="col" style="width:150px">Created by</th>
+                <th scope="col" style="width:36px"><span class="visually-hidden">Open</span></th>
+              </tr>
+            </thead>
+            <tbody id="plans-tbody"></tbody>
+          </table>
+          <div class="filter-empty" id="filter-empty" hidden></div>
+        </div>
+      </section>
+
+      <!-- Empty state -->
+      <section id="view-empty" hidden data-od-id="empty-state">
+        <div class="empty">
+          <h2>No test plans yet</h2>
+          <p>A plan groups test cases toward a goal — a release, a milestone, a hardening pass. Runs are recorded against plans, so this project needs at least one before execution starts.</p>
+          <span class="cli" aria-hidden="true">$ bunkai plan create&nbsp;<span class="caret"></span></span>
+          <button class="btn" data-variant="primary" id="empty-create-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Create first plan
+          </button>
+          <div class="role-note" id="empty-viewer-note" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><b>Viewer role</b> — ask a project Editor to create the first plan.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Loading state -->
+      <section id="view-loading" hidden data-od-id="loading-state" aria-label="Loading test plans">
+        <div class="card">
+          <div class="loading-note"><span class="dot-run"></span>Loading test plans…</div>
+          <div class="sk-row"><span class="sk" style="width:70px"></span><span class="sk" style="width:60%"></span><span class="sk" style="width:48px"></span><span class="sk" style="width:64px"></span><span class="sk" style="width:36px"></span><span class="sk" style="width:90px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:70px"></span><span class="sk" style="width:45%"></span><span class="sk" style="width:48px"></span><span class="sk" style="width:64px"></span><span class="sk" style="width:36px"></span><span class="sk" style="width:90px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:70px"></span><span class="sk" style="width:52%"></span><span class="sk" style="width:48px"></span><span class="sk" style="width:64px"></span><span class="sk" style="width:36px"></span><span class="sk" style="width:90px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:70px"></span><span class="sk" style="width:38%"></span><span class="sk" style="width:48px"></span><span class="sk" style="width:64px"></span><span class="sk" style="width:36px"></span><span class="sk" style="width:90px"></span></div>
+        </div>
+      </section>
+
+      <!-- Error state -->
+      <section id="view-error" hidden data-od-id="error-state">
+        <div class="error-panel" role="alert">
+          <span class="err-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </span>
+          <h2>Couldn't load test plans</h2>
+          <p>The request failed before any data arrived. Your plans are intact — retry when the connection recovers.</p>
+          <span class="err-detail">GET /api/projects/BK-201/test-plans → 502 Bad Gateway</span>
+          <button class="btn" id="retry-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Retry
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ── Create plan modal ───────────────────────────────────────────── -->
+<div class="overlay" id="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="create-modal" data-od-id="create-plan-modal">
+    <div class="modal-head">
+      <h2 id="modal-title">New test plan</h2>
+      <button class="modal-close" id="modal-close" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <form id="create-form" novalidate>
+      <div class="modal-body">
+        <div class="field">
+          <label for="plan-name">Name</label>
+          <input class="input" id="plan-name" name="name" type="text" placeholder="e.g. Release 1.5 regression" autocomplete="off" aria-describedby="plan-name-error" required>
+          <p class="field-error" id="plan-name-error" hidden role="alert"></p>
+          <p class="field-hint">Must be unique within BK-201 (case-insensitive).</p>
+        </div>
+        <div class="field">
+          <label for="plan-desc">Description <span class="opt">· optional</span></label>
+          <textarea class="textarea" id="plan-desc" name="description" placeholder="What this plan covers and when it should run"></textarea>
+        </div>
+        <div class="field">
+          <label for="plan-goal">Goal / release label <span class="opt">· optional</span></label>
+          <input class="input mono" id="plan-goal" name="goal" type="text" placeholder="R1.5" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" data-variant="ghost" id="modal-cancel">Cancel</button>
+        <button type="submit" class="btn" data-variant="primary" id="modal-submit">Create plan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<!-- ── Prototype-only controls (not part of product UI) ────────────── -->
+<aside class="proto" data-od-id="prototype-panel" aria-label="Prototype controls">
+  <span class="proto-label">Prototype · demo controls</span>
+  <div class="proto-row">
+    <span id="proto-state-label">State</span>
+    <div class="seg" role="group" aria-labelledby="proto-state-label" id="proto-state">
+      <button aria-pressed="true" data-state="default">List</button>
+      <button aria-pressed="false" data-state="empty">Empty</button>
+      <button aria-pressed="false" data-state="loading">Load</button>
+      <button aria-pressed="false" data-state="error">Error</button>
+    </div>
+  </div>
+  <div class="proto-row">
+    <span id="proto-role-label">Role</span>
+    <div class="seg" role="group" aria-labelledby="proto-role-label" id="proto-role">
+      <button aria-pressed="true" data-role="editor">QA Lead</button>
+      <button aria-pressed="false" data-role="viewer">Viewer</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Data ── */
+  var plans = [
+    { id: 'PLAN-001', name: 'Release 1.4 regression', desc: 'Full regression across checkout, auth and billing before the 1.4 cut.', goal: 'R1.4', status: 'open', tests: 128, creator: 'Mika Tanaka' },
+    { id: 'PLAN-002', name: 'Payments API hardening', desc: 'Negative-path and idempotency coverage for the payments service.', goal: 'R1.4', status: 'open', tests: 54, creator: 'Dan Okafor' },
+    { id: 'PLAN-006', name: 'Nightly CI triage', desc: 'Cases wired into the nightly pipeline; failures triaged each morning.', goal: '', status: 'open', tests: 210, creator: 'Dan Okafor' },
+    { id: 'PLAN-003', name: 'Mobile smoke suite', desc: 'Fast device-matrix smoke pass, runs on every release candidate.', goal: '', status: 'open', tests: 32, creator: 'Priya Nair' },
+    { id: 'PLAN-004', name: 'Release 1.3 regression', desc: 'Closed after 1.3 shipped on May 12.', goal: 'R1.3', status: 'closed', tests: 141, creator: 'Mika Tanaka' },
+    { id: 'PLAN-005', name: 'Auth migration verification', desc: 'One-off plan for the session-token migration. Archived.', goal: 'R1.3', status: 'closed', tests: 47, creator: 'Sam Reyes' }
+  ];
+  var nextPlanNum = 7;
+  var state = { filter: 'all', role: 'editor', view: 'default' };
+
+  /* ── DOM refs ── */
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody = $('plans-tbody'), toast = $('toast');
+  var overlay = $('modal-overlay'), nameInput = $('plan-name'), nameError = $('plan-name-error');
+  var views = { 'default': $('view-list'), empty: $('view-empty'), loading: $('view-loading'), error: $('view-error') };
+  var lastFocus = null, toastTimer = null;
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function showToast(html) {
+    toast.innerHTML = html;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.hidden = true; }, 3200);
+  }
+
+  /* ── Render ── */
+  function counts() {
+    var open = plans.filter(function (p) { return p.status === 'open'; }).length;
+    return { all: plans.length, open: open, closed: plans.length - open };
+  }
+
+  function renderList() {
+    var c = counts();
+    $('count-all').textContent = c.all;
+    $('count-open').textContent = c.open;
+    $('count-closed').textContent = c.closed;
+    $('page-sub').innerHTML =
+      '<span class="mono">' + c.all + '</span> plans · <span class="mono">' + c.open +
+      '</span> open · <span class="mono">' + c.closed + '</span> closed';
+
+    var rows = plans.filter(function (p) {
+      return state.filter === 'all' || p.status === state.filter;
+    });
+
+    tbody.innerHTML = rows.map(function (p) {
+      var statusLabel = p.status === 'open' ? 'Open' : 'Closed';
+      return '<tr tabindex="0" data-plan="' + p.id + '" aria-label="Open ' + esc(p.id) + ' — ' + esc(p.name) + ', ' + statusLabel + '">' +
+        '<td><span class="plan-id">' + p.id + '</span></td>' +
+        '<td><a class="plan-name-link" href="#/plans/' + p.id + '" tabindex="-1">' + esc(p.name) + '</a>' +
+          (p.desc ? '<div class="plan-desc">' + esc(p.desc) + '</div>' : '') + '</td>' +
+        '<td>' + (p.goal ? '<span class="tag">' + esc(p.goal) + '</span>' : '<span class="no-goal">—</span>') + '</td>' +
+        '<td><span class="chip" data-status="' + p.status + '"><span class="dot" aria-hidden="true"></span>' + statusLabel + '</span></td>' +
+        '<td><span class="cell-num">' + p.tests + ' <span class="unit">tests</span></span></td>' +
+        '<td class="cell-creator">' + esc(p.creator) + '</td>' +
+        '<td class="row-caret"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></td>' +
+      '</tr>';
+    }).join('');
+
+    var fe = $('filter-empty');
+    if (rows.length === 0) {
+      fe.hidden = false;
+      fe.innerHTML = 'No ' + esc(state.filter) + ' plans in <span class="mono">BK-201</span>. Switch the filter to see the rest.';
+    } else {
+      fe.hidden = true;
+    }
+  }
+
+  function setView(v) {
+    state.view = v;
+    Object.keys(views).forEach(function (k) { views[k].hidden = (k !== v); });
+    // Empty demo view represents a project with zero plans.
+    if (v === 'default') renderList();
+    applyRole();
+  }
+
+  function applyRole() {
+    var viewer = state.role === 'viewer';
+    $('new-plan-btn').hidden = viewer;
+    $('viewer-note').hidden = !viewer;
+    $('empty-create-btn').hidden = viewer;
+    $('empty-viewer-note').hidden = !viewer;
+    $('user-name').textContent = viewer ? 'Rin Sato' : 'Alex Kim';
+    $('user-role').textContent = viewer ? 'Viewer' : 'QA Lead';
+    $('user-avatar').textContent = viewer ? 'RS' : 'AK';
+    if (viewer && !overlay.hidden) closeModal();
+  }
+
+  /* ── Filter ── */
+  $('status-filter').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-filter]');
+    if (!btn) return;
+    state.filter = btn.dataset.filter;
+    this.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
+    renderList();
+  });
+
+  /* ── Row open → detail (separate screen in this prototype) ── */
+  function openPlan(id) {
+    var p = plans.find(function (x) { return x.id === id; });
+    if (!p) return;
+    showToast('<span class="mono">' + p.id + '</span> ' + esc(p.name) + ' — plan detail is a separate screen (2 of 3).');
+  }
+  tbody.addEventListener('click', function (e) {
+    var tr = e.target.closest('tr[data-plan]');
+    if (!tr) return;
+    e.preventDefault();
+    openPlan(tr.dataset.plan);
+  });
+  tbody.addEventListener('keydown', function (e) {
+    var tr = e.target.closest('tr[data-plan]');
+    if (!tr) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPlan(tr.dataset.plan); }
+  });
+
+  /* ── Create modal ── */
+  function openModal() {
+    if (state.role === 'viewer') return;
+    lastFocus = document.activeElement;
+    overlay.hidden = false;
+    $('create-form').reset();
+    clearNameError();
+    nameInput.focus();
+  }
+  function closeModal() {
+    overlay.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+  function clearNameError() {
+    nameError.hidden = true;
+    nameError.textContent = '';
+    nameInput.setAttribute('aria-invalid', 'false');
+  }
+  function setNameError(msg) {
+    nameError.hidden = false;
+    nameError.innerHTML =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>' + esc(msg);
+    nameInput.setAttribute('aria-invalid', 'true');
+    nameInput.focus();
+  }
+
+  $('new-plan-btn').addEventListener('click', openModal);
+  $('empty-create-btn').addEventListener('click', function () { setView('default'); openModal(); });
+  $('modal-close').addEventListener('click', closeModal);
+  $('modal-cancel').addEventListener('click', closeModal);
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) closeModal(); });
+
+  nameInput.addEventListener('input', clearNameError);
+
+  $('create-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = nameInput.value.trim();
+    if (!name) { setNameError('Plan name is required.'); return; }
+    var dup = plans.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); });
+    if (dup) { setNameError('A plan named "' + name + '" already exists in this project.'); return; }
+
+    var plan = {
+      id: 'PLAN-' + String(nextPlanNum++).padStart(3, '0'),
+      name: name,
+      desc: $('plan-desc').value.trim(),
+      goal: $('plan-goal').value.trim(),
+      status: 'open',
+      tests: 0,
+      creator: 'Alex Kim'
+    };
+    plans.unshift(plan);
+    closeModal();
+    setView('default');
+    showToast('<span class="mono">' + plan.id + '</span> ' + esc(plan.name) + ' created.');
+  });
+
+  /* Focus trap + Esc */
+  document.addEventListener('keydown', function (e) {
+    if (!overlay.hidden) {
+      if (e.key === 'Escape') { e.preventDefault(); closeModal(); return; }
+      if (e.key === 'Tab') {
+        var f = overlay.querySelectorAll('button, input, textarea');
+        var list = Array.prototype.filter.call(f, function (el) { return !el.disabled; });
+        var first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    // Global shortcuts (outside modal, outside form fields)
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if ((e.key === 'n' || e.key === 'N') && state.role === 'editor' && state.view === 'default') {
+      e.preventDefault(); openModal();
+    }
+  });
+
+  /* ── Retry / loading simulation ── */
+  $('retry-btn').addEventListener('click', function () {
+    setView('loading');
+    setTimeout(function () { setView('default'); showToast('Reconnected — <span class="mono">6</span> plans loaded.'); }, 1100);
+  });
+
+  /* ── Command palette hint (chrome only in this screen) ── */
+  $('palette-btn').addEventListener('click', function () {
+    showToast('<span class="mono">⌘K</span> command palette lives in the app shell — not wired in this screen.');
+  });
+
+  /* ── Prototype controls ── */
+  $('proto-state').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-state]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    setView(btn.dataset.state);
+  });
+  $('proto-role').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-role]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    state.role = btn.dataset.role;
+    applyRole();
+  });
+
+  /* ── Init ── */
+  setView('default');
+})();
+</script>
+</body>
+</html>

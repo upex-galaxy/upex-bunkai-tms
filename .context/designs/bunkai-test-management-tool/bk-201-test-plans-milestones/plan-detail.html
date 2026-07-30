@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — PLAN-007 · Release 2.4 regression</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Bunkai tokens — user:bunkai package, verbatim ─────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .sk, .dot-run { animation: none !important; }
+}
+
+/* ── Base (same anatomy as test-plans-index.html) ──────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1180px;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+svg { flex: none; }
+.shell { display: grid; grid-template-columns: 224px 1fr; height: 100vh; }
+
+/* Sidebar */
+.sidebar { background: var(--bg-1); border-right: 1px solid var(--stroke-1); display: flex; flex-direction: column; padding: var(--space-5) var(--space-4); gap: var(--space-6); }
+.brand { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-2); }
+.brand-jp { font: 700 var(--text-xl)/1 var(--font-jp); color: var(--fg-0); }
+.brand-latin { font: 700 var(--text-lg)/1 var(--font-display); letter-spacing: -0.01em; color: var(--fg-0); }
+.brand-project { margin-left: auto; font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); padding: var(--space-2) var(--space-2) var(--space-1); }
+.nav-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--r-2); color: var(--fg-2); font-size: var(--text-control); font-weight: 500; transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.nav-item:hover { background: var(--bg-3); color: var(--fg-1); }
+.nav-item[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.nav-item svg { color: var(--fg-3); }
+.nav-item[aria-current="page"] svg { color: var(--fg-1); }
+.kbd { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); background: var(--bg-2); border: 1px solid var(--stroke-2); border-bottom-width: 2px; border-radius: var(--r-1); padding: 2px 5px; }
+.sidebar-foot { margin-top: auto; padding: var(--space-3) var(--space-2) 0; border-top: 1px solid var(--stroke-1); }
+.role-badge { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--fg-3); }
+.role-badge b { color: var(--fg-2); font-weight: 500; }
+.role-badge .avatar { width: 20px; height: 20px; border-radius: var(--radius-pill); background: var(--bg-4); border: 1px solid var(--stroke-2); display: grid; place-items: center; font: 500 9px/1 var(--font-mono); color: var(--fg-2); letter-spacing: 0.02em; }
+
+/* Topbar */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar { height: 44px; flex: none; background: var(--bg-1); border-bottom: 1px solid var(--stroke-1); display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6); }
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); color: var(--fg-3); }
+.crumbs .mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.crumbs a { border-radius: var(--r-1); }
+.crumbs a:hover { color: var(--fg-1); text-decoration: underline; text-underline-offset: 2px; }
+.palette-btn { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-1) var(--space-3); color: var(--fg-3); font-size: var(--text-control); transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.palette-btn:hover { border-color: var(--stroke-3); background: var(--bg-3); color: var(--fg-2); }
+
+/* Content */
+.content { flex: 1; overflow-y: auto; padding: var(--space-8) var(--space-12); }
+.back-link { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); font-weight: 500; color: var(--fg-3); border-radius: var(--r-1); margin-bottom: var(--space-5); }
+.back-link:hover { color: var(--fg-1); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em; background: var(--bg-3); color: var(--fg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-2) var(--space-4); line-height: 1.4; transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-on); box-shadow: var(--elev-raised); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="primary"]:active { background: var(--accent); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); }
+.btn[data-variant="danger"] { background: transparent; border-color: var(--fail); color: var(--fail); }
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); }
+.btn:disabled { color: var(--fg-4); background: var(--bg-2); border-color: var(--stroke-1); cursor: not-allowed; }
+.btn svg { color: currentColor; }
+
+/* Chips (same idiom as screen 1) */
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; border-radius: var(--r-1); padding: 3px var(--space-3); border: 1px solid transparent; }
+.chip .dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.chip[data-status="open"] { color: var(--running); background: var(--running-bg); border-color: var(--running-bg); }
+.chip[data-status="closed"] { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped-bg); }
+.chip[data-status="pass"] { color: var(--pass); background: var(--pass-bg); border-color: var(--pass-bg); }
+.chip[data-status="fail"] { color: var(--fail); background: var(--fail-bg); border-color: var(--fail-bg); }
+.chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); border-color: var(--blocked-bg); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); border-color: var(--skipped-bg); }
+.chip[data-status="running"] { color: var(--running); background: var(--running-bg); border-color: var(--running-bg); }
+.chip[data-status="running"] .dot { animation: pulse 1.6s var(--ease-standard) infinite; }
+.chip[data-layer] { font-family: var(--font-mono); font-size: 11px; background: var(--bg-3); border-color: var(--stroke-2); }
+.chip[data-layer="UI"] { color: var(--layer-ui); }
+.chip[data-layer="API"] { color: var(--layer-api); }
+.chip[data-layer="Unit"] { color: var(--layer-unit); }
+.chip.lock { color: var(--fg-2); background: var(--bg-3); border-color: var(--stroke-2); }
+.tag { display: inline-flex; align-items: center; font: 500 var(--text-sm)/1 var(--font-mono); letter-spacing: 0.01em; color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1); padding: 3px var(--space-2); }
+
+/* Plan header */
+.plan-head { display: flex; align-items: flex-start; gap: var(--space-6); margin-bottom: var(--space-6); }
+.plan-id { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.plan-title-row { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-1); flex-wrap: wrap; }
+.plan-title-row h1 { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); color: var(--fg-0); }
+.plan-desc { margin-top: var(--space-2); max-width: 64ch; font-size: var(--text-base); color: var(--fg-2); }
+.plan-meta { margin-top: var(--space-3); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.plan-meta .mono { font-family: var(--font-mono); }
+.plan-actions { margin-left: auto; display: flex; align-items: flex-start; gap: var(--space-3); flex: none; }
+.role-note { display: flex; align-items: center; gap: var(--space-3); border: 1px dashed var(--stroke-3); border-radius: var(--r-2); background: var(--bg-2); padding: var(--space-2) var(--space-4); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); max-width: 340px; }
+.role-note svg { color: var(--fg-3); }
+.role-note b { color: var(--fg-2); font-weight: 500; }
+
+/* Inline edit */
+.edit-form { display: flex; flex-direction: column; gap: var(--space-4); background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); padding: var(--space-6); margin-bottom: var(--space-6); max-width: 640px; }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-2); }
+.field label .opt { color: var(--fg-4); }
+.input, .textarea { font: 400 var(--text-control)/1.4 var(--font-body); color: var(--fg-0); background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-2) var(--space-3); width: 100%; transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.input::placeholder, .textarea::placeholder { color: var(--fg-4); }
+.input:hover, .textarea:hover { border-color: var(--stroke-3); }
+.input:focus, .textarea:focus { outline: none; border-color: var(--accent); background: var(--bg-3); box-shadow: 0 0 0 2px var(--accent-glow); }
+.input[aria-invalid="true"] { border-color: var(--fail); }
+.input.mono { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.01em; }
+.textarea { resize: vertical; min-height: 56px; }
+.field-error { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fail); }
+.edit-foot { display: flex; justify-content: flex-end; gap: var(--space-3); }
+
+/* Closed banner */
+.closed-banner { display: flex; align-items: flex-start; gap: var(--space-4); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); padding: var(--space-5) var(--space-6); margin-bottom: var(--space-6); }
+.closed-banner[data-verdict="pass"] { background: var(--pass-bg); }
+.closed-banner[data-verdict="fail"] { background: var(--fail-bg); }
+.closed-banner .cb-icon { margin-top: 1px; }
+.closed-banner[data-verdict="pass"] .cb-icon { color: var(--pass); }
+.closed-banner[data-verdict="fail"] .cb-icon { color: var(--fail); }
+.closed-banner .cb-title { display: flex; align-items: center; gap: var(--space-3); font: 600 var(--text-lg)/var(--leading-tight) var(--font-display); color: var(--fg-0); flex-wrap: wrap; }
+.closed-banner .cb-summary { margin-top: var(--space-2); font-size: var(--text-control); color: var(--fg-1); max-width: 72ch; }
+.closed-banner .cb-meta { margin-top: var(--space-2); font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-2); }
+.closed-banner .cb-meta .mono { font-family: var(--font-mono); }
+
+/* Progress card */
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: var(--space-6); }
+.card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-card); }
+.progress-card { padding: var(--space-6); display: flex; align-items: center; gap: var(--space-12); margin-bottom: var(--space-6); }
+.pct-block { flex: none; display: flex; flex-direction: column; gap: 2px; min-width: 120px; }
+.pct-num { font: 500 var(--text-4xl)/1 var(--font-mono); color: var(--fg-0); }
+.pct-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); }
+.bar-block { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.bar { display: flex; height: 4px; border-radius: var(--radius-pill); overflow: hidden; background: var(--bg-4); }
+.bar span { transition: width var(--motion-base) var(--ease-standard); }
+.bar .b-pass { background: var(--pass); }
+.bar .b-fail { background: var(--fail); }
+.bar .b-blocked { background: var(--blocked); }
+.bar .b-running { background: var(--running); }
+.bar .b-skipped { background: var(--skipped); }
+.legend { display: flex; gap: var(--space-5); flex-wrap: wrap; }
+.legend .chip .mono { font-family: var(--font-mono); }
+.progress-note { font-size: var(--text-sm); letter-spacing: 0.01em; color: var(--fg-3); }
+.progress-empty { color: var(--fg-3); font-size: var(--text-control); display: flex; align-items: center; gap: var(--space-3); }
+
+/* Section header + table (same row idiom as screen 1) */
+.section-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+.section-head h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.section-head .count { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); }
+.section-head .spacer { margin-left: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-3); text-align: left; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); }
+tbody tr { border-top: 1px solid var(--stroke-1); transition: background var(--motion-fast) var(--ease-standard); }
+tbody tr:first-child { border-top: 0; }
+tbody tr:hover { background: var(--bg-3); }
+tbody td { padding: var(--space-4) var(--space-5); font-size: var(--text-control); vertical-align: middle; }
+.atc-id { font: 500 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.test-name { color: var(--fg-0); font-weight: 500; }
+.run-link { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--text-sm)/1 var(--font-mono); letter-spacing: 0.01em; color: var(--fg-2); border-radius: var(--r-1); padding: 2px 0; }
+.run-link:hover { color: var(--fg-0); text-decoration: underline; text-underline-offset: 2px; }
+.run-time { font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3); letter-spacing: 0.01em; }
+.no-run { color: var(--fg-4); font-size: var(--text-sm); }
+.icon-btn { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-1); color: var(--fg-3); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.icon-btn:hover { background: var(--bg-4); color: var(--fail); }
+
+/* Empty membership */
+.empty { border: 1px dashed var(--stroke-3); border-radius: var(--r-3); padding: var(--space-12); text-align: center; background: var(--bg-2); display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.empty h3 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.empty p { max-width: 52ch; color: var(--fg-2); font-size: var(--text-control); }
+
+/* Loading / error */
+.sk-row { display: grid; grid-template-columns: 80px 1fr 60px 110px 90px 40px; gap: var(--space-6); align-items: center; padding: var(--space-5); border-top: 1px solid var(--stroke-1); }
+.sk-row:first-child { border-top: 0; }
+.sk { height: 10px; border-radius: var(--r-1); background: var(--bg-4); animation: pulse 1.6s var(--ease-standard) infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+.loading-note { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--stroke-2); background: var(--bg-1); font-size: var(--text-sm); color: var(--fg-3); letter-spacing: 0.01em; }
+.dot-run { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--running); animation: pulse 1.6s var(--ease-standard) infinite; }
+.error-panel { border: 1px solid var(--stroke-2); border-radius: var(--r-3); background: var(--bg-2); box-shadow: var(--shadow-card); padding: var(--space-12); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+.error-panel .err-icon { width: 32px; height: 32px; border-radius: var(--r-2); background: var(--fail-bg); display: grid; place-items: center; color: var(--fail); }
+.error-panel h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.error-panel .err-detail { font: 400 var(--text-sm)/1.5 var(--font-mono); color: var(--fg-3); background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--r-1); padding: var(--space-2) var(--space-4); }
+.error-panel p { color: var(--fg-2); font-size: var(--text-control); max-width: 48ch; }
+
+/* Modals */
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; z-index: 40; }
+.modal { width: 480px; background: var(--bg-3); border: 1px solid var(--stroke-3); border-radius: var(--r-4); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; max-height: 80vh; }
+.modal-head { display: flex; align-items: center; padding: var(--space-6) var(--space-6) 0; flex: none; }
+.modal-head h2 { font: 600 var(--text-xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); }
+.modal-head .mono { font-family: var(--font-mono); font-size: var(--text-lg); }
+.modal-close { margin-left: auto; color: var(--fg-3); border-radius: var(--r-1); display: grid; place-items: center; width: 24px; height: 24px; }
+.modal-close:hover { color: var(--fg-1); background: var(--bg-4); }
+.modal-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); overflow-y: auto; }
+.modal-foot { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-6) var(--space-6); flex: none; }
+.modal-foot .grow { margin-right: auto; font-size: var(--text-sm); color: var(--fg-2); letter-spacing: 0.01em; }
+.modal-foot .grow .mono { font-family: var(--font-mono); }
+
+/* Picker */
+.picker-list { border: 1px solid var(--stroke-2); border-radius: var(--r-2); background: var(--bg-2); max-height: 264px; overflow-y: auto; }
+.pick-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--stroke-1); font-size: var(--text-control); }
+.pick-row:first-child { border-top: 0; }
+.pick-row:hover { background: var(--bg-3); }
+.pick-row input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); flex: none; }
+.pick-row .atc-id { width: 64px; flex: none; }
+.pick-row .pick-name { flex: 1; min-width: 0; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-row[data-inplan="true"] { color: var(--fg-4); }
+.pick-row[data-inplan="true"] .pick-name { color: var(--fg-3); }
+.picker-none { padding: var(--space-6); text-align: center; color: var(--fg-3); font-size: var(--text-control); }
+
+/* Close-confirmation */
+.verdict-seg { display: flex; gap: var(--space-3); }
+.verdict-seg .v-opt { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--stroke-2); border-radius: var(--r-2); background: var(--bg-2); font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em; color: var(--fg-2); transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.verdict-seg .v-opt:hover { border-color: var(--stroke-3); }
+.verdict-seg .v-opt[aria-pressed="true"][data-verdict="pass"] { border-color: var(--pass); background: var(--pass-bg); color: var(--pass); }
+.verdict-seg .v-opt[aria-pressed="true"][data-verdict="fail"] { border-color: var(--fail); background: var(--fail-bg); color: var(--fail); }
+.warn-block { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--blocked-bg); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-4); font-size: var(--text-control); color: var(--fg-1); }
+.warn-block svg { color: var(--blocked); margin-top: 1px; }
+.warn-block .mono { font-family: var(--font-mono); }
+
+/* Toast + prototype panel */
+.toast { position: fixed; left: 50%; bottom: var(--space-12); transform: translateX(-50%); background: var(--bg-4); border: 1px solid var(--stroke-3); border-radius: var(--r-2); box-shadow: var(--shadow-pop); color: var(--fg-1); font-size: var(--text-control); padding: var(--space-3) var(--space-6); display: flex; align-items: center; gap: var(--space-3); z-index: 50; }
+.toast .mono { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+.proto { position: fixed; right: var(--space-6); bottom: var(--space-6); z-index: 30; background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-3); box-shadow: var(--shadow-pop); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); width: 268px; }
+.proto-label { font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-4); }
+.proto-row { display: flex; align-items: center; gap: var(--space-3); }
+.proto-row > span { font-size: var(--text-sm); color: var(--fg-3); width: 36px; letter-spacing: 0.01em; }
+.seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: 2px; gap: 2px; }
+.seg button { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; color: var(--fg-3); padding: 3px var(--space-3); border-radius: var(--r-1); transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+.seg button:hover { color: var(--fg-1); background: var(--bg-4); }
+.seg button[aria-pressed="true"] { background: var(--bg-4); color: var(--fg-0); box-shadow: var(--elev-ring); }
+.proto .seg { flex: 1; }
+.proto .seg button { flex: 1; justify-content: center; padding: 3px var(--space-1); }
+
+[hidden] { display: none !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar" data-od-id="sidebar" aria-label="Project navigation">
+    <div class="brand" data-od-id="brand">
+      <span class="brand-jp" lang="ja">分解</span>
+      <span class="brand-latin">Bunkai</span>
+      <span class="brand-project" title="Project key">BK-201</span>
+    </div>
+    <nav class="nav" aria-label="Project sections">
+      <span class="nav-label">Project</span>
+      <a class="nav-item" href="#/dashboard" data-od-id="nav-dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="#/test-cases" data-od-id="nav-test-cases">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+        Test Cases
+      </a>
+      <a class="nav-item" href="test-plans-index.html" aria-current="page" data-od-id="nav-test-plans">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12l2 2 4-4"/></svg>
+        Test Plans
+      </a>
+      <a class="nav-item" href="#/runs" data-od-id="nav-runs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        Runs
+      </a>
+      <a class="nav-item" href="#/modules" data-od-id="nav-modules">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9z"/><path d="M12 11L4 6.5"/><path d="M12 11l8-4.5"/><path d="M12 11v9"/></svg>
+        Modules
+      </a>
+      <span class="nav-label">Workspace</span>
+      <a class="nav-item" href="#/settings" data-od-id="nav-settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.7-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.7 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.7.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.7v.1a1.6 1.6 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="sidebar-foot" data-od-id="sidebar-user">
+      <div class="role-badge">
+        <span class="avatar" id="user-avatar" aria-hidden="true">MT</span>
+        <span><b id="user-name">Mika Tanaka</b> · <span id="user-role">QA Lead</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs" aria-label="Breadcrumb">
+        <span class="mono">bunkai</span><span class="sep">/</span>
+        <span class="mono">BK-201</span><span class="sep">/</span>
+        <a href="test-plans-index.html">Test Plans</a><span class="sep">/</span>
+        <span class="here mono">PLAN-007</span>
+      </div>
+      <button class="palette-btn" id="palette-btn" data-od-id="command-palette-hint" aria-label="Open command palette">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Search or jump to
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content" data-od-id="content">
+      <a class="back-link" href="test-plans-index.html" data-od-id="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        Test Plans
+      </a>
+
+      <!-- Loading -->
+      <section id="view-loading" hidden data-od-id="loading-state" aria-label="Loading plan">
+        <div class="card">
+          <div class="loading-note"><span class="dot-run"></span>Loading PLAN-007…</div>
+          <div class="sk-row"><span class="sk" style="width:64px"></span><span class="sk" style="width:55%"></span><span class="sk" style="width:40px"></span><span class="sk" style="width:80px"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:20px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:64px"></span><span class="sk" style="width:42%"></span><span class="sk" style="width:40px"></span><span class="sk" style="width:80px"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:20px"></span></div>
+          <div class="sk-row"><span class="sk" style="width:64px"></span><span class="sk" style="width:48%"></span><span class="sk" style="width:40px"></span><span class="sk" style="width:80px"></span><span class="sk" style="width:70px"></span><span class="sk" style="width:20px"></span></div>
+        </div>
+      </section>
+
+      <!-- Error -->
+      <section id="view-error" hidden data-od-id="error-state">
+        <div class="error-panel" role="alert">
+          <span class="err-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </span>
+          <h2>Couldn't load this plan</h2>
+          <p>The request failed before any data arrived. The plan is intact — retry when the connection recovers.</p>
+          <span class="err-detail">GET /api/projects/BK-201/test-plans/PLAN-007 → 502 Bad Gateway</span>
+          <button class="btn" id="retry-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            Retry
+          </button>
+        </div>
+      </section>
+
+      <!-- Plan -->
+      <section id="view-plan" data-od-id="plan-view">
+        <div class="plan-head" data-od-id="plan-head">
+          <div id="head-display">
+            <span class="plan-id">PLAN-007</span>
+            <div class="plan-title-row">
+              <h1 id="plan-title">Release 2.4 regression</h1>
+              <span id="plan-status-chip"></span>
+              <span id="plan-goal-tag"></span>
+              <span class="chip lock" id="lock-chip" hidden>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Locked · read-only
+              </span>
+            </div>
+            <p class="plan-desc" id="plan-desc"></p>
+            <div class="plan-meta" id="plan-meta"></div>
+          </div>
+          <div class="plan-actions" id="plan-actions" data-od-id="plan-actions">
+            <button class="btn" data-variant="ghost" id="edit-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+              Edit details
+            </button>
+            <button class="btn" data-variant="primary" id="add-tests-btn" data-od-id="add-tests-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Add tests
+              <span class="kbd" style="background:transparent;border-color:var(--stroke-strong);color:var(--accent-on)">A</span>
+            </button>
+            <button class="btn" id="close-plan-btn" data-od-id="close-plan-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Close plan
+            </button>
+            <div class="role-note" id="member-close-note" hidden data-od-id="member-close-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Only <b>Mika Tanaka</b> (plan creator) or a workspace admin can close this plan.</span>
+            </div>
+            <div class="role-note" id="viewer-note" hidden data-od-id="viewer-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span><b>Viewer role</b> — read-only. Editing, adding tests and closing require Editor access.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline edit form -->
+        <form class="edit-form" id="edit-form" hidden data-od-id="edit-form" novalidate>
+          <div class="field">
+            <label for="edit-name">Name</label>
+            <input class="input" id="edit-name" type="text" autocomplete="off" aria-describedby="edit-name-error" required>
+            <p class="field-error" id="edit-name-error" hidden role="alert"></p>
+          </div>
+          <div class="field">
+            <label for="edit-desc">Description <span class="opt">· optional</span></label>
+            <textarea class="textarea" id="edit-desc"></textarea>
+          </div>
+          <div class="field">
+            <label for="edit-goal">Goal / release label <span class="opt">· optional</span></label>
+            <input class="input mono" id="edit-goal" type="text" placeholder="R2.4" autocomplete="off">
+          </div>
+          <div class="edit-foot">
+            <button type="button" class="btn" data-variant="ghost" id="edit-cancel">Cancel</button>
+            <button type="submit" class="btn" data-variant="primary" id="edit-save">Save changes</button>
+          </div>
+        </form>
+
+        <!-- Closed banner -->
+        <div class="closed-banner" id="closed-banner" hidden data-od-id="closed-banner">
+          <span class="cb-icon" id="cb-icon"></span>
+          <div>
+            <div class="cb-title">
+              Plan closed — verdict: <span id="cb-verdict-chip"></span>
+            </div>
+            <p class="cb-summary" id="cb-summary"></p>
+            <p class="cb-meta" id="cb-meta"></p>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="card progress-card" id="progress-card" data-od-id="progress-card">
+          <div class="pct-block">
+            <span class="pct-num" id="pct-num">—</span>
+            <span class="pct-label" id="pct-label">passed</span>
+          </div>
+          <div class="bar-block" id="bar-block">
+            <div class="bar" id="bar" role="img" aria-label=""></div>
+            <div class="legend" id="legend"></div>
+            <span class="progress-note" id="progress-note"></span>
+          </div>
+          <div class="progress-empty" id="progress-empty" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 13l4-4 4 4 5-5"/></svg>
+            No progress yet — it appears once the plan has member tests with run results.
+          </div>
+        </div>
+
+        <!-- Members -->
+        <div class="section-head" data-od-id="members-head">
+          <h2>Tests in this plan</h2>
+          <span class="count" id="member-count">0</span>
+        </div>
+        <div class="card" id="members-card" data-od-id="members-table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" style="width:96px">Test</th>
+                <th scope="col">Name</th>
+                <th scope="col" style="width:76px">Layer</th>
+                <th scope="col" style="width:130px">Latest outcome</th>
+                <th scope="col" style="width:150px">Latest run</th>
+                <th scope="col" style="width:44px" id="th-remove"><span class="visually-hidden">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="members-empty" hidden data-od-id="members-empty">
+          <h3>No tests in this plan yet</h3>
+          <p>Pull tests in from the BK-201 library to give this plan a scope. Progress and run outcomes appear as soon as the first tests are added and executed.</p>
+          <button class="btn" data-variant="primary" id="empty-add-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Add tests from library
+          </button>
+          <div class="role-note" id="empty-viewer-note" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><b>Viewer role</b> — ask a project Editor to add tests to this plan.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Add-tests picker -->
+<div class="overlay" id="picker-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title" data-od-id="add-tests-picker">
+    <div class="modal-head">
+      <h2 id="picker-title">Add tests to <span class="mono">PLAN-007</span></h2>
+      <button class="modal-close" id="picker-close" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="picker-search">Search the BK-201 test library</label>
+        <input class="input" id="picker-search" type="text" placeholder="Filter by name or ATC id" autocomplete="off">
+      </div>
+      <div class="picker-list" id="picker-list" role="group" aria-label="Test library results"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="grow" id="picker-count"><span class="mono">0</span> selected</span>
+      <button type="button" class="btn" data-variant="ghost" id="picker-cancel">Cancel</button>
+      <button type="button" class="btn" data-variant="primary" id="picker-add" disabled>Add tests</button>
+    </div>
+  </div>
+</div>
+
+<!-- Close-plan confirmation -->
+<div class="overlay" id="close-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="close-title" data-od-id="close-plan-modal">
+    <div class="modal-head">
+      <h2 id="close-title">Close <span class="mono">PLAN-007</span> — <span id="close-title-name">Release 2.4 regression</span></h2>
+      <button class="modal-close" id="close-x" aria-label="Close dialog">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label id="verdict-label">Verdict — required</label>
+        <div class="verdict-seg" role="group" aria-labelledby="verdict-label" id="verdict-seg">
+          <button type="button" class="v-opt" data-verdict="pass" aria-pressed="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            Passed
+          </button>
+          <button type="button" class="v-opt" data-verdict="fail" aria-pressed="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            Failed
+          </button>
+        </div>
+        <p class="field-error" id="verdict-error" hidden role="alert"></p>
+      </div>
+      <div class="field">
+        <label for="close-summary">Closing summary <span class="opt">· optional</span></label>
+        <textarea class="textarea" id="close-summary" placeholder="What this plan proved, and anything the next release should watch"></textarea>
+      </div>
+      <div class="warn-block" id="close-warn" role="note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.7 18.3-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-2.7"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span id="close-warn-text"></span>
+      </div>
+      <p class="field-hint" style="font-size:var(--text-sm);color:var(--fg-3);letter-spacing:0.01em">Closing locks the plan: tests, progress and details freeze, and no further edits are possible.</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-variant="ghost" id="close-cancel">Cancel</button>
+      <button type="button" class="btn" data-variant="danger" id="close-confirm">Close plan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<!-- Prototype-only controls (not part of product UI) -->
+<aside class="proto" data-od-id="prototype-panel" aria-label="Prototype controls">
+  <span class="proto-label">Prototype · demo controls</span>
+  <div class="proto-row">
+    <span id="proto-state-label">State</span>
+    <div class="seg" role="group" aria-labelledby="proto-state-label" id="proto-state">
+      <button aria-pressed="true" data-state="open">Open</button>
+      <button aria-pressed="false" data-state="empty">Empty</button>
+      <button aria-pressed="false" data-state="closed">Closed</button>
+      <button aria-pressed="false" data-state="loading">Load</button>
+      <button aria-pressed="false" data-state="error">Error</button>
+    </div>
+  </div>
+  <div class="proto-row">
+    <span id="proto-role-label">Role</span>
+    <div class="seg" role="group" aria-labelledby="proto-role-label" id="proto-role">
+      <button aria-pressed="true" data-role="creator">Creator</button>
+      <button aria-pressed="false" data-role="member">Member</button>
+      <button aria-pressed="false" data-role="viewer">Viewer</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Data ── */
+  var OUTCOMES = {
+    pass:    { label: 'Passed' },
+    fail:    { label: 'Failed' },
+    blocked: { label: 'Aborted' },
+    running: { label: 'In progress' },
+    skipped: { label: 'Not run' }
+  };
+  var USERS = {
+    creator: { name: 'Mika Tanaka', role: 'QA Lead', avatar: 'MT' },
+    member:  { name: 'Alex Kim', role: 'QA Engineer', avatar: 'AK' },
+    viewer:  { name: 'Rin Sato', role: 'Viewer', avatar: 'RS' }
+  };
+  var DEFAULT_MEMBERS = [
+    { id: 'ATC-101', name: 'Login with valid credentials', layer: 'UI', outcome: 'pass', run: 'RUN-448', at: 'Jul 29, 16:41' },
+    { id: 'ATC-114', name: 'Checkout tax calculation', layer: 'API', outcome: 'pass', run: 'RUN-448', at: 'Jul 29, 16:41' },
+    { id: 'ATC-133', name: 'Session refresh under load', layer: 'API', outcome: 'fail', run: 'RUN-448', at: 'Jul 29, 16:43' },
+    { id: 'ATC-090', name: 'Password reset email flow', layer: 'UI', outcome: 'blocked', run: 'RUN-441', at: 'Jul 28, 11:07' },
+    { id: 'ATC-152', name: 'Cart merge on login', layer: 'Unit', outcome: 'running', run: 'RUN-451', at: 'Jul 30, 09:12' },
+    { id: 'ATC-160', name: 'Refund webhook idempotency', layer: 'API', outcome: 'pass', run: 'RUN-445', at: 'Jul 28, 18:30' },
+    { id: 'ATC-171', name: 'Currency rounding edge cases', layer: 'Unit', outcome: 'skipped', run: null, at: null },
+    { id: 'ATC-178', name: 'Guest checkout address validation', layer: 'UI', outcome: 'skipped', run: null, at: null }
+  ];
+  var LIBRARY_EXTRA = [
+    { id: 'ATC-102', name: 'Login with expired password', layer: 'UI' },
+    { id: 'ATC-121', name: 'Invoice PDF generation', layer: 'API' },
+    { id: 'ATC-140', name: 'Coupon stacking rules', layer: 'Unit' },
+    { id: 'ATC-155', name: 'Address autocomplete throttling', layer: 'API' },
+    { id: 'ATC-166', name: 'Order history pagination', layer: 'UI' },
+    { id: 'ATC-180', name: 'Inventory oversell guard', layer: 'Unit' },
+    { id: 'ATC-183', name: 'SSO logout propagation', layer: 'API' }
+  ];
+
+  var state = {
+    role: 'creator',
+    view: 'open', // open | empty | loading | error
+    plan: { id: 'PLAN-007', name: 'Release 2.4 regression', desc: 'Full regression pass gating the 2.4 release: checkout, auth, payments and the new cart-merge path.', goal: 'R2.4', creator: 'Mika Tanaka', created: 'Jul 21' },
+    members: DEFAULT_MEMBERS.map(function (m) { return Object.assign({}, m); }),
+    closed: null, // { verdict, summary, by, at, snapshot }
+    editing: false
+  };
+  var picker = { selected: {}, query: '' };
+  var lastFocus = null, toastTimer = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function showToast(html) {
+    var t = $('toast');
+    t.innerHTML = html; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, 3600);
+  }
+  function statusChip(status, label) {
+    return '<span class="chip" data-status="' + status + '"><span class="dot" aria-hidden="true"></span>' + label + '</span>';
+  }
+
+  /* ── Permissions ── */
+  function isOpen() { return !state.closed; }
+  function canMutate() { return isOpen() && state.role !== 'viewer'; }
+  function canClose() { return isOpen() && state.role === 'creator'; }
+
+  /* ── Progress ── */
+  function computeCounts(members) {
+    var c = { pass: 0, fail: 0, blocked: 0, running: 0, skipped: 0 };
+    members.forEach(function (m) { c[m.outcome]++; });
+    return c;
+  }
+
+  function renderProgress() {
+    var frozen = !!state.closed;
+    var counts = frozen ? state.closed.snapshot : computeCounts(state.members);
+    var total = counts.pass + counts.fail + counts.blocked + counts.running + counts.skipped;
+    var emptyEl = $('progress-empty'), barBlock = $('bar-block'), pctNum = $('pct-num');
+
+    if (total === 0) {
+      emptyEl.hidden = false;
+      barBlock.hidden = true;
+      pctNum.textContent = '—';
+      $('pct-label').textContent = 'passed';
+      return;
+    }
+    emptyEl.hidden = true;
+    barBlock.hidden = false;
+
+    var pct = Math.round((counts.pass / total) * 100);
+    pctNum.textContent = pct + '%';
+    $('pct-label').textContent = 'passed · ' + counts.pass + ' of ' + total;
+
+    var order = ['pass', 'fail', 'blocked', 'running', 'skipped'];
+    $('bar').innerHTML = order.map(function (k) {
+      var w = (counts[k] / total) * 100;
+      return counts[k] ? '<span class="b-' + k + '" style="width:' + w + '%"></span>' : '';
+    }).join('');
+    $('bar').setAttribute('aria-label',
+      'Plan progress: ' + order.map(function (k) { return counts[k] + ' ' + OUTCOMES[k].label.toLowerCase(); }).join(', '));
+
+    $('legend').innerHTML = order.map(function (k) {
+      return '<span class="chip" data-status="' + k + '"><span class="dot" aria-hidden="true"></span>' +
+        OUTCOMES[k].label + ' <span class="mono">' + counts[k] + '</span></span>';
+    }).join('');
+
+    $('progress-note').textContent = frozen
+      ? 'Frozen at close · ' + state.closed.at + ' — computed from the latest run outcome of each test at that moment.'
+      : 'Computed from the latest run outcome of each member test · refreshed on view.';
+  }
+
+  /* ── Header ── */
+  function renderHead() {
+    var p = state.plan;
+    $('plan-title').textContent = p.name;
+    document.title = 'Bunkai — ' + p.id + ' · ' + p.name;
+    $('close-title-name').textContent = p.name;
+    $('plan-status-chip').innerHTML = isOpen() ? statusChip('open', 'Open') : statusChip('closed', 'Closed');
+    $('plan-goal-tag').innerHTML = p.goal ? '<span class="tag">' + esc(p.goal) + '</span>' : '';
+    $('lock-chip').hidden = isOpen();
+    $('plan-desc').textContent = p.desc;
+    $('plan-desc').hidden = !p.desc;
+    var meta = 'Created by ' + esc(p.creator) + ' · ' + p.created +
+      ' · <span class="mono">' + state.members.length + '</span> tests';
+    $('plan-meta').innerHTML = meta;
+
+    // Actions by role + status
+    $('edit-btn').hidden = !canMutate();
+    $('add-tests-btn').hidden = !canMutate();
+    $('close-plan-btn').hidden = !canClose();
+    $('member-close-note').hidden = !(isOpen() && state.role === 'member');
+    $('viewer-note').hidden = !(isOpen() && state.role === 'viewer');
+
+    // Closed banner
+    var b = $('closed-banner');
+    if (state.closed) {
+      b.hidden = false;
+      b.dataset.verdict = state.closed.verdict;
+      $('cb-icon').innerHTML = state.closed.verdict === 'pass'
+        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 5-5"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></svg>';
+      $('cb-verdict-chip').innerHTML = statusChip(state.closed.verdict, state.closed.verdict === 'pass' ? 'Passed' : 'Failed');
+      $('cb-summary').textContent = state.closed.summary || 'No closing summary was provided.';
+      $('cb-meta').innerHTML = 'Closed by ' + esc(state.closed.by) + ' · <span class="mono">' + state.closed.at + '</span> · This plan is locked: tests, progress and details are frozen and cannot be changed.';
+    } else {
+      b.hidden = true;
+    }
+
+    var u = USERS[state.role];
+    $('user-name').textContent = u.name;
+    $('user-role').textContent = u.role;
+    $('user-avatar').textContent = u.avatar;
+  }
+
+  /* ── Members table ── */
+  function renderMembers() {
+    $('member-count').textContent = state.members.length;
+    var showRemove = canMutate();
+    $('th-remove').hidden = !showRemove;
+
+    var hasMembers = state.members.length > 0;
+    $('members-card').hidden = !hasMembers;
+    $('members-empty').hidden = hasMembers;
+    $('empty-add-btn').hidden = !canMutate();
+    $('empty-viewer-note').hidden = !(isOpen() && state.role === 'viewer');
+
+    $('members-tbody').innerHTML = state.members.map(function (m) {
+      var o = OUTCOMES[m.outcome];
+      var runCell = m.run
+        ? '<a class="run-link" href="#/runs/' + m.run + '" data-run="' + m.run + '" aria-label="Open latest run ' + m.run + ' for ' + esc(m.id) + '">' + m.run +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>' +
+          '<div class="run-time">' + m.at + '</div>'
+        : '<span class="no-run">No runs yet</span>';
+      var removeCell = showRemove
+        ? '<td><button class="icon-btn" data-remove="' + m.id + '" aria-label="Remove ' + m.id + ' from this plan" title="Remove from this plan">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></td>'
+        : '<td hidden></td>';
+      return '<tr data-atc="' + m.id + '">' +
+        '<td><span class="atc-id">' + m.id + '</span></td>' +
+        '<td><span class="test-name">' + esc(m.name) + '</span></td>' +
+        '<td><span class="chip" data-layer="' + m.layer + '">' + m.layer + '</span></td>' +
+        '<td>' + statusChip(m.outcome, o.label) + '</td>' +
+        '<td>' + runCell + '</td>' +
+        removeCell +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderAll() {
+    renderHead();
+    renderProgress();
+    renderMembers();
+  }
+
+  function setView(v) {
+    state.view = v;
+    $('view-loading').hidden = v !== 'loading';
+    $('view-error').hidden = v !== 'error';
+    $('view-plan').hidden = (v === 'loading' || v === 'error');
+    if (!$('view-plan').hidden) renderAll();
+  }
+
+  /* ── Inline edit ── */
+  function openEdit() {
+    if (!canMutate()) return;
+    state.editing = true;
+    $('edit-name').value = state.plan.name;
+    $('edit-desc').value = state.plan.desc;
+    $('edit-goal').value = state.plan.goal;
+    clearEditError();
+    $('edit-form').hidden = false;
+    $('head-display').hidden = true;
+    $('plan-actions').hidden = true;
+    $('edit-name').focus();
+  }
+  function closeEdit() {
+    state.editing = false;
+    $('edit-form').hidden = true;
+    $('head-display').hidden = false;
+    $('plan-actions').hidden = false;
+    $('edit-btn').focus();
+  }
+  function clearEditError() {
+    $('edit-name-error').hidden = true;
+    $('edit-name').setAttribute('aria-invalid', 'false');
+  }
+  $('edit-btn').addEventListener('click', openEdit);
+  $('edit-cancel').addEventListener('click', closeEdit);
+  $('edit-name').addEventListener('input', clearEditError);
+  $('edit-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('edit-name').value.trim();
+    if (!name) {
+      $('edit-name-error').hidden = false;
+      $('edit-name-error').innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>Plan name is required.';
+      $('edit-name').setAttribute('aria-invalid', 'true');
+      $('edit-name').focus();
+      return;
+    }
+    state.plan.name = name;
+    state.plan.desc = $('edit-desc').value.trim();
+    state.plan.goal = $('edit-goal').value.trim();
+    closeEdit();
+    renderAll();
+    showToast('<span class="mono">PLAN-007</span> details updated.');
+  });
+
+  /* ── Modal helpers (focus trap + Esc) ── */
+  var activeOverlay = null;
+  function openOverlay(overlayId, focusId) {
+    lastFocus = document.activeElement;
+    activeOverlay = $(overlayId);
+    activeOverlay.hidden = false;
+    $(focusId).focus();
+  }
+  function closeOverlay() {
+    if (!activeOverlay) return;
+    activeOverlay.hidden = true;
+    activeOverlay = null;
+    if (lastFocus) lastFocus.focus();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (activeOverlay) {
+      if (e.key === 'Escape') { e.preventDefault(); closeOverlay(); return; }
+      if (e.key === 'Tab') {
+        var f = activeOverlay.querySelectorAll('button, input, textarea, a[href]');
+        var list = Array.prototype.filter.call(f, function (el) { return !el.disabled && el.offsetParent !== null; });
+        var first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    if (state.editing && e.key === 'Escape') { e.preventDefault(); closeEdit(); return; }
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if ((e.key === 'a' || e.key === 'A') && canMutate() && state.view === 'open' || (e.key === 'a' || e.key === 'A') && canMutate() && state.view === 'empty') {
+      e.preventDefault(); openPicker($('add-tests-btn'));
+    }
+  });
+  document.querySelectorAll('.overlay').forEach(function (ov) {
+    ov.addEventListener('mousedown', function (e) { if (e.target === ov) closeOverlay(); });
+  });
+
+  /* ── Add-tests picker ── */
+  function libraryRows() {
+    var memberIds = {};
+    state.members.forEach(function (m) { memberIds[m.id] = true; });
+    var all = state.members.map(function (m) { return { id: m.id, name: m.name, layer: m.layer }; }).concat(LIBRARY_EXTRA);
+    // de-dup (extras never collide with members by construction) + sort by id
+    all.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+    return all.map(function (t) { return { t: t, inPlan: !!memberIds[t.id] }; });
+  }
+  function renderPicker() {
+    var q = picker.query.toLowerCase();
+    var rows = libraryRows().filter(function (r) {
+      return !q || r.t.id.toLowerCase().indexOf(q) >= 0 || r.t.name.toLowerCase().indexOf(q) >= 0;
+    });
+    var list = $('picker-list');
+    if (!rows.length) {
+      list.innerHTML = '<div class="picker-none">No tests match "' + esc(picker.query) + '" in the BK-201 library.</div>';
+    } else {
+      list.innerHTML = rows.map(function (r) {
+        var t = r.t;
+        if (r.inPlan) {
+          return '<label class="pick-row" data-inplan="true">' +
+            '<input type="checkbox" checked disabled aria-label="' + t.id + ' is already in this plan">' +
+            '<span class="atc-id">' + t.id + '</span>' +
+            '<span class="pick-name">' + esc(t.name) + '</span>' +
+            '<span class="chip" data-status="skipped">Already in plan</span>' +
+          '</label>';
+        }
+        var checked = picker.selected[t.id] ? ' checked' : '';
+        return '<label class="pick-row">' +
+          '<input type="checkbox" data-pick="' + t.id + '"' + checked + ' aria-label="Select ' + t.id + ' — ' + esc(t.name) + '">' +
+          '<span class="atc-id">' + t.id + '</span>' +
+          '<span class="pick-name">' + esc(t.name) + '</span>' +
+          '<span class="chip" data-layer="' + t.layer + '">' + t.layer + '</span>' +
+        '</label>';
+      }).join('');
+    }
+    var n = Object.keys(picker.selected).length;
+    $('picker-count').innerHTML = '<span class="mono">' + n + '</span> selected';
+    $('picker-add').disabled = n === 0;
+    $('picker-add').textContent = n > 0 ? 'Add ' + n + (n === 1 ? ' test' : ' tests') : 'Add tests';
+  }
+  function openPicker(trigger) {
+    if (!canMutate()) return;
+    picker.selected = {};
+    picker.query = '';
+    $('picker-search').value = '';
+    lastFocus = trigger || document.activeElement;
+    activeOverlay = $('picker-overlay');
+    activeOverlay.hidden = false;
+    renderPicker();
+    $('picker-search').focus();
+  }
+  $('add-tests-btn').addEventListener('click', function () { openPicker(this); });
+  $('empty-add-btn').addEventListener('click', function () { openPicker(this); });
+  $('picker-close').addEventListener('click', closeOverlay);
+  $('picker-cancel').addEventListener('click', closeOverlay);
+  $('picker-search').addEventListener('input', function () { picker.query = this.value; renderPicker(); });
+  $('picker-list').addEventListener('change', function (e) {
+    var cb = e.target.closest('input[data-pick]');
+    if (!cb) return;
+    if (cb.checked) picker.selected[cb.dataset.pick] = true;
+    else delete picker.selected[cb.dataset.pick];
+    var n = Object.keys(picker.selected).length;
+    $('picker-count').innerHTML = '<span class="mono">' + n + '</span> selected';
+    $('picker-add').disabled = n === 0;
+    $('picker-add').textContent = n > 0 ? 'Add ' + n + (n === 1 ? ' test' : ' tests') : 'Add tests';
+  });
+  $('picker-add').addEventListener('click', function () {
+    var ids = Object.keys(picker.selected);
+    if (!ids.length) return;
+    var byId = {};
+    LIBRARY_EXTRA.forEach(function (t) { byId[t.id] = t; });
+    ids.forEach(function (id) {
+      var t = byId[id];
+      if (t) state.members.push({ id: t.id, name: t.name, layer: t.layer, outcome: 'skipped', run: null, at: null });
+    });
+    closeOverlay();
+    renderAll();
+    showToast(ids.length + (ids.length === 1 ? ' test' : ' tests') + ' added to <span class="mono">PLAN-007</span>. New members start as Not run.');
+  });
+
+  /* ── Remove member ── */
+  $('members-tbody').addEventListener('click', function (e) {
+    var rm = e.target.closest('button[data-remove]');
+    if (rm) {
+      var id = rm.dataset.remove;
+      state.members = state.members.filter(function (m) { return m.id !== id; });
+      renderAll();
+      showToast('<span class="mono">' + id + '</span> removed from this plan. The test itself and its other plan memberships are unchanged.');
+      return;
+    }
+    var link = e.target.closest('a[data-run]');
+    if (link) {
+      e.preventDefault();
+      showToast('<span class="mono">' + link.dataset.run + '</span> — run detail is Screen 3 of 3 in this prototype.');
+    }
+  });
+
+  /* ── Close plan ── */
+  var closeVerdict = null;
+  function openClose(trigger) {
+    if (!canClose()) return;
+    closeVerdict = null;
+    $('verdict-seg').querySelectorAll('.v-opt').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+    $('verdict-error').hidden = true;
+    $('close-summary').value = '';
+    var notRun = state.members.filter(function (m) { return m.outcome === 'skipped'; }).length;
+    var total = state.members.length;
+    $('close-warn').hidden = notRun === 0;
+    $('close-warn-text').innerHTML = '<span class="mono">' + notRun + '</span> of <span class="mono">' + total +
+      '</span> member tests ' + (notRun === 1 ? 'has' : 'have') + ' never been run. ' + (notRun === 1 ? 'It' : 'They') +
+      ' will be frozen as Not run in the final snapshot.';
+    lastFocus = trigger || document.activeElement;
+    activeOverlay = $('close-overlay');
+    activeOverlay.hidden = false;
+    $('verdict-seg').querySelector('.v-opt').focus();
+  }
+  $('close-plan-btn').addEventListener('click', function () { openClose(this); });
+  $('close-x').addEventListener('click', closeOverlay);
+  $('close-cancel').addEventListener('click', closeOverlay);
+  $('verdict-seg').addEventListener('click', function (e) {
+    var b = e.target.closest('.v-opt');
+    if (!b) return;
+    closeVerdict = b.dataset.verdict;
+    this.querySelectorAll('.v-opt').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    $('verdict-error').hidden = true;
+  });
+  $('close-confirm').addEventListener('click', function () {
+    if (!closeVerdict) {
+      $('verdict-error').hidden = false;
+      $('verdict-error').innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>Pick a verdict — Passed or Failed — to close this plan.';
+      return;
+    }
+    state.closed = {
+      verdict: closeVerdict,
+      summary: $('close-summary').value.trim(),
+      by: USERS[state.role].name,
+      at: 'Jul 30, 10:24',
+      snapshot: computeCounts(state.members)
+    };
+    closeOverlay();
+    renderAll();
+    showToast('<span class="mono">PLAN-007</span> closed with verdict ' + (closeVerdict === 'pass' ? 'Passed' : 'Failed') + '. The plan is now locked.');
+  });
+
+  /* ── Retry / chrome ── */
+  $('retry-btn').addEventListener('click', function () {
+    setView('loading');
+    setTimeout(function () { setView('open'); showToast('Reconnected — <span class="mono">PLAN-007</span> loaded.'); }, 1100);
+  });
+  $('palette-btn').addEventListener('click', function () {
+    showToast('<span class="mono">⌘K</span> command palette lives in the app shell — not wired in this screen.');
+  });
+
+  /* ── Prototype controls ── */
+  $('proto-state').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-state]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    var s = btn.dataset.state;
+    if (s === 'open') {
+      state.members = DEFAULT_MEMBERS.map(function (m) { return Object.assign({}, m); });
+      state.closed = null;
+      setView('open');
+    } else if (s === 'empty') {
+      state.members = [];
+      state.closed = null;
+      setView('open');
+    } else if (s === 'closed') {
+      state.members = DEFAULT_MEMBERS.map(function (m) { return Object.assign({}, m); });
+      state.closed = {
+        verdict: 'pass',
+        summary: 'All release-gating paths verified. ATC-133 failure was triaged as a test-data issue and re-run green in RUN-449; the two never-run edge-case tests are deferred to the 2.5 plan.',
+        by: 'Mika Tanaka',
+        at: 'Jul 28, 14:02',
+        snapshot: { pass: 5, fail: 0, blocked: 1, running: 0, skipped: 2 }
+      };
+      setView('open');
+    } else {
+      setView(s);
+    }
+  });
+  $('proto-role').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-role]');
+    if (!btn) return;
+    this.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+    state.role = btn.dataset.role;
+    if (state.editing) closeEdit();
+    if (activeOverlay) closeOverlay();
+    renderAll();
+  });
+
+  /* ── Init ── */
+  setView('open');
+})();
+</script>
+</body>
+</html>
