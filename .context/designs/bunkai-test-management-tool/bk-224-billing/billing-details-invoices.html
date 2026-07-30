@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunkai — Settings / Billing — Details &amp; invoices</title>
+<style>
+/* ── Bunkai tokens (verbatim contract) ─────────────────────────── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 1px var(--accent);
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+  --text-control: 12.5px;
+  --font-jp: "Noto Serif JP", serif;
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; }
+  .skel { animation: none; }
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+.mono { font-family: var(--font-mono); }
+.icon { width: 14px; height: 14px; flex: none; }
+.icon-16 { width: 16px; height: 16px; flex: none; }
+.icon-18 { width: 18px; height: 18px; flex: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── App shell ─────────────────────────────────────────────────── */
+.app { display: grid; grid-template-columns: 48px 216px 1fr; height: 100vh; }
+
+.rail {
+  background: var(--bg-0);
+  border-right: 1px solid var(--stroke-2);
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--space-4) 0; gap: var(--space-2);
+}
+.rail-logo {
+  font-family: var(--font-jp); font-weight: 700; font-size: 17px;
+  color: var(--accent); line-height: 1;
+  width: 32px; height: 32px; display: grid; place-items: center;
+  margin-bottom: var(--space-2);
+}
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: var(--r-2); color: var(--fg-3);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn[aria-current="true"] { background: var(--bg-5); color: var(--fg-0); }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px; border-radius: var(--radius-pill);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  color: var(--fg-2); font-size: var(--text-xs); font-weight: 600;
+  display: grid; place-items: center;
+}
+.rail-avatar:hover { border-color: var(--stroke-3); color: var(--fg-0); }
+
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  padding: var(--space-5) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  overflow-y: auto;
+}
+.snav-back {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); color: var(--fg-3);
+  padding: var(--space-1) var(--space-2); border-radius: var(--r-2);
+  margin-bottom: var(--space-2);
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+.snav-back:hover { color: var(--fg-1); }
+.snav-title {
+  font-size: var(--text-lg); font-weight: 600; color: var(--fg-0);
+  padding: 0 var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--stroke-1); margin-bottom: var(--space-3);
+}
+.snav-group {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500;
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+.snav-link {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--text-control); color: var(--fg-2);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.snav-link:hover { background: var(--bg-3); color: var(--fg-0); }
+.snav-link[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); font-weight: 500; }
+.snav-link[aria-disabled="true"] { color: var(--fg-4); cursor: default; }
+.snav-link[aria-disabled="true"]:hover { background: none; color: var(--fg-4); }
+.tag {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--fg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 1px var(--space-1); line-height: 1.4;
+}
+
+.main { overflow-y: auto; min-width: 0; }
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg-0); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-4);
+  height: 44px; padding: 0 var(--space-12);
+}
+.crumb { font-size: var(--text-control); color: var(--fg-3); }
+.crumb strong { color: var(--fg-1); font-weight: 500; }
+.route-chip {
+  font-family: var(--font-mono); font-size: var(--text-sm);
+  color: var(--fg-3); background: var(--bg-2);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+  padding: 1px var(--space-2);
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--fg-3); }
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  color: var(--fg-2); background: var(--bg-3);
+  border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 1px var(--space-1); line-height: 1.5;
+}
+
+.content { max-width: 880px; padding: var(--space-12); }
+.page-title { font-size: var(--text-3xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.page-sub { font-size: var(--text-base); color: var(--muted); margin-top: var(--space-1); margin-bottom: var(--space-8); }
+
+/* ── Buttons ───────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-1) var(--space-4); min-height: 26px;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: none; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+.btn[aria-disabled="true"] {
+  background: var(--bg-2); border-color: var(--stroke-1); color: var(--fg-4); cursor: not-allowed;
+}
+.btn[aria-disabled="true"]:hover { background: var(--bg-2); border-color: var(--stroke-1); color: var(--fg-4); }
+.btn-sm { min-height: 22px; padding: 1px var(--space-3); font-size: var(--text-sm); }
+
+/* ── Banner (failed renewal) ───────────────────────────────────── */
+.banner {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  background: var(--blocked-bg);
+  border: 1px solid color-mix(in srgb, var(--blocked) 32%, transparent);
+  border-radius: var(--r-3); padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.banner .icon-18 { color: var(--blocked); margin-top: 1px; }
+.banner-title { font-size: var(--text-base); font-weight: 600; color: var(--fg-0); }
+.banner-body { font-size: var(--text-control); color: var(--fg-2); margin-top: 2px; max-width: 62ch; }
+.banner-body .mono { color: var(--fg-1); }
+.banner-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); flex-wrap: wrap; }
+.banner-note { font-size: var(--text-sm); color: var(--meta); }
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-6);
+}
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.card-title { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.card-desc { font-size: var(--text-control); color: var(--muted); margin-top: 1px; }
+.card-body { padding: var(--space-6); }
+
+.field-list { display: grid; grid-template-columns: 160px 1fr; row-gap: var(--space-4); column-gap: var(--space-6); }
+.field-list dt {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500; padding-top: 2px;
+}
+.field-list dd { font-size: var(--text-base); color: var(--fg-1); }
+.field-list dd .sub { display: block; color: var(--muted); font-size: var(--text-control); }
+
+.subdivider { border: 0; border-top: 1px solid var(--stroke-1); margin: var(--space-6) calc(-1 * var(--space-6)); }
+.subhead {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500; margin-bottom: var(--space-4);
+}
+
+.pm-row { display: flex; align-items: center; gap: var(--space-5); }
+.pm-brand {
+  font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.04em; color: var(--fg-1);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: var(--space-2) var(--space-3);
+  display: inline-flex; align-items: center; gap: var(--space-2);
+}
+.pm-brand .icon { color: var(--fg-3); }
+.pm-main { font-size: var(--text-base); color: var(--fg-1); }
+.pm-main .mono { color: var(--fg-0); }
+.pm-sub { font-size: var(--text-control); color: var(--muted); margin-top: 1px; }
+.pm-spacer { flex: 1; }
+
+/* ── Chips ─────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--text-sm); font-weight: 500;
+  border-radius: var(--r-1); padding: 1px var(--space-2); line-height: 1.6;
+}
+.chip .icon { width: 11px; height: 11px; }
+.chip[data-status="pass"] { color: var(--pass); background: var(--pass-bg); }
+.chip[data-status="fail"] { color: var(--fail); background: var(--fail-bg); }
+.chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); }
+
+/* ── Invoice table ─────────────────────────────────────────────── */
+.inv-table { width: 100%; border-collapse: collapse; }
+.inv-table th {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500; text-align: left;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.inv-table td {
+  font-size: var(--text-control); color: var(--fg-1);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--stroke-1); vertical-align: middle;
+}
+.inv-table tr:last-child td { border-bottom: 0; }
+.inv-table tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+.inv-table tbody tr:hover { background: var(--bg-3); }
+.inv-table .num { text-align: right; }
+.inv-table td.num { font-family: var(--font-mono); color: var(--fg-0); }
+.inv-id { font-family: var(--font-mono); color: var(--fg-1); }
+.inv-period { font-family: var(--font-mono); color: var(--fg-2); font-size: var(--text-sm); }
+.inv-action { text-align: right; }
+
+/* ── State reference strip ─────────────────────────────────────── */
+.strip { margin-top: var(--space-12); border-top: 1px solid var(--stroke-1); padding-top: var(--space-6); }
+.strip-head { margin-bottom: var(--space-5); }
+.strip-title { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.strip-sub { font-size: var(--text-control); color: var(--meta); margin-top: 1px; }
+.strip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+.panel {
+  background: var(--bg-1); border: 1px solid var(--stroke-1);
+  border-radius: var(--r-3); overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.panel-tag {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--stroke-1); background: var(--bg-2);
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
+}
+.panel-body { padding: var(--space-4); font-size: var(--text-sm); color: var(--fg-2); flex: 1; }
+
+/* mini building blocks inside panels */
+.m-card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2); padding: var(--space-3); margin-bottom: var(--space-2);
+}
+.m-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-3); font-weight: 500; }
+.m-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-1); flex-wrap: wrap; }
+.m-banner {
+  background: var(--blocked-bg);
+  border: 1px solid color-mix(in srgb, var(--blocked) 32%, transparent);
+  border-radius: var(--r-2); padding: var(--space-3); margin-bottom: var(--space-2);
+  display: flex; gap: var(--space-2); align-items: flex-start;
+}
+.m-banner .icon { color: var(--blocked); margin-top: 1px; }
+.m-modal {
+  background: var(--bg-3); border: 1px solid var(--stroke-3);
+  border-radius: var(--r-4); box-shadow: var(--shadow-pop);
+  padding: var(--space-4); margin: var(--space-2) 0;
+}
+.m-masked {
+  font-family: var(--font-mono); font-size: var(--text-base); color: var(--fg-0);
+  background: var(--bg-2); border: 1px dashed var(--stroke-3);
+  border-radius: var(--r-2); padding: var(--space-3) var(--space-4);
+  text-align: center; letter-spacing: 0.1em; margin: var(--space-3) 0;
+}
+.m-empty { text-align: center; padding: var(--space-6) var(--space-4); }
+.m-empty .icon-18 { color: var(--fg-3); margin-bottom: var(--space-2); }
+.m-empty-title { font-size: var(--text-control); font-weight: 600; color: var(--fg-1); }
+.m-empty-sub { font-size: var(--text-sm); color: var(--meta); margin-top: var(--space-1); max-width: 30ch; margin-inline: auto; }
+.skel {
+  background: var(--bg-3); border-radius: var(--r-1); height: 10px;
+  animation: skel-pulse 1.6s var(--ease-standard) infinite;
+  margin-bottom: var(--space-2);
+}
+@keyframes skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.m-error { text-align: center; padding: var(--space-5) var(--space-4); }
+.m-error .icon-18 { color: var(--fail); margin-bottom: var(--space-2); }
+.m-error-title { font-size: var(--text-control); font-weight: 600; color: var(--fg-1); }
+.m-error-sub { font-size: var(--text-sm); color: var(--meta); margin: var(--space-1) 0 var(--space-3); }
+.m-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); }
+.m-table td { padding: 3px var(--space-2); border-top: 1px solid var(--stroke-1); color: var(--fg-2); }
+.m-table td.mono { color: var(--fg-1); }
+.m-note { font-size: var(--text-xs); color: var(--meta); margin-top: var(--space-2); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-files" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.3L4.7 18a1.7 1.7 0 0 0 1.5 2.5h11.6a1.7 1.7 0 0 0 1.5-2.5L14 9.3V3M7.5 15h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2 10h20" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" data-od-id="app-shell">
+
+  <!-- Icon rail -->
+  <nav class="rail" data-od-id="icon-rail" aria-label="Primary">
+    <div class="rail-logo" aria-hidden="true">分</div>
+    <button class="rail-btn" type="button" aria-label="Explorer"><svg class="icon-16"><use href="#i-files"/></svg></button>
+    <button class="rail-btn" type="button" aria-label="Test cases"><svg class="icon-16"><use href="#i-flask"/></svg></button>
+    <button class="rail-btn" type="button" aria-label="Runs"><svg class="icon-16"><use href="#i-play"/></svg></button>
+    <button class="rail-btn" type="button" aria-label="Settings" aria-current="true"><svg class="icon-16"><use href="#i-gear"/></svg></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-avatar" type="button" aria-label="Account menu — Ely">EM</button>
+  </nav>
+
+  <!-- Settings navigation -->
+  <nav class="snav" data-od-id="settings-nav" aria-label="Settings">
+    <a class="snav-back" href="#"><svg class="icon"><use href="#i-arrow-left"/></svg>Back to app</a>
+    <div class="snav-title">Settings</div>
+    <div class="snav-group" id="nav-available">Available</div>
+    <a class="snav-link" href="#">Account</a>
+    <a class="snav-link" href="#">Tokens</a>
+    <a class="snav-link" href="#">Workspaces</a>
+    <a class="snav-link" href="#" aria-current="page">Billing</a>
+    <div class="snav-group" id="nav-soon">Coming soon</div>
+    <span class="snav-link" aria-disabled="true">Members <span class="tag">soon</span></span>
+    <span class="snav-link" aria-disabled="true">Notifications <span class="tag">soon</span></span>
+    <span class="snav-link" aria-disabled="true">Environments <span class="tag">soon</span></span>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <span class="crumb">Settings / <strong>Billing</strong></span>
+      <span class="route-chip">/settings/billing</span>
+      <span class="topbar-right">Command palette <span class="kbd">⌘K</span></span>
+    </header>
+
+    <div class="content" data-od-id="billing-content">
+      <h1 class="page-title" data-od-id="page-title">Billing</h1>
+      <p class="page-sub">Billing profile, payment method, and invoice history for this workspace.</p>
+
+      <!-- Persistent failed-renewal banner -->
+      <section class="banner" role="alert" data-od-id="failed-renewal-banner">
+        <svg class="icon-18" aria-hidden="true"><use href="#i-alert"/></svg>
+        <div>
+          <div class="banner-title">Renewal charge failed</div>
+          <p class="banner-body">
+            The July renewal of <span class="mono">€96.00</span> could not be charged to
+            Visa ending <span class="mono">4242</span> on <span class="mono">Jul 28, 2026</span>.
+            Your workspace stays fully active until the grace period ends on
+            <strong><span class="mono">Aug 11, 2026</span></strong>.
+          </p>
+          <div class="banner-actions">
+            <button class="btn" type="button" data-od-id="banner-replace">Replace payment method</button>
+            <button class="btn" type="button" aria-disabled="true" aria-describedby="retry-note" data-od-id="banner-retry">
+              <svg class="icon" aria-hidden="true"><use href="#i-retry"/></svg>Retry charge
+            </button>
+            <span class="banner-note" id="retry-note">Retry becomes available once a new payment method is on file.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Billing details card -->
+      <section class="card" data-od-id="billing-details-card" aria-labelledby="bd-title">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title" id="bd-title">Billing details</h2>
+            <p class="card-desc">Shown on every invoice. Changes apply from the next billing cycle.</p>
+          </div>
+          <button class="btn" type="button" data-od-id="edit-billing-details">
+            <svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg>Edit
+          </button>
+        </div>
+        <div class="card-body">
+          <dl class="field-list">
+            <dt>Company</dt>
+            <dd>Upex Systems S.L.</dd>
+            <dt>Billing email</dt>
+            <dd><span class="mono">billing@upex.dev</span><span class="sub">Invoices and payment notices are sent here.</span></dd>
+            <dt>Billing address</dt>
+            <dd>Calle de Serrano 41, 3ª planta<br>28001 Madrid, Spain</dd>
+            <dt>Tax ID</dt>
+            <dd><span class="mono">ES B-84920156</span></dd>
+          </dl>
+
+          <hr class="subdivider">
+
+          <h3 class="subhead">Payment method</h3>
+          <div class="pm-row" data-od-id="payment-method-row">
+            <span class="pm-brand"><svg class="icon" aria-hidden="true"><use href="#i-card"/></svg>VISA</span>
+            <div>
+              <div class="pm-main">Visa ending <span class="mono">4242</span></div>
+              <div class="pm-sub">Expires <span class="mono">04/28</span> · Added Mar 12, 2026</div>
+            </div>
+            <span class="chip" data-status="fail"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Last charge failed</span>
+            <div class="pm-spacer"></div>
+            <button class="btn" type="button" data-variant="primary" data-od-id="replace-payment-method">Replace payment method</button>
+          </div>
+          <p class="m-note">Card details are entered in the payment provider's secure window. Bunkai never sees or stores the full card number.</p>
+        </div>
+      </section>
+
+      <!-- Invoice history card -->
+      <section class="card" data-od-id="invoice-history-card" aria-labelledby="inv-title">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title" id="inv-title">Invoices</h2>
+            <p class="card-desc">Issued on the 1st of each month. PDF includes the full tax breakdown.</p>
+          </div>
+        </div>
+        <table class="inv-table" data-od-id="invoice-table">
+          <caption class="sr-only">Invoice history: invoice ID, billing period, amount, status, and download</caption>
+          <thead>
+            <tr>
+              <th scope="col">Invoice</th>
+              <th scope="col">Period</th>
+              <th scope="col" class="num">Amount</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="sr-only">Download</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="inv-id">INV-2026-0107</td>
+              <td class="inv-period">Jul 1 – Jul 31, 2026</td>
+              <td class="num">€96.00</td>
+              <td><span class="chip" data-status="fail"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Failed</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0107 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+            <tr>
+              <td class="inv-id">INV-2026-0106</td>
+              <td class="inv-period">Jun 1 – Jun 30, 2026</td>
+              <td class="num">€96.00</td>
+              <td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0106 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+            <tr>
+              <td class="inv-id">INV-2026-0105</td>
+              <td class="inv-period">May 1 – May 31, 2026</td>
+              <td class="num">€96.00</td>
+              <td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0105 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+            <tr>
+              <td class="inv-id">INV-2026-0104</td>
+              <td class="inv-period">Apr 1 – Apr 30, 2026</td>
+              <td class="num">€96.00</td>
+              <td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0104 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+            <tr>
+              <td class="inv-id">INV-2026-0103</td>
+              <td class="inv-period">Mar 1 – Mar 31, 2026</td>
+              <td class="num">€78.00</td>
+              <td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0103 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+            <tr>
+              <td class="inv-id">INV-2026-0102</td>
+              <td class="inv-period">Feb 1 – Feb 28, 2026</td>
+              <td class="num">€78.00</td>
+              <td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td>
+              <td class="inv-action"><button class="btn btn-sm" type="button" data-variant="ghost" aria-label="Download invoice INV-2026-0102 as PDF"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>PDF</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- State reference strip -->
+      <section class="strip" data-od-id="state-reference" aria-labelledby="strip-title">
+        <div class="strip-head">
+          <h2 class="strip-title" id="strip-title">State reference</h2>
+          <p class="strip-sub">Non-interactive miniatures of every state this section can render.</p>
+        </div>
+        <div class="strip-grid">
+
+          <div class="panel" data-od-id="panel-default">
+            <div class="panel-tag">Default</div>
+            <div class="panel-body">
+              <div class="m-card">
+                <div class="m-label">Billing details</div>
+                <div class="m-row">Upex Systems S.L. · <span class="mono">billing@upex.dev</span></div>
+                <div class="m-row">Visa ending <span class="mono">4242</span> · expires <span class="mono">04/28</span></div>
+              </div>
+              <div class="m-card">
+                <div class="m-label">Invoices</div>
+                <table class="m-table">
+                  <tr><td class="mono">INV-2026-0106</td><td class="mono">€96.00</td><td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td></tr>
+                  <tr><td class="mono">INV-2026-0105</td><td class="mono">€96.00</td><td><span class="chip" data-status="pass"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Paid</span></td></tr>
+                </table>
+              </div>
+              <p class="m-note">Details on file, active card, populated history. No banner.</p>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-replace-payment">
+            <div class="panel-tag">Replace payment method <span class="tag">placeholder</span></div>
+            <div class="panel-body">
+              <div class="m-modal" role="presentation">
+                <div class="m-label">Replace payment method</div>
+                <div class="m-masked" aria-label="Masked reference of the current card, not an input">**** **** **** 4242</div>
+                <div class="m-row">
+                  <button class="btn btn-sm" type="button" aria-disabled="true">Open secure provider window</button>
+                  <button class="btn btn-sm" type="button" data-variant="ghost" aria-disabled="true">Cancel</button>
+                </div>
+              </div>
+              <p class="m-note">Deliberately non-functional. Card number, expiry, and CVC are never typed into Bunkai — entry happens in the provider's hosted window.</p>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-failed-renewal">
+            <div class="panel-tag">Failed renewal</div>
+            <div class="panel-body">
+              <div class="m-banner">
+                <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+                <div>
+                  <strong>Charge failed.</strong> Grace period ends <span class="mono">Aug 11, 2026</span>.
+                  <div class="m-row"><button class="btn btn-sm" type="button" aria-disabled="true"><svg class="icon" aria-hidden="true"><use href="#i-retry"/></svg>Retry charge</button><span class="m-note">No new method on file — retry locked.</span></div>
+                </div>
+              </div>
+              <div class="m-banner">
+                <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+                <div>
+                  New card on file: Visa ending <span class="mono">8814</span>.
+                  <div class="m-row"><button class="btn btn-sm" type="button"><svg class="icon" aria-hidden="true"><use href="#i-retry"/></svg>Retry charge</button><span class="m-note">Retry unlocked.</span></div>
+                </div>
+              </div>
+              <p class="m-note">Banner is persistent — it stays above the billing details card until the charge succeeds.</p>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-empty-invoices">
+            <div class="panel-tag">Empty invoice history</div>
+            <div class="panel-body">
+              <div class="m-empty">
+                <svg class="icon-18" aria-hidden="true"><use href="#i-file"/></svg>
+                <div class="m-empty-title">No invoices yet</div>
+                <p class="m-empty-sub">This workspace was created during the current billing cycle. Your first invoice will appear here on <span class="mono">Aug 1, 2026</span>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-loading">
+            <div class="panel-tag">Loading</div>
+            <div class="panel-body" aria-label="Loading placeholder">
+              <div class="m-card">
+                <div class="skel" style="width:38%"></div>
+                <div class="skel" style="width:72%"></div>
+                <div class="skel" style="width:55%"></div>
+              </div>
+              <div class="m-card">
+                <div class="skel" style="width:30%"></div>
+                <div class="skel" style="width:100%"></div>
+                <div class="skel" style="width:100%"></div>
+                <div class="skel" style="width:64%"></div>
+              </div>
+              <p class="m-note">Skeleton mirrors card and table geometry. Pulse pauses under reduced motion.</p>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-error">
+            <div class="panel-tag">Error</div>
+            <div class="panel-body">
+              <div class="m-error" role="presentation">
+                <svg class="icon-18" aria-hidden="true"><use href="#i-alert"/></svg>
+                <div class="m-error-title">Couldn't load billing data</div>
+                <p class="m-error-sub">The billing service didn't respond. Your plan and workspace are unaffected.</p>
+                <button class="btn btn-sm" type="button"><svg class="icon" aria-hidden="true"><use href="#i-retry"/></svg>Retry</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -44,6 +44,7 @@ Every user story that touches UI MUST:
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
 | Notifications Center (post-MVP, 3-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.13) |
 | Team Chat (post-MVP, 4-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.14) |
+| Billing & Plans (post-MVP, 5-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.15) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
 
@@ -398,6 +399,39 @@ system.
 
 ---
 
+### 4.15 Billing & Plans — post-MVP · ❌ build 0% · ✅ mockups ready (2026-07-30)
+All BK-224 stories parked Backlog (post-MVP, last in the epic-backbone dependency order — depends
+on BK-1 Tenancy/Identity and BK-87 Settings hub). **The ⚠️ wireframe-pending flag in §8 is
+LIFTED**: a 5-screen set was generated via Open Design (REST-driven Mode A, design system
+`user:bunkai`) and lives in `.context/designs/bunkai-test-management-tool/bk-224-billing/`
+(provenance: `BRIEF.md` in the same folder). Provenance/workaround: each screen ran in its own
+fresh Open Design project (`bunkai-bk-224-billing`, `-2`, `-3`, `-4`, `-5`) rather than as
+follow-up runs inside one project/conversation — a repeatable daemon bug silently drops the new
+instruction on follow-up runs in the same project, first observed and worked around in the §4.14
+Team Chat batch. Each satellite project's prompt inlined the shell anatomy (CSS class vocabulary,
+grid structure) read directly from the actual exported `billing-overview.html`, which ran first
+and established the Settings-hub billing surface. English copy, frozen §2 tokens verbatim,
+`:focus-visible` 1px `--accent`, no color-only signals, all 5 runs exit 0 with clean artifacts —
+no refinement runs were needed.
+
+| Screen file | Route / surface | Spec highlights |
+|---|---|---|
+| `billing-overview.html` | `/settings/billing` — extends the §4.10 Settings hub | Plan/seats/usage (BK-229): settings shell verbatim (rail + settings nav + topbar) with "Billing" now LIVE in the nav; plan card (tier, per-seat price, renewal — Free plan shows no renewal/payment, an upgrade entry instead); seat meter "N of limit seats" (active members only, pending invites never count); per-resource usage meters (projects, run-history retention) with an 80%+ "near limit" state that pairs color with a text chip, never color alone; states strip per batch convention. |
+| `billing-details-invoices.html` | `/settings/billing` (same page, lower section) — extends the §4.10 Settings hub | Billing details + invoices (BK-231): reuses `billing-overview.html`'s shell/card classes verbatim as the next section of the same page. Editable company billing profile card; payment method shown as a redacted brand+last-4 reference only (never a full card number); invoice history table (period, amount, status, PDF download); persistent failed-renewal banner naming the grace-period end date with a retry gated on a new payment method. Payment-method entry is explicitly framed as happening in the payment provider's hosted window — no live card-number/CVC form fields anywhere. |
+| `plan-comparison-checkout.html` | `/settings/billing/upgrade` — reached from `billing-overview.html`'s upgrade CTA | Upgrade flow (BK-230): three-column tier comparison (Free/Team/Enterprise) with the current plan structurally marked; Team checkout (seat quantity + payment step) preserves the plan/seat choice through a declined-payment retry; Enterprise is a contact path only, no checkout; admin (non-owner) view replaces the confirm action with a note naming the workspace owner. Same non-functional-payment-placeholder convention as the invoices screen. |
+| `billing-downgrade-cancel.html` | `/settings/billing` (dialog/flow off the plan card) — extends the §4.10 Settings hub | Downgrade/cancel (BK-233): "Change plan" and "Cancel subscription" as de-emphasized secondary/tertiary actions on the plan card; downgrade requires a consequence-preview `alertdialog` naming the exact affected-resource count and a "nothing deleted" statement before confirming; pending-cancellation banner with end date + Resubscribe; admin (non-owner) view has both actions structurally absent, not just disabled. |
+| `plan-limit-warning.html` | cross-app reusable component, demonstrated in an Explorer/project-creation context (App Shell, NOT the Settings hub) | Plan-limit warnings (BK-232): the only screen in this batch that departs from the Settings-hub shell — reuses just the 48px icon-rail chrome from the rest of the product. Non-blocking dismissible warning banner at 80%+ usage; blocking paywall modal at 100% with a role-aware single action (owner: direct "Upgrade plan" CTA; member/viewer: names the workspace owner, no checkout offered). Establishes the shared component pattern every plan-limited resource across the app will reuse. |
+
+Build order note: none of BK-229–BK-233 are Ready For Dev — the whole epic is deliberately parked
+Backlog, post-MVP, last in the mockup roadmap's epic-backbone order. This batch is forward design
+for the post-MVP P2 frontier, not an unblock for any story in flight today. `billing-overview.html`
+and `billing-details-invoices.html` share the Settings hub container with §4.13's
+`settings-notifications.html` — whoever builds the hub first should sequence tab/section layout
+for Billing and Notifications together to avoid divergent hub chrome, per the anomaly already
+flagged when §4.13 shipped.
+
+---
+
 ## 5. Divergences — gaps to correct, UI-first
 
 **Guiding principle (2026-06-08):** **maximize UI fidelity to the mockup WITHOUT triggering backend refactors.** The mockup wins at the *presentation layer*. Where matching the mockup would only require frontend work (layout, components, render), close the gap. Where it would require reverting/rebuilding schema, APIs, or auth infra, **adapt the UI on top of the existing backend** instead — keep the data model, change only what renders. A gap is "to correct" only to the extent it's a frontend change.
@@ -532,15 +566,23 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-226 Upload a CI results file | **CI results upload** (modal/flow off the runs view) | §4.12 · `bk-221-automation-ci/ci-results-upload.html` |
 | | BK-227 Track automation status of a test | **Test library — automation status** (extends existing test library/list) | §4.12 · `bk-221-automation-ci/project--ci-extension.html` |
 | | BK-228 CI-triggered runs linked to commit/branch | **Run detail — CI metadata** (extends run detail) | `run.jsx` §4.5 · §4.12 · `bk-221-automation-ci/run--ci-extension.html` |
-| **BK-224 Billing & Plans** | BK-229 View plan, seats & usage | **Settings — Billing overview** (extends §4.10 hub) | §4.10 · ⚠️ wireframe pending |
-| | BK-230 Upgrade to a paid plan | **Billing — plan comparison & checkout** | ⚠️ wireframe pending |
-| | BK-231 Billing details + invoices | **Billing — details & invoices** | ⚠️ wireframe pending |
-| | BK-232 Plan-limit warnings + upgrade path | **Plan-limit warning states** (cross-app banner/modal patterns) | ⚠️ wireframe pending |
-| | BK-233 Downgrade or cancel the subscription | **Billing — downgrade/cancel flow** | ⚠️ wireframe pending |
+| **BK-224 Billing & Plans** | BK-229 View plan, seats & usage | **Settings — Billing overview** (extends §4.10 hub) | §4.10 · §4.15 · `bk-224-billing/billing-overview.html` |
+| | BK-230 Upgrade to a paid plan | **Billing — plan comparison & checkout** | §4.15 · `bk-224-billing/plan-comparison-checkout.html` |
+| | BK-231 Billing details + invoices | **Billing — details & invoices** (extends §4.10 hub) | §4.10 · §4.15 · `bk-224-billing/billing-details-invoices.html` |
+| | BK-232 Plan-limit warnings + upgrade path | **Plan-limit warning states** (cross-app banner/modal patterns) | §4.15 · `bk-224-billing/plan-limit-warning.html` |
+| | BK-233 Downgrade or cancel the subscription | **Billing — downgrade/cancel flow** (extends §4.10 hub) | §4.10 · §4.15 · `bk-224-billing/billing-downgrade-cancel.html` |
 
 > **Wireframe-to-Jira workflow (future):** when uploading wireframes, attach each US's mockup crop/section (from the screen named above) to its Jira issue. Screens with no mockup yet (Metrics, Settings, Bug Reports, Test Runs, ATC Library global) need wireframes authored first — flagged ❌/⚠️ in §1.
 >
-> **Post-MVP screens (BK-224):** these screens do not exist in the mockup set yet — no §4 spec is authored. Until wireframes land, design intent lives in each Jira story's Mockup/Business-Rules fields (BK-2xx). When a wireframe/mockup is produced, drop it in `.context/designs/.../screens/` and add its §4 section per §9. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension crops shipped 2026-07-30, see §4.12. **BK-208 Notifications Center is done** — 3-screen set shipped 2026-07-30, see §4.13. **BK-210 Team Chat is done** — 4-screen set shipped 2026-07-30, see §4.14.
+> **Post-MVP mockup roadmap: complete.** Every post-MVP epic cluster in the mockup roadmap now has
+> a designed screen set. **BK-201 Test Plans & Milestones is done** — 3-screen set shipped
+> 2026-07-30, see §4.11. **BK-221 Automation & CI Ingestion is done** — 1 new screen + 3 extension
+> crops shipped 2026-07-30, see §4.12. **BK-208 Notifications Center is done** — 3-screen set
+> shipped 2026-07-30, see §4.13. **BK-210 Team Chat is done** — 4-screen set shipped 2026-07-30,
+> see §4.14. **BK-224 Billing & Plans is done** — 5-screen set shipped 2026-07-30, see §4.15. Build
+> work against every one of these sets remains 0% (all source stories parked Backlog) — this
+> footnote tracks design-mockup coverage only, not implementation status (§1 scorecard is the
+> source of truth for build state).
 
 ---
 

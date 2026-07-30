@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai — Upgrade your plan</title>
+<style>
+/* ── Bunkai tokens — pasted verbatim from design-systems/bunkai/tokens.css ── */
+:root {
+  --bg: #0a0b0d;
+  --surface: #14171c;
+  --surface-warm: var(--surface);
+
+  --fg: #f1f3f5;
+  --fg-2: #d4d8de;
+  --muted: #9aa1ab;
+  --meta: #6b727c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --accent: #d9543f;
+  --accent-on: #ffffff;
+  --accent-hover: #e87060;
+  --accent-active: rgba(217, 84, 63, 0.10);
+
+  --success: #2fb673;
+  --warn: #e8a838;
+  --danger: #e5484d;
+
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 10.5px;
+  --text-sm: 11.5px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 18px;
+  --text-3xl: 20px;
+  --text-4xl: 22px;
+
+  --leading-body: 1.45;
+  --leading-tight: 1.2;
+  --tracking-display: 0;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-8: 20px;
+  --space-12: 24px;
+
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 7px;
+  --radius-pill: 9999px;
+
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  --bg-0: #0a0b0d;
+  --bg-1: #101216;
+  --bg-2: #14171c;
+  --bg-3: #1a1e25;
+  --bg-4: #232830;
+  --bg-5: #2d333c;
+
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;
+
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;
+
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  --text-control: 12.5px;
+
+  --font-jp: "Noto Serif JP", serif;
+
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: var(--font-mono); }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ── App shell ── */
+.app {
+  display: grid;
+  grid-template-columns: 48px 216px 1fr;
+  height: 100vh;
+}
+
+/* Icon rail */
+.rail {
+  background: var(--bg-0);
+  border-right: 1px solid var(--stroke-2);
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--space-4) 0; gap: var(--space-2);
+}
+.rail-logo {
+  font-family: var(--font-jp); font-weight: 700; font-size: 15px;
+  color: var(--accent); width: 28px; height: 28px;
+  display: grid; place-items: center; margin-bottom: var(--space-3);
+  user-select: none;
+}
+.rail-btn {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: var(--r-2); color: var(--fg-3);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px; border-radius: var(--radius-pill);
+  background: var(--bg-4); border: 1px solid var(--stroke-2);
+  color: var(--fg-2); font-size: 10px; font-weight: 600;
+  display: grid; place-items: center;
+}
+.rail-avatar:hover { background: var(--bg-5); }
+
+/* Settings nav */
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  padding: var(--space-5) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-1);
+  overflow-y: auto;
+}
+.snav-back {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); color: var(--fg-3);
+  padding: var(--space-1) var(--space-2); border-radius: var(--r-2);
+  margin-bottom: var(--space-3);
+}
+.snav-back:hover { color: var(--fg-1); background: var(--bg-3); }
+.snav-title {
+  font-size: var(--text-lg); font-weight: 600; color: var(--fg-0);
+  padding: 0 var(--space-2); margin-bottom: var(--space-4);
+}
+.snav-group {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500;
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+.snav-link {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--text-control); color: var(--fg-2);
+  padding: 5px var(--space-2); border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.snav-link:hover { background: var(--bg-3); color: var(--fg-0); }
+.snav-link[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); font-weight: 600; }
+.snav-link[aria-disabled="true"] { color: var(--fg-4); cursor: default; }
+.snav-link[aria-disabled="true"]:hover { background: none; color: var(--fg-4); }
+.soon-tag {
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3);
+  background: var(--bg-3); border: 1px solid var(--stroke-1);
+  padding: 1px 5px; border-radius: var(--r-1);
+}
+
+/* Main column */
+.main { overflow-y: auto; background: var(--bg-0); }
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg-0); border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-12);
+}
+.crumbs { font-size: var(--text-control); color: var(--fg-3); }
+.crumbs .sep { margin: 0 var(--space-2); color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.route-chip {
+  font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 2px 7px;
+}
+.content {
+  max-width: 1160px;
+  padding: var(--space-12) var(--space-12) 48px;
+}
+.page-title { font-size: var(--text-3xl); font-weight: 700; color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.page-sub { font-size: var(--text-base); color: var(--muted); margin-top: var(--space-1); }
+
+/* ── Cards / buttons / chips ── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-card);
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  color: var(--fg-1); background: var(--bg-3);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: 5px var(--space-5); min-height: 28px;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-on);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-0); }
+.btn[aria-disabled="true"] {
+  color: var(--fg-4); background: var(--bg-2); border-color: var(--stroke-1); cursor: not-allowed;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  padding: 2px 7px; border-radius: var(--r-1);
+  background: var(--bg-3); color: var(--fg-2); border: 1px solid var(--stroke-2);
+}
+.chip[data-status="pass"] { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+.chip[data-status="fail"] { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+.chip-warn, .chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); border-color: transparent; }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); border-color: transparent; }
+.icon { flex: none; }
+
+/* ── Tier comparison ── */
+.tiers {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5); margin-top: var(--space-8);
+  align-items: stretch;
+}
+.tier { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.tier[data-current="true"] { border-color: var(--stroke-strong); }
+.tier-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tier-name { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.tier-price { display: flex; align-items: baseline; gap: var(--space-2); }
+.tier-price .amount { font-family: var(--font-mono); font-size: var(--text-4xl); font-weight: 700; color: var(--fg-0); }
+.tier-price .per { font-size: var(--text-sm); color: var(--fg-3); }
+.tier-limits { list-style: none; display: flex; flex-direction: column; }
+.tier-limits li {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--text-control); color: var(--fg-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--stroke-1);
+}
+.tier-limits li:last-child { border-bottom: none; }
+.tier-limits .val { font-family: var(--font-mono); color: var(--fg-1); }
+.tier-note { font-size: var(--text-sm); color: var(--fg-3); }
+.tier-cta { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-2); }
+.tier-cta .btn { width: 100%; }
+
+/* ── Checkout ── */
+.checkout {
+  margin-top: var(--space-12);
+  display: grid; grid-template-columns: 1fr 340px; gap: var(--space-5);
+  align-items: start;
+}
+.checkout-panel { padding: var(--space-6); }
+.checkout-panel h2, .summary-panel h2 {
+  font-size: var(--text-xl); font-weight: 600; color: var(--fg-0);
+}
+.step-label {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); font-weight: 500; margin-bottom: var(--space-3);
+}
+.step { padding: var(--space-6) 0; border-bottom: 1px solid var(--stroke-1); }
+.step:last-child { border-bottom: none; padding-bottom: 0; }
+.seat-row { display: flex; align-items: center; gap: var(--space-4); }
+.seat-input {
+  font-family: var(--font-mono); font-size: var(--text-lg); color: var(--fg-0);
+  background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  width: 72px; padding: 5px var(--space-3); text-align: center;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.seat-input:hover { border-color: var(--stroke-3); }
+.seat-input:focus { background: var(--bg-3); border-color: var(--accent); outline: none; }
+.seat-hint { font-size: var(--text-sm); color: var(--fg-3); }
+.step-btn { width: 28px; height: 28px; padding: 0; }
+
+.pay-methods { display: flex; flex-direction: column; gap: var(--space-3); }
+.pay-option {
+  display: flex; align-items: center; gap: var(--space-4);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  background: var(--bg-2); padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.pay-option:hover { border-color: var(--stroke-3); background: var(--bg-3); }
+.pay-option:has(input:checked) { border-color: var(--stroke-strong); background: var(--bg-3); }
+.pay-option:has(input:focus-visible) { outline: 1px solid var(--accent); outline-offset: 1px; }
+.pay-option input { accent-color: var(--accent); }
+.pay-name { font-size: var(--text-control); font-weight: 500; color: var(--fg-1); }
+.pay-num { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+.pay-note {
+  display: flex; gap: var(--space-3); align-items: flex-start;
+  font-size: var(--text-sm); color: var(--fg-3);
+  background: var(--bg-1); border: 1px dashed var(--stroke-2);
+  border-radius: var(--r-2); padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
+}
+
+/* Summary side */
+.summary-panel { padding: var(--space-6); position: sticky; top: 56px; }
+.summary-rows { list-style: none; margin-top: var(--space-4); }
+.summary-rows li {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: var(--text-control); color: var(--fg-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--stroke-1);
+}
+.summary-rows .val { font-family: var(--font-mono); color: var(--fg-1); }
+.summary-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: var(--space-4); margin-top: var(--space-2);
+  font-size: var(--text-control); color: var(--fg-2); font-weight: 500;
+}
+.summary-total .val { font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 700; color: var(--fg-0); }
+.summary-panel .btn { width: 100%; margin-top: var(--space-5); }
+.summary-fine { font-size: var(--text-sm); color: var(--fg-4); margin-top: var(--space-3); }
+
+/* Alerts */
+.alert-fail {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  background: var(--fail-bg); border: 1px solid var(--fail);
+  border-radius: var(--r-2); padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+}
+.alert-fail .icon { color: var(--fail); margin-top: 1px; }
+.alert-title { font-size: var(--text-control); font-weight: 600; color: var(--fg-0); }
+.alert-body { font-size: var(--text-control); color: var(--fg-2); margin-top: 2px; }
+
+/* Success */
+.success-wrap { margin-top: var(--space-12); max-width: 560px; }
+.success-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.success-head h2 { font-size: var(--text-xl); font-weight: 600; color: var(--fg-0); }
+.plan-card { padding: var(--space-6); }
+.plan-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.plan-card-name { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.unlocked { list-style: none; margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.unlocked li { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-control); color: var(--fg-2); }
+.unlocked .icon { color: var(--pass); }
+.receipt-note { font-size: var(--text-control); color: var(--fg-3); margin-top: var(--space-5); }
+.success-actions { display: flex; gap: var(--space-3); margin-top: var(--space-5); }
+
+/* ── State reference strip ── */
+.strip { margin-top: var(--space-12); border-top: 1px solid var(--stroke-1); padding-top: var(--space-6); }
+.strip-head { display: flex; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-5); }
+.strip-title { font-size: var(--text-lg); font-weight: 600; color: var(--fg-0); }
+.strip-sub { font-size: var(--text-sm); color: var(--fg-3); }
+.strip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+.panel { background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--r-3); overflow: hidden; }
+.panel-tag {
+  font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3);
+  background: var(--bg-2); border-bottom: 1px solid var(--stroke-1);
+  padding: var(--space-2) var(--space-4);
+}
+.panel-body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); font-size: var(--text-sm); color: var(--fg-2); }
+.mini-card { background: var(--bg-2); border: 1px solid var(--stroke-2); border-radius: var(--r-2); padding: var(--space-3) var(--space-4); }
+.mini-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); font-size: var(--text-sm); }
+.mini-row + .mini-row { margin-top: var(--space-2); }
+.mini-label { color: var(--fg-3); }
+.mini-val { font-family: var(--font-mono); color: var(--fg-1); }
+.mini-btn {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+  border-radius: var(--r-1); padding: 2px 8px;
+  background: var(--bg-3); border: 1px solid var(--stroke-2); color: var(--fg-1);
+}
+.mini-btn[data-variant="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.mini-fail {
+  display: flex; gap: var(--space-2); align-items: flex-start;
+  background: var(--fail-bg); border: 1px solid var(--fail);
+  border-radius: var(--r-1); padding: var(--space-2) var(--space-3);
+  font-size: 11px; color: var(--fg-1);
+}
+.mini-fail .icon { color: var(--fail); margin-top: 1px; }
+.mini-note {
+  display: flex; gap: var(--space-2); align-items: flex-start;
+  background: var(--bg-2); border: 1px dashed var(--stroke-3);
+  border-radius: var(--r-1); padding: var(--space-2) var(--space-3);
+  font-size: 11px; color: var(--fg-2);
+}
+.mini-note .icon { color: var(--fg-3); margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Icon rail -->
+  <nav class="rail" aria-label="Primary" data-od-id="icon-rail">
+    <div class="rail-logo" aria-hidden="true">分</div>
+    <span class="visually-hidden">Bunkai</span>
+    <button class="rail-btn" aria-label="Explorer">
+      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    </button>
+    <button class="rail-btn" aria-label="Test cases">
+      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+    </button>
+    <button class="rail-btn" aria-label="Runs">
+      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+    </button>
+    <button class="rail-btn" aria-label="Settings" aria-current="page">
+      <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+    <button class="rail-avatar" aria-label="Account — Kenji Sato">KS</button>
+  </nav>
+
+  <!-- Settings navigation -->
+  <nav class="snav" aria-label="Settings" data-od-id="settings-nav">
+    <a class="snav-back" href="#">
+      <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Back to app
+    </a>
+    <h2 class="snav-title">Settings</h2>
+    <div class="snav-group">Available</div>
+    <a class="snav-link" href="#">Account</a>
+    <a class="snav-link" href="#">Tokens</a>
+    <a class="snav-link" href="#">Workspaces</a>
+    <a class="snav-link" href="#" aria-current="page">Billing</a>
+    <div class="snav-group">Coming soon</div>
+    <span class="snav-link" aria-disabled="true">Members <span class="soon-tag">soon</span></span>
+    <span class="snav-link" aria-disabled="true">Notifications <span class="soon-tag">soon</span></span>
+    <span class="snav-link" aria-disabled="true">Environments <span class="soon-tag">soon</span></span>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs">Settings <span class="sep">/</span> Billing <span class="sep">/</span> <span class="here">Upgrade</span></div>
+      <span class="route-chip">/settings/billing/upgrade</span>
+    </header>
+
+    <main class="content" data-od-id="content">
+      <h1 class="page-title" data-od-id="page-title">Upgrade your plan</h1>
+      <p class="page-sub">Compare tiers, pick your seat count, and confirm. Changes apply immediately.</p>
+
+      <!-- Tier comparison -->
+      <section class="tiers" aria-label="Plan comparison" data-od-id="tier-comparison">
+
+        <article class="card tier" data-current="true" aria-labelledby="tier-free-name" data-od-id="tier-free">
+          <div class="tier-head">
+            <h2 class="tier-name" id="tier-free-name">Free</h2>
+            <span class="chip" data-status="skipped">
+              <svg class="icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Current plan
+            </span>
+          </div>
+          <div class="tier-price"><span class="amount">$0</span><span class="per">forever</span></div>
+          <ul class="tier-limits">
+            <li>Seats <span class="val">3</span></li>
+            <li>Projects <span class="val">2</span></li>
+            <li>Run history <span class="val">14 days</span></li>
+            <li>CLI + API access <span class="val">yes</span></li>
+          </ul>
+          <p class="tier-note">For solo QA work and small side projects.</p>
+          <div class="tier-cta">
+            <span class="btn" role="button" aria-disabled="true">You're on Free</span>
+          </div>
+        </article>
+
+        <article class="card tier" aria-labelledby="tier-team-name" data-od-id="tier-team">
+          <div class="tier-head">
+            <h2 class="tier-name" id="tier-team-name">Team</h2>
+          </div>
+          <div class="tier-price"><span class="amount">$12</span><span class="per">per seat / month</span></div>
+          <ul class="tier-limits">
+            <li>Seats <span class="val">up to 25</span></li>
+            <li>Projects <span class="val">unlimited</span></li>
+            <li>Run history <span class="val">90 days</span></li>
+            <li>Shared run reports <span class="val">yes</span></li>
+          </ul>
+          <p class="tier-note">For QA teams running suites daily across projects.</p>
+          <div class="tier-cta">
+            <button class="btn" data-variant="primary" id="choose-team" data-od-id="cta-upgrade-team">Upgrade to Team</button>
+          </div>
+        </article>
+
+        <article class="card tier" aria-labelledby="tier-ent-name" data-od-id="tier-enterprise">
+          <div class="tier-head">
+            <h2 class="tier-name" id="tier-ent-name">Enterprise</h2>
+          </div>
+          <div class="tier-price"><span class="amount">Custom</span><span class="per">annual contract</span></div>
+          <ul class="tier-limits">
+            <li>Seats <span class="val">unlimited</span></li>
+            <li>Projects <span class="val">unlimited</span></li>
+            <li>Run history <span class="val">unlimited</span></li>
+            <li>SSO / SAML, audit log <span class="val">yes</span></li>
+          </ul>
+          <p class="tier-note">Sales-assisted. There is no self-serve checkout for Enterprise — our team scopes seats, data residency, and contract terms with you.</p>
+          <div class="tier-cta">
+            <a class="btn" href="mailto:sales@bunkai.dev" data-od-id="cta-contact-sales">
+              <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Contact sales
+            </a>
+          </div>
+        </article>
+      </section>
+
+      <!-- Checkout -->
+      <section class="checkout" id="checkout" hidden aria-labelledby="checkout-title" data-od-id="checkout">
+        <div class="card checkout-panel">
+          <h2 id="checkout-title" tabindex="-1">Checkout — Team</h2>
+
+          <div id="decline-alert" class="alert-fail" role="alert" hidden style="margin-top:16px" data-od-id="decline-alert">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+            <div>
+              <p class="alert-title">Payment declined</p>
+              <p class="alert-body" id="decline-body">The card was declined by the issuer (code: <span class="mono">card_declined</span>). Your plan and seat selection are saved — pick another saved method below and retry.</p>
+            </div>
+          </div>
+
+          <div class="step">
+            <p class="step-label" id="seats-label">Step 1 · Seats</p>
+            <div class="seat-row" role="group" aria-labelledby="seats-label">
+              <button class="btn step-btn" id="seat-minus" aria-label="Decrease seats">
+                <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+              </button>
+              <input class="seat-input" id="seat-count" type="number" inputmode="numeric" min="1" max="25" value="5" aria-label="Number of seats">
+              <button class="btn step-btn" id="seat-plus" aria-label="Increase seats">
+                <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              </button>
+              <span class="seat-hint">1–25 seats on Team. You can change this any time; billing is prorated.</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <p class="step-label">Step 2 · Payment method</p>
+            <fieldset class="pay-methods" style="border:none">
+              <legend class="visually-hidden">Choose a saved payment method</legend>
+              <label class="pay-option">
+                <input type="radio" name="pay" value="4242" checked>
+                <span>
+                  <span class="pay-name">Workspace card</span><br>
+                  <span class="pay-num">Visa **** **** **** 4242 · exp 04/28</span>
+                </span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="pay" value="4000">
+                <span>
+                  <span class="pay-name">Backup card</span><br>
+                  <span class="pay-num">Visa **** **** **** 4000 · exp 11/27</span>
+                </span>
+              </label>
+            </fieldset>
+            <p class="pay-note">
+              <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              <span>Placeholder reference — no card details are entered on this screen. Saved methods are managed under Settings / Billing / Payment methods.</span>
+            </p>
+          </div>
+        </div>
+
+        <aside class="card summary-panel" aria-labelledby="summary-title" data-od-id="checkout-summary">
+          <h2 id="summary-title">Order summary</h2>
+          <ul class="summary-rows">
+            <li>Plan <span class="val">Team</span></li>
+            <li>Seats <span class="val" id="sum-seats">5</span></li>
+            <li>Price per seat <span class="val">$12 / mo</span></li>
+            <li>Billing cycle <span class="val">monthly</span></li>
+          </ul>
+          <div class="summary-total">Total <span class="val" id="sum-total">$60 / mo</span></div>
+          <button class="btn" data-variant="primary" id="confirm-upgrade" data-od-id="cta-confirm-upgrade">Confirm upgrade</button>
+          <p class="summary-fine">Charged today, prorated to your cycle date. Cancel or change seats any time.</p>
+        </aside>
+      </section>
+
+      <!-- Success -->
+      <section class="success-wrap" id="success" hidden aria-labelledby="success-title" data-od-id="success">
+        <div class="success-head">
+          <span class="chip" data-status="pass">
+            <svg class="icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Upgraded
+          </span>
+          <h2 id="success-title" tabindex="-1">You're on Team now</h2>
+        </div>
+        <div class="card plan-card">
+          <div class="plan-card-head">
+            <span class="plan-card-name">Team plan</span>
+            <span class="chip" data-status="pass">Active</span>
+          </div>
+          <ul class="summary-rows">
+            <li>Seats <span class="val" id="ok-seats">5</span></li>
+            <li>Monthly total <span class="val" id="ok-total">$60 / mo</span></li>
+            <li>Next invoice <span class="val">Aug 30, 2026</span></li>
+            <li>Payment method <span class="val" id="ok-card">Visa **** 4242</span></li>
+          </ul>
+          <ul class="unlocked">
+            <li>
+              <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Seat cap raised to <span class="mono">25</span> — active now
+            </li>
+            <li>
+              <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Unlimited projects — active now
+            </li>
+            <li>
+              <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Run history retention extended to <span class="mono">90 days</span>
+            </li>
+          </ul>
+          <p class="receipt-note">A receipt is on its way to <span class="mono">kenji.sato@upex.dev</span>. It will also appear under Settings / Billing / Invoices.</p>
+          <div class="success-actions">
+            <a class="btn" href="#" data-od-id="back-to-billing">Back to Billing</a>
+            <a class="btn" data-variant="ghost" href="#">Invite teammates</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- State reference strip -->
+      <section class="strip" aria-labelledby="strip-title-h" data-od-id="state-strip">
+        <div class="strip-head">
+          <h2 class="strip-title" id="strip-title-h">State reference</h2>
+          <span class="strip-sub">Every state of this flow, side by side — same convention as billing-overview</span>
+        </div>
+        <div class="strip-grid">
+
+          <div class="panel" data-od-id="panel-default">
+            <div class="panel-tag">01 · Tier comparison — owner, default</div>
+            <div class="panel-body">
+              <div class="mini-card">
+                <div class="mini-row"><span>Free</span><span class="chip" data-status="skipped">Current plan</span></div>
+                <div class="mini-row"><span class="mini-label">3 seats · 2 projects · 14d history</span><span class="mini-val">$0</span></div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-row"><span>Team</span><span class="mini-btn" data-variant="primary">Upgrade to Team</span></div>
+                <div class="mini-row"><span class="mini-label">25 seats · unlimited · 90d history</span><span class="mini-val">$12/seat</span></div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-row"><span>Enterprise</span><span class="mini-btn">Contact sales</span></div>
+                <div class="mini-row"><span class="mini-label">Sales-assisted only</span><span class="mini-val">Custom</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-checkout">
+            <div class="panel-tag">02 · Checkout in progress</div>
+            <div class="panel-body">
+              <div class="mini-card">
+                <div class="mini-row"><span class="mini-label">Plan</span><span class="mini-val">Team</span></div>
+                <div class="mini-row"><span class="mini-label">Seats</span><span class="mini-val">[-] 5 [+]</span></div>
+                <div class="mini-row"><span class="mini-label">Total</span><span class="mini-val">$60 / mo</span></div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-row"><span class="mini-label">Method</span><span class="mini-val">Visa **** 4242</span></div>
+              </div>
+              <div class="mini-row"><span class="mini-label">Single confirm action</span><span class="mini-btn" data-variant="primary">Confirm upgrade</span></div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-declined">
+            <div class="panel-tag">03 · Payment declined — retry</div>
+            <div class="panel-body">
+              <div class="mini-fail">
+                <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                <span>Declined by issuer (<span class="mono">card_declined</span>). Plan + seats kept.</span>
+              </div>
+              <div class="mini-card">
+                <div class="mini-row"><span class="mini-label">Team · 5 seats</span><span class="mini-val">$60 / mo</span></div>
+                <div class="mini-row"><span class="mini-label">Switch to</span><span class="mini-val">Visa **** 4000</span></div>
+              </div>
+              <div class="mini-row"><span class="mini-label">Checkout stays open</span><span class="mini-btn" data-variant="primary">Retry payment</span></div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-success">
+            <div class="panel-tag">04 · Success — plan confirmed</div>
+            <div class="panel-body">
+              <div class="mini-row"><span class="chip" data-status="pass">Upgraded</span><span class="mini-label">limits active now</span></div>
+              <div class="mini-card">
+                <div class="mini-row"><span>Team plan</span><span class="chip" data-status="pass">Active</span></div>
+                <div class="mini-row"><span class="mini-label">5 seats · next invoice</span><span class="mini-val">Aug 30, 2026</span></div>
+              </div>
+              <div class="mini-row"><span class="mini-label">Receipt emailed to owner</span><span class="mini-btn">Back to Billing</span></div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-enterprise">
+            <div class="panel-tag">05 · Enterprise — contact path</div>
+            <div class="panel-body">
+              <div class="mini-card">
+                <div class="mini-row"><span>Enterprise</span><span class="mini-val">Custom</span></div>
+                <div class="mini-row"><span class="mini-label">SSO · audit log · unlimited retention</span></div>
+              </div>
+              <div class="mini-note">
+                <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                <span>No payment fields, ever. Sales-assisted: <span class="mono">sales@bunkai.dev</span></span>
+              </div>
+              <div class="mini-row"><span class="mini-label">Replaces checkout entirely</span><span class="mini-btn">Contact sales</span></div>
+            </div>
+          </div>
+
+          <div class="panel" data-od-id="panel-admin">
+            <div class="panel-tag">06 · Admin — view only</div>
+            <div class="panel-body">
+              <div class="mini-card">
+                <div class="mini-row"><span>Team</span><span class="mini-val">$12/seat</span></div>
+                <div class="mini-row"><span class="mini-label">Same tier info as owner view</span></div>
+              </div>
+              <div class="mini-note">
+                <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Only the workspace owner can complete upgrades. Ask <strong>Kenji Sato</strong> (owner) to confirm this change — no checkout is shown for admins.</span>
+              </div>
+              <div class="mini-row"><span class="mini-label">Confirm action replaced by note</span><span class="mini-btn">Notify owner</span></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  var PRICE = 12;
+  var checkout = document.getElementById('checkout');
+  var success = document.getElementById('success');
+  var declineAlert = document.getElementById('decline-alert');
+  var seatInput = document.getElementById('seat-count');
+  var attempted = false;
+
+  function seats() {
+    var n = parseInt(seatInput.value, 10);
+    if (isNaN(n)) n = 1;
+    return Math.min(25, Math.max(1, n));
+  }
+  function sync() {
+    var n = seats();
+    seatInput.value = n;
+    document.getElementById('sum-seats').textContent = n;
+    document.getElementById('sum-total').textContent = '$' + (n * PRICE) + ' / mo';
+  }
+  function selectedCard() {
+    var el = document.querySelector('input[name="pay"]:checked');
+    return el ? el.value : '4242';
+  }
+
+  document.getElementById('choose-team').addEventListener('click', function () {
+    checkout.hidden = false;
+    success.hidden = true;
+    sync();
+    document.getElementById('checkout-title').focus();
+  });
+
+  document.getElementById('seat-minus').addEventListener('click', function () {
+    seatInput.value = seats() - 1; sync();
+  });
+  document.getElementById('seat-plus').addEventListener('click', function () {
+    seatInput.value = seats() + 1; sync();
+  });
+  seatInput.addEventListener('input', sync);
+  seatInput.addEventListener('change', sync);
+
+  document.getElementById('confirm-upgrade').addEventListener('click', function () {
+    if (!attempted) {
+      // First attempt simulates an issuer decline; plan + seat choice stay intact.
+      attempted = true;
+      document.getElementById('decline-body').innerHTML =
+        'Visa **** ' + selectedCard() + ' was declined by the issuer (code: ' +
+        '<span class="mono">card_declined</span>). Your Team plan and ' +
+        '<span class="mono">' + seats() + '</span> seat selection are saved — ' +
+        'pick another saved method below and retry.';
+      declineAlert.hidden = false;
+      declineAlert.focus && declineAlert.setAttribute('tabindex', '-1');
+      declineAlert.focus();
+      return;
+    }
+    var n = seats();
+    document.getElementById('ok-seats').textContent = n;
+    document.getElementById('ok-total').textContent = '$' + (n * PRICE) + ' / mo';
+    document.getElementById('ok-card').textContent = 'Visa **** ' + selectedCard();
+    checkout.hidden = true;
+    declineAlert.hidden = true;
+    success.hidden = false;
+    document.getElementById('success-title').focus();
+  });
+})();
+</script>
+</body>
+</html>

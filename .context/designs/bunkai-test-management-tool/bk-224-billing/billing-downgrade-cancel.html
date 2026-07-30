@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bunkai · Settings · Billing · Downgrade &amp; cancel</title>
+<style>
+/* ─── Bunkai tokens (verbatim contract) ─────────────────────────── */
+:root {
+  /* ─── Surface ─────────────────────────────────────────────────────
+   * DESIGN.md §3.1. --bg is the deepest page layer; --surface is the
+   * default card panel (--bg-2), the surface a generated artifact
+   * should reach for first. */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ──────────────────────────────────────────────────
+   * DESIGN.md §3.2, bound by role: strongest → body → secondary →
+   * tertiary. The disabled tier (--fg-4) has no schema slot and is
+   * re-exported as an extension below. */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ──────────────────────────────────────────────────────
+   * DESIGN.md §3.3. White-alpha strokes, never solid greys, so panels
+   * stack correctly over any surface step. */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ──────────────────────────────────────────────────────
+   * Vermillion, a nod to the hanko stamp around the 分解 kanji.
+   * DESIGN.md §2 principle 4 is a hard rule: "Status carries color;
+   * nothing else does. Accent is reserved for primary actions and
+   * focus rings." No decorative vermillion. */
+  --accent: #d9543f;                   /* --accent — primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover (brightens) */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — documented pressed bg */
+
+  /* ─── Semantic ────────────────────────────────────────────────────
+   * DESIGN.md §3.5 signal palette. These are the ONLY globally
+   * meaningful colors in the product besides the accent. The full
+   * five-state palette with its background tints is re-exported below;
+   * "skipped" and "running" have no schema slot. */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ──────────────────────────────────────────────────
+   * DESIGN.md §4. Inter for prose, JetBrains Mono wherever an ID lives
+   * (ATC-001, RUN-451, MOD-014) — principle 3 makes that mandatory,
+   * not stylistic. Noto Serif JP is wordmark-only and is exported as
+   * an extension so no artifact reaches for it as a text face. */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type ramp — DESIGN.md §4. Base is 13px, and the whole ramp tops out
+   * at 22px: this is a dense tool, so hierarchy comes from weight and
+   * color tier, not from size. The 12/12.5px control tier (buttons,
+   * inputs, table cells) is the most-used size in the product and has
+   * no schema slot; it is exported as --text-control below. */
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;                /* DESIGN.md §4 body line-height */
+  --leading-tight: 1.2;                /* [authored] no heading leading in DESIGN.md */
+  --tracking-display: 0;               /* normal — DESIGN.md specifies tracking only
+                                        * for the 10.5px label tier (+0.04em) and the
+                                        * wordmark, never for display headings */
+
+  /* ─── Spacing ─────────────────────────────────────────────────────
+   * DESIGN.md §5: implicit 4px grid, real gaps 4/6/8/10/12/16/20/24,
+   * padding on primary surfaces caps at 16, nothing exceeds 24. The
+   * slot names are the schema's; the values are Bunkai's. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  /* Section rhythm — [authored]. Bunkai is an application shell, not a
+   * marketing page, so DESIGN.md never specifies section bands. Values
+   * stay inside the 24px ceiling to keep the density rule intact. */
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ──────────────────────────────────────────────────────
+   * DESIGN.md §5. Peaks at 10px. Register is "engineer's terminal",
+   * not consumer app — do not round past --radius-xl. */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ───────────────────────────────────────────────────
+   * DESIGN.md §5. Low elevation with a 1px inset highlight on top —
+   * that inset is what makes a Bunkai panel read as machined rather
+   * than dropped. Never flatten it to a plain drop shadow. */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  /* Focus — DESIGN.md §10 is prescriptive: 1px solid accent, 1px offset,
+   * on every interactive element, never removed without replacement.
+   * Expressed as a ring so the schema slot resolves; the outline form
+   * is the canonical one. */
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ──────────────────────────────────────────────────────
+   * DESIGN.md §8. 120ms for color/background/border/transform, 200ms
+   * for progress-bar fill. Navigation must feel instantaneous: no page
+   * transitions, no route fade over 80ms. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ───────────────────────────────────────────────────
+   * [authored] Bunkai's shell is full-bleed (sidebar + editor area,
+   * VS Code layout), so DESIGN.md defines no page container. These
+   * exist only so the schema slot resolves for artifacts that need a
+   * centered reading column. */
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ══════════════════════
+   * Everything below is brand-specific and has no schema slot. These
+   * are the names the real codebase and mockups use, so an artifact
+   * that references them ports into the repo without a rename pass.
+   * All values byte-exact with app/globals.css. */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5.
+   * Color is never the sole signal: pair every state with text and an
+   * icon in dense views (DESIGN.md §10). */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* The most-used text size in the product: buttons, inputs, table
+   * cells. DESIGN.md §4 lists it as the 12 / 12.5px tier. */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 — tighter i/l and
+   * better number forms. Apply on the body element. */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+  .sk { animation: none; }
+  .dot[data-status="running"] { animation: none; }
+}
+
+/* ─── Base ──────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font: 400 var(--text-base)/var(--leading-body) var(--font-body);
+  font-feature-settings: var(--font-feature-settings);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+[hidden] { display: none !important; }
+.mono { font-family: var(--font-mono); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+svg.ic { flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ─── App shell ─────────────────────────────────────────────────── */
+.app { display: grid; grid-template-columns: 48px 216px 1fr; height: 100vh; }
+
+.rail {
+  background: var(--bg-0);
+  border-right: 1px solid var(--stroke-2);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 0; gap: 4px;
+}
+.rail-logo {
+  font: 700 16px/1 var(--font-jp);
+  color: var(--fg-0);
+  width: 28px; height: 28px; display: grid; place-items: center;
+  margin-bottom: 8px;
+}
+.rail-btn {
+  width: 32px; height: 32px; border-radius: var(--r-2);
+  display: grid; place-items: center; color: var(--fg-3);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.rail-btn:hover { background: var(--bg-4); color: var(--fg-1); }
+.rail-btn[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); }
+.rail-spacer { flex: 1; }
+.rail-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  font: 600 10px/1 var(--font-body); color: var(--fg-1);
+  display: grid; place-items: center;
+}
+.rail-avatar:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+
+/* ─── Settings nav ──────────────────────────────────────────────── */
+.snav {
+  background: var(--bg-1);
+  border-right: 1px solid var(--stroke-2);
+  padding: 12px 10px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.snav-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-control); color: var(--fg-2);
+  padding: 4px 6px; border-radius: var(--r-2); margin-bottom: 10px;
+  transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.snav-back:hover { color: var(--fg-0); background: var(--bg-3); }
+.snav-title { font: 700 var(--text-xl)/1.2 var(--font-display); color: var(--fg-0); padding: 0 6px 12px; }
+.snav-group {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3);
+  padding: 10px 6px 6px;
+}
+.snav-link {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--text-control); color: var(--fg-2);
+  padding: 5px 6px; border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.snav-link:hover { background: var(--bg-3); color: var(--fg-1); }
+.snav-link[aria-current="page"] { background: var(--bg-3); color: var(--fg-0); font-weight: 500; }
+.snav-soon {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--text-control); color: var(--fg-4);
+  padding: 5px 6px;
+}
+.tag-soon {
+  font: 500 10px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); border: 1px solid var(--stroke-2); border-radius: var(--r-1);
+  padding: 2px 4px;
+}
+
+/* ─── Main column ───────────────────────────────────────────────── */
+.main { overflow-y: auto; background: var(--bg-0); }
+.topbar {
+  position: sticky; top: 0; z-index: 10; height: 44px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--stroke-1);
+}
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: var(--text-control); color: var(--fg-2); }
+.crumbs strong { color: var(--fg-0); font-weight: 500; }
+.crumb-sep { color: var(--fg-4); }
+.route-chip {
+  font: 400 var(--text-sm)/1 var(--font-mono); color: var(--fg-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 3px 6px;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--fg-3); }
+.kbd {
+  font: 500 10px/1 var(--font-mono); color: var(--fg-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-2); border-bottom-width: 2px;
+  border-radius: var(--r-1); padding: 2px 5px;
+}
+.content { max-width: 880px; padding: 24px 24px 24px; margin: 0 auto; }
+.page-title { font: 700 var(--text-3xl)/var(--leading-tight) var(--font-display); color: var(--fg-0); letter-spacing: var(--tracking-display); }
+.page-sub { font-size: var(--text-control); color: var(--fg-3); margin: 6px 0 20px; }
+.page-sub .mono { color: var(--muted); }
+
+/* ─── Cards / plan card ─────────────────────────────────────────── */
+.card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card);
+}
+.plan-card { display: flex; flex-direction: column; }
+.plan-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 16px 12px; gap: 12px; }
+.plan-label {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3); margin-bottom: 6px;
+}
+.plan-name { font: 700 var(--text-2xl)/1.2 var(--font-display); color: var(--fg-0); display: flex; align-items: center; gap: 8px; }
+.plan-price { font: 500 var(--text-lg)/1.2 var(--font-mono); color: var(--fg-1); text-align: right; }
+.plan-price small { display: block; font: 400 var(--text-sm)/1.4 var(--font-body); color: var(--fg-3); }
+.plan-meta { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 7px; }
+.meta-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-control); color: var(--muted); }
+.meta-row .ic { width: 14px; height: 14px; color: var(--fg-3); }
+.meta-row .mono { color: var(--fg-1); }
+.plan-actions {
+  border-top: 1px solid var(--stroke-1);
+  padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+}
+.hint {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3); margin-right: auto;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 28px; padding: 0 10px;
+  font: 500 var(--text-control)/1 var(--font-body);
+  color: var(--fg-1); background: var(--bg-3);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); color: var(--fg-0); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] { background: var(--accent); border-color: transparent; color: var(--accent-on); }
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--muted); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-1); }
+.btn[data-variant="danger"] {
+  background: transparent; color: var(--fail);
+  border-color: color-mix(in oklab, var(--fail) 45%, transparent);
+}
+.btn[data-variant="danger"]:hover { background: var(--fail-bg); border-color: var(--fail); }
+
+/* ─── Chips / dots ──────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 18px; padding: 0 6px;
+  font: 500 11px/1 var(--font-body);
+  border-radius: var(--r-1);
+  color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--stroke-2);
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip[data-status="pass"] { color: var(--pass); background: var(--pass-bg); border-color: color-mix(in oklab, var(--pass) 30%, transparent); }
+.chip[data-status="blocked"] { color: var(--blocked); background: var(--blocked-bg); border-color: color-mix(in oklab, var(--blocked) 30%, transparent); }
+.chip[data-status="skipped"] { color: var(--skipped); background: var(--skipped-bg); border-color: color-mix(in oklab, var(--skipped) 35%, transparent); }
+.chip[data-status="fail"] { color: var(--fail); background: var(--fail-bg); border-color: color-mix(in oklab, var(--fail) 30%, transparent); }
+
+/* ─── Notes ─────────────────────────────────────────────────────── */
+.note {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 10px 12px; border-radius: var(--r-2);
+  border: 1px solid var(--stroke-2); background: var(--bg-3);
+  font-size: var(--text-control); color: var(--fg-1);
+}
+.note .ic { width: 14px; height: 14px; margin-top: 1px; color: var(--fg-2); }
+.note[data-tone="pass"] { background: var(--pass-bg); border-color: color-mix(in oklab, var(--pass) 25%, transparent); }
+.note[data-tone="pass"] .ic { color: var(--pass); }
+.note[data-tone="blocked"] { background: var(--blocked-bg); border-color: color-mix(in oklab, var(--blocked) 25%, transparent); }
+.note[data-tone="blocked"] .ic { color: var(--blocked); }
+.note-inline { margin: 0 16px 14px; }
+
+/* ─── Pending-cancellation banner ───────────────────────────────── */
+.banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px;
+  background: var(--blocked-bg);
+  border-bottom: 1px solid color-mix(in oklab, var(--blocked) 25%, transparent);
+  border-radius: var(--r-3) var(--r-3) 0 0;
+  font-size: var(--text-control);
+}
+.banner .ic { width: 16px; height: 16px; color: var(--blocked); margin-top: 1px; }
+.banner-body { flex: 1; }
+.banner-body strong { color: var(--fg-0); font-weight: 600; }
+.banner-body .mono { color: var(--fg-0); }
+.banner-sub { color: var(--muted); margin-top: 3px; }
+.banner .btn { flex: none; align-self: center; }
+
+/* ─── Read-only list ────────────────────────────────────────────── */
+.ro-block { padding: 0 16px 14px; }
+.ro-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ro-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.ro-row {
+  display: flex; align-items: center; gap: 7px;
+  font: 400 var(--text-sm)/1.4 var(--font-mono); color: var(--fg-1);
+  padding: 3px 0;
+}
+.ro-row .ic { width: 13px; height: 13px; color: var(--skipped); }
+.ro-row a { margin-left: auto; font-family: var(--font-body); font-size: 11px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.ro-row a:hover { color: var(--fg-0); }
+.ro-foot { font-size: var(--text-sm); color: var(--fg-3); margin-top: 8px; }
+
+/* ─── Dialogs ───────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0, 0, 0, 0.6);
+  display: grid; place-items: center; padding: 24px;
+}
+.modal {
+  width: min(520px, 100%);
+  background: var(--bg-2); border: 1px solid var(--stroke-3);
+  border-radius: var(--r-4); box-shadow: var(--shadow-pop);
+}
+.modal-head { padding: 16px 16px 0; }
+.modal-title { font: 600 var(--text-xl)/1.3 var(--font-display); color: var(--fg-0); }
+.modal-title .mono { font-size: 15px; }
+.modal-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; font-size: var(--text-control); color: var(--muted); }
+.modal-body .mono { color: var(--fg-1); }
+.modal-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid var(--stroke-1);
+}
+.panel .modal { width: 100%; max-width: 520px; margin: 0 auto; }
+
+/* tiers inside "Change plan" */
+.tier {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px; border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  background: var(--bg-3);
+}
+.tier + .tier { margin-top: 8px; }
+.tier-name { font: 600 var(--text-lg)/1.3 var(--font-display); color: var(--fg-0); display: flex; align-items: center; gap: 8px; }
+.tier-meta { font-size: var(--text-sm); color: var(--fg-3); margin-top: 3px; }
+.tier-meta .mono { color: var(--fg-1); }
+
+/* limits table */
+.limits { width: 100%; border-collapse: collapse; font-size: var(--text-control); }
+.limits th {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3); text-align: left;
+  padding: 0 8px 6px 0;
+}
+.limits td { padding: 6px 8px 6px 0; border-top: 1px solid var(--stroke-1); color: var(--muted); vertical-align: top; }
+.limits td:first-child { color: var(--fg-1); }
+.limits .mono { color: var(--fg-1); }
+.limits .delta { display: inline-flex; align-items: center; gap: 5px; color: var(--blocked); }
+.limits .delta .ic { width: 12px; height: 12px; }
+
+/* ─── State-reference strip ─────────────────────────────────────── */
+.strip { margin-top: 32px; border-top: 1px solid var(--stroke-1); padding-top: 16px; }
+.strip-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.strip-title {
+  font: 500 var(--text-xs)/1 var(--font-body); text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--fg-3);
+}
+.strip-desc { font-size: var(--text-sm); color: var(--fg-4); }
+.strip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.panel {
+  background: var(--bg-1); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); overflow: hidden;
+}
+.panel--wide { grid-column: span 3; }
+.panel-tag {
+  font: 500 10px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--fg-3); padding: 7px 10px;
+  border-bottom: 1px solid var(--stroke-1);
+}
+.panel-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.panel .plan-head { padding: 12px 12px 8px; }
+.panel .plan-meta { padding: 0 12px 12px; }
+.panel .plan-actions { padding: 8px 12px; }
+.panel .banner { padding: 10px 12px; }
+.panel .note-inline { margin: 0 12px 12px; }
+.panel .ro-block { padding: 0 12px 12px; }
+.panel .ro-list { grid-template-columns: 1fr; }
+
+/* skeleton */
+.sk { background: var(--bg-3); border-radius: var(--r-1); animation: sk-pulse 1.6s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: 0.55; } }
+.sk-line { height: 10px; }
+.sk-block { height: 26px; }
+
+/* error */
+.err { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.err-title { display: flex; align-items: center; gap: 8px; font: 600 var(--text-lg)/1.3 var(--font-display); color: var(--fg-0); }
+.err-title .ic { width: 16px; height: 16px; color: var(--fail); }
+.err-req { font: 400 var(--text-sm)/1.5 var(--font-mono); color: var(--fg-3); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══ Icon rail ══ -->
+  <aside class="rail" data-od-id="rail" aria-label="Primary">
+    <div class="rail-logo" aria-hidden="true">分</div>
+    <nav aria-label="Main areas" style="display:flex;flex-direction:column;gap:4px;">
+      <button type="button" class="rail-btn" aria-label="Explorer" title="Explorer">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+      </button>
+      <button type="button" class="rail-btn" aria-label="Test cases" title="Test cases">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+      </button>
+      <button type="button" class="rail-btn" aria-label="Runs" title="Runs">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+      </button>
+      <button type="button" class="rail-btn" aria-current="page" aria-label="Settings" title="Settings">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </nav>
+    <div class="rail-spacer"></div>
+    <button type="button" class="rail-avatar" aria-label="Account, K. Sato">KS</button>
+  </aside>
+
+  <!-- ══ Settings nav ══ -->
+  <nav class="snav" data-od-id="settings-nav" aria-label="Settings">
+    <a class="snav-back" href="#">
+      <svg class="ic" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      Back to app
+    </a>
+    <div class="snav-title">Settings</div>
+    <div class="snav-group">Available</div>
+    <a class="snav-link" href="#">Account</a>
+    <a class="snav-link" href="#">Tokens</a>
+    <a class="snav-link" href="#">Workspaces</a>
+    <a class="snav-link" href="#" aria-current="page">Billing</a>
+    <div class="snav-group">Coming soon</div>
+    <div class="snav-soon" aria-disabled="true">Members <span class="tag-soon">soon</span></div>
+    <div class="snav-soon" aria-disabled="true">Notifications <span class="tag-soon">soon</span></div>
+    <div class="snav-soon" aria-disabled="true">Environments <span class="tag-soon">soon</span></div>
+  </nav>
+
+  <!-- ══ Main ══ -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs">Settings <span class="crumb-sep">/</span> <strong>Billing</strong></div>
+      <span class="route-chip">/settings/billing</span>
+      <div class="topbar-right">Command palette <span class="kbd">Ctrl K</span></div>
+    </header>
+
+    <main class="content">
+      <h1 class="page-title" data-od-id="page-title">Billing</h1>
+      <p class="page-sub">Workspace <span class="mono">kaizen-labs</span> · owned by <span class="mono">k.sato@kaizen.dev</span></p>
+
+      <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
+
+      <!-- ── Live plan card (interactive: paid → downgrade / cancel → pending → resubscribe) ── -->
+      <section aria-label="Current plan" data-od-id="plan-card-live">
+
+        <!-- State: paid (default) -->
+        <div class="card plan-card" id="card-paid">
+          <div class="plan-head">
+            <div>
+              <div class="plan-label">Current plan</div>
+              <div class="plan-name">Team</div>
+            </div>
+            <div class="plan-price">$12 / seat / month
+              <small>next charge <span class="mono">$96.00</span> for <span class="mono">8</span> seats</small>
+            </div>
+          </div>
+          <div class="plan-meta">
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+              Renews <span class="mono">Aug 14, 2026</span>
+            </div>
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Visa <span class="mono">·· 4242</span> · expires <span class="mono">04/28</span>
+            </div>
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="mono">8 of 12</span> seats in use · <span class="mono">9 of 10</span> projects
+            </div>
+          </div>
+          <div class="note note-inline" data-tone="pass" id="note-flash" hidden>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            <span id="note-flash-text"></span>
+          </div>
+          <div class="plan-actions" data-od-id="owner-actions">
+            <span class="hint">Owner-only actions</span>
+            <button type="button" class="btn" id="btn-change" data-od-id="btn-change-plan">Change plan</button>
+            <button type="button" class="btn" data-variant="ghost" id="btn-cancel-sub" data-od-id="btn-cancel-subscription">Cancel subscription</button>
+          </div>
+        </div>
+
+        <!-- State: downgraded to Free -->
+        <div class="card plan-card" id="card-downgraded" hidden>
+          <div class="plan-head">
+            <div>
+              <div class="plan-label">Current plan</div>
+              <div class="plan-name">Free <span class="chip" data-status="skipped"><span class="dot" aria-hidden="true"></span>Downgraded from Team</span></div>
+            </div>
+            <div class="plan-price">$0 / month
+              <small>no upcoming charge</small>
+            </div>
+          </div>
+          <div class="note note-inline" data-tone="pass">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span><span class="mono">kaizen-labs</span> is now on Free. <span class="mono">8 of 9</span> projects are read-only. Nothing was deleted.</span>
+          </div>
+          <div class="plan-meta">
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Visa <span class="mono">·· 4242</span> kept on file, not charged
+            </div>
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="mono">3 of 8</span> members keep edit access · <span class="mono">5</span> are read-only
+            </div>
+          </div>
+          <div class="ro-block" data-od-id="readonly-projects">
+            <div class="ro-head">
+              <span class="hint" style="margin-right:0;">Read-only projects</span>
+              <span class="chip" data-status="skipped"><span class="dot" aria-hidden="true"></span><span class="mono">8 of 9</span></span>
+            </div>
+            <div class="ro-list">
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>mobile-app <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>api-gateway <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>billing-service <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>auth-service <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>design-system <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>e2e-nightly <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>load-tests <a href="#">View</a></div>
+              <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>data-pipeline <a href="#">View</a></div>
+            </div>
+            <p class="ro-foot"><span class="mono">checkout-web</span> stays editable, the most recently updated project. Read-only projects keep every test case, run, and report fully viewable.</p>
+          </div>
+          <div class="plan-actions">
+            <span class="hint">Owner-only actions</span>
+            <button type="button" class="btn" data-variant="primary" id="btn-upgrade">Upgrade to Team</button>
+          </div>
+        </div>
+
+        <!-- State: pending cancellation -->
+        <div class="card plan-card" id="card-pending" hidden data-od-id="pending-cancellation-card">
+          <div class="banner" role="status">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <div class="banner-body">
+              <strong>Cancels on <span class="mono">Aug 14, 2026</span>.</strong>
+              <div class="banner-sub"><span class="mono">kaizen-labs</span> keeps full Team access until then. The period is already paid, so resubscribing makes no new charge.</div>
+            </div>
+            <button type="button" class="btn" id="btn-resub" data-od-id="btn-resubscribe">Resubscribe</button>
+          </div>
+          <div class="plan-head">
+            <div>
+              <div class="plan-label">Current plan</div>
+              <div class="plan-name">Team <span class="chip" data-status="blocked"><span class="dot" aria-hidden="true"></span>Pending cancellation</span></div>
+            </div>
+            <div class="plan-price">$12 / seat / month
+              <small>no further charges scheduled</small>
+            </div>
+          </div>
+          <div class="plan-meta">
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+              Access ends <span class="mono">Aug 14, 2026</span> · then moves to Free
+            </div>
+            <div class="meta-row">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="mono">8 of 12</span> seats in use · <span class="mono">9 of 10</span> projects
+            </div>
+          </div>
+          <div class="plan-actions">
+            <span class="hint">Plan changes pause while a cancellation is pending</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── State reference strip ── -->
+      <section class="strip" data-od-id="state-reference" aria-label="State reference">
+        <div class="strip-head">
+          <h2 class="strip-title">State reference</h2>
+          <span class="strip-desc">static renderings of every state in this flow · not interactive</span>
+        </div>
+        <div class="strip-grid">
+
+          <!-- 1 · consequence preview dialog, open -->
+          <div class="panel panel--wide" data-od-id="panel-consequence-preview">
+            <div class="panel-tag">consequence-preview · open</div>
+            <div class="panel-body">
+              <div class="modal" role="group" aria-label="Static example: downgrade consequence preview">
+                <div class="modal-head"><div class="modal-title">Downgrade <span class="mono">kaizen-labs</span> to Free?</div></div>
+                <div class="modal-body">
+                  <p>The workspace is on Team at <span class="mono">$12</span> / seat / month. Free supports less than it currently uses:</p>
+                  <table class="limits">
+                    <thead><tr><th scope="col">Resource</th><th scope="col">In use</th><th scope="col">Free limit</th><th scope="col">After downgrade</th></tr></thead>
+                    <tbody>
+                      <tr><td>Projects</td><td class="mono">9</td><td class="mono">1</td>
+                        <td><span class="delta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span class="mono">8 of 9</span>&nbsp;become read-only</span></td></tr>
+                      <tr><td>Seats</td><td class="mono">8</td><td class="mono">3</td>
+                        <td><span class="delta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span class="mono">5 of 8</span>&nbsp;members become read-only</span></td></tr>
+                      <tr><td>Run history</td><td class="mono">90 days</td><td class="mono">14 days</td><td>older runs stay stored</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="ro-head" style="margin-bottom:0;">
+                    <span class="hint" style="margin-right:0;">Projects becoming read-only</span>
+                    <span class="chip" data-status="blocked"><span class="dot" aria-hidden="true"></span><span class="mono">8</span></span>
+                  </div>
+                  <div class="ro-list" style="grid-template-columns:1fr 1fr;">
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>mobile-app</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>api-gateway</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>billing-service</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>auth-service</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>design-system</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>e2e-nightly</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>load-tests</div>
+                    <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>data-pipeline</div>
+                  </div>
+                  <div class="note" data-tone="pass">
+                    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span><strong>Nothing will be deleted.</strong> Read-only projects and members keep full view access to every test case, run, and report. Upgrade again at any time to restore editing.</span>
+                  </div>
+                </div>
+                <div class="modal-foot">
+                  <button type="button" class="btn" tabindex="-1">Keep Team</button>
+                  <button type="button" class="btn" data-variant="danger" tabindex="-1">Downgrade to Free</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2 · downgraded -->
+          <div class="panel" data-od-id="panel-downgraded">
+            <div class="panel-tag">downgraded · read-only marked</div>
+            <div class="card plan-card" style="border:none;box-shadow:none;background:var(--bg-2);border-radius:0;">
+              <div class="plan-head">
+                <div>
+                  <div class="plan-label">Current plan</div>
+                  <div class="plan-name" style="font-size:var(--text-xl);">Free</div>
+                </div>
+                <div class="plan-price">$0 / month</div>
+              </div>
+              <div class="note note-inline" data-tone="pass">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span><span class="mono">8 of 9</span> projects read-only · nothing deleted, all still viewable</span>
+              </div>
+              <div class="ro-block">
+                <div class="ro-list">
+                  <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>mobile-app</div>
+                  <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>api-gateway</div>
+                  <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>billing-service</div>
+                </div>
+                <p class="ro-foot">+ <span class="mono">5</span> more · <span class="mono">checkout-web</span> stays editable</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 · pending cancellation -->
+          <div class="panel" data-od-id="panel-pending-cancellation">
+            <div class="panel-tag">pending-cancellation</div>
+            <div class="card plan-card" style="border:none;box-shadow:none;background:var(--bg-2);border-radius:0;">
+              <div class="banner">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <div class="banner-body">
+                  <strong>Cancels on <span class="mono">Aug 14, 2026</span>.</strong>
+                  <div class="banner-sub">Full access until then · no new charge to resubscribe</div>
+                </div>
+                <button type="button" class="btn" tabindex="-1">Resubscribe</button>
+              </div>
+              <div class="plan-head">
+                <div>
+                  <div class="plan-label">Current plan</div>
+                  <div class="plan-name" style="font-size:var(--text-xl);">Team <span class="chip" data-status="blocked"><span class="dot" aria-hidden="true"></span>Pending cancellation</span></div>
+                </div>
+                <div class="plan-price">$12 / seat / month</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 · reverted / normal paid -->
+          <div class="panel" data-od-id="panel-reverted">
+            <div class="panel-tag">cancellation-reverted · paid</div>
+            <div class="card plan-card" style="border:none;box-shadow:none;background:var(--bg-2);border-radius:0;">
+              <div class="plan-head">
+                <div>
+                  <div class="plan-label">Current plan</div>
+                  <div class="plan-name" style="font-size:var(--text-xl);">Team</div>
+                </div>
+                <div class="plan-price">$12 / seat / month</div>
+              </div>
+              <div class="note note-inline" data-tone="pass">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>Cancellation reverted. Team renews <span class="mono">Aug 14, 2026</span>. No new charge, the current period is already paid.</span>
+              </div>
+              <div class="plan-actions">
+                <span class="hint">Owner-only actions</span>
+                <button type="button" class="btn" tabindex="-1">Change plan</button>
+                <button type="button" class="btn" data-variant="ghost" tabindex="-1">Cancel subscription</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5 · admin view, actions structurally absent -->
+          <div class="panel" data-od-id="panel-admin-view">
+            <div class="panel-tag">admin · owner-gated</div>
+            <div class="card plan-card" style="border:none;box-shadow:none;background:var(--bg-2);border-radius:0;">
+              <div class="plan-head">
+                <div>
+                  <div class="plan-label">Current plan</div>
+                  <div class="plan-name" style="font-size:var(--text-xl);">Team</div>
+                </div>
+                <div class="plan-price">$12 / seat / month</div>
+              </div>
+              <div class="plan-meta">
+                <div class="meta-row">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                  Renews <span class="mono">Aug 14, 2026</span>
+                </div>
+              </div>
+              <div class="note note-inline">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>You have admin access, so billing is view-only. Only the workspace owner, <span class="mono">k.sato@kaizen.dev</span>, can change or cancel the plan.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6 · loading -->
+          <div class="panel" data-od-id="panel-loading">
+            <div class="panel-tag">loading</div>
+            <div class="panel-body" role="status">
+              <span class="sr-only">Loading billing for kaizen-labs</span>
+              <div class="sk sk-line" style="width:34%;" aria-hidden="true"></div>
+              <div class="sk sk-block" style="width:58%;" aria-hidden="true"></div>
+              <div class="sk sk-line" style="width:76%;" aria-hidden="true"></div>
+              <div class="sk sk-line" style="width:64%;" aria-hidden="true"></div>
+              <div class="sk sk-block" style="width:40%;margin-top:4px;" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- 7 · error -->
+          <div class="panel" data-od-id="panel-error">
+            <div class="panel-tag">error · retriable</div>
+            <div class="err">
+              <div class="err-title">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                Couldn't load billing
+              </div>
+              <div class="err-req">GET /api/workspaces/kaizen-labs/billing · 502</div>
+              <p style="font-size:var(--text-control);color:var(--muted);">The plan state shown may be stale. Retry, or check status.bunkai.dev if this persists.</p>
+              <div><button type="button" class="btn" tabindex="-1">Retry</button></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ══ Dialog: change plan (tier picker) ══ -->
+<div class="overlay" id="ovl-change" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="t-change" data-od-id="dialog-change-plan">
+    <div class="modal-head"><div class="modal-title" id="t-change">Change plan</div></div>
+    <div class="modal-body">
+      <p>Workspace <span class="mono">kaizen-labs</span> is on Team.</p>
+      <div>
+        <div class="tier">
+          <div>
+            <div class="tier-name">Team <span class="chip"><span class="dot" aria-hidden="true"></span>Current plan</span></div>
+            <div class="tier-meta"><span class="mono">$12</span> / seat / month · <span class="mono">12</span> seats · <span class="mono">10</span> projects · <span class="mono">90</span>-day run history</div>
+          </div>
+        </div>
+        <div class="tier">
+          <div>
+            <div class="tier-name">Free</div>
+            <div class="tier-meta"><span class="mono">$0</span> / month · <span class="mono">3</span> seats · <span class="mono">1</span> project · <span class="mono">14</span>-day run history</div>
+          </div>
+          <button type="button" class="btn" id="btn-to-preview">Downgrade to Free</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-variant="ghost" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Dialog: downgrade consequence preview ══ -->
+<div class="overlay" id="ovl-preview" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="t-preview" aria-describedby="d-preview" data-od-id="dialog-consequence-preview">
+    <div class="modal-head"><div class="modal-title" id="t-preview">Downgrade <span class="mono">kaizen-labs</span> to Free?</div></div>
+    <div class="modal-body" id="d-preview">
+      <p>The workspace is on Team at <span class="mono">$12</span> / seat / month. Free supports less than it currently uses:</p>
+      <table class="limits">
+        <thead><tr><th scope="col">Resource</th><th scope="col">In use</th><th scope="col">Free limit</th><th scope="col">After downgrade</th></tr></thead>
+        <tbody>
+          <tr><td>Projects</td><td class="mono">9</td><td class="mono">1</td>
+            <td><span class="delta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span class="mono">8 of 9</span>&nbsp;become read-only</span></td></tr>
+          <tr><td>Seats</td><td class="mono">8</td><td class="mono">3</td>
+            <td><span class="delta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span class="mono">5 of 8</span>&nbsp;members become read-only</span></td></tr>
+          <tr><td>Run history</td><td class="mono">90 days</td><td class="mono">14 days</td><td>older runs stay stored</td></tr>
+        </tbody>
+      </table>
+      <div class="ro-head" style="margin-bottom:0;">
+        <span class="hint" style="margin-right:0;">Projects becoming read-only</span>
+        <span class="chip" data-status="blocked"><span class="dot" aria-hidden="true"></span><span class="mono">8</span></span>
+      </div>
+      <div class="ro-list">
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>mobile-app</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>api-gateway</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>billing-service</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>auth-service</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>design-system</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>e2e-nightly</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>load-tests</div>
+        <div class="ro-row"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>data-pipeline</div>
+      </div>
+      <p style="font-size:var(--text-sm);color:var(--fg-3);"><span class="mono">checkout-web</span> stays editable, the most recently updated project.</p>
+      <div class="note" data-tone="pass">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span><strong>Nothing will be deleted.</strong> Read-only projects and members keep full view access to every test case, run, and report. Upgrade again at any time to restore editing.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close data-autofocus>Keep Team</button>
+      <button type="button" class="btn" data-variant="danger" id="btn-confirm-downgrade">Downgrade to Free</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Dialog: cancel subscription ══ -->
+<div class="overlay" id="ovl-cancel" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="t-cancel" aria-describedby="d-cancel" data-od-id="dialog-cancel-subscription">
+    <div class="modal-head"><div class="modal-title" id="t-cancel">Cancel the Team subscription for <span class="mono">kaizen-labs</span>?</div></div>
+    <div class="modal-body" id="d-cancel">
+      <p><span class="mono">kaizen-labs</span> keeps full Team access until <span class="mono">Aug 14, 2026</span>, the end of the period already paid.</p>
+      <p>On that date it moves to Free: <span class="mono">8 of 9</span> projects and <span class="mono">5 of 8</span> members become read-only.</p>
+      <div class="note" data-tone="pass">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span><strong>Nothing will be deleted.</strong> Everything stays fully viewable, and you can resubscribe before <span class="mono">Aug 14, 2026</span> with no new charge.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn" data-close data-autofocus>Keep subscription</button>
+      <button type="button" class="btn" data-variant="danger" id="btn-confirm-cancel">Cancel on Aug 14, 2026</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  var openOverlay = null;
+  var returnFocusTo = null;
+
+  var announce = document.getElementById("announce");
+  function say(msg) { announce.textContent = msg; }
+
+  function focusables(overlay) {
+    return Array.prototype.slice.call(overlay.querySelectorAll(FOCUSABLE));
+  }
+
+  function onKeydown(e) {
+    if (!openOverlay) return;
+    if (e.key === "Escape") { e.preventDefault(); closeDialog(); return; }
+    if (e.key !== "Tab") return;
+    var els = focusables(openOverlay);
+    if (!els.length) return;
+    var first = els[0], last = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    else if (els.indexOf(document.activeElement) === -1) { e.preventDefault(); first.focus(); }
+  }
+
+  function openDialog(id, opener) {
+    if (openOverlay) { openOverlay.hidden = true; }
+    var overlay = document.getElementById(id);
+    overlay.hidden = false;
+    openOverlay = overlay;
+    if (opener) returnFocusTo = opener;
+    var target = overlay.querySelector("[data-autofocus]") || focusables(overlay)[0];
+    if (target) target.focus();
+  }
+
+  function closeDialog() {
+    if (!openOverlay) return;
+    openOverlay.hidden = true;
+    openOverlay = null;
+    if (returnFocusTo && document.contains(returnFocusTo) && returnFocusTo.offsetParent !== null) {
+      returnFocusTo.focus();
+    }
+    returnFocusTo = null;
+  }
+
+  document.addEventListener("keydown", onKeydown);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close]"), function (btn) {
+    btn.addEventListener("click", closeDialog);
+  });
+
+  /* ── plan state machine: paid | downgraded | pending ── */
+  var cards = {
+    paid: document.getElementById("card-paid"),
+    downgraded: document.getElementById("card-downgraded"),
+    pending: document.getElementById("card-pending")
+  };
+  var flash = document.getElementById("note-flash");
+  var flashText = document.getElementById("note-flash-text");
+
+  function show(state, flashMsg) {
+    Object.keys(cards).forEach(function (k) { cards[k].hidden = k !== state; });
+    if (state === "paid" && flashMsg) {
+      flashText.innerHTML = flashMsg;
+      flash.hidden = false;
+    } else {
+      flash.hidden = true;
+    }
+  }
+
+  var btnChange = document.getElementById("btn-change");
+  var btnCancelSub = document.getElementById("btn-cancel-sub");
+
+  btnChange.addEventListener("click", function () { openDialog("ovl-change", btnChange); });
+  document.getElementById("btn-to-preview").addEventListener("click", function () {
+    openDialog("ovl-preview", btnChange);
+  });
+  document.getElementById("btn-confirm-downgrade").addEventListener("click", function () {
+    closeDialog();
+    show("downgraded");
+    say("kaizen-labs downgraded to Free. 8 of 9 projects are now read-only. Nothing was deleted.");
+    document.getElementById("btn-upgrade").focus();
+  });
+
+  btnCancelSub.addEventListener("click", function () { openDialog("ovl-cancel", btnCancelSub); });
+  document.getElementById("btn-confirm-cancel").addEventListener("click", function () {
+    closeDialog();
+    show("pending");
+    say("Subscription for kaizen-labs cancels on Aug 14, 2026. Full access continues until then.");
+    document.getElementById("btn-resub").focus();
+  });
+
+  document.getElementById("btn-resub").addEventListener("click", function () {
+    show("paid", 'Cancellation reverted. Team renews <span class="mono">Aug 14, 2026</span>. No new charge, the current period is already paid.');
+    say("Cancellation reverted. Team renews Aug 14, 2026. No new charge was made.");
+    btnChange.focus();
+  });
+
+  document.getElementById("btn-upgrade").addEventListener("click", function () {
+    show("paid", 'Back on Team. All <span class="mono">9</span> projects and <span class="mono">8</span> members are editable again.');
+    say("Upgraded back to Team. All 9 projects are editable again.");
+    btnChange.focus();
+  });
+})();
+</script>
+</body>
+</html>
