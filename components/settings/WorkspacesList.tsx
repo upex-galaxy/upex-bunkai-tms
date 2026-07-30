@@ -26,7 +26,7 @@ export function WorkspacesList({ workspaces, error = false }: WorkspacesListProp
   const state = resolveWorkspacesViewState({ error, rowCount: workspaces.length });
 
   return (
-    <Card data-testid="workspaces-list">
+    <Card data-testid="workspaces-list" role="region" aria-labelledby="settings-workspaces-heading">
       <CardHeader className="flex-row items-center gap-3 border-b border-stroke-1 p-4">
         <h2 id="settings-workspaces-heading" className="text-sm font-semibold text-fg-0">Workspaces</h2>
         {state === 'list' && (

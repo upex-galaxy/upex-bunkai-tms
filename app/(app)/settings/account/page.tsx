@@ -105,9 +105,9 @@ export default async function SettingsAccountPage() {
 // it must never throw up to the route's `error.tsx`, which would also take
 // down the already-rendered `IdentityCard`.
 async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string, activeWorkspaceId: string | null }) {
-  const supabase = await createClient();
-
   try {
+    const supabase = await createClient();
+
     const { data: memberships, error: membershipsError } = await supabase
       .from('workspace_members')
       .select('workspace_id, role')
@@ -120,10 +120,16 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
 
     const workspaceIds = (memberships ?? []).map(m => m.workspace_id);
 
+    // The active-member count spans every member of the workspace, not just
+    // rows the caller's own RLS grants them (workspace_members RLS only
+    // exposes other members' rows to admin/owner callers) — so this one
+    // aggregate deliberately goes through the admin client, same as the
+    // identity lookup above. It only ever returns a workspace_id (no PII),
+    // scoped to workspaces the caller already belongs to.
     const [{ data: workspaceRows, error: workspacesError }, { data: memberCountRows, error: countError }] = workspaceIds.length > 0
       ? await Promise.all([
           supabase.from('workspaces').select('id, slug, name').in('id', workspaceIds),
-          supabase.from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
+          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
         ])
       : [{ data: [], error: null }, { data: [], error: null }];
     if (workspacesError) {
