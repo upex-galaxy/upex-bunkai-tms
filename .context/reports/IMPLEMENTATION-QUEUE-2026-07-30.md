@@ -8,14 +8,20 @@
 
 ## Phase 0 — Open defects (fix first; production quality gates everything)
 
-| # | Bug | Prio | Status | Assignee today | Note |
+> **Workflow rule (owner, 2026-07-30)**: an Open bug MUST be assigned to Ely — Open + unassigned
+> (or assigned elsewhere) is a tester process fault. Reassignment attempted via acli + REST:
+> BK-181 ✅ done; **BK-248 and BK-176 blocked by Jira 403 "You do not have permission to assign
+> issues"** (permission-scheme quirk — BK-181 accepted the same call). Flip those two in the Jira
+> UI or fix the permission scheme.
+
+| # | Bug | Prio | Status | Assignee (post-fix) | Note |
 |---|---|---|---|---|---|
-| 0.1 | BK-175 Magic-link OTP email has no code-entry field (staging) | Highest | In Review | Benjamin | Already in review — verify/close, don't restart. |
-| 0.2 | BK-181 "Request a new code" calls signup instead of resend | High | Open | Benjamin | Auth flow, user-facing. |
-| 0.3 | BK-248 POST /api/v1/tests 500 (idempotency insert failed) | Medium | Open | UNASSIGNED | Hits BK-27's endpoint — degrades every test-creation flow; likely quick backend fix. |
+| 0.1 | BK-175 Magic-link OTP email has no code-entry field (staging) | Highest | In Review | Benjamin | In review — verify/close, don't restart. |
+| 0.2 | BK-181 "Request a new code" calls signup instead of resend | High | Open | **Ely ✅ (reassigned)** | Auth flow, user-facing. |
+| 0.3 | BK-248 POST /api/v1/tests 500 (idempotency insert failed) | Medium | Open | ⚠️ UNASSIGNED — 403 on reassign | Hits BK-27's endpoint — degrades every test-creation flow. |
 | 0.4 | BK-182 Bearer run creation cannot resolve active workspace | Medium | Open | Ely | Blocks CLI/CI run creation (BK-34 surface + future BK-222). |
-| 0.5 | BK-176 Sign-out: client redirect to /login does not fire | Low | Open | Andrés | BK-86 scope; cheap fix, aligns with Settings cluster work. |
-| 0.6 | BK-118 POST /me/active-workspace returns legacy fields | Low | Open | Ely | Contract cleanup; do together with BK-89's workspace contract work. |
+| 0.5 | BK-176 Sign-out: client redirect to /login does not fire | Low | Open | ⚠️ Andrés — 403 on reassign | BK-86 scope; cheap fix, aligns with Settings cluster work. |
+| 0.6 | BK-118 POST /me/active-workspace returns legacy fields | Low | Open | Ely | Contract cleanup; pair with BK-89's workspace contract work. |
 
 ## Phase 1 — Settings cluster (all RFD, mockups ✅, no external gate)
 
@@ -55,10 +61,11 @@ BK-40 File defect from failing run step (needs live run steps → Phase 2 shippe
 ```
 BK-45 US→bug evidence chain (needs runs + defects data → after Phase 3)
  ├──> BK-50 Export assembled chain          (exports what BK-45 renders)
- └──> (BK-48 chain filters — Shift-Left QA, promote when refinement closes)
+ └──> (BK-48 chain filters — status Shift-Left QA = refinement still RUNNING, not ready)
 BK-46 Untested ACs / coverage surface       (independent of BK-45; needs runs data only)
 BK-49 Activity stream read feed             (independent; reads existing activity log)
-(BK-47 time-to-green — Estimation, not ready)
+BK-47 Time-to-green per US                  (Estimation = shift-left DONE per workflow rule →
+                                             implementable; queue last in this phase)
 ```
 
 ## Phase 5 — Notifications epic BK-208 (RFD in Jira — VERIFY the promotion was intentional)
@@ -71,17 +78,24 @@ BK-209 Inbox of workspace events
 (BK-214 email digest — Backlog, stays out)
 ```
 
-⚠️ These 4 are post-MVP by roadmap but sit `Ready For Dev` in Jira (promotion unexplained as of
-this snapshot). If unintentional, demote and delete this phase; if intentional, they queue AFTER
-Phases 1–4.
+Status semantics confirmed by the owner (2026-07-30): **Ready For Dev = shift-left DONE →
+implementable. Estimation = shift-left DONE → implementable.** So this phase is legitimate — the
+4 RFD notification stories queue AFTER Phases 1–4, no further verification needed.
+
+## Phase 6 — Estimation-status post-MVP singles (implementable per workflow rule; queue last)
+
+- BK-205 Create a milestone with target date (epic BK-201 — its siblings are still Backlog; only
+  this one cleared shift-left).
+- BK-219 Chat: edit/delete own messages (epic BK-210 — depends on BK-215 workspace channel, which
+  is Backlog → **effectively blocked by dependency**, implement only after BK-215 clears).
 
 ## Parked (do NOT pull)
 
 - **BLOCKED**: BK-20 ATC search (mockup intentionally ahead of story scope) · BK-23 ATC duplicate.
-- **Estimation**: BK-35→already promoted; BK-47, BK-205, BK-219.
-- **Shift-Left QA**: BK-48.
-- **Backlog (post-MVP by design)**: BK-202..207, BK-214..220, BK-225..233 — mockups ready, waiting
-  for the post-MVP frontier decision.
+- **Shift-Left QA (refinement in progress — NOT done)**: BK-48.
+- **Backlog** (per workflow rule: nobody has confirmed shift-left happened — DO NOT implement
+  until a tester moves them through Shift-Left QA → Estimation/RFD): BK-202/203/204/206/207,
+  BK-214/215/216/217/218/220, BK-225..228, BK-229..233.
 - **Not a product US**: BK-188 (QA support summary) — reporting artifact, nothing to implement.
 
 ## How to consume
