@@ -110,8 +110,8 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
      BK-20 ATC Search 🧪      BK-3 OAuth (8) 🟢 (AC synced)      BK-19 ATC Builder ✅   BK-18 ATC API ✅
 
    SETTINGS CLUSTER (epic BK-85):
-     BK-86 Account/sign-out ✅ ──> BK-87 Settings hub (2) 🟢 ──┬──> BK-88 Manage PATs (5) 🟢
-        (dev-done — QA Approved)                              └──> BK-89 View workspaces (2) 🟢 ──> BK-90 Leave workspace (5) 🟢
+     BK-86 Account/sign-out ✅ ──> BK-87 Settings hub (2) ✅ ──┬──> BK-88 Manage PATs (5) 🟢
+        (dev-done — QA Approved)   (dev-done — Ready For QA)   └──> BK-89 View workspaces (2) 🟢 ──> BK-90 Leave workspace (5) 🟢
                                     └─ Settings mockup ✅ 2026-07-30 (§4.10, bk-85-account-settings/ 5-screen suite) — gate lifted for the whole cluster
 ```
 
@@ -183,7 +183,7 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 |-------------|---------|------------------|-------|
 | **ES0 ✅** | BK-27 | — | Shipped → QA Approved. Released the whole ES1 fan-out. |
 | **ES1 ✅ (fully drained)** | ✅ all shipped: BK-28, BK-22, BK-23, BK-32, BK-20, **BK-33 Test Tags** | BK-27 ✅ | ES1 fan-out drained — reorder/usage/duplicate/view + ATC Search + Test Tags all landed (most QA Approved; BK-22/BK-23 dev-merged, awaiting QA — staging deploy gap per BK-142, code IS on staging). BK-86 (Account) also shipped → QA Approved; BK-3 (OAuth) now AC-synced + parallel. |
-| **ES1.5** | BK-87 (after BK-86 ✅) ; **BK-21 ✅ (shipped)** | BK-86 ✅ ; BK-27 ✅ | BK-87 🟢 RFD — **fully workable** (Settings mockup ✅ 2026-07-30, §4.10 + `bk-85-account-settings/`). **BK-21 ✅ dev-done 2026-06-25** — 10 contract Qs ratified (ADR-0009) + OpenAPI drift fixed; merged to staging (PR #57) + edit-path unified (PR #58); Ready For QA. |
+| **ES1.5 ✅ (BK-87 dev-done)** | BK-87 (after BK-86 ✅) ; **BK-21 ✅ (shipped)** | BK-86 ✅ ; BK-27 ✅ | **BK-87 ✅ dev-done 2026-07-30** — stacked 2-PR split (git-flow-master decision tree, 830-line forecast): PR1 shell/nav/auth-guard/identity (#63) + PR2 workspace list (#64), both merged to staging; 1 review BLOCKER (member-count RLS undercount) fixed pre-merge. Ready For QA, assigned to shift-left QA owner. **BK-21 ✅ dev-done 2026-06-25** — 10 contract Qs ratified (ADR-0009) + OpenAPI drift fixed; merged to staging (PR #57) + edit-path unified (PR #58); Ready For QA. |
 | **ES2 ✅ (shipped)** | BK-34 Start manual run | BK-27 ✅ | **Shipped → QA Approved** — released the Runs tail (BK-35/36/37/38/39). |
 | **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | BK-88 mockup ✅ 2026-07-30 (`settings-tokens.html`) — remaining gate: its own 9 Qs. **BK-89 promoted to RFD 2026-06-24** but open Dev contract (add `role` to `GET /workspaces` + active-workspace transport) — resolve before coding; mockup ✅ (`settings-workspaces.html`). |
 | **ES3 (live frontier)** | BK-36 Abort ✅ (shipped) ; BK-39 Finish verdict (🟢 workable now) ; BK-35 (⚪ Estimation, blocked) ; BK-37/38 (🔒 mockup) ; BK-90 (after BK-89) | BK-34 ✅ ; BK-89 | **Live frontier**: **BK-36 ✅ dev-done 2026-06-25** (migration 0036 `abort_reason` + `bunkai_abort_run`; PR #59 merged to staging; Ready For QA, unassigned — generic shift-left batch, no named QA owner). BK-39 workable now off the BK-34 gate. BK-35 re-estimated 1→5 SP, stays in Estimation (blocked by Q1 PO + Q5 Dev). BK-37/38 mockups ✅ 2026-07-30 (`bk-30-test-runs-index/`) — workable. BK-90 mockup ✅ (`settings-workspaces.html`) — waits only on BK-89 contract. |
