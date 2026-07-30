@@ -5,10 +5,12 @@ import { NextResponse } from 'next/server';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const PROTECTED_PREFIXES = ['/projects', '/onboarding'];
+// Exported (not just module-private) so middleware.test.ts can assert the
+// gate directly, without spinning up a NextRequest/NextResponse round-trip.
+export const PROTECTED_PREFIXES = ['/projects', '/onboarding', '/settings'];
 const PUBLIC_PREFIXES = ['/login', '/auth', '/api/auth'];
 
-function isProtected(pathname: string): boolean {
+export function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

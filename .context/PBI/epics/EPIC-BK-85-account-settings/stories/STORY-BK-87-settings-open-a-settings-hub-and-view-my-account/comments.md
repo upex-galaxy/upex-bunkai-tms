@@ -46,5 +46,21 @@ BK-87 is now unblocked and ready for Estimation.
 
 ---
 
+### Ely - 7/30/2026, 1:15:06 PM
+
+Mockup — Settings hub · Account section (/settings/account). Source: .context/designs/bunkai-test-management-tool/bk-85-account-settings/settings-account.html · spec: master-design-plan §4.10
+
+
+
+---
+
+### Ely - 7/30/2026, 1:28:48 PM
+
+Mockup — Settings — coming-soon pattern for future sections. Source: .context/designs/bunkai-test-management-tool/bk-85-account-settings/settings-coming-soon.html · spec: master-design-plan §4.10
+
+
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
