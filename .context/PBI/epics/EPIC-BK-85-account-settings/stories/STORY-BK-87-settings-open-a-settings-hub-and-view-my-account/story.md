@@ -3,7 +3,7 @@
 **Jira Key:** [BK-87](https://jira.upexgalaxy.com/browse/BK-87)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** 2
 
@@ -25,6 +25,7 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Mockup](./mockup.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -44,7 +45,7 @@ As a Full-Stack Developer (Sara Iglesias) I want a Settings area with an Account
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/24/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed
