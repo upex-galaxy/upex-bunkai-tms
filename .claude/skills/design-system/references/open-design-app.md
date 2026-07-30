@@ -180,10 +180,28 @@ remedio concreto.
 3. **¿App instalada?** Si `open -ga` falla (no existe `/Applications/Open Design.app`) → instalación
    Vía 1 (arriba). Eso requiere descarga + verificación de firma: reportá al user, no lo hagas a
    ciegas si la red o los permisos no están.
-4. **¿MCP imposible pero daemon alcanzable?** El daemon expone REST (`$URL/api/...`, mismas
-   operaciones que las tools). Último recurso programático: `curl` contra esa API con los mismos
-   payloads (los paths se ven en el log del daemon). Documentado como escape hatch, no como camino
-   primario — el MCP es el contrato estable.
+4. **¿MCP imposible pero daemon alcanzable?** (caso real: el MCP server se desconecta mid-session
+   — p.ej. tras un límite de sesión del agente — y no se puede re-conectar sin reiniciar la sesión,
+   pero la app sigue viva.) El daemon expone REST con las mismas operaciones. Contrato verificado
+   contra 0.16.1 (base = la URL del log del daemon, p.ej. `http://127.0.0.1:50027`):
+
+   ```bash
+   curl -s $B/api/health                          # {"ok":true,"version":"0.16.1"}
+   curl -s $B/api/projects                        # list
+   curl -s -X POST $B/api/projects -H 'Content-Type: application/json' \
+     -d '{"id":"<safe-id>","name":"<name>","designSystemId":"user:<slug>"}'
+     # OJO: el campo es designSystemId (NO designSystem, que se ignora en silencio —
+     # verificá que la respuesta lo eche de vuelta non-null)
+   curl -s -X POST $B/api/runs -H 'Content-Type: application/json' -d @payload.json
+     # payload: {"projectId":"...","message":"<prompt>","agentId":"claude","skillId":"frontend-design"}
+     # campos = los del start_run MCP con otros nombres: prompt→message, agent→agentId, skill→skillId
+   curl -s $B/api/runs/<runId>                    # status / agentMessage / artifactCount
+   curl -s -X POST $B/api/runs/<runId>/cancel
+   ```
+
+   Gotcha: `POST /api/runs` con body vacío ARRANCA un run huérfano (projectId null) — siempre pasá
+   projectId, y cancelá cualquier probe. Escape hatch, no camino primario — el MCP es el contrato
+   estable cuando está conectado.
 5. **¿Nada de lo anterior?** Degradá al flujo manual original: generá `BRIEF.md`, pausá, el user
    itera en la UI y te avisa (contrato de espera de siempre).
 
@@ -242,6 +260,22 @@ Prerequisito: el design system del repo instalado como paquete de usuario `user:
 Presupuesto de tiempo real: 2–6 min por screen con `claude` como agente interno (5–30 min es el
 rango que documenta OD). Los runs de refinamiento (traducción, polish) son mucho más cortos que los
 de generación.
+
+### Gotchas de señal (verificados en producción, 2026-07-30)
+
+- **`agentMessage` en idioma equivocado ≠ artifact en idioma equivocado.** El self-report del
+  agente interno hereda el idioma de la conversación orquestadora aunque el HTML haya salido
+  correcto. El ARCHIVO es el ground truth: grepealo (`lang=`, strings de UI); no dispares un run
+  de corrección por el idioma del mensaje.
+- **El hint terminal de `get_run` puede decir "produced no files" siendo falso.** Con
+  `artifactCount: 1` y el archivo en disco, el hint miente. El filesystem es el check real.
+- **`get_run.updatedAt` se congela durante extended thinking** del agente interno — minutos reales
+  sin movimiento NO son un hang. Liveness real: timestamp del último evento en `events.jsonl`.
+- **Subagentes orquestadores: SOLO loops foreground.** Un subagente que espera un run con un
+  `sleep` largo en background se pausa a sí mismo y estanca el batch. El patrón probado es UN Bash
+  foreground por run: `for i in $(seq 1 60); do tail -5 "$LOG" | grep -q '"type":"result"' && break; sleep 20; done`
+  (el `sleep` corto DENTRO de un loop con timeout es válido; el `sleep` desnudo está bloqueado).
+  Si briefeás una flota de agentes de diseño, poné esta regla explícita en el briefing.
 
 **README drift**: el README anuncia `od mcp install <agent>` para auto-registrar en claude/codex/cursor/etc. Ese subcomando **no existe en 0.16.1**; el registro es manual como arriba. Re-chequealo en releases futuros antes de citarlo.
 
