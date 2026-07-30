@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Bunkai — ATC-118 · Run History</title>
+<style>
+:root {
+  /* ─── Surface ─────────────────────────────────────────────────────
+   * DESIGN.md §3.1. --bg is the deepest page layer; --surface is the
+   * default card panel (--bg-2), the surface a generated artifact
+   * should reach for first. */
+  --bg: #0a0b0d;                       /* --bg-0 — page background */
+  --surface: #14171c;                  /* --bg-2 — default card panel */
+  --surface-warm: var(--surface);      /* alias — Bunkai has no warm tier */
+
+  /* ─── Foreground ──────────────────────────────────────────────────
+   * DESIGN.md §3.2, bound by role: strongest → body → secondary →
+   * tertiary. The disabled tier (--fg-4) has no schema slot and is
+   * re-exported as an extension below. */
+  --fg: #f1f3f5;                       /* --fg-0 — titles, primary action */
+  --fg-2: #d4d8de;                     /* --fg-1 — default body text */
+  --muted: #9aa1ab;                    /* --fg-2 — secondary text */
+  --meta: #6b727c;                     /* --fg-3 — tertiary / muted */
+
+  /* ─── Border ──────────────────────────────────────────────────────
+   * DESIGN.md §3.3. White-alpha strokes, never solid greys, so panels
+   * stack correctly over any surface step. */
+  --border: rgba(255, 255, 255, 0.08); /* --stroke-2 — default border */
+  --border-soft: rgba(255, 255, 255, 0.05); /* --stroke-1 — dividers */
+
+  /* ─── Accent ──────────────────────────────────────────────────────
+   * Vermillion, a nod to the hanko stamp around the 分解 kanji.
+   * DESIGN.md §2 principle 4 is a hard rule: "Status carries color;
+   * nothing else does. Accent is reserved for primary actions and
+   * focus rings." No decorative vermillion. */
+  --accent: #d9543f;                   /* --accent — primary action, focus ring */
+  --accent-on: #ffffff;                /* white label on vermillion fill */
+  --accent-hover: #e87060;             /* --accent-hi — documented hover (brightens) */
+  --accent-active: rgba(217, 84, 63, 0.10); /* --accent-soft — documented pressed bg */
+
+  /* ─── Semantic ────────────────────────────────────────────────────
+   * DESIGN.md §3.5 signal palette. These are the ONLY globally
+   * meaningful colors in the product besides the accent. The full
+   * five-state palette with its background tints is re-exported below;
+   * "skipped" and "running" have no schema slot. */
+  --success: #2fb673;                  /* --pass */
+  --warn: #e8a838;                     /* --blocked */
+  --danger: #e5484d;                   /* --fail */
+
+  /* ─── Typography ──────────────────────────────────────────────────
+   * DESIGN.md §4. Inter for prose, JetBrains Mono wherever an ID lives
+   * (ATC-001, RUN-451, MOD-014) — principle 3 makes that mandatory,
+   * not stylistic. Noto Serif JP is wordmark-only and is exported as
+   * an extension so no artifact reaches for it as a text face. */
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type ramp — DESIGN.md §4. Base is 13px, and the whole ramp tops out
+   * at 22px: this is a dense tool, so hierarchy comes from weight and
+   * color tier, not from size. The 12/12.5px control tier (buttons,
+   * inputs, table cells) is the most-used size in the product and has
+   * no schema slot; it is exported as --text-control below. */
+  --text-xs: 10.5px;                   /* field labels (uppercase, +0.04em) */
+  --text-sm: 11.5px;                   /* tags, chips, kbd */
+  --text-base: 13px;                   /* body text */
+  --text-lg: 14px;                     /* small section heading */
+  --text-xl: 16px;                     /* section heading */
+  --text-2xl: 18px;                    /* page title, low end */
+  --text-3xl: 20px;                    /* page title */
+  --text-4xl: 22px;                    /* page title, ceiling */
+
+  --leading-body: 1.45;                /* DESIGN.md §4 body line-height */
+  --leading-tight: 1.2;                /* [authored] no heading leading in DESIGN.md */
+  --tracking-display: 0;               /* normal — DESIGN.md specifies tracking only
+                                        * for the 10.5px label tier (+0.04em) and the
+                                        * wordmark, never for display headings */
+
+  /* ─── Spacing ─────────────────────────────────────────────────────
+   * DESIGN.md §5: implicit 4px grid, real gaps 4/6/8/10/12/16/20/24,
+   * padding on primary surfaces caps at 16, nothing exceeds 24. The
+   * slot names are the schema's; the values are Bunkai's. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 16px;                     /* primary surface padding ceiling */
+  --space-8: 20px;
+  --space-12: 24px;                    /* absolute ceiling */
+
+  /* Section rhythm — [authored]. Bunkai is an application shell, not a
+   * marketing page, so DESIGN.md never specifies section bands. Values
+   * stay inside the 24px ceiling to keep the density rule intact. */
+  --section-y-desktop: 24px;
+  --section-y-tablet: 20px;
+  --section-y-phone: 16px;
+
+  /* ─── Radius ──────────────────────────────────────────────────────
+   * DESIGN.md §5. Peaks at 10px. Register is "engineer's terminal",
+   * not consumer app — do not round past --radius-xl. */
+  --radius-sm: 3px;                    /* --r-1 — chips, kbd, tags */
+  --radius-md: 5px;                    /* --r-2 — buttons, inputs */
+  --radius-lg: 7px;                    /* --r-3 — cards */
+  --radius-pill: 9999px;               /* status pills only */
+
+  /* ─── Elevation ───────────────────────────────────────────────────
+   * DESIGN.md §5. Low elevation with a 1px inset highlight on top —
+   * that inset is what makes a Bunkai panel read as machined rather
+   * than dropped. Never flatten it to a plain drop shadow. */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);      /* --shadow-card */
+
+  /* Focus — DESIGN.md §10 is prescriptive: 1px solid accent, 1px offset,
+   * on every interactive element, never removed without replacement.
+   * Expressed as a ring so the schema slot resolves; the outline form
+   * is the canonical one. */
+  --focus-ring: 0 0 0 1px var(--accent);
+
+  /* ─── Motion ──────────────────────────────────────────────────────
+   * DESIGN.md §8. 120ms for color/background/border/transform, 200ms
+   * for progress-bar fill. Navigation must feel instantaneous: no page
+   * transitions, no route fade over 80ms. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: ease;
+
+  /* ─── Container ───────────────────────────────────────────────────
+   * [authored] Bunkai's shell is full-bleed (sidebar + editor area,
+   * VS Code layout), so DESIGN.md defines no page container. These
+   * exist only so the schema slot resolves for artifacts that need a
+   * centered reading column. */
+  --container-max: 1440px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 12px;
+
+  /* ═══ C-extensions — Bunkai's native contract ══════════════════════
+   * Everything below is brand-specific and has no schema slot. These
+   * are the names the real codebase and mockups use, so an artifact
+   * that references them ports into the repo without a rename pass.
+   * All values byte-exact with app/globals.css. */
+
+  /* Full surface ramp — DESIGN.md §3.1 */
+  --bg-0: #0a0b0d;                     /* page background, deepest */
+  --bg-1: #101216;                     /* sidebar / chrome */
+  --bg-2: #14171c;                     /* surface panels (default card) */
+  --bg-3: #1a1e25;                     /* elevated card / focused input */
+  --bg-4: #232830;                     /* hover */
+  --bg-5: #2d333c;                     /* active / pressed */
+
+  /* Full foreground ramp — DESIGN.md §3.2 */
+  --fg-0: #f1f3f5;
+  --fg-1: #d4d8de;
+  --fg-3: #6b727c;
+  --fg-4: #4a5057;                     /* disabled / placeholder */
+
+  /* Full stroke ramp — DESIGN.md §3.3 */
+  --stroke-1: rgba(255, 255, 255, 0.05);
+  --stroke-2: rgba(255, 255, 255, 0.08);
+  --stroke-3: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states — DESIGN.md §3.4 */
+  --accent-hi: #e87060;
+  --accent-glow: rgba(217, 84, 63, 0.18);
+  --accent-soft: rgba(217, 84, 63, 0.10);
+
+  /* Signal palette, all five states + tints — DESIGN.md §3.5.
+   * Color is never the sole signal: pair every state with text and an
+   * icon in dense views (DESIGN.md §10). */
+  --pass: #2fb673;
+  --pass-bg: rgba(47, 182, 115, 0.10);
+  --fail: #e5484d;
+  --fail-bg: rgba(229, 72, 77, 0.10);
+  --blocked: #e8a838;
+  --blocked-bg: rgba(232, 168, 56, 0.10);
+  --skipped: #8a91a0;
+  --skipped-bg: rgba(138, 145, 160, 0.08);
+  --running: #4f8cf7;
+  --running-bg: rgba(79, 140, 247, 0.10);
+
+  /* ATC layer chips — DESIGN.md §3.6 */
+  --layer-ui: #8b6df0;
+  --layer-api: #4f8cf7;
+  --layer-unit: #2fb673;
+
+  /* Native radii + the 10px ceiling the schema cannot hold */
+  --r-1: 3px;
+  --r-2: 5px;
+  --r-3: 7px;
+  --r-4: 10px;
+  --radius-xl: 10px;                   /* modals, large surfaces */
+
+  /* Heavier stack for modals and popovers — DESIGN.md §5 */
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --elev-overlay: var(--shadow-pop);
+
+  /* The most-used text size in the product: buttons, inputs, table
+   * cells. DESIGN.md §4 lists it as the 12 / 12.5px tier. */
+  --text-control: 12.5px;
+
+  /* Wordmark only. Never set body or UI copy in this face. */
+  --font-jp: "Noto Serif JP", serif;
+
+  /* Inter stylistic alternates from DESIGN.md §4 — tighter i/l and
+   * better number forms. Apply on the body element. */
+  --font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+/* Reduced motion — DESIGN.md §10. The caret blink and the running-dot
+ * pulse are the two animations that must stop. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
+
+/* ── Base (same anatomy as test-runs-index.html) ────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--bg-0); color: var(--fg-1); }
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-feature-settings: var(--font-feature-settings);
+  min-width: 1440px;
+}
+.mono { font-family: var(--font-mono); }
+button, input, select { font: inherit; color: inherit; }
+:is(button, input, select, a, [tabindex]):focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+svg.ic { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8;
+  fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.ic-16 { width: 16px; height: 16px; }
+svg.ic-18 { width: 18px; height: 18px; }
+
+/* ── App shell ──────────────────────────────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 216px; flex: none; background: var(--bg-1);
+  border-right: 1px solid var(--stroke-1);
+  display: flex; flex-direction: column; padding: var(--space-5) var(--space-3);
+  gap: var(--space-1); position: sticky; top: 0; height: 100vh;
+}
+.wordmark {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-6);
+}
+.wordmark .kanji { font-family: var(--font-jp); font-weight: 700; font-size: 18px; color: var(--fg-0); }
+.wordmark .latin { font-family: var(--font-body); font-weight: 700; font-size: 14px;
+  letter-spacing: -0.01em; color: var(--fg-0); }
+.nav a {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-radius: var(--r-2);
+  color: var(--fg-2); text-decoration: none; font-size: var(--text-base);
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.nav a:hover { background: var(--bg-4); color: var(--fg-1); }
+.nav a[aria-current="page"] { background: var(--bg-4); color: var(--fg-0); font-weight: 500; }
+.nav a .count {
+  margin-left: auto; font-family: var(--font-mono); font-size: var(--text-sm);
+  color: var(--fg-3);
+}
+.sidebar-foot {
+  margin-top: auto; border-top: 1px solid var(--stroke-1);
+  padding: var(--space-4) var(--space-3) 0; display: flex; align-items: center; gap: var(--space-3);
+}
+.avatar {
+  width: 24px; height: 24px; border-radius: var(--r-2); background: var(--bg-5);
+  color: var(--fg-1); font-size: var(--text-xs); font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.sidebar-foot .who .n { font-size: var(--text-control); color: var(--fg-1); }
+.sidebar-foot .who .r { font-size: var(--text-xs); color: var(--fg-3); }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  height: 44px; flex: none; background: var(--bg-1);
+  border-bottom: 1px solid var(--stroke-1);
+  display: flex; align-items: center; gap: var(--space-5);
+  padding: 0 var(--space-6); position: sticky; top: 0; z-index: 5;
+}
+.crumbs { display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); color: var(--fg-3); }
+.crumbs .sep { color: var(--fg-4); }
+.crumbs .here { color: var(--fg-1); font-weight: 500; }
+.crumbs .proj, .crumbs .tid-crumb { font-family: var(--font-mono); }
+.crumbs a { color: var(--fg-3); text-decoration: none; border-radius: var(--r-1); }
+.crumbs a:hover { color: var(--fg-1); }
+.searchbox {
+  margin-left: auto; display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2); padding: var(--space-1) var(--space-3);
+  color: var(--fg-3); font-size: var(--text-control); width: 240px;
+  cursor: pointer; transition: border-color var(--motion-fast) var(--ease-standard);
+}
+.searchbox:hover { border-color: var(--stroke-3); }
+.kbd {
+  font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-bottom-width: 2px; border-radius: var(--r-1);
+  padding: 0 var(--space-1); margin-left: auto;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); font-weight: 500; letter-spacing: 0.02em;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-1) var(--space-4); height: 28px; cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.btn:hover { background: var(--bg-4); border-color: var(--stroke-3); }
+.btn:active { background: var(--bg-5); }
+.btn[data-variant="primary"] {
+  background: var(--accent); border-color: transparent; color: var(--accent-on);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 1px 2px rgba(0,0,0,0.4);
+}
+.btn[data-variant="primary"]:hover { background: var(--accent-hi); }
+.btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--fg-2); }
+.btn[data-variant="ghost"]:hover { background: var(--bg-4); color: var(--fg-1); }
+
+/* ── Test-scoped page head ──────────────────────────────────────── */
+.content { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.test-head { display: flex; align-items: flex-start; gap: var(--space-5); }
+.test-head .tid {
+  font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500;
+  color: var(--fg-2); background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 1px var(--space-2);
+}
+.test-head h1 { font-size: var(--text-2xl); font-weight: 700; color: var(--fg-0);
+  line-height: var(--leading-tight); letter-spacing: var(--tracking-display);
+  margin-top: var(--space-1); }
+.test-head .meta-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-top: var(--space-2); font-size: var(--text-control); color: var(--fg-2);
+}
+.modchip { display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-control); color: var(--fg-1); }
+.modchip .mc { font-family: var(--font-mono); font-size: var(--text-sm);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 0 var(--space-1); color: var(--fg-2); }
+.layerchip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.01em;
+  border-radius: var(--r-1); padding: 1px var(--space-2);
+  color: var(--layer-ui); background: var(--bg-3); border: 1px solid var(--stroke-2);
+}
+.layerchip .dot { background: var(--layer-ui); }
+.page-actions { margin-left: auto; display: flex; gap: var(--space-3); }
+
+/* History summary (all-time, static) */
+.hist-summary { display: flex; align-items: center; gap: var(--space-3); }
+.tot {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  border: 1px solid var(--stroke-2); border-radius: var(--r-2);
+  padding: var(--space-1) var(--space-4); font-size: var(--text-control);
+  color: var(--fg-1); background: var(--bg-2);
+}
+.tot .num { font-family: var(--font-mono); font-weight: 600; color: var(--fg-0); }
+.tot[data-k="pass"]    { background: var(--pass-bg); }
+.tot[data-k="pass"] svg    { color: var(--pass); }
+.tot[data-k="fail"]    { background: var(--fail-bg); }
+.tot[data-k="fail"] svg    { color: var(--fail); }
+.tot[data-k="aborted"] { background: var(--blocked-bg); }
+.tot[data-k="aborted"] svg { color: var(--blocked); }
+.hist-summary .scope { font-size: var(--text-control); color: var(--fg-3); }
+.hist-summary .scope .num { font-family: var(--font-mono); color: var(--fg-2); }
+.seg-bar { display: flex; width: 220px; height: 4px; border-radius: var(--r-1);
+  overflow: hidden; background: var(--bg-4); }
+.seg-bar span { height: 100%; transition: width var(--motion-base) var(--ease-standard); }
+
+/* ── Tabs (future Test-detail embedding) ────────────────────────── */
+.tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--stroke-2); }
+.tabs a {
+  padding: var(--space-2) var(--space-4); font-size: var(--text-control);
+  font-weight: 500; letter-spacing: 0.02em; color: var(--fg-2);
+  text-decoration: none; border: 1px solid transparent; border-bottom: none;
+  border-radius: var(--r-2) var(--r-2) 0 0; margin-bottom: -1px;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.tabs a:hover { background: var(--bg-3); color: var(--fg-1); }
+.tabs a[aria-current="page"] {
+  background: var(--bg-2); color: var(--fg-0);
+  border-color: var(--stroke-2); border-bottom: 1px solid var(--bg-2);
+}
+
+/* ── Outcome filter ─────────────────────────────────────────────── */
+.filter-row { display: flex; align-items: flex-end; gap: var(--space-6); }
+.fgroup { display: flex; flex-direction: column; gap: var(--space-1); }
+.fgroup > .glabel {
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-3); font-weight: 500;
+}
+.seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-2); overflow: hidden; }
+.seg button {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  background: transparent; border: none; height: 26px;
+  padding: 0 var(--space-4); font-size: var(--text-control); font-weight: 500;
+  letter-spacing: 0.02em; color: var(--fg-2); cursor: pointer;
+  border-right: 1px solid var(--stroke-1);
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+}
+.seg button:last-child { border-right: none; }
+.seg button:hover { background: var(--bg-4); color: var(--fg-1); }
+.seg button[aria-pressed="true"] { background: var(--bg-5); color: var(--fg-0); }
+.seg button .sdot { width: 6px; height: 6px; border-radius: var(--radius-pill); flex: none; }
+.filter-row .hint { font-size: var(--text-sm); color: var(--fg-3); padding-bottom: var(--space-2); }
+.fchip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-family: var(--font-mono); font-size: var(--text-sm);
+  background: var(--bg-3); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-1); padding: 1px var(--space-2); color: var(--fg-2);
+}
+.fchip b { color: var(--fg-1); font-weight: 500; }
+
+/* ── History table (same row language as screen 1) ──────────────── */
+.runs-card {
+  background: var(--bg-2); border: 1px solid var(--stroke-2);
+  border-radius: var(--r-3); box-shadow: var(--shadow-card); overflow: hidden;
+}
+table.runs { width: 100%; border-collapse: collapse; }
+table.runs th {
+  text-align: left; font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 500; color: var(--fg-3);
+  padding: var(--space-3) var(--space-5); background: var(--bg-1);
+  border-bottom: 1px solid var(--stroke-2); white-space: nowrap;
+}
+table.runs td {
+  padding: var(--space-2) var(--space-5); border-top: 1px solid var(--stroke-1);
+  font-size: var(--text-control); color: var(--fg-1); vertical-align: middle;
+  white-space: nowrap;
+}
+table.runs tbody tr { transition: background var(--motion-fast) var(--ease-standard); cursor: default; }
+table.runs tbody tr:hover { background: var(--bg-3); }
+table.runs tbody tr:first-child td { border-top: none; }
+td .id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-0); font-weight: 500; }
+td .env { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+td .when { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+td .dur { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-2); }
+td .dur.na { color: var(--fg-3); }
+.exec { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--fg-1); }
+.exec svg { color: var(--muted); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-sm); font-weight: 500; letter-spacing: 0.01em;
+  border-radius: var(--r-1); padding: 1px var(--space-2);
+  border: 1px solid transparent;
+}
+.chip[data-status="pass"]    { color: var(--pass);    background: var(--pass-bg); }
+.chip[data-status="fail"]    { color: var(--fail);    background: var(--fail-bg); }
+.chip[data-status="aborted"] { color: var(--blocked); background: var(--blocked-bg); }
+.chip[data-status="running"] { color: var(--running); background: var(--running-bg); }
+.dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; flex: none; }
+.chip[data-status="running"] .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .chip[data-status="running"] .dot, .caret { animation: none; }
+}
+.load-older {
+  display: flex; justify-content: center; padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--stroke-2); background: var(--bg-1);
+}
+.table-foot {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5); border-top: 1px solid var(--stroke-2);
+  background: var(--bg-1); font-size: var(--text-sm); color: var(--fg-3);
+  font-family: var(--font-mono);
+}
+
+/* ── Empty / loading surfaces ───────────────────────────────────── */
+.state-empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-12) var(--space-6); text-align: center;
+}
+.state-empty svg { color: var(--fg-3); }
+.state-empty .t { font-size: var(--text-lg); font-weight: 600; color: var(--fg-1); }
+.state-empty .d { font-size: var(--text-control); color: var(--fg-3); max-width: 46ch; }
+.caret { display: inline-block; width: 7px; height: 14px; background: var(--fg-3);
+  vertical-align: text-bottom; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.skel-row { display: flex; align-items: center; gap: var(--space-5);
+  padding: var(--space-3) var(--space-5); border-top: 1px solid var(--stroke-1); }
+.skel { height: 12px; border-radius: var(--r-1); background: var(--bg-4);
+  animation: skpulse 1.6s ease-in-out infinite; }
+.skel-row:nth-child(2) .skel { animation-delay: 0.2s; }
+.skel-row:nth-child(3) .skel { animation-delay: 0.4s; }
+.skel-row:nth-child(4) .skel { animation-delay: 0.6s; }
+@keyframes skpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+/* ── States strip framing (same as screen 1) ────────────────────── */
+.states-strip { display: flex; flex-direction: column; gap: var(--space-5);
+  border-top: 1px solid var(--stroke-2); padding-top: var(--space-6); margin-top: var(--space-3); }
+.state-tag {
+  align-self: flex-start; font-family: var(--font-mono); font-size: var(--text-xs);
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-2);
+  background: var(--bg-3); border: 1px solid var(--stroke-3);
+  border-radius: var(--r-1); padding: 2px var(--space-3);
+}
+.state-note { font-size: var(--text-control); color: var(--fg-3); margin: calc(-1 * var(--space-2)) 0 0; }
+.mini-head { display: flex; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-3); font-size: var(--text-control); color: var(--fg-1); }
+.mini-head .zero { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--fg-3); }
+</style>
+</head>
+<body>
+<div class="shell" data-od-id="app-shell">
+
+  <!-- ═══ Sidebar (identical anatomy to screen 1) ═══ -->
+  <aside class="sidebar" data-od-id="sidebar">
+    <div class="wordmark" data-od-id="wordmark">
+      <span class="kanji" lang="ja">分解</span><span class="latin">Bunkai</span>
+    </div>
+    <nav class="nav" aria-label="Global navigation" data-od-id="global-nav">
+      <a href="#home"><svg class="ic ic-16" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Home</a>
+      <a href="#projects"><svg class="ic ic-16" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Projects</a>
+      <a href="#atc-library"><svg class="ic ic-16" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5Z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>ATC Library</a>
+      <a href="#test-runs" aria-current="page" data-od-id="nav-test-runs"><svg class="ic ic-16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5Z"/></svg>Test Runs<span class="count">472</span></a>
+      <a href="#bug-reports"><svg class="ic ic-16" viewBox="0 0 24 24"><rect x="8" y="7" width="8" height="12" rx="4"/><path d="M9 8 7 6m8 2 2-2M3 12h5m8 0h5M5 19l3-2.5m11 2.5-3-2.5"/></svg>Bug Reports</a>
+      <a href="#metrics"><svg class="ic ic-16" viewBox="0 0 24 24"><path d="M4 20V10m6 10V4m6 16v-7m4 7H2"/></svg>Metrics</a>
+      <a href="#settings"><svg class="ic ic-16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3 1 2-3.5-2-1.5c.06-.4.1-.8.1-1.2Z"/></svg>Settings</a>
+    </nav>
+    <div class="sidebar-foot" data-od-id="sidebar-user">
+      <span class="avatar" aria-hidden="true">EY</span>
+      <div class="who"><div class="n">Ely</div><div class="r">QA Lead</div></div>
+    </div>
+  </aside>
+
+  <!-- ═══ Main ═══ -->
+  <div class="main">
+    <header class="topbar" data-od-id="topbar">
+      <div class="crumbs">
+        <span class="proj">PRJ-004</span><span class="sep">/</span>
+        <span>Checkout Platform</span><span class="sep">/</span>
+        <a href="#test-runs">Test Runs</a><span class="sep">/</span>
+        <span class="here tid-crumb">ATC-118</span>
+      </div>
+      <button class="searchbox" data-od-id="topbar-search" aria-label="Open command palette">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        Search or jump to…
+        <span class="kbd">⌘K</span>
+      </button>
+    </header>
+
+    <main class="content" data-od-id="content">
+
+      <!-- ── STATE: default (live, interactive) ── -->
+      <span class="state-tag" data-od-id="state-tag-default">state / default — interactive: outcome filter + load older drive the list</span>
+
+      <!-- Test-scoped heading -->
+      <div class="test-head" data-od-id="test-head">
+        <div>
+          <span class="tid" data-od-id="test-id">ATC-118</span>
+          <h1 data-od-id="test-title">Checkout applies coupon at payment step</h1>
+          <div class="meta-row">
+            <span class="modchip"><span class="mc">MOD-014</span>Payments</span>
+            <span class="layerchip"><span class="dot"></span>UI</span>
+            <span style="color:var(--fg-3)">Run history scoped to this Test only</span>
+          </div>
+        </div>
+        <div class="page-actions">
+          <button class="btn" data-od-id="export-btn">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            Export CSV
+          </button>
+          <button class="btn" data-variant="primary" data-od-id="run-test-btn">
+            <svg class="ic" viewBox="0 0 24 24"><path d="m8 6 10 6-10 6Z"/></svg>
+            Run test
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab strip: this screen is the Run History tab of the future Test detail view -->
+      <nav class="tabs" aria-label="Test sections" data-od-id="test-tabs">
+        <a href="#overview">Overview</a>
+        <a href="#steps">Steps</a>
+        <a href="#run-history" aria-current="page">Run History</a>
+      </nav>
+
+      <!-- All-time summary for this Test -->
+      <div class="hist-summary" data-od-id="history-summary">
+        <span class="tot" data-k="pass"><svg class="ic" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Passed <span class="num">8</span></span>
+        <span class="tot" data-k="fail"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>Failed <span class="num">3</span></span>
+        <span class="tot" data-k="aborted"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>Aborted <span class="num">2</span></span>
+        <span class="seg-bar" role="img" aria-label="Outcome breakdown of 13 finished runs: 8 passed, 3 failed, 2 aborted">
+          <span style="width:61.5%;background:var(--pass)"></span>
+          <span style="width:23%;background:var(--fail)"></span>
+          <span style="width:15.5%;background:var(--blocked)"></span>
+        </span>
+        <span class="scope"><span class="num">14</span> runs all time · newest first</span>
+      </div>
+
+      <!-- Outcome filter (single-select) -->
+      <div class="filter-row" data-od-id="outcome-filter-row">
+        <div class="fgroup">
+          <span class="glabel" id="lbl-outcome">Outcome</span>
+          <div class="seg" role="group" aria-labelledby="lbl-outcome" data-od-id="outcome-filter">
+            <button type="button" data-v="pass" aria-pressed="false"><span class="sdot" style="background:var(--pass)"></span>Passed</button>
+            <button type="button" data-v="fail" aria-pressed="false"><span class="sdot" style="background:var(--fail)"></span>Failed</button>
+            <button type="button" data-v="aborted" aria-pressed="false"><span class="sdot" style="background:var(--blocked)"></span>Aborted</button>
+          </div>
+        </div>
+        <span class="hint">One outcome at a time — pick again or clear to show all</span>
+        <button class="btn" data-variant="ghost" id="clear-filter" style="margin-left:auto" data-od-id="clear-filter">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          Clear filter
+        </button>
+      </div>
+
+      <!-- History table -->
+      <div class="runs-card" data-od-id="history-table-card">
+        <table class="runs" data-od-id="history-table">
+          <thead>
+            <tr>
+              <th scope="col">Run</th>
+              <th scope="col">Environment</th>
+              <th scope="col">Executor</th>
+              <th scope="col">Outcome</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Ran</th>
+            </tr>
+          </thead>
+          <tbody id="runs-body"></tbody>
+        </table>
+        <div class="state-empty" id="live-empty" hidden data-od-id="live-empty-state">
+          <svg class="ic ic-18" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8.5 8.5l5 5m0-5-5 5"/></svg>
+          <div class="t">No runs with this outcome</div>
+          <div class="d">None of the loaded runs for <span class="mono">ATC-118</span> ended this way. Clear the filter to see the full history.</div>
+          <button class="btn" id="empty-clear">Clear filter</button>
+        </div>
+        <div class="load-older" id="load-older-row">
+          <button class="btn" id="load-older" data-od-id="load-older-btn">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14m0 0-4-4m4 4 4-4"/></svg>
+            Load older runs
+          </button>
+        </div>
+        <div class="table-foot" id="table-foot">runs 1–8 of 14 · newest first</div>
+      </div>
+
+      <!-- ═══ States strip — non-default states, statically rendered ═══ -->
+      <section class="states-strip" data-od-id="states-strip" aria-label="Screen states reference">
+
+        <!-- STATE: filtered -->
+        <span class="state-tag" data-od-id="state-tag-filtered">state / filtered</span>
+        <p class="state-note">History narrowed to one outcome (Failed). Other outcomes hidden; order stays newest first.</p>
+        <div>
+          <div class="mini-head">
+            <span class="fchip">outcome <b>fail</b></span>
+            <span class="zero">3 of 8 loaded runs match</span>
+          </div>
+          <div class="runs-card">
+            <table class="runs">
+              <thead><tr><th scope="col">Run</th><th scope="col">Environment</th><th scope="col">Executor</th><th scope="col">Outcome</th><th scope="col">Duration</th><th scope="col">Ran</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="id">RUN-461</span></td>
+                  <td><span class="env">staging · chromium-126</span></td>
+                  <td><span class="exec"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M6.5 7.5h.01M6.5 16.5h.01"/></svg>CI</span></td>
+                  <td><span class="chip" data-status="fail"><span class="dot"></span>Failed</span></td>
+                  <td><span class="dur">3m 41s</span></td>
+                  <td><span class="when">2026-07-29 11:52</span></td>
+                </tr>
+                <tr>
+                  <td><span class="id">RUN-418</span></td>
+                  <td><span class="env">staging · chromium-125</span></td>
+                  <td><span class="exec"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4m-6 9h.01M18 13h-.01M9 15.5h6"/><circle cx="12" cy="3" r="1"/></svg>Agent</span></td>
+                  <td><span class="chip" data-status="fail"><span class="dot"></span>Failed</span></td>
+                  <td><span class="dur">4m 27s</span></td>
+                  <td><span class="when">2026-07-19 14:33</span></td>
+                </tr>
+                <tr>
+                  <td><span class="id">RUN-351</span></td>
+                  <td><span class="env">staging · manual</span></td>
+                  <td><span class="exec"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5"/></svg>Human</span></td>
+                  <td><span class="chip" data-status="fail"><span class="dot"></span>Failed</span></td>
+                  <td><span class="dur">5m 03s</span></td>
+                  <td><span class="when">2026-06-28 17:41</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-foot">runs 1–3 · outcome filter active</div>
+          </div>
+        </div>
+
+        <!-- STATE: empty -->
+        <span class="state-tag" data-od-id="state-tag-empty">state / empty</span>
+        <p class="state-note">A Test that has never been run. No skeleton, no error — an honest zero with the way forward.</p>
+        <div>
+          <div class="mini-head">
+            <span class="tid" style="font-family:var(--font-mono);font-size:var(--text-sm);background:var(--bg-3);border:1px solid var(--stroke-2);border-radius:var(--r-1);padding:1px var(--space-2);color:var(--fg-2)">ATC-152</span>
+            <span>Gift card balance applies before charge</span>
+            <span class="zero">0 runs</span>
+          </div>
+          <div class="runs-card">
+            <div class="state-empty" data-od-id="empty-state">
+              <svg class="ic ic-18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+              <div class="t">No runs yet for this Test</div>
+              <div class="d"><span class="mono">ATC-152</span> has never been executed. Its history starts with the first run<span class="caret" style="margin-left:4px"></span></div>
+              <button class="btn">Run this test</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATE: pagination -->
+        <span class="state-tag" data-od-id="state-tag-pagination">state / pagination</span>
+        <p class="state-note">Older runs load beneath the visible page; the list stays newest first overall.</p>
+        <div class="runs-card" data-od-id="pagination-state">
+          <table class="runs">
+            <thead><tr><th scope="col">Run</th><th scope="col">Environment</th><th scope="col">Executor</th><th scope="col">Outcome</th><th scope="col">Duration</th><th scope="col">Ran</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="id">RUN-418</span></td>
+                <td><span class="env">staging · chromium-125</span></td>
+                <td><span class="exec"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4m-6 9h.01M18 13h-.01M9 15.5h6"/><circle cx="12" cy="3" r="1"/></svg>Agent</span></td>
+                <td><span class="chip" data-status="fail"><span class="dot"></span>Failed</span></td>
+                <td><span class="dur">4m 27s</span></td>
+                <td><span class="when">2026-07-19 14:33</span></td>
+              </tr>
+              <tr>
+                <td><span class="id">RUN-402</span></td>
+                <td><span class="env">staging · manual</span></td>
+                <td><span class="exec"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5"/></svg>Human</span></td>
+                <td><span class="chip" data-status="pass"><span class="dot"></span>Passed</span></td>
+                <td><span class="dur">6m 44s</span></td>
+                <td><span class="when">2026-07-15 11:20</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="load-older">
+            <button class="btn">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14m0 0-4-4m4 4 4-4"/></svg>
+              Load older runs
+            </button>
+          </div>
+          <div class="table-foot">runs 1–8 of 14 · 6 older runs available</div>
+        </div>
+
+        <!-- STATE: loading -->
+        <span class="state-tag" data-od-id="state-tag-loading">state / loading</span>
+        <p class="state-note">History query in flight. Skeleton rows pulse; summary withholds numbers instead of showing stale ones.</p>
+        <div>
+          <div class="hist-summary" style="margin-bottom: var(--space-3);" aria-busy="true">
+            <span class="tot" data-k="pass"><svg class="ic" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Passed <span class="num">—</span></span>
+            <span class="tot" data-k="fail"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>Failed <span class="num">—</span></span>
+            <span class="tot" data-k="aborted"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>Aborted <span class="num">—</span></span>
+            <span class="scope">Fetching run history<span class="caret" style="margin-left:4px"></span></span>
+          </div>
+          <div class="runs-card" data-od-id="loading-state">
+            <table class="runs"><thead><tr><th scope="col">Run</th><th scope="col">Environment</th><th scope="col">Executor</th><th scope="col">Outcome</th><th scope="col">Duration</th><th scope="col">Ran</th></tr></thead></table>
+            <div class="skel-row"><span class="skel" style="width:64px"></span><span class="skel" style="width:170px"></span><span class="skel" style="width:70px"></span><span class="skel" style="width:76px"></span><span class="skel" style="width:56px"></span><span class="skel" style="width:110px"></span></div>
+            <div class="skel-row"><span class="skel" style="width:64px"></span><span class="skel" style="width:150px"></span><span class="skel" style="width:70px"></span><span class="skel" style="width:76px"></span><span class="skel" style="width:56px"></span><span class="skel" style="width:110px"></span></div>
+            <div class="skel-row"><span class="skel" style="width:64px"></span><span class="skel" style="width:185px"></span><span class="skel" style="width:70px"></span><span class="skel" style="width:76px"></span><span class="skel" style="width:56px"></span><span class="skel" style="width:110px"></span></div>
+            <div class="skel-row"><span class="skel" style="width:64px"></span><span class="skel" style="width:160px"></span><span class="skel" style="width:70px"></span><span class="skel" style="width:76px"></span><span class="skel" style="width:56px"></span><span class="skel" style="width:110px"></span></div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var TOTAL_RUNS = 14;
+
+  var PAGE_1 = [
+    { run: "RUN-472", env: "staging · chromium-126", exec: "agent", status: "running", dur: null,     when: "2026-07-30 14:22" },
+    { run: "RUN-461", env: "staging · chromium-126", exec: "ci",    status: "fail",    dur: "3m 41s", when: "2026-07-29 11:52" },
+    { run: "RUN-449", env: "staging · chromium-126", exec: "agent", status: "pass",    dur: "3m 12s", when: "2026-07-27 16:05" },
+    { run: "RUN-441", env: "ci-linux · node-20",     exec: "ci",    status: "pass",    dur: "2m 58s", when: "2026-07-25 09:30" },
+    { run: "RUN-437", env: "prod-mirror · manual",   exec: "human", status: "aborted", dur: "1m 05s", when: "2026-07-24 18:12" },
+    { run: "RUN-430", env: "ci-linux · node-20",     exec: "ci",    status: "pass",    dur: "3m 02s", when: "2026-07-23 08:47" },
+    { run: "RUN-418", env: "staging · chromium-125", exec: "agent", status: "fail",    dur: "4m 27s", when: "2026-07-19 14:33" },
+    { run: "RUN-402", env: "staging · manual",       exec: "human", status: "pass",    dur: "6m 44s", when: "2026-07-15 11:20" }
+  ];
+  var PAGE_2 = [
+    { run: "RUN-390", env: "ci-linux · node-20",     exec: "ci",    status: "pass",    dur: "2m 49s", when: "2026-07-11 08:52" },
+    { run: "RUN-377", env: "staging · chromium-125", exec: "agent", status: "pass",    dur: "3m 18s", when: "2026-07-07 15:36" },
+    { run: "RUN-365", env: "ci-linux · node-18",     exec: "ci",    status: "aborted", dur: "0m 42s", when: "2026-07-03 09:14" },
+    { run: "RUN-351", env: "staging · manual",       exec: "human", status: "fail",    dur: "5m 03s", when: "2026-06-28 17:41" },
+    { run: "RUN-338", env: "ci-linux · node-18",     exec: "ci",    status: "pass",    dur: "2m 55s", when: "2026-06-24 10:07" },
+    { run: "RUN-322", env: "staging · chromium-124", exec: "agent", status: "pass",    dur: "3m 33s", when: "2026-06-19 13:29" }
+  ];
+
+  var ICONS = {
+    human: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5"/></svg>',
+    agent: '<svg class="ic" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><path d="M12 8V4m-6 9h.01M18 13h-.01M9 15.5h6"/><circle cx="12" cy="3" r="1"/></svg>',
+    ci:    '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M6.5 7.5h.01M6.5 16.5h.01"/></svg>'
+  };
+  var EXEC_LABEL = { human: "Human", agent: "Agent", ci: "CI" };
+  var STATUS_LABEL = { pass: "Passed", fail: "Failed", aborted: "Aborted", running: "Running" };
+
+  var loaded = PAGE_1.slice();
+  var olderLoaded = false;
+  var outcome = null; // single-select: "pass" | "fail" | "aborted" | null
+
+  var body = document.getElementById("runs-body");
+  var emptyEl = document.getElementById("live-empty");
+  var footEl = document.getElementById("table-foot");
+  var olderRow = document.getElementById("load-older-row");
+  var olderBtn = document.getElementById("load-older");
+
+  function rowHtml(r) {
+    return '<tr>' +
+      '<td><span class="id">' + r.run + '</span></td>' +
+      '<td><span class="env">' + r.env + '</span></td>' +
+      '<td><span class="exec">' + ICONS[r.exec] + EXEC_LABEL[r.exec] + '</span></td>' +
+      '<td><span class="chip" data-status="' + r.status + '"><span class="dot"></span>' + STATUS_LABEL[r.status] + '</span></td>' +
+      '<td>' + (r.dur ? '<span class="dur">' + r.dur + '</span>' : '<span class="dur na">in progress</span>') + '</td>' +
+      '<td><span class="when">' + r.when + '</span></td>' +
+      '</tr>';
+  }
+
+  function render() {
+    var shown = outcome
+      ? loaded.filter(function (r) { return r.status === outcome; })
+      : loaded;
+    body.innerHTML = shown.map(rowHtml).join("");
+    emptyEl.hidden = shown.length > 0;
+
+    if (outcome) {
+      footEl.textContent = "runs 1–" + shown.length + " · outcome filter active (" +
+        STATUS_LABEL[outcome].toLowerCase() + ")";
+    } else {
+      footEl.textContent = "runs 1–" + loaded.length + " of " + TOTAL_RUNS + " · newest first";
+    }
+
+    olderRow.hidden = olderLoaded;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-v]"), function (btn) {
+    btn.addEventListener("click", function () {
+      var val = btn.getAttribute("data-v");
+      outcome = outcome === val ? null : val;
+      Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-v]"), function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-v") === outcome ? "true" : "false");
+      });
+      render();
+    });
+  });
+
+  function clearFilter() {
+    outcome = null;
+    Array.prototype.forEach.call(document.querySelectorAll(".seg button[data-v]"), function (b) {
+      b.setAttribute("aria-pressed", "false");
+    });
+    render();
+  }
+  document.getElementById("clear-filter").addEventListener("click", clearFilter);
+  document.getElementById("empty-clear").addEventListener("click", clearFilter);
+
+  olderBtn.addEventListener("click", function () {
+    loaded = loaded.concat(PAGE_2);
+    olderLoaded = true;
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

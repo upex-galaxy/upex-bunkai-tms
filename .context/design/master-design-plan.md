@@ -35,7 +35,8 @@ Every user story that touches UI MUST:
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | Home / Dashboard | 0% | ❌ Missing |
 | Test Runner | 0% | ❌ Missing |
-| Bug Reports / Metrics / Test Runs | 0% | ❌ Missing (no data model) |
+| Bug Reports / Metrics | 0% | ❌ Missing (no data model) |
+| Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
 | Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
 
 Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
@@ -177,8 +178,24 @@ Nav badge `33`. No route, no data model. Mockup detail comes from the runner's R
 ### 4.7 Metrics — ❌ (0%)
 Nav item, no badge. No mockup screen provided (only implied). Coverage % surfaces on Home. **Priority: P3** — needs design spec authored (no mockup) + metrics data.
 
-### 4.8 Test Runs — ❌ (0%)
-Nav badge `3`. Run list/index. Active runs partially shown on Home dashboard table. **Priority: P3.**
+### 4.8 Test Runs — ❌ build 0% · ✅ mockups ready (2026-07-30)
+Nav badge `3`. Active runs partially shown on Home dashboard table. **The 🔒 mockup gate is
+LIFTED**: a 2-screen set was generated via Open Design (MCP-driven Mode A, project
+`bunkai-bk-30-test-runs-index`, design system `user:bunkai`) and lives in
+`.context/designs/bunkai-test-management-tool/bk-30-test-runs-index/` (provenance: `BRIEF.md` in
+the same folder). Both screens share the App Shell (sidebar with "Test Runs" active, topbar),
+English copy, frozen §2 tokens verbatim, `:focus-visible` 1px `--accent`, and treat "aborted" as
+the `--blocked` signal token (anomalous termination, not `--skipped`).
+
+| Screen file | Route(s) | Spec highlights (checklist source) |
+|---|---|---|
+| `test-runs-index.html` | `/projects/[projectSlug]/runs` | Project-wide run list. Combinable filters (date range, module select, status segment Passed/Failed/Aborted with `aria-pressed` — Running excluded from the status filter, executor Human/Agent/CI); Passed/Failed/Aborted totals recompute per filter combination; per-row Test, module, environment, executor mode, outcome chip (dot+text), date. States strip: default / filtered-combined / no-match (zeroed totals, explicitly "not an error") / loading (opacity-pulse skeleton) / error (mono error line + Retry, filters preserved). "Clear filters" restores full list + totals. |
+| `test-run-history.html` | tab on `/projects/[projectSlug]/tests/[testId]` ("Run History") | Single-Test scoped history (self-contained page for now — a Test-detail screen doesn't exist yet; ships with an anticipatory Overview/Steps/Run History tab strip). All-time Passed/Failed/Aborted summary + 4px segmented outcome bar; single-select outcome filter (pass/fail/aborted, Running excluded, click-again or "Clear filter" resets); "Load older runs" pagination appends older rows, list stays newest-first; Duration column added vs. the project-wide row (Test/Module columns dropped — already scoped). States strip: default / filtered / empty ("No runs yet for this Test", no skeleton, no error) / pagination / loading. Continuity anchors (`RUN-472` running/agent, `RUN-461` failed/CI) reused from `test-runs-index.html`'s dataset for cross-screen coherence. |
+
+Build order note: BK-38 (project-wide filter + totals) renders `test-runs-index.html`; BK-37 (a
+Test's run history) renders `test-run-history.html`, currently as a standalone route until a
+Test-detail screen is designed to host it as a tab. **Priority: P1** — BK-38 is Ready For Dev and
+was blocked only by this mockup gate; that block is now lifted.
 
 ### 4.9 ATC Library — ⚠️ (project-scoped, not global)
 Nav badge `623`. Impl has ATC CRUD nested under project (`projects/[slug]/atcs/*`) but no **global cross-project library**. **Priority: P3** — promote to global view.
@@ -296,8 +313,8 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | **BK-30 Manual Execution & Runs** | BK-34 Start a manual run | **Test Runner** | `run.jsx` §4.5 |
 | | BK-35 Mark each step pass/fail/block | **Test Runner** step list | `run.jsx` §4.5 |
 | | BK-36 Abort a run in progress | **Test Runner** (abort action) | `run.jsx` §4.5 |
-| | BK-37 View a test's past runs | **Test Runs** index (per-test history) | ⚠️ wireframe pending |
-| | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | `home.jsx` |
+| | BK-37 View a test's past runs | **Test Runs** index (per-test history) | §4.8 · `bk-30-test-runs-index/test-run-history.html` |
+| | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | §4.8 · `bk-30-test-runs-index/test-runs-index.html` |
 | | BK-39 Finish a run with a final verdict | **Test Runner** (finish/verdict) | `run.jsx` §4.5 |
 | **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) | `run.jsx` §4.5 |
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 |
