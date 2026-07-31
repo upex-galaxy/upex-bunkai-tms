@@ -480,3 +480,57 @@ export async function deleteEnvironment(
     p_environment_id: args.environmentId,
   });
 }
+
+// BK-40 — file a TMS-native bug, either linked to a failed run step or
+// standalone. Same explicit-actor contract as the other wrappers; the
+// SECURITY DEFINER RPC re-validates member+ write access via
+// bunkai_assert_actor_can_write_project, re-validates module ∈ project
+// (defense in depth — the run-linked HTTP path already derived both together
+// from the run), backstops title/severity/evidence-count, inserts (status
+// always 'open'), emits `bug.filed`, and returns the composed bug json (header
+// + nested module `{id, name, path}`). `runId`/`runStepId`/`atcId` are
+// provenance-only and null for a standalone bug.
+export interface CreateBugArgs {
+  actorUserId: string
+  projectId: string
+  moduleId: string
+  title: string
+  severity: string
+  description?: string | null
+  stepsToReproduce?: string
+  evidenceUrls?: string[]
+  runId?: string | null
+  runStepId?: string | null
+  atcId?: string | null
+}
+
+export async function createBug(supabase: Client, args: CreateBugArgs) {
+  return supabase.rpc('bunkai_create_bug', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_module_id: args.moduleId,
+    p_title: args.title,
+    p_severity: args.severity,
+    // The RPC param is typed `text` (non-null) but accepts NULL — normalizes
+    // empty/whitespace to NULL server-side either way (mirrors markRunStep's
+    // p_note/p_evidence_url cast).
+    p_description: (args.description ?? null) as string,
+    p_steps_to_reproduce: args.stepsToReproduce ?? '',
+    p_evidence_urls: args.evidenceUrls ?? [],
+    p_run_id: (args.runId ?? null) as string,
+    p_run_step_id: (args.runStepId ?? null) as string,
+    p_atc_id: (args.atcId ?? null) as string,
+  });
+}
+
+// BK-40 — read a Project's bugs, newest first (bare list — BK-41 adds filters
+// and real pagination). Same explicit-actor contract as the other wrappers;
+// the SECURITY DEFINER RPC resolves the Project's workspace and gates the
+// actor's active membership (any role — a viewer reads). Returns `{ items }`,
+// each item carrying a nested module `{id, name, path}` object.
+export async function listProjectBugs(supabase: Client, args: { actorUserId: string, projectId: string }) {
+  return supabase.rpc('bunkai_list_project_bugs', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+  });
+}
