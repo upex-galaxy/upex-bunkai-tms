@@ -31,3 +31,29 @@ Full story has 8 AC scenarios; Slice A (PR1) intentionally covers only the list+
 | AC8 — Empty state guides first issuance | `exempt:partial-deferred-to-PR2` | Explanatory copy ships in this PR; the "Issue your first token" CTA (which opens a modal that doesn't exist yet) is PR2's addition to this same empty-state block | exempt (CTA only, this PR) |
 
 No row is `uncovered` — every AC1-4/8-CTA exemption has a concrete, non-vague reason tied to the approved stacked-PR plan, not an unresolved gap.
+
+## PR2 — Slice B (issue-token flow)
+
+Independent adversarial review dispatched against `git diff feat/BK-88-tokens-list..feat/BK-88-tokens-issue` (Slice B's own changes only). No BLOCKER/MAJOR found.
+
+| # | Severity | Finding | Verdict | Action |
+|---|---|---|---|---|
+| 1 | MINOR | AC2's literal Gherkin error text ("At least one scope is required.") never rendered — button disable works correctly, but no screen-reader-facing feedback on why. | legitimate, but matches the mockup's own approach (no such text there either — only the static fieldset legend + disabled button). | **Dismissed as-is** — not a new divergence from the design source of truth; a QA tester reading AC2 literally may still flag it, noted here for that reason. |
+| 2 | MINOR | Name field missing the mockup's hint text + submit-time normalization (`.toLowerCase().replace(/\s+/g, '-')`). | legitimate — undocumented content/behavior gap vs the mockup. | **Fixed**: hint paragraph + normalization added, commit `e5d9249`. |
+| 3 | MINOR | "Copied" button label never reverts to "Copy" (mockup reverts after 2s). | legitimate — cosmetic fidelity gap. | **Fixed**: 2s revert timeout added, with cleanup on unmount/modal-close, commit `e5d9249`. |
+| 4 | MINOR/observation | Escape/click-outside closes the modal during Step 2 (secret visible) without requiring "Done — I stored it". | legitimate observation, but is the mockup's own exact behavior (`settings-tokens.html:1311-1320`) — the plan's Decision 7 rationale overclaims protection here, but no data leak occurs (state is wiped either way). | **Dismissed as-is** — accepted parity with the design source of truth; the secret itself is never left exposed on disk/network, only convenience is affected. Decision 7's rationale text could be corrected in a future pass, not a merge blocker. |
+| 5 | NIT | Header "New token" button + empty-state CTA both visible simultaneously in the empty state (2 ways to do the same thing). | legitimate, cosmetic. | **Dismissed as-is** — the mockup's states-strip doesn't settle this either way; not a defect. |
+
+**Overall**: `approve-with-nits` → both fixable items fixed, re-verified green → ready to stack as PR2, pending PR1 (#68) merge.
+
+### Spec Compliance Matrix — Slice B scope (completes the story)
+
+| AC scenario | covered_by | evidence | status |
+|---|---|---|---|
+| AC1 — Issuing a token reveals the secret once | `test:lib/tokens/issue-form.test.ts` + `review-approved:orchestrator` | Server's own `warning` field rendered verbatim (traced in review); secret never logged/persisted beyond local Step-2 state (traced in review) | covered |
+| AC2 — Issuing with no scopes is rejected (client-side) | `test:lib/tokens/issue-form.test.ts` | `canSubmitIssueForm` unit-tested (6 cases) + wired to the Create button's `disabled` prop (verified in review — button genuinely inert, no request fires) | covered |
+| AC3 — Invalid scope enum rejected server-side (422) | `manual:existing-backend-coverage` + `review-approved:orchestrator` | Already covered by BK-126 (backend test); this PR's error-surfacing path (`toast.error(body.error.message)`, stays on Step 1) verified in review | covered |
+| AC4 — workspace:admin requires admin/owner role (403) | `manual:existing-backend-coverage` + `review-approved:orchestrator` | Already enforced + tested (`lib/api/pat.test.ts`, BK-135/ADR-0005); this PR's error-surfacing path verified identical to AC3's | covered |
+| AC8 — Empty state guides first issuance (CTA half) | `review-approved:orchestrator` | "Issue your first token" button now opens `IssueTokenModal` (copy shipped in Slice A, button wired in Slice B) | covered |
+
+Combined with Slice A's matrix, all 8 story AC scenarios are now `covered` across the two stacked PRs — no row remains `exempt`/`uncovered` once both merge.
