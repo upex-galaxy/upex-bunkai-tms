@@ -38,6 +38,7 @@ describe('handleAuthChangeRedirect', () => {
     const assign = mock((_url: string) => {});
     const stubWindow = { location: { assign } };
     const globals = globalThis as unknown as { window?: typeof stubWindow };
+    const previousWindow = globals.window;
     globals.window = stubWindow;
     try {
       handleAuthChangeRedirect('SIGNED_OUT');
@@ -45,7 +46,7 @@ describe('handleAuthChangeRedirect', () => {
       expect(assign).toHaveBeenCalledWith('/login');
     }
     finally {
-      delete globals.window;
+      globals.window = previousWindow;
     }
   });
 });
