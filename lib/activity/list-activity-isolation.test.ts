@@ -19,10 +19,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // `SUPABASE_SERVICE_ROLE_KEY` alone would pass even if the RLS policy were
 // deleted entirely; it is used ONLY for fixture setup/teardown and for the
 // non-RLS-relevant keyset/allowlist/tie-break/cursor-validation assertions
-// below, exactly the "explicit-actor RPC calls, not obtaining a session"
-// carve-out `live-ui-identity.md` §3 sanctions (ruling recorded
-// 2026-07-31, see escalation-log.md's BK-38 entries) — the actual
-// isolation proof authenticates for real, via the already-declared
+// below — privileged credentials are forbidden by `live-ui-identity.md` §3
+// only when used "to obtain a session"; fixture seed/teardown and an
+// explicit-actor RPC call obtain no session, so this stays within §3 as
+// written. The actual isolation proof authenticates for real, via the already-declared
 // `QA_E2E_USER_EMAIL` / `QA_E2E_USER_PASSWORD` automation identity signing
 // in through the app's real `signInWithPassword` path, never a minted JWT.
 //
@@ -203,7 +203,7 @@ describeOrSkip('BK-49 — bunkai_list_activity isolation, keyset, allowlist (DoD
     expect(page.next_cursor).toBeNull();
   });
 
-  it('does not project run.aborted.reason or any other non-allowlisted payload key (positive projection)', async () => {
+  it('atc.created projects only its allowlisted payload key (positive projection, non-run action)', async () => {
     if (!fixture) { return warn(); }
     const { data, error } = await listActivity(service(), { workspaceId: fixture.workspaceId, limit: 10 });
     expect(error).toBeNull();
@@ -212,6 +212,10 @@ describeOrSkip('BK-49 — bunkai_list_activity isolation, keyset, allowlist (DoD
     // atc.created's own projection is `{title}` only (migration 0045) — this
     // seed's payload carried no OTHER keys to begin with, but the assertion
     // is on the RESPONSE shape (a positive projection), not on echoing input.
+    // The run.aborted.reason-specific case (a payload that actually HAS a key
+    // the projection must strip) is a separate, dedicated test below — this
+    // one never seeded a `reason` key, so renamed to stop overclaiming R3
+    // coverage it never provided (found in the full-chain adversarial review).
     expect(Object.keys(atcCreatedRow.payload)).toEqual(['title']);
   });
 
@@ -320,4 +324,175 @@ describeOrSkip('BK-49 — bunkai_list_activity isolation, keyset, allowlist (DoD
 // The suite never fails on missing migration / seed state — it says why and passes.
 function warn() {
   console.warn(`[list-activity-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
+}
+
+// ============================================================================
+// BK-49 final-review BLOCKER regression guard — bunkai_resolve_activity_actors
+// (migration 0047_activity_actor_resolve_scope.sql) + the MAJOR finding in the
+// same review pass: the ORIGINAL "does not project run.aborted.reason" test
+// above never actually seeded a run.aborted row, so it proved nothing about
+// the SQL's own projection — it asserted on atc.created's payload instead,
+// which trivially had no 'reason' key to begin with. Both fixes get their own
+// isolated fixture/workspace (not folded into the block above) so they don't
+// perturb that block's carefully-counted keyset/tie-break page math.
+// ============================================================================
+
+interface ActorRow { user_id: string, email: string | null }
+
+async function resolveActors(
+  db: ReturnType<typeof service>,
+  args: { workspaceId: string, userIds: string[] },
+) {
+  return db.rpc('bunkai_resolve_activity_actors', {
+    p_workspace_id: args.workspaceId,
+    p_user_ids: args.userIds,
+  });
+}
+
+interface RegressionFixture {
+  workspaceId: string
+  ownerUserId: string
+  foreignUserId: string | null // a real auth.users id with NO activity in workspaceId
+  abortedRowId: string
+}
+
+let regressionFixture: RegressionFixture | null = null;
+let regressionSkipReason: string | null = null;
+
+describeOrSkip('BK-49 — post-review fixes: actor-resolver workspace scoping + run.aborted.reason (real row)', () => {
+  beforeAll(async () => {
+    const db = service();
+
+    const { data: members, error: membersError } = await db
+      .from('workspace_members')
+      .select('user_id')
+      .eq('status', 'active')
+      .limit(50);
+    if (membersError) { throw membersError; }
+    const distinctUserIds = [...new Set((members ?? []).map(m => m.user_id as string))];
+    if (distinctUserIds.length === 0) {
+      regressionSkipReason = 'need at least one active workspace member (seed state).';
+      return;
+    }
+    const ownerUserId = distinctUserIds[0];
+    // A SECOND distinct real user, used only as a target id that will have NO
+    // activity_log row in this fixture's workspace — proves the fix excludes a
+    // real (not merely nonexistent) user who has no relationship to it. Falls
+    // back to a well-formed-but-nonexistent uuid if this live DB genuinely has
+    // only one distinct active member (still a valid exclusion case, just a
+    // weaker one — logged, not silently swapped without a trace).
+    const foreignUserId = distinctUserIds.find(id => id !== ownerUserId) ?? null;
+
+    const { data: workspace, error: workspaceError } = await db
+      .from('workspaces')
+      .insert({ slug: `${PREFIX}-guard-ws`, name: `${PREFIX}-guard`, owner_user_id: ownerUserId })
+      .select('id')
+      .single();
+    if (workspaceError) { throw workspaceError; }
+    const workspaceId = workspace.id as string;
+
+    // A REAL run.aborted row with a `reason` key present in its source
+    // payload (mirrors 0036_run_abort.sql's actual write-site shape:
+    // {reason, skipped_steps}) — the thing the original test never seeded.
+    const { data: aborted, error: abortedError } = await db
+      .from('activity_log')
+      .insert({
+        workspace_id: workspaceId,
+        actor_user_id: ownerUserId,
+        entity_type: 'run',
+        action: 'run.aborted',
+        payload: { reason: 'Environment credentials expired mid-run — operator note, free text.', skipped_steps: 3 },
+      })
+      .select('id')
+      .single();
+    if (abortedError) { throw abortedError; }
+
+    regressionFixture = { workspaceId, ownerUserId, foreignUserId, abortedRowId: aborted.id as string };
+  });
+
+  afterAll(async () => {
+    if (!regressionFixture) { return; }
+    const db = service();
+    await db.from('activity_log').delete().eq('id', regressionFixture.abortedRowId);
+    await db.from('workspaces').delete().eq('id', regressionFixture.workspaceId);
+  });
+
+  it('run.aborted.reason is never projected, verified against a REAL row that has one (MAJOR fix)', async () => {
+    if (!regressionFixture) { return warnRegression(); }
+    const { data, error } = await listActivity(service(), { workspaceId: regressionFixture.workspaceId, limit: 10 });
+    expect(error).toBeNull();
+    const page = data as unknown as ActivityPage;
+    const row = page.items.find(i => i.id === regressionFixture!.abortedRowId);
+    expect(row).toBeDefined();
+    expect(Object.keys(row!.payload)).toEqual(['skipped_steps']);
+    expect(row!.payload.reason).toBeUndefined();
+    expect(JSON.stringify(row!.payload)).not.toMatch(/expired|operator note/);
+  });
+
+  it('bunkai_resolve_activity_actors excludes a real user_id with no activity in this workspace (BLOCKER fix)', async () => {
+    if (!regressionFixture) { return warnRegression(); }
+    if (!regressionFixture.foreignUserId) {
+      console.warn('[list-activity-isolation] skipped actor-scope case: need a second distinct active workspace member on this live DB.');
+      return;
+    }
+    if (!hasRealLoginEnv) {
+      console.warn('[list-activity-isolation] skipped actor-scope case: need NEXT_PUBLIC_SUPABASE_ANON_KEY + QA_E2E_USER_EMAIL + QA_E2E_USER_PASSWORD.');
+      return;
+    }
+
+    // bunkai_resolve_activity_actors' caller-membership guard reads auth.uid()
+    // — NULL under a service-role call, so a service-role client would either
+    // fail the guard outright (as it does — confirmed empirically) or, if it
+    // ever silently passed, would prove nothing about a REAL caller's exposure.
+    // This is exactly the property under test: call it through the app's real
+    // login path, never a minted JWT (live-ui-identity.md §3).
+    const anon = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await anon.auth.signInWithPassword({
+      email: qaEmail!,
+      password: qaPassword!,
+    });
+    if (signInError || !signIn.session || !signIn.user) {
+      console.warn(`[list-activity-isolation] skipped actor-scope case: QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+      return;
+    }
+    const qaUserId = signIn.user.id;
+
+    // Throwaway membership so QA_E2E's own bunkai_is_workspace_member(caller)
+    // check passes — same fixture-setup pattern report-isolation.test.ts uses,
+    // removed again in `finally` regardless of the test's outcome.
+    const db = service();
+    const { error: grantError } = await db
+      .from('workspace_members')
+      .insert({ workspace_id: regressionFixture.workspaceId, user_id: qaUserId, role: 'viewer', status: 'active' });
+    if (grantError) {
+      console.warn(`[list-activity-isolation] skipped actor-scope case: could not grant QA_E2E temporary workspace membership (${grantError.message}).`);
+      return;
+    }
+
+    try {
+      const { data, error } = await resolveActors(anon, {
+        workspaceId: regressionFixture.workspaceId,
+        userIds: [regressionFixture.ownerUserId, regressionFixture.foreignUserId],
+      });
+      expect(error).toBeNull();
+      const rows = (data ?? []) as ActorRow[];
+      const ids = rows.map(r => r.user_id);
+      // The legitimate actor (wrote the seeded run.aborted row in THIS
+      // workspace) resolves.
+      expect(ids).toContain(regressionFixture.ownerUserId);
+      // The foreign user — a real, existing auth.users row with zero activity
+      // in this workspace — is silently excluded, not disclosed. Before
+      // migration 0047, this assertion would have failed: the function
+      // returned every requested id's email regardless of any relationship to
+      // p_workspace_id, as long as the CALLER belonged to it.
+      expect(ids).not.toContain(regressionFixture.foreignUserId);
+    }
+    finally {
+      await db.from('workspace_members').delete().eq('workspace_id', regressionFixture.workspaceId).eq('user_id', qaUserId);
+    }
+  });
+});
+
+function warnRegression() {
+  console.warn(`[list-activity-isolation] skipped: ${regressionSkipReason ?? 'fixture unavailable.'}`);
 }
