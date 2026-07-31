@@ -376,26 +376,34 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
 
             {state === 'rows' && (
               <>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      {['Run', 'Environment', 'Executor', 'Outcome', 'Duration', 'Ran'].map(column => (
-                        <th
-                          key={column}
-                          scope="col"
-                          className="whitespace-nowrap border-b border-stroke-2 bg-surface-1 px-3 py-2 text-left text-2xs font-medium uppercase tracking-[0.06em] text-fg-3"
-                        >
-                          {column}
-                        </th>
+                {/* Six columns of `whitespace-nowrap` content have a hard floor
+                    width. Below it the card's own `overflow-hidden` (there to
+                    clip the rounded corners) would silently CROP the trailing
+                    `Ran` column instead of revealing it — and AC1 requires when
+                    a run ran to be readable. Scroll the table on its own axis so
+                    the card keeps its radius and no column is ever unreachable. */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        {['Run', 'Environment', 'Executor', 'Outcome', 'Duration', 'Ran'].map(column => (
+                          <th
+                            key={column}
+                            scope="col"
+                            className="whitespace-nowrap border-b border-stroke-2 bg-surface-1 px-3 py-2 text-left text-2xs font-medium uppercase tracking-[0.06em] text-fg-3"
+                          >
+                            {column}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody data-testid="run-history-rows">
+                      {items.map(run => (
+                        <RunRow key={run.id} run={run} />
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody data-testid="run-history-rows">
-                    {items.map(run => (
-                      <RunRow key={run.id} run={run} />
-                    ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
 
                 {/* Shown only while another page exists. The cursor carries the
                     keyset position; the outcome travels with it. */}
