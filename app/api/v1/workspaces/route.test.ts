@@ -56,4 +56,26 @@ describe('mergeWorkspaceRoles (BK-89)', () => {
     expect(result).toHaveLength(2);
     expect(result.every(ws => ws.role === null)).toBe(true);
   });
+
+  it('joins by workspace_id, not array position — a reordered/misaligned memberships array still matches correctly', () => {
+    const workspaces = [
+      { id: 'ws-1', slug: 'acme', name: 'Acme Inc', owner_user_id: 'u-1', plan: 'cloud', created_at: '2026-01-01T00:00:00Z' },
+      { id: 'ws-2', slug: 'beta', name: 'Beta Co', owner_user_id: 'u-2', plan: 'community', created_at: '2026-01-02T00:00:00Z' },
+      { id: 'ws-3', slug: 'gamma', name: 'Gamma LLC', owner_user_id: 'u-3', plan: 'cloud', created_at: '2026-01-03T00:00:00Z' },
+    ];
+    // Deliberately out of order relative to `workspaces`, and with an extra
+    // unrelated row — a positional merge (e.g. `memberships[i]`) would pair
+    // ws-1 with 'admin' and ws-3 with 'owner', both wrong.
+    const memberships = [
+      { workspace_id: 'ws-3', role: 'owner' },
+      { workspace_id: 'ws-1', role: 'member' },
+      { workspace_id: 'unrelated-ws', role: 'admin' },
+    ];
+
+    const result = mergeWorkspaceRoles(workspaces, memberships);
+
+    expect(result.find(ws => ws.id === 'ws-1')?.role).toBe('member');
+    expect(result.find(ws => ws.id === 'ws-2')?.role).toBeNull();
+    expect(result.find(ws => ws.id === 'ws-3')?.role).toBe('owner');
+  });
 });
