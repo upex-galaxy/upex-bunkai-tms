@@ -15,10 +15,13 @@ void mock.module('server-only', () => ({}));
 // zero test coverage before this ticket.
 //
 // DB-integration, service-role only — no session is obtained and no identity
-// is impersonated (`live-ui-identity.md` §3 does not apply: this middleware
-// always runs with the service-role client in production too, and every
-// user_id/workspace_id below is either an explicit fixture actor or a
-// deliberately nonexistent uuid, never a borrowed real user). Gated on env
+// is impersonated (`live-ui-identity.md` §3 does not apply: §3 governs
+// obtaining a session or driving the live app, neither of which happens
+// here — this middleware always runs with the service-role client in
+// production too, and every user_id/workspace_id below is either a real
+// seeded `workspace_members` row from this environment's own test fixtures,
+// used purely as an FK value, or a deliberately nonexistent uuid; nothing
+// here establishes a session or acts "as" that user). Gated on env
 // presence; skips loudly (not silently) when unavailable.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,6 +81,16 @@ describeOrSkip('beginIdempotentRequest (BK-248)', () => {
   afterAll(async () => {
     const db = service();
     await db.from('idempotency_keys').delete().like('endpoint', `${PREFIX}%`);
+    // Also reap orphans from a PRIOR run of this suite that crashed before
+    // its own afterAll ran (each run mints a fresh PREFIX, so a crash leaves
+    // rows no later run's exact-prefix delete above will ever revisit). Age
+    // gate keeps this from ever touching another CONCURRENTLY running
+    // invocation's still-in-progress rows.
+    await db
+      .from('idempotency_keys')
+      .delete()
+      .like('endpoint', '%bk248-idempotency-%')
+      .lt('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
   });
 
   it('first-time insert with a nonexistent workspace_id returns validation_failed, not internal_error', async () => {
@@ -114,6 +127,12 @@ describeOrSkip('beginIdempotentRequest (BK-248)', () => {
   });
 
   it('a replay (same key + same payload, already succeeded) returns the stored snapshot', async () => {
+    // Explicit timeout: 4 sequential round trips against a live, shared
+    // Supabase project also serving other concurrent sessions — bun:test's
+    // 5000ms default has held with margin in practice, but this test (and
+    // the reclaim test below) are the two most round-trip-heavy in the
+    // suite, so a wider margin costs nothing and avoids an occasional flake
+    // under load rather than a real regression.
     if (!fixture) { return warn(); }
     const { beginIdempotentRequest, recordIdempotencyResult } = await import('./idempotency');
     const headers = new Headers({ 'idempotency-key': `${PREFIX}-replay` });
@@ -140,7 +159,7 @@ describeOrSkip('beginIdempotentRequest (BK-248)', () => {
     if (!second.isReplay) { throw new Error('expected replay'); }
     expect(second.status).toBe(201);
     expect(second.snapshot).toEqual({ test: { id: 'fake' } });
-  });
+  }, 15000);
 
   it('the same key reused with a DIFFERENT payload returns conflict', async () => {
     if (!fixture) { return warn(); }
@@ -211,7 +230,7 @@ describeOrSkip('beginIdempotentRequest (BK-248)', () => {
       requestPayload: payload,
     });
     expect(retry.isReplay).toBe(false);
-  });
+  }, 15000);
 
   it('a nonexistent user_id still surfaces as internal_error (the fix is scoped to workspace_id, not every FK)', async () => {
     const { beginIdempotentRequest } = await import('./idempotency');

@@ -150,13 +150,21 @@ export async function beginIdempotentRequest(
     }
     if (
       insertError?.code === '23503'
-      && insertError.message.includes('idempotency_keys_workspace_id_fkey')
+      && (
+        insertError.message.includes('idempotency_keys_workspace_id_fkey')
+        || (insertError.details ?? '').includes('is not present in table "workspaces"')
+      )
     ) {
       // Caller-supplied `workspace_id` (BK-248): a nonexistent workspace hits
       // this FK before the business RPC ever runs its own membership check.
       // Surface the caller's mistake as a 422, not an opaque 500 — every
       // consumer of this shared middleware benefits, not just the one route
-      // that happened to trip it first.
+      // that happened to trip it first. The constraint name is Postgres's
+      // default `<table>_<column>_fkey` (no explicit name in migration 0009)
+      // — a future migration that explicitly renames it would silently fall
+      // through to `internal_error` again; the `details` check is a fallback
+      // for exactly that, and `lib/api/idempotency.test.ts` would catch the
+      // regression either way.
       throw new ApiError(
         'validation_failed',
         'workspace_id does not reference an existing workspace.',
