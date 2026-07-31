@@ -1,9 +1,11 @@
-import { buildWorkspaceRows, countActiveMembersByWorkspace, resolveWorkspacesViewState } from '@lib/account/workspaces';
+import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace, resolveWorkspacesViewState } from '@lib/account/workspaces';
 import { describe, expect, test } from 'bun:test';
 
 // BK-87 PR2 — Workspace-list data-transform + view-state logic (TC-AC2:
 // role + current-workspace indicator; TC-AC6: empty state; TC-AC7: retriable
 // error, identity isolation).
+// BK-90 Slice B adds the owner-count aggregate + `isSoleOwner` cases below
+// (Decision 1 — count-based sole-owner gate for the Leave-workspace lock UI).
 
 describe('countActiveMembersByWorkspace', () => {
   test('groups active-membership rows into a per-workspace count', () => {
@@ -17,6 +19,21 @@ describe('countActiveMembersByWorkspace', () => {
 
   test('empty input -> empty map', () => {
     expect(countActiveMembersByWorkspace([])).toEqual({});
+  });
+});
+
+describe('countActiveOwnersByWorkspace (BK-90)', () => {
+  test('groups active-owner rows into a per-workspace count', () => {
+    const rows = [
+      { workspace_id: 'ws-1' },
+      { workspace_id: 'ws-2' },
+      { workspace_id: 'ws-2' },
+    ];
+    expect(countActiveOwnersByWorkspace(rows)).toEqual({ 'ws-1': 1, 'ws-2': 2 });
+  });
+
+  test('empty input -> empty map', () => {
+    expect(countActiveOwnersByWorkspace([])).toEqual({});
   });
 });
 
@@ -36,8 +53,8 @@ describe('buildWorkspaceRows', () => {
     });
 
     expect(rows).toEqual([
-      { id: 'ws-1', slug: 'bunkai-core', name: 'Bunkai Core', role: 'owner', memberCount: 12, isActive: true },
-      { id: 'ws-2', slug: 'qa-sandbox', name: 'QA Sandbox', role: 'member', memberCount: 5, isActive: false },
+      { id: 'ws-1', slug: 'bunkai-core', name: 'Bunkai Core', role: 'owner', memberCount: 12, isActive: true, isSoleOwner: false },
+      { id: 'ws-2', slug: 'qa-sandbox', name: 'QA Sandbox', role: 'member', memberCount: 5, isActive: false, isSoleOwner: false },
     ]);
   });
 
@@ -70,6 +87,39 @@ describe('buildWorkspaceRows', () => {
       activeWorkspaceId: null,
     });
     expect(rows[0].memberCount).toBe(0);
+  });
+
+  test('BK-90 Decision 1: sole-owner caller (only active owner row) -> isSoleOwner true', () => {
+    const rows = buildWorkspaceRows({
+      memberships: [{ workspace_id: 'ws-1', role: 'owner' }],
+      workspaces: [{ id: 'ws-1', slug: 'ws-1', name: 'Workspace 1' }],
+      memberCounts: { 'ws-1': 5 },
+      ownerCounts: { 'ws-1': 1 },
+      activeWorkspaceId: null,
+    });
+    expect(rows[0].isSoleOwner).toBe(true);
+  });
+
+  test('BK-90 Decision 1: co-owner (another active owner remains) -> isSoleOwner false', () => {
+    const rows = buildWorkspaceRows({
+      memberships: [{ workspace_id: 'ws-1', role: 'owner' }],
+      workspaces: [{ id: 'ws-1', slug: 'ws-1', name: 'Workspace 1' }],
+      memberCounts: { 'ws-1': 5 },
+      ownerCounts: { 'ws-1': 2 },
+      activeWorkspaceId: null,
+    });
+    expect(rows[0].isSoleOwner).toBe(false);
+  });
+
+  test('BK-90 Decision 1: non-owner role -> isSoleOwner false regardless of the owner-count map', () => {
+    const rows = buildWorkspaceRows({
+      memberships: [{ workspace_id: 'ws-1', role: 'member' }],
+      workspaces: [{ id: 'ws-1', slug: 'ws-1', name: 'Workspace 1' }],
+      memberCounts: { 'ws-1': 5 },
+      ownerCounts: { 'ws-1': 1 },
+      activeWorkspaceId: null,
+    });
+    expect(rows[0].isSoleOwner).toBe(false);
   });
 });
 
