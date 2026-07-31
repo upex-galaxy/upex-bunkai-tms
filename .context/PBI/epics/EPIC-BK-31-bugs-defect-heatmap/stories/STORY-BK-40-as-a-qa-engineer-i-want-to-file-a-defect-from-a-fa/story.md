@@ -3,7 +3,7 @@
 **Jira Key:** [BK-40](https://jira.upexgalaxy.com/browse/BK-40)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -88,7 +88,7 @@ Ready for estimation after expert-panel refinement. QA recommends 5 SP with conf
 
 ### Storys (4)
 
-- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Estimation)_
+- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Ready For QA)_
 - [BK-42](https://jira.upexgalaxy.com/browse/BK-42): TMS-Defect Heatmap | View count and week-over-week trend per module _(Ready For Dev)_
 - [BK-41](https://jira.upexgalaxy.com/browse/BK-41): TMS-Defect List | List and filter defects by module, status, severity _(Ready For Dev)_
 - [BK-43](https://jira.upexgalaxy.com/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(Ready For Dev)_
@@ -98,7 +98,7 @@ Ready for estimation after expert-panel refinement. QA recommends 5 SP with conf
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-06-17, shift-left-reviewed
