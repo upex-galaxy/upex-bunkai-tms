@@ -74,13 +74,15 @@ interface ApiErrorBody {
 const FALLBACK_ERROR_MESSAGE = 'Could not load this Test\'s run history.';
 
 // The API's terminal statuses -> the live `.status-chip` / `.dot` data-status
-// tokens. The CSS keys differ from the API verbs, and `aborted` reads as the
-// BLOCKED signal here (an anomalous termination, not a failed assertion) per
-// master-design-plan §4.8 and the mockup's own summary bar.
+// tokens. The CSS keys differ from the API verbs for pass/fail; `aborted` keeps
+// its own semantic token, the same one RunnerView uses, so both screens paint
+// an aborted run identically. That token now resolves to the BLOCKED family in
+// `app/globals.css` (an anomalous termination, not a failed assertion) per
+// master-design-plan §4.8 — see the comment there.
 const STATUS_TOKEN: Record<RunHistoryOutcome, string> = {
   passed: 'pass',
   failed: 'fail',
-  aborted: 'blocked',
+  aborted: 'aborted',
 };
 
 const OUTCOME_DOT_CLASS: Record<RunHistoryOutcome, string> = {
