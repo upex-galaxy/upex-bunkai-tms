@@ -154,7 +154,7 @@ export async function beginIdempotentRequest(
     ) {
       // Caller-supplied `workspace_id` (BK-248): a nonexistent workspace hits
       // this FK before the business RPC ever runs its own membership check.
-      // Surface the caller's mistake as a 400, not an opaque 500 — every
+      // Surface the caller's mistake as a 422, not an opaque 500 — every
       // consumer of this shared middleware benefits, not just the one route
       // that happened to trip it first.
       throw new ApiError(
