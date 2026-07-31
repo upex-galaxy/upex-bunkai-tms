@@ -1,3 +1,6 @@
+import type { Principal } from '@lib/api/principal';
+import type { Database } from '@lib/types/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '@lib/api/error-envelope';
@@ -10,6 +13,35 @@ import { createAdminClient } from '@lib/supabase/admin';
 import { createRun } from '@lib/supabase/rpc';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
+
+// Resolve the workspace for the Idempotency-Key namespace (BK-182 regression).
+// DB-parametrized and cookie-value-parametrized (no `cookies()` call inside)
+// so it is directly unit-testable — no dedicated NextRequest/ctx test harness
+// exists in this repo, same isolation style as `resolveNewActiveWorkspace` in
+// workspaces/[id]/membership/route.test.ts. Cookie sessions pass their cookie
+// value; bearer callers pass `null`, which `resolveActiveWorkspaceId` already
+// treats as "fall back to the first/oldest visible workspace".
+export async function resolveRunWorkspaceId(
+  db: SupabaseClient<Database>,
+  principal: Pick<Principal, 'workspaceId' | 'via'>,
+  cookieActive: string | null,
+): Promise<string | null> {
+  let workspaceId = principal.workspaceId ?? null;
+  if (!workspaceId) {
+    const { data: workspaces, error: workspacesError } = await db
+      .from('workspaces')
+      .select('id')
+      .order('created_at', { ascending: true });
+    if (workspacesError) {
+      throw new ApiError('internal_error', workspacesError.message);
+    }
+    workspaceId = resolveActiveWorkspaceId(
+      principal.via === 'cookie' ? cookieActive : null,
+      (workspaces ?? []).map(w => w.id),
+    );
+  }
+  return workspaceId;
+}
 
 // POST /api/v1/runs — start a manual Run of a Test in a chosen environment (BK-34).
 // Auth: Bearer `run:execute` (or a cookie session). The SECURITY DEFINER RPC
@@ -47,19 +79,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // Cookie sessions use the active workspace; bearer callers fall back to their
   // principal workspace (or the first membership) — the namespace just needs to
   // be stable per caller.
-  let workspaceId = principal.workspaceId ?? null;
-  if (!workspaceId && principal.via === 'cookie') {
-    const cookieStore = await cookies();
-    const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-    const { data: workspaces, error: workspacesError } = await db
-      .from('workspaces')
-      .select('id')
-      .order('created_at', { ascending: true });
-    if (workspacesError) {
-      throw new ApiError('internal_error', workspacesError.message);
-    }
-    workspaceId = resolveActiveWorkspaceId(cookieActive, (workspaces ?? []).map(w => w.id));
-  }
+  const cookieActive = principal.via === 'cookie'
+    ? (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null
+    : null;
+  const workspaceId = await resolveRunWorkspaceId(db, principal, cookieActive);
   if (!workspaceId) {
     throw new ApiError('validation_failed', 'No active workspace could be resolved for this request.');
   }

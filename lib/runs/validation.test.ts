@@ -1,4 +1,10 @@
-import { RUN_START_TOKEN_MAX, RunCreateBodySchema } from '@lib/runs/validation';
+import {
+  RUN_START_TOKEN_MAX,
+  RUN_STEP_EVIDENCE_URL_MAX,
+  RUN_STEP_NOTE_MAX,
+  RunCreateBodySchema,
+  RunStepMarkBodySchema,
+} from '@lib/runs/validation';
 import { describe, expect, test } from 'bun:test';
 
 // BK-34 — body validation for POST /api/v1/runs. Pure schema tests: the Zod
@@ -60,5 +66,80 @@ describe('runCreateBodySchema', () => {
   test('rejects a start_token over the length cap', () => {
     const tooLong = 'x'.repeat(RUN_START_TOKEN_MAX + 1);
     expect(RunCreateBodySchema.safeParse({ test_id: VALID_TEST_ID, environment_id: VALID_ENV_ID, start_token: tooLong }).success).toBe(false);
+  });
+});
+
+// BK-35 — mark-step body validation. Pure schema tests: the Zod layer mirrors
+// the bunkai_mark_run_step backstop (status is passed/failed/blocked only —
+// 'pending' is never accepted) and pre-normalizes empty/whitespace note/
+// evidence_url to null (Q8) so `.url()` never rejects an empty string. The RPC
+// stays the enforcement point of record (mark-step.test.ts covers it).
+describe('runStepMarkBodySchema', () => {
+  test('accepts the minimal valid body (status only)', () => {
+    const parsed = RunStepMarkBodySchema.parse({ status: 'passed' });
+    expect(parsed.status).toBe('passed');
+    expect(parsed.note).toBeUndefined();
+    expect(parsed.evidence_url).toBeUndefined();
+  });
+
+  test('accepts each allowed status', () => {
+    for (const status of ['passed', 'failed', 'blocked'] as const) {
+      expect(RunStepMarkBodySchema.parse({ status }).status).toBe(status);
+    }
+  });
+
+  test('rejects a re-mark-to-pending attempt', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'pending' }).success).toBe(false);
+  });
+
+  test('rejects any other out-of-enum status value', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'skipped' }).success).toBe(false);
+    expect(RunStepMarkBodySchema.safeParse({ status: 'robot' }).success).toBe(false);
+  });
+
+  test('rejects an absent status', () => {
+    expect(RunStepMarkBodySchema.safeParse({}).success).toBe(false);
+  });
+
+  test('accepts a note and trims it', () => {
+    const parsed = RunStepMarkBodySchema.parse({ status: 'passed', note: '  looks good  ' });
+    expect(parsed.note).toBe('looks good');
+  });
+
+  test('Q8 — empty-string and whitespace-only note normalize to null (never rejected)', () => {
+    expect(RunStepMarkBodySchema.parse({ status: 'passed', note: '' }).note).toBeNull();
+    expect(RunStepMarkBodySchema.parse({ status: 'passed', note: '   ' }).note).toBeNull();
+  });
+
+  test('accepts a note at exactly the length cap, rejects one over it', () => {
+    const atMax = 'x'.repeat(RUN_STEP_NOTE_MAX);
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', note: atMax }).success).toBe(true);
+    const tooLong = 'x'.repeat(RUN_STEP_NOTE_MAX + 1);
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', note: tooLong }).success).toBe(false);
+  });
+
+  test('accepts a valid evidence_url', () => {
+    const parsed = RunStepMarkBodySchema.parse({ status: 'passed', evidence_url: 'https://s3.example.com/evidence/shot.png' });
+    expect(parsed.evidence_url).toBe('https://s3.example.com/evidence/shot.png');
+  });
+
+  test('Q8 — empty-string and whitespace-only evidence_url normalize to null (never rejected)', () => {
+    expect(RunStepMarkBodySchema.parse({ status: 'passed', evidence_url: '' }).evidence_url).toBeNull();
+    expect(RunStepMarkBodySchema.parse({ status: 'passed', evidence_url: '   ' }).evidence_url).toBeNull();
+  });
+
+  test('ATP — rejects a malformed (non-URL) evidence_url', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'not-a-url' }).success).toBe(false);
+  });
+
+  test('rejects an evidence_url over the length cap', () => {
+    const tooLong = `https://example.com/${'x'.repeat(RUN_STEP_EVIDENCE_URL_MAX)}`;
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: tooLong }).success).toBe(false);
+  });
+
+  test('accepts an explicit null for note/evidence_url', () => {
+    const parsed = RunStepMarkBodySchema.parse({ status: 'passed', note: null, evidence_url: null });
+    expect(parsed.note).toBeNull();
+    expect(parsed.evidence_url).toBeNull();
   });
 });

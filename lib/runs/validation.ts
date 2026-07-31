@@ -65,3 +65,40 @@ export const RunFinishBodySchema = z.object({
 });
 
 export type RunFinishBody = z.infer<typeof RunFinishBodySchema>;
+
+// BK-35 — mark-step request validation. Mirrors the bunkai_mark_run_step
+// backstop (0042_run_step_mark.sql): status is one of passed/failed/blocked
+// only — 'pending' is never accepted, so a re-mark-to-pending attempt is
+// rejected here, at the HTTP edge, before it would reach the RPC's own 45213
+// backstop. No AC freezes copy for a malformed body here (unlike Q2's abort
+// reason), so the generic ZodError envelope (handler.ts) is fine.
+export const RUN_STEP_STATUSES = ['passed', 'failed', 'blocked'] as const;
+
+// Generic cap — no existing length-CHECK precedent in the Runs domain
+// (content/expected/test_title are all uncapped at the DB, D7), so this is a
+// Zod-only default, not a mirror of a DB constraint.
+export const RUN_STEP_NOTE_MAX = 2000;
+export const RUN_STEP_EVIDENCE_URL_MAX = 2000;
+
+// Q8/ATP — an empty or whitespace-only note/evidence_url normalizes to null
+// rather than being rejected (the RPC does the SAME normalization server-side
+// via nullif(btrim(...)), so this is a client-side convenience, not the sole
+// enforcement point — a direct RPC caller is still covered). Applied via
+// preprocess so `.url()` never sees an empty string as a value to validate.
+function emptyStringToNull(value: unknown): unknown {
+  return typeof value === 'string' && value.trim() === '' ? null : value;
+}
+
+export const RunStepMarkBodySchema = z.object({
+  status: z.enum(RUN_STEP_STATUSES),
+  note: z.preprocess(
+    emptyStringToNull,
+    z.string().trim().max(RUN_STEP_NOTE_MAX).nullable().optional(),
+  ),
+  evidence_url: z.preprocess(
+    emptyStringToNull,
+    z.string().trim().max(RUN_STEP_EVIDENCE_URL_MAX).url().nullable().optional(),
+  ),
+});
+
+export type RunStepMarkBody = z.infer<typeof RunStepMarkBodySchema>;
