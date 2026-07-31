@@ -54,6 +54,8 @@ import '../app/api/v1/workspaces/[id]/invites/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/invites/[inviteId]/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/membership/route.openapi';
+
 import '../app/api/v1/workspaces/[id]/projects/route.openapi';
 
 import '../app/api/v1/projects/[id]/modules/route.openapi';
@@ -96,6 +98,8 @@ import '../app/api/v1/tests/[id]/tags/route.openapi';
 
 import '../app/api/v1/tests/[id]/runs/route.openapi';
 
+import '../app/api/v1/projects/[id]/runs/report/route.openapi';
+
 import '../app/api/v1/runs/route.openapi';
 
 import '../app/api/v1/runs/[id]/route.openapi';
@@ -103,6 +107,8 @@ import '../app/api/v1/runs/[id]/route.openapi';
 import '../app/api/v1/runs/[id]/abort/route.openapi';
 
 import '../app/api/v1/runs/[id]/finish/route.openapi';
+
+import '../app/api/v1/runs/[id]/steps/[stepId]/mark/route.openapi';
 
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');

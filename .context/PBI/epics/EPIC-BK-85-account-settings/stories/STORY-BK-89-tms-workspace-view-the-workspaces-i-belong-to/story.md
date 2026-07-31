@@ -24,6 +24,7 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 - [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
@@ -40,7 +41,7 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 
 ### Storys (2)
 
-- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For Dev)_
+- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 - [BK-90](https://jira.upexgalaxy.com/browse/BK-90): TMS-Workspace | Leave a workspace _(Ready For Dev)_
 
 ---
@@ -48,10 +49,10 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
-- **Labels:** shift-left-2026-06-10, shift-left-reviewed
+- **Labels:** implementation-plan-ready, shift-left-2026-06-10, shift-left-reviewed
 
 ---
 

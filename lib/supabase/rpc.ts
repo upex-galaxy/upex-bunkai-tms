@@ -20,6 +20,20 @@ export async function bootstrapWorkspace(supabase: Client, args: BootstrapWorksp
   });
 }
 
+// BK-90 (Slice A) — self-service "leave workspace". The SECURITY DEFINER RPC
+// (migration 0044) atomically validates active membership, applies the
+// last-membership + count-based sole-owner guards, deletes the caller's
+// workspace_members row, and soft-revokes their workspace-scoped PATs.
+export interface LeaveWorkspaceArgs {
+  workspaceId: string
+}
+
+export async function leaveWorkspace(supabase: Client, args: LeaveWorkspaceArgs) {
+  return supabase.rpc('bunkai_leave_workspace', {
+    p_workspace_id: args.workspaceId,
+  });
+}
+
 // BK-21 unified the web editor's save onto bunkai_update_atc (the canonical
 // edit RPC), so the legacy bunkai_save_atc wrapper (SECURITY INVOKER, no event
 // emission) is no longer called from app code. The DB function is retained
@@ -320,6 +334,40 @@ export async function finishRun(
   });
 }
 
+// BK-35 — mark one run_steps row pass/failed/blocked via the SECURITY DEFINER
+// RPC. Same explicit-actor contract; the RPC gates member+ write access,
+// requires status 'running' (else run_step_marking_closed), backstops the
+// status value (passed | failed | blocked only — 'pending' is never accepted,
+// so a re-mark-to-pending attempt lands on the same step_status_invalid), and
+// normalizes an empty/whitespace-only note/evidence_url to NULL server-side
+// (Q8). UPDATEs the run_steps row in place — no history table, last-write-wins
+// (AC6) — then recomputes the parent run_atcs verdict from the full current
+// sibling set (AC2). Returns the composed Run json.
+export async function markRunStep(
+  supabase: Client,
+  args: {
+    actorUserId: string
+    runId: string
+    stepId: string
+    status: 'passed' | 'failed' | 'blocked'
+    note?: string | null
+    evidenceUrl?: string | null
+  },
+) {
+  return supabase.rpc('bunkai_mark_run_step', {
+    p_actor_user_id: args.actorUserId,
+    p_run_id: args.runId,
+    p_run_step_id: args.stepId,
+    p_status: args.status,
+    // The RPC params are typed `text` (non-null) but accept NULL — the
+    // function normalizes empty/whitespace to NULL server-side either way
+    // (Q8). supabase-js serializes null -> SQL NULL (mirrors updateAtc's
+    // p_if_match cast).
+    p_note: (args.note ?? null) as string,
+    p_evidence_url: (args.evidenceUrl ?? null) as string,
+  });
+}
+
 // BK-37 — read a Test's past Runs (history), newest first. Same explicit-actor
 // contract; the SECURITY DEFINER RPC resolves the Test's workspace and gates the
 // actor's active membership (any role — a viewer reads), then returns ONLY
@@ -345,6 +393,46 @@ export async function listTestRuns(supabase: Client, args: ListTestRunsArgs) {
     p_actor_user_id: args.actorUserId,
     p_test_id: args.testId,
     p_outcome: args.outcome ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_started_at: args.cursorStartedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
+// BK-38 — read a Project's Run report: every Run of the Project, filtered by
+// date range / module / status / executor (AND-composed), with pass/fail
+// totals recomputed from the SAME filtered set (Business Rule #3 — a
+// deliberate divergence from listTestRuns's all-time totals). Same
+// explicit-actor contract as the other wrappers; the SECURITY DEFINER RPC
+// resolves the Project's workspace and gates the actor's active membership
+// (any role — a viewer reads). Unlike listTestRuns, rows are NOT restricted to
+// terminal statuses — a currently-`running` Run is a legitimate row, it just
+// cannot be the target of the `status` filter. Pagination is keyset on
+// (started_at desc, id desc) via the cursor pair, reusing BK-37's mechanism.
+// Returns `{ items, totals, next_cursor }` — the route owns the opaque base64
+// encoding of the cursor.
+export interface ReportProjectRunsArgs {
+  actorUserId: string
+  projectId: string
+  dateFrom?: string | null
+  dateTo?: string | null
+  moduleId?: string | null
+  status?: string[] | null
+  executorMode?: string[] | null
+  limit?: number
+  cursorStartedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function reportProjectRuns(supabase: Client, args: ReportProjectRunsArgs) {
+  return supabase.rpc('bunkai_report_project_runs', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_date_from: args.dateFrom ?? undefined,
+    p_date_to: args.dateTo ?? undefined,
+    p_module_id: args.moduleId ?? undefined,
+    p_status: args.status ?? undefined,
+    p_executor_mode: args.executorMode ?? undefined,
     p_limit: args.limit ?? undefined,
     p_cursor_started_at: args.cursorStartedAt ?? undefined,
     p_cursor_id: args.cursorId ?? undefined,

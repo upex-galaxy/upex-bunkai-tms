@@ -618,14 +618,6 @@
       "ActiveWorkspaceResponse": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean",
-            "enum": [true]
-          },
-          "active_workspace_id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -640,7 +632,7 @@
             "type": ["string", "null"]
           }
         },
-        "required": ["ok", "active_workspace_id", "id", "slug", "name", "role"]
+        "required": ["id", "slug", "name", "role"]
       },
       "ActiveWorkspaceBody": {
         "type": "object",
@@ -788,11 +780,28 @@
           "workspaces": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Workspace"
+              "$ref": "#/components/schemas/WorkspaceWithRole"
             }
           }
         },
         "required": ["workspaces"]
+      },
+      "WorkspaceWithRole": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Workspace"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": ["string", "null"],
+                "enum": ["viewer", "member", "admin", "owner", null]
+              }
+            },
+            "required": ["role"]
+          }
+        ]
       },
       "WorkspaceResponse": {
         "type": "object",
@@ -950,6 +959,19 @@
           }
         },
         "required": ["ok"]
+      },
+      "WorkspaceLeaveResponse": {
+        "type": "object",
+        "properties": {
+          "newActiveWorkspaceId": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "newActiveWorkspaceName": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["newActiveWorkspaceId", "newActiveWorkspaceName"]
       },
       "ProjectCreateResponse": {
         "type": "object",
@@ -2252,6 +2274,102 @@
         "required": ["passed", "failed", "aborted"],
         "description": "ALL-TIME counts over every terminal Run of the Test. Deliberately invariant under both `outcome` and pagination — filtering the list never changes these numbers."
       },
+      "RunReportPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunReportItem"
+            },
+            "description": "The page, ordered newest first (started_at desc, id desc)."
+          },
+          "totals": {
+            "$ref": "#/components/schemas/RunReportTotals"
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next (older) page, or null when this is the last page. base64url, so it is URL-safe as-is: echo it back verbatim as `?cursor=`; never construct or parse one."
+          }
+        },
+        "required": ["items", "totals", "next_cursor"]
+      },
+      "RunReportItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "test_title": {
+            "type": "string"
+          },
+          "module_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The module snapshotted at Run start (chain-position-1 ATC's module). Null when that ATC was later deleted (Risk R-3)."
+          },
+          "module_name": {
+            "type": ["string", "null"],
+            "description": "Null whenever module_id is null."
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": ["string", "null"],
+            "description": "The project environment the Run targeted."
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "passed", "failed", "aborted"],
+            "description": "The Run's current status, INCLUDING `running` — this is a live report, not a terminal-only history. `running` cannot be used as a `status` filter value (see the query parameter), it can only appear as a row."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "test_id",
+          "test_title",
+          "module_id",
+          "module_name",
+          "environment_id",
+          "environment_name",
+          "executor_mode",
+          "status",
+          "started_at",
+          "finished_at"
+        ]
+      },
+      "RunReportTotals": {
+        "type": "object",
+        "properties": {
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          }
+        },
+        "required": ["passed", "failed"],
+        "description": "Counts over the WHOLE filtered set (every row matching the active filters, not just the returned page) — Business Rule #3 / Technical Decision D2. Deliberately the OPPOSITE of RunHistoryTotals: these numbers change as filters narrow. `running` and `aborted` Runs are not counted here (aborted is a terminal outcome but not a pass/fail verdict)."
+      },
       "Run": {
         "type": "object",
         "properties": {
@@ -2492,6 +2610,28 @@
           }
         },
         "required": ["verdict"]
+      },
+      "RunStepMarkBody": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "blocked"],
+            "description": "The step result. `pending` is never accepted — a re-mark-to-pending attempt is rejected as validation_failed."
+          },
+          "note": {
+            "type": ["string", "null"],
+            "maxLength": 2000,
+            "description": "Optional free-text note. An empty or whitespace-only string normalizes to null rather than being rejected."
+          },
+          "evidence_url": {
+            "type": ["string", "null"],
+            "maxLength": 2000,
+            "format": "uri",
+            "description": "Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be a valid URL."
+          }
+        },
+        "required": ["status"]
       }
     },
     "parameters": {}
@@ -3636,6 +3776,81 @@
           },
           "404": {
             "description": "Invite not found or no permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/membership": {
+      "delete": {
+        "tags": ["Workspaces"],
+        "summary": "Leave a workspace",
+        "description": "Removes the caller's own active membership row. Session-only — Personal Access Tokens cannot leave a workspace. Blocked server-side when the caller has no other active membership, or is the workspace's only active owner. On success, the caller's workspace-scoped PATs for the left workspace are revoked. If the left workspace was the caller's active one, the response carries the newly re-resolved active workspace (oldest remaining membership first) and the `bk_active_ws` cookie is rotated in the same response.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Left the workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLeaveResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller authenticated via a Personal Access Token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Caller has no other active membership (`last_membership`), or is the workspace's only active owner (`sole_owner`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -6553,6 +6768,166 @@
         }
       }
     },
+    "/api/v1/projects/{id}/runs/report": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "Filter a Project's Runs by date range, module, status and executor, with matching pass/fail totals",
+        "description": "Cookie session or Bearer PAT; no scope requirement yet (Key Contract Decision: a future `run:read`-equivalent PAT scope is out of scope for this story). One SECURITY DEFINER RPC (`bunkai_report_project_runs`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Every filter is AND-composed and every filter composes with pagination server-side. Unlike `GET /api/v1/tests/{id}/runs`, rows are NOT restricted to terminal statuses — a currently-`running` Run is a legitimate row — and `totals` is recomputed from the SAME filtered set as the rows (not all-time), so the numbers change as filters narrow (Business Rule #3 / Technical Decision D2). Pagination is KEYSET on `(started_at desc, id desc)`, reusing the same opaque cursor contract as the run-history endpoint. A Project with no matching Runs returns an empty `items` with zeroed `totals` (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project whose Run report to read."
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive lower bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). No projects.timezone column exists to interpret against (Technical Decision D3)."
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive upper bound on started_at, matched as a UTC calendar day (YYYY-MM-DD). Rejected (422) when earlier than date_from."
+          },
+          {
+            "name": "module_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Narrow the report to Runs whose snapshotted module matches this Project module."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["passed", "failed", "aborted"]
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Narrow to one or more statuses, repeatable (?status=passed&status=failed). `running` is NOT an accepted filter value (422) — an in-progress Run can still appear as a row, it just is not a selectable filter target (Technical Decision D4)."
+          },
+          {
+            "name": "executor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["human", "agent", "ci"]
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Narrow to one or more executor modes, repeatable (?executor=human&executor=agent)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 50
+            },
+            "description": "Page size, 1..50 (default 50). Out of range is rejected (422); the RPC additionally clamps for direct callers."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. The token is base64url and therefore URL-safe as issued — it needs no escaping and must not be re-encoded. A malformed token returns 400 — it never silently falls back to the first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the Run report (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunReportPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id (not a UUID) or an undecodable `cursor` (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/runs": {
       "post": {
         "tags": ["Runs"],
@@ -6945,6 +7320,129 @@
           },
           "422": {
             "description": "Validation failed — no final verdict of passed or failed was supplied (`validation_failed`, reason `finish_verdict_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/steps/{stepId}/mark": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Mark a run step passed, failed, or blocked",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table — the most recent result stands, so re-marking a step is always last-write-wins) and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays \"pending\" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunStepMarkBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step marked. Returns the updated Run with the step's new status/note/evidence_url/executed_at and the recomputed parent ATC verdict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed ids (not UUIDs) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run/step the caller cannot see).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run step not found — missing, or belonging to a different run than {id} (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

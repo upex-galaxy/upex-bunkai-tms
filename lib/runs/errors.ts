@@ -86,6 +86,23 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('bad_request', 'The cursor is not a valid page token.', {
         details: { reason: 'run_cursor_invalid' },
       });
+    case '45212':
+      // BK-35 — the run is already closed (passed/failed/aborted) and cannot
+      // accept new step results. Q2's frozen copy — mirrors the abort/finish
+      // "already closed" template verbatim. 409 conflict: the request is
+      // well-formed but the run's state forbids it.
+      throw new ApiError('conflict', 'This run is already closed and cannot accept new step results.', {
+        details: { reason: 'run_step_marking_closed' },
+      });
+    case '45213':
+      // BK-35 — RPC backstop for a status outside passed/failed/blocked
+      // ('pending' is never accepted, so a re-mark-to-pending attempt also
+      // lands here). The HTTP route's Zod layer catches this BEFORE the RPC
+      // runs, so an API caller never reaches here; this only fires for a
+      // direct (non-HTTP) RPC caller.
+      throw new ApiError('validation_failed', 'Status must be one of passed, failed, or blocked.', {
+        details: { reason: 'step_status_invalid' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }

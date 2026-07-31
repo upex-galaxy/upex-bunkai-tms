@@ -23,6 +23,7 @@ export interface WorkspaceRow {
   role: MemberRole
   memberCount: number
   isActive: boolean
+  isSoleOwner: boolean
 }
 
 // One additional grouped-count query (TD5) returns a flat list of active
@@ -36,10 +37,28 @@ export function countActiveMembersByWorkspace(rows: { workspace_id: string }[]):
   return counts;
 }
 
+// Sibling of `countActiveMembersByWorkspace` (BK-90 Slice B, Decision 1) — fed
+// a query pre-filtered to `role='owner'` active memberships (the caller's
+// widened `workspace_members` query narrowed with `.eq('role', 'owner')`), so
+// `buildWorkspaceRows` below can tell a sole owner from a co-owner without a
+// second round trip per row.
+export function countActiveOwnersByWorkspace(rows: { workspace_id: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    counts[row.workspace_id] = (counts[row.workspace_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 interface BuildWorkspaceRowsParams {
   memberships: WorkspaceMembershipRow[]
   workspaces: WorkspaceRef[]
   memberCounts: Record<string, number>
+  // Optional (BK-90 Slice B) so the untouched `settings/account/page.tsx`
+  // call site (Decision 6) keeps compiling without passing it -- `isSoleOwner`
+  // simply defaults to `false` there, matching that page's pre-BK-90 output
+  // exactly since it never renders a Leave action anyway.
+  ownerCounts?: Record<string, number>
   activeWorkspaceId: string | null
 }
 
@@ -49,7 +68,7 @@ interface BuildWorkspaceRowsParams {
 // (no PostgREST embedded-select syntax). A membership with no matching
 // workspace row (shouldn't happen — FK-enforced) is skipped defensively
 // rather than crashing the whole section.
-export function buildWorkspaceRows({ memberships, workspaces, memberCounts, activeWorkspaceId }: BuildWorkspaceRowsParams): WorkspaceRow[] {
+export function buildWorkspaceRows({ memberships, workspaces, memberCounts, ownerCounts = {}, activeWorkspaceId }: BuildWorkspaceRowsParams): WorkspaceRow[] {
   const workspaceById = new Map(workspaces.map(w => [w.id, w]));
   const rows: WorkspaceRow[] = [];
   for (const membership of memberships) {
@@ -57,13 +76,19 @@ export function buildWorkspaceRows({ memberships, workspaces, memberCounts, acti
     if (!workspace) {
       continue;
     }
+    const role = membership.role as MemberRole;
     rows.push({
       id: workspace.id,
       slug: workspace.slug,
       name: workspace.name,
-      role: membership.role as MemberRole,
+      role,
       memberCount: memberCounts[membership.workspace_id] ?? 0,
       isActive: membership.workspace_id === activeWorkspaceId,
+      // Count-based, not identity-based (Decision 1): true only when the
+      // caller's row is itself an owner AND exactly one active owner row
+      // exists for that workspace -- a non-owner is never "sole owner"
+      // regardless of the owner-count map.
+      isSoleOwner: role === 'owner' && ownerCounts[membership.workspace_id] === 1,
     });
   }
   return rows;

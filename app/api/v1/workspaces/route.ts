@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { z } from 'zod';
+import { mergeWorkspaceRoles } from './response';
 
 // POST /api/v1/workspaces — create a workspace and auto-enrol the caller as
 // `owner`. Wraps the SECURITY DEFINER RPC `bunkai_bootstrap_workspace` so the
@@ -91,8 +92,11 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
 // RLS filters to workspaces the caller is an active member of, so the same
 // query serves cookie and Bearer-PAT callers — no per-method branching.
+// BK-89: widened with a second `workspace_members` query so the caller's own
+// `role` per workspace is included — merged in JS (mergeWorkspaceRoles), not
+// a PostgREST embedded-select, matching this repo's existing convention.
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
   const { data, error } = await db
     .from('workspaces')
     .select('id, slug, name, owner_user_id, plan, created_at')
@@ -100,5 +104,15 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   if (error) {
     throw new ApiError('internal_error', error.message);
   }
-  return jsonResponse({ workspaces: data ?? [] });
+
+  const { data: memberships, error: membershipsError } = await db
+    .from('workspace_members')
+    .select('workspace_id, role')
+    .eq('user_id', principal.userId)
+    .eq('status', 'active');
+  if (membershipsError) {
+    throw new ApiError('internal_error', membershipsError.message);
+  }
+
+  return jsonResponse({ workspaces: mergeWorkspaceRoles(data ?? [], memberships ?? []) });
 }, { auth: 'required' });

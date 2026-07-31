@@ -3,9 +3,9 @@
 **Jira Key:** [BK-35](https://jira.upexgalaxy.com/browse/BK-35)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** 5
+**Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
@@ -41,6 +41,7 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -58,10 +59,10 @@
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
 - **Assignee:** Benjamin Segovia
-- **Labels:** shift-left-reviewed
+- **Labels:** implementation-plan-ready, shift-left-reviewed
 
 ---
 
