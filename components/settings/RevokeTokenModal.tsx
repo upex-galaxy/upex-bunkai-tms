@@ -4,7 +4,7 @@ import { Button } from '@components/ui/button';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface RevokeTokenTarget {
@@ -33,6 +33,7 @@ interface ApiErrorBody {
 export function RevokeTokenModal({ token, onClose }: RevokeTokenModalProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const open = token !== null;
 
   const requestClose = () => {
@@ -41,7 +42,7 @@ export function RevokeTokenModal({ token, onClose }: RevokeTokenModalProps) {
     }
   };
 
-  useModalDismiss(open, requestClose);
+  useModalDismiss(open, requestClose, containerRef);
 
   if (!token) {
     return null;
@@ -82,6 +83,7 @@ export function RevokeTokenModal({ token, onClose }: RevokeTokenModalProps) {
       onClick={requestClose}
     >
       <div
+        ref={containerRef}
         data-testid="revoke-token-modal"
         role="alertdialog"
         aria-modal="true"
@@ -104,7 +106,10 @@ export function RevokeTokenModal({ token, onClose }: RevokeTokenModalProps) {
           <span className="font-mono text-fg-0">{token.name}</span>
           {' '}
           (
-          <span className="font-mono text-fg-0">{token.prefix}</span>
+          <span className="font-mono text-fg-0">
+            bk_pat_
+            {token.prefix}
+          </span>
           ). Any CLI or CI job using it will stop authenticating immediately. This cannot be undone — issue a new token instead.
         </p>
 

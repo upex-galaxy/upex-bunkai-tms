@@ -127,7 +127,10 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
                         </Badge>
                       )}
                     </span>
-                    <span className="font-mono text-xs text-fg-3">{token.prefix}</span>
+                    <span className="font-mono text-xs text-fg-3">
+                      bk_pat_
+                      {token.prefix}
+                    </span>
                   </div>
 
                   <div role="cell" className="flex flex-wrap gap-1">
@@ -175,7 +178,7 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
                   <div role="cell" className="flex justify-end">
                     {revoked
                       ? (
-                          <span data-testid={`token-revoked-note-${token.id}`} className="whitespace-nowrap font-mono text-xs text-fg-3">
+                          <span data-testid={`token-revoked-note-${token.id}`} className="whitespace-nowrap font-mono text-sm text-fg-3">
                             revoked
                             {' '}
                             {token.revokedAt ? new Date(token.revokedAt).toISOString().slice(0, 10) : ''}
@@ -187,7 +190,7 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
                             variant="ghost"
                             size="sm"
                             data-testid={`token-revoke-${token.id}`}
-                            aria-label={`Revoke token ${displayName} (${token.prefix})`}
+                            aria-label={`Revoke token ${displayName} (bk_pat_${token.prefix})`}
                             onClick={() => setRevokeTarget({ id: token.id, name: displayName, prefix: token.prefix })}
                           >
                             Revoke
