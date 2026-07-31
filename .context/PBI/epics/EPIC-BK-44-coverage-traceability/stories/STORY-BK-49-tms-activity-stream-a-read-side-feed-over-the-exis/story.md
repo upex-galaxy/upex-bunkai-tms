@@ -3,7 +3,7 @@
 **Jira Key:** [BK-49](https://jira.upexgalaxy.com/browse/BK-49)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -91,17 +91,26 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+
+---
+
+## Traceability
+
+### Bug (1)
+
+- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Open)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/8/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
-- **Assignee:** José Andrés Lorca
-- **Labels:** new-feature, shift-left-2026-06-29, shift-left-reviewed
+- **Assignee:** Ely
+- **Labels:** implementation-plan-ready, new-feature, shift-left-2026-06-29, shift-left-reviewed
 
 ---
 
