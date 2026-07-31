@@ -189,7 +189,21 @@ After opening a PR, a worker does not sit idle waiting on a blocking call — it
 1. Update `queue.md`: mark the ticket `status: pr-open`, record the PR number.
 2. Enter a ~15 minute self-paced loop (`ScheduleWakeup` from inside the session, or the `/loop`
    skill) checking: has the PR been merged? Are there new PR comments since the last check?
-3. **Merged** -> mark `status: done` in `queue.md`, pick the next ticket per §5, continue.
+3. **Merged** -> Agent 4 doing the merge does NOT close out Stage 4 — that stays the worker's job,
+   since it's the one with full ticket context. Before touching `queue.md`, complete the Stage 4
+   tail exactly as `/sprint-development` already specifies:
+   a. Verify Jira auto-transitioned to `Ready For QA` (~30s after merge); transition manually if it
+      didn't fire.
+   b. Identify the shift-left QA owner for this ticket (from its shift-left/refinement artifacts or
+      comments) and reassign to them via the Atlassian MCP `editJiraIssue` (NOT a raw CLI accountId
+      path — that can silently unassign while reporting success). VERIFY the assignee actually
+      changed. Never leave it on the developer/worker; if no shift-left owner is identifiable, leave
+      unassigned rather than guess.
+   c. Post the QA handoff comment on the ticket (PR link, branch name).
+   d. Sync the Jira cache (`bun run jira:sync-issues get <KEY> --include-comments`).
+   e. Archive: move `.session/sprint-development/<KEY>/` to
+      `.session/.archive/<date>-sprint-development-<KEY>/`, call `mem_session_summary`.
+   Only THEN mark `status: done` in `queue.md`, pick the next ticket per §5, continue.
 4. **New comment from Agent 4** (a blocker, a requested fix, a merge conflict) -> read it, apply the
    fix on the SAME branch (rebase against `staging` first if it's a conflict — `git-flow-master`'s
    conflict-resolution playbook applies exactly as it would for any single-ticket run), push, and

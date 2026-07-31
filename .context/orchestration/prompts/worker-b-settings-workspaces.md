@@ -70,7 +70,19 @@ Then read, in full, in this order:
 5. Open the PR via `/git-flow-master`. In `queue.md`, set that ticket's `status` to `pr-open` and
    record the PR number.
 6. **Wait-loop** (self-paced, ~15 minutes, via `ScheduleWakeup` or `/loop`):
-   - Merged -> mark `status: done` in `queue.md`, continue to the next item in your batch.
+   - Merged -> Agent 4 only merges — it does NOT close out Stage 4, that's your job (you have the
+     ticket context). Complete it now, exactly as `/sprint-development` already specifies: (a) verify
+     Jira auto-transitioned to `Ready For QA` (~30s after merge), transition manually if it didn't;
+     (b) identify the shift-left QA owner from the ticket's shift-left/refinement artifacts or
+     comments and reassign to them via the Atlassian MCP `editJiraIssue` (never a raw CLI accountId
+     path — it can silently unassign while reporting success), then VERIFY the assignee actually
+     changed — never leave it on yourself/the developer, leave unassigned if no shift-left owner is
+     identifiable rather than guess; (c) post the QA handoff comment (PR link, branch name); (d) sync
+     the Jira cache (`bun run jira:sync-issues get <KEY> --include-comments`); (e) Archive — move
+     `.session/sprint-development/<KEY>/` to `.session/.archive/<date>-sprint-development-<KEY>/`,
+     call `mem_session_summary`. Only THEN mark `status: done` in `queue.md`, continue to the next
+     item in your batch. (For `BK-89`: this is also when you verify its PR is truly merged before
+     `BK-90` may start, per your earlier instructions.)
    - New comment from Agent 4 describing a blocker -> fix it on the SAME branch (rebase first if
      it's a conflict, never force-push over someone else's work), push, resume the wait-loop.
    - Nothing new -> heartbeat, sleep again.

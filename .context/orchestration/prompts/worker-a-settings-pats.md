@@ -66,7 +66,18 @@ Claim each ticket in `queue.md` per its claim protocol (top of that file) before
 5. Open the PR via `/git-flow-master` as normal. Then in `queue.md`, set that ticket's `status` to
    `pr-open` and record the PR number.
 6. **Wait-loop** (self-paced, ~15 minutes, via `ScheduleWakeup` or `/loop`):
-   - Check if the PR was merged. If yes: mark `status: done` in `queue.md`, go to step 8.
+   - Check if the PR was merged. If yes: Agent 4 only merges — it does NOT close out Stage 4, that's
+     your job (you have the ticket context). Complete it now, exactly as `/sprint-development`
+     already specifies: (a) verify Jira auto-transitioned to `Ready For QA` (~30s after merge),
+     transition manually if it didn't; (b) identify the shift-left QA owner from the ticket's
+     shift-left/refinement artifacts or comments and reassign to them via the Atlassian MCP
+     `editJiraIssue` (never a raw CLI accountId path — it can silently unassign while reporting
+     success), then VERIFY the assignee actually changed — never leave it on yourself/the developer,
+     leave unassigned if no shift-left owner is identifiable rather than guess; (c) post the QA
+     handoff comment (PR link, branch name); (d) sync the Jira cache
+     (`bun run jira:sync-issues get <KEY> --include-comments`); (e) Archive — move
+     `.session/sprint-development/<KEY>/` to `.session/.archive/<date>-sprint-development-<KEY>/`,
+     call `mem_session_summary`. Only THEN mark `status: done` in `queue.md`, go to step 8.
    - Check for new PR comments since your last check. If Agent 4 (the PR orchestrator) left a
      comment describing a blocker (failing CI, a review finding, a merge conflict): fix it on the
      SAME branch (rebase first if it's a conflict, following `git-flow-master`'s conflict-resolution
