@@ -480,3 +480,48 @@ export async function deleteEnvironment(
     p_environment_id: args.environmentId,
   });
 }
+
+// BK-49 — read-only workspace activity feed (migration
+// 0045_activity_stream.sql). UNLIKE every other wrapper in this file,
+// bunkai_list_activity is SECURITY INVOKER and takes NO explicit actor
+// param: it runs its SELECT under the CALLING role, so RLS's
+// activity_log_select_workspace_member (0009_cross_cutting.sql) evaluates
+// against the caller's own auth.uid(). The `supabase` argument passed here
+// MUST be the caller's own RLS-scoped client (`getAuth(ctx).db`) — never
+// `createAdminClient()`. An admin client has no authenticated auth.uid(),
+// which would make that RLS check moot and reopen the exact cross-workspace
+// leak this story exists to close (Risk R2, implementation-plan.md; see also
+// `app/api/v1/activity/route.ts`'s own comment on this same call).
+export interface ListActivityArgs {
+  workspaceId: string
+  limit?: number
+  cursorCreatedAt?: string | null
+  cursorId?: string | null
+  actions: readonly string[]
+}
+
+export async function listActivity(supabase: Client, args: ListActivityArgs) {
+  return supabase.rpc('bunkai_list_activity', {
+    p_workspace_id: args.workspaceId,
+    p_limit: args.limit ?? undefined,
+    p_cursor_created_at: args.cursorCreatedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+    p_actions: [...args.actions],
+  });
+}
+
+// BK-49 — batch-resolve actor emails for one page of activity rows
+// (ADR-0011). SECURITY DEFINER: asserts the CALLER's own co-membership of
+// `workspaceId` in-band (auth.uid(), non-spoofable, no explicit actor param)
+// before returning `email` for the requested ids. Also safe to call with the
+// caller's own RLS-scoped client — no admin client needed for this RPC
+// either, since it carries its own escalation internally.
+export async function resolveActivityActors(
+  supabase: Client,
+  args: { workspaceId: string, userIds: string[] },
+) {
+  return supabase.rpc('bunkai_resolve_activity_actors', {
+    p_workspace_id: args.workspaceId,
+    p_user_ids: args.userIds,
+  });
+}

@@ -9,6 +9,7 @@ import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
 import { cn } from '@lib/utils';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
+  Activity,
   BarChart3,
   Bug,
   Check,
@@ -91,6 +92,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
 
   const nav: NavItem[] = [
     { id: 'home', icon: Home, label: 'Home', href: null },
+    { id: 'activity', icon: Activity, label: 'Activity', href: '/activity' },
     { id: 'projects', icon: Folder, label: 'Projects', href: '/projects', badge: projects.length },
     { id: 'library', icon: Library, label: 'ATC Library', href: null },
     { id: 'runs', icon: Play, label: 'Test Runs', href: null },

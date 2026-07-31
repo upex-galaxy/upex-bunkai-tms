@@ -2611,6 +2611,536 @@
         },
         "required": ["verdict"]
       },
+      "ActivityPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "description": "The page, ordered newest first (created_at desc, id desc)."
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next (older) page, or null when this is the last page. base64url — echo it back verbatim as `?cursor=`; never construct or parse one."
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "ActivityItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ActivityItemModuleRenamed"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemModuleDescriptionUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemModuleMoved"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemModuleArchived"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemAtcCreated"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemTestCreated"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemRunFinished"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemRunAborted"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "action",
+          "mapping": {
+            "module.renamed": "#/components/schemas/ActivityItemModuleRenamed",
+            "module.description_updated": "#/components/schemas/ActivityItemModuleDescriptionUpdated",
+            "module.moved": "#/components/schemas/ActivityItemModuleMoved",
+            "module.archived": "#/components/schemas/ActivityItemModuleArchived",
+            "atc.created": "#/components/schemas/ActivityItemAtcCreated",
+            "test.created": "#/components/schemas/ActivityItemTestCreated",
+            "run.finished": "#/components/schemas/ActivityItemRunFinished",
+            "run.aborted": "#/components/schemas/ActivityItemRunAborted"
+          }
+        }
+      },
+      "ActivityItemModuleRenamed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["module"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["module.renamed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadModuleRenamed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityActor": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "null when the row has no actor (a system-originated event)."
+          },
+          "email": {
+            "type": ["string", "null"],
+            "description": "null when the actor is unresolvable (e.g. a departed member) — a safe fallback, never a crash."
+          }
+        },
+        "required": ["user_id", "email"]
+      },
+      "ActivityItemLabel": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Payload-derived where a usable field exists (e.g. a title, a path); the generic \"a <entity_type>\" fallback otherwise."
+          },
+          "entity_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["label", "entity_id"]
+      },
+      "ActivityPayloadModuleRenamed": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"]
+          },
+          "new_path": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name", "new_path"]
+      },
+      "ActivityItemModuleDescriptionUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["module"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["module.description_updated"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadModuleDescriptionUpdated"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadModuleDescriptionUpdated": {
+        "type": "object",
+        "properties": {}
+      },
+      "ActivityItemModuleMoved": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["module"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["module.moved"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadModuleMoved"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadModuleMoved": {
+        "type": "object",
+        "properties": {
+          "new_path": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["new_path"]
+      },
+      "ActivityItemModuleArchived": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["module"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["module.archived"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadModuleArchived"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadModuleArchived": {
+        "type": "object",
+        "properties": {
+          "modules": {
+            "type": ["integer", "null"]
+          },
+          "user_stories": {
+            "type": ["integer", "null"]
+          },
+          "acceptance_criteria": {
+            "type": ["integer", "null"]
+          },
+          "atcs": {
+            "type": ["integer", "null"]
+          }
+        },
+        "required": ["modules", "user_stories", "acceptance_criteria", "atcs"]
+      },
+      "ActivityItemAtcCreated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["atc"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["atc.created"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadAtcCreated"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadAtcCreated": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
+      "ActivityItemTestCreated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["test"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["test.created"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadTestCreated"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadTestCreated": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["title"]
+      },
+      "ActivityItemRunFinished": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["run"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["run.finished"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadRunFinished"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadRunFinished": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": ["string", "null"],
+            "enum": ["passed", "failed", null]
+          },
+          "skipped_steps": {
+            "type": ["integer", "null"]
+          }
+        },
+        "required": ["verdict", "skipped_steps"]
+      },
+      "ActivityItemRunAborted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["run"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["run.aborted"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadRunAborted"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadRunAborted": {
+        "type": "object",
+        "properties": {
+          "skipped_steps": {
+            "type": ["integer", "null"]
+          }
+        },
+        "required": ["skipped_steps"]
+      },
       "RunStepMarkBody": {
         "type": "object",
         "properties": {
@@ -7320,6 +7850,96 @@
           },
           "422": {
             "description": "Validation failed — no final verdict of passed or failed was supplied (`validation_failed`, reason `finish_verdict_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activity": {
+      "get": {
+        "tags": ["Activity"],
+        "summary": "List the workspace activity feed, newest first",
+        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/tests/{id}/runs`). `bunkai_list_activity` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member workspace_id silently returns an empty page rather than leaking existence. Read-only, MVP-allowlisted event set only (8 of 12 write-site actions); no realtime, no defect activity. Pagination is KEYSET on `(created_at desc, id desc)`. An empty `items` is always a valid 200 — this endpoint never answers 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Cookie sessions: optional, falls back to the active-workspace cookie. Bearer/PAT callers: REQUIRED — omitting it is a 422 (known gap, tracked as BK-182)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30
+            },
+            "description": "Page size, 1..50 (default 30). Out of range is rejected (422); the RPC additionally clamps for direct callers."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the activity feed (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An undecodable `cursor` (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — `workspace_id` missing for a Bearer/PAT caller, or `limit` outside 1..50 (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {
