@@ -423,9 +423,11 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
       // Deliberately NO router.refresh() here (unlike handleAbort/handleFinish):
       // those are one-time terminal actions where re-syncing the broader
       // server-rendered page matters; a step can be (re-)marked many times in
-      // one session, and setView above already keeps this tab fully
-      // authoritative, so refreshing the whole route on every click would be
-      // pure churn.
+      // one session. setView above keeps this tab authoritative immediately,
+      // and the Realtime effect's reconcile-on-(re)connect logic
+      // (shouldReconcileOnStatusChange, lib/runs/realtime-run-channel.ts)
+      // self-heals any drift from concurrent marks by other observers — so a
+      // full server round-trip per mark would just be pure churn.
       const body = (await response.json().catch(() => ({}))) as { run?: RunDetail };
       if (body.run) {
         setView(body.run);
