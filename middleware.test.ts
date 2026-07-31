@@ -22,6 +22,10 @@ describe('isProtected', () => {
     expect(isProtected('/onboarding')).toBe(true);
   });
 
+  test('/activity is protected (BK-49)', () => {
+    expect(isProtected('/activity')).toBe(true);
+  });
+
   test('public routes stay unprotected', () => {
     expect(isProtected('/login')).toBe(false);
     expect(isProtected('/')).toBe(false);
@@ -29,9 +33,14 @@ describe('isProtected', () => {
 
   test('a route that merely starts with the same characters is not a false match', () => {
     expect(isProtected('/settingsomething')).toBe(false);
+    expect(isProtected('/activitysomething')).toBe(false);
   });
 
   test('PROTECTED_PREFIXES includes /settings exactly once', () => {
     expect(PROTECTED_PREFIXES.filter(p => p === '/settings')).toHaveLength(1);
+  });
+
+  test('PROTECTED_PREFIXES includes /activity exactly once', () => {
+    expect(PROTECTED_PREFIXES.filter(p => p === '/activity')).toHaveLength(1);
   });
 });
