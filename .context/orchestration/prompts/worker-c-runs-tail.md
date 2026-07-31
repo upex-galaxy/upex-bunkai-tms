@@ -7,16 +7,23 @@ Phase 3 (Defects) once Phase 2 fully closes.
 
 ## Setup (do this first, before anything else)
 
-You should already be running from a dedicated worktree. If not yet created:
-
-```bash
-git worktree add /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms-wt-c -b feat/avalanche-worker-c staging
-cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms-wt-c/.env
-cd /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms-wt-c
-bun install
-# Dev server is OPTIONAL for this run — live-UI validation is suspended (§9b), so you don't need one
-# running by default. Start `bun run dev -- -p 3003` yourself only if you personally want to
-# eyeball something while coding; it's not a required step.
+1. Call `EnterWorktree({ name: "avalanche-worker-c" })`. This creates your worktree under
+   `.claude/worktrees/avalanche-worker-c/`, branches it from `origin/staging` (verified: this repo's
+   GitHub default branch IS `staging`, so `EnterWorktree`'s default mode gets this right with no
+   extra step), and switches your session into it. From here on, all your Read/Write/Edit/Bash calls
+   operate inside the worktree automatically.
+2. Copy `.env` in — it's gitignored, so it does NOT come with the worktree:
+   ```bash
+   cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env ./.env
+   ```
+3. `bun install`.
+4. Dev server is OPTIONAL for this run — live-UI validation is suspended (§9b), so you don't need
+   one running by default. Start `bun run dev -- -p 3003` yourself only if you personally want to
+   eyeball something while coding; it's not a required step.
+5. When your entire batch (initial + anything pulled from the shared queue) is fully done and merged,
+   call `ExitWorktree({ action: "remove" })` to clean up. If your session was ever fully restarted
+   (not just compacted) since step 1, that call won't recognize the worktree — use
+   `git worktree remove .claude/worktrees/avalanche-worker-c` from the main checkout instead.
 ```
 
 Then read, in full, in this order:

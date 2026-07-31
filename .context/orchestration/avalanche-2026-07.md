@@ -106,31 +106,40 @@ override, scoped to exactly this run.
 
 ## 4. Worktree setup (each worker, before doing anything else)
 
-Run once per worker, from the main checkout:
+Workers run as Claude Code sessions, so they use the harness's own **`EnterWorktree`** tool, not
+manual `git worktree add`. Verified for this repo: GitHub's default branch is `staging` (not
+`main`), and no `worktree.baseRef` override is configured, so `EnterWorktree`'s default `fresh` mode
+correctly branches from `origin/staging` — no extra step needed to fix the base.
 
-```bash
-git worktree add ../upex-bunkai-tms-wt-a -b feat/avalanche-worker-a staging
-git worktree add ../upex-bunkai-tms-wt-b -b feat/avalanche-worker-b staging
-git worktree add ../upex-bunkai-tms-wt-c -b feat/avalanche-worker-c staging
+Each worker calls, as its first action:
+
+```
+EnterWorktree({ name: "avalanche-worker-a" })   # worker B: "avalanche-worker-b", worker C: "avalanche-worker-c"
 ```
 
-(Adjust paths/branch names as needed — the exact branch name doesn't matter, each worker will branch
-off it per-ticket via `git-flow-master`'s normal `feat/BK-XX-slug` convention; these are just the
-worker's own base to keep its `staging` pull cadence independent.)
+This creates the worktree under `.claude/worktrees/avalanche-worker-a/`, branches it from
+`origin/staging`, and switches that worker's own session into it — all subsequent Read/Write/Edit/
+Bash calls in that session operate inside the worktree automatically, no absolute-path bookkeeping
+needed. The PR Orchestrator (Agent 4) does NOT use a worktree — it needs visibility across every
+branch, so it stays in the main checkout.
 
-**Gotcha proven this same week**: `git worktree add` only brings TRACKED files. `.env` is gitignored
-and will NOT exist in a fresh worktree. Copy it manually into each worktree before that worker does
-anything requiring credentials:
+**Gotcha proven this same week (still applies)**: a worktree — whether made by `EnterWorktree` or
+manual `git worktree add` — only brings TRACKED files. `.env` is gitignored and will NOT exist in a
+fresh worktree. Each worker copies it in manually right after entering:
 
 ```bash
-cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env ../upex-bunkai-tms-wt-a/.env
-cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env ../upex-bunkai-tms-wt-b/.env
-cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env ../upex-bunkai-tms-wt-c/.env
+cp /Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.env ./.env
 ```
 
 A missing `.env` in a fresh worktree is exactly the kind of gap that produced the original credential
-incident — a subagent finding no identity available and improvising. Do this before launching any
-worker, not after something goes wrong.
+incident — a subagent finding no identity available and improvising. Do this before doing anything
+requiring credentials, not after something goes wrong.
+
+**Cleanup caveat**: `ExitWorktree` only recognizes a worktree created by `EnterWorktree` IN THE SAME
+session. If a worker's terminal is fully closed and reopened later (not just compacted — compaction
+keeps the same session), a fresh session calling `ExitWorktree` won't recognize the old worktree;
+fall back to manual `git worktree remove .claude/worktrees/avalanche-worker-a` (from the main
+checkout) in that case.
 
 Each worker also needs its own `bun install` / dev-server port if running live-UI checks
 concurrently (Next.js dev server binds a port; run each worker's `bun run dev` on a distinct port,
