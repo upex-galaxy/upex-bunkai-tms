@@ -4,7 +4,6 @@ import type { Session, User } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import { handleAuthChangeRedirect } from '@lib/account/auth-redirect';
 import { createClient } from '@lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
 
 interface AuthState {
@@ -22,7 +21,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
   const [state, setState] = useState<AuthState>({
     user: null,
     session: null,
@@ -52,20 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading: false,
       });
-      // Multi-tab / multi-device sign-out (BK-86, Scenario D): supabase.auth
-      // broadcasts SIGNED_OUT to every tab via localStorage. Redirect the other
-      // tabs to /login so a session terminated anywhere takes effect everywhere.
-      // The tab that called signOut() navigates itself; replace() here is
-      // idempotent (no-op when already on /login). Decision is in a pure,
-      // unit-tested helper.
-      handleAuthChangeRedirect(event, path => router.replace(path));
+      // Multi-tab / multi-device sign-out (BK-86, Scenario D) — this ALSO
+      // fires in the tab that itself called signOut(), before that tab's own
+      // post-signOut() redirect runs, so it must use a hard navigation, not a
+      // soft router.replace()/push() (BK-176). See handleAuthChangeRedirect's
+      // default for the full rationale; the decision is a pure, unit-tested
+      // helper.
+      handleAuthChangeRedirect(event);
     });
 
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase]);
 
   const signInWithMagicLink = useCallback(
     async (email: string, redirectTo?: string) => {
