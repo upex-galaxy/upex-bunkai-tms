@@ -780,11 +780,28 @@
           "workspaces": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Workspace"
+              "$ref": "#/components/schemas/WorkspaceWithRole"
             }
           }
         },
         "required": ["workspaces"]
+      },
+      "WorkspaceWithRole": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Workspace"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": ["string", "null"],
+                "enum": ["viewer", "member", "admin", "owner", null]
+              }
+            },
+            "required": ["role"]
+          }
+        ]
       },
       "WorkspaceResponse": {
         "type": "object",
@@ -942,6 +959,19 @@
           }
         },
         "required": ["ok"]
+      },
+      "WorkspaceLeaveResponse": {
+        "type": "object",
+        "properties": {
+          "newActiveWorkspaceId": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "newActiveWorkspaceName": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["newActiveWorkspaceId", "newActiveWorkspaceName"]
       },
       "ProjectCreateResponse": {
         "type": "object",
@@ -3724,6 +3754,81 @@
           },
           "404": {
             "description": "Invite not found or no permission.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/membership": {
+      "delete": {
+        "tags": ["Workspaces"],
+        "summary": "Leave a workspace",
+        "description": "Removes the caller's own active membership row. Session-only — Personal Access Tokens cannot leave a workspace. Blocked server-side when the caller has no other active membership, or is the workspace's only active owner. On success, the caller's workspace-scoped PATs for the left workspace are revoked. If the left workspace was the caller's active one, the response carries the newly re-resolved active workspace (oldest remaining membership first) and the `bk_active_ws` cookie is rotated in the same response.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Left the workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceLeaveResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller authenticated via a Personal Access Token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Caller has no other active membership (`last_membership`), or is the workspace's only active owner (`sole_owner`).",
             "content": {
               "application/json": {
                 "schema": {
