@@ -320,6 +320,37 @@ export async function finishRun(
   });
 }
 
+// BK-37 — read a Test's past Runs (history), newest first. Same explicit-actor
+// contract; the SECURITY DEFINER RPC resolves the Test's workspace and gates the
+// actor's active membership (any role — a viewer reads), then returns ONLY
+// terminal Runs (passed | failed | aborted): an in-progress Run is never history
+// and is never counted. `outcome` narrows to one terminal status; pagination is
+// keyset on (started_at desc, id desc) via the cursor pair, so a Run landing
+// mid-scroll can neither skip nor duplicate a row. Returns
+// `{ items, totals, next_cursor }` — `totals` counts ALL terminal Runs of the
+// Test (all-time, independent of both the filter and paging) and `next_cursor`
+// is `{ started_at, id }` of the last returned row, or null when no further page
+// exists. The route owns the opaque base64 encoding of that cursor.
+export interface ListTestRunsArgs {
+  actorUserId: string
+  testId: string
+  outcome?: string | null
+  limit?: number
+  cursorStartedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listTestRuns(supabase: Client, args: ListTestRunsArgs) {
+  return supabase.rpc('bunkai_list_test_runs', {
+    p_actor_user_id: args.actorUserId,
+    p_test_id: args.testId,
+    p_outcome: args.outcome ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_started_at: args.cursorStartedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the
