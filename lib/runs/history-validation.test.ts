@@ -138,6 +138,70 @@ describe('run cursor codec', () => {
     expect(VALID_CURSOR).not.toContain(VALID_STARTED_AT);
   });
 
+  test('emits base64url — never a `+`, `/` or `=` to be mangled in a query string', () => {
+    // The `=` padding is what standard base64 emits for THIS payload today (62
+    // bytes, 62 % 3 = 2). `+` / `/` are not reachable with the current payload
+    // alphabet, but the encoding removes the whole class — the payload shape is
+    // a server-owned detail this module may change.
+    const padded = btoa(`${VALID_STARTED_AT}|${VALID_RUN_ID}`);
+    expect(padded).toContain('=');
+
+    for (const startedAt of [VALID_STARTED_AT, '2026-07-29T11:52:03.123456+00:00', '2026-07-29T11:52:00.5Z']) {
+      const token = encodeRunCursor({ startedAt, id: VALID_RUN_ID });
+      expect(token).not.toMatch(/[+/=]/);
+      // URL-safe as issued: a verbatim round trip through a query string is lossless.
+      expect(new URLSearchParams(`cursor=${token}`).get('cursor')).toBe(token);
+    }
+  });
+
+  test('round-trips a microsecond-precision timestamp through base64url', () => {
+    const startedAt = '2026-07-29T11:52:03.123456+00:00';
+    const decoded = decodeRunCursor(encodeRunCursor({ startedAt, id: VALID_RUN_ID }));
+    expect(decoded.ok).toBe(true);
+    if (decoded.ok) {
+      expect(decoded.cursor.startedAt).toBe(startedAt);
+      expect(decoded.cursor.id).toBe(VALID_RUN_ID);
+    }
+  });
+
+  test('still decodes a STANDARD-base64 cursor issued before the base64url switch', () => {
+    // Backward compatibility: tokens already handed out (open tabs, deep links,
+    // a paused pagination loop) carry the `=` padding and must keep paging
+    // rather than 400 on the next click.
+    const legacy = btoa(`${VALID_STARTED_AT}|${VALID_RUN_ID}`);
+    expect(legacy).not.toBe(encodeRunCursor({ startedAt: VALID_STARTED_AT, id: VALID_RUN_ID }));
+
+    const decoded = decodeRunCursor(legacy);
+    expect(decoded.ok).toBe(true);
+    if (decoded.ok) {
+      expect(decoded.cursor.startedAt).toBe(VALID_STARTED_AT);
+      expect(decoded.cursor.id).toBe(VALID_RUN_ID);
+    }
+  });
+
+  test('re-pads correctly at every payload length residue', () => {
+    // Stripping the padding is the half of the switch that MUST be undone on the
+    // way back in, and it is length-dependent: a payload of length %3 = 1 loses
+    // two `=`, %3 = 2 loses one, %3 = 0 loses none. Three timestamps of
+    // different lengths cover all three, so a wrong `padEnd` cannot pass.
+    const residues = new Set<number>();
+    for (const startedAt of [
+      '2026-07-29T11:52:00Z', //         payload 57 chars → %3 = 0, no padding stripped
+      '2026-07-29T11:52:00.123Z', //     payload 61 chars → %3 = 1, two `=` stripped
+      '2026-07-29T11:52:00+00:00', //    payload 62 chars → %3 = 2, one `=` stripped
+      '2026-07-29T11:52:00.123456+00:00',
+    ]) {
+      residues.add((`${startedAt}|${VALID_RUN_ID}`).length % 3);
+
+      const decoded = decodeRunCursor(encodeRunCursor({ startedAt, id: VALID_RUN_ID }));
+      expect(decoded.ok).toBe(true);
+      if (decoded.ok) {
+        expect(decoded.cursor.startedAt).toBe(startedAt);
+      }
+    }
+    expect(residues.size).toBe(3);
+  });
+
   test('rejects a truncated cursor', () => {
     expect(decodeRunCursor(VALID_CURSOR.slice(0, 20)).ok).toBe(false);
   });

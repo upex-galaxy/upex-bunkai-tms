@@ -71,21 +71,53 @@ const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|
 
 const UUID_RE = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
-// Opaque wire token: base64 of `${startedAt}|${id}`. Opaque by contract — clients
-// must echo it back verbatim and never construct or interpret one. base64 (not
-// JSON, not raw values) keeps the pagination shape a server-owned implementation
-// detail we can change without breaking callers. `btoa`/`atob` (not Buffer) keep
-// this module usable from a client component: the payload is pure ASCII.
+// Opaque wire token: base64URL of `${startedAt}|${id}`. Opaque by contract —
+// clients must echo it back verbatim and never construct or interpret one.
+// base64 (not JSON, not raw values) keeps the pagination shape a server-owned
+// implementation detail we can change without breaking callers. `btoa`/`atob`
+// (not Buffer) keep this module usable from a client component: the payload is
+// pure ASCII.
+//
+// The URL-SAFE alphabet is the point. Standard base64 emits `+`, `/` and `=`,
+// and the OpenAPI contract tells consumers to send the token back verbatim as
+// `?cursor=`. A consumer that concatenates it (rather than routing it through
+// URLSearchParams) puts a literal `+` in the query string, which
+// `searchParams.get` decodes back as a SPACE — the caller then gets a 400 on a
+// cursor we ourselves handed out.
+//
+// Honest scope of the hazard TODAY: `+` and `/` are not actually reachable with
+// the current payload, because producing base64 index 62/63 needs a source byte
+// in {0x3E `>`, 0x3F `?`, 0x7E `~`, 0x7F} or a byte >= 0x80, and the payload
+// alphabet (digits, hex, `-` `:` `.` `T` `Z` `+` space, and the `|` separator)
+// contains none of them. What IS emitted today is `=` padding. The fix is worth
+// making anyway: the payload format is a SERVER-OWNED implementation detail
+// this module is free to change (a third component, a different id encoding),
+// and the day it changes the failure would be an intermittent 400 on a
+// server-issued token — the worst kind to diagnose. base64url removes the class
+// of bug rather than the current instance of it.
+function toBase64Url(standard: string): string {
+  return standard.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+
 export function encodeRunCursor(cursor: RunCursor): string {
-  return btoa(`${cursor.startedAt}${CURSOR_SEPARATOR}${cursor.id}`);
+  return toBase64Url(btoa(`${cursor.startedAt}${CURSOR_SEPARATOR}${cursor.id}`));
 }
 
 // Decode + fully validate a wire cursor. Every failure mode — non-base64, wrong
 // field count, unparseable timestamp, non-uuid id — collapses into `ok: false`.
+//
+// BOTH alphabets are accepted on the way in: every cursor minted before the
+// base64url switch is standard base64, and some of those are sitting in an open
+// tab or a bookmarked deep link right now. Translating `-`/`_` back and
+// re-padding is lossless for standard tokens too (neither character appears in
+// the standard alphabet), so one code path serves both without a version flag.
 export function decodeRunCursor(raw: string): RunCursorDecode {
   let decoded: string;
   try {
-    decoded = atob(raw);
+    const standard = raw.replaceAll('-', '+').replaceAll('_', '/');
+    // `atob` requires the `=` padding that base64url strips.
+    const padded = standard.padEnd(standard.length + ((4 - (standard.length % 4)) % 4), '=');
+    decoded = atob(padded);
   }
   catch {
     return { ok: false };
