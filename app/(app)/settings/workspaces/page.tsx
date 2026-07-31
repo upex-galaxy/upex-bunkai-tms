@@ -1,5 +1,5 @@
 import { WorkspacesList, WorkspacesListSkeleton } from '@components/settings/WorkspacesList';
-import { buildWorkspaceRows, countActiveMembersByWorkspace } from '@lib/account/workspaces';
+import { buildWorkspaceRows, countActiveMembersByWorkspace, countActiveOwnersByWorkspace } from '@lib/account/workspaces';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createClient } from '@lib/supabase/server';
@@ -8,14 +8,14 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 
-// Settings > Workspaces (BK-89 — AC1-4). Read-only membership list: every
-// workspace the caller actively belongs to, their role in each, and the
-// currently active one visually marked. No leave/switch/add/invite controls
-// (Out of Scope — owned by BK-90/BK-5/BK-6). Structurally mirrors
+// Settings > Workspaces (BK-89 — AC1-4; BK-90 Slice B adds the Leave action).
+// Membership list: every workspace the caller actively belongs to, their role
+// in each, and the currently active one visually marked. Structurally mirrors
 // `settings/account/page.tsx`'s `WorkspacesSection` pattern (Decision 5): a
 // server component that queries Supabase directly, not via the widened
 // GET /api/v1/workspaces REST endpoint, which is a separately-contracted API
-// surface with its own ATP.
+// surface with its own ATP. `settings/account/page.tsx` itself is untouched
+// by BK-90 (Decision 6) — only this page passes `enableLeaveAction`.
 export default async function SettingsWorkspacesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -49,12 +49,13 @@ export default async function SettingsWorkspacesPage() {
   );
 }
 
-// Workspace membership list (BK-89). A separate async server component (not
-// the page itself) so it streams inside its own `<Suspense>` boundary above.
-// Same two-query shape as `settings/account/page.tsx`'s `WorkspacesSection`
-// (Decision 5 — the duplication is accepted, not shared, matching the
-// existing un-shared pattern between that page and route.ts): manual JS join,
-// not a PostgREST embedded-select.
+// Workspace membership list (BK-89, owner-count widened by BK-90 Slice B). A
+// separate async server component (not the page itself) so it streams inside
+// its own `<Suspense>` boundary above. Same two-query shape as
+// `settings/account/page.tsx`'s `WorkspacesSection` (Decision 5 — the
+// duplication is accepted, not shared, matching the existing un-shared
+// pattern between that page and route.ts): manual JS join, not a PostgREST
+// embedded-select.
 //
 // TD7: any failure here is caught locally and rendered as the error state —
 // it must never throw up to the route's `error.tsx`.
@@ -78,30 +79,41 @@ async function WorkspacesSection({ userId, activeWorkspaceId }: { userId: string
     // the caller's own RLS grants them, so this aggregate deliberately goes
     // through the admin client, same as `settings/account/page.tsx`. It only
     // ever returns a workspace_id (no PII), scoped to workspaces the caller
-    // already belongs to.
-    const [{ data: workspaceRows, error: workspacesError }, { data: memberCountRows, error: countError }] = workspaceIds.length > 0
+    // already belongs to. The owner-count query (BK-90 Slice B, Decision 1)
+    // is the same shape, narrowed to `role='owner'`, feeding `isSoleOwner`'s
+    // count-based lock-UI gate.
+    const [
+      { data: workspaceRows, error: workspacesError },
+      { data: memberCountRows, error: countError },
+      { data: ownerCountRows, error: ownerCountError },
+    ] = workspaceIds.length > 0
       ? await Promise.all([
           supabase.from('workspaces').select('id, slug, name').in('id', workspaceIds),
           createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').in('workspace_id', workspaceIds),
+          createAdminClient().from('workspace_members').select('workspace_id').eq('status', 'active').eq('role', 'owner').in('workspace_id', workspaceIds),
         ])
-      : [{ data: [], error: null }, { data: [], error: null }];
+      : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
     if (workspacesError) {
       throw workspacesError;
     }
     if (countError) {
       throw countError;
     }
+    if (ownerCountError) {
+      throw ownerCountError;
+    }
 
     const rows = buildWorkspaceRows({
       memberships: memberships ?? [],
       workspaces: workspaceRows ?? [],
       memberCounts: countActiveMembersByWorkspace(memberCountRows ?? []),
+      ownerCounts: countActiveOwnersByWorkspace(ownerCountRows ?? []),
       activeWorkspaceId,
     });
 
-    return <WorkspacesList workspaces={rows} />;
+    return <WorkspacesList workspaces={rows} enableLeaveAction />;
   }
   catch {
-    return <WorkspacesList workspaces={[]} error />;
+    return <WorkspacesList workspaces={[]} error enableLeaveAction />;
   }
 }
