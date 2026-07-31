@@ -40,6 +40,7 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -48,17 +49,17 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 
 ### Story (1)
 
-- [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Ready For Dev)_
+- [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Ready For QA)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/24/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
-- **Labels:** shift-left-2026-06-10, shift-left-reviewed
+- **Labels:** implementation-plan-ready, shift-left-2026-06-10, shift-left-reviewed
 
 ---
 

@@ -20,6 +20,20 @@ export async function bootstrapWorkspace(supabase: Client, args: BootstrapWorksp
   });
 }
 
+// BK-90 (Slice A) — self-service "leave workspace". The SECURITY DEFINER RPC
+// (migration 0044) atomically validates active membership, applies the
+// last-membership + count-based sole-owner guards, deletes the caller's
+// workspace_members row, and soft-revokes their workspace-scoped PATs.
+export interface LeaveWorkspaceArgs {
+  workspaceId: string
+}
+
+export async function leaveWorkspace(supabase: Client, args: LeaveWorkspaceArgs) {
+  return supabase.rpc('bunkai_leave_workspace', {
+    p_workspace_id: args.workspaceId,
+  });
+}
+
 // BK-21 unified the web editor's save onto bunkai_update_atc (the canonical
 // edit RPC), so the legacy bunkai_save_atc wrapper (SECURITY INVOKER, no event
 // emission) is no longer called from app code. The DB function is retained
