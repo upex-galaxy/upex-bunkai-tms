@@ -1289,6 +1289,17 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_mark_run_step: {
+        Args: {
+          p_actor_user_id: string
+          p_evidence_url: string
+          p_note: string
+          p_run_id: string
+          p_run_step_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
       bunkai_move_acceptance_criterion: {
         Args: { p_id: string, p_new_position: number }
         Returns: Json

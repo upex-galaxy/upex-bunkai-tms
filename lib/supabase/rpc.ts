@@ -334,6 +334,40 @@ export async function finishRun(
   });
 }
 
+// BK-35 — mark one run_steps row pass/failed/blocked via the SECURITY DEFINER
+// RPC. Same explicit-actor contract; the RPC gates member+ write access,
+// requires status 'running' (else run_step_marking_closed), backstops the
+// status value (passed | failed | blocked only — 'pending' is never accepted,
+// so a re-mark-to-pending attempt lands on the same step_status_invalid), and
+// normalizes an empty/whitespace-only note/evidence_url to NULL server-side
+// (Q8). UPDATEs the run_steps row in place — no history table, last-write-wins
+// (AC6) — then recomputes the parent run_atcs verdict from the full current
+// sibling set (AC2). Returns the composed Run json.
+export async function markRunStep(
+  supabase: Client,
+  args: {
+    actorUserId: string
+    runId: string
+    stepId: string
+    status: 'passed' | 'failed' | 'blocked'
+    note?: string | null
+    evidenceUrl?: string | null
+  },
+) {
+  return supabase.rpc('bunkai_mark_run_step', {
+    p_actor_user_id: args.actorUserId,
+    p_run_id: args.runId,
+    p_run_step_id: args.stepId,
+    p_status: args.status,
+    // The RPC params are typed `text` (non-null) but accept NULL — the
+    // function normalizes empty/whitespace to NULL server-side either way
+    // (Q8). supabase-js serializes null -> SQL NULL (mirrors updateAtc's
+    // p_if_match cast).
+    p_note: (args.note ?? null) as string,
+    p_evidence_url: (args.evidenceUrl ?? null) as string,
+  });
+}
+
 // BK-37 — read a Test's past Runs (history), newest first. Same explicit-actor
 // contract; the SECURITY DEFINER RPC resolves the Test's workspace and gates the
 // actor's active membership (any role — a viewer reads), then returns ONLY
