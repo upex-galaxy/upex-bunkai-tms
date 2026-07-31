@@ -424,11 +424,10 @@ export function MentorCard({ mentor }) {
 
 **Tests automatizados:**
 
-- ❌ NO revisar tests unitarios (ya creados durante la implementación)
+- ✅ SÍ verificar que el Unit Test Authoring Gate de Stage 2 quedó satisfecho: todo código de lógica pura nuevo/modificado tiene un test co-localizado o una exención registrada — chequeo de presencia/ubicación únicamente, NO de calidad/internals del test (eso sigue siendo responsabilidad de Stage 2 / `/unit-testing`)
 - ❌ NO revisar tests de integración / E2E (fuera del alcance del code review estático)
-- ❌ NO revisar test coverage (se evalúa en otro proceso)
 
-**Razón:** Este review se enfoca en la calidad del código, AC y arquitectura. Los tests automatizados de capas superiores se manejan en su propio flujo.
+**Razón:** Este review se enfoca en la calidad del código, AC y arquitectura, más el chequeo de presencia del gate de unit tests. La calidad interna de los tests y los tests automatizados de capas superiores se manejan en su propio flujo.
 
 ---
 

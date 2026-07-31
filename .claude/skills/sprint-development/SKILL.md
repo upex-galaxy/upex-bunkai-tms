@@ -33,6 +33,27 @@ The same pipeline runs whether the input is a new story, a bug fix, or a resume 
 
 ---
 
+## Compact Rules
+
+> Extracted verbatim into `.claude/skills/REGISTRY.md` by `scripts/build-skill-registry.ts` and copied into every subagent briefing. These are the rules that must BIND an executor, not just inform the orchestrator (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability"). Keep this list short and imperative; rationale lives in the referenced files.
+
+- **Automation identity is declared, never chosen.** Log into a running app ONLY as the account named in `.agents/project.yaml` → `testing.automation_identity` (variable NAMES there, values in `.env`). Slot unset or variable missing → STOP and report; never substitute another account, query the DB for one, create one, or reuse the human's browser session. See `references/live-ui-identity.md`.
+- **Never bypass the app's own login path.** No service-role / secret / admin keys, no admin user-management APIs (list / create / mutate users), no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account — including "just to see the admin view". Surface the need as a finding instead.
+- **Session material is ephemeral.** Cookie jars, `storageState.json`, token files, `.har` captures: session scratch directory only (never the repo tree), deleted BEFORE reporting, disclosed as `secrets_materialized:` + `cleaned:` in the report. Never echo a credential into a report, plan, commit, PR body, or tracker comment.
+- **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
+- **The workload forecast gate is fail-closed.** With `risk = High`, `Chain strategy` is accepted ONLY with a verbatim `Decision trace:` citing the git-flow-master chained-PR tree answers. Missing or malformed trace is treated as `pending` and blocks Stage 2. The planner may only emit `pending` — it never picks a strategy itself.
+- **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's status today.
+- **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
+- **Plan before code.** Stage 1 always runs; even a bug fix gets a one-paragraph root-cause analysis before the diff.
+- **Verification cap=3**: lint + types + unit tests in parallel; green before any push.
+- **Atomic commits**, semantic prefixes, no AI-attribution lines, never `--no-verify`, never force-push a pushed branch, never push to `main` without explicit confirmation.
+- **Scope discipline**: touch only what the story states. No "while I'm here" refactors.
+- **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason.
+
+**Read full SKILL.md when**: the stage you are running needs its full walkthrough, a gate fires, or the briefing tells you to load the full skill.
+
+---
+
 ## When to use
 
 Common scenarios this skill handles:
@@ -64,7 +85,7 @@ If any of the above is missing, fast-fail and hand off to the appropriate setup 
 
 Canonical reading order for any AI starting cold on a sprint-development workflow. Read in order; stop earlier when the ticket is small enough that later inputs add no signal.
 
-1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
+1. `.agents/project.yaml` — project identity, env URLs, project key, MCP names, `git_strategy` (branch policy), and `testing.automation_identity` (the account any live-UI or authenticated-probe step logs in as).
 2. `.agents/jira-required.yaml` — canonical slug catalog (custom fields, statuses, link types) for the active workspace.
 3. `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for `{{jira.<slug>}}` resolution.
 4. `.agents/jira-workflows.json` — workflow + transition catalog (resolves Ready For Dev → In Progress → In Review → Ready For QA).
@@ -110,7 +131,7 @@ Solo trades context isolation for fewer round-trips and one legible transcript �
 | Trigger / context-load (epic precheck)    | inline                 | orchestrator reads epic artifacts + ticket; no subagent yet                                   |
 | Stage 1 — Plan creation                   | Single                 | dedicated planner subagent: read story + AC, decompose tasks, output `implementation-plan.md` |
 | Stage 2 — Implementation (multi-file)     | Sequential or Parallel | impl agent(s); split by file or feature slice per the implementation plan                     |
-| Stage 2 — Verification (lint+types+tests) | Parallel cap=3         | three verifiers in parallel: `bun run lint:check`, `bun run build` / `tsc`, unit tests        |
+| Stage 2 — Verification (lint+types+tests) | Parallel cap=3         | three verifiers in parallel: `bun run lint:check`, `bun run build` / `tsc`, unit tests (this leg also confirms new pure-logic units in the diff have a co-located test or a logged exemption — not just pass/fail of whatever test files already exist) |
 | Stage 3 — Code review                     | Single                 | **independent adversarial** reviewer subagent: severity-tagged findings (BLOCKER/MAJOR/MINOR/NIT) vs AC + code-standards; orchestrator adjudicates each |
 | Stage 3 — Fix-and-iterate (if review red) | Sequential             | impl agent picks up review notes via `fix-issues.md`; re-runs verification                    |
 | Stage 4 — Deploy to staging               | Single + Background    | deploy agent kicks off; background monitor watches health/smoke                               |
@@ -181,7 +202,7 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
        v
    +--------------------------+
    | Stage 2: IMPLEMENTATION  |   references/implement-story.md, bug-fix-workflow.md,
-   |  - TDD optional          |       continue-implementation.md, fix-issues.md,
+   |  - Unit tests MANDATORY  |       continue-implementation.md, fix-issues.md,
    |    (-> /unit-testing)    |       code-standards.md, error-handling.md, data-testid-standards.md
    |  - Multi-file edits      |
    |  - Lint+types+tests      |
@@ -244,10 +265,15 @@ Immediately after the resume check, before Epic precheck, consult `.context/dev-
 
 1. **Bootstrap-if-missing.** If `.context/dev-roadmap.md` is absent or still the placeholder stub → invoke `/dev-roadmap` to generate it (do NOT re-derive the sort inline — delegate to the owner so there is a single implementation). Then proceed.
 2. **Consult (always).** Read the §3 dependency graph + §4 execution sprints + §5 mockup-gate registry for `<JIRA-KEY>`:
-   - Confirm every **hard blocker** of this ticket is already dev-done. If a hard blocker is NOT dev-done → STOP and surface it to the user before planning ("BK-X depends on BK-Y which is not dev-done — proceed anyway, switch tickets, or abort?").
+   - Take the **dependency edges**, the **mockup gates**, and the execution-sprint grouping from the doc. These are durable and the doc owns them.
    - Confirm this ticket is not 🔒 mockup-gated in §5 (if it is and the mockup is absent, route per the Stage-1 missing-row gate / Critical Rule #15 before coding).
    - Surface this ticket's Execution Sprint + any §6 per-story pre-dev blocker so the plan accounts for it.
-3. **Cheap inline flips (surgical — NOT a regen).** Keep the durable layers fresh as work lands, without re-running the whole sort:
+3. **Live status query (MANDATORY, before recommending or planning any ticket).** The roadmap doc is authoritative for edges, NEVER for status. Run the §6 query recipe against `[ISSUE_TRACKER_TOOL]` for **this ticket plus its direct hard blockers** in one call (e.g. a single JQL `key in (<CANDIDATE>, <BLOCKER-1>, <BLOCKER-2>)` returning status), then:
+   - Every hard blocker must be dev-done **according to the live query**. Not dev-done → STOP and surface it ("BK-X depends on BK-Y, live status `In Progress` — proceed anyway, switch tickets, or abort?").
+   - If the candidate itself is already past dev (e.g. `Ready For QA` / `Done`), STOP and say so before planning anything.
+   - **Live wins over prose, always.** When the query contradicts the doc, act on the query and flag the stale line so it gets corrected on the next `/dev-roadmap` run.
+   - **A recent timestamp on `dev-roadmap.md` is not evidence of current status.** That file's dates track when edges and mockup gates were refreshed, which is a different axis from a ticket's status today. Never skip the query because the doc "looks fresh". Never recommend a next ticket on prose alone.
+4. **Cheap inline flips (surgical — NOT a regen).** Keep the durable layers fresh as work lands, without re-running the whole sort:
    - When this ticket reaches dev-done in this run (Stage 4 — staging merged / Jira → Ready For QA), flip its gate marker in §3/§4 and clear any §5 mockup-gate it satisfied.
    - If this ticket is new and absent from §3, add its edge (cite the real Jira link / data-map / design source) or, if unclear, log it to the §6 edge-mapping TODO.
    - **NEVER write live status** into the doc — status stays a §6 query recipe. **NEVER regenerate §4 inline** — a structural re-sort is `/dev-roadmap`'s job; if many edges changed, recommend re-running `/dev-roadmap` instead of hand-editing.
@@ -298,27 +324,38 @@ After the plan is authored, the planner emits a forecast block at the bottom of 
 Estimated: <X> additions + <Y> deletions = <Z> total lines
 400-line budget risk: Low | Medium | High
 Chain strategy: stacked-to-main | feature-branch-chain | size-exception | pending
+Decision trace: <verbatim Q1/Q2/Q3 answers + resolved leaf, or "n/a (risk not High)">
+Decided by: </git-flow-master §Chained-PR decision tree | n/a>
 Decision needed before apply: Yes | No
 ```
 
-Algorithm (per-file multipliers, 20% test+docs buffer), risk thresholds (`<200` Low, `200-400` Medium, `>400` High), and chain-strategy options live in `references/workload-forecast.md`. The block is emitted by the planner; the **gate** is enforced by the orchestrator at the Stage 1 → Stage 2 boundary (see Stage 2 below).
+Algorithm (per-file multipliers, 20% test+docs buffer), risk thresholds (`<200` Low, `200-400` Medium, `>400` High), and chain-strategy options live in `references/workload-forecast.md`.
+
+**The planner emits; it does not decide.** With `risk = High` the planner writes `Chain strategy: pending` and leaves `Decision trace:` empty — picking a strategy is `/git-flow-master`'s job. The **gate** is enforced by the orchestrator at the Stage 1 → Stage 2 boundary and is **fail-closed**: a non-`pending` strategy with a missing, empty, or malformed `Decision trace` is treated as `pending`. A gate keyed on a field its own agent writes is otherwise trivially switched off by emitting a plausible label (`agentic-dev-core/references/orchestration-doctrine.md` → "Gate design").
 
 ### Live-UI validation (flow-aware, tool-agnostic)
 
-UI stories are validated against the **running app**, never against a static read of the mockup plus green lint/types/tests — those stay green while the rendered UI is wrong. Four principles:
+UI stories are validated against the **running app**, never against a static read of the mockup plus green lint/types/tests — those stay green while the rendered UI is wrong. Five principles:
 
+0. **Identity-bound.** The automation logs in ONLY as the account declared in `.agents/project.yaml` → `testing.automation_identity` (variable NAMES there, values resolved from `.env` at runtime). **Fail-closed**: slot unset or variable missing → STOP and report, never improvise another account. **Never bypass the app's own login path** — no service-role / admin keys, no admin user-management APIs, no generated links, no hand-crafted tokens, no impersonation. Contract + prohibition list + dispatch requirements: `references/live-ui-identity.md`.
 1. **Tool-agnostic.** Resolve the browser-automation tool via `[AUTOMATION_TOOL]` (CLAUDE.md §6). **Playwright CLI** (`/playwright-cli`) is PRIMARY because it is not session-bound; never hardcode one tool — pick the highest-preference one the project has available. Full preference table (Playwright CLI → Playwright MCP → claude-in-chrome MCP) + per-tool rationale: `references/live-ui-validation.md` §1.
 2. **Flow-aware.** Validation runs wherever the active flow runs: **Orchestrated** → inside the stage subagent that owns it; **Solo** → inline in the one session. Any of the three tools can run inside a stage subagent in Orchestrated mode — that is the default expectation.
 3. **Woven into stages, not a bolt-on gate.** Stage 2 — while building UI, open the **running dev server** and check in real time that what is being built renders correctly vs the live UI + design system, iterating as it codes. Stage 3 — a final live-render pass over the story's screens (loading / empty / error states, responsive, the AC's interactive flows) before merge.
 4. **Live-UI-First fidelity.** Validate consistency with the CURRENT live app + design system, not pixel-match to the mockup — per the **LIVE-UI-FIRST doctrine** in CLAUDE.md Critical Rule #14. Inspect and reuse the existing live components first.
 
-**Hard rules**: NEVER validate against a production build — use the running dev server (e.g. `bun run dev`). Log in with credentials from `.env`, never hardcoded. **Gate**: a UI story cannot reach merge with an open, unratified live-UI gap — any gap → fix immediately (dispatch a fix subagent in Orchestrated / fix inline in Solo) → re-validate. Non-UI stories skip live-UI validation entirely.
+**Light path (Tier 0)**: an authenticated HTTP probe (`[API_TOOL]`: log in through the app's own endpoint with the declared identity, keep the session in the scratch dir, fetch routes, assert on status / redirects / server-rendered markup, delete the session file before reporting) is **sanctioned** for route reachability, auth-redirect behaviour, presence of server-rendered content, data correctness in markup, and fast regression re-checks. It is **NOT sufficient** for layout, computed tokens, client-rendered loading/empty/error states, responsive breakpoints, interactive AC flows, or screenshot evidence. Tier 0 may carry the Stage 2 inner loop; the **Stage 3 final pass on a UI story is always browser-based**. Boundary + shape: `references/live-ui-validation.md` §7.
 
-Mechanics — `[AUTOMATION_TOOL]` resolution, per-tool startup (Playwright CLI login-from-`.env` skeleton, the MCP-extension note, the claude-in-chrome `tabs_context → navigate → screenshot` loop), the per-screen checklist, the real-time-during-implementation vs final-verification patterns, the fix loop, and the claude-in-chrome session-binding caveat — live in `references/live-ui-validation.md`.
+**Hard rules**: NEVER validate against a production build — use the running dev server (e.g. `bun run dev`). Log in as the declared automation identity, resolved by variable name from `.env`, never hardcoded, never through a privileged bypass. Session material goes to the scratch dir and is deleted before reporting (`secrets_materialized:` / `cleaned:` in the report). **Gate**: a UI story cannot reach merge with an open, unratified live-UI gap — any gap → fix immediately (dispatch a fix subagent in Orchestrated / fix inline in Solo) → re-validate. Non-UI stories skip live-UI validation entirely.
+
+Mechanics — the identity contract (§0), `[AUTOMATION_TOOL]` resolution, per-tool startup (Playwright CLI login skeleton with the fail-closed guard, the MCP-extension note including the "already-authenticated profile is usually the human" caveat, the claude-in-chrome `tabs_context → navigate → screenshot` loop), the per-screen checklist, the real-time-during-implementation vs final-verification patterns, the fix loop, the Tier 0 capability boundary (§7), and the claude-in-chrome session-binding caveat — live in `references/live-ui-validation.md` and `references/live-ui-identity.md`.
+
+**Dispatch requirement**: when live-UI work is delegated, briefing component 7 (Rules) MUST carry the resolved identity by variable name, the prohibition list, and the hygiene contract. A subagent does not read `references/` on its own — an omitted rule is an absent rule (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability").
 
 ### Stage 2: Implementation
 
-**Gate (workload forecast)**: Stage 2 does NOT start if the Stage 1 forecast block reports `risk=High` AND `chain_strategy=pending`. Resolve the strategy by handing off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan), then return: update the forecast block in the Jira `spec_implementation_plan` field with the chosen strategy, re-sync (`bun run jira:sync-issues get <KEY>`) so the synced `implementation-plan.md` reflects it, and proceed. See `references/workload-forecast.md` for full gate behavior.
+**Gate (workload forecast) — fail-closed**: Stage 2 does NOT start if the Stage 1 forecast block reports `risk=High` AND the chain decision is unresolved. **Unresolved** means either `chain_strategy=pending` OR a `chain_strategy` value whose `Decision trace:` is missing, empty, or does not name the tree answers that produced it. Do not accept a bare label: verify the trace before opening the gate.
+
+Resolve by handing off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan), which returns the strategy WITH its `Decision trace:` and `Decided by:` lines. Then update the forecast block in the Jira `spec_implementation_plan` field, re-sync (`bun run jira:sync-issues get <KEY>`) so the synced `implementation-plan.md` reflects it, and proceed. See `references/workload-forecast.md` for full gate behavior.
 
 Pick the right entry point based on ticket type:
 
@@ -337,7 +374,15 @@ Verification runs in **parallel cap=3**: lint, typecheck/build, unit tests. Each
 
 **Live-UI check while building (UI stories)**: per the active flow mode (subagent if Orchestrated, inline if Solo), open the running dev server via `[AUTOMATION_TOOL]` and confirm what you build renders correctly against the live UI + design system **as you code** — not after. See the Live-UI validation subsection above. Non-UI stories skip this.
 
-If the work needs TDD on a specific function, hand off to `/unit-testing` mid-implementation. The hand-off is composable: come back to Stage 2 once the unit is green.
+#### Unit Test Authoring Gate (mandatory output of Stage 2)
+
+Unit-test authoring is no longer opt-in TDD — it is a Stage 2 gate that must close before Stage 3 (review) can pass. The gate is scenario/module-driven, NOT a coverage percentage (this repo's `/unit-testing` skill already rejects percentage-based coverage targets per its Anti-pattern U6 — stay consistent with that philosophy):
+
+(a) **Every new/modified pure-logic unit** (business logic, validation, calculation, transformation, state transitions, bug-fix root cause) gets a co-located test file. Presentational/pass-through code is exempt, but the exemption must be logged — not silently skipped.
+(b) **Every AC scenario in the story's ATP that exercises testable logic** must resolve to `test:<id>` in the Stage 3 Spec Compliance Matrix. Reserve `manual:` / `exempt:` for genuinely visual-only or environment-bound scenarios (already covered by the mandatory Live-UI validation) — not as a default substitute.
+(c) **Every bug fix** gets one regression test reproducing the root cause: it must fail before the fix and pass after.
+
+Mechanics are unchanged: hand off to `/unit-testing` mid-implementation for red-green-refactor on the qualifying slice, then return to Stage 2's main flow once the unit is green.
 
 ### Stage 3: Code Review
 
@@ -352,6 +397,7 @@ Review checklist (driven by `references/review-pr.md`):
 - Code-standards conformance (imports via aliases, no relative paths, parameter limits, etc.)
 - Security checks (no secrets in diff, auth handled, input validation)
 - UI/UX fidelity (where applicable): matches the story's screen — `DESIGN.md` tokens plus the per-screen spec in `.context/design/master-design-plan.md` when the project maintains one; unratified divergence from the agreed design/mockup is a defect
+- Unit Test Authoring Gate satisfied (new pure-logic code has co-located tests or a logged exemption) — reviewer spot-checks presence/placement only, not test quality/internals (that stays a Stage 2/`/unit-testing` concern)
 
 **Live-render verification pass (UI stories)**: before approving, run a final live-UI validation over the story's screens (loading / empty / error states, responsive, the AC's interactive flows) per the active flow mode via `[AUTOMATION_TOOL]` — see the Live-UI validation subsection above. A UI story with an open, unratified live-UI gap cannot be approved; fix → re-validate. Validate against the CURRENT live app, never a production build.
 
@@ -377,7 +423,7 @@ After the static code review checklist passes, the reviewer/orchestrator generat
 
 `covered_by` accepts: `test:<id>`, `manual:<evidence-path>`, `exempt:<reason>`, `review-approved:<reviewer>`. Status legend: `covered` | `manual` | `exempt` | `review-approved` | `uncovered`.
 
-**Gate**: PR cannot merge if any row is `uncovered` without justification. Resolve by adding a test, adding manual evidence, or reclassifying to `exempt:<specific reason>` (vague reasons are rejected). If the scenario truly cannot be verified, loop back to Stage 1 and re-spec the AC.
+**Gate**: PR cannot merge if any row is `uncovered` without justification. A testable-logic scenario resolved as `manual:` or `exempt:` without a genuine justification is treated as `uncovered` for merge-gate purposes — the same blocking rule applies. Resolve by adding a test, adding manual evidence, or reclassifying to `exempt:<specific reason>` (vague reasons are rejected). If the scenario truly cannot be verified, loop back to Stage 1 and re-spec the AC.
 
 Algorithm, four `covered_by` shapes with examples, full status legend, the 2FA-login worked example, and persistence (dev-authored, non-Jira: `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`): see `references/spec-compliance-matrix.md`.
 
@@ -483,7 +529,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 
 ### Project-owned (T1)
 
-- **TDD on a function** -> `/unit-testing` skill (composable mid-implementation)
+- **Unit Test Authoring Gate (mandatory for qualifying slices)** -> `/unit-testing` skill (composable mid-implementation; see Stage 2's Unit Test Authoring Gate)
 - **PR creation / merge / branch ops / conflict resolution / chained-PR planning** -> `/git-flow-master` skill
 - **Backlog item missing or AC unclear** -> `/product-management` skill (refine first, then come back)
 - **Foundation/infrastructure missing** -> `/project-foundation` or `/project-bootstrap`
@@ -526,7 +572,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 
 ## Gotchas — inline rules you must apply every invocation
 
-1. **Credentials**: always from `.env`. Never hardcode. Never guess passwords.
+1. **Credentials**: always from `.env`, resolved by variable NAME. Never hardcode. Never guess passwords. For anything that logs into the running app, the account is the one declared in `.agents/project.yaml` → `testing.automation_identity` — fail-closed if it is missing (`references/live-ui-identity.md`).
 2. **Plan before code**: never skip Stage 1. Even bug fixes get a one-paragraph root-cause analysis before the diff.
 3. **Atomic commits**: one commit per logical step. Lint + build must pass before each push.
 4. **No AI attribution in commits**: never include "Generated with Claude Code", "Co-Authored-By: Claude", or similar lines.
@@ -534,16 +580,21 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 6. **Docs travel with the PR**: status-report and release-notes updates go in the feature branch, not pushed direct to `staging`.
 7. **Jira automation verification**: after PR open and after merge, wait ~30s and verify the auto-transition fired. If not, transition manually and surface the gap.
 8. **ATP source-of-truth** (modality-aware): jira-native detailed read = `bun run jira:sync-issues get <STORY_KEY> --include-comments`, then read the synced `acceptance-test-plan.md`; jira-xray detailed read = `bun run jira:sync-issues get <ATP_KEY>` (Test Plan issue `description`), then read the synced `test-plans/TESTPLAN-<KEY>-<slug>.md`. Never read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. Final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
-9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers.
-10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
+9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers. The unit-tests leg also gates on authoring — confirm new pure-logic units in the diff have a co-located test or a logged exemption, not just green/red on whatever tests already exist.
+10. **No automation tests in this skill**: E2E / integration test automation is out of scope, unchanged. Unit tests are a MANDATORY Stage 2 output via `/unit-testing` (see the Unit Test Authoring Gate) — no longer optional TDD. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
 12. **ADR-worthy decisions get recorded**: a decision that is architectural AND hard to reverse goes to `.context/ADR/` (append-only), not buried in the impl plan. Story-local trade-offs stay in the plan. Read existing ADRs before planning a cross-cutting story so you don't violate one. See `agentic-dev-core/references/adr-doctrine.md`.
+13. **Binding rules travel in the briefing**: a prohibition that lives only in a `references/*.md` never reaches a stage subagent. Restate the identity contract, the prohibition list, and the hygiene contract in briefing component 7 for every dispatch that could trip them (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability").
+14. **Every report carries `secrets_materialized:` + `cleaned:`** — `cleaned: no` is a blocker, surfaced to the user, never passed over silently.
+15. **Status is queried, config is read**: ticket availability comes from a live tracker query, project configuration comes from the actual file (`.agents/project.yaml`, `package.json`, `.env.example`). Never from prose, a cached doc, or a skill's worked example.
 
 ---
 
 ## Pre-flight checklist
 
 - [ ] Pre-requisites green (project.yaml, story exists, AC clear, .env populated)
+- [ ] **Phase 0b live query run** for this ticket + its direct blockers; no blocker open; ticket not already past dev
+- [ ] **Automation identity resolved** from `testing.automation_identity` (UI stories) — or STOPPED and reported if the slot is unset
 - [ ] **Execution mode resolved** (Orchestrated default, or Solo if the user opted in) and stated back
 - [ ] **Batch mode resolved**: if the trigger phrase implies a sprint loop, sprint report (`SPRINT-{N}-DEVELOPMENT.md`) exists or has been generated
 - [ ] Sprint report row updated at each Jira transition (IN_PROGRESS / IN_REVIEW / MERGED / STAGING_DEPLOYED / PROD_DEPLOYED)
@@ -552,7 +603,10 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Stage 1 plan pushed to Jira `spec_implementation_plan` (or fallback comment), synced, and read back as `implementation-plan.md`; Jira transitioned to `In Progress`
 - [ ] ATP read via sync (jira-native: synced `acceptance-test-plan.md`; jira-xray: synced `test-plans/TESTPLAN-<KEY>-<slug>.md`; final fallback = `comments.md` / issue description) and mapped into the plan
 - [ ] Stage 2 verification (lint + types + tests) green; commits atomic
-- [ ] **Live-UI validation** run for any UI story — in the active flow mode (subagent if Orchestrated, inline if Solo) via `[AUTOMATION_TOOL]`; gaps fixed + re-validated; never via a production build
+- [ ] **Unit Test Authoring Gate satisfied**: new pure-logic units + bug-fix reproducers have co-located tests or a logged exemption; Spec Compliance Matrix rows for testable-logic AC scenarios resolve to `test:<id>`
+- [ ] **Live-UI validation** run for any UI story — in the active flow mode (subagent if Orchestrated, inline if Solo) via `[AUTOMATION_TOOL]`; gaps fixed + re-validated; never via a production build; final Stage 3 pass done in a browser, not on HTTP evidence
+- [ ] **Session material cleaned**: every dispatch that authenticated reported `secrets_materialized:` + `cleaned: yes`
+- [ ] **Forecast gate honoured**: `risk=High` proceeded only with a `Decision trace` produced by `/git-flow-master`
 - [ ] Stage 3 PR opened via `/git-flow-master`; Jira auto-transition to `In Review` verified
 - [ ] **Stage 3 findings adjudicated** (legitimate vs false-positive with a reason); only legitimate ones fixed
 - [ ] Stage 3 docs (status-report + release-notes) updated in the PR branch
@@ -581,6 +635,13 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - **S14.** NEVER skip live-UI validation on a UI story by leaning on tests / types / lint alone — those are green while the rendered UI is wrong. Validate the RUNNING app, in the active flow mode, via the project's `[AUTOMATION_TOOL]`; never validate against a production build.
 - **S15.** NEVER auto-accept reviewer findings wholesale. Each finding is adjudicated (verify, or dismiss-with-reason); applying false positives is as much a defect as ignoring real ones.
 - **S16.** NEVER leave a Ready-For-QA story assigned to the developer. Re-assign to the shift-left QA owner, or leave unassigned if there was no shift-left phase. Verify the change (assignment gotchas in Stage 4).
+- **S17.** NEVER improvise an identity to log into a running app. Use the account declared in `.agents/project.yaml` → `testing.automation_identity`; if it is absent or its variable is missing from `.env`, STOP and report. Never substitute another account, never query the database for one, never create one mid-run, never reuse the human's authenticated browser session.
+- **S18.** NEVER obtain a session by bypassing the app's own login path: no service-role / secret / admin keys, no admin user-management APIs, no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account. If a check seems to require one, that is a finding to surface, not a step to take. See `references/live-ui-identity.md` §3.
+- **S19.** NEVER leave session material on disk. Cookie jars, `storageState.json`, token files, and `.har` captures live in the session scratch directory and are deleted before reporting; the report carries `secrets_materialized:` + `cleaned:`. Never echo a credential value into a report, plan, commit, PR body, or tracker comment.
+- **S20.** NEVER open the workload-forecast gate on a bare `Chain strategy` label. With `risk = High`, the value is accepted only with a `Decision trace` that walks the git-flow-master chained-PR tree; missing, empty, or conclusion-only traces count as `pending` and block Stage 2. The planner never picks the strategy itself.
+- **S21.** NEVER recommend, plan, or start a ticket on the strength of roadmap prose. Query the tracker live for the candidate and its direct blockers first (Phase 0b). `.context/dev-roadmap.md` owns dependency edges and mockup gates; it never owns current status, and a recent timestamp on it is not evidence about any ticket's status today.
+- **S22.** NEVER approve a UI story on HTTP-probe evidence alone. Tier 0 probes cover routes, redirects, and server-rendered markup; layout, computed tokens, client-rendered states, breakpoints, and interactive AC flows require the browser tier (`references/live-ui-validation.md` §7).
+- **S23.** NEVER declare Stage 2 done when the diff adds new pure-logic code or a bug fix with no co-located unit test and no logged exemption; a green cap=3 unit-tests leg on an empty/stale suite is not sufficient proof.
 
 ---
 

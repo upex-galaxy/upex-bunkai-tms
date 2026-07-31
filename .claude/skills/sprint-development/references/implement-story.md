@@ -173,7 +173,7 @@ Puedo continuar, pero usaré conocimiento interno (puede estar desactualizado).
    - Entiende qué se espera que funcione
    - Identifica edge cases a considerar
    - Usa los test cases como checklist durante la implementación
-   - (NO implementes tests ahora - eso es Fase 8)
+   - (NO implementes tests todavía - esto es solo análisis; los tests se implementan en el Paso 3 como parte de este mismo Stage 2, antes del Code Review de Fase 8)
 
 4. **Consulta docs con Context7 MCP (CRÍTICO)**
    - ⚠️ **MCP MÁS IMPORTANTE**: Úsalo siempre que trabajes con librerías externas
@@ -461,10 +461,10 @@ npm run dev
 
 ### 📋 Próximos pasos:
 
-**1. Unit Tests (si no se hicieron):**
+**1. Unit Tests (OBLIGATORIO antes de Code Review):**
 
 - Carga el skill `/unit-testing` para diseño de unit tests (TDD, AAA, mocking)
-- Crea tests para lógica de negocio crítica
+- Crea tests co-localizados para toda lógica de negocio pura nueva/modificada (o registra la exención) — este gate debe cerrarse antes de pasar a Code Review (Fase 8)
 
 **2. Code Review (Fase 8):**
 

@@ -29,13 +29,13 @@ Focused skill for designing and writing unit-level tests. Covers TDD cycles, tes
 - "What should I mock here?"
 - "How do I name this test?"
 - "What's the right coverage target for this module?"
-- Mid-flight from `/sprint-development` Stage 2 (Implementation) when implementing TDD-friendly code (pure functions, complex branching, bug fix reproducers)
+- Mid-flight from `/sprint-development` Stage 2 (Implementation) — MANDATORY for qualifying slices (new/modified pure-logic units: pure functions, complex branching, bug-fix reproducers) per sprint-development's Unit Test Authoring Gate; standalone/ad-hoc invocation outside a story context remains optional
 
 ## Composability with sprint-development
 
-This skill is designed to interoperate with `sprint-development`. From `sprint-development` Stage 2 (Implementation), invoke `/unit-testing` for any TDD slice, then return to the main story-level flow. The hand-off is informal — both skills understand the boundary. `unit-testing` doesn't track Jira, doesn't deploy, doesn't run code review; it just produces tested code for one slice and hands control back.
+This skill is designed to interoperate with `sprint-development`. From `sprint-development` Stage 2 (Implementation), invoking `/unit-testing` for any qualifying slice (a new/modified pure-logic unit, a bug-fix reproducer) is MANDATORY per sprint-development's Unit Test Authoring Gate — not left to implementer discretion. Once invoked, return to the main story-level flow when the slice is green. The hand-off is informal — both skills understand the boundary. `unit-testing` doesn't track Jira, doesn't deploy, doesn't run code review; it just produces tested code for one slice and hands control back.
 
-When invoked standalone (no `sprint-development` parent), it operates self-sufficiently against whatever code the user points at.
+When invoked standalone (no `sprint-development` parent) — e.g. an ad-hoc "write unit tests for this function" request — invocation remains fully optional, and this skill operates self-sufficiently against whatever code the user points at.
 
 ## Pre-requisites
 
