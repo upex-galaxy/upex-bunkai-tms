@@ -341,6 +341,38 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
     });
   });
 
+  describe('BK-38-ATC-03 — Filter combination matches none of a populated Project\'s Runs, DB-integration layer', () => {
+    // Distinct from ATC-06 above: that case is a Project with ZERO Runs at
+    // all (an empty-project early return). This Project is NOT empty — it
+    // already carries the six Runs the "Technical Decision D2" suite seeded
+    // immediately above (run1..run6, spread across module A and module B).
+    // The filter below intersects two axes that EACH individually match rows
+    // in this Project (module A has rows; 'aborted' status exists in this
+    // Project, on run4) but the SPECIFIC combination — module A AND aborted —
+    // matches none, since the aborted row lives under module B, not module A.
+    // This is exactly the case a broken WHERE-clause AND-composition (e.g. an
+    // accidental OR, or one predicate silently dropped) would get wrong,
+    // while a whole-project zero-runs case like ATC-06 never could — there
+    // are no rows there to wrongly include or exclude in the first place.
+    it('returns an empty page with zeroed totals while the SAME project, unfiltered, is non-empty', async () => {
+      if (!fixture) { return warn(); }
+
+      // Prove the Project itself is NOT empty first — otherwise a zero-match
+      // result below would be indistinguishable from ATC-06's case.
+      const unfiltered = await reportRuns(fixture.projectId, fixture.actorUserId);
+      expect(unfiltered.items.length).toBeGreaterThan(0);
+      expect(unfiltered.totals).not.toEqual({ passed: 0, failed: 0 });
+
+      const page = await reportRuns(fixture.projectId, fixture.actorUserId, {
+        moduleId: fixture.moduleAId,
+        status: ['aborted'],
+      });
+      expect(page.items).toEqual([]);
+      expect(page.totals).toEqual({ passed: 0, failed: 0 });
+      expect(page.next_cursor).toBeNull();
+    });
+  });
+
   describe('Technical Decision D3 — date range is UTC calendar day, inclusive both ends', () => {
     const DAY_BEFORE = '2026-04-09';
     const START = '2026-04-10';
