@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-182](https://jira.upexgalaxy.com/browse/BK-182)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** Manual Execution & Runs
 **Severity:** Moderada
 **Error Type:** Integration
@@ -125,15 +125,16 @@ Bearer callers with valid workspace membership and `run:execute` should resolve 
 ## Related Issues
 
 - relates to: [BK-39](https://jira.upexgalaxy.com/browse/BK-39) - TMS-Run Execution | Finish a run with a final verdict
+- is dependency for: [BK-49](https://jira.upexgalaxy.com/browse/BK-49) - TMS-Activity | Stream a read-side feed over the existing activity log
 
 ---
 
 ## Metadata
 
 - **Created:** 6/25/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/31/2026
 - **Reporter:** jesusgpythondev
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** bk-39-follow-up, pat, run-creation, workspace-resolution
 
 ---
