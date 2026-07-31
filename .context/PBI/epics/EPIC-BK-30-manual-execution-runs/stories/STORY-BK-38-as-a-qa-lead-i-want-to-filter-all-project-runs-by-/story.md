@@ -179,6 +179,7 @@ AC, ATP, and Business Rules are included in this description because the Jira cu
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
@@ -194,10 +195,10 @@ AC, ATP, and Business Rules are included in this description because the Jira cu
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/24/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
-- **Labels:** shift-left-2026-06-15, shift-left-reviewed
+- **Labels:** implementation-plan-ready, shift-left-2026-06-15, shift-left-reviewed
 
 ---
 
