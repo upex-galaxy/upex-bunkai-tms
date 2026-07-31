@@ -70,7 +70,7 @@ interface RunStepJson {
   executed_at: string | null
 }
 interface RunAtcJson { id: string, position: number, status: string, steps: RunStepJson[] }
-interface RunJson { id: string, status: string, atcs: RunAtcJson[] }
+interface RunJson { id: string, status: string, step_count: number, atcs: RunAtcJson[] }
 
 function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
@@ -326,6 +326,40 @@ describeOrSkip('BK-35 — bunkai_mark_run_step', () => {
     expect(findAtc(r2.data, runAtcId)?.status).toBe('pending');
     const r3 = await mark(db, { runId, stepId: s3, status: 'passed' });
     expect(findAtc(r3.data, runAtcId)?.status).toBe('passed');
+  });
+
+  it('ATP Boundary 17 — a Run with exactly 1 executable step resolves the ATC verdict immediately, no siblings to wait on', async () => {
+    if (!anchor) { return warn(); }
+    const db = service();
+    // stepCount: 1 -> one run_atc, one run_step: the minimum-steps boundary
+    // for the verdict recompute's sibling-aggregation logic (0042_run_step_
+    // mark.sql step 7 counts pending/failed/blocked over the FULL sibling
+    // set every time). With exactly one sibling, marking it must flip
+    // pending_count straight to 0 and resolve the verdict in the SAME call —
+    // it must never read as still 'pending' the way a multi-step ATC does
+    // before its last sibling resolves (contrast with the 3-step Q1 case
+    // above).
+    const { runId, runAtcId, stepIds: [s1] } = await seedRun(db, { stepCount: 1 });
+
+    const { data, error } = await mark(db, { runId, stepId: s1, status: 'passed' });
+    expect(error).toBeNull();
+
+    const run = data as RunJson;
+    // well-formed bunkai_run_json shape.
+    expect(run.id).toBe(runId);
+    expect(run.atcs).toHaveLength(1);
+
+    const atc = findAtc(run, runAtcId);
+    expect(atc?.steps).toHaveLength(1);
+    expect(atc?.status).toBe('passed'); // resolved immediately, not stuck 'pending'
+
+    // Progress mirrors RunnerView.tsx's own done/total formula (a step
+    // counts as done once its status moves off 'pending'): 1 of 1 -> 100%.
+    const total = run.step_count;
+    const done = run.atcs.reduce((acc, a) => acc + a.steps.filter(s => s.status !== 'pending').length, 0);
+    expect(total).toBe(1);
+    expect(done).toBe(1);
+    expect(Math.round((done / total) * 100)).toBe(100);
   });
 
   it('AC6 — last-write-wins: re-marking a step overwrites the result and immediately recalculates the ATC verdict', async () => {
