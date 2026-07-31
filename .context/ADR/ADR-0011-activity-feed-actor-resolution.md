@@ -1,8 +1,8 @@
 # ADR-0011 — Activity Feed Actor Resolution: peer-visible `auth.users` lookup, scoped by co-membership
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-31
-- **Deciders:** Project architect (drafted by Worker B, AI, avalanche-2026-07, during BK-49 Stage 1 planning — pending human acceptance)
+- **Deciders:** Project architect (drafted by Worker B, AI, avalanche-2026-07, during BK-49 Stage 1 planning; accepted by the repo owner 2026-07-31, before Slice 3's UI made the exposure live)
 - **Tags:** authentication, authorization, data-exposure, security-definer, cross-cutting-invariant
 - **Supersedes:** —
 - **Superseded by:** —
