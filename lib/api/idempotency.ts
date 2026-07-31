@@ -148,6 +148,20 @@ export async function beginIdempotentRequest(
         'A request with this Idempotency-Key is already in flight. Retry shortly.',
       );
     }
+    if (
+      insertError?.code === '23503'
+      && insertError.message.includes('idempotency_keys_workspace_id_fkey')
+    ) {
+      // Caller-supplied `workspace_id` (BK-248): a nonexistent workspace hits
+      // this FK before the business RPC ever runs its own membership check.
+      // Surface the caller's mistake as a 400, not an opaque 500 — every
+      // consumer of this shared middleware benefits, not just the one route
+      // that happened to trip it first.
+      throw new ApiError(
+        'validation_failed',
+        'workspace_id does not reference an existing workspace.',
+      );
+    }
     throw new ApiError('internal_error', 'Idempotency insert failed.');
   }
 
