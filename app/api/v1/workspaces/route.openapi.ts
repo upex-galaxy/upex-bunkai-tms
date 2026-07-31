@@ -22,8 +22,17 @@ const CreateResponseSchema = z
   .object({ workspace: WorkspaceSchema })
   .openapi('WorkspaceCreateResponse');
 
+// BK-89: list-response-only schema — the caller's `role` per workspace is
+// computed for GET /api/v1/workspaces alone (a second workspace_members
+// query), so it must not widen the shared WorkspaceSchema used by POST's
+// create-response and by GET /api/v1/workspaces/[id], neither of which
+// computes `role`.
+const WorkspaceWithRoleSchema = WorkspaceSchema
+  .extend({ role: z.enum(['viewer', 'member', 'admin', 'owner']).nullable() })
+  .openapi('WorkspaceWithRole');
+
 const ListResponseSchema = z
-  .object({ workspaces: z.array(WorkspaceSchema) })
+  .object({ workspaces: z.array(WorkspaceWithRoleSchema) })
   .openapi('WorkspaceListResponse');
 
 registry.registerPath({

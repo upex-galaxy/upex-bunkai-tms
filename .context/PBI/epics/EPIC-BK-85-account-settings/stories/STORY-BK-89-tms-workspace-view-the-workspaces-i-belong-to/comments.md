@@ -116,5 +116,29 @@ This story is moving to ***Ready For Dev****. Two Dev-contract items from the sh
 
 ---
 
+### Ely - 7/30/2026, 1:28:56 PM
+
+Mockup — Settings — Workspaces (list + roles + active). Source: .context/designs/bunkai-test-management-tool/bk-85-account-settings/settings-workspaces.html · spec: master-design-plan §4.10
+
+
+
+---
+
+### Ely - 7/31/2026, 3:32:08 AM
+
+## Dev contract resolved — role field + active-workspace transport
+
+***Decision*** (delegated to AI advisor by the product owner, 2026-07-31, explicit):
+
+***Active-workspace transport***: reuse the EXISTING mechanism, don't introduce a new one. BK-87 (shipped 2026-07-30) already built and shipped this exact thing: the `bk*active*ws` cookie + `resolveActiveWorkspaceId` (`lib/workspaces/active.ts`, `lib/api/workspace-cookie.ts`), already driving `(app)/layout.tsx` and the workspace switcher. This isn't actually an open architectural question anymore — it's precedent already in the codebase. BK-89 reuses it as-is.
+
+`role` on `GET /api/v1/workspaces`: checked the current handler (`app/api/v1/workspaces/route.ts`) — it selects only `id, slug, name, owner*user*id, plan, created*at` from `workspaces`, no `workspace*members` join at all today. Widen it: add a second query to `workspace*members` scoped to the caller's own `user*id` (RLS-safe, same shape BK-87's PR2 already used for its workspace list — manual JS-side join, not a PostgREST embedded-select, matching this repo's established convention), merge in `role` (and `joined*at` if useful) per workspace by `workspace*id`.
+
+Neither of these is a novel decision — both just apply precedent BK-87 already established and shipped a day ago. Low risk, mechanical.
+
+`queue.md` (`avalanche-2026-07`) updated — BK-89 is unblocked, proceed with Stage 1 planning.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
