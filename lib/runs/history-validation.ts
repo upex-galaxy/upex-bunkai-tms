@@ -1,3 +1,4 @@
+import { RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-constants';
 import { z } from 'zod';
 
 // BK-37 — query-string validation + cursor codec for
@@ -14,15 +15,12 @@ import { z } from 'zod';
 //            Decoded + validated server-side; a malformed cursor is a 400, never
 //            a silent full-list.
 
-// PO-confirmed page size (BK-37, 2026-07-21). Single source of truth: the
-// frontend imports THIS constant so the two layers can never drift.
-export const RUN_HISTORY_PAGE_SIZE = 50;
-
-// Mirrors the terminal statuses in the runs_status CHECK (0031_runs.sql) minus
-// 'running', and the bunkai_list_test_runs outcome backstop (0038_run_history.sql).
-export const RUN_HISTORY_OUTCOMES = ['passed', 'failed', 'aborted'] as const;
-
-export type RunHistoryOutcome = (typeof RUN_HISTORY_OUTCOMES)[number];
+// The page size and the outcome enum live in `history-constants.ts` — a
+// zod-free module the `'use client'` screen can import without dragging Zod and
+// this file's schema graph into the browser bundle. Re-exported here so every
+// server-side import of this module keeps resolving them unchanged.
+export { RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-constants';
+export type { RunHistoryOutcome } from '@lib/runs/history-constants';
 
 export const RunHistoryQuerySchema = z.object({
   outcome: z.enum(RUN_HISTORY_OUTCOMES).optional(),
