@@ -1,7 +1,8 @@
 'use client';
 
 import type { RevokeTokenTarget } from '@components/settings/RevokeTokenModal';
-import type { TokenRow } from '@lib/tokens/view-state';
+import type { TokenRow, WorkspaceOption } from '@lib/tokens/view-state';
+import { IssueTokenModal } from '@components/settings/IssueTokenModal';
 import { RevokeTokenModal } from '@components/settings/RevokeTokenModal';
 import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
@@ -9,30 +10,29 @@ import { Card, CardContent, CardHeader } from '@components/ui/card';
 import { formatExpiryCell, formatWorkspaceCell } from '@lib/tokens/format';
 import { resolveTokensViewState } from '@lib/tokens/view-state';
 import { cn } from '@lib/utils';
-import { KeyRound, RefreshCw } from 'lucide-react';
+import { KeyRound, Plus, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface TokensListProps {
   tokens: TokenRow[]
+  workspaces: WorkspaceOption[]
   error?: boolean
 }
 
 const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto] items-center gap-4';
 
-// Settings > Tokens list + revoke flow (BK-88 Slice A — AC5, AC6, AC7, AC8).
-// Client component: revoke is interactive (opens `RevokeTokenModal`, then
-// `router.refresh()`s on success) and the error state's Retry button needs
-// the same interactivity. All Supabase I/O happens in the caller's own async
-// server component (`settings/tokens/page.tsx`'s `TokensSection`) -- this
-// component only renders whatever it is handed (TD7 isolation).
-//
-// Issuance (AC1-AC4) is Slice B's `IssueTokenModal` -- this slice's header
-// has no "New token" button and the empty state has no issuance CTA, since
-// neither can open a modal that doesn't exist yet (Step 6 scope split).
-export function TokensList({ tokens, error = false }: TokensListProps) {
+// Settings > Tokens list + revoke + issue flow (BK-88 Slice A+B — AC1-AC8).
+// Client component: revoke and issuance are both interactive (open their own
+// modal, then `router.refresh()`s on success) and the error state's Retry
+// button needs the same interactivity. All Supabase I/O happens in the
+// caller's own async server component (`settings/tokens/page.tsx`'s
+// `TokensSection`) -- this component only renders whatever it is handed
+// (TD7 isolation).
+export function TokensList({ tokens, workspaces, error = false }: TokensListProps) {
   const router = useRouter();
   const [revokeTarget, setRevokeTarget] = useState<RevokeTokenTarget | null>(null);
+  const [issueOpen, setIssueOpen] = useState(false);
   const state = resolveTokensViewState({ error, rowCount: tokens.length });
   const activeCount = tokens.filter(t => t.revokedAt === null).length;
 
@@ -42,12 +42,23 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
         <CardHeader className="flex-row items-center gap-3 border-b border-stroke-1 p-4">
           <h2 id="settings-tokens-heading" className="text-sm font-semibold text-fg-0">Your tokens</h2>
           {state === 'list' && (
-            <Badge variant="secondary" className="ml-auto">
+            <Badge variant="secondary">
               {activeCount}
               {' '}
               active
             </Badge>
           )}
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="ml-auto"
+            data-testid="issue-token-open"
+            onClick={() => setIssueOpen(true)}
+          >
+            <Plus size={13} />
+            New token
+          </Button>
         </CardHeader>
 
         {state === 'error' && (
@@ -78,6 +89,17 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
             <p className="text-sm text-fg-2">
               Tokens let the Bunkai CLI and your CI act as you without your password. Issue one, store the secret in your CI vault, and revoke it any time.
             </p>
+            <div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                data-testid="tokens-empty-issue"
+                onClick={() => setIssueOpen(true)}
+              >
+                Issue your first token
+              </Button>
+            </div>
           </CardContent>
         )}
 
@@ -205,6 +227,7 @@ export function TokensList({ tokens, error = false }: TokensListProps) {
       </Card>
 
       <RevokeTokenModal token={revokeTarget} onClose={() => setRevokeTarget(null)} />
+      <IssueTokenModal open={issueOpen} onClose={() => setIssueOpen(false)} workspaces={workspaces} />
     </>
   );
 }
