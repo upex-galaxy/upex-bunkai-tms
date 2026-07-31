@@ -54,6 +54,8 @@ import '../app/api/v1/workspaces/[id]/invites/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/invites/[inviteId]/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/membership/route.openapi';
+
 import '../app/api/v1/workspaces/[id]/projects/route.openapi';
 
 import '../app/api/v1/projects/[id]/modules/route.openapi';
