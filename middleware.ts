@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Exported (not just module-private) so middleware.test.ts can assert the
 // gate directly, without spinning up a NextRequest/NextResponse round-trip.
-export const PROTECTED_PREFIXES = ['/projects', '/onboarding', '/settings'];
+export const PROTECTED_PREFIXES = ['/projects', '/onboarding', '/settings', '/activity'];
 const PUBLIC_PREFIXES = ['/login', '/auth', '/api/auth'];
 
 export function isProtected(pathname: string): boolean {
