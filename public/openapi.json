@@ -2188,7 +2188,7 @@
           },
           "next_cursor": {
             "type": ["string", "null"],
-            "description": "Opaque token for the next (older) page, or null when this is the last page. Echo it back verbatim as `?cursor=`; never construct or parse one."
+            "description": "Opaque token for the next (older) page, or null when this is the last page. base64url, so it is URL-safe as-is: echo it back verbatim as `?cursor=`; never construct or parse one."
           }
         },
         "required": ["items", "totals", "next_cursor"]
@@ -6496,7 +6496,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page."
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. The token is base64url and therefore URL-safe as issued — it needs no escaping and must not be re-encoded. A malformed token returns 400 — it never silently falls back to the first page."
           }
         ],
         "responses": {

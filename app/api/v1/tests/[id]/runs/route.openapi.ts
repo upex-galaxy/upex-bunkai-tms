@@ -19,8 +19,12 @@ const RunHistoryItemSchema = z
     environment_id: z.string().uuid(),
     environment_name: z.string().nullable().describe('The project environment the Run targeted.'),
     executor_mode: z.enum(['human', 'agent', 'ci']),
-    started_at: z.string().datetime(),
-    finished_at: z.string().datetime().nullable(),
+    // `offset: true` is required, not decorative: Postgres serialises a
+    // timestamptz as `2026-07-29T11:52:00+00:00`, and bare `.datetime()` accepts
+    // only the `Z`-suffixed form — so the published contract would reject every
+    // timestamp this endpoint actually returns.
+    started_at: z.string().datetime({ offset: true }),
+    finished_at: z.string().datetime({ offset: true }).nullable(),
   })
   .openapi('RunHistoryItem');
 
@@ -40,7 +44,7 @@ const RunHistoryPageSchema = z
     next_cursor: z
       .string()
       .nullable()
-      .describe('Opaque token for the next (older) page, or null when this is the last page. Echo it back verbatim as `?cursor=`; never construct or parse one.'),
+      .describe('Opaque token for the next (older) page, or null when this is the last page. base64url, so it is URL-safe as-is: echo it back verbatim as `?cursor=`; never construct or parse one.'),
   })
   .openapi('RunHistoryPage');
 
@@ -73,7 +77,7 @@ const CursorParam = {
   in: 'query' as const,
   required: false,
   schema: { type: 'string' as const },
-  description: 'Opaque page token taken verbatim from the previous response\'s `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page.',
+  description: 'Opaque page token taken verbatim from the previous response\'s `next_cursor`. The token is base64url and therefore URL-safe as issued — it needs no escaping and must not be re-encoded. A malformed token returns 400 — it never silently falls back to the first page.',
 };
 
 registry.registerPath({

@@ -59,6 +59,24 @@ describe('mapRunRpcError', () => {
     expect(err.details).toEqual({ reason: 'no_executable_steps' });
   });
 
+  test('45208 → validation_failed 422 (run_outcome_invalid)', () => {
+    const err = capture({ code: '45208', message: 'run_outcome_invalid' });
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.message).toBe('The outcome filter must be one of passed, failed, or aborted.');
+    expect(err.details).toEqual({ reason: 'run_outcome_invalid' });
+  });
+
+  test('45209 → bad_request 400 with the route-level cursor copy (run_cursor_invalid)', () => {
+    const err = capture({ code: '45209', message: 'run_cursor_invalid' });
+    expect(err.code).toBe('bad_request');
+    expect(err.status).toBe(400);
+    // Byte-identical to the route's own malformed-cursor rejection: one cursor
+    // contract, one answer, whichever layer catches it.
+    expect(err.message).toBe('The cursor is not a valid page token.');
+    expect(err.details).toEqual({ reason: 'run_cursor_invalid' });
+  });
+
   test('unknown SQLSTATE → internal_error 500 passing the message through', () => {
     const err = capture({ code: '99999', message: 'boom' });
     expect(err.code).toBe('internal_error');
