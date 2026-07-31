@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-06-24T17:55:38.100Z`
+> Generated: `2026-07-31T05:16:38.301Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -265,26 +265,22 @@ Skills indexed: 40
 **Purpose**: End-to-end Git operator for any branching strategy.
 
 **Compact Rules**:
-- "I want to start work on UPEX-123" → branch creation
-- "commit and push", "subir cambios", "push to main" → commit + push flow
-- "abrí un PR contra staging" → PR creation
-- "tengo conflictos al hacer pull" → conflict resolution
-- "este PR va a quedar enorme" → chained-PR planning hand-off
-- "qué estrategia de git usamos en este repo" → strategy detection / persistence
-- "el push fue rechazado" → diagnostic + recovery flow
-- Current branch.
-- Dirty / clean working tree (staged / unstaged / untracked counts).
-- Unpushed / unpulled commits (ahead / behind upstream).
-- Upstream status (no upstream, up-to-date, diverged).
-- Remote name(s) — most repos have one (`origin`); some have a fork + upstream.
-- **`git_strategy:` block in `.agents/project.yaml`** — read it. If `git_strategy.strategy` is non-null (one of the seven slugs), it + `git_strategy.branches` (production / integration / ephemeral_pattern) + `git_strategy.decisions` (promote_method / feature_merge / hotfix_policy) ARE the persisted decision — use them. Each `git_strategy.decisions.*` field whose value is NOT `n/a`/empty means Strategy Setup SKIPS that question on re-run (idempotent — idempotency is keyed off the `git_strategy.decisions.*` fields, not markers). **Inherited-template guard:** the boilerplate ships the block FILLED (`strategy: solo-main`) and a scaffolded project INHERITS it verbatim (the scaffolder only patches `project.project_name` / `project.project_key`). So a non-null `git_strategy.strategy` is only authoritative when the project is actually onboarded. Read `project.project_name` in the SAME file: if `git_strategy.strategy` is non-null BUT `project.project_name` is `null`, the block was INHERITED from the template (not chosen for THIS project) — treat the strategy as UNCONFIRMED and route to the Bootstrap trigger's inherited case (it still operates under the inherited strategy if the offer is declined). If `project.project_name` is set, the block is confirmed → use it normally, no nudge.
-- **Single-branch heuristic** — `git branch -a` shows only `main` (or `master`) and no integration branch in the remote → `solo-main`.
-- **Two-branch heuristic** — exactly `main` (or `master`) + one of `{staging, dev, develop, integration}` exists upstream → `main-integration` (record the integration branch name).
-- (truncated — read full SKILL.md for the rest)
+- **Read the repo state first (Step 1).** Never assume branch, upstream, or cleanliness.
+- **The strategy comes from `.agents/project.yaml` → `git_strategy`**, read per invocation. Never infer it from a skill example or from another project.
+- **`policy:` records INTENT, not enforcement.** Reconcile it against the host once per session at the first push / PR / merge intent (Step 1b), then stamp `meta.policy_verified` / `meta.policy_source`. Never state what the remote requires from a `declared` reading — say "declared, not verified".
+- **Query BOTH GitHub protection mechanisms.** `branches/{b}/protection` (classic) AND `rules/branches/{b}` (rulesets). A `404` on the classic endpoint does NOT mean unprotected — rulesets enforce PR requirements invisibly to it. A push that succeeds is not proof a rule is absent: admins bypass rulesets while the rule still binds everyone else.
+- **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice.
+- **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
+- **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
+- **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
+- **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
+- **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
+- **Stop at PR creation.** Never auto-merge.
+- **One commit = one responsibility**, conventional prefix, no AI-attribution lines.
 
-**Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
+**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
 
-> Source: `.claude/skills/git-flow-master/SKILL.md` · phase: `implementation` · extraction strategy: B
+> Source: `.claude/skills/git-flow-master/SKILL.md` · phase: `implementation` · extraction strategy: A
 
 ---
 
@@ -847,26 +843,22 @@ Skills indexed: 40
 **Purpose**: Orchestrates the per-story dev loop end-to-end: Planning -> Implementation -> Code Review -> Staging deploy -> (gated) Production deploy.
 
 **Compact Rules**:
-- **New user story** (most common) -> Stage 1 (story-plan) -> Stage 2 (implement-story) -> ... -> Stage 4
-- **New feature with multiple stories** -> Stage 1 macro (feature-plan) -> loop Stage 1+2 per story -> Stage 4 per merge
-- **Bug fix** -> skip to Stage 2 with `bug-fix-workflow.md` (root cause first), then Stage 3+4
-- **Resume from interruption** -> Stage 2 entry via `continue-implementation.md`
-- **PR feedback / code review iteration** -> Stage 3 with `fix-issues.md`, fix-and-iterate loop
-- **Production deploy** (separate event) -> Stage 5, only after QA green + business approval
-- `.agents/project.yaml` populated. If missing, clone the full boilerplate — foundation files ship with the repo.
-- Story exists in the issue tracker with refined Acceptance Criteria. If backlog is empty or AC are unclear, run `/product-management` first.
-- Branch policy clear and CI configured. First-time-only setup lives in `references/setup-linting.md` and `references/ci-cd-setup.md`.
-- Working directory is the **target project repo**. Sprint-dev runs there, not in the boilerplate.
-- `.env` populated with environment URLs and credentials. Never hardcode credentials.
-- `.agents/project.yaml` — project identity, env URLs, project key, MCP names.
-- `.agents/jira-required.yaml` — canonical slug catalog (custom fields, statuses, link types) for the active workspace.
-- `.agents/jira-fields.json` — slug → numeric custom-field-ID mapping for `{{jira.<slug>}}` resolution.
-- `.agents/jira-workflows.json` — workflow + transition catalog (resolves Ready For Dev → In Progress → In Review → Ready For QA).
-- (truncated — read full SKILL.md for the rest)
+- **Automation identity is declared, never chosen.** Log into a running app ONLY as the account named in `.agents/project.yaml` → `testing.automation_identity` (variable NAMES there, values in `.env`). Slot unset or variable missing → STOP and report; never substitute another account, query the DB for one, create one, or reuse the human's browser session. See `references/live-ui-identity.md`.
+- **Never bypass the app's own login path.** No service-role / secret / admin keys, no admin user-management APIs (list / create / mutate users), no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account — including "just to see the admin view". Surface the need as a finding instead.
+- **Session material is ephemeral.** Cookie jars, `storageState.json`, token files, `.har` captures: session scratch directory only (never the repo tree), deleted BEFORE reporting, disclosed as `secrets_materialized:` + `cleaned:` in the report. Never echo a credential into a report, plan, commit, PR body, or tracker comment.
+- **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
+- **The workload forecast gate is fail-closed.** With `risk = High`, `Chain strategy` is accepted ONLY with a verbatim `Decision trace:` citing the git-flow-master chained-PR tree answers. Missing or malformed trace is treated as `pending` and blocks Stage 2. The planner may only emit `pending` — it never picks a strategy itself.
+- **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's status today.
+- **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
+- **Plan before code.** Stage 1 always runs; even a bug fix gets a one-paragraph root-cause analysis before the diff.
+- **Verification cap=3**: lint + types + unit tests in parallel; green before any push.
+- **Atomic commits**, semantic prefixes, no AI-attribution lines, never `--no-verify`, never force-push a pushed branch, never push to `main` without explicit confirmation.
+- **Scope discipline**: touch only what the story states. No "while I'm here" refactors.
+- **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason.
 
-**Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
+**Read full SKILL.md when**: the stage you are running needs its full walkthrough, a gate fires, or the briefing tells you to load the full skill.
 
-> Source: `.claude/skills/sprint-development/SKILL.md` · phase: `implementation` · extraction strategy: B
+> Source: `.claude/skills/sprint-development/SKILL.md` · phase: `implementation` · extraction strategy: A
 
 ---
 
@@ -1048,7 +1040,7 @@ Skills indexed: 40
 - "What should I mock here?"
 - "How do I name this test?"
 - "What's the right coverage target for this module?"
-- Mid-flight from `/sprint-development` Stage 2 (Implementation) when implementing TDD-friendly code (pure functions, complex branching, bug fix reproducers)
+- Mid-flight from `/sprint-development` Stage 2 (Implementation) — MANDATORY for qualifying slices (new/modified pure-logic units: pure functions, complex branching, bug-fix reproducers) per sprint-development's Unit Test Authoring Gate; standalone/ad-hoc invocation outside a story context remains optional
 - Project has a unit test runner configured (Jest, Vitest, Mocha, or similar)
 - Test command exists in `package.json` (`bun test`, `npm test`, `vitest`, etc.)
 - For TDD: test runner supports watch mode (`--watch`)

@@ -26,6 +26,8 @@ The planner subagent emits this block as the final artifact of Stage 1, immediat
 Estimated: <X> additions + <Y> deletions = <Z> total lines
 400-line budget risk: Low | Medium | High
 Chain strategy: stacked-to-main | feature-branch-chain | size-exception | pending
+Decision trace: <verbatim tree answers + resolved leaf, or "n/a (risk not High)">
+Decided by: </git-flow-master §Chained-PR decision tree | n/a>
 Decision needed before apply: Yes | No
 ```
 
@@ -34,7 +36,21 @@ Field rules:
 - `<X>`, `<Y>`, `<Z>` are integers. `<Z> = <X> + <Y>`.
 - `risk` is exactly one of `Low`, `Medium`, `High` (see thresholds below).
 - `chain_strategy` is one of: `stacked-to-main`, `feature-branch-chain`, `size-exception`, `pending`.
-- `Decision needed before apply`: `Yes` if `risk = High` AND `chain_strategy = pending`. Otherwise `No`.
+- `Decision trace` is REQUIRED whenever `risk = High` and `chain_strategy` is not `pending`. It records the actual walk of the chained-PR decision tree: each question, the answer given, the reason for that answer, and the leaf reached. It is `n/a (risk not High)` only when `risk` is `Low` or `Medium`.
+- `Decided by` names the authority that produced the trace. For a High-risk decision that is always the `/git-flow-master` chained-PR decision tree.
+- `Decision needed before apply`: `Yes` if `risk = High` AND the decision is unresolved (see "Gate behavior"). Otherwise `No`.
+
+### Well-formed trace (example)
+
+```
+Chain strategy: feature-branch-chain
+Decision trace: Q1=No (not mechanical — new domain logic, not a rename/formatter run) ·
+                Q2=No (slice 2 cannot compile without the types introduced in slice 1) ·
+                Q3=Yes (shared schema + base client consumed by slices 2-4) → feature-branch-chain
+Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
+```
+
+A trace that merely restates the conclusion ("chose feature-branch-chain because the change is large") is **malformed**: it does not evidence a walk of the tree. So is a trace whose answers do not lead to the stated leaf. Both are treated as no trace at all.
 
 ---
 
@@ -136,13 +152,20 @@ Each `chain_strategy` value maps to a concrete PR layout. Full patterns live in 
 
 ## Gate behavior
 
-At the boundary between Stage 1 and Stage 2 the orchestrator inspects the forecast block:
+At the boundary between Stage 1 and Stage 2 the orchestrator inspects the forecast block. The gate is **fail-closed**: it opens on evidence, not on a label.
 
 1. If `risk` is `Low` or `Medium`: proceed to Stage 2 regardless of `chain_strategy`.
-2. If `risk` is `High` AND `chain_strategy` is `pending`: STOP. Surface the forecast block to the user and hand off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan). When it returns with a chosen strategy, update the forecast block in `implementation-plan.md` and proceed to Stage 2.
-3. If `risk` is `High` AND `chain_strategy` is one of the resolved values (`stacked-to-main`, `feature-branch-chain`, `size-exception`): proceed to Stage 2. Stage 3 (Code Review) and Stage 4 (Staging Deploy) follow the chosen strategy's PR layout.
+2. If `risk` is `High`, compute `resolved` as: `chain_strategy` is one of `stacked-to-main` / `feature-branch-chain` / `size-exception` **AND** `Decision trace` is present, non-empty, names the tree answers, and those answers lead to the stated leaf.
+   - **Not resolved** (either `pending`, or a strategy with a missing / empty / conclusion-only / inconsistent trace): **STOP**. Surface the forecast block to the user and hand off to `/git-flow-master` (Step 4 — chained-PR decision tree + concrete branch plan). When it returns, write BOTH the strategy and its trace into the forecast block in `implementation-plan.md`, then proceed to Stage 2.
+   - **Resolved**: proceed to Stage 2. Stage 3 (Code Review) and Stage 4 (Staging Deploy) follow the chosen strategy's PR layout.
 
-The gate is the only mechanism that can block Stage 2; it is not advisory. A `pending` strategy on a `High`-risk plan is treated as an incomplete plan.
+The gate is the only mechanism that can block Stage 2; it is not advisory. A `High`-risk plan without a resolved decision is an incomplete plan.
+
+### Why the trace exists
+
+Without it, this gate was fail-open. Its condition read "block while `chain_strategy = pending`", so any agent that wrote a plausible non-`pending` label — without ever walking the tree — disabled the gate that existed to force that decision. **Observed in production**: a planner emitted `Chain strategy: feature-branch-chain` as a guess; the gate never fired; the branch layout had to be redone by hand.
+
+Requiring a citation, and treating a missing citation as the blocking value, closes it. This is the general rule for every gate in every skill: `agentic-dev-core/references/orchestration-doctrine.md` → "Gate design — fail-closed, evidence-bearing".
 
 ---
 
@@ -168,9 +191,9 @@ When emitting the forecast block:
 2. Eyeball the size of each file's change. Don't over-engineer this — the goal is order-of-magnitude accuracy, not line-perfect prediction.
 3. Apply the multipliers, sum, multiply by 1.2.
 4. Pick a `chain_strategy`:
-   - If `Z < 200` → `pending` is fine; no decision required.
-   - If `Z` is `200 – 400` → suggest `stacked-to-main` if the work decomposes linearly; otherwise `pending`.
-   - If `Z > 400` → emit `pending` and surface the gate. Do NOT pick a strategy yourself; that is the `/git-flow-master` skill's job (Step 4).
+   - If `Z < 200` → `pending` is fine; no decision required. `Decision trace: n/a (risk not High)`.
+   - If `Z` is `200 – 400` → suggest `stacked-to-main` if the work decomposes linearly; otherwise `pending`. `Decision trace: n/a (risk not High)`.
+   - If `Z > 400` → emit `Chain strategy: pending`, leave `Decision trace:` EMPTY, and surface the gate. **Do NOT pick a strategy yourself and do NOT write a trace** — that is the `/git-flow-master` skill's job (Step 4). Writing a plausible label here is the failure this gate exists to prevent; a label without a trace is rejected anyway, so guessing only costs a round-trip.
 5. Append the block at the bottom of `implementation-plan.md` and to the orchestrator turn-summary.
 
-The planner does NOT block; it emits. The **orchestrator** enforces the gate at the Stage 2 boundary.
+The planner does NOT block; it emits. The **orchestrator** enforces the gate at the Stage 2 boundary, and only `/git-flow-master` may fill `Decision trace:` / `Decided by:`.

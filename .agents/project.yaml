@@ -33,6 +33,11 @@ issue_tracker:
 
 testing:
   default_env: local # fill per project — Default working environment — must match a key under `environments:` (e.g. staging)
+  automation_identity:
+    email_var: QA_E2E_USER_EMAIL # dedicated non-production fixture, provisioned 2026-07-30 during BK-87 (see mem: convention/qa-e2e-credentials)
+    password_var: QA_E2E_USER_PASSWORD
+    scope: dedicated-non-production-account
+    per_env: {} # same fixture works across local/staging/production (single-project Supabase tenancy for MVP)
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
@@ -43,6 +48,7 @@ testing:
 external_consumers:
   - default_env # consumed implicitly by the AI variable resolver (sets active env for {{WEB_URL}} / {{API_URL}} / ...) AND by scripts/agents-setup.ts via process.env.DEFAULT_ENV in --non-interactive mode
   - design_md_path # read by `yq '.design_md_path'` inside bash code fences of .claude/skills/{design-system/references/getdesign-matcher.md, project-bootstrap/references/frontend-setup.md}
+  - automation_identity # structured block (not a flat {{VAR}}), resolved by name per .claude/skills/sprint-development/references/live-ui-identity.md — email_var/password_var point at .env, never referenced via {{AUTOMATION_IDENTITY}} templating
 
 # Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).
 # Each environment must define ALL three keys: web_url, api_url, db_project_ref.

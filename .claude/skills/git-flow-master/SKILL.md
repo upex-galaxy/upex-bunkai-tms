@@ -41,6 +41,27 @@ If the user is asking about feature implementation, test design, product backlog
 
 ---
 
+## Compact Rules
+
+> Extracted into `.claude/skills/REGISTRY.md` and copied into subagent briefings. Rationale lives in the referenced sections.
+
+- **Read the repo state first (Step 1).** Never assume branch, upstream, or cleanliness.
+- **The strategy comes from `.agents/project.yaml` → `git_strategy`**, read per invocation. Never infer it from a skill example or from another project.
+- **`policy:` records INTENT, not enforcement.** Reconcile it against the host once per session at the first push / PR / merge intent (Step 1b), then stamp `meta.policy_verified` / `meta.policy_source`. Never state what the remote requires from a `declared` reading — say "declared, not verified".
+- **Query BOTH GitHub protection mechanisms.** `branches/{b}/protection` (classic) AND `rules/branches/{b}` (rulesets). A `404` on the classic endpoint does NOT mean unprotected — rulesets enforce PR requirements invisibly to it. A push that succeeds is not proof a rule is absent: admins bypass rulesets while the rule still binds everyone else.
+- **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice.
+- **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
+- **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
+- **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
+- **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
+- **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
+- **Stop at PR creation.** Never auto-merge.
+- **One commit = one responsibility**, conventional prefix, no AI-attribution lines.
+
+**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
+
+---
+
 ## The six operations
 
 Every git-flow-master invocation maps to one (or a sequence) of these six operations. Operation choice is driven by the user's request; strategy resolution shapes how each operation runs.
@@ -82,6 +103,56 @@ Summarise to the user:
 - Remote name(s) — most repos have one (`origin`); some have a fork + upstream.
 
 This summary is cheap, prevents 90% of mistakes, and is the input to every subsequent decision.
+
+### Step 1b — Reconcile the declared policy against the host (once per session)
+
+`git_strategy.policy.*` in `.agents/project.yaml` records what the team DECIDED. The hosting platform records what is actually ENFORCED. These drift: someone tightens protection in the UI, or the block was filled before the remote existed. Acting on the declared value alone produces surprises at the worst moment — a merge that stalls waiting for an approval nobody expected, or a "protected" branch that was never protected at all.
+
+Run this ONCE per session, at the first push / PR / merge intent (not on read-only operations), and cache the result for the rest of the session.
+
+GitHub has **two independent** protection mechanisms, and querying only one produces a false "unprotected" reading. Check BOTH, per protected branch named in `git_strategy.branches` / `protected`:
+
+```bash
+# (1) Classic branch protection — legacy, per-branch
+gh api "repos/{owner}/{repo}/branches/{branch}/protection" 2>/dev/null
+
+# (2) Rulesets — the modern mechanism. Returns the rules that actually apply
+#     to this branch, whatever ruleset they came from. NEVER skip this one.
+gh api "repos/{owner}/{repo}/rules/branches/{branch}" 2>/dev/null
+```
+
+**A `404` from (1) does NOT mean the branch is unprotected.** A repository configured with rulesets returns `404` on the classic endpoint while enforcing PR requirements, required approvals, signed commits, and non-fast-forward bans through (2). Stopping at (1) therefore produces a confident "unprotected" reading on a branch that requires a reviewed pull request — a wrong `verified` stamp, which is worse than never verifying.
+
+Both outcomes are normal and neither is the default: plenty of projects run with no protection at all, plenty enforce rulesets, some still use classic protection. Report what THIS repository returns; never carry an expectation over from another project.
+
+Read from (1): required approving review count, whether reviews are required, required status checks, `enforce_admins`, restrictions. Read from (2): each entry's `type` (`pull_request`, `required_signatures`, `non_fast_forward`, `deletion`, `creation`, `required_status_checks`) and, for `pull_request`, its `parameters.required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, `allowed_merge_methods`. Compare the union against `require_pr_reviews`, `direct_push_to_protected`, `admin_bypass`, and the `protected:` list.
+
+**A push that succeeds is not evidence of an absent rule.** Org owners and users covered by a ruleset bypass list push through while the rule still applies to everyone else. When a push prints a remote message such as `Changes must be made through a pull request`, the operation was a BYPASS: report it as drift, never as permission.
+
+**Host adapters.** The check is host-shaped, not GitHub-only. Other hosts expose the same facts elsewhere (GitLab protected-branches API, Bitbucket branch restrictions). When no host CLI is available, or a call returns `404` (nothing configured through THAT mechanism) versus `403` (insufficient token scope), record which case applies and continue — never block a git operation because verification was impossible. Record `verified` only when every mechanism the host offers was actually queried.
+
+**On drift, report — never auto-correct:**
+
+```
+Branch-protection drift on `{branch}`:
+  require_pr_reviews:        declared 0   ·  enforced 1
+  direct_push_to_protected:  declared allowed  ·  enforced blocked (protection active)
+Options: (a) update .agents/project.yaml to match the host, (b) change the host
+configuration, (c) accept the divergence and record WHY.
+```
+
+**Option (c) needs a durable home, or it re-litigates itself every session.** Record an accepted divergence in the project's own `CLAUDE.md` → `## Git Strategy` section — per-project, never synced from any template — stating what diverges and why it is intended. A later session reads it and stops re-raising the same drift. Legitimate reasons exist and are project-specific: a template / boilerplate repository whose maintainer is the only committer and for whom the review requirement is ceremony; a repo whose ruleset is inherited from an org policy nobody local can change. What is NOT legitimate is inferring the exception: the skill never decides on its own that a bypass is fine, and never treats "the push went through" as the reason. The user states the exception once, in writing, and it holds until they change it.
+
+Editing `.agents/project.yaml` requires the user's choice, exactly like Strategy Setup. Once verified, stamp the outcome so later runs know how much the block can be trusted:
+
+```yaml
+git_strategy:
+  meta:
+    policy_verified: YYYY-MM-DD # date of the last successful host reconciliation
+    policy_source: verified # verified | declared (declared = never reconciled against the host)
+```
+
+**Consumption rule.** Any statement about what the remote requires (for example "this PR needs 1 approval") is only made from a `verified` reading. With `policy_source: declared`, say so: _"declared 0 required approvals, not verified against the host"_. Per the value-provenance rule, an unverified field is a claim about intent, not about reality.
 
 ---
 
@@ -283,6 +354,8 @@ gh pr create \
   [--draft]
 ```
 
+**Surface the review expectation with its provenance.** After creating the PR, state how many approvals stand between it and a merge, and where that number came from: from the Step 1b reconciliation (`policy_source: verified`) say _"the host requires N approving review(s) on `{base}`"_; with `policy_source: declared` say _"declared `require_pr_reviews: N` in `.agents/project.yaml`, not verified against the host"_. A silent assumption here is what turns a "just merge it" into a mid-merge surprise.
+
 **Stop at PR creation.** Merging is the user's explicit next step. Never auto-merge. Surface: _"Review the PR. Once approved, merge via the GitHub UI or run `gh pr merge {number} --squash --delete-branch`."_
 
 ### 3.5 Conflict resolution
@@ -381,6 +454,20 @@ There are three options:
 3. **`size-exception`** — for mechanical diffs (mass renames, formatter sweeps, generated code, vendor updates). Requires explicit user override and a `Why size-exception:` line in the PR body.
 
 Walk the chained-PR decision tree inline (see `references/branching-strategies.md` § Chained-PR decision tree). The decision picks one of: `single-pr`, `stacked-to-main`, `feature-branch-chain`, `size-exception`. Once decided, execute the resulting branch plan from this skill.
+
+### Return contract — the answer travels with its trace
+
+Callers gate on this decision (`/sprint-development` blocks Stage 2 on it), and their gate is fail-closed: a bare strategy label is REJECTED. So the decision is never returned alone. Always return:
+
+```
+Chain strategy: <stacked-to-main | feature-branch-chain | size-exception | single-pr>
+Decision trace: Q1=<Yes|No> (<one-clause reason>) · Q2=<Yes|No> (<reason>) · Q3=<Yes|No> (<reason>) → <leaf>
+Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
+```
+
+Rules: answer the questions in order and stop at the leaf (a `Yes` at Q1 means Q2/Q3 are never asked — write `Q2=n/a · Q3=n/a`). Each answer carries the concrete reason from THIS change, not a restatement of the question. The answers must actually lead to the stated leaf. A trace that only restates the conclusion is malformed and the caller will treat it as no decision.
+
+**This skill is the only authority that may fill those lines.** A planner or implementer that writes a strategy label without walking the tree has produced a guess, not a decision (see `agentic-dev-core/references/orchestration-doctrine.md` → "Gate design").
 
 The branch plan that comes out of the decision is the **contract** for execution. If the implementation diverges (the actual diff is larger than the estimate), re-invoke the decision — do not silently up-budget the existing strategy.
 

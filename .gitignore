@@ -135,3 +135,10 @@ dbhub.toml
 
 # ----- 2026-06-24 (sync) -----
 .template/claude-md.upstream.sha
+
+# ----- 2026-07-31 (sync) -----
+*storage-state*.json
+*storageState*.json
+*.cookies
+cookies.txt
+*.har

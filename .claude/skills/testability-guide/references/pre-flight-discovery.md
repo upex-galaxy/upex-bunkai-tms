@@ -62,7 +62,7 @@ The `/qa` page is generated against THREE+ wildly different realities (observed 
 | **dbhub.toml** | repo root `dbhub.toml`, `docs/mcp/dbhub.example.toml` | The DB MCP config. Note `${VAR}` interpolation — values come from `.env`, file is committed. |
 | **Env-var strategy** | are MCP configs using `${VAR}` / `{env:VAR}` / `$VAR` expansion, or literal values? | Strategy B (env-expansion + commit) is the canonical pattern. Drives the EnvSetup section. |
 | **Env activation mechanism** | `package.json` scripts `claude`/`opencode` (dotenv-cli wrapper), `.envrc` (direnv), note in `.env.example` | Tells the page HOW testers load `.env` before launching the agent (wrapper cross-platform vs direnv Mac/Linux). |
-| **`.env` / `.env.example` slots** | enumerate keys (NAMES ONLY, never values) | Cross-reference what the credentials artifact references by name: `TEST_ENV`, `LOCAL_USER_EMAIL/PASSWORD`, `STAGING_USER_EMAIL/PASSWORD`, `API_BASE_URL`, `OPENAPI_SPEC_PATH`, `API_TOKEN`, `POSTMAN_API_KEY`, `DBHUB_TYPE/HOST/PORT/DATABASE/USER/PASSWORD`, `RESEND_API_KEY`, etc. Surface gaps. |
+| **`.env` / `.env.example` slots** | enumerate keys (NAMES ONLY, never values) | Cross-reference what the credentials artifact references by name: `TEST_ENV`, the automation identity declared in `.agents/project.yaml` → `testing.automation_identity` (default names `QA_E2E_USER_EMAIL/PASSWORD`), `LOCAL_USER_EMAIL/PASSWORD`, `STAGING_USER_EMAIL/PASSWORD`, `API_BASE_URL`, `OPENAPI_SPEC_PATH`, `API_TOKEN`, `POSTMAN_API_KEY`, `DBHUB_TYPE/HOST/PORT/DATABASE/USER/PASSWORD`, `RESEND_API_KEY`, etc. Surface gaps. |
 
 ### Repos, project config & test infra
 

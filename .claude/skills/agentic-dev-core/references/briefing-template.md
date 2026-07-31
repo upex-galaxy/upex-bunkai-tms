@@ -10,8 +10,17 @@
 3. **Project Standards (auto-resolved)** — REQUIRED. Compact rules of skills relevant to this dispatch. Pulled from `.claude/skills/REGISTRY.md` (built once per session by `bun scripts/build-skill-registry.ts`). The subagent treats this section as authoritative for the listed conventions and does NOT re-read the full SKILL.md unless explicitly told to. Protocol: `agentic-dev-core/references/skill-resolver.md`.
 4. **Skills to load** — skill triggers (e.g. `/acli`, `/git-flow-master`, `/playwright-cli`) the subagent must invoke before issuing tool calls. The orchestrator never inlines tool syntax — that lives in the owning skill.
 5. **Exact instructions** — numbered steps. No ambiguity. Each step names the tool / skill action.
-6. **Report format** — what the subagent returns to the orchestrator. Either a JSON object with named fields, or a bullet list with explicit headings. Avoid free-form prose.
-7. **Rules** — constraints (relevant Critical Rules from `CLAUDE.md`, project-specific guardrails, Git rules, env-selection rules).
+6. **Report format** — what the subagent returns to the orchestrator. Either a JSON object with named fields, or a bullet list with explicit headings. Avoid free-form prose. **Always include the two secret-hygiene fields** (`secrets_materialized`, `cleaned`) — see below.
+7. **Rules** — constraints (relevant Critical Rules from `CLAUDE.md`, project-specific guardrails, Git rules, env-selection rules). **This component is the ONLY place a binding prohibition reaches the executor** — a rule that lives only in a `references/*.md` the subagent does not open is not a constraint. See `orchestration-doctrine.md` → "Rule reachability".
+
+### Mandatory report fields (every dispatch)
+
+```
+secrets_materialized: none | <artifact kinds written to disk>
+cleaned: yes | no (<reason>)
+```
+
+Per the ephemeral-artifact contract in `orchestration-doctrine.md`. Any dispatch that logs into a running app, captures traffic, or holds a token MUST also carry the contract itself in component 7. `cleaned: no` is a BLOCKER the orchestrator surfaces to the user.
 
 ## Filled template (skeleton)
 
@@ -44,10 +53,13 @@ Exact instructions:
 Report format:
   - <field>: <type>
   - <field>: <type>
+  - secrets_materialized: none | <artifact kinds>
+  - cleaned: yes | no (<reason>)
 
 Rules:
   - <Critical Rule reference>
   - <project guardrail>
+  - <every binding prohibition this dispatch could trip, restated verbatim>
 ```
 
 > The `Project Standards (auto-resolved)` section is built by the orchestrator from `.claude/skills/REGISTRY.md` (see `agentic-dev-core/references/skill-resolver.md` for the protocol). The subagent treats those bullets as authoritative for the listed conventions and skips re-reading full SKILL.md files unless the briefing explicitly says otherwise.

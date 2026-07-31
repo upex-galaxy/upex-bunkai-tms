@@ -4,43 +4,49 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "f8b89797d051a4d509c2aa8d68f813ee143b4dc9",
+    "claude": "5a18a188593ce189900e3c286f0813428b71f087",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
-    "agents": "f8b89797d051a4d509c2aa8d68f813ee143b4dc9",
+    "agents": "5a18a188593ce189900e3c286f0813428b71f087",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "f8b89797d051a4d509c2aa8d68f813ee143b4dc9",
+    "scripts": "5a18a188593ce189900e3c286f0813428b71f087",
     "docs": "f07612e4531bc6a48d8cd631c27887659732dd20",
     "context": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
     "context-engineering": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
-    "husky": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
+    "husky": "5a18a188593ce189900e3c286f0813428b71f087",
     "tooling": "15e3f146fa35430dace91063493f73763bc0af10",
-    "env-template": "4ecd68f8c39b73840ec798b14d48c8de9638ab3e"
+    "env-template": "5a18a188593ce189900e3c286f0813428b71f087"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "536d1abb9440ba8e7b0d61832ed2fdebea9745a5",
+      "lastSyncedSha": "99c0a09342133fc47d676969a49a43c99a7c2723",
       "appendedLines": [
         "dbhub.toml",
         ".claude/scheduled_tasks.lock",
-        ".template/claude-md.upstream.sha"
+        ".template/claude-md.upstream.sha",
+        "*storage-state*.json",
+        "*storageState*.json",
+        "*.cookies",
+        "cookies.txt",
+        "*.har"
       ]
     },
     ".prettierignore": {
-      "lastSyncedSha": "14f83e941a8d7d4efb7c4463590bfefd87c1c10a",
+      "lastSyncedSha": "37d13088a5a564a32a57e7108a10c8d75ac42731",
       "appendedLines": [
         ".claude/worktrees/",
         "api/openapi*",
         "api/.openapi-config.json",
         ".claude/settings.local.json",
-        ".playwright-mcp/"
+        ".playwright-mcp/",
+        "packages/decks/"
       ]
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-06-24T17:55:38.037Z",
+  "lastSyncedAt": "2026-07-31T00:25:18.817Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

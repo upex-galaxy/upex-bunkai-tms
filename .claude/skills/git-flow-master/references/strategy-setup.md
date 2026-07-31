@@ -51,9 +51,10 @@ Run after the strategy slug is resolved (Step 2). Ask the questions in order. Fo
 - **Three sub-decisions** (present the default first for each):
   1. **`direct_push_to_protected`** — how the Push operation (SKILL.md 3.3) treats a direct push to a protected branch: `confirm` (default — always ask) / `forbidden` (refuse the direct push, route through a PR) / `allowed` (proceed after one confirmation). For `solo-main` the sensible default is `allowed`; for every multi-branch / PR-gated strategy the default is `forbidden`.
   2. **`admin_bypass`** — `false` (default) / `true`. A team POLICY (intent) declaring whether a repo admin may bypass the gate for urgent changes. It is NOT enforcement — real capability still depends on the GitHub user's role. When `true`, the skill may OFFER a bypass but only after re-confirming at runtime that (a) the operator is actually an admin (ASK — the skill can't know the GitHub role) and (b) the specific irreversible action. When `false`, the skill NEVER offers a bypass.
-  3. **`require_pr_reviews`** — `null` (default — unspecified) / `0` / `N`. Minimum approvals before a merge to a protected branch. Informational (the skill does not enforce GitHub branch protection); recorded so the PR operation can surface the expectation.
-- **Persisted as**: `git_strategy.policy.direct_push_to_protected` + `git_strategy.policy.admin_bypass` + `git_strategy.policy.require_pr_reviews`.
+  3. **`require_pr_reviews`** — `null` (default — unspecified) / `0` / `N`. Minimum approvals before a merge to a protected branch. This records the team's EXPECTATION; the skill does not configure host branch protection. What the host actually enforces is discovered by the Step 1b reconciliation (SKILL.md), which stamps `meta.policy_source: verified` when it succeeds.
+- **Persisted as**: `git_strategy.policy.direct_push_to_protected` + `git_strategy.policy.admin_bypass` + `git_strategy.policy.require_pr_reviews`, plus `git_strategy.meta.policy_verified` / `meta.policy_source` (written by Step 1b, not by this questionnaire — Setup always leaves `policy_source: declared`).
 - **Drives**: the strictness of the Push gate (SKILL.md 3.3) and whether an admin bypass may ever be offered.
+- **Drift warning to surface at the end of Q4**: these three answers describe intent. Until Step 1b reconciles them against the host, never tell the user what the remote requires — a `require_pr_reviews: 0` sitting next to a remote that demands an approval is the drift that ambushes a merge mid-flight.
 - **Per-strategy defaults**: see `references/branching-strategies.md` → "git_strategy field rules (per strategy)" (each strategy's `policy:` example).
 
 > The Q1-Q3 defaults (ff-only / merge-commit / branch-off-prod-backmerge) are the `main-integration` worked-example choices. They are DEFAULTS. Always present them as overridable, never auto-select without showing the alternatives. The Q4 defaults (`confirm` / `false` / `null`, with `allowed` for `solo-main`) are likewise overridable.
@@ -132,7 +133,7 @@ Once branches are materialized and decisions captured, persist in this order:
    - `policy:` — `direct_push_to_protected` / `admin_bypass` / `require_pr_reviews`, captured from Q4 (applies to every strategy).
    - `branch_prefixes:` — `precedence` + naming patterns (carry the defaults unless the user overrides).
    - `description:` — the one-paragraph human summary of the flow for this repo.
-   - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema.
+   - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema. Leave `meta.policy_verified: null` and `meta.policy_source: declared` — only the Step 1b host reconciliation may flip them.
    Per-strategy field values: `references/branching-strategies.md` → "git_strategy field rules (per strategy)".
 2. **Set up local tracking** for any newly-ensured branch (`git branch --set-upstream-to=origin/<branch> <branch>` or `git checkout -b <branch> origin/<branch>`), so later operations don't re-detect.
 
@@ -155,10 +156,11 @@ Decisions captured:
   - feature_merge:  <value | n/a>
   - hotfix_policy:  <value | n/a>
 
-Policy captured:
+Policy captured (INTENT — not yet verified against the host):
   - direct_push_to_protected: <forbidden | confirm | allowed>
   - admin_bypass: <true | false>
   - require_pr_reviews: <null | 0 | N>
+  - policy_source: declared  (Step 1b reconciles this against the host on the first push / PR intent)
 
 Definition: .agents/project.yaml (git_strategy block, <N> fields populated)
 

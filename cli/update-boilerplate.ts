@@ -421,6 +421,120 @@ async function upsertGitStrategyBlock(
   sink.step('Revisa la estrategia o ejecuta "set up our git strategy" en Claude (git-flow-master) para definir la tuya.');
 }
 
+// --- AUTOMATION_IDENTITY UPSERT (afterApply hook) ---
+//
+// `testing.automation_identity` declares WHICH account browser / HTTP automation
+// logs in as during live-UI validation (variable NAMES only — values stay in
+// `.env`). It was added to the boilerplate after some projects were scaffolded,
+// and `.agents/project.yaml` is bootstrapOnly, so those projects would stay
+// without the slot — and a missing slot is exactly what makes a stage subagent
+// improvise a login. This hook back-fills it ONCE.
+//
+// Unlike `git_strategy` (a top-level block appended at EOF), this one is NESTED
+// under `testing:`, so it is spliced in at the end of that block. Still additive:
+// it only INSERTS lines, never edits, reorders, or deletes an existing one.
+
+/**
+ * Extract the `automation_identity:` sub-block (plus its contiguous comment
+ * header) from an upstream `.agents/project.yaml`. Returns the block verbatim
+ * with its original indentation, or null when the key is absent upstream.
+ */
+function extractUpstreamAutomationIdentityBlock(upstreamYaml: string): string | null {
+  const lines = upstreamYaml.split('\n');
+  const keyIdx = lines.findIndex(l => /^\s+automation_identity:/.test(l));
+  if (keyIdx === -1) { return null; }
+
+  const indent = (lines[keyIdx].match(/^\s*/) ?? [''])[0].length;
+
+  // Walk backwards over the contiguous comment header at the SAME indent.
+  let start = keyIdx;
+  while (start - 1 >= 0 && new RegExp(`^\\s{${indent}}#`).test(lines[start - 1])) { start -= 1; }
+
+  // Walk forwards while lines are indented deeper than the key itself.
+  let end = keyIdx;
+  for (let i = keyIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim() === '') { break; }
+    const lineIndent = (line.match(/^\s*/) ?? [''])[0].length;
+    if (lineIndent > indent) { end = i; continue; }
+    break;
+  }
+
+  return lines.slice(start, end + 1).join('\n').trimEnd();
+}
+
+/**
+ * Back-fill a missing `testing.automation_identity` block into the consumer's
+ * `.agents/project.yaml`. Additive splice at the end of the `testing:` block.
+ */
+async function upsertAutomationIdentityBlock(
+  templateDir: string,
+  sink: ReportSink,
+  nonInteractive: boolean,
+): Promise<void> {
+  const consumerYaml = path.join(process.cwd(), '.agents', 'project.yaml');
+  if (!fs.existsSync(consumerYaml)) { return; }
+
+  let consumerContent: string;
+  try { consumerContent = fs.readFileSync(consumerYaml, 'utf8'); }
+  catch { return; }
+
+  // Already present → NO-OP. Never touch a slot the project already filled.
+  if (/^\s+automation_identity:/m.test(consumerContent)) { return; }
+
+  const consumerLines = consumerContent.split('\n');
+  const testingIdx = consumerLines.findIndex(l => l.startsWith('testing:'));
+  if (testingIdx === -1) {
+    sink.warn('Tu `.agents/project.yaml` no tiene sección `testing:` — no se puede añadir `automation_identity` automáticamente.');
+    return;
+  }
+
+  // Last line of the `testing:` block (contiguous indented lines).
+  let insertAt = testingIdx;
+  for (let i = testingIdx + 1; i < consumerLines.length; i += 1) {
+    if (consumerLines[i].trim() === '') { continue; }
+    if (/^\s/.test(consumerLines[i])) { insertAt = i; continue; }
+    break;
+  }
+
+  const upstreamYaml = path.join(templateDir, '.agents', 'project.yaml');
+  if (!fs.existsSync(upstreamYaml)) { return; }
+
+  let block: string | null;
+  try { block = extractUpstreamAutomationIdentityBlock(fs.readFileSync(upstreamYaml, 'utf8')); }
+  catch { return; }
+  if (!block) { return; }
+
+  if (nonInteractive) {
+    sink.warn('Tu `.agents/project.yaml` no declara `testing.automation_identity` (identidad de automatización para live-UI).');
+    sink.step('Modo --auto: ejecuta el updater de forma interactiva para agregarlo (o añádelo manualmente).');
+    return;
+  }
+
+  const proceed = await sink.confirm(
+    'Tu `.agents/project.yaml` no declara `testing.automation_identity` (la cuenta con la que la automatización hace login en live-UI). ¿Agregar el slot ahora? (solo inserta líneas nuevas — tus valores existentes no se tocan)',
+    false,
+  );
+  if (!proceed) {
+    sink.step('Omitido. Sin este slot, /sprint-development se detendrá antes de cualquier validación live-UI.');
+    return;
+  }
+
+  const next = [
+    ...consumerLines.slice(0, insertAt + 1),
+    ...block.split('\n'),
+    ...consumerLines.slice(insertAt + 1),
+  ].join('\n');
+
+  try { fs.writeFileSync(consumerYaml, next); }
+  catch (err) {
+    sink.warn(`No se pudo agregar \`automation_identity\`: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
+  sink.step('Slot `testing.automation_identity` agregado a `.agents/project.yaml`.');
+  sink.step('Rellena `email_var` / `password_var` / `scope` con una cuenta DEDICADA de no-producción y define esas variables en `.env`.');
+}
+
 // --- CLAUDE.md UPSTREAM-DRIFT ADVISORY (afterApply hook) ---
 //
 // Root `CLAUDE.md` is a per-project file: heavily customized (project identity,
@@ -749,6 +863,7 @@ async function main(): Promise<void> {
         }
         await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
         await upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto);
+        await upsertAutomationIdentityBlock(TEMP_DIR, sink, parsed.auto);
         await detectClaudeMdDrift(TEMP_DIR, TEMPLATE_REPO, sink);
       },
     },

@@ -292,6 +292,37 @@ export const VAR_MANIFEST: VarSpec[] = [
     obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`. Defaults to http://localhost:3000 locally.',
     note: 'Base URL for auth redirects, OAuth callbacks, email links. Referenced in code; previously untracked by installer AND doctor.',
   },
+  // --- Automation identity (live-UI validation + authenticated HTTP probes) ---
+  // The account browser/HTTP automation logs in as while validating a story
+  // against the running app. Declared BY NAME in `.agents/project.yaml` →
+  // `testing.automation_identity`; the contract + the prohibition list live in
+  // `.claude/skills/sprint-development/references/live-ui-identity.md`.
+  //
+  // These two names are the RECOMMENDED DEFAULTS, tracked here so `vars:check` /
+  // doctor surface a missing automation identity BEFORE a sprint instead of a
+  // subagent improvising a login mid-run. A project may rename them — if it does,
+  // rename them in this manifest too, so detection keeps working.
+  //
+  // `required: false` because non-UI projects never drive a browser. Local only:
+  // never pushed to Vercel (it is a test identity, not app-runtime config).
+  {
+    name: 'QA_E2E_USER_EMAIL',
+    destinations: ['local'],
+    secret: false,
+    required: false,
+    critical: false,
+    obtainHint: 'Provision a DEDICATED non-production account (no real data, minimum privileges), then declare its var name in `.agents/project.yaml` → testing.automation_identity.email_var. Never a real user, admin, or production account.',
+    note: 'Email of the automation identity used by live-UI validation / authenticated HTTP probes. Local only.',
+  },
+  {
+    name: 'QA_E2E_USER_PASSWORD',
+    destinations: ['local'],
+    secret: true,
+    required: false,
+    critical: false,
+    obtainHint: 'Password of the dedicated automation account above. Read at runtime from .env by the automation script; never inlined in code, plans, or PR bodies.',
+    note: 'Password of the automation identity. Local only, secret.',
+  },
   // --- n8n automation (non-critical, local only, set when you adopt n8n) ---
   {
     name: 'N8N_API_URL',

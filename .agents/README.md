@@ -50,12 +50,35 @@ The persisted source of truth for **this repository's** git workflow lives as th
 | `decisions.hotfix_policy` | enum | `branch-off-prod-backmerge` / `via-integration` / `none` / `n/a`. |
 | `policy.direct_push_to_protected` | enum | `forbidden` / `confirm` / `allowed` — direct pushes to protected branches. |
 | `policy.admin_bypass` | bool | Team policy: may a repo admin bypass PR/protection for urgent changes? Intent only — real capability depends on the GitHub user's role; the skill re-confirms at runtime. |
-| `policy.require_pr_reviews` | int\|null | Min approvals before merge to a protected branch (informational). |
+| `policy.require_pr_reviews` | int\|null | Min approvals before merge to a protected branch. Records the team's EXPECTATION — what the host enforces is discovered by the Step 1b reconciliation. |
 | `branch_prefixes.precedence` | list | Order for choosing a prefix when several apply. |
 | `branch_prefixes.naming_with_key` | string | Branch-name template with an issue key (e.g. `feat/UPEX-123-slug`). |
 | `branch_prefixes.naming_without_key` | string | Branch-name template without a key. |
 | `meta.setup_version` | int | Strategy Setup schema version. |
 | `meta.created` | string | Date stamped by Strategy Setup. |
+| `meta.policy_verified` | string\|null | Date of the last reconciliation of `policy:` against the host (`git-flow-master` Step 1b). `null` = never verified. |
+| `meta.policy_source` | enum | `verified` / `declared`. With `declared`, the skill never states what the remote requires — it says "declared, not verified". |
+
+**Policy drift.** `policy:` is intent; the hosting platform is enforcement. They drift (someone tightens protection in the UI, or the block was filled before the remote existed). `git-flow-master` reconciles them once per session at the first push / PR / merge intent, reports any mismatch with both values, and lets YOU decide whether to align the file, change the host, or accept the divergence. It never edits the block on its own.
+
+## `testing.automation_identity` (block inside `project.yaml`)
+
+Declares WHICH account browser and HTTP automation logs in as when validating a story against the running app (`/sprint-development` live-UI validation and Tier 0 probes). It holds **variable NAMES only** — values live in `.env`, which is gitignored; `project.yaml` is committed.
+
+| Field | Type | Description |
+|---|---|---|
+| `email_var` | string\|null | Name of the env var holding the account email (e.g. `QA_E2E_USER_EMAIL`). The name is the project's choice. |
+| `password_var` | string\|null | Name of the env var holding its password. |
+| `scope` | enum\|null | `dedicated-non-production-account` (default, preferred) / `shared-demo-account` (only when the account's access is intentionally public). |
+| `per_env` | map | Optional per-environment overrides, keyed by an `environments:` key. Empty when one identity serves every env. |
+
+**Why it exists.** "Use credentials from `.env`" says where values live, not which identity is legitimate. Without a declared slot, an agent asked to validate a UI story will improvise — and the shortest path to a session is usually a privileged one (a service-role key, an admin user-management API, a generated login link), which means acting as, or against, a real account.
+
+**Rules.** Fail-closed: slot unset, variable missing from `.env`, or `scope` unset → `/sprint-development` STOPS before any authenticated action and reports what to provision. Automation always authenticates through the app's OWN login path; privileged bypasses and impersonation are prohibited outright. Full contract, prohibition list, and dispatch requirements: `.claude/skills/sprint-development/references/live-ui-identity.md`.
+
+**Detectability.** Register the chosen variable names in `cli/lib/variables-manifest.ts` so `bun run vars:env:check` and the doctor flag a missing identity before a sprint starts rather than mid-run. The boilerplate ships `QA_E2E_USER_EMAIL` / `QA_E2E_USER_PASSWORD` as defaults; rename in both places if your project uses different names.
+
+Like `git_strategy`, this block is read directly by skills and is **not** a `{{VAR}}` source — it is listed in `external_consumers` so `vars:check` skips it.
 
 ## Variable syntax conventions
 

@@ -303,6 +303,18 @@ Q3: Does the change have shared scaffolding (new types, new base classes, new sc
          A monolithic non-mechanical change without shared scaffolding is a planning smell.
 ```
 
+**Answering it is the deliverable, not the label.** Callers gate on this decision and reject a bare strategy name. Record each answer with the concrete reason from this change, stop at the leaf, and return the three-line block defined in `SKILL.md` Step 4 → "Return contract":
+
+```
+Chain strategy: feature-branch-chain
+Decision trace: Q1=No (new domain logic, not a rename or formatter run) ·
+                Q2=No (slice 2 cannot compile without the types added in slice 1) ·
+                Q3=Yes (shared schema + base client consumed by slices 2-4) → feature-branch-chain
+Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
+```
+
+A `Yes` at Q1 ends the walk: write `Q2=n/a · Q3=n/a`. Answers that do not lead to the stated leaf, or a "trace" that only repeats the conclusion, are malformed and count as no decision.
+
 **Strategy outputs**:
 
 - `stacked-to-main` — 2 to 4 PRs, each branched off the strategy's default base. Each PR is self-contained; base always works after each merge.
@@ -334,6 +346,8 @@ The chosen plan is a **contract** for execution. If the actual diff exceeds the 
 Strategy Setup (SKILL.md 3.6) no longer renders a prose runbook into `CLAUDE.md` — it **populates the `git_strategy:` block in `.agents/project.yaml`** (in place; preserve the rest of the file), the single source of truth. This section is the authoritative reference for WHAT field VALUES each strategy writes into that block. The detailed operational HOW (release commands, hotfix commands, invariant prose) is NOT persisted anywhere — it lives in this catalogue (the per-strategy sections above), read on demand.
 
 > All field paths below are nested under `git_strategy` in `.agents/project.yaml` (e.g. `git_strategy.decisions.promote_method`). The per-strategy yaml examples show the `git_strategy:` block in isolation; write them in place inside the existing file.
+
+> ⚠️ **EXAMPLES — not any project's values.** Every yaml block in this section is an ILLUSTRATION of what a strategy typically writes. Real projects routinely differ, `policy:` most of all (a repo can perfectly well run `solo-main` with `admin_bypass: true` while the example below shows `false`). Never answer a question about how a project is configured from this page: open that project's `.agents/project.yaml` and cite it. Per the value-provenance rule in `agentic-dev-core/references/orchestration-doctrine.md`, quoting an example as project state is a defect, not a shortcut.
 
 The conceptual blocks that the old runbook rendered now map to `git_strategy` fields:
 
