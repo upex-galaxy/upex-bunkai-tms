@@ -6,6 +6,7 @@ import {
   ACTIVE_WORKSPACE_COOKIE_DEFAULTS,
 } from '@lib/api/workspace-cookie';
 import { z } from 'zod';
+import { buildActiveWorkspaceResponse } from './response';
 
 // POST /api/v1/me/active-workspace — rotate the caller's active workspace.
 // We DO NOT touch the Supabase JWT; we set an httpOnly cookie `bk_active_ws`
@@ -40,8 +41,6 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('forbidden', 'You are not a member of that workspace.');
   }
 
-  // BK-6 AC1 contract: the switch response carries the new workspace details
-  // (id, slug, name, role) so the UI does not need a follow-up GET /me.
   const { data: membership, error: membershipError } = await db
     .from('workspace_members')
     .select('role')
@@ -53,14 +52,12 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('internal_error', membershipError.message);
   }
 
-  const response = jsonResponse({
-    ok: true,
-    active_workspace_id: workspace_id,
+  const response = jsonResponse(buildActiveWorkspaceResponse({
     id: workspace.id,
     slug: workspace.slug,
     name: workspace.name,
     role: membership?.role ?? null,
-  });
+  }));
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace_id, ACTIVE_WORKSPACE_COOKIE_DEFAULTS);
   return response;
 }, { auth: 'required' });
