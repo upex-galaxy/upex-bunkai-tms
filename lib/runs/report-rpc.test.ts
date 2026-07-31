@@ -190,6 +190,45 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
     await db.from('tests').delete().eq('id', fixture.testId);
   });
 
+  describe('BK-38-ATC-06 — Project with zero Runs (first-use empty state), DB-integration layer', () => {
+    // The UI-layer branch (`resolveReportViewState`'s no-runs case) is already
+    // covered in `lib/runs/report-view.test.ts` ("zero rows, no filters -> the
+    // no-runs empty state (ATC-06)"). This is its DB-integration sibling: a
+    // Project that genuinely has NO Runs at all must resolve, by construction,
+    // to the SAME zero-row shape that Project's `resolveReportViewState`
+    // caller expects — `items: []`, zeroed `totals`, and no `next_cursor`. A
+    // dedicated, run-free Project (not the shared `fixture.projectId`, which
+    // gains rows in the sibling describe blocks below) keeps this case exact
+    // regardless of execution order.
+    let zeroRunsProjectId: string | null = null;
+
+    beforeAll(async () => {
+      if (!fixture) { return; }
+      const db = service();
+      const { data: project, error } = await db
+        .from('projects')
+        .insert({ workspace_id: fixture.workspaceId, slug: `${PREFIX}-zero-runs-project`, name: `${PREFIX} zero runs project` })
+        .select('id')
+        .single();
+      if (error) { throw error; }
+      zeroRunsProjectId = project.id as string;
+    });
+
+    afterAll(async () => {
+      if (!zeroRunsProjectId) { return; }
+      const db = service();
+      await db.from('projects').delete().eq('id', zeroRunsProjectId);
+    });
+
+    it('returns an empty page with zeroed totals and no next_cursor', async () => {
+      if (!fixture || !zeroRunsProjectId) { return warn(); }
+      const page = await reportRuns(zeroRunsProjectId, fixture.actorUserId);
+      expect(page.items).toEqual([]);
+      expect(page.totals).toEqual({ passed: 0, failed: 0 });
+      expect(page.next_cursor).toBeNull();
+    });
+  });
+
   describe('Technical Decision D2 — totals recompute from the filtered set', () => {
     // run1 passed/module-a/human, run2 failed/module-a/human,
     // run3 passed/module-b/agent, run4 aborted/module-b/agent,
