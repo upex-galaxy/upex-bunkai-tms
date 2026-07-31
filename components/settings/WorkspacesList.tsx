@@ -88,7 +88,7 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
               <div
                 key={ws.id}
                 data-testid={`workspace-row-${ws.slug}`}
-                className={enableLeaveAction
+                className={enableLeaveAction && workspaces.length > 1
                   ? 'grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-4 border-b border-stroke-1 px-4 py-3 last:border-b-0'
                   : 'grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-4 border-b border-stroke-1 px-4 py-3 last:border-b-0'}
               >

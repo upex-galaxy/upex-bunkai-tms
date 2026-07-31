@@ -7,7 +7,7 @@ import { isLeaveConfirmEnabled } from '@lib/account/leave-workspace';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface LeaveWorkspaceTarget {
@@ -46,6 +46,7 @@ export function LeaveWorkspaceModal({ workspace, onClose, onLeft }: LeaveWorkspa
   const [typedValue, setTypedValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const open = workspace !== null;
 
   const requestClose = () => {
@@ -56,6 +57,16 @@ export function LeaveWorkspaceModal({ workspace, onClose, onLeft }: LeaveWorkspa
   };
 
   useModalDismiss(open, requestClose, containerRef);
+
+  // Moves focus into the dialog on open, matching the mockup's `lvInput.focus()`
+  // (settings-workspaces.html:929) -- without this, `useModalDismiss`'s Tab-trap
+  // never engages (it only wraps focus that is already inside `containerRef`),
+  // so keyboard focus could walk straight past the overlay into the page.
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    }
+  }, [open, workspace?.id]);
 
   if (!workspace) {
     return null;
@@ -146,6 +157,7 @@ export function LeaveWorkspaceModal({ workspace, onClose, onLeft }: LeaveWorkspa
         <div className="mt-4 flex flex-col gap-1">
           <Label htmlFor="leave-workspace-input">Type the workspace&apos;s exact name to confirm:</Label>
           <Input
+            ref={inputRef}
             id="leave-workspace-input"
             data-testid="leave-workspace-input"
             type="text"
