@@ -104,5 +104,42 @@ With the above, all 3 ***NEEDS PO/DEV CONFIRMATION*** scenarios in the `acceptan
 
 ---
 
+### Ely - 7/30/2026, 1:28:59 PM
+
+Mockup — Settings — Workspaces (leave flow + sole-owner guard). Source: .context/designs/bunkai-test-management-tool/bk-85-account-settings/settings-workspaces.html · spec: master-design-plan §4.10
+
+
+
+---
+
+### Ely - 7/31/2026, 1:07:35 PM
+
+## Open questions ratified before Stage 1 planning (2026-07-31)
+
+The 3 shift-left questions (role-played PO/Dev/Design answers from 2026-06-10, explicitly disclaimed as practice-exercise recommendations, never formally accepted) were confirmed by the product owner before implementation:
+
+1. ***Multi-owner gate****: count-based ("are you the LAST remaining owner"), not identity-based. Any member with `role='owner'` can leave as long as at least one other active owner remains. No ownership-transfer sub-flow in this story's scope. ****New Scenario C confirmed as written.***
+2. ***Leaving your only workspace****: routes to `/onboarding` (reuses the existing no-workspace flow), does not block. ****New Scenario A confirmed as written.***
+3. ***Workspace-scoped PATs on leave***: auto-revoked in the same transaction as the membership delete (`UPDATE access*tokens SET revoked*at = now() WHERE user*id = auth.uid() AND workspace*id = <left*ws*id> AND revoked_at IS NULL`). Split out as its own assertion, distinct from New Scenario B's "no cascade on authored content" guarantee.
+
+All 3 `NEEDS PO/DEV CONFIRMATION` flags in `acceptance_criteria` are now resolved. Proceeding to implementation.
+
+---
+
+### Ely - 7/31/2026, 1:11:15 PM
+
+## Correction to the previous comment — mockup takes precedence (2026-07-31)
+
+The shipped mockup (`settings-workspaces.html`, delivered 2026-07-30 — more recent than the 2026-06-10 role-played comment) directly contradicts 2 of the answers just posted:
+
+1. ***Leaving your only workspace****: the mockup's `state:single-workspace` reference panel explicitly says **"The Leave action doesn't render — leaving your only workspace would strand the account."** This is a ****block**** (hide the action entirely), not a redirect to `/onboarding`. Per Critical Rule #15 (the mockup is the design contract; the more recent, shipped artifact outranks an earlier, explicitly-disclaimed practice-exercise comment), ****following the mockup: block, not redirect.*** New Scenario A is superseded by this — leaving is simply not offered when it's the user's only membership.
+2. ***Confirmation UX****: the mockup uses a ****type-to-confirm*** pattern (the user must type the exact workspace name to enable the "Leave" button), not the simple confirm/cancel dialog the role-played "Design" answer recommended. Following the mockup: type-to-confirm, matching its tested implementation exactly.
+
+The multi-owner gate (count-based) and PAT auto-revoke decisions from the previous comment stand unchanged — the mockup doesn't address either (no co-owner state or PAT-cascade behavior is depicted).
+
+Net effect: implementation follows the shipped mockup wherever it speaks, and the earlier role-played comment only where the mockup is silent.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
