@@ -1,11 +1,14 @@
 'use client';
 
-import type { RunHistoryOutcome } from '@lib/runs/history-validation';
+import type { RunHistoryOutcome } from '@lib/runs/history-constants';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { formatRunDuration } from '@lib/runs/duration';
-import { RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-validation';
+// Constants come from the zod-free module, NOT `history-validation`: that file
+// evaluates `z.object(...)` at its top level, so importing two literals from it
+// would drag Zod and the whole query-schema graph into this client bundle.
+import { RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-constants';
 import {
   capitalizeOutcome,
   resolveRunHistoryViewState,
@@ -133,6 +136,12 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
   const [totals, setTotals] = useState<RunHistoryTotals>(initialPage.totals);
   const [cursor, setCursor] = useState<string | null>(initialPage.next_cursor);
   const [error, setError] = useState<string | null>(initialError);
+  // A failed APPEND is tracked apart from `error` deliberately. `error` drives
+  // the whole-view error block, which REPLACES the table; using it for a failed
+  // "load older" would throw away rows already loaded and paid for — 150 rows
+  // deep, one flaky request would leave Retry able to restore only page 1. This
+  // one surfaces inline at the load-older control and leaves the rows mounted.
+  const [appendError, setAppendError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
@@ -149,28 +158,50 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
   }, []);
   useEffect(() => () => inFlight.current?.abort(), []);
 
+  // The foot line doubles as the focus target when the load-older button
+  // unmounts under the pointer/keyboard that just activated it (see the effect
+  // below). It is also the polite live region that narrates the row count.
+  const footRef = useRef<HTMLDivElement | null>(null);
+  const focusFootAfterAppend = useRef(false);
+
   // Replace the whole list with page 1 of `next` — the filter changed, or the
-  // user retried after an error.
-  const loadFirstPage = useCallback(async (next: RunHistoryOutcome | null, signal: AbortSignal) => {
+  // user retried after an error. Takes the CONTROLLER, not just its signal: the
+  // `finally` needs identity to tell "I am still the current request" from "a
+  // newer request has already taken over".
+  const loadFirstPage = useCallback(async (next: RunHistoryOutcome | null, controller: AbortController) => {
+    const { signal } = controller;
     setLoading(true);
     setError(null);
+    // A first page supersedes any append in flight — its rows are about to be
+    // replaced wholesale, so neither that request's spinner nor its failure
+    // message survives the transition. Clearing here (rather than in the
+    // aborted request's own `finally`) is what stops a filter click during a
+    // load-older from stranding the button on a disabled "Loading…" forever.
+    setLoadingOlder(false);
+    setAppendError(null);
     try {
       const result = await fetchRunHistory(testId, next, null, signal);
       if (signal.aborted) { return; }
       if (!result.ok) {
         setError(result.message);
-        setLoading(false);
         return;
       }
       setItems(result.page.items);
       setTotals(result.page.totals);
       setCursor(result.page.next_cursor);
-      setLoading(false);
     }
     catch (err) {
       if (signal.aborted) { return; }
       setError(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
-      setLoading(false);
+    }
+    finally {
+      // Clear the flag ONLY while this is still the current request. A newer
+      // one has already set it for itself; letting a superseded request clear
+      // it would paint "idle" over work still in flight — which is how the
+      // filter strip used to freeze for the rest of the session.
+      if (inFlight.current === controller) {
+        setLoading(false);
+      }
     }
   }, [testId]);
 
@@ -184,16 +215,43 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
       return;
     }
     const controller = startRequest();
-    void loadFirstPage(outcome, controller.signal);
+    void loadFirstPage(outcome, controller);
     return () => controller.abort();
   }, [outcome, loadFirstPage, startRequest]);
+
+  // Move focus off the load-older button when the FINAL append unmounts it.
+  // Activating a control that then disappears drops focus to <body>, which
+  // strands a keyboard user at the top of the document with no idea the rows
+  // arrived. The foot line is the natural landing spot: it is the element whose
+  // text just changed ("runs 1–60 of 60") and it is adjacent to the new rows.
+  useEffect(() => {
+    if (focusFootAfterAppend.current && cursor === null) {
+      focusFootAfterAppend.current = false;
+      footRef.current?.focus();
+    }
+  }, [cursor]);
 
   // Single-select: clicking the active outcome clears it. The URL is the source
   // of truth for deep links, so it moves with the filter (replace, not push —
   // filtering is not a navigation step to walk back through).
+  //
+  // COST, ACCEPTED: `router.replace` makes the server re-render this route, so a
+  // filter change costs one extra history query whose result is deliberately
+  // DISCARDED — the client ignores later `initialPage` props because it may be
+  // holding several appended pages that the server's page 1 would silently drop.
+  // The output is correct either way; only the request is redundant. Collapsing
+  // it (a `?outcome=` read the client trusts, or a shallow URL update that skips
+  // the RSC round trip) is a follow-up, not this story.
   const applyOutcome = (next: RunHistoryOutcome | null) => {
     if (next === outcome) { return; }
     setOutcome(next);
+    // Drop the keyset position AT THE MOMENT the outcome changes. The cursor
+    // belongs to the OLD outcome's result set; pairing it with the NEW one would
+    // append rows of a different outcome underneath a pressed chip — "Failed"
+    // selected, passed runs listed. Nulling it here also hides the load-older
+    // control for the whole transition, closing the window between this click
+    // and the effect that starts the refetch.
+    setCursor(null);
     const params = new URLSearchParams();
     if (next !== null) { params.set('outcome', next); }
     const query = params.toString();
@@ -205,38 +263,69 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
   // scopes the page to it, which is what makes "filter stays applied across
   // load-more" true rather than a client-side illusion.
   const loadOlder = async () => {
-    if (cursor === null || loadingOlder) { return; }
-    const { signal } = startRequest();
+    // Gated on BOTH flags. `loading` matters because a filter change is a whole
+    // -list replacement: an append starting mid-change would pair the OLD cursor
+    // with the NEW outcome and abort the first-page request on its way past.
+    // `cursor === null` (set by applyOutcome) closes the same gap from the other
+    // side, for the frames before `loading` has been set.
+    if (cursor === null || loading || loadingOlder) { return; }
+    const controller = startRequest();
+    const { signal } = controller;
     setLoadingOlder(true);
+    setAppendError(null);
     try {
       const result = await fetchRunHistory(testId, outcome, cursor, signal);
       if (signal.aborted) { return; }
       if (!result.ok) {
-        setError(result.message);
-        setLoadingOlder(false);
+        // Inline, NOT the whole-view error: the rows already on screen stay.
+        setAppendError(result.message);
         return;
+      }
+      // Last page — the button the user just activated is about to unmount, so
+      // flag the focus move for the effect that runs once the cursor clears.
+      if (result.page.next_cursor === null) {
+        focusFootAfterAppend.current = true;
       }
       setItems(current => [...current, ...result.page.items]);
       setTotals(result.page.totals);
       setCursor(result.page.next_cursor);
-      setLoadingOlder(false);
     }
     catch (err) {
       if (signal.aborted) { return; }
-      setError(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
-      setLoadingOlder(false);
+      setAppendError(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
+    }
+    finally {
+      // Same identity guard as loadFirstPage, and the reason the button can no
+      // longer strand itself on a disabled "Loading…": the flag is cleared on
+      // EVERY exit path, including the aborted one.
+      if (inFlight.current === controller) {
+        setLoadingOlder(false);
+      }
     }
   };
 
   const retry = () => {
-    void loadFirstPage(outcome, startRequest().signal);
+    void loadFirstPage(outcome, startRequest());
   };
 
+  // `error` is the FIRST-PAGE error only. An append failure is `appendError` and
+  // is deliberately invisible to the resolver — it must not collapse the view.
   const state = resolveRunHistoryViewState({ error: error !== null, rowCount: items.length, outcome });
   const allTimeTotal = totals.passed + totals.failed + totals.aborted;
   // With a filter on, the scoped all-time count for that outcome is known and is
   // the honest denominator; unfiltered, it is every terminal Run of the Test.
   const scopedTotal = outcome === null ? allTimeTotal : totals[outcome];
+
+  // While a filter change is in flight the table still holds the PREVIOUS
+  // filter's rows, so a foot line reading "runs 1–50 of 50 · Failed only" would
+  // be a plain untruth on a slow connection. Say what is actually happening
+  // instead — the polite live region then announces the transition too.
+  const scopeLabel = outcome === null ? 'newest first' : `${capitalizeOutcome(outcome)} only`;
+  const loadingLabel = outcome === null ? 'Loading all runs…' : `Loading ${capitalizeOutcome(outcome)} runs…`;
+  const footText = loading ? loadingLabel : `runs 1–${items.length} of ${scopedTotal} · ${scopeLabel}`;
+
+  const olderIdleLabel = appendError === null ? 'Load older runs' : 'Try again';
+  const olderLabel = loadingOlder ? 'Loading…' : olderIdleLabel;
 
   return (
     <div data-testid="run-history-view" className="flex flex-1 flex-col overflow-hidden">
@@ -278,15 +367,21 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                 data-testid="run-history-filter"
                 className="inline-flex overflow-hidden rounded-2 border border-stroke-2 bg-surface-2"
               >
+                {/* Deliberately NEVER disabled, including while a filter change
+                    is in flight. Disabling the whole group disables the chip
+                    that currently HOLDS focus, and a disabled element cannot
+                    keep it — a keyboard user is dumped to <body> the moment
+                    they press one. `startRequest()` already supersedes the
+                    in-flight query, so a rapid second click is safe: the first
+                    response is aborted and never lands. */}
                 {RUN_HISTORY_OUTCOMES.map(option => (
                   <button
                     key={option}
                     type="button"
                     data-testid={`run-history-filter-${option}`}
                     aria-pressed={outcome === option}
-                    disabled={loading}
                     onClick={() => applyOutcome(outcome === option ? null : option)}
-                    className={`inline-flex h-7 items-center gap-1.5 border-r border-stroke-1 px-2.5 text-sm font-medium tracking-[0.02em] transition-colors duration-token ease-token last:border-r-0 disabled:pointer-events-none disabled:opacity-50 ${
+                    className={`inline-flex h-7 items-center gap-1.5 border-r border-stroke-1 px-2.5 text-sm font-medium tracking-[0.02em] transition-colors duration-token ease-token last:border-r-0 ${
                       outcome === option
                         ? 'bg-surface-5 text-fg-0'
                         : 'text-fg-2 hover:bg-surface-4 hover:text-fg-1'
@@ -397,7 +492,16 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                         ))}
                       </tr>
                     </thead>
-                    <tbody data-testid="run-history-rows">
+                    {/* Dimmed and marked busy while a filter change is in
+                        flight: these are still the PREVIOUS filter's rows, and
+                        showing them at full strength under a freshly pressed
+                        chip reads as "here are your Failed runs" when they are
+                        not. Assistive tech gets the same signal from aria-busy. */}
+                    <tbody
+                      data-testid="run-history-rows"
+                      aria-busy={loading}
+                      className={`transition-opacity duration-token ease-token ${loading ? 'opacity-40' : ''}`}
+                    >
                       {items.map(run => (
                         <RunRow key={run.id} run={run} />
                       ))}
@@ -405,28 +509,47 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                   </table>
                 </div>
 
-                {/* Shown only while another page exists. The cursor carries the
-                    keyset position; the outcome travels with it. */}
-                {cursor !== null && (
-                  <div className="flex justify-center border-t border-stroke-2 bg-surface-1 px-3 py-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      data-testid="run-history-load-older"
-                      disabled={loadingOlder}
-                      onClick={() => { void loadOlder(); }}
-                    >
-                      <ArrowDown size={12} />
-                      {loadingOlder ? 'Loading…' : 'Load older runs'}
-                    </Button>
+                {/* Shown while another page exists, or while the last attempt to
+                    fetch one failed. The cursor carries the keyset position; the
+                    outcome travels with it. A failed append reports HERE, next
+                    to the control that caused it, and retries the APPEND — the
+                    rows above are never unmounted for it. */}
+                {(cursor !== null || appendError !== null) && (
+                  <div className="flex flex-col items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2">
+                    {appendError !== null && (
+                      <p data-testid="run-history-append-error" className="text-center text-sm text-fg-2">
+                        {appendError}
+                      </p>
+                    )}
+                    {cursor !== null && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        data-testid="run-history-load-older"
+                        disabled={loading || loadingOlder}
+                        onClick={() => { void loadOlder(); }}
+                      >
+                        {appendError === null ? <ArrowDown size={12} /> : <RefreshCw size={13} />}
+                        {olderLabel}
+                      </Button>
+                    )}
                   </div>
                 )}
 
+                {/* Polite live region: its text is already the running tally
+                    ("runs 1–60 of 60 · Failed only"), which is exactly what a
+                    screen-reader user needs after an append or a filter change —
+                    nothing else on this screen announces that the list moved.
+                    `tabIndex={-1}` makes it the focus target when the last
+                    "Load older runs" click unmounts the button itself. */}
                 <div
+                  ref={footRef}
+                  tabIndex={-1}
+                  aria-live="polite"
                   data-testid="run-history-foot"
-                  className="flex items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2 font-mono text-xs text-fg-3"
+                  className="flex items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2 font-mono text-xs text-fg-3 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-accent"
                 >
-                  {`runs 1–${items.length} of ${scopedTotal} · ${outcome === null ? 'newest first' : `${capitalizeOutcome(outcome)} only`}`}
+                  {footText}
                 </div>
               </>
             )}
