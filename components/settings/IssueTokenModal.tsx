@@ -12,7 +12,7 @@ import { formatExpiryChoiceDate } from '@lib/tokens/format';
 import { canSubmitIssueForm } from '@lib/tokens/issue-form';
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export interface IssueTokenModalProps {
@@ -69,6 +69,7 @@ const DEFAULT_EXPIRY_CHOICE = '90';
 export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<AccessTokenScope[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
@@ -77,7 +78,19 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
   const [copied, setCopied] = useState(false);
   const [issued, setIssued] = useState<IssuedToken | null>(null);
 
+  const clearCopyResetTimeout = () => {
+    if (copyResetTimeoutRef.current) {
+      clearTimeout(copyResetTimeoutRef.current);
+      copyResetTimeoutRef.current = null;
+    }
+  };
+
+  // Unmount-only cleanup so a pending "Copied" -> "Copy" revert never fires
+  // `setCopied` after this component is gone (React dev-mode warning).
+  useEffect(() => clearCopyResetTimeout, []);
+
   const resetForm = () => {
+    clearCopyResetTimeout();
     setName('');
     setScopes([]);
     setWorkspaceId('');
@@ -112,7 +125,11 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
 
     try {
       const body: { name: string, scopes: AccessTokenScope[], workspace_id?: string, expires_in_days?: number } = {
-        name: name.trim(),
+        // Mirrors the mockup's `issue-create` handler (settings-tokens.html)
+        // -- the input stays raw as the user types it; only the submitted
+        // value is normalized to the machine-name convention shown in the
+        // hint below the field.
+        name: name.trim().toLowerCase().replace(/\s+/g, '-'),
         scopes,
       };
       if (workspaceId) {
@@ -155,7 +172,14 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
       return;
     }
     await copySecret(issued.token);
+    clearCopyResetTimeout();
     setCopied(true);
+    // Mirrors the mockup's `wireCopy()` (settings-tokens.html) reverting the
+    // button back to its original label after 2s.
+    copyResetTimeoutRef.current = setTimeout(() => {
+      copyResetTimeoutRef.current = null;
+      setCopied(false);
+    }, 2000);
   };
 
   const handleDone = () => {
@@ -204,6 +228,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                     onChange={e => setName(e.target.value)}
                     disabled={submitting}
                   />
+                  <p className="text-xs text-fg-3">Lowercase and hyphens. Names the machine that will use it.</p>
                 </div>
 
                 <fieldset className="mb-3 flex flex-col gap-2 border-0 p-0">
