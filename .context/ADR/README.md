@@ -70,6 +70,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0007](./ADR-0007-password-auth-and-email-otp.md) | Password-Primary Auth & Mandatory Email-OTP Verification | Proposed | — | — |
 | [ADR-0008](./ADR-0008-oauth-csrf-state-strategy.md) | OAuth CSRF state strategy and sign-in flow | Accepted | — | — |
 | [ADR-0009](./ADR-0009-atc-edit-propagation-contract.md) | ATC edit propagation contract: no layer-policy gate, immutable anchors, reference-based cascade | Proposed | — | — |
+| [ADR-0010](./ADR-0010-realtime-transport-supabase-realtime.md) | Real-time transport for live run/step updates: Supabase Realtime | Proposed | — | — |
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 
