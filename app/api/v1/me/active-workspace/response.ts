@@ -4,10 +4,11 @@
 // BK-118: extracted out of route.ts into its own module (no imports) so the
 // response shape — and specifically the absence of the legacy `ok` /
 // `active_workspace_id` keys the BK-83 fix left behind — is unit-testable in
-// isolation. route.ts transitively imports `server-only` (via
-// @lib/api/handler -> lib/api/principal.ts), which bun:test cannot resolve
-// outside the Next.js build pipeline, so this function must live outside
-// that import chain for route.test.ts to import it directly.
+// isolation. Testing route.ts's exported POST handler directly would also
+// require mocking the withApiHandler/getAuth/Supabase query chain, which is
+// disproportionate for a shape-only regression test; this module stays
+// dependency-free so route.test.ts can assert the contract without that
+// mocking overhead.
 export interface ActiveWorkspaceResponse {
   id: string
   slug: string

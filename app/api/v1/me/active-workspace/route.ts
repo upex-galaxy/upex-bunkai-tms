@@ -1,5 +1,4 @@
 import type { NextRequest } from 'next/server';
-import { buildActiveWorkspaceResponse } from '@app/api/v1/me/active-workspace/response';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import {
@@ -7,6 +6,7 @@ import {
   ACTIVE_WORKSPACE_COOKIE_DEFAULTS,
 } from '@lib/api/workspace-cookie';
 import { z } from 'zod';
+import { buildActiveWorkspaceResponse } from './response';
 
 // POST /api/v1/me/active-workspace — rotate the caller's active workspace.
 // We DO NOT touch the Supabase JWT; we set an httpOnly cookie `bk_active_ws`
