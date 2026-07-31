@@ -218,7 +218,11 @@ export function ActivityView({ initialPage, initialError = null }: ActivityViewP
                         ))}
                       </tr>
                     </thead>
-                    <tbody data-testid="activity-rows">
+                    {/* aria-busy while an append is in flight — the rows
+                        already on screen are still valid, this just signals
+                        assistive tech that more are on the way (mirrors
+                        RunHistoryView's tbody aria-busy={loading}). */}
+                    <tbody data-testid="activity-rows" aria-busy={loadingOlder}>
                       {items.map(item => (
                         <ActivityRow key={item.id} item={item} />
                       ))}

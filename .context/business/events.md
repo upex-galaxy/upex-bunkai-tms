@@ -147,7 +147,7 @@ Covers the remaining write sites not already documented above: two `test.*` even
 
 `payload`: `{ "verdict": "passed"\|"failed", "skipped_steps": n }` (`bunkai_finish_run`, `0037_run_finish.sql`).
 
-> **Footnote — `run_step.marked` (BK-35, anticipated):** BK-35 ("mark run step") adds a per-step marking RPC on a concurrent branch not yet merged into `staging` as of this writing. It is not yet a confirmed write site and is therefore NOT documented here and NOT in BK-49's MVP allowlist (`ACTIVITY_ALLOWED_ACTIONS` / `bunkai_list_activity`'s `p_actions` default). Once BK-35 merges and actually writes `activity_log` rows, this doc and the allowlist need an explicit decision on whether `run_step.marked` belongs in the Activity Stream feed — it is excluded automatically by the allowlist mechanism until that decision is made, not silently dropped.
+> **Footnote — `run_step.marked` (BK-35):** BK-35 ("mark run step", migration `0042_run_step_mark.sql`) merged into `staging` before BK-49's own DB migration was authored — `run_step.marked` is a confirmed, live write site, the 13th distinct `(entity_type, action)` pair, not an anticipated one. It is deliberately excluded from BK-49's MVP allowlist (`ACTIVITY_ALLOWED_ACTIONS` / `bunkai_list_activity`'s `p_actions` default) on a scope-volume basis, not a not-yet-merged one: it fires once per step per run and would drown every other event type in the feed within a day of use (ratified 2026-07-31, see the story's `comments.md`). Not documented in the table above for the same reason — it is out of MVP scope, not undiscovered.
 
 ## Consumers
 
