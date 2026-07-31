@@ -1,7 +1,7 @@
-import { formatExpiryCell, formatWorkspaceCell } from '@lib/tokens/format';
+import { formatExpiryCell, formatExpiryChoiceDate, formatWorkspaceCell } from '@lib/tokens/format';
 import { describe, expect, test } from 'bun:test';
 
-// BK-88 Slice A — token list display formatting (PO/UX Decision 3).
+// BK-88 Slice A/B — token list + issuance-form display formatting (PO/UX Decision 3).
 
 describe('formatExpiryCell', () => {
   const now = new Date('2026-08-01T00:00:00.000Z');
@@ -55,5 +55,24 @@ describe('formatWorkspaceCell', () => {
 
   test('workspace id with no resolved label falls back to the id itself', () => {
     expect(formatWorkspaceCell('ws-missing', null)).toEqual({ label: 'ws-missing', subLabel: 'ws-missing' });
+  });
+});
+
+describe('formatExpiryChoiceDate', () => {
+  // Mockup fixture date (settings-tokens.html:1043-1046) -- "today" there is
+  // 2026-07-30, and the three fixed choices resolve to the exact dates shown
+  // next to each <option>.
+  const now = new Date('2026-07-30T00:00:00.000Z');
+
+  test('30 days from now', () => {
+    expect(formatExpiryChoiceDate(30, now)).toBe('2026-08-29');
+  });
+
+  test('90 days from now', () => {
+    expect(formatExpiryChoiceDate(90, now)).toBe('2026-10-28');
+  });
+
+  test('365 days from now', () => {
+    expect(formatExpiryChoiceDate(365, now)).toBe('2027-07-30');
   });
 });
