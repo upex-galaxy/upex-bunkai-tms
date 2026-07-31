@@ -71,6 +71,7 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0008](./ADR-0008-oauth-csrf-state-strategy.md) | OAuth CSRF state strategy and sign-in flow | Accepted | — | — |
 | [ADR-0009](./ADR-0009-atc-edit-propagation-contract.md) | ATC edit propagation contract: no layer-policy gate, immutable anchors, reference-based cascade | Proposed | — | — |
 | [ADR-0010](./ADR-0010-realtime-transport-supabase-realtime.md) | Real-time transport for live run/step updates: Supabase Realtime | Proposed | — | — |
+| [ADR-0011](./ADR-0011-activity-feed-actor-resolution.md) | Activity Feed Actor Resolution: peer-visible `auth.users` lookup, scoped by co-membership | Proposed | — | — |
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 
