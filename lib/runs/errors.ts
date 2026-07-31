@@ -74,6 +74,18 @@ export function mapRunRpcError(error: { code?: string, message: string }): never
       throw new ApiError('validation_failed', 'The outcome filter must be one of passed, failed, or aborted.', {
         details: { reason: 'run_outcome_invalid' },
       });
+    case '45209':
+      // BK-37 — RPC backstop for a HALF-supplied keyset cursor (exactly one of
+      // started_at / id). The keyset position is the pair, so one half is not a
+      // position; the RPC raises rather than silently serving the first page.
+      // The route decodes the opaque token BEFORE the RPC runs and answers 400
+      // `bad_request` for anything undecodable, so an API caller never reaches
+      // here; this only fires for a direct (non-HTTP) RPC caller. Same code and
+      // same copy as that route-level rejection — one cursor contract, one
+      // answer, wherever the bad cursor is caught.
+      throw new ApiError('bad_request', 'The cursor is not a valid page token.', {
+        details: { reason: 'run_cursor_invalid' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }
