@@ -1,4 +1,3 @@
-import { mintUserJwt } from '@lib/api/user-jwt';
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 
@@ -7,9 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // Mirrors `lib/runs/history-isolation.test.ts`'s structure (BK-37), scaled
 // from Test-scoped to Project-scoped since BK-38 filters by `project_id`, and
 // adds the actor-bind spoof case `history-isolation.test.ts` never covers (it
-// requires a REAL JWT-authenticated client, not just the service-role one —
-// same `mintUserJwt` + impersonating-client pattern as
-// `lib/tests/rls-isolation.test.ts` / `lib/api/rls-parity.test.ts`).
+// requires a REAL authenticated client, not just the service-role one).
 //
 // Covers BK-38-ATC-07 exactly:
 //   * Project isolation: Project A's report NEVER returns Project B's runs in
@@ -21,32 +18,56 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //     what would catch that predicate being dropped or loosened.
 //   * Non-disclosure: a Project belonging to a FOREIGN workspace resolves to
 //     the SAME P0002 as a nonexistent Project id.
-//   * Actor-bind guard: a caller authenticated as user A who passes user B's
-//     id as `p_actor_user_id` is rejected with the SAME P0002 (never a
-//     distinct error that would leak "that Project exists").
+//   * Actor-bind guard: a caller authenticated as a real user who passes a
+//     DIFFERENT id as `p_actor_user_id` is rejected with the SAME P0002
+//     (never a distinct error that would leak "that Project exists").
+//
+// The actor-bind case authenticates through the app's REAL, sanctioned login
+// path — `supabase.auth.signInWithPassword` with the anon key, using the
+// already-declared automation identity (`QA_E2E_USER_EMAIL` /
+// `QA_E2E_USER_PASSWORD`, see `.agents/project.yaml` ->
+// `testing.automation_identity`) — never a locally-minted JWT and never a
+// borrowed/impersonated identity, per
+// `.claude/skills/sprint-development/references/live-ui-identity.md` §3
+// (which governs ALL test code, not only live-UI/browser checks). The guard
+// fires BEFORE any table read (see the migration's own step-0 comment), so
+// the spoofed id in `p_actor_user_id` never needs to belong to a real second
+// user — a value that simply is not the authenticated caller's own id is
+// enough to exercise the branch. The one thing genuinely required is proof
+// that the real session's `auth.uid()` reaches Postgres at all: that is what
+// the preceding self-call (matching actor id) establishes, for which the
+// QA_E2E identity is granted a throwaway, service-role-seeded membership of
+// the fixture workspace, removed again in the same test (mirrors the file's
+// existing seed/cleanup pattern for Projects/Tests/Runs — service-role here
+// is ordinary fixture setup/teardown, not a minted session).
 //
 // DB-dependent + env-gated: the isolation/non-disclosure suite needs only
 // `SUPABASE_SERVICE_ROLE_KEY` (service-role client, explicit actor — the SAME
 // contract the API route uses); the actor-bind case additionally needs
-// `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_JWT_SECRET` to mint a real
-// user-scoped JWT and is gated separately so its absence never skips the rest
-// of the suite. Either gate SKIPS LOUDLY when its env is missing, and logs +
-// passes when the env is present but seed state cannot satisfy a
-// precondition — never blocks a build on migration or seed state.
+// `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `QA_E2E_USER_EMAIL` + `QA_E2E_USER_PASSWORD`
+// to log in for real, and is gated separately so its absence never skips the
+// rest of the suite. Either gate SKIPS LOUDLY when its env is missing, and
+// logs + passes when the env is present but seed state (or the login itself)
+// cannot satisfy a precondition — never blocks a build on migration, seed
+// state, or a QA fixture-account hiccup.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+const qaEmail = process.env.QA_E2E_USER_EMAIL;
+const qaPassword = process.env.QA_E2E_USER_PASSWORD;
 
 const hasServiceEnv = Boolean(url && serviceKey);
-const hasImpersonationEnv = Boolean(url && anonKey && serviceKey && jwtSecret);
+const hasRealLoginEnv = Boolean(url && anonKey && qaEmail && qaPassword);
 
 const describeOrSkip = hasServiceEnv ? describe : describe.skip;
 
 const RPC = 'bunkai_report_project_runs';
 const PREFIX = `bk38-report-isolation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+// Deliberately NOT any real user's id — the actor-bind guard fires on a mere
+// mismatch, so a well-formed but nonexistent uuid is sufficient to spoof.
+const SPOOFED_ACTOR_UUID = '00000000-0000-0000-0000-000000000001';
 
 interface MemberRow { user_id: string, workspace_id: string, status: string }
 interface ProjectRow { id: string, workspace_id: string }
@@ -58,7 +79,6 @@ interface ReportPage {
 }
 interface Fixture {
   actorUserId: string
-  secondUserId: string | null
   workspaceId: string
   projectAId: string
   projectBId: string
@@ -69,13 +89,6 @@ interface Fixture {
 
 function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
-}
-
-function impersonating(token: string) {
-  return createClient(url!, anonKey!, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 }
 
 function isoMinutesBefore(base: number, minutes: number): string {
@@ -108,9 +121,6 @@ describeOrSkip('BK-38 — bunkai_report_project_runs isolation (SEC-1 / ATC-07)'
       skipReason = 'need at least one active workspace member (seed state).';
       return;
     }
-    // Any OTHER real user id — used only as the SPOOFED identity in the
-    // actor-bind case, does not need to share a workspace with the anchor.
-    const secondUserId = active.find(m => m.user_id !== anchor.user_id)?.user_id ?? null;
 
     const { data: projects, error: projectsError } = await db
       .from('projects')
@@ -195,7 +205,6 @@ describeOrSkip('BK-38 — bunkai_report_project_runs isolation (SEC-1 / ATC-07)'
 
     fixture = {
       actorUserId: anchor.user_id,
-      secondUserId,
       workspaceId: anchor.workspace_id,
       projectAId,
       projectBId,
@@ -264,31 +273,74 @@ describeOrSkip('BK-38 — bunkai_report_project_runs isolation (SEC-1 / ATC-07)'
 
   it('the actor-bind guard rejects a spoofed p_actor_user_id', async () => {
     if (!fixture) { return warn(); }
-    if (!hasImpersonationEnv) {
-      console.warn('[report-isolation] skipped actor-bind case: need NEXT_PUBLIC_SUPABASE_ANON_KEY + SUPABASE_JWT_SECRET.');
-      return;
-    }
-    if (!fixture.secondUserId) {
-      console.warn('[report-isolation] skipped actor-bind case: need a SECOND active workspace member to spoof as (seed state).');
+    if (!hasRealLoginEnv) {
+      console.warn('[report-isolation] skipped actor-bind case: need NEXT_PUBLIC_SUPABASE_ANON_KEY + QA_E2E_USER_EMAIL + QA_E2E_USER_PASSWORD.');
       return;
     }
 
-    const token = await mintUserJwt(fixture.actorUserId, jwtSecret!);
-    const client = impersonating(token);
+    // Real, sanctioned login — the anon-key client signs in as the
+    // already-declared automation identity, exactly the app's own login path.
+    const anon = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await anon.auth.signInWithPassword({
+      email: qaEmail!,
+      password: qaPassword!,
+    });
+    if (signInError || !signIn.session || !signIn.user) {
+      console.warn(`[report-isolation] skipped actor-bind case: QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+      return;
+    }
+    const realUserId = signIn.user.id;
 
-    // Legitimate self-call succeeds through the impersonating client first —
-    // proves the JWT is valid and the rejection below fails for the RIGHT
-    // reason (an identity mismatch), not because impersonation itself is broken.
-    const self = await client.rpc(RPC, { p_actor_user_id: fixture.actorUserId, p_project_id: fixture.projectAId });
-    expect(self.error).toBeNull();
+    // Grant the real, logged-in identity a throwaway membership of the
+    // fixture workspace (service-role fixture setup, same as the
+    // Projects/Tests/Runs seeded above — not a minted session) so the
+    // self-call below can succeed end-to-end. That success is what proves
+    // the rejection afterward is caused by the id MISMATCH, not by some
+    // unrelated failure that would raise the same P0002 either way.
+    const db = service();
+    const { data: existingMembership, error: existingMembershipError } = await db
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', fixture.workspaceId)
+      .eq('user_id', realUserId)
+      .maybeSingle();
+    if (existingMembershipError) { throw existingMembershipError; }
 
-    // Same JWT (auth.uid() = actorUserId), but p_actor_user_id claims to be a
-    // DIFFERENT user — the spoof. Must collapse into the SAME P0002 a missing
-    // Project raises (non-disclosure), never a distinct error.
-    const spoofed = await client.rpc(RPC, { p_actor_user_id: fixture.secondUserId, p_project_id: fixture.projectAId });
-    expect(spoofed.error).not.toBeNull();
-    expect(spoofed.error?.code).toBe('P0002');
-    expect(spoofed.data).toBeNull();
+    let grantedMembership = false;
+    if (!existingMembership) {
+      const { error: grantError } = await db
+        .from('workspace_members')
+        .insert({ workspace_id: fixture.workspaceId, user_id: realUserId, role: 'viewer', status: 'active' });
+      if (grantError) {
+        console.warn(`[report-isolation] skipped actor-bind case: could not grant QA_E2E temporary workspace membership (${grantError.message}).`);
+        return;
+      }
+      grantedMembership = true;
+    }
+
+    try {
+      // Legitimate self-call succeeds through the REAL authenticated client
+      // first — proves the session is genuinely authenticated (auth.uid() =
+      // realUserId inside Postgres) and that the rejection below fails for
+      // the RIGHT reason (an identity mismatch), not because the session or
+      // the Project lookup is broken.
+      const self = await anon.rpc(RPC, { p_actor_user_id: realUserId, p_project_id: fixture.projectAId });
+      expect(self.error).toBeNull();
+
+      // Same real session (auth.uid() = realUserId), but p_actor_user_id
+      // claims to be a DIFFERENT user — the spoof. Must collapse into the
+      // SAME P0002 a missing Project raises (non-disclosure), never a
+      // distinct error.
+      const spoofed = await anon.rpc(RPC, { p_actor_user_id: SPOOFED_ACTOR_UUID, p_project_id: fixture.projectAId });
+      expect(spoofed.error).not.toBeNull();
+      expect(spoofed.error?.code).toBe('P0002');
+      expect(spoofed.data).toBeNull();
+    }
+    finally {
+      if (grantedMembership) {
+        await db.from('workspace_members').delete().eq('workspace_id', fixture.workspaceId).eq('user_id', realUserId);
+      }
+    }
   });
 });
 
