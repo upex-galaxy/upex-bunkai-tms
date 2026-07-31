@@ -133,7 +133,7 @@ Covers the remaining write sites not already documented above: two `test.*` even
 | `actor_user_id` | the resolved caller |
 | `workspace_id` | the Run's project workspace |
 
-`payload`: `{ "reason": "<free text, ≤500 chars>", "skipped_steps": n }` (`bunkai_abort_run`, `0036_run_abort.sql`). **`reason` is free-text, unredacted operator input** — BK-49's Activity Stream feed excludes it entirely from its projection (never `role`-gated, see BK-49 implementation-plan.md Decision 3); only `skipped_steps` is safe to surface there.
+`payload`: `{ "reason": "<free text, ≤500 chars>", "skipped_steps": n }` (`bunkai_abort_run`, `0036_run_abort.sql`). **`reason` is free-text, unredacted operator input** — BK-49's Activity Stream feed excludes it entirely from its projection (dropped outright, not role-gated — see BK-49 implementation-plan.md Decision 3); only `skipped_steps` is safe to surface there.
 
 ### `run.finished`
 
