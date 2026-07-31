@@ -618,14 +618,6 @@
       "ActiveWorkspaceResponse": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean",
-            "enum": [true]
-          },
-          "active_workspace_id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -640,7 +632,7 @@
             "type": ["string", "null"]
           }
         },
-        "required": ["ok", "active_workspace_id", "id", "slug", "name", "role"]
+        "required": ["id", "slug", "name", "role"]
       },
       "ActiveWorkspaceBody": {
         "type": "object",
