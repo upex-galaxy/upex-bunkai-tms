@@ -351,6 +351,46 @@ export async function listTestRuns(supabase: Client, args: ListTestRunsArgs) {
   });
 }
 
+// BK-38 — read a Project's Run report: every Run of the Project, filtered by
+// date range / module / status / executor (AND-composed), with pass/fail
+// totals recomputed from the SAME filtered set (Business Rule #3 — a
+// deliberate divergence from listTestRuns's all-time totals). Same
+// explicit-actor contract as the other wrappers; the SECURITY DEFINER RPC
+// resolves the Project's workspace and gates the actor's active membership
+// (any role — a viewer reads). Unlike listTestRuns, rows are NOT restricted to
+// terminal statuses — a currently-`running` Run is a legitimate row, it just
+// cannot be the target of the `status` filter. Pagination is keyset on
+// (started_at desc, id desc) via the cursor pair, reusing BK-37's mechanism.
+// Returns `{ items, totals, next_cursor }` — the route owns the opaque base64
+// encoding of the cursor.
+export interface ReportProjectRunsArgs {
+  actorUserId: string
+  projectId: string
+  dateFrom?: string | null
+  dateTo?: string | null
+  moduleId?: string | null
+  status?: string[] | null
+  executorMode?: string[] | null
+  limit?: number
+  cursorStartedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function reportProjectRuns(supabase: Client, args: ReportProjectRunsArgs) {
+  return supabase.rpc('bunkai_report_project_runs', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_date_from: args.dateFrom ?? undefined,
+    p_date_to: args.dateTo ?? undefined,
+    p_module_id: args.moduleId ?? undefined,
+    p_status: args.status ?? undefined,
+    p_executor_mode: args.executorMode ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_started_at: args.cursorStartedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the

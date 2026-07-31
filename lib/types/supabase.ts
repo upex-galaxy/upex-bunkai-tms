@@ -768,6 +768,7 @@ export interface Database {
           executor_user_id: string | null
           finished_at: string | null
           id: string
+          module_id: string | null
           project_id: string
           start_token: string
           started_at: string
@@ -786,6 +787,7 @@ export interface Database {
           executor_user_id?: string | null
           finished_at?: string | null
           id?: string
+          module_id?: string | null
           project_id: string
           start_token: string
           started_at?: string
@@ -804,6 +806,7 @@ export interface Database {
           executor_user_id?: string | null
           finished_at?: string | null
           id?: string
+          module_id?: string | null
           project_id?: string
           start_token?: string
           started_at?: string
@@ -820,6 +823,13 @@ export interface Database {
             columns: ['environment_id']
             isOneToOne: false
             referencedRelation: 'project_environments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'runs_module_id_fkey'
+            columns: ['module_id']
+            isOneToOne: false
+            referencedRelation: 'modules'
             referencedColumns: ['id']
           },
           {
@@ -1301,6 +1311,21 @@ export interface Database {
           p_if_match: number
           p_step_ids: string[]
           p_test_id: string
+        }
+        Returns: Json
+      }
+      bunkai_report_project_runs: {
+        Args: {
+          p_actor_user_id: string
+          p_cursor_id?: string
+          p_cursor_started_at?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_executor_mode?: string[]
+          p_limit?: number
+          p_module_id?: string
+          p_project_id: string
+          p_status?: string[]
         }
         Returns: Json
       }
