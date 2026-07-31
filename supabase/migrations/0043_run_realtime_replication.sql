@@ -1,0 +1,44 @@
+-- 0043_run_realtime_replication.sql — BK-35: enable Realtime replication for
+-- live run/step updates
+--
+-- Implements ADR-0010 (Supabase Realtime, Postgres Changes) — mechanically,
+-- per the ADR's "Decision" section. Split from 0042_run_step_mark.sql for
+-- independent review, mirrors BK-38's own DB-1/DB-2 migration split.
+--
+-- Corrects ADR-0010's illustrative filter: `run_steps` has no `run_id` column
+-- (only `run_atc_id`, FK to `run_atcs`, which has `run_id` — 0031_runs.sql).
+-- A `postgres_changes` filter is a single-column predicate on the SUBSCRIBED
+-- table, so `run_id=eq.<id>` cannot be applied to `run_steps` as ADR-0010
+-- illustrates. The BK-35 implementation plan's D8/finding 3 resolves this
+-- with a two-binding client subscription instead (built in the Realtime
+-- slice, `lib/runs/realtime-run-channel.ts`, out of scope for this DB slice):
+--   * run_atcs  filtered on `run_id=eq.<runId>`        (a real column)
+--   * run_steps filtered on `run_atc_id=in.(<atc ids>)` (this run's ATC ids)
+-- This migration only needs to make BOTH tables' changes replicate at all —
+-- the filter shape is a client-side concern, not a publication concern.
+--
+-- `runs` is deliberately excluded from the publication: BK-35 never mutates a
+-- `runs` row (progress is 100% client-derived, D6; the verdict this story
+-- writes lives on `run_atcs.status`, not `runs`). A future story that needs
+-- run-level live push (e.g. a live abort/finish signal) can add it then.
+--
+-- RLS scoping: verified live — `run_atcs_select_workspace_member` and
+-- `run_steps_select_workspace_member` (0031_runs.sql) already gate SELECT on
+-- `bunkai_is_workspace_member`, and Supabase Realtime enforces the
+-- subscriber's RLS on `postgres_changes` by default (Realtime Authorization,
+-- current on this project's Supabase version) — so a subscriber only ever
+-- receives change events for rows they could already SELECT. No RLS policy
+-- change is needed here. Risk R-5 (this repo's own implementation plan) still
+-- calls for an empirical two-session verification at the live-UI pass, since
+-- this is the product's first use of the mechanism.
+--
+-- Default REPLICA IDENTITY (primary key, Postgres' default) is sufficient:
+-- Realtime's NEW-row payload on INSERT/UPDATE always carries the row's
+-- current column values regardless of replica identity; only OLD-row
+-- diffing (e.g. detecting exactly which columns changed) needs FULL, which
+-- this story's client does not use — it triggers a full reconciliation
+-- refetch on any matching event rather than merging partial payloads (the
+-- plan's "Alternatives considered": payload merging was rejected).
+
+alter publication supabase_realtime add table public.run_atcs;
+alter publication supabase_realtime add table public.run_steps;

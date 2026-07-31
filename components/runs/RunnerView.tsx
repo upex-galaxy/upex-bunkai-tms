@@ -1,23 +1,40 @@
 'use client';
 
+import type { StepMarkStatus } from '@lib/runs/mark-step-view';
+import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { Button } from '@components/ui/button';
-import { Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
+import {
+  resolveAtcVerdictBadge,
+  resolveStatusDotToken,
+  resolveStepMarkControlState,
+  validateMarkStepForm,
+} from '@lib/runs/mark-step-view';
+import {
+  buildRunChannelConfig,
+  createRefetchScheduler,
+  shouldReconcileOnStatusChange,
+} from '@lib/runs/realtime-run-channel';
+import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
+import { createClient } from '@lib/supabase/client';
+import { Ban, Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-34 — the manual runner view. A projection of the composed Run payload
 // (`bunkai_get_run_expanded`): the snapshot chain rendered as a checklist.
-// Mark-pass / mark-fail interactions are BK-35 — this build renders statuses
-// read-only. BK-36 adds the Abort affordance: a running run can be aborted with
+// BK-36 adds the Abort affordance: a running run can be aborted with
 // a reason (member+), closing it and skipping the not-yet-executed steps. BK-39
 // adds the symmetric Finish affordance: a running run can be finished with a
 // final verdict (passed | failed, member+), closing it and skipping the
-// not-yet-executed steps. Shape mirrors the GET /api/v1/runs/[id] contract.
+// not-yet-executed steps. BK-35 adds the per-step mark controls
+// (pass/fail/block, optional note + evidence link), the ATC verdict badge, and
+// the Realtime subscription (ADR-0010) that lets a second viewer see both move
+// live without refreshing. Shape mirrors the GET /api/v1/runs/[id] contract.
 // CLIENT component because it registers its `test_title` as the run tab's label
-// via the workbench provider and owns the abort + finish modal state.
+// via the workbench provider and owns the abort + finish + mark form state.
 
 // BK-36 — frozen AC copy. Mirrors lib/runs/validation.ts so the client renders
 // the agreed message without a round-trip on the short-reason case.
@@ -81,6 +98,10 @@ interface RunnerViewProps {
   canAbort?: boolean
   // BK-39 — same member+ write gate as abort; viewers get no Finish button.
   canFinish?: boolean
+  // BK-35 (Q4) — same member+ write gate; viewers get no per-step mark
+  // controls at all (structurally absent, not merely hidden — see
+  // resolveStepMarkControlState in lib/runs/mark-step-view.ts).
+  canMark?: boolean
 }
 
 // Shared error-envelope shape for both run terminal actions (abort + finish).
@@ -107,7 +128,7 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -128,6 +149,19 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   const [verdict, setVerdict] = useState<RunVerdict | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
 
+  // BK-35 — mark-form state. Inline (per-step), not a modal like abort/finish,
+  // but still a SINGLE open form at a time: `markStepId` names which step's
+  // form is open, `markStatus` which of pass/fail/block was picked. Kept out
+  // of the abort/finish `submitting` flag on purpose — marking a step doesn't
+  // touch the run's own row, so it can legitimately happen concurrently with
+  // (rather than being blocked by) an in-flight abort/finish submit.
+  const [markStepId, setMarkStepId] = useState<string | null>(null);
+  const [markStatus, setMarkStatus] = useState<StepMarkStatus | null>(null);
+  const [markNote, setMarkNote] = useState('');
+  const [markEvidenceUrl, setMarkEvidenceUrl] = useState('');
+  const [markSubmitting, setMarkSubmitting] = useState(false);
+  const [markError, setMarkError] = useState<string | null>(null);
+
   // Keep the local view in sync if the server hands down a fresh payload.
   useEffect(() => {
     setView(run);
@@ -139,6 +173,73 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   useEffect(() => {
     registerRunLabel(view.id, view.test_title);
   }, [registerRunLabel, view.id, view.test_title]);
+
+  // BK-35 / ADR-0010 (RT-2) — Realtime subscription: a second viewer watching
+  // the same Run sees a mark's verdict/progress move live, without refreshing
+  // (AC4). The run's `atcs` (and their ids) are already part of `view` — no
+  // separate fetch or prop needed (buildRunChannelConfig's own
+  // `RunChannelSource` shape is structurally satisfied by `view` as-is).
+  // Scoped to `[view.id]` only: the run_atc id set is fixed for a Run's
+  // lifetime (run_atcs rows are only ever created once, at run start), and a
+  // closed run never changes again, so the effect checks `running` once at
+  // mount/id-change time rather than re-subscribing on every status flip.
+  const prevRealtimeStatusRef = useRef<RealtimeConnectionStatus | null>(null);
+  useEffect(() => {
+    if (view.status !== 'running') {
+      return;
+    }
+
+    const supabase = createClient();
+    const config = buildRunChannelConfig(view);
+    prevRealtimeStatusRef.current = null;
+
+    const refetchRun = async () => {
+      try {
+        const response = await fetch(`/api/v1/runs/${view.id}`);
+        if (!response.ok) {
+          return;
+        }
+        const body = (await response.json().catch(() => null)) as { run?: RunDetail } | null;
+        if (body?.run) {
+          setView(body.run);
+        }
+      }
+      catch {
+        // Silent — a transient network blip just means the next event or
+        // reconnect retries via this same path (mirrors this repo's utility
+        // silent-fail contract for non-user-initiated background work).
+      }
+    };
+
+    const scheduler = createRefetchScheduler(() => { void refetchRun(); });
+
+    const channel = supabase.channel(config.channelName);
+    for (const binding of config.bindings) {
+      channel.on<Record<string, unknown>>(
+        'postgres_changes',
+        { event: binding.event, schema: binding.schema, table: binding.table, filter: binding.filter },
+        () => scheduler.trigger(),
+      );
+    }
+    channel.subscribe((status) => {
+      // realtime-js reports a nominal string enum; normalize to a plain
+      // string so it compares cleanly against RealtimeConnectionStatus.
+      const next = String(status) as RealtimeConnectionStatus;
+      if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
+        scheduler.trigger();
+      }
+      prevRealtimeStatusRef.current = next;
+    });
+
+    return () => {
+      scheduler.cancel();
+      void supabase.removeChannel(channel);
+    };
+    // Deliberately scoped to [view.id] only — see the comment above this
+    // effect (the run_atc id set is fixed for a Run's lifetime, and a closed
+    // run never changes again, so re-subscribing on every `view` update
+    // would be wasted churn, not a correctness issue).
+  }, [view.id]);
 
   // Progress: every snapshot step starts 'pending'; a step counts as done once
   // its status moves off 'pending'. At creation this renders 0%.
@@ -259,6 +360,88 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
     catch (err) {
       setFinishError(err instanceof Error ? err.message : 'Network error.');
       setSubmitting(false);
+    }
+  };
+
+  // BK-35 — mark flow. Opening the form for a DIFFERENT step resets the note
+  // + evidence fields; re-picking a status on the SAME (already open) step
+  // preserves whatever the user already typed (AC6/Q7 — switching the pick
+  // is not a fresh start).
+  const openMarkForm = (stepId: string, status: StepMarkStatus) => {
+    if (markSubmitting) { return; }
+    if (markStepId !== stepId) {
+      setMarkNote('');
+      setMarkEvidenceUrl('');
+    }
+    setMarkStepId(stepId);
+    setMarkStatus(status);
+    setMarkError(null);
+  };
+
+  const closeMarkForm = () => {
+    if (markSubmitting) { return; }
+    setMarkStepId(null);
+    setMarkStatus(null);
+  };
+
+  const handleMarkSubmit = async () => {
+    if (markSubmitting || !markStepId || !markStatus) { return; }
+
+    // Immediate, field-specific feedback ahead of the round trip — mirrors
+    // handleAbort's client-side short-reason check. The RPC stays the
+    // enforcement point of record for a direct/non-UI caller.
+    const validationError = validateMarkStepForm({ note: markNote, evidenceUrl: markEvidenceUrl });
+    if (validationError) {
+      setMarkError(validationError);
+      return;
+    }
+
+    setMarkSubmitting(true);
+    setMarkError(null);
+    try {
+      const response = await fetch(`/api/v1/runs/${view.id}/steps/${markStepId}/mark`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          status: markStatus,
+          note: markNote,
+          evidence_url: markEvidenceUrl,
+        }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as RunActionErrorBody;
+        // Server copy is rendered VERBATIM (409's frozen "already closed"
+        // copy, the 403 non-disclosing membership message, or the 422
+        // validation envelope) — same convention as abort/finish.
+        setMarkError(body.error?.message ?? 'Could not mark this step.');
+        setMarkSubmitting(false);
+        return;
+      }
+      // Reflects the server-computed run (verdict rollup + progress) on the
+      // ACTING user's own tab instantly; the Realtime subscription above is
+      // what carries this same update to a second viewer's tab (AC4).
+      // Deliberately NO router.refresh() here (unlike handleAbort/handleFinish):
+      // those are one-time terminal actions where re-syncing the broader
+      // server-rendered page matters; a step can be (re-)marked many times in
+      // one session. setView above keeps this tab authoritative immediately,
+      // and the Realtime effect's reconcile-on-(re)connect logic
+      // (shouldReconcileOnStatusChange, lib/runs/realtime-run-channel.ts)
+      // self-heals any drift from concurrent marks by other observers — so a
+      // full server round-trip per mark would just be pure churn.
+      const body = (await response.json().catch(() => ({}))) as { run?: RunDetail };
+      if (body.run) {
+        setView(body.run);
+      }
+      setMarkStepId(null);
+      setMarkStatus(null);
+      setMarkNote('');
+      setMarkEvidenceUrl('');
+      setMarkSubmitting(false);
+      toast.success('Step marked');
+    }
+    catch (err) {
+      setMarkError(err instanceof Error ? err.message : 'Network error.');
+      setMarkSubmitting(false);
     }
   };
 
@@ -422,63 +605,269 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           aligned with the header content. */}
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
-          {view.atcs.map(atc => (
-            <div
-              key={atc.id}
-              data-testid={`runner-atc-${atc.position}`}
-              className="card flex flex-col gap-3 p-3"
-            >
-              {/* ATC header — position chip + title + status dot */}
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-1 border border-stroke-2 bg-surface-2 font-mono text-2xs font-medium text-fg-3">
-                  {String(atc.position).padStart(2, '0')}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-fg-1">
-                  {atc.atc_title}
-                </span>
-                <span className="dot shrink-0" data-status={atc.status} />
-              </div>
-
-              {/* step checklist — ChainedAtcCard <ol> anatomy + a per-step status
-                  dot so the pending state is visible. */}
-              <ol
-                data-testid={`runner-steps-${atc.position}`}
-                className="m-0 flex list-none flex-col overflow-hidden rounded-2 border border-stroke-2 bg-surface-2 p-0"
+          {view.atcs.map((atc) => {
+            const atcVerdict = resolveAtcVerdictBadge(atc.status);
+            return (
+              <div
+                key={atc.id}
+                data-testid={`runner-atc-${atc.position}`}
+                className="card flex flex-col gap-3 p-3"
               >
-                {atc.steps.map((s, i) => (
-                  <li
-                    key={s.id}
-                    data-testid={`runner-step-${atc.position}-${s.position}`}
-                    className={`grid grid-cols-[28px_1fr] items-stretch ${i === 0 ? '' : 'border-t border-stroke-1'}`}
+                {/* ATC header — position chip + title + verdict badge. BK-35
+                    (Q1): the badge reads "Unrun" while any sibling step is
+                    still pending — it never guesses a premature verdict. */}
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-1 border border-stroke-2 bg-surface-2 font-mono text-2xs font-medium text-fg-3">
+                    {String(atc.position).padStart(2, '0')}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-fg-1">
+                    {atc.atc_title}
+                  </span>
+                  <span
+                    data-testid={`runner-atc-verdict-${atc.position}`}
+                    className="status-chip"
+                    data-status={atcVerdict.token}
                   >
-                    <span className="inline-flex items-center justify-center border-r border-stroke-1 font-mono text-xs font-medium text-fg-3">
-                      {String(s.position).padStart(2, '0')}
-                    </span>
-                    <div className="flex items-start gap-2 px-3 py-2">
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="break-words text-[13px] text-fg-1">{s.content}</span>
-                        {s.input_data != null && s.input_data !== '' && (
-                          <span className="break-words font-mono text-2xs text-fg-3">
-                            input:
-                            {' '}
-                            {s.input_data}
-                          </span>
-                        )}
-                        {s.expected != null && s.expected !== '' && (
-                          <span className="break-words font-mono text-2xs text-fg-3">
-                            expected:
-                            {' '}
-                            {s.expected}
-                          </span>
-                        )}
-                      </div>
-                      <span className="dot mt-1 shrink-0" data-status={s.status} />
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
+                    {atcVerdict.label}
+                  </span>
+                </div>
+
+                {/* step checklist — ChainedAtcCard <ol> anatomy + a per-step status
+                    dot so the pending state is visible. BK-35 adds, per step: the
+                    recorded note/evidence link (once set), member+ mark controls
+                    (Q4 — structurally absent for a viewer), the closed-run guard
+                    copy (Q2), and the inline note/evidence confirmation form. */}
+                <ol
+                  data-testid={`runner-steps-${atc.position}`}
+                  className="m-0 flex list-none flex-col overflow-hidden rounded-2 border border-stroke-2 bg-surface-2 p-0"
+                >
+                  {atc.steps.map((s, i) => {
+                    const markState = resolveStepMarkControlState({
+                      canMark,
+                      runStatus: view.status,
+                      stepStatus: s.status,
+                    });
+                    const isMarkFormOpen = markStepId === s.id;
+
+                    return (
+                      <li
+                        key={s.id}
+                        data-testid={`runner-step-${atc.position}-${s.position}`}
+                        className={`grid grid-cols-[28px_1fr] items-stretch ${i === 0 ? '' : 'border-t border-stroke-1'}`}
+                      >
+                        <span className="inline-flex items-center justify-center border-r border-stroke-1 font-mono text-xs font-medium text-fg-3">
+                          {String(s.position).padStart(2, '0')}
+                        </span>
+                        <div className="flex flex-col gap-2 px-3 py-2">
+                          <div className="flex items-start gap-2">
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                              <span className="break-words text-[13px] text-fg-1">{s.content}</span>
+                              {s.input_data != null && s.input_data !== '' && (
+                                <span className="break-words font-mono text-2xs text-fg-3">
+                                  input:
+                                  {' '}
+                                  {s.input_data}
+                                </span>
+                              )}
+                              {s.expected != null && s.expected !== '' && (
+                                <span className="break-words font-mono text-2xs text-fg-3">
+                                  expected:
+                                  {' '}
+                                  {s.expected}
+                                </span>
+                              )}
+                              {s.note != null && s.note !== '' && (
+                                <span
+                                  data-testid={`runner-step-note-${atc.position}-${s.position}`}
+                                  className="break-words font-mono text-2xs text-fg-3"
+                                >
+                                  note:
+                                  {' '}
+                                  {s.note}
+                                </span>
+                              )}
+                              {s.evidence_url != null && s.evidence_url !== '' && (
+                                <span
+                                  data-testid={`runner-step-evidence-${atc.position}-${s.position}`}
+                                  className="break-words font-mono text-2xs text-fg-3"
+                                >
+                                  evidence:
+                                  {' '}
+                                  <a
+                                    href={s.evidence_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="underline hover:text-fg-1"
+                                  >
+                                    {s.evidence_url}
+                                  </a>
+                                </span>
+                              )}
+                            </div>
+                            <span className="dot mt-1 shrink-0" data-status={resolveStatusDotToken(s.status)} />
+                          </div>
+
+                          {/* BK-35 (Q4/AC6/Q7) — always-enabled Pass/Fail/Block
+                              toggles, member+ only, only while the run is
+                              running. Re-marking is allowed: the currently
+                              recorded result (if any) shows as the pressed
+                              button, it never disables the other two. */}
+                          {markState.showControls && (
+                            <div
+                              data-testid={`runner-step-mark-controls-${atc.position}-${s.position}`}
+                              className="flex items-center gap-1.5"
+                            >
+                              <button
+                                type="button"
+                                data-testid={`runner-step-mark-pass-${atc.position}-${s.position}`}
+                                aria-pressed={markState.pressed.passed}
+                                onClick={() => openMarkForm(s.id, 'passed')}
+                                className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                                  markState.pressed.passed
+                                    ? 'border-signal-pass bg-signal-pass-bg text-signal-pass'
+                                    : 'border-stroke-2 bg-surface-1 text-fg-2 hover:border-stroke-3 hover:text-fg-1'
+                                }`}
+                              >
+                                <Check size={11} />
+                                Pass
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`runner-step-mark-fail-${atc.position}-${s.position}`}
+                                aria-pressed={markState.pressed.failed}
+                                onClick={() => openMarkForm(s.id, 'failed')}
+                                className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                                  markState.pressed.failed
+                                    ? 'border-signal-fail bg-signal-fail-bg text-signal-fail'
+                                    : 'border-stroke-2 bg-surface-1 text-fg-2 hover:border-stroke-3 hover:text-fg-1'
+                                }`}
+                              >
+                                <X size={11} />
+                                Fail
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`runner-step-mark-block-${atc.position}-${s.position}`}
+                                aria-pressed={markState.pressed.blocked}
+                                onClick={() => openMarkForm(s.id, 'blocked')}
+                                className={`inline-flex items-center gap-1 rounded-1 border px-2 py-1 text-2xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                                  markState.pressed.blocked
+                                    ? 'border-signal-blocked bg-signal-blocked-bg text-signal-blocked'
+                                    : 'border-stroke-2 bg-surface-1 text-fg-2 hover:border-stroke-3 hover:text-fg-1'
+                                }`}
+                              >
+                                <Ban size={11} />
+                                Block
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Q2 — a member+ caller whose run just closed (own
+                              action or a concurrent one seen via Realtime)
+                              gets the frozen guard copy in place of controls,
+                              instead of them silently vanishing. */}
+                          {markState.guardMessage && (
+                            <p
+                              data-testid={`runner-step-mark-guard-${atc.position}-${s.position}`}
+                              className="m-0 text-2xs text-fg-4"
+                            >
+                              {markState.guardMessage}
+                            </p>
+                          )}
+
+                          {/* Inline note/evidence confirmation — mirrors the
+                              abort textarea styling, scoped to this one step. */}
+                          {isMarkFormOpen && (
+                            <div
+                              data-testid={`runner-step-mark-form-${atc.position}-${s.position}`}
+                              className="flex flex-col gap-2 rounded-2 border border-stroke-2 bg-surface-1 p-2.5"
+                            >
+                              <div>
+                                <label
+                                  htmlFor={`mark-note-${s.id}`}
+                                  className="mb-1 block text-2xs text-fg-2"
+                                >
+                                  Note (optional)
+                                </label>
+                                <textarea
+                                  id={`mark-note-${s.id}`}
+                                  data-testid={`runner-step-mark-note-input-${atc.position}-${s.position}`}
+                                  value={markNote}
+                                  onChange={(e) => {
+                                    setMarkNote(e.target.value);
+                                    if (markError) { setMarkError(null); }
+                                  }}
+                                  maxLength={RUN_STEP_NOTE_MAX}
+                                  rows={2}
+                                  disabled={markSubmitting}
+                                  placeholder="What did you observe?"
+                                  className="w-full resize-none rounded-2 border border-stroke-2 bg-surface-2 px-2 py-1.5 text-xs text-fg-1 placeholder:text-fg-4 focus:border-accent focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor={`mark-evidence-${s.id}`}
+                                  className="mb-1 block text-2xs text-fg-2"
+                                >
+                                  Evidence link (optional)
+                                </label>
+                                <input
+                                  id={`mark-evidence-${s.id}`}
+                                  data-testid={`runner-step-mark-evidence-input-${atc.position}-${s.position}`}
+                                  type="text"
+                                  value={markEvidenceUrl}
+                                  onChange={(e) => {
+                                    setMarkEvidenceUrl(e.target.value);
+                                    if (markError) { setMarkError(null); }
+                                  }}
+                                  maxLength={RUN_STEP_EVIDENCE_URL_MAX}
+                                  disabled={markSubmitting}
+                                  placeholder="https://…"
+                                  className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2 py-1.5 text-xs text-fg-1 placeholder:text-fg-4 focus:border-accent focus:outline-none"
+                                />
+                              </div>
+
+                              {markError && (
+                                <span
+                                  data-testid={`runner-step-mark-error-${atc.position}-${s.position}`}
+                                  className="text-2xs text-signal-fail"
+                                >
+                                  {markError}
+                                </span>
+                              )}
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="primary"
+                                  size="sm"
+                                  data-testid={`runner-step-mark-confirm-${atc.position}-${s.position}`}
+                                  onClick={() => { void handleMarkSubmit(); }}
+                                  disabled={markSubmitting}
+                                >
+                                  {markSubmitting ? 'Marking…' : `Mark ${markStatus}`}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-testid={`runner-step-mark-cancel-${atc.position}-${s.position}`}
+                                  onClick={closeMarkForm}
+                                  disabled={markSubmitting}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            );
+          })}
         </div>
       </div>
 
