@@ -29,14 +29,20 @@ export function runHistoryNoMatchMessage(outcome: RunHistoryOutcome): string {
 }
 
 interface ResolveRunHistoryViewStateParams {
+  // FIRST-PAGE failure only. A failed "load older" is NOT an input here: it must
+  // leave the rows mounted and report inline at the load-older control, so the
+  // caller keeps it in its own state and never routes it through this resolver.
   error: boolean
   rowCount: number
   outcome: RunHistoryOutcome | null
 }
 
-// Branch selection for the four mutually exclusive blocks. An error wins over
-// everything (a failed query also resolves to zero rows, and rendering "no runs"
-// on a broken request would be a lie). With rows, the filter is irrelevant.
+// Branch selection for the four mutually exclusive blocks. A first-page error
+// wins over everything (a failed first query also resolves to zero rows, and
+// rendering "no runs" on a broken request would be a lie). With rows, the filter
+// is irrelevant — including when an APPEND has just failed, which is precisely
+// why that failure is kept out of `error`: ranking it here would unmount every
+// row already loaded, and a Retry could then only restore page 1.
 // Without rows, the ACTIVE FILTER is what separates "never run" from "no match".
 export function resolveRunHistoryViewState({ error, rowCount, outcome }: ResolveRunHistoryViewStateParams): RunHistoryViewState {
   if (error) {

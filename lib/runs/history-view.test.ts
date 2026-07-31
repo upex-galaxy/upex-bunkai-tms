@@ -11,9 +11,19 @@ import { describe, expect, test } from 'bun:test';
 // (AC "A Test that has never been run", AC "Filter matches zero runs").
 
 describe('resolveRunHistoryViewState', () => {
-  test('an error takes priority, even with rows already on screen', () => {
+  test('a FIRST-PAGE error takes priority, even with rows already on screen', () => {
     expect(resolveRunHistoryViewState({ error: true, rowCount: 12, outcome: null })).toBe('error');
     expect(resolveRunHistoryViewState({ error: true, rowCount: 0, outcome: 'failed' })).toBe('error');
+  });
+
+  test('a failed APPEND is not this resolver\'s input — deep lists stay mounted', () => {
+    // The caller keeps a failed "load older" in its own state and passes
+    // error: false here, so three pages of loaded rows survive one flaky
+    // append. Encoding it as a test because the split is the whole point: if
+    // an append failure ever reached `error`, the view would unmount 150 rows
+    // and Retry could restore only page 1.
+    expect(resolveRunHistoryViewState({ error: false, rowCount: 150, outcome: null })).toBe('rows');
+    expect(resolveRunHistoryViewState({ error: false, rowCount: 150, outcome: 'failed' })).toBe('rows');
   });
 
   test('rows present, no filter -> rows', () => {
