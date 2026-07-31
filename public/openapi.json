@@ -2610,6 +2610,28 @@
           }
         },
         "required": ["verdict"]
+      },
+      "RunStepMarkBody": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["passed", "failed", "blocked"],
+            "description": "The step result. `pending` is never accepted — a re-mark-to-pending attempt is rejected as validation_failed."
+          },
+          "note": {
+            "type": ["string", "null"],
+            "maxLength": 2000,
+            "description": "Optional free-text note. An empty or whitespace-only string normalizes to null rather than being rejected."
+          },
+          "evidence_url": {
+            "type": ["string", "null"],
+            "maxLength": 2000,
+            "format": "uri",
+            "description": "Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be a valid URL."
+          }
+        },
+        "required": ["status"]
       }
     },
     "parameters": {}
@@ -7298,6 +7320,129 @@
           },
           "422": {
             "description": "Validation failed — no final verdict of passed or failed was supplied (`validation_failed`, reason `finish_verdict_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/steps/{stepId}/mark": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Mark a run step passed, failed, or blocked",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access. Transactional mark via one SECURITY DEFINER RPC: UPDATEs the step in place (no history table — the most recent result stands, so re-marking a step is always last-write-wins) and recomputes the parent ATC verdict from its full current sibling step set (fail overrides everything, else blocked overrides passed, else passed; the verdict stays \"pending\" while ANY sibling step is still pending). Only a `running` Run accepts new step results — an already-closed Run (passed/failed/aborted) returns 409. Returns the composed Run, so the caller reads the updated step and the recomputed ATC verdict off the same response abort/finish already use.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunStepMarkBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step marked. Returns the updated Run with the step's new status/note/evidence_url/executed_at and the recomputed parent ATC verdict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "$ref": "#/components/schemas/Run"
+                    }
+                  },
+                  "required": ["run"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed ids (not UUIDs) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run/step the caller cannot see).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run step not found — missing, or belonging to a different run than {id} (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {
