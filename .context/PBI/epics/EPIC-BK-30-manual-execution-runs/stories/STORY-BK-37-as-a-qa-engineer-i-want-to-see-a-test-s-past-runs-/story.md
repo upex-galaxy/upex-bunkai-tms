@@ -3,7 +3,7 @@
 **Jira Key:** [BK-37](https://jira.upexgalaxy.com/browse/BK-37)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** In Progress
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -79,14 +79,18 @@
 
 - [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Release)_
 
+### Tech Debt (1)
+
+- [BK-249](https://jira.upexgalaxy.com/browse/BK-249): TECH-Security | Bind p_actor_user_id to auth.uid() across the bunkai_* explicit-actor RPCs _(To Do)_
+
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/30/2026
+- **Updated:** 7/31/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Carlos Alcala
 - **Labels:** shift-left-2026-07-21, shift-left-reviewed
 
 ---
