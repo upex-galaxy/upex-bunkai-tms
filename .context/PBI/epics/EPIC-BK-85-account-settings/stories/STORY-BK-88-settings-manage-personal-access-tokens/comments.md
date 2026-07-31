@@ -70,5 +70,13 @@ ATP field updated to ACTIVE phase (API-only subset, 14 TCs). ATR field updated w
 
 ---
 
+### Ely - 7/30/2026, 1:28:52 PM
+
+Mockup — Settings — Personal Access Tokens. Source: .context/designs/bunkai-test-management-tool/bk-85-account-settings/settings-tokens.html · spec: master-design-plan §4.10
+
+
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
