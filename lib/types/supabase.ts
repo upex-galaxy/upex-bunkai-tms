@@ -1278,6 +1278,16 @@ export interface Database {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
+      bunkai_list_activity: {
+        Args: {
+          p_actions?: string[]
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_limit?: number
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       bunkai_list_test_runs: {
         Args: {
           p_actor_user_id: string
@@ -1286,6 +1296,17 @@ export interface Database {
           p_limit?: number
           p_outcome?: string
           p_test_id: string
+        }
+        Returns: Json
+      }
+      bunkai_mark_run_step: {
+        Args: {
+          p_actor_user_id: string
+          p_evidence_url: string
+          p_note: string
+          p_run_id: string
+          p_run_step_id: string
+          p_status: string
         }
         Returns: Json
       }
@@ -1332,6 +1353,13 @@ export interface Database {
           p_status?: string[]
         }
         Returns: Json
+      }
+      bunkai_resolve_activity_actors: {
+        Args: { p_user_ids: string[], p_workspace_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
       }
       bunkai_run_json: { Args: { p_run_id: string }, Returns: Json }
       bunkai_save_atc: {
