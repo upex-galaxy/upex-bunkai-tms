@@ -1,6 +1,6 @@
-// Settings > Tokens display formatting (BK-88 Slice A — PO/UX Decision 3).
-// Pure, framework-agnostic transforms consumed by `TokensList`. Issuance-form
-// concerns (`formatExpiryChoiceDate`) are Slice B's — not implemented here.
+// Settings > Tokens display formatting (BK-88 Slice A/B — PO/UX Decision 3).
+// Pure, framework-agnostic transforms consumed by `TokensList` and
+// `IssueTokenModal`.
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7;
 const MS_PER_DAY = 86_400_000;
@@ -40,4 +40,14 @@ export function formatWorkspaceCell(workspaceId: string | null, workspaceLabel: 
     return { label: 'All workspaces', subLabel: null };
   }
   return { label: workspaceLabel ?? workspaceId, subLabel: workspaceId };
+}
+
+// Issuance-form expiry choice labels (BK-88 Slice B). Computes the calendar
+// date a fixed expiry choice (30/90/365 days) would land on, for display next
+// to each option in `IssueTokenModal`'s expiry <select> (mockup lines
+// 1043-1046: "30 days · 2026-08-29" etc). The "never" choice has no computed
+// date and is never passed through this function.
+export function formatExpiryChoiceDate(days: number, now: Date): string {
+  const target = new Date(now.getTime() + days * MS_PER_DAY);
+  return target.toISOString().slice(0, 10);
 }

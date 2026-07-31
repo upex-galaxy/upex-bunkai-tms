@@ -1,12 +1,11 @@
-import type { TokenRow } from '@lib/tokens/view-state';
+import type { TokenRow, WorkspaceOption } from '@lib/tokens/view-state';
 import { TokensList, TokensListSkeleton } from '@components/settings/TokensList';
 import { createClient } from '@lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 
-// Settings > Tokens -- real screen (BK-88 Slice A: list + revoke). Replaces
-// the `ComingSoon` placeholder BK-87 left here. Issuance (AC1-AC4) is
-// Slice B's `IssueTokenModal`, added in a follow-up PR.
+// Settings > Tokens -- real screen (BK-88 Slice A+B: list, revoke, issue).
+// Replaces the `ComingSoon` placeholder BK-87 left here.
 export default async function SettingsTokensPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -25,20 +24,22 @@ export default async function SettingsTokensPage() {
       </div>
 
       <Suspense fallback={<TokensListSkeleton />}>
-        <TokensSection />
+        <TokensSection userId={user.id} />
       </Suspense>
     </div>
   );
 }
 
-// Token list (BK-88 Slice A -- AC5, AC6, AC7). A separate async server
-// component (not the page itself) so it streams inside its own `<Suspense>`
-// boundary above, matching the TD7 isolation pattern already established by
+// Token list + issuance-form workspace options (BK-88 Slice A -- AC5, AC6,
+// AC7; Slice B -- Risk 2). A separate async server component (not the page
+// itself) so it streams inside its own `<Suspense>` boundary above, matching
+// the TD7 isolation pattern already established by
 // settings/account/page.tsx's `WorkspacesSection`.
 //
-// TD7: any failure here is caught locally and rendered as `TokensList`'s own
-// error state -- it must never throw up to the route's `error.tsx`.
-async function TokensSection() {
+// TD7: any failure in the token-list query is caught locally and rendered as
+// `TokensList`'s own error state -- it must never throw up to the route's
+// `error.tsx`.
+async function TokensSection({ userId }: { userId: string }) {
   try {
     const supabase = await createClient();
 
@@ -60,7 +61,7 @@ async function TokensSection() {
 
     // Resolves each token's workspace binding to a display name (Decision 3's
     // "Workspace" column). Deliberately NOT the caller's active memberships
-    // query -- that only matters for Slice B's issuance-form dropdown.
+    // query -- that only matters for the issuance-form dropdown below.
     const workspaceLabels = new Map<string, string>();
     if (workspaceIds.length > 0) {
       const { data: workspaces, error: workspacesError } = await supabase
@@ -87,9 +88,49 @@ async function TokensSection() {
       createdAt: t.created_at,
     }));
 
-    return <TokensList tokens={tokenRows} />;
+    return <TokensList tokens={tokenRows} workspaces={await loadWorkspaceOptions(userId)} />;
   }
   catch {
-    return <TokensList tokens={[]} error />;
+    return <TokensList tokens={[]} error workspaces={await loadWorkspaceOptions(userId)} />;
+  }
+}
+
+// Issuance form's workspace dropdown options (Slice B, Risk 2) -- the
+// caller's own active memberships, narrowed to {id, slug, name}, same query
+// shape as account/page.tsx's `WorkspacesSection`. Isolated in its own
+// try/catch, independent of the token-list query above (TD7): a failure here
+// must not blank the token list -- the form simply falls back to "All
+// workspaces" only, which is always a usable choice regardless of membership
+// count.
+async function loadWorkspaceOptions(userId: string): Promise<WorkspaceOption[]> {
+  try {
+    const supabase = await createClient();
+
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    if (membershipsError) {
+      throw membershipsError;
+    }
+
+    const workspaceIds = (memberships ?? []).map(m => m.workspace_id);
+    if (workspaceIds.length === 0) {
+      return [];
+    }
+
+    const { data: workspaces, error: workspacesError } = await supabase
+      .from('workspaces')
+      .select('id, slug, name')
+      .in('id', workspaceIds);
+    if (workspacesError) {
+      throw workspacesError;
+    }
+
+    return workspaces ?? [];
+  }
+  catch {
+    return [];
   }
 }

@@ -17,6 +17,14 @@ export interface TokenRow {
 
 export type TokensViewState = 'error' | 'empty' | 'list';
 
+// Issuance-form workspace dropdown option (BK-88 Slice B) -- the caller's own
+// active memberships, narrowed to what the <select> needs to render.
+export interface WorkspaceOption {
+  id: string
+  slug: string
+  name: string
+}
+
 export function resolveTokensViewState({ error, rowCount }: { error: boolean, rowCount: number }): TokensViewState {
   if (error) {
     return 'error';
