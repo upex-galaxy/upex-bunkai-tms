@@ -171,6 +171,12 @@
   .dot[data-status='blocked'] {
     background: var(--blocked);
   }
+  /* BK-37 — `aborted` is its own semantic token (see the .status-chip rule
+     below) and needs a matching dot; without it an aborted chip's dot renders
+     unstyled. Same blocked family as the chip. */
+  .dot[data-status='aborted'] {
+    background: var(--blocked);
+  }
   .dot[data-status='skipped'] {
     background: var(--skipped);
   }
@@ -341,10 +347,14 @@
     background: var(--running-bg);
     border-color: rgba(79, 140, 247, 0.25);
   }
-  /* BK-36 — an aborted run reads as a terminal failure state (red family). */
+  /* BK-37 — an aborted run is an anomalous termination, not a failed assertion,
+     so it reads in the `blocked` family rather than the `fail` one (design plan
+     §4.8). Supersedes BK-36's red mapping: run history lists both outcomes side
+     by side, and two identical reds made them indistinguishable at a glance.
+     Applies app-wide — RunnerView's aborted chip shifts with it, by design. */
   .status-chip[data-status='aborted'] {
-    color: var(--fail);
-    background: var(--fail-bg);
-    border-color: rgba(229, 72, 77, 0.25);
+    color: var(--blocked);
+    background: var(--blocked-bg);
+    border-color: rgba(232, 168, 56, 0.25);
   }
 }
