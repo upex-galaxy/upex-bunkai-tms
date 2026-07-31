@@ -72,5 +72,13 @@ BK-38 depends on BK-34 for Run creation and on the future Runs schema/API. Curre
 
 ---
 
+### Ely - 7/30/2026, 1:28:09 PM
+
+Mockup — Test Runs index (project-wide list + filters). Source: .context/designs/bunkai-test-management-tool/bk-30-test-runs-index/test-runs-index.html · spec: master-design-plan §4.8
+
+
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
