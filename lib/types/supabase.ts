@@ -1460,6 +1460,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_report_project_coverage: {
+        Args: { p_actor_user_id: string, p_project_id: string }
+        Returns: Json
+      }
       bunkai_report_project_runs: {
         Args: {
           p_actor_user_id: string
