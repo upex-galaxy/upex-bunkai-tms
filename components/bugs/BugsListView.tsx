@@ -41,16 +41,23 @@ export interface BugsListViewProps {
 
 export function BugsListView({ projectId, modules, canCreateBug, initialBugs, initialError = null }: BugsListViewProps) {
   const [bugs, setBugs] = useState<BugListRowInput[]>(initialBugs);
+  // `error` starts from the server-side read's own outcome but is NOT frozen
+  // there — there is no client-side retry path for the read itself (Technical
+  // Decision 2), but a successful create is proof the API/DB path works, so it
+  // clears the error rather than leaving a stale "could not load" banner
+  // permanently covering a list a create just proved was reachable.
+  const [error, setError] = useState<string | null>(initialError);
   const [createOpen, setCreateOpen] = useState(false);
 
   const rows = bugs.map(formatBugListRow);
-  const state = initialError !== null ? 'error' : resolveBugListViewState(rows.length);
+  const state = error !== null ? 'error' : resolveBugListViewState(rows.length);
 
   const handleCreated = (bug: BugRecord) => {
     // The route's own response shape (`bunkai_bug_json`) satisfies
     // `BugListRowInput` structurally — same composed payload, just read
     // through a wider type at the create call site.
     setBugs(prev => [bug as unknown as BugListRowInput, ...prev]);
+    setError(null);
     toast.success('Bug filed');
   };
 
@@ -77,7 +84,7 @@ export function BugsListView({ projectId, modules, canCreateBug, initialBugs, in
           <Card className="overflow-hidden">
             {state === 'error' && (
               <div data-testid="bugs-list-error" className="flex flex-col items-start gap-2 p-4">
-                <p className="text-sm text-fg-2">{initialError}</p>
+                <p className="text-sm text-fg-2">{error}</p>
               </div>
             )}
 
