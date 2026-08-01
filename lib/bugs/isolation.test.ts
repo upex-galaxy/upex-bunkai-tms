@@ -23,6 +23,18 @@ import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test';
 //       the route's own `locateRunStepBugContext`), then asserting that no
 //       bug row exists for that project — i.e. rejected before any table
 //       write, since the route never calls bunkai_create_bug on this path.
+//   (d) THE BLOCKER REGRESSION — a real signed-in actor calls bunkai_create_bug
+//       with p_actor_user_id spoofed to a DIFFERENT real user's uuid (reusing
+//       the fixture anchor, never a locally-minted identity). Stage 3
+//       adversarial review found `bunkai_create_bug` shipped with NO actor-bind
+//       guard at all (unlike its `bunkai_list_project_bugs` sibling below),
+//       meaning any signed-in user could call the RPC directly with somebody
+//       else's uuid and, if that uuid belonged to a write-role workspace
+//       member, file a bug attributed to the spoofed victim without ever being
+//       a member themselves. Asserts the call is rejected (P0002, matching
+//       bunkai_assert_actor_can_write_project's own missing-project shape) AND
+//       that zero rows were written — checked directly against the table via
+//       the service-role client, not inferred from the error alone.
 //
 // Also covers the actor-bind guard on `bunkai_list_project_bugs` (mirrors
 // bunkai_report_project_runs's own actor-bind case, 0041) — baked in from day
@@ -310,6 +322,67 @@ describeOrSkip('BK-40 — bugs RPC isolation (cross-project-module-injection + r
       .from('bugs')
       .select('id')
       .eq('run_step_id', fixture.pendingStepId);
+    if (rowsError) { throw rowsError; }
+    expect(rows).toHaveLength(0);
+  });
+
+  it('(d) THE BLOCKER REGRESSION: a spoofed p_actor_user_id is rejected on bunkai_create_bug, and zero rows are written', async () => {
+    if (!fixture) { return warn(); }
+    if (!hasRealLoginEnv) {
+      console.warn('[bugs-isolation] skipped create-bug actor-bind case: need NEXT_PUBLIC_SUPABASE_ANON_KEY + QA_E2E_USER_EMAIL + QA_E2E_USER_PASSWORD.');
+      return;
+    }
+
+    const anon = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await anon.auth.signInWithPassword({
+      email: qaEmail!,
+      password: qaPassword!,
+    });
+    if (signInError || !signIn.session || !signIn.user) {
+      console.warn(`[bugs-isolation] skipped create-bug actor-bind case: QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+      return;
+    }
+    const realUserId = signIn.user.id;
+
+    // The spoofed target must be a REAL, already-fixture-seeded user distinct
+    // from the real signed-in actor — reuse fixture.actorUserId (the anchor
+    // workspace member every other case in this file already writes as)
+    // rather than provisioning a second identity. On the vanishingly unlikely
+    // chance the QA_E2E account IS the anchor, this would be a legitimate
+    // self-call, not a spoof — skip loudly rather than produce a false result.
+    if (realUserId === fixture.actorUserId) {
+      console.warn('[bugs-isolation] skipped create-bug actor-bind case: QA_E2E identity coincides with the fixture anchor, no distinct real user available to spoof.');
+      return;
+    }
+
+    const uniqueTitle = `${PREFIX} spoofed actor must never create this bug`;
+    const spoofed = await anon.rpc(CREATE_RPC, {
+      p_actor_user_id: fixture.actorUserId, // <-- spoofing a real, DIFFERENT signed-in user
+      p_project_id: fixture.projectAId,
+      p_module_id: fixture.moduleAId,
+      p_title: uniqueTitle,
+      p_severity: 'P1',
+      p_description: null,
+      p_steps_to_reproduce: '',
+      p_evidence_urls: [],
+      p_run_id: null,
+      p_run_step_id: null,
+      p_atc_id: null,
+    });
+
+    expect(spoofed.error).not.toBeNull();
+    expect(spoofed.error?.code).toBe('P0002');
+    expect(spoofed.data).toBeNull();
+
+    // The rejection must be a genuine pre-write reject, not a silent
+    // succeed-under-the-wrong-identity — confirmed via the service-role
+    // client (bypasses RLS) directly against the table, not inferred from the
+    // error alone.
+    const db = service();
+    const { data: rows, error: rowsError } = await db
+      .from('bugs')
+      .select('id')
+      .eq('title', uniqueTitle);
     if (rowsError) { throw rowsError; }
     expect(rows).toHaveLength(0);
   });
