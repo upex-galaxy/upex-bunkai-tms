@@ -3241,6 +3241,202 @@
         },
         "required": ["status"]
       },
+      "Bug": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module": {
+            "$ref": "#/components/schemas/BugModule"
+          },
+          "run_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source Run; null for a standalone bug."
+          },
+          "run_step_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source run step; null for a standalone bug."
+          },
+          "atc_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source ATC; null for a standalone bug."
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "closed"],
+            "description": "BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories."
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "steps_to_reproduce": {
+            "type": "string"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "module_id",
+          "module",
+          "run_id",
+          "run_step_id",
+          "atc_id",
+          "title",
+          "severity",
+          "status",
+          "description",
+          "steps_to_reproduce",
+          "evidence_urls",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "BugModule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "path"]
+      },
+      "BugRunLinkedCreateBody": {
+        "type": "object",
+        "properties": {
+          "run_step_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The failed run step this bug is filed from. project_id/module_id/run_id/atc_id are ALWAYS derived server-side from this — never accept them from the client on this path."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "description": {
+            "type": "string"
+          },
+          "steps_to_reproduce": {
+            "type": "string"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": ["run_step_id", "title", "severity"]
+      },
+      "BugStandaloneCreateBody": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "description": {
+            "type": "string"
+          },
+          "steps_to_reproduce": {
+            "type": "string"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": ["project_id", "module_id", "title", "severity"]
+      },
+      "BugListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bug"
+            },
+            "description": "Newest first (created_at desc)."
+          }
+        },
+        "required": ["items"]
+      },
       "CoveragePayload": {
         "type": "object",
         "properties": {
@@ -8333,6 +8529,174 @@
           },
           "422": {
             "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bugs": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "File a bug, linked to a failed run step or standalone",
+        "description": "Bearer `atc:write` (or cookie session). Run-linked: body carries ONLY `run_step_id` — project/module/run/ATC context is derived server-side from the run (never client-supplied) and the target step must be `failed`. Standalone: body carries `project_id` + `module_id` directly. Either way `bunkai_create_bug` re-validates module ∈ project server-side. Always creates status `open`. Emits a `bug.filed` activity event.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/BugRunLinkedCreateBody"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BugStandaloneCreateBody"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bug filed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bug": {
+                      "$ref": "#/components/schemas/Bug"
+                    }
+                  },
+                  "required": ["bug"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope or not a member with write access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project, module, or run step not found (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (title 5–200 chars, severity P1–P4, evidence links ≤10, module outside project, or the run-linked step is not `failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bugs": {
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "List a project's bugs, newest first",
+        "description": "Bare, unfiltered list (no query params yet — BK-41/BK-42 extend this route additively). Visible to any active workspace member (viewers included). Non-disclosure: a missing, non-visible, or foreign-workspace Project all return the same 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bugs listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BugListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (non-disclosing).",
             "content": {
               "application/json": {
                 "schema": {

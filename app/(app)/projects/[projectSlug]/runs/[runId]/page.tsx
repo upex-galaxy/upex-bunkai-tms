@@ -47,12 +47,37 @@ export default async function RunDetailPage({ params }: PageProps) {
 
   const run = data as unknown as RunDetail;
 
-  // BK-36 / BK-39 / BK-35 (Q4) — aborting, finishing, and marking a step are
-  // all member+ write actions sharing the same role gate. Mirror the Test
-  // detail page's role derivation: viewers see the runner read-only (no
-  // Abort/Finish/mark affordance at all — structurally absent, not just
-  // hidden); the bunkai_abort_run / bunkai_finish_run / bunkai_mark_run_step
-  // RPCs stay the authoritative write gates regardless of the UI.
+  // BK-40 — per-ATC module name for the "Report bug" dialog's read-only
+  // Module field. `run.module_name` is only the chain-position-1 snapshot
+  // (0040_run_module_snapshot.sql) — wrong whenever the Test's chain spans
+  // more than one module, which the same migration's own header documents as
+  // an acknowledged, normal scenario, not an edge case. A small, cheap,
+  // redundant read (same "don't touch the shared layout for one page's data"
+  // convention as the Module-picker query below) rather than extending the
+  // shared `bunkai_run_json` composer for a single display field.
+  const atcIds = run.atcs.map(atc => atc.atc_id).filter((id): id is string => id != null);
+  const { data: atcModuleRows } = atcIds.length > 0
+    ? await supabase.from('atcs').select('id, module_id').in('id', atcIds)
+    : { data: [] as { id: string, module_id: string }[] };
+  const moduleIds = Array.from(new Set((atcModuleRows ?? []).map(a => a.module_id)));
+  const { data: moduleNameRows } = moduleIds.length > 0
+    ? await supabase.from('modules').select('id, name').in('id', moduleIds)
+    : { data: [] as { id: string, name: string }[] };
+  const moduleNameById = new Map((moduleNameRows ?? []).map(m => [m.id, m.name]));
+  const atcModuleNames: Record<string, string> = {};
+  for (const row of atcModuleRows ?? []) {
+    const name = moduleNameById.get(row.module_id);
+    if (name) { atcModuleNames[row.id] = name; }
+  }
+
+  // BK-36 / BK-39 / BK-35 (Q4) / BK-40 — aborting, finishing, marking a step,
+  // and reporting a bug are all member+ write actions sharing the same role
+  // gate (the API's `atc:write` capability). Mirror the Test detail page's
+  // role derivation: viewers see the runner read-only (no Abort/Finish/mark/
+  // Report-bug affordance at all — structurally absent, not just hidden);
+  // the bunkai_abort_run / bunkai_finish_run / bunkai_mark_run_step /
+  // bunkai_create_bug RPCs stay the authoritative write gates regardless of
+  // the UI.
   const { data: memberRow } = await supabase
     .from('workspace_members')
     .select('role')
@@ -69,6 +94,8 @@ export default async function RunDetailPage({ params }: PageProps) {
       canAbort={canManageRun}
       canFinish={canManageRun}
       canMark={canManageRun}
+      canReportBug={canManageRun}
+      atcModuleNames={atcModuleNames}
     />
   );
 }

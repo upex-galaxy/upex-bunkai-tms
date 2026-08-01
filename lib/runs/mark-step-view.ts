@@ -1,4 +1,5 @@
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
+import { isValidUrl } from '@lib/utils/url';
 
 // BK-35 — Mark Step view-state logic: framework-agnostic, pure functions
 // only. All I/O (the POST .../mark call, the Realtime subscription) stays in
@@ -157,14 +158,4 @@ export function validateMarkStepForm({ note, evidenceUrl }: ValidateMarkStepForm
     return 'Evidence link must be a valid URL.';
   }
   return null;
-}
-
-function isValidUrl(value: string): boolean {
-  try {
-    void new URL(value);
-    return true;
-  }
-  catch {
-    return false;
-  }
 }
