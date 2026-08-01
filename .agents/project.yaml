@@ -103,7 +103,7 @@ git_strategy:
     feature_merge: merge-commit # merge-commit | squash | rebase-merge | n/a
     hotfix_policy: branch-off-prod-backmerge # branch-off-prod-backmerge | via-integration | none | n/a
   policy: # how strictly protected branches are guarded (set by Strategy Setup Q4; defaults are safe)
-    direct_push_to_protected: confirm # forbidden | confirm | allowed
+    direct_push_to_protected: confirm # forbidden | confirm | allowed — ACCEPTED DIVERGENCE from the host, which requires a PR on main/staging via ruleset. Rationale in CLAUDE.md § Git Strategy; do not re-raise as drift.
     admin_bypass: true # team POLICY: a repo admin MAY bypass PR/protection for urgent changes — offer is enabled. Actual capability still depends on the GitHub user's role, and git-flow-master re-confirms BOTH (a) operator is really a repo admin and (b) the specific action, at runtime, every time — this flag does not make bypass silent or automatic.
     require_pr_reviews: 0 # null | 0 | N — min approvals before merge to a protected branch (informational)
   branch_prefixes:
@@ -113,6 +113,8 @@ git_strategy:
   meta:
     setup_version: 2
     created: 2026-06-24 # YYYY-MM-DD stamped by Strategy Setup
+    policy_verified: 2026-08-01 # YYYY-MM-DD of the last reconciliation of `policy:` against the host (git-flow-master Step 1b). null = never verified. Per-project — this file is a template; a fresh project starts unverified
+    policy_source: verified # verified | declared — `declared` means `policy:` records team INTENT and has never been checked against the remote. Never state what the remote requires from a `declared` reading
 
 autonomous_delivery:
   enabled: true # master switch. false -> every mode exits in Phase 0 with a report.

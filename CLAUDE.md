@@ -393,6 +393,10 @@ git checkout staging && git merge main && git push origin staging   # back-merge
 
 **Both `main` and `staging` protected** (GitHub rule: changes via PR). Direct pushes need admin bypass + explicit user confirm per §1 #4-#5.
 
+**Protection is enforced through RULESETS, not classic branch protection.** `GET repos/{o}/{r}/branches/{b}/protection` returns `404` on both branches — that is NOT evidence they are unprotected. Read `GET repos/{o}/{r}/rules/branches/{b}` instead; it returns `pull_request` (0 required approvals), `required_signatures`, `non_fast_forward`, `deletion`, `creation`. Commits must be signed (SSH signing is configured locally).
+
+**Accepted divergence — `direct_push_to_protected: confirm`** (verified against the host 2026-08-01). `.agents/project.yaml` declares `confirm` while the host requires a pull request. This is deliberate, not drift: the repo has a single committer who is also the owner, so the PR requirement is ceremony rather than review, and the owner's admin role bypasses the ruleset (a direct push prints `remote: Bypassed rule violations` and succeeds). Do NOT re-raise this as branch-protection drift, and do NOT "correct" `project.yaml` to `forbidden`. Two things still hold: a bypass is reported as a bypass, never as permission; and the moment a second committer joins, this exception is void and the policy moves to `forbidden`.
+
 ### Critical commit rules
 
 - Semantic prefixes: `feat:` / `fix:` / `docs:` / `test:` / `refactor:` / `chore:`
