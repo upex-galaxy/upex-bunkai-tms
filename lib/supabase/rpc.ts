@@ -439,6 +439,26 @@ export async function reportProjectRuns(supabase: Client, args: ReportProjectRun
   });
 }
 
+// BK-47 — read a Project's per-user-story recovery-cycle report (first
+// failing terminal run -> first subsequent all-passing terminal run). Same
+// explicit-actor contract as reportProjectRuns/reportProjectCoverage; the
+// SECURITY DEFINER RPC resolves the Project's workspace and gates the
+// actor's active membership (any role — a viewer reads). No pagination, no
+// filters — a whole-project, unpaged read (0049_recovery_cycle_report.sql).
+// Returns `{ items }` raw (no median/duration) — lib/metrics/recovery-cycle.ts
+// derives everything else (Decision 3).
+export interface ReportProjectRecoveryCyclesArgs {
+  actorUserId: string
+  projectId: string
+}
+
+export async function reportProjectRecoveryCycles(supabase: Client, args: ReportProjectRecoveryCyclesArgs) {
+  return supabase.rpc('bunkai_report_project_recovery_cycles', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the
