@@ -100,6 +100,8 @@ import '../app/api/v1/tests/[id]/runs/route.openapi';
 
 import '../app/api/v1/projects/[id]/runs/report/route.openapi';
 
+import '../app/api/v1/projects/[id]/metrics/recovery-cycles/route.openapi';
+
 import '../app/api/v1/runs/route.openapi';
 
 import '../app/api/v1/runs/[id]/route.openapi';
