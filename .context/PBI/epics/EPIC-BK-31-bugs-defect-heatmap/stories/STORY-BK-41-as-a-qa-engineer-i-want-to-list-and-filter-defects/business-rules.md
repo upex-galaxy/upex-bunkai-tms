@@ -1,6 +1,6 @@
 # BK-41 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
 - A defect always belongs to exactly one module
 - Selecting a module includes defects belonging to that module and to every module nested beneath it
