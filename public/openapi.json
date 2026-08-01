@@ -3240,6 +3240,129 @@
           }
         },
         "required": ["status"]
+      },
+      "CoveragePayload": {
+        "type": "object",
+        "properties": {
+          "kpis": {
+            "$ref": "#/components/schemas/CoverageKpis"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageModule"
+            },
+            "description": "Every non-archived Module of the Project, ordered by position — including modules with zero ACs (`status: \"no_acs\"`)."
+          },
+          "no_coverage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoverageNoCoverageItem"
+            },
+            "description": "Every `uncovered` AC, itemized. The client collapses an entirely-unbound module's ACs into one summary row (lib/coverage/coverage-view.ts)."
+          }
+        },
+        "required": ["kpis", "modules", "no_coverage"]
+      },
+      "CoverageKpis": {
+        "type": "object",
+        "properties": {
+          "ac_total": {
+            "type": "integer"
+          },
+          "ac_bound": {
+            "type": "integer",
+            "description": "ac_total minus the uncovered count — ACs with at least one linked ATC, run or not."
+          },
+          "ac_executed": {
+            "type": "integer"
+          },
+          "modules_total": {
+            "type": "integer"
+          },
+          "modules_fully_covered": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ac_total",
+          "ac_bound",
+          "ac_executed",
+          "modules_total",
+          "modules_fully_covered"
+        ]
+      },
+      "CoverageModule": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_name": {
+            "type": "string"
+          },
+          "ac_total": {
+            "type": "integer"
+          },
+          "ac_uncovered": {
+            "type": "integer"
+          },
+          "ac_not_run": {
+            "type": "integer"
+          },
+          "ac_executed": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["uncovered", "not_run", "fully_covered", "no_acs"],
+            "description": "uncovered: at least one AC has zero linked ATCs. not_run: zero uncovered ACs, at least one AC is not_run. fully_covered: every AC is executed. no_acs: the module has zero User Stories/Acceptance Criteria."
+          }
+        },
+        "required": [
+          "module_id",
+          "module_name",
+          "ac_total",
+          "ac_uncovered",
+          "ac_not_run",
+          "ac_executed",
+          "status"
+        ]
+      },
+      "CoverageNoCoverageItem": {
+        "type": "object",
+        "properties": {
+          "ac_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ac_title": {
+            "type": "string"
+          },
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_story_title": {
+            "type": "string"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ac_id",
+          "ac_title",
+          "user_story_id",
+          "user_story_title",
+          "module_id",
+          "module_name"
+        ]
       }
     },
     "parameters": {}
@@ -8210,6 +8333,75 @@
           },
           "422": {
             "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/coverage": {
+      "get": {
+        "tags": ["Coverage"],
+        "summary": "Surface a Project's untested acceptance criteria and modules, with a never-run indicator",
+        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/runs/report`. One SECURITY DEFINER RPC (`bunkai_report_project_coverage`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included (PO decision Q5 — this is not a privileged QA-only screen). No pagination or query parameters: the whole-project rollup is small and bounded, and the UI filters the returned payload client-side. A Project with zero acceptance criteria returns zeroed `kpis` and empty arrays (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project whose coverage rollup to read."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Project's coverage rollup.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoveragePayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id (not a UUID) (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
             "content": {
               "application/json": {
                 "schema": {
