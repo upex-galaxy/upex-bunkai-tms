@@ -119,8 +119,8 @@ Unblocked 2026-06-11: BK-10 → In Test (user-approved). Cause correction: the t
 
 ## Operational Notes (carry-over from Sprint 1 — still honor)
 
-1. **Jira site = `upexgalaxy69`** — verify `acli jira auth status` before any Jira op.
-2. **Custom fields** via REST or `--fields '*all'`. Story Points = `customfield_10035` (NOT allowed in `--fields` on search — read via REST/view).
+1. **Jira site = `jira.upexgalaxy.com`** (vanity alias that always redirects to the currently active instance) — verify `acli jira auth status` matches `atlassian_url` in `.agents/project.yaml` before any Jira op.
+2. **Custom fields** via REST or `--fields '*all'`. Never hardcode a `customfield_*` ID — resolve it by slug from `.agents/jira-fields.json` (a site migration reassigns every ID). Story Points is NOT allowed in `--fields` on search — read via REST/view.
 3. **Jira Story workflow auto-transitions on PR open/merge** (confirmed BK-18). Bug workflow: verify on first bug fix.
 4. **Supabase MCP** (project `fmbpikzpkafptqximhxn`); migrations via `apply_migration`, then `bun run types:gen` + patch `lib/types.ts`.
 5. **Solo-owner merge** to `staging`: `gh pr merge <N> --merge --admin --delete-branch`.

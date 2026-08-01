@@ -101,8 +101,8 @@ Dev scope = 16 of 20 (4 already dev-done: BK-2 QA Approved; BK-4/5/6 Ready For Q
 
 These are NOT in the skills — they are this project's infra realities:
 
-1. **Jira site = `upexgalaxy69`** — verify `acli jira auth status` before any Jira op; re-login to 69 if it drifted to 67.
-2. **Custom fields** read via REST or `--fields '*all'` (default `view` omits them). Story Points = `customfield_10035`.
+1. **Jira site = `jira.upexgalaxy.com`** (vanity alias that always redirects to the currently active instance) — verify `acli jira auth status` matches `atlassian_url` in `.agents/project.yaml` before any Jira op.
+2. **Custom fields** read via REST or `--fields '*all'` (default `view` omits them). Never hardcode a `customfield_*` ID — resolve it by slug from `.agents/jira-fields.json`, because a site migration reassigns every ID.
 3. **Jira does NOT auto-transition** — do In Progress / In Review / Ready For QA manually with `acli`.
 4. **Supabase MCP** (project `fmbpikzpkafptqximhxn`) may be Unauthorized at spawn → user runs `/mcp`. Migrations via MCP `apply_migration`; then `bun run types:gen` + patch `lib/types.ts`. Single-project tenancy → keep migrations additive.
 5. **Solo-owner merge** to `staging`: `gh pr merge <N> --merge --admin --delete-branch` (REVIEW_REQUIRED, author can't self-approve).

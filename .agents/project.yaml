@@ -29,7 +29,7 @@ database:
 issue_tracker:
   issue_tracker: Jira
   issue_tracker_cli: acli
-  atlassian_url: upexgalaxy69.atlassian.net # acli `--site` slug derives from this (strip domain); no separate ATLASSIAN_SITE variable
+  atlassian_url: upexgalaxy71.atlassian.net # acli `--site` slug derives from this (strip domain); no separate ATLASSIAN_SITE variable
 
 testing:
   default_env: local # fill per project — Default working environment — must match a key under `environments:` (e.g. staging)
