@@ -1,6 +1,6 @@
 {
   "blocking": {
-    "id": "10008",
+    "id": "10010",
     "name": "Blocking",
     "outward": "blocks",
     "inward": "is blocked by",
@@ -14,11 +14,11 @@
     "exists_in_workspace": true
   },
   "causes": {
-    "id": "",
-    "name": "",
+    "id": "10013",
+    "name": "Problem/Incident",
     "outward": "causes",
     "inward": "is caused by",
-    "exists_in_workspace": false
+    "exists_in_workspace": true
   },
   "cloners": {
     "id": "10001",
@@ -77,7 +77,7 @@
     "exists_in_workspace": true
   },
   "test_design": {
-    "id": "10010",
+    "id": "10008",
     "name": "Test Design",
     "outward": "designs",
     "inward": "is designed by",

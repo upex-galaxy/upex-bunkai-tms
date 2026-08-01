@@ -1,7 +1,7 @@
 {
   "story": {
     "jira_issue_type": {
-      "id": "10008",
+      "id": "10005",
       "name": "Story"
     },
     "workflow_scheme": {
@@ -9,44 +9,49 @@
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "0add322e-73b3-4afa-b85f-58a56a9c67f9",
+      "id": "fa5ca7c6-5170-49dc-af11-f540731f8109",
       "name": "UPEX Feature (US) Workflow"
     },
     "statuses": {
-      "in_test": {
-        "id": "10041",
-        "name": "In Test",
+      "estimation": {
+        "id": "10022",
+        "name": "Estimation",
         "category": "indeterminate"
       },
-      "in_review": {
-        "id": "10033",
-        "name": "In Review",
-        "category": "indeterminate"
-      },
-      "backlog": {
-        "id": "10038",
-        "name": "Backlog",
-        "category": "new"
-      },
-      "ready_for_dev": {
-        "id": "10012",
-        "name": "Ready For Dev",
-        "category": "new"
-      },
-      "ready_for_release": {
-        "id": "10042",
-        "name": "Ready For Release",
+      "qa_approved": {
+        "id": "10020",
+        "name": "QA Approved",
         "category": "done"
+      },
+      "blocked": {
+        "id": "10026",
+        "name": "BLOCKED",
+        "category": "new"
       },
       "deployed_to_production": {
         "id": "10043",
         "name": "Deployed to Production",
         "category": "done"
       },
-      "qa_approved": {
-        "id": "10020",
-        "name": "QA Approved",
+      "ready_for_dev": {
+        "id": "10012",
+        "name": "Ready For Dev",
+        "category": "new"
+      },
+      "in_test": {
+        "id": "10041",
+        "name": "In Test",
+        "category": "indeterminate"
+      },
+      "ready_for_release": {
+        "id": "10042",
+        "name": "Ready For Release",
         "category": "done"
+      },
+      "shift_left_qa": {
+        "id": "10040",
+        "name": "Shift-Left QA",
+        "category": "indeterminate"
       },
       "ready_for_qa": {
         "id": "10007",
@@ -58,25 +63,20 @@
         "name": "ABORTED",
         "category": "done"
       },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "backlog": {
+        "id": "10038",
+        "name": "Backlog",
+        "category": "new"
+      },
       "in_progress": {
         "id": "3",
         "name": "In Progress",
         "category": "indeterminate"
-      },
-      "shift_left_qa": {
-        "id": "10040",
-        "name": "Shift-Left QA",
-        "category": "indeterminate"
-      },
-      "estimation": {
-        "id": "10022",
-        "name": "Estimation",
-        "category": "indeterminate"
-      },
-      "blocked": {
-        "id": "10026",
-        "name": "BLOCKED",
-        "category": "new"
       }
     },
     "transitions": {
@@ -175,6 +175,14 @@
         "to_status_id": "3",
         "from_canonical": "blocked",
         "to_canonical": "in_progress"
+      },
+      "back_to_dev": {
+        "id": "27",
+        "name": "back to dev",
+        "from_status_id": "10026",
+        "to_status_id": "10012",
+        "from_canonical": "blocked",
+        "to_canonical": "ready_for_dev"
       },
       "qa_sign_off": {
         "id": "10",
@@ -292,7 +300,7 @@
   },
   "bug": {
     "jira_issue_type": {
-      "id": "10021",
+      "id": "10020",
       "name": "Bug"
     },
     "workflow_scheme": {
@@ -300,7 +308,7 @@
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "0074dc80-e8f5-4516-9661-39977054bcd4",
+      "id": "c1c74189-51d6-4ea5-a2a1-3860ee125e8f",
       "name": "UPEX BUG/DEFECT LIFE CYCLE"
     },
     "statuses": {
@@ -308,6 +316,31 @@
         "id": "1",
         "name": "Open",
         "category": "new"
+      },
+      "ready_for_qa": {
+        "id": "10007",
+        "name": "Ready For QA",
+        "category": "new"
+      },
+      "closed": {
+        "id": "6",
+        "name": "Closed",
+        "category": "done"
+      },
+      "cannot_reproduce": {
+        "id": "10044",
+        "name": "Cannot Reproduce",
+        "category": "done"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
       },
       "duplicated": {
         "id": "10016",
@@ -319,40 +352,15 @@
         "name": "Enhancement",
         "category": "done"
       },
-      "in_review": {
-        "id": "10033",
-        "name": "In Review",
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
         "category": "indeterminate"
-      },
-      "ready_for_qa": {
-        "id": "10007",
-        "name": "Ready For QA",
-        "category": "new"
       },
       "rejected": {
         "id": "10019",
         "name": "REJECTED",
         "category": "done"
-      },
-      "cannot_reproduce": {
-        "id": "10044",
-        "name": "Cannot Reproduce",
-        "category": "done"
-      },
-      "closed": {
-        "id": "6",
-        "name": "Closed",
-        "category": "done"
-      },
-      "aborted": {
-        "id": "10025",
-        "name": "ABORTED",
-        "category": "done"
-      },
-      "in_progress": {
-        "id": "3",
-        "name": "In Progress",
-        "category": "indeterminate"
       },
       "deferred": {
         "id": "10015",
@@ -485,7 +493,7 @@
   },
   "test_case": {
     "jira_issue_type": {
-      "id": "10009",
+      "id": "10006",
       "name": "Test"
     },
     "workflow_scheme": {
@@ -493,34 +501,19 @@
       "name": "UPEX PROGRAM Workflow Scheme"
     },
     "workflow": {
-      "id": "deb9c959-fe3f-4aef-8233-365a6b001c0b",
+      "id": "369109e5-e51c-4776-a895-a6800b310c70",
       "name": "UPEX Test (TC) Workflow"
     },
     "statuses": {
+      "in_automation": {
+        "id": "10034",
+        "name": "In Automation",
+        "category": "indeterminate"
+      },
       "in_review": {
         "id": "10033",
         "name": "In Review",
         "category": "indeterminate"
-      },
-      "manual": {
-        "id": "10036",
-        "name": "MANUAL",
-        "category": "done"
-      },
-      "draft": {
-        "id": "10032",
-        "name": "Draft",
-        "category": "new"
-      },
-      "pull_request": {
-        "id": "10035",
-        "name": "Pull Request",
-        "category": "indeterminate"
-      },
-      "deprecated": {
-        "id": "10037",
-        "name": "DEPRECATED",
-        "category": "done"
       },
       "automated": {
         "id": "10029",
@@ -532,20 +525,35 @@
         "name": "READY",
         "category": "done"
       },
-      "in_design": {
-        "id": "10017",
-        "name": "In Design",
+      "manual": {
+        "id": "10036",
+        "name": "MANUAL",
+        "category": "done"
+      },
+      "pull_request": {
+        "id": "10035",
+        "name": "Pull Request",
         "category": "indeterminate"
+      },
+      "draft": {
+        "id": "10032",
+        "name": "Draft",
+        "category": "new"
       },
       "candidate": {
         "id": "10030",
         "name": "Candidate",
         "category": "new"
       },
-      "in_automation": {
-        "id": "10034",
-        "name": "In Automation",
+      "in_design": {
+        "id": "10017",
+        "name": "In Design",
         "category": "indeterminate"
+      },
+      "deprecated": {
+        "id": "10037",
+        "name": "DEPRECATED",
+        "category": "done"
       }
     },
     "transitions": {
@@ -748,6 +756,847 @@
         "to_status_id": "10029",
         "from_canonical": "manual",
         "to_canonical": "automated"
+      }
+    }
+  },
+  "epic": {
+    "jira_issue_type": {
+      "id": "10000",
+      "name": "Epic"
+    },
+    "workflow_scheme": {
+      "id": 10003,
+      "name": "UPEX PROGRAM Workflow Scheme"
+    },
+    "workflow": {
+      "id": "4e44bef3-7b11-426c-b941-2aa5e48b98d4",
+      "name": "UPEX Epic Workflow"
+    },
+    "statuses": {
+      "planning": {
+        "id": "10008",
+        "name": "Planning",
+        "category": "indeterminate"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "done": {
+        "id": "10039",
+        "name": "Done",
+        "category": "done"
+      },
+      "backlog": {
+        "id": "10038",
+        "name": "Backlog",
+        "category": "new"
+      },
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      }
+    },
+    "transitions": {
+      "aborted": {
+        "id": "4",
+        "name": "ABORTED",
+        "from_status_id": null,
+        "to_status_id": "10025",
+        "from_canonical": null,
+        "to_canonical": "aborted"
+      },
+      "create": {
+        "id": "1",
+        "name": "Create",
+        "from_status_id": null,
+        "to_status_id": "10038",
+        "from_canonical": null,
+        "to_canonical": "backlog"
+      },
+      "complete": {
+        "id": "2",
+        "name": "complete",
+        "from_status_id": "3",
+        "to_status_id": "10039",
+        "from_canonical": "in_progress",
+        "to_canonical": "done"
+      },
+      "plan": {
+        "id": "3",
+        "name": "plan",
+        "from_status_id": "10038",
+        "to_status_id": "10008",
+        "from_canonical": "backlog",
+        "to_canonical": "planning"
+      },
+      "ready_to_work": {
+        "id": "21",
+        "name": "ready to work",
+        "from_status_id": "10008",
+        "to_status_id": "3",
+        "from_canonical": "planning",
+        "to_canonical": "in_progress"
+      }
+    }
+  },
+  "defect": {
+    "jira_issue_type": {
+      "id": "10017",
+      "name": "Defect"
+    },
+    "workflow_scheme": {
+      "id": 10003,
+      "name": "UPEX PROGRAM Workflow Scheme"
+    },
+    "workflow": {
+      "id": "c1c74189-51d6-4ea5-a2a1-3860ee125e8f",
+      "name": "UPEX BUG/DEFECT LIFE CYCLE"
+    },
+    "statuses": {
+      "open": {
+        "id": "1",
+        "name": "Open",
+        "category": "new"
+      },
+      "ready_for_qa": {
+        "id": "10007",
+        "name": "Ready For QA",
+        "category": "new"
+      },
+      "closed": {
+        "id": "6",
+        "name": "Closed",
+        "category": "done"
+      },
+      "cannot_reproduce": {
+        "id": "10044",
+        "name": "Cannot Reproduce",
+        "category": "done"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "duplicated": {
+        "id": "10016",
+        "name": "Duplicated",
+        "category": "done"
+      },
+      "enhancement": {
+        "id": "10023",
+        "name": "Enhancement",
+        "category": "done"
+      },
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      },
+      "rejected": {
+        "id": "10019",
+        "name": "REJECTED",
+        "category": "done"
+      },
+      "deferred": {
+        "id": "10015",
+        "name": "Deferred",
+        "category": "indeterminate"
+      }
+    },
+    "transitions": {
+      "aborted": {
+        "id": "3",
+        "name": "ABORTED",
+        "from_status_id": null,
+        "to_status_id": "10025",
+        "from_canonical": null,
+        "to_canonical": "aborted"
+      },
+      "re_open": {
+        "id": "4",
+        "name": "Re-Open",
+        "from_status_id": null,
+        "to_status_id": "1",
+        "from_canonical": null,
+        "to_canonical": "open"
+      },
+      "create": {
+        "id": "1",
+        "name": "Create",
+        "from_status_id": null,
+        "to_status_id": "1",
+        "from_canonical": null,
+        "to_canonical": "open"
+      },
+      "is_cnr": {
+        "id": "8",
+        "name": "is CNR",
+        "from_status_id": "1",
+        "to_status_id": "10044",
+        "from_canonical": "open",
+        "to_canonical": "cannot_reproduce"
+      },
+      "defer": {
+        "id": "51",
+        "name": "defer",
+        "from_status_id": "1",
+        "to_status_id": "10015",
+        "from_canonical": "open",
+        "to_canonical": "deferred"
+      },
+      "is_duplicated": {
+        "id": "71",
+        "name": "is duplicated",
+        "from_status_id": "1",
+        "to_status_id": "10016",
+        "from_canonical": "open",
+        "to_canonical": "duplicated"
+      },
+      "is_wad": {
+        "id": "111",
+        "name": "is WAD",
+        "from_status_id": "1",
+        "to_status_id": "10019",
+        "from_canonical": "open",
+        "to_canonical": "rejected"
+      },
+      "start_fixing": {
+        "id": "121",
+        "name": "start fixing",
+        "from_status_id": "1",
+        "to_status_id": "3",
+        "from_canonical": "open",
+        "to_canonical": "in_progress"
+      },
+      "is_not_a_bug": {
+        "id": "141",
+        "name": "is not a Bug",
+        "from_status_id": "1",
+        "to_status_id": "10023",
+        "from_canonical": "open",
+        "to_canonical": "enhancement"
+      },
+      "resume_fix": {
+        "id": "6",
+        "name": "resume fix",
+        "from_status_id": "10015",
+        "to_status_id": "3",
+        "from_canonical": "deferred",
+        "to_canonical": "in_progress"
+      },
+      "fixed_and_deployed": {
+        "id": "31",
+        "name": "Fixed & Deployed",
+        "from_status_id": "10033",
+        "to_status_id": "10007",
+        "from_canonical": "in_review",
+        "to_canonical": "ready_for_qa"
+      },
+      "pull_request": {
+        "id": "2",
+        "name": "Pull Request",
+        "from_status_id": "3",
+        "to_status_id": "10033",
+        "from_canonical": "in_progress",
+        "to_canonical": "in_review"
+      },
+      "hard_pushed": {
+        "id": "5",
+        "name": "Hard pushed",
+        "from_status_id": "3",
+        "to_status_id": "10007",
+        "from_canonical": "in_progress",
+        "to_canonical": "ready_for_qa"
+      },
+      "back": {
+        "id": "7",
+        "name": "back",
+        "from_status_id": "6",
+        "to_status_id": "10007",
+        "from_canonical": "closed",
+        "to_canonical": "ready_for_qa"
+      },
+      "retest_passed": {
+        "id": "41",
+        "name": "ReTest Passed",
+        "from_status_id": "10007",
+        "to_status_id": "6",
+        "from_canonical": "ready_for_qa",
+        "to_canonical": "closed"
+      }
+    }
+  },
+  "improvement": {
+    "jira_issue_type": {
+      "id": "10021",
+      "name": "Improvement"
+    },
+    "workflow_scheme": {
+      "id": 10003,
+      "name": "UPEX PROGRAM Workflow Scheme"
+    },
+    "workflow": {
+      "id": "c1c74189-51d6-4ea5-a2a1-3860ee125e8f",
+      "name": "UPEX BUG/DEFECT LIFE CYCLE"
+    },
+    "statuses": {
+      "open": {
+        "id": "1",
+        "name": "Open",
+        "category": "new"
+      },
+      "ready_for_qa": {
+        "id": "10007",
+        "name": "Ready For QA",
+        "category": "new"
+      },
+      "closed": {
+        "id": "6",
+        "name": "Closed",
+        "category": "done"
+      },
+      "cannot_reproduce": {
+        "id": "10044",
+        "name": "Cannot Reproduce",
+        "category": "done"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "duplicated": {
+        "id": "10016",
+        "name": "Duplicated",
+        "category": "done"
+      },
+      "enhancement": {
+        "id": "10023",
+        "name": "Enhancement",
+        "category": "done"
+      },
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      },
+      "rejected": {
+        "id": "10019",
+        "name": "REJECTED",
+        "category": "done"
+      },
+      "deferred": {
+        "id": "10015",
+        "name": "Deferred",
+        "category": "indeterminate"
+      }
+    },
+    "transitions": {
+      "aborted": {
+        "id": "3",
+        "name": "ABORTED",
+        "from_status_id": null,
+        "to_status_id": "10025",
+        "from_canonical": null,
+        "to_canonical": "aborted"
+      },
+      "re_open": {
+        "id": "4",
+        "name": "Re-Open",
+        "from_status_id": null,
+        "to_status_id": "1",
+        "from_canonical": null,
+        "to_canonical": "open"
+      },
+      "create": {
+        "id": "1",
+        "name": "Create",
+        "from_status_id": null,
+        "to_status_id": "1",
+        "from_canonical": null,
+        "to_canonical": "open"
+      },
+      "is_cnr": {
+        "id": "8",
+        "name": "is CNR",
+        "from_status_id": "1",
+        "to_status_id": "10044",
+        "from_canonical": "open",
+        "to_canonical": "cannot_reproduce"
+      },
+      "defer": {
+        "id": "51",
+        "name": "defer",
+        "from_status_id": "1",
+        "to_status_id": "10015",
+        "from_canonical": "open",
+        "to_canonical": "deferred"
+      },
+      "is_duplicated": {
+        "id": "71",
+        "name": "is duplicated",
+        "from_status_id": "1",
+        "to_status_id": "10016",
+        "from_canonical": "open",
+        "to_canonical": "duplicated"
+      },
+      "is_wad": {
+        "id": "111",
+        "name": "is WAD",
+        "from_status_id": "1",
+        "to_status_id": "10019",
+        "from_canonical": "open",
+        "to_canonical": "rejected"
+      },
+      "start_fixing": {
+        "id": "121",
+        "name": "start fixing",
+        "from_status_id": "1",
+        "to_status_id": "3",
+        "from_canonical": "open",
+        "to_canonical": "in_progress"
+      },
+      "is_not_a_bug": {
+        "id": "141",
+        "name": "is not a Bug",
+        "from_status_id": "1",
+        "to_status_id": "10023",
+        "from_canonical": "open",
+        "to_canonical": "enhancement"
+      },
+      "resume_fix": {
+        "id": "6",
+        "name": "resume fix",
+        "from_status_id": "10015",
+        "to_status_id": "3",
+        "from_canonical": "deferred",
+        "to_canonical": "in_progress"
+      },
+      "fixed_and_deployed": {
+        "id": "31",
+        "name": "Fixed & Deployed",
+        "from_status_id": "10033",
+        "to_status_id": "10007",
+        "from_canonical": "in_review",
+        "to_canonical": "ready_for_qa"
+      },
+      "pull_request": {
+        "id": "2",
+        "name": "Pull Request",
+        "from_status_id": "3",
+        "to_status_id": "10033",
+        "from_canonical": "in_progress",
+        "to_canonical": "in_review"
+      },
+      "hard_pushed": {
+        "id": "5",
+        "name": "Hard pushed",
+        "from_status_id": "3",
+        "to_status_id": "10007",
+        "from_canonical": "in_progress",
+        "to_canonical": "ready_for_qa"
+      },
+      "back": {
+        "id": "7",
+        "name": "back",
+        "from_status_id": "6",
+        "to_status_id": "10007",
+        "from_canonical": "closed",
+        "to_canonical": "ready_for_qa"
+      },
+      "retest_passed": {
+        "id": "41",
+        "name": "ReTest Passed",
+        "from_status_id": "10007",
+        "to_status_id": "6",
+        "from_canonical": "ready_for_qa",
+        "to_canonical": "closed"
+      }
+    }
+  },
+  "tech_story": {
+    "jira_issue_type": {
+      "id": "10012",
+      "name": "Tech Story"
+    },
+    "workflow_scheme": {
+      "id": 10003,
+      "name": "UPEX PROGRAM Workflow Scheme"
+    },
+    "workflow": {
+      "id": "3eb10a53-cc82-43db-9a0a-380450e373cd",
+      "name": "UPEX Tech Task/Debt (TD) Workflow"
+    },
+    "statuses": {
+      "completed": {
+        "id": "10009",
+        "name": "Completed",
+        "category": "done"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "to_do": {
+        "id": "10027",
+        "name": "To Do",
+        "category": "new"
+      },
+      "automated": {
+        "id": "10029",
+        "name": "AUTOMATED",
+        "category": "done"
+      },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "fixed": {
+        "id": "10028",
+        "name": "FIXED",
+        "category": "done"
+      },
+      "blocked": {
+        "id": "10026",
+        "name": "BLOCKED",
+        "category": "new"
+      },
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      }
+    },
+    "transitions": {
+      "create": {
+        "id": "1",
+        "name": "Create",
+        "from_status_id": null,
+        "to_status_id": "10027",
+        "from_canonical": null,
+        "to_canonical": "to_do"
+      },
+      "recover_from_blocked": {
+        "id": "411",
+        "name": "Recover",
+        "from_status_id": "10026",
+        "to_status_id": "3",
+        "from_canonical": "blocked",
+        "to_canonical": "in_progress"
+      },
+      "back_from_completed": {
+        "id": "401",
+        "name": "Back",
+        "from_status_id": "10009",
+        "to_status_id": "10033",
+        "from_canonical": "completed",
+        "to_canonical": "in_review"
+      },
+      "recovered": {
+        "id": "271",
+        "name": "Recovered",
+        "from_status_id": "10025",
+        "to_status_id": "10027",
+        "from_canonical": "aborted",
+        "to_canonical": "to_do"
+      },
+      "auto_deploy": {
+        "id": "301",
+        "name": "Auto-Deploy",
+        "from_status_id": "10027",
+        "to_status_id": null,
+        "from_canonical": "to_do",
+        "to_canonical": null
+      },
+      "start_working": {
+        "id": "321",
+        "name": "Start Working",
+        "from_status_id": "10027",
+        "to_status_id": "3",
+        "from_canonical": "to_do",
+        "to_canonical": "in_progress"
+      },
+      "back_from_fixed": {
+        "id": "381",
+        "name": "Back",
+        "from_status_id": "10028",
+        "to_status_id": "10033",
+        "from_canonical": "fixed",
+        "to_canonical": "in_review"
+      },
+      "back_from_automated": {
+        "id": "391",
+        "name": "Back",
+        "from_status_id": "10029",
+        "to_status_id": "10033",
+        "from_canonical": "automated",
+        "to_canonical": "in_review"
+      },
+      "renew": {
+        "id": "81",
+        "name": "Renew",
+        "from_status_id": "3",
+        "to_status_id": "10027",
+        "from_canonical": "in_progress",
+        "to_canonical": "to_do"
+      },
+      "abort": {
+        "id": "251",
+        "name": "Abort",
+        "from_status_id": "3",
+        "to_status_id": "10025",
+        "from_canonical": "in_progress",
+        "to_canonical": "aborted"
+      },
+      "ready": {
+        "id": "331",
+        "name": "Ready",
+        "from_status_id": "3",
+        "to_status_id": "10033",
+        "from_canonical": "in_progress",
+        "to_canonical": "in_review"
+      },
+      "blocked": {
+        "id": "341",
+        "name": "Blocked",
+        "from_status_id": "3",
+        "to_status_id": "10026",
+        "from_canonical": "in_progress",
+        "to_canonical": "blocked"
+      },
+      "fix": {
+        "id": "351",
+        "name": "Fix",
+        "from_status_id": "10033",
+        "to_status_id": "10028",
+        "from_canonical": "in_review",
+        "to_canonical": "fixed"
+      },
+      "complete": {
+        "id": "361",
+        "name": "Complete",
+        "from_status_id": "10033",
+        "to_status_id": "10009",
+        "from_canonical": "in_review",
+        "to_canonical": "completed"
+      },
+      "test_finished": {
+        "id": "371",
+        "name": "Test Finished",
+        "from_status_id": "10033",
+        "to_status_id": "10029",
+        "from_canonical": "in_review",
+        "to_canonical": "automated"
+      },
+      "recover_from_in_review": {
+        "id": "421",
+        "name": "Recover",
+        "from_status_id": "10033",
+        "to_status_id": "3",
+        "from_canonical": "in_review",
+        "to_canonical": "in_progress"
+      }
+    }
+  },
+  "tech_debt": {
+    "jira_issue_type": {
+      "id": "10015",
+      "name": "Tech Debt"
+    },
+    "workflow_scheme": {
+      "id": 10003,
+      "name": "UPEX PROGRAM Workflow Scheme"
+    },
+    "workflow": {
+      "id": "3eb10a53-cc82-43db-9a0a-380450e373cd",
+      "name": "UPEX Tech Task/Debt (TD) Workflow"
+    },
+    "statuses": {
+      "completed": {
+        "id": "10009",
+        "name": "Completed",
+        "category": "done"
+      },
+      "aborted": {
+        "id": "10025",
+        "name": "ABORTED",
+        "category": "done"
+      },
+      "to_do": {
+        "id": "10027",
+        "name": "To Do",
+        "category": "new"
+      },
+      "automated": {
+        "id": "10029",
+        "name": "AUTOMATED",
+        "category": "done"
+      },
+      "in_review": {
+        "id": "10033",
+        "name": "In Review",
+        "category": "indeterminate"
+      },
+      "fixed": {
+        "id": "10028",
+        "name": "FIXED",
+        "category": "done"
+      },
+      "blocked": {
+        "id": "10026",
+        "name": "BLOCKED",
+        "category": "new"
+      },
+      "in_progress": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      }
+    },
+    "transitions": {
+      "create": {
+        "id": "1",
+        "name": "Create",
+        "from_status_id": null,
+        "to_status_id": "10027",
+        "from_canonical": null,
+        "to_canonical": "to_do"
+      },
+      "recover_from_blocked": {
+        "id": "411",
+        "name": "Recover",
+        "from_status_id": "10026",
+        "to_status_id": "3",
+        "from_canonical": "blocked",
+        "to_canonical": "in_progress"
+      },
+      "back_from_completed": {
+        "id": "401",
+        "name": "Back",
+        "from_status_id": "10009",
+        "to_status_id": "10033",
+        "from_canonical": "completed",
+        "to_canonical": "in_review"
+      },
+      "recovered": {
+        "id": "271",
+        "name": "Recovered",
+        "from_status_id": "10025",
+        "to_status_id": "10027",
+        "from_canonical": "aborted",
+        "to_canonical": "to_do"
+      },
+      "auto_deploy": {
+        "id": "301",
+        "name": "Auto-Deploy",
+        "from_status_id": "10027",
+        "to_status_id": null,
+        "from_canonical": "to_do",
+        "to_canonical": null
+      },
+      "start_working": {
+        "id": "321",
+        "name": "Start Working",
+        "from_status_id": "10027",
+        "to_status_id": "3",
+        "from_canonical": "to_do",
+        "to_canonical": "in_progress"
+      },
+      "back_from_fixed": {
+        "id": "381",
+        "name": "Back",
+        "from_status_id": "10028",
+        "to_status_id": "10033",
+        "from_canonical": "fixed",
+        "to_canonical": "in_review"
+      },
+      "back_from_automated": {
+        "id": "391",
+        "name": "Back",
+        "from_status_id": "10029",
+        "to_status_id": "10033",
+        "from_canonical": "automated",
+        "to_canonical": "in_review"
+      },
+      "renew": {
+        "id": "81",
+        "name": "Renew",
+        "from_status_id": "3",
+        "to_status_id": "10027",
+        "from_canonical": "in_progress",
+        "to_canonical": "to_do"
+      },
+      "abort": {
+        "id": "251",
+        "name": "Abort",
+        "from_status_id": "3",
+        "to_status_id": "10025",
+        "from_canonical": "in_progress",
+        "to_canonical": "aborted"
+      },
+      "ready": {
+        "id": "331",
+        "name": "Ready",
+        "from_status_id": "3",
+        "to_status_id": "10033",
+        "from_canonical": "in_progress",
+        "to_canonical": "in_review"
+      },
+      "blocked": {
+        "id": "341",
+        "name": "Blocked",
+        "from_status_id": "3",
+        "to_status_id": "10026",
+        "from_canonical": "in_progress",
+        "to_canonical": "blocked"
+      },
+      "fix": {
+        "id": "351",
+        "name": "Fix",
+        "from_status_id": "10033",
+        "to_status_id": "10028",
+        "from_canonical": "in_review",
+        "to_canonical": "fixed"
+      },
+      "complete": {
+        "id": "361",
+        "name": "Complete",
+        "from_status_id": "10033",
+        "to_status_id": "10009",
+        "from_canonical": "in_review",
+        "to_canonical": "completed"
+      },
+      "test_finished": {
+        "id": "371",
+        "name": "Test Finished",
+        "from_status_id": "10033",
+        "to_status_id": "10029",
+        "from_canonical": "in_review",
+        "to_canonical": "automated"
+      },
+      "recover_from_in_review": {
+        "id": "421",
+        "name": "Recover",
+        "from_status_id": "10033",
+        "to_status_id": "3",
+        "from_canonical": "in_review",
+        "to_canonical": "in_progress"
       }
     }
   }

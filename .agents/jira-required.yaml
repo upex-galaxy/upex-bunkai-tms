@@ -211,9 +211,9 @@ required:
     fallback: { target: comment, label: Root Cause }
     options:
       - code_error
-      - config_env_error
+      - configuration_error
       - data_error
-      - environment_error
+      - infrastructure_error
       - integration_error
       - requirement_error
       - third_party_error
