@@ -141,5 +141,39 @@ Net effect: implementation follows the shipped mockup wherever it speaks, and th
 
 ---
 
+### Automation for Jira - 7/31/2026, 1:57:40 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 7/31/2026, 2:01:37 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 7/31/2026, 2:45:37 PM
+
+## Ready For QA — dev complete
+
+Both PRs merged to `staging`:
+
+- PR1 (backend: `bunkai*leave*workspace` RPC + `DELETE /api/v1/workspaces/{id}/membership`): https://github.com/upex-galaxy/upex-bunkai-tms/pull/72
+- PR2 (frontend: type-to-confirm leave modal + list wiring): https://github.com/upex-galaxy/upex-bunkai-tms/pull/74
+
+All 5 AC scenarios implemented and covered (Spec Compliance Matrix + full review trail in the repo at `.context/PBI/epics/EPIC-BK-85-account-settings/stories/STORY-BK-90-tms-workspace-leave-a-workspace/review.md`).
+
+Note for QA walkthrough: 2 of the story's shift-left-flagged decisions came out differently than the original 2026-06-10 draft comment — see the two 2026-07-31 comments on this ticket for the ratified, mockup-aligned behavior:
+
+- Leaving your ***only**** workspace is ****blocked*** (the action doesn't render at all), not redirected to `/onboarding` as the stored `acceptance_criteria` field text still says.
+- The confirmation dialog uses ***type-to-confirm*** (type the exact workspace name), not a simple confirm/cancel.
+
+Recommend updating the `acceptance_criteria` field to match before authoring the final ATP, so the drift doesn't propagate into test cases.
+
+Reassigned to you as the shift-left QA owner for this story.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

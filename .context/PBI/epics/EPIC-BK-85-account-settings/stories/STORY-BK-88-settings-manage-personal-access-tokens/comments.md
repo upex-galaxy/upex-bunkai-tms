@@ -78,5 +78,32 @@ Mockup — Settings — Personal Access Tokens. Source: .context/designs/bunkai-
 
 ---
 
+### Automation for Jira - 7/31/2026, 3:44:46 AM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 7/31/2026, 5:24:36 AM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 7/31/2026, 5:58:18 AM
+
+## Ready For QA — dev complete
+
+Both PRs merged to `staging`:
+
+- PR1 (list + revoke): https://github.com/upex-galaxy/upex-bunkai-tms/pull/68
+- PR2 (issue-token flow): https://github.com/upex-galaxy/upex-bunkai-tms/pull/70
+
+All 8 AC scenarios implemented and covered (Spec Compliance Matrix + full review trail in the repo at `.context/PBI/epics/EPIC-BK-85-account-settings/stories/STORY-BK-88-settings-manage-personal-access-tokens/review.md`). Backend (issue/list/revoke endpoints, role-gate) was already shipped and tested prior to this story (BK-135/BK-167) — this story added the Settings > Tokens UI only.
+
+Reassigned to you as the shift-left QA owner for this story. The 17 previously UI-deferred ATP outlines (blocked on BK-87, which is now Ready For QA) should be unblocked — ready for the full walkthrough on staging.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
