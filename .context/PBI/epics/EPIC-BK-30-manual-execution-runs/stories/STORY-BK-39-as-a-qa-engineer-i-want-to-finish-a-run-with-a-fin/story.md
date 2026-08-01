@@ -335,7 +335,7 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 
 ### Bug (1)
 
-- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Open)_
+- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Ready For QA)_
 
 ### Storys (4)
 

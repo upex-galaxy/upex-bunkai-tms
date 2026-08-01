@@ -1,7 +1,7 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-07-11
+> **Last sync**: 2026-08-01 (autonomous-delivery `story` run, scheduled task `sprint-development--user-stories`)
 > **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
@@ -100,19 +100,23 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
                                  ├──> BK-23 ATC Duplicate       (5)
                                  ├──> BK-32 Test view expanded  (1)
                                  ├··> BK-21 ATC Propagation ✅  (5)     (dev-done — merged to staging, Ready For QA; contract ratified, ADR-0009)
-                                 └──> BK-34 Start manual run ✅  (8) ──┬──> BK-35 Mark step pass/fail (5*) ⚪ Estimation
+                                 └──> BK-34 Start manual run ✅  (8) ──┬──> BK-35 Mark step pass/fail ✅ (8)  (dev-done — PR #73 merged to staging 2026-07-31, Ready For QA)
                                    (dev-done — gate RELEASED)          ├──> BK-36 Abort run ✅        (8)   (dev-done — merged to staging PR #59, Ready For QA)
                                                                        ├──> BK-37 Run history ✅      (5)   (dev-done — PRs #65+#66 merged to staging, Ready For QA; est. 1→5 by PO 2026-07-21)
-                                                                       ├──> BK-38 Filter proj runs   (3) 🟢 (mockup ✅ 2026-07-30)
-                                                                       └──> BK-39 Finish run verdict (5) 🟢
+                                                                       ├──> BK-38 Filter proj runs ✅ (3)   (dev-done — PR #69 merged to staging 2026-07-31, Ready For QA)
+                                                                       └──> BK-39 Finish run verdict ✅ (5) (dev-done — PR #60 merged 2026-06-25, Ready For Release, ATR "PASSED WITH FOLLOW-UP" BK-182 non-blocking)
 
    INDEPENDENT (no BK-27 gate — parallel-safe):
-     BK-20 ATC Search 🧪      BK-3 OAuth (8) 🟢 (AC synced)      BK-19 ATC Builder ✅   BK-18 ATC API ✅
+     BK-20 ATC Search ⛔ BLOCKED (QA 6/30 FAILED 23/24 TCs, open defect BK-187 — response shape wrong)
+     BK-3 OAuth ⚠️ Ready For Dev but shift-left refinement NOT genuinely resolved (all blocker-Q answers headed "simulated for QA engineering practice", never ratified since 5/26 — do not autonomous-claim)
+     BK-19 ATC Builder ✅   BK-18 ATC API ✅
 
    SETTINGS CLUSTER (epic BK-85):
-     BK-86 Account/sign-out ✅ ──> BK-87 Settings hub (2) ✅ ──┬──> BK-88 Manage PATs (5) 🟢
-        (dev-done — QA Approved)   (dev-done — Ready For QA)   └──> BK-89 View workspaces (2) 🟢 ──> BK-90 Leave workspace (5) 🟢
+     BK-86 Account/sign-out ✅ ──> BK-87 Settings hub ✅ (2) ──┬──> BK-88 Manage PATs ✅ (5)  (dev-done — PRs #68+#70 merged to staging 2026-07-31, Ready For QA; NOTE: 4 PO Qs + 1 security Q raised 6/10 [revoked-token visibility, confirmation copy, expiry display, clipboard fallback, privilege-escalation] were never answered in-thread — only the privesc bug (BK-135) got fixed pre-ship, the rest shipped unanswered)
+        (dev-done — QA Approved)   (dev-done — Ready For QA,   └──> BK-89 View workspaces ✅ (2) ──> BK-90 Leave workspace ✅ (5)  (dev-done — PRs #72+#74 merged to staging 2026-07-31, Ready For QA; NOTE: 6/10 refinement answers explicitly labeled "practice-exercise... AI-authored... not real confirmations"; a 7/31 03:07 "confirmed by PO" comment was self-reversed 4 min later by the same author — no independent human sign-off ever surfaced)
+                                     PRs #63+#64 merged)
                                     └─ Settings mockup ✅ 2026-07-30 (§4.10, bk-85-account-settings/ 5-screen suite) — gate lifted for the whole cluster
+                                    (BK-89's former "open Dev contract" pre-dev note is STALE — role field + active-workspace transport were resolved before code was written, PR #71 confirmed merged)
 ```
 
 ### Flat edge list (the durable contract — validate against Jira §7)
@@ -186,8 +190,11 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 | **ES1.5 ✅ (BK-87 dev-done)** | BK-87 (after BK-86 ✅) ; **BK-21 ✅ (shipped)** | BK-86 ✅ ; BK-27 ✅ | **BK-87 ✅ dev-done 2026-07-30** — stacked 2-PR split (git-flow-master decision tree, 830-line forecast): PR1 shell/nav/auth-guard/identity (#63) + PR2 workspace list (#64), both merged to staging; 1 review BLOCKER (member-count RLS undercount) fixed pre-merge. Ready For QA, assigned to shift-left QA owner. **BK-21 ✅ dev-done 2026-06-25** — 10 contract Qs ratified (ADR-0009) + OpenAPI drift fixed; merged to staging (PR #57) + edit-path unified (PR #58); Ready For QA. |
 | **ES2 ✅ (shipped)** | BK-34 Start manual run | BK-27 ✅ | **Shipped → QA Approved** — released the Runs tail (BK-35/36/37/38/39). |
 | **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | BK-88 mockup ✅ 2026-07-30 (`settings-tokens.html`) — remaining gate: its own 9 Qs. **BK-89 promoted to RFD 2026-06-24** but open Dev contract (add `role` to `GET /workspaces` + active-workspace transport) — resolve before coding; mockup ✅ (`settings-workspaces.html`). |
-| **ES3 (live frontier)** | BK-36 Abort ✅ (shipped) ; **BK-37 Run history ✅ (shipped)** ; BK-39 Finish verdict (🟢 workable now) ; BK-35 (⚪ Estimation, blocked) ; BK-38 (🟢 workable) ; BK-90 (after BK-89) | BK-34 ✅ ; BK-89 | **Live frontier**: **BK-36 ✅ dev-done 2026-06-25** (migration 0036 `abort_reason` + `bunkai_abort_run`; PR #59 merged to staging; Ready For QA, unassigned — generic shift-left batch, no named QA owner). **BK-37 ✅ dev-done 2026-07-31** — chained 2-PR split (650-line forecast): PR1 API (#65, migrations 0038+0039) + PR2 UI (#66), both merged to staging; establishes the repo's FIRST pagination pattern (keyset on `(started_at desc, id desc)`, base64url cursor) which **BK-38 should reuse**; 11 review findings all adjudicated legitimate, incl. an actor-binding security gap closed in 0039 (rest of the `bunkai_*` family tracked as BK-249). Ready For QA, assigned to its shift-left owner. BK-39 workable now off the BK-34 gate. BK-35 re-estimated 1→5 SP, stays in Estimation (blocked by Q1 PO + Q5 Dev). BK-38 mockup ✅ 2026-07-30 (`bk-30-test-runs-index/`) — workable, and now has BK-37's pagination pattern to copy. BK-90 mockup ✅ (`settings-workspaces.html`) — waits only on BK-89 contract. |
-| **ES4+** | epic BK-31 (Bugs), BK-44 (Coverage) | BK-30 complete | Bug Reports + Metrics mockups ✅ 2026-07-30 (`bk-31-bug-reports/`, `bk-44-metrics-coverage/`) — gated only by BK-30 completion now. |
+| **ES3 ✅ (fully drained 2026-07-31)** | BK-36 ✅, BK-37 ✅, BK-39 ✅, BK-38 ✅, BK-35 ✅, BK-90 ✅ — all shipped, all merged to staging, all Ready For QA / Ready For Release | BK-34 ✅ ; BK-89 ✅ | Entire ES3 fan-out drained in a single 2026-07-31 batch (avalanche-style run). BK-39 was actually the oldest of the batch (PR #60, merged 2026-06-25) — the roadmap had simply never been updated to reflect it. All six confirmed genuine `git merge-base --is-ancestor` hits against `origin/staging`, not tracker-status inference. |
+| **ES2.5 ✅ (drained 2026-07-31)** | BK-88 ✅ | BK-87 ✅ | PRs #68+#70 merged to staging. Ready For QA. Shipped with 4 PO Qs + 1 security Q unanswered in-thread (see settings-cluster note in §3) — flagged for QA/PO follow-up, not a re-open trigger. |
+| **ES4 (live frontier — epic BK-31 Bugs)** | BK-41, BK-42, BK-43 — all `Ready For Dev`, blocker BK-40 ✅ confirmed merged to staging, no existing branch/PR for any of the three | BK-40 ✅ | **NOT autonomous-eligible as of 2026-08-01.** All three fail shift-left genuineness: BK-41/BK-42 explicitly state "PO/Dev own movement out of Backlog / estimation" with no PO/Dev comment ever posted; BK-43 has 8 unanswered HIGH/MEDIUM "Open Questions for PO/Dev" (integration mechanism, retry policy, deletion semantics, auth, dedup) yet self-estimates 1 SP and claims "Next: Ready For Dev" — self-contradicted. Needs human refinement pass before any dev run (autonomous or interactive) claims them. |
+| **ES4 (BK-44 Coverage)** | BK-45, BK-50 | BK-24 ✅, BK-30 ✅, **BK-31 (NOT complete — its own children BK-41/42/43 above are unmerged)** | Hard-blocked regardless of refinement quality until epic BK-31 actually finishes. |
+| **ES5 (BK-208 Notifications, post-MVP)** | BK-209 (first-of-cluster, "free" per §3.1) ; BK-211/212/213 (blocked on BK-209) | none (BK-209) ; BK-209 (rest) | BK-209 is dependency-clear and has all its refinement questions genuinely *answered* in-thread, but its "PO Ratification — 2026-07-11" comment was posted 11 minutes *before* the actual Q&A content it claims to ratify, by a different account than the one that answered — a blanket 28-story batch delegation, not per-story human sign-off. Also 13 SP (advisory) and first-of-epic (new notification substrate, no prior schema to extend) — oversized for an unattended pick per the scope-growth check. Flagged conditional: needs an explicit human "go" before either an autonomous or interactive run claims it. |
 
 ---
 
@@ -248,14 +255,16 @@ These are gating questions / contract decisions captured during shift-left refin
 
 | Story | Pre-dev blocker (resolve first) |
 |-------|----------------------------------|
-| BK-3  | ~~Sync AC field to the 10 refined ACs.~~ **DONE (2026-06-24)** — AC field synced to the 10 refined ACs (`/onboarding` first-time / `/projects` returning; removed `/home` + status `201`). Cleared for dev. |
-| BK-22 / BK-86 / BK-90 | Human-ratify the AI role-played PO answers. |
-| BK-23 | Answer 8 contract Qs (role gate, title overflow, API mismatch). |
-| BK-88 | Answer 4 PO + 5 dev Qs (ATP marks them planning blockers). |
-| BK-89 | **Promoted to RFD 2026-06-24; open Dev contract**: add `role` to `GET /api/v1/workspaces` + active-workspace transport decision (API field vs localStorage vs session, undecided) — resolve before coding. Comment posted on the issue. |
-| BK-21 | ~~Answer 10 propagation Qs + fix OpenAPI drift on `PATCH /atcs/{id}`.~~ **RESOLVED + SHIPPED (2026-06-25)** — 10 Qs ratified (ADR-0009: reference-based propagation, optional If-Match, `{atc,version,affected_test_count}`, immutable anchors, no layer-policy gate, distinct-Test count); OpenAPI drift fixed; merged to staging (PR #57) + edit-path unification (PR #58). Ready For QA, assigned Ramiro. |
-| BK-35 | **Re-estimated 1→5 SP 2026-06-24; still in Estimation** pending Q1 (PO: ATC verdict when steps pending) + Q5 (Dev: realtime transport + latency SLA). Comment posted. |
+| BK-3  | ~~Sync AC field to the 10 refined ACs.~~ **DONE (2026-06-24)** — AC field synced. **BUT (found 2026-08-01)**: the 10 blocker-question answers (PO/Dev/Design, dated 5/26) are all headed "simulated for QA engineering practice" with no ratification comment since. AC-sync ≠ refinement-resolved. Still not autonomous-eligible. |
+| BK-20 | Status is literally **BLOCKED** (not a pre-dev question) — QA run 6/30 FAILED 23/24 TCs, defect BK-187 ("response shape wrong") open in traceability. Resolve the defect before this can move at all. |
+| BK-41 / BK-42 | No PO/Dev comment ever posted after moving to Ready For Dev; both stories' own refinement notes say "PO/Dev own movement out of Backlog / estimation" — i.e. the required sign-off never happened. |
+| BK-43 | 8 unanswered HIGH/MEDIUM "Open Questions for PO/Dev" (integration mechanism, retry policy, deletion semantics, auth, dedup) — self-estimated 1 SP and self-declared "Next: Ready For Dev" without answering any of them. |
+| BK-209 | All refinement questions are genuinely *answered*, but the "PO Ratification — 2026-07-11" comment was posted 11 minutes *before* the Q&A it claims to ratify, by a different Jira account than the one that answered — a blanket batch delegation, not per-story sign-off. 13 SP, first-of-epic (new notification substrate). Needs explicit human "go." |
+| BK-88 (informational, already shipped) | 4 PO Qs (revoked-token visibility, confirmation copy, expiry display, clipboard fallback) + 1 security Q raised 6/10 were never answered before merge — only the privilege-escalation bug (BK-135) got fixed. Not a re-open trigger; flagged for a QA/PO follow-up pass. |
+| BK-90 (informational, already shipped) | 6/10 refinement answers explicitly labeled "practice-exercise... not real confirmations"; a 7/31 03:07 "confirmed by PO" comment was self-reversed 4 minutes later by the same author. Shipped anyway. Not a re-open trigger; flagged for QA follow-up. |
 | Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
+
+> **Systemic pattern flagged 2026-08-01** (see escalation log): a recurring shift-left gap — stories reach `Ready For Dev`/`Ready For QA` via either (a) explicitly-disclaimed "simulated/practice" refinement answers, or (b) a blanket forward-dated "AI-as-PO" ratification comment that precedes the actual Q&A it claims to cover, or (c) a self-reversed claim of PO confirmation with no independent human artifact behind it. This is not one story's problem — it hit BK-3, BK-41, BK-42, BK-43, BK-90, BK-209 independently. Worth a process-level look, not a per-ticket fix.
 
 ### Edge-mapping TODO — stories seen on the board but not yet in the §3 graph
 

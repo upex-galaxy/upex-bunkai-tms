@@ -3,7 +3,7 @@
 **Jira Key:** [BK-38](https://jira.upexgalaxy.com/browse/BK-38)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 3
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -197,7 +197,7 @@ AC, ATP, and Business Rules are included in this description because the Jira cu
 - **Created:** 5/28/2026
 - **Updated:** 7/31/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** jesusgpythondev
 - **Labels:** implementation-plan-ready, shift-left-2026-06-15, shift-left-reviewed
 
 ---

@@ -140,5 +140,35 @@ Neither of these is a novel decision — both just apply precedent BK-87 already
 
 ---
 
+### Automation for Jira - 7/31/2026, 6:13:31 AM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 7/31/2026, 12:25:51 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 7/31/2026, 12:39:16 PM
+
+## ✅ Ready for QA retest
+
+Merged to `staging`: [PR #71](https://github.com/upex-galaxy/upex-bunkai-tms/pull/71) (merge commit `8e32689`)
+
+***How to verify******:***
+
+1. Open `/settings/workspaces` as a multi-workspace user — confirm the role label and the active-workspace marker per AC1/AC4.
+2. Open it as a single-workspace user — confirm role shows, no broken/empty layout, no leave/add controls (AC2).
+3. Confirm a suspended/invited membership never appears in the list (AC3).
+
+***Important for retest****: BK-141 (TC04) currently asserts `role` is **absent* from `GET /api/v1/workspaces` — that expected result needs to flip to "present, correct per workspace" now that this shipped.
+
+Spec Compliance Matrix + full review adjudication: `compliance-matrix.md` / `review.md` in the story's PBI folder.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

@@ -76,9 +76,9 @@ Captured 2026-06-30 on staging via a PAT with the `atc:read` scope.
 ## Metadata
 
 - **Created:** 6/30/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/29/2026
 - **Reporter:** Facu Barea
-- **Assignee:** Facu Barea
+- **Assignee:** Ely
 - **Labels:** api, atc-search, defect, exploratory-testing
 
 ---

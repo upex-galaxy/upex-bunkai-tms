@@ -121,5 +121,57 @@ Mechanics: enable Realtime replication on the relevant table(s) via migration, R
 
 ---
 
+### Ely - 7/31/2026, 12:49:35 PM
+
+## Workload Forecast gate — resolved
+
+The Stage 1 plan's forecast came back `risk=High` (1791 lines) with `Chain strategy: pending`. Resolved via `/git-flow-master` §Chained-PR decision tree:
+
+```
+Chain strategy: feature-branch-chain
+Decision trace: Q1=No (new domain logic) · Q2=No (DB migration + its own co-located test combine to ~440 lines, just over budget -- splitting a migration from the test that verifies it into separate chain slices would satisfy the line-count metric while violating this repo's own "tests stay with the behaviour they verify" convention for no real review-quality gain, so the natural DB slice stays together, over budget) · Q3=Yes (bunkai*mark*run_step is shared RPC scaffolding API/UI both consume; more significantly, realtime-run-channel.ts is the FIRST real-time primitive in this codebase per ADR-0010 -- no existing pattern to validate against, so partial merges would expose an unvalidated new primitive before the slice that exercises it lands) -> feature-branch-chain
+Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
+```
+
+***Branch plan***: integration branch `feat/BK-35-mark-run-step` cut from `staging`.
+
+- Child 1 -- DB layer (migrations 0042+0043, mark-step.test.ts) -> merges into the integration branch.
+- Child 2 -- API layer (route pair + validation/errors/rpc touches) -> merges into the integration branch.
+- Child 3 -- Realtime layer (realtime-run-channel.ts + test) -> merges into the integration branch.
+- Child 4 -- UI layer (RunnerView.tsx wiring, the dominant cost driver) -> merges into the integration branch.
+- Final PR -- integration branch -> `staging`.
+
+Mirrors BK-38's own DB -> API -> UI chain shape, with Realtime inserted as its own slice given it's genuinely new, unprecedented infrastructure in this codebase.
+
+Full updated forecast block lives in the canonical implementation plan (`spec*implementation*plan` field / synced `implementation-plan.md`).
+
+---
+
+### Automation for Jira - 7/31/2026, 2:14:02 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 7/31/2026, 2:46:02 PM
+
+✅ Pull Request is successfully MERGED. Task is Done.
+
+---
+
+### Ely - 7/31/2026, 2:55:31 PM
+
+## Ready for QA
+
+Merged to `staging`: https://github.com/upex-galaxy/upex-bunkai-tms/pull/73 (merge commit `f0ad316`).
+
+Assignee already correct (Benjamin Segovia, the shift-left QA owner for this story) — no reassignment needed.
+
+Summary for QA: all 8 AC2 verdict combinations, the pending-steps-stay-`unrun` rule (Q1), the finished/aborted guard (AC5), last-write-wins re-marking (AC6), the 1-step boundary, and a genuine concurrent finish-vs-mark race are covered by `lib/runs/mark-step.test.ts` (22/22). This ships the product's first real-time feature (Supabase Realtime, ADR-0010) — a teammate watching the same run should see step marks, verdict, and progress update live without refreshing.
+
+One thing worth a close look on staging since live-UI/browser validation was suspended for this batch run (throughput decision): AC4's live-push behavior only has pure-logic test coverage (the channel-config/debounce/reconnection module), never an actual two-session live observation. Also flagging a known, separately-tracked gap (not a defect in this story): a run closing via Finish or Abort with zero pending steps produces no realtime push today (those RPCs shipped before realtime existed) — a teammate watching would need to reload to see a run go from running to finished/aborted, even though step marks themselves push live correctly.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

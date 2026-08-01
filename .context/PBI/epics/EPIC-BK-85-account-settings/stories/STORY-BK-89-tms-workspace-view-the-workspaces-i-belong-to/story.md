@@ -3,7 +3,7 @@
 **Jira Key:** [BK-89](https://jira.upexgalaxy.com/browse/BK-89)
 **Epic:** [BK-85](https://jira.upexgalaxy.com/browse/BK-85) (Account & Settings)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 2
 
@@ -42,7 +42,7 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 ### Storys (2)
 
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
-- [BK-90](https://jira.upexgalaxy.com/browse/BK-90): TMS-Workspace | Leave a workspace _(Ready For Dev)_
+- [BK-90](https://jira.upexgalaxy.com/browse/BK-90): TMS-Workspace | Leave a workspace _(Ready For QA)_
 
 ---
 
@@ -51,7 +51,7 @@ As a QA Lead (Mateo Silva) I want to see every workspace I belong to with my rol
 - **Created:** 6/7/2026
 - **Updated:** 7/31/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Carlos Alberto Chiavassa
 - **Labels:** implementation-plan-ready, shift-left-2026-06-10, shift-left-reviewed
 
 ---
