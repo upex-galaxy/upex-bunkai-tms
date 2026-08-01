@@ -249,8 +249,14 @@ stop). Two categories:
 - A PR merge that would fall outside the §3 boundaries (wrong scope, failing gate, the hard
   carve-out).
 - Any genuinely novel security-relevant judgment call not already covered by an existing rule.
-- An ambiguous AC not already resolved during shift-left refinement (a brand-new ambiguity invented
-  mid-run still stops — it does not get an AI-improvised answer).
+- A **product** ambiguity in an AC not already resolved during shift-left refinement — what the feature
+  should DO, which behaviour is correct for the user, or a scope change (a brand-new product ambiguity
+  invented mid-run still stops — it does not get an AI-improvised answer). **Technical ambiguity about
+  HOW to build an agreed behaviour is NOT this category**: it resolves autonomously under
+  `.claude/skills/agentic-dev-core/references/decision-protocol.md` — search the record first (this log
+  included, in full), follow a settled ruling, and if genuinely unsettled run that file's scored judge
+  panel and record the result here. Escalating a technical call this run was equipped to settle is the
+  over-stop this narrowing exists to end.
 - Anything requiring `--force`, `--no-verify`, or a history rewrite.
 - A Stage 1 workload forecast coming back High risk with an unclear chain strategy — run the actual
   git-flow-master decision tree (don't guess a label, this happened once already on BK-87), but if
