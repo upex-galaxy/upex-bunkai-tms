@@ -3,6 +3,7 @@
 import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
+import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { Button } from '@components/ui/button';
 import {
   resolveAtcVerdictBadge,
@@ -15,9 +16,10 @@ import {
   createRefetchScheduler,
   shouldReconcileOnStatusChange,
 } from '@lib/runs/realtime-run-channel';
+import { buildReportBugPrefill, shouldShowReportBugButton } from '@lib/runs/report-bug-view';
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
 import { createClient } from '@lib/supabase/client';
-import { Ban, Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
+import { Ban, Bug, Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -88,6 +90,13 @@ export interface RunDetail {
   updated_at: string
   atc_count: number
   step_count: number
+  // BK-40 — already part of the composed `bunkai_run_json` payload since
+  // BK-38's module snapshot (0040_run_module_snapshot.sql); not previously
+  // surfaced on this type because nothing needed it before the bug-report
+  // dialog's read-only "Module" field (Technical Decision 9). Null only when
+  // the Run's chain-position-1 ATC's module was later deleted.
+  module_id: string | null
+  module_name: string | null
   atcs: RunAtc[]
 }
 
@@ -102,6 +111,12 @@ interface RunnerViewProps {
   // controls at all (structurally absent, not merely hidden — see
   // resolveStepMarkControlState in lib/runs/mark-step-view.ts).
   canMark?: boolean
+  // BK-40 — same member+ write gate (the API's `atc:write` capability);
+  // viewers get no "Report bug" affordance at all. Unlike canMark, filing a
+  // bug is NOT gated on the run still being 'running' — a failure already
+  // happened and stays reportable after the run closes (no AC ties bug
+  // filing to run status, see shouldShowReportBugButton).
+  canReportBug?: boolean
 }
 
 // Shared error-envelope shape for both run terminal actions (abort + finish).
@@ -128,7 +143,7 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -161,6 +176,13 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   const [markEvidenceUrl, setMarkEvidenceUrl] = useState('');
   const [markSubmitting, setMarkSubmitting] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+
+  // BK-40 — Report-bug dialog state. Names the OPEN step by id only (unlike
+  // the mark-form's several parallel fields above) because BugFormDialog owns
+  // its own internal field state; RunnerView's only job is which step (if
+  // any) the dialog is open for, mirroring how markStepId names the open
+  // mark-form without RunnerView owning its note/evidence text too.
+  const [bugDialogStepId, setBugDialogStepId] = useState<string | null>(null);
 
   // Keep the local view in sync if the server hands down a fresh payload.
   useEffect(() => {
@@ -259,6 +281,22 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
     (acc, atc) => acc + atc.steps.filter(s => s.status === 'pending').length,
     0,
   );
+
+  // BK-40 — resolve the ATC + step the open bug dialog (if any) belongs to,
+  // so its prefill can be derived. A flat find over the (small, per-Run)
+  // atcs/steps tree — no separate index is worth maintaining for this.
+  const bugDialogStep = bugDialogStepId
+    ? view.atcs
+      .flatMap(atc => atc.steps.map(step => ({ atc, step })))
+      .find(({ step }) => step.id === bugDialogStepId) ?? null
+    : null;
+  const bugPrefill = bugDialogStep
+    ? buildReportBugPrefill({
+        atcTitle: bugDialogStep.atc.atc_title,
+        stepContent: bugDialogStep.step.content,
+        stepEvidenceUrl: bugDialogStep.step.evidence_url,
+      })
+    : null;
 
   const openModal = () => {
     setReason('');
@@ -775,6 +813,25 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
                             </p>
                           )}
 
+                          {/* BK-40 — "Report bug", member+ only, failed steps
+                              only (ATP-N1). Deliberately NOT gated on run
+                              status (unlike the mark controls above) — a
+                              failure stays reportable after the run closes. */}
+                          {shouldShowReportBugButton({ canReportBug, stepStatus: s.status }) && (
+                            <div data-testid={`runner-step-report-bug-${atc.position}-${s.position}`}>
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                data-testid={`runner-step-report-bug-button-${atc.position}-${s.position}`}
+                                onClick={() => setBugDialogStepId(s.id)}
+                              >
+                                <Bug size={11} />
+                                Report bug
+                              </Button>
+                            </div>
+                          )}
+
                           {/* Inline note/evidence confirmation — mirrors the
                               abort textarea styling, scoped to this one step. */}
                           {isMarkFormOpen && (
@@ -1077,6 +1134,26 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
             </div>
           </div>
         </div>
+      )}
+
+      {/* BK-40 — "Report bug" dialog, a fourth centered modal in the same
+          Abort/Finish family (Technical Decision 9). Keyed by step id so
+          switching which step's dialog is open remounts BugFormDialog fresh
+          (its own internal field state resets) rather than carrying over a
+          previous step's edits. */}
+      {bugDialogStep && bugPrefill && (
+        <BugFormDialog
+          key={bugDialogStep.step.id}
+          open
+          onClose={() => setBugDialogStepId(null)}
+          onCreated={() => toast.success('Bug filed')}
+          runContext={{ runStepId: bugDialogStep.step.id }}
+          moduleLabel={view.module_name ?? '—'}
+          initialTitle={bugPrefill.title}
+          initialSeverity={bugPrefill.severity}
+          initialStepsToReproduce={bugPrefill.stepsToReproduce}
+          initialEvidenceUrls={bugPrefill.evidenceUrls}
+        />
       )}
     </div>
   );
