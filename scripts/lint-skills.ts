@@ -112,6 +112,8 @@ const SKILL_AGGREGATE_FILES = new Set<string>(['REGISTRY.md']);
  * and SCOPE-INVALID checks.
  */
 const SESSION_RETROFITTED_SKILLS: Record<string, RegExp | null> = {
+  // Scope is the run MODE, not a ticket — one lock + one progress trail per mode.
+  'autonomous-delivery': /^(?:story|bug|discovery)$/,
   'project-foundation': null,
   'project-bootstrap': null,
   // `seed` (curation root) is a strict subset of `[a-z0-9][a-z0-9-]*`

@@ -641,7 +641,7 @@ npm run test  # or: bun run test
 **Tests:**
 
 - [ ] Existing tests pass
-- [ ] Regression test added reproducing the root cause: [Yes / N/A-with-reason]
+- [ ] New test added for this scenario: [Yes/No/N/A]
 ```
 
 ---

@@ -41,7 +41,7 @@ The same pipeline runs whether the input is a new story, a bug fix, or a resume 
 - **Never bypass the app's own login path.** No service-role / secret / admin keys, no admin user-management APIs (list / create / mutate users), no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account — including "just to see the admin view". Surface the need as a finding instead.
 - **Session material is ephemeral.** Cookie jars, `storageState.json`, token files, `.har` captures: session scratch directory only (never the repo tree), deleted BEFORE reporting, disclosed as `secrets_materialized:` + `cleaned:` in the report. Never echo a credential into a report, plan, commit, PR body, or tracker comment.
 - **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
-- **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS (no `FORCE ROW LEVEL SECURITY` exists in this repo), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. This defect shipped three times in one day. See `references/rpc-authorization.md`.
+- **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS unless the table declares `FORCE ROW LEVEL SECURITY` (verify for your schema; never assume it), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. See `references/rpc-authorization.md`.
 - **The workload forecast gate is fail-closed.** With `risk = High`, `Chain strategy` is accepted ONLY with a verbatim `Decision trace:` citing the git-flow-master chained-PR tree answers. Missing or malformed trace is treated as `pending` and blocks Stage 2. The planner may only emit `pending` — it never picks a strategy itself.
 - **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's status today.
 - **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
@@ -133,7 +133,7 @@ Solo trades context isolation for fewer round-trips and one legible transcript �
 | Trigger / context-load (epic precheck)    | inline                 | orchestrator reads epic artifacts + ticket; no subagent yet                                   |
 | Stage 1 — Plan creation                   | Single                 | dedicated planner subagent: read story + AC, decompose tasks, output `implementation-plan.md` |
 | Stage 2 — Implementation (multi-file)     | Sequential or Parallel | impl agent(s); split by file or feature slice per the implementation plan                     |
-| Stage 2 — Verification (lint+types+tests) | Parallel cap=3         | three verifiers in parallel: `bun run lint:check`, `bun run build` / `tsc`, unit tests (this leg also confirms new pure-logic units in the diff have a co-located test or a logged exemption — not just pass/fail of whatever test files already exist) |
+| Stage 2 — Verification (lint+types+tests) | Parallel cap=3         | three verifiers in parallel: `bun run lint:check`, `bun run build` / `tsc`, unit tests        |
 | Stage 3 — Code review                     | Single                 | **independent adversarial** reviewer subagent: severity-tagged findings (BLOCKER/MAJOR/MINOR/NIT) vs AC + code-standards; orchestrator adjudicates each |
 | Stage 3 — Fix-and-iterate (if review red) | Sequential             | impl agent picks up review notes via `fix-issues.md`; re-runs verification                    |
 | Stage 4 — Deploy to staging               | Single + Background    | deploy agent kicks off; background monitor watches health/smoke                               |
@@ -204,7 +204,7 @@ When delegating to a sub-agent, inject a `## Composable Skills` block into the s
        v
    +--------------------------+
    | Stage 2: IMPLEMENTATION  |   references/implement-story.md, bug-fix-workflow.md,
-   |  - Unit tests MANDATORY  |       continue-implementation.md, fix-issues.md,
+   |  - TDD optional          |       continue-implementation.md, fix-issues.md,
    |    (-> /unit-testing)    |       code-standards.md, error-handling.md, data-testid-standards.md
    |  - Multi-file edits      |
    |  - Lint+types+tests      |
@@ -308,7 +308,7 @@ Read for guidance:
 - `references/feature-plan.md` — macro plan (epic-level, multiple stories)
 - `references/story-plan.md` — micro plan (single story, recommended starting point)
 
-**RPC authorization gate (fail-closed).** If the story writes or changes a Postgres function that takes a caller-supplied identity or scope parameter (`p_actor_user_id`, `p_workspace_id`, or similar), the plan's `## Technical Decisions` MUST answer the six questions in `references/rpc-authorization.md` §4 — chiefly: does this need `SECURITY DEFINER` at all, can the identity parameter be deleted instead of guarded, where does the actor bind sit, and what scopes each returned row. A DEFINER function with such a parameter and no recorded answer blocks Stage 2. Gate rationale: `SECURITY DEFINER` bypasses RLS in this repo, so a `WHERE` clause selects rows rather than authorizing the caller, and asserting the caller's own membership does NOT scope the result set — three separate tickets shipped this exact defect on 2026-07-31, one of them live on the shared database. Answering after the code is written is too late: the code reads as correct either way, which is why this is a planning gate and not a review checklist item.
+**RPC authorization gate (fail-closed).** If the story writes or changes a Postgres function that takes a caller-supplied identity or scope parameter (`p_actor_user_id`, `p_workspace_id`, or similar), the plan's `## Technical Decisions` MUST answer the six questions in `references/rpc-authorization.md` §4 — chiefly: does this need `SECURITY DEFINER` at all, can the identity parameter be deleted instead of guarded, where does the actor bind sit, and what scopes each returned row. A DEFINER function with such a parameter and no recorded answer blocks Stage 2. Gate rationale: `SECURITY DEFINER` bypasses RLS, so a `WHERE` clause selects rows rather than authorizing the caller, and asserting the caller's own membership does NOT scope the result set. Answering after the code is written is too late: the code reads as correct either way, which is why this is a planning gate and not a review checklist item.
 
 **ADR promotion (inline).** Story-local technical decisions stay in the plan's `## Technical Decisions` section. If a decision passes the two-gate test — **architectural** AND **hard to reverse** — promote it to a standalone `ADR-NNNN-<slug>.md` in `.context/ADR/` before coding, and leave a `See ADR-NNNN` backlink in the plan. Detection + authoring: `agentic-dev-core/references/adr-doctrine.md`; template + lifecycle + index: `.context/ADR/README.md`. AI drafts as `Proposed`; the human accepts. (Architectural rework surfaced during Stage 3 review loops back here to record/supersede the ADR.)
 
@@ -378,15 +378,7 @@ Verification runs in **parallel cap=3**: lint, typecheck/build, unit tests. Each
 
 **Live-UI check while building (UI stories)**: per the active flow mode (subagent if Orchestrated, inline if Solo), open the running dev server via `[AUTOMATION_TOOL]` and confirm what you build renders correctly against the live UI + design system **as you code** — not after. See the Live-UI validation subsection above. Non-UI stories skip this.
 
-#### Unit Test Authoring Gate (mandatory output of Stage 2)
-
-Unit-test authoring is no longer opt-in TDD — it is a Stage 2 gate that must close before Stage 3 (review) can pass. The gate is scenario/module-driven, NOT a coverage percentage (this repo's `/unit-testing` skill already rejects percentage-based coverage targets per its Anti-pattern U6 — stay consistent with that philosophy):
-
-(a) **Every new/modified pure-logic unit** (business logic, validation, calculation, transformation, state transitions, bug-fix root cause) gets a co-located test file. Presentational/pass-through code is exempt, but the exemption must be logged — not silently skipped.
-(b) **Every AC scenario in the story's ATP that exercises testable logic** must resolve to `test:<id>` in the Stage 3 Spec Compliance Matrix. Reserve `manual:` / `exempt:` for genuinely visual-only or environment-bound scenarios (already covered by the mandatory Live-UI validation) — not as a default substitute.
-(c) **Every bug fix** gets one regression test reproducing the root cause: it must fail before the fix and pass after.
-
-Mechanics are unchanged: hand off to `/unit-testing` mid-implementation for red-green-refactor on the qualifying slice, then return to Stage 2's main flow once the unit is green.
+If the work needs TDD on a specific function, hand off to `/unit-testing` mid-implementation. The hand-off is composable: come back to Stage 2 once the unit is green.
 
 ### Stage 3: Code Review
 
@@ -400,9 +392,8 @@ Review checklist (driven by `references/review-pr.md`):
 - Lint + build green; types clean
 - Code-standards conformance (imports via aliases, no relative paths, parameter limits, etc.)
 - Security checks (no secrets in diff, auth handled, input validation)
-- **RPC authorization (when the diff touches `supabase/migrations/`)**: for every function taking a caller-supplied identity or scope parameter, confirm THREE things separately — (a) an actor bind exists and sits at step 0, before any table read; (b) every returned row is explicitly scoped to the asserted boundary (a correct membership assert does NOT scope the result set — that was the live BK-49 leak); (c) a DB-integration test attempts the spoof against the REAL database, since a mocked `db.rpc` proves nothing about the function. Also challenge whether `SECURITY DEFINER` was needed at all. Treat a missing bind as BLOCKER, not MAJOR. Full doctrine + the canonical guard: `references/rpc-authorization.md`
+- **RPC authorization (when the diff touches database migrations)**: for every function taking a caller-supplied identity or scope parameter, confirm THREE things separately — (a) an actor bind exists and sits at step 0, before any table read; (b) every returned row is explicitly scoped to the asserted boundary (a correct membership assert does NOT scope the result set); (c) a DB-integration test attempts the spoof against the REAL database, since a mocked `db.rpc` proves nothing about the function. Also challenge whether `SECURITY DEFINER` was needed at all. Treat a missing bind as BLOCKER, not MAJOR. Full doctrine + the canonical guard: `references/rpc-authorization.md`
 - UI/UX fidelity (where applicable): matches the story's screen — `DESIGN.md` tokens plus the per-screen spec in `.context/design/master-design-plan.md` when the project maintains one; unratified divergence from the agreed design/mockup is a defect
-- Unit Test Authoring Gate satisfied (new pure-logic code has co-located tests or a logged exemption) — reviewer spot-checks presence/placement only, not test quality/internals (that stays a Stage 2/`/unit-testing` concern)
 
 **Live-render verification pass (UI stories)**: before approving, run a final live-UI validation over the story's screens (loading / empty / error states, responsive, the AC's interactive flows) per the active flow mode via `[AUTOMATION_TOOL]` — see the Live-UI validation subsection above. A UI story with an open, unratified live-UI gap cannot be approved; fix → re-validate. Validate against the CURRENT live app, never a production build.
 
@@ -428,7 +419,7 @@ After the static code review checklist passes, the reviewer/orchestrator generat
 
 `covered_by` accepts: `test:<id>`, `manual:<evidence-path>`, `exempt:<reason>`, `review-approved:<reviewer>`. Status legend: `covered` | `manual` | `exempt` | `review-approved` | `uncovered`.
 
-**Gate**: PR cannot merge if any row is `uncovered` without justification. A testable-logic scenario resolved as `manual:` or `exempt:` without a genuine justification is treated as `uncovered` for merge-gate purposes — the same blocking rule applies. Resolve by adding a test, adding manual evidence, or reclassifying to `exempt:<specific reason>` (vague reasons are rejected). If the scenario truly cannot be verified, loop back to Stage 1 and re-spec the AC.
+**Gate**: PR cannot merge if any row is `uncovered` without justification. Resolve by adding a test, adding manual evidence, or reclassifying to `exempt:<specific reason>` (vague reasons are rejected). If the scenario truly cannot be verified, loop back to Stage 1 and re-spec the AC.
 
 Algorithm, four `covered_by` shapes with examples, full status legend, the 2FA-login worked example, and persistence (dev-authored, non-Jira: `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`): see `references/spec-compliance-matrix.md`.
 
@@ -534,7 +525,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 
 ### Project-owned (T1)
 
-- **Unit Test Authoring Gate (mandatory for qualifying slices)** -> `/unit-testing` skill (composable mid-implementation; see Stage 2's Unit Test Authoring Gate)
+- **TDD on a function** -> `/unit-testing` skill (composable mid-implementation)
 - **PR creation / merge / branch ops / conflict resolution / chained-PR planning** -> `/git-flow-master` skill
 - **Backlog item missing or AC unclear** -> `/product-management` skill (refine first, then come back)
 - **Foundation/infrastructure missing** -> `/project-foundation` or `/project-bootstrap`
@@ -585,8 +576,8 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 6. **Docs travel with the PR**: status-report and release-notes updates go in the feature branch, not pushed direct to `staging`.
 7. **Jira automation verification**: after PR open and after merge, wait ~30s and verify the auto-transition fired. If not, transition manually and surface the gap.
 8. **ATP source-of-truth** (modality-aware): jira-native detailed read = `bun run jira:sync-issues get <STORY_KEY> --include-comments`, then read the synced `acceptance-test-plan.md`; jira-xray detailed read = `bun run jira:sync-issues get <ATP_KEY>` (Test Plan issue `description`), then read the synced `test-plans/TESTPLAN-<KEY>-<slug>.md`. Never read the ATP custom field via `[ISSUE_TRACKER_TOOL]` `view`. Final fallback = `comments.md` / the issue description (where the `## Acceptance Test Plan` fallback comment lands when the custom field is absent).
-9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers. The unit-tests leg also gates on authoring — confirm new pure-logic units in the diff have a co-located test or a logged exemption, not just green/red on whatever tests already exist.
-10. **No automation tests in this skill**: E2E / integration test automation is out of scope, unchanged. Unit tests are a MANDATORY Stage 2 output via `/unit-testing` (see the Unit Test Authoring Gate) — no longer optional TDD. Anything QA-side is out of scope here.
+9. **Verification cap=3**: lint + types + unit tests in parallel; do not balloon to 5+ verifiers.
+10. **No automation tests in this skill**: E2E / integration test automation is out of scope. Unit tests live in Stage 2 via `/unit-testing`. Anything QA-side is out of scope here.
 11. **Language**: artifacts, code, and commit messages in English. Mirror the user's language only in conversation.
 12. **ADR-worthy decisions get recorded**: a decision that is architectural AND hard to reverse goes to `.context/ADR/` (append-only), not buried in the impl plan. Story-local trade-offs stay in the plan. Read existing ADRs before planning a cross-cutting story so you don't violate one. See `agentic-dev-core/references/adr-doctrine.md`.
 13. **Binding rules travel in the briefing**: a prohibition that lives only in a `references/*.md` never reaches a stage subagent. Restate the identity contract, the prohibition list, and the hygiene contract in briefing component 7 for every dispatch that could trip them (`agentic-dev-core/references/orchestration-doctrine.md` → "Rule reachability").
@@ -608,7 +599,6 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Stage 1 plan pushed to Jira `spec_implementation_plan` (or fallback comment), synced, and read back as `implementation-plan.md`; Jira transitioned to `In Progress`
 - [ ] ATP read via sync (jira-native: synced `acceptance-test-plan.md`; jira-xray: synced `test-plans/TESTPLAN-<KEY>-<slug>.md`; final fallback = `comments.md` / issue description) and mapped into the plan
 - [ ] Stage 2 verification (lint + types + tests) green; commits atomic
-- [ ] **Unit Test Authoring Gate satisfied**: new pure-logic units + bug-fix reproducers have co-located tests or a logged exemption; Spec Compliance Matrix rows for testable-logic AC scenarios resolve to `test:<id>`
 - [ ] **Live-UI validation** run for any UI story — in the active flow mode (subagent if Orchestrated, inline if Solo) via `[AUTOMATION_TOOL]`; gaps fixed + re-validated; never via a production build; final Stage 3 pass done in a browser, not on HTTP evidence
 - [ ] **Session material cleaned**: every dispatch that authenticated reported `secrets_materialized:` + `cleaned: yes`
 - [ ] **Forecast gate honoured**: `risk=High` proceeded only with a `Decision trace` produced by `/git-flow-master`
@@ -646,7 +636,6 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - **S20.** NEVER open the workload-forecast gate on a bare `Chain strategy` label. With `risk = High`, the value is accepted only with a `Decision trace` that walks the git-flow-master chained-PR tree; missing, empty, or conclusion-only traces count as `pending` and block Stage 2. The planner never picks the strategy itself.
 - **S21.** NEVER recommend, plan, or start a ticket on the strength of roadmap prose. Query the tracker live for the candidate and its direct blockers first (Phase 0b). `.context/dev-roadmap.md` owns dependency edges and mockup gates; it never owns current status, and a recent timestamp on it is not evidence about any ticket's status today.
 - **S22.** NEVER approve a UI story on HTTP-probe evidence alone. Tier 0 probes cover routes, redirects, and server-rendered markup; layout, computed tokens, client-rendered states, breakpoints, and interactive AC flows require the browser tier (`references/live-ui-validation.md` §7).
-- **S23.** NEVER declare Stage 2 done when the diff adds new pure-logic code or a bug fix with no co-located unit test and no logged exemption; a green cap=3 unit-tests leg on an empty/stale suite is not sufficient proof.
 
 ---
 
