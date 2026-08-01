@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // layer (lib/coverage/coverage-view.ts covers that separately):
 //   * an AC with zero linked (non-archived) ATCs -> 'uncovered'
 //   * an AC with >=1 linked ATC, at least one 'unrun' -> 'not_run' (Q3 union
-//     rule — a second, 'pass' ATC on the SAME AC does not clear it)
+//     rule — a second, 'passed' ATC on the SAME AC does not clear it)
 //   * an AC with >=1 linked ATC, none 'unrun' -> 'executed'
 //   * a module whose every AC is 'executed' -> 'fully_covered'
 //   * an ATC that is archived does not count as coverage at all (treated as
@@ -24,6 +24,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // explicit actor id is not "obtaining a session", only the actor-bind case's
 // login is, and that login goes through the app's real
 // supabase.auth.signInWithPassword path).
+//
+// Migration 0050 (final-chain-review fix): "unrun"/"executed" is sourced
+// from run_atcs (an ATC's most recent execution across any Run), NOT
+// atcs.status — that column is never written by any production code path
+// (0050's own header comment) and is kept here purely as a NOT NULL
+// DB-constraint placeholder ('unrun' on every seeded ATC, with zero bearing
+// on the RPC's output). The fixture below seeds real run_atcs rows to drive
+// the 'executed' cases instead.
 //
 // DB-dependent + env-gated, same two-tier gate as report-isolation.test.ts:
 // the isolation/coverage-state suite needs only SUPABASE_SERVICE_ROLE_KEY;
@@ -80,6 +88,11 @@ let skipReason: string | null = null;
 // a LATER step in beforeAll throws — a partial fixture is still a fixture
 // that needs cleanup, not a fixture-shaped hole in the shared DB.
 let createdProjectIds: string[] = [];
+// Cascades from createdProjectIds (runs.project_id/project_environments.project_id
+// are both ON DELETE CASCADE), EXCEPT the Test row — runs.test_id is ON DELETE
+// RESTRICT, so it must be deleted separately, AFTER the Projects (whose cascade
+// removes the Run that references it).
+let createdTestId: string | null = null;
 
 describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-state', () => {
   beforeAll(async () => {
@@ -188,19 +201,24 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       acSpecs.map(a => [a.key, (seededAcs ?? []).find(ac => ac.title === `${PREFIX} ac ${a.key}`)!.id as string]),
     );
 
-    // ATCs: notRun -> 1 unrun; executed -> 1 pass; mixed -> 1 pass + 1 unrun
-    // (Q3 union rule — the AC must still read 'not_run'); archivedAtc -> 1
-    // pass ATC that is ARCHIVED (must not count as coverage at all);
-    // moduleMixNotRun -> 1 unrun (its sibling moduleMixUncovered AC gets no
-    // ATC, so module "moduleMix" carries one uncovered + one not_run AC).
-    // The 'uncovered'/'b' ACs get no ATC.
+    // ATCs: notRun -> never run; executed -> run_atcs 'passed' (seeded below);
+    // mixed -> one run_atcs 'passed' + one never-run (Q3 union rule — the AC
+    // must still read 'not_run'); archivedAtc -> a run_atcs 'passed' ATC that
+    // is ARCHIVED (must not count as coverage at all, regardless of
+    // execution); moduleMixNotRun -> never run (its sibling
+    // moduleMixUncovered AC gets no ATC, so module "moduleMix" carries one
+    // uncovered + one not_run AC). The 'uncovered'/'b' ACs get no ATC.
+    // `status` on the row itself is NOT read by the RPC post-0050 — it is
+    // kept at the column's own default ('unrun') purely to satisfy the NOT
+    // NULL constraint; real "executed" state comes from run_atcs, seeded
+    // below via `atcSpecs[].runStatus`.
     const atcSpecs = [
-      { key: 'notRun', moduleKey: 'notRun' as const, storyKey: 'notRun', status: 'unrun', archived: false },
-      { key: 'executed', moduleKey: 'executed' as const, storyKey: 'executed', status: 'pass', archived: false },
-      { key: 'mixedPass', moduleKey: 'mixed' as const, storyKey: 'mixed', status: 'pass', archived: false },
-      { key: 'mixedUnrun', moduleKey: 'mixed' as const, storyKey: 'mixed', status: 'unrun', archived: false },
-      { key: 'archived', moduleKey: 'archivedAtc' as const, storyKey: 'archivedAtc', status: 'pass', archived: true },
-      { key: 'moduleMixNotRun', moduleKey: 'moduleMix' as const, storyKey: 'moduleMixNotRun', status: 'unrun', archived: false },
+      { key: 'notRun', moduleKey: 'notRun' as const, storyKey: 'notRun', archived: false, runStatus: null as string | null },
+      { key: 'executed', moduleKey: 'executed' as const, storyKey: 'executed', archived: false, runStatus: 'passed' as string | null },
+      { key: 'mixedPass', moduleKey: 'mixed' as const, storyKey: 'mixed', archived: false, runStatus: 'passed' as string | null },
+      { key: 'mixedUnrun', moduleKey: 'mixed' as const, storyKey: 'mixed', archived: false, runStatus: null as string | null },
+      { key: 'archived', moduleKey: 'archivedAtc' as const, storyKey: 'archivedAtc', archived: true, runStatus: 'passed' as string | null },
+      { key: 'moduleMixNotRun', moduleKey: 'moduleMix' as const, storyKey: 'moduleMixNotRun', archived: false, runStatus: null as string | null },
     ];
     const { data: seededAtcs, error: atcsError } = await db
       .from('atcs')
@@ -211,7 +229,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
         slug: `${PREFIX}-atc-${a.key}`,
         title: `${PREFIX} atc ${a.key}`,
         layer: 'UI',
-        status: a.status,
+        status: 'unrun',
         archived_at: a.archived ? new Date().toISOString() : null,
       })))
       .select('id, slug');
@@ -225,12 +243,13 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     // linked via atc_acceptance_criteria to Project A's "uncovered" AC — the
     // exact "ATC mis-linked to an AC in a DIFFERENT project" threat the
     // ac_state CTE's `a.project_id = p_project_id` predicate (0048's own
-    // header comment) exists to defend against. Deliberately seeded 'pass'
-    // (not 'unrun'): if the guard were ever missing, this AC would flip
-    // 'uncovered' -> 'executed' (the module 'uncovered' -> 'fully_covered'),
-    // matching the migration's own stated threat ("would silently count as
-    // that AC's coverage") — a sharper regression signal than 'unrun' would
-    // give, which would only shift 'uncovered' -> 'not_run'.
+    // header comment) exists to defend against. Given a real run_atcs
+    // 'passed' row below (not 'unrun'): if the guard were ever missing, this
+    // AC would flip 'uncovered' -> 'executed' (the module 'uncovered' ->
+    // 'fully_covered'), matching the migration's own stated threat ("would
+    // silently count as that AC's coverage") — a sharper regression signal
+    // than an unexecuted ATC would give, which would only shift 'uncovered'
+    // -> 'not_run'.
     const { data: crossProjectAtc, error: crossProjectAtcError } = await db
       .from('atcs')
       .insert({
@@ -240,7 +259,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
         slug: `${PREFIX}-atc-crossProject`,
         title: `${PREFIX} atc crossProject`,
         layer: 'UI',
-        status: 'pass',
+        status: 'unrun',
         archived_at: null,
       })
       .select('id')
@@ -274,6 +293,64 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       ]);
     if (linkError) { throw linkError; }
 
+    // Real execution source for migration 0050: a throwaway Environment +
+    // Test + Run in Project A (run_atcs.run_id is a mandatory FK — there is
+    // no way to seed an execution status without a real Run row), then one
+    // run_atcs row per ATC whose `runStatus` above is non-null. run_atcs.atc_id
+    // is "provenance only" (no FK-level requirement that it match the Run's
+    // own project) — the crossProject ATC's row deliberately attaches to
+    // THIS SAME Project-A Run despite the ATC itself belonging to Project B,
+    // mirroring atc_real_status's own doc'd "unscoped by project" reasoning
+    // (0050's header comment): scoping happens once, upstream, on the ATC id
+    // itself, not on which Run's execution history is consulted.
+    const { data: environmentA, error: environmentAError } = await db
+      .from('project_environments')
+      .insert({ project_id: projectAId, name: 'Staging' })
+      .select('id')
+      .single();
+    if (environmentAError) { throw environmentAError; }
+
+    const { data: seededTest, error: testError } = await db
+      .from('tests')
+      .insert({ workspace_id: anchor.workspace_id, title: `${PREFIX} test`, created_by: anchor.user_id })
+      .select('id')
+      .single();
+    if (testError) { throw testError; }
+    createdTestId = seededTest.id as string;
+
+    const { data: seededRun, error: runError } = await db
+      .from('runs')
+      .insert({
+        workspace_id: anchor.workspace_id,
+        project_id: projectAId,
+        test_id: createdTestId,
+        environment_id: environmentA.id as string,
+        test_title: `${PREFIX} test`,
+        status: 'passed',
+        executor_mode: 'human',
+        start_token: `${PREFIX}-run`,
+      })
+      .select('id')
+      .single();
+    if (runError) { throw runError; }
+
+    const runAtcSpecs = [
+      ...atcSpecs
+        .filter(a => a.runStatus !== null)
+        .map(a => ({ atcId: atcIdByKey.get(a.key)!, atcTitle: `${PREFIX} atc ${a.key}`, status: a.runStatus! })),
+      { atcId: crossProjectAtc.id as string, atcTitle: `${PREFIX} atc crossProject`, status: 'passed' },
+    ];
+    const { error: runAtcsError } = await db
+      .from('run_atcs')
+      .insert(runAtcSpecs.map((r, i) => ({
+        run_id: seededRun.id as string,
+        atc_id: r.atcId,
+        position: i + 1,
+        atc_title: r.atcTitle,
+        status: r.status,
+      })));
+    if (runAtcsError) { throw runAtcsError; }
+
     fixture = {
       actorUserId: anchor.user_id,
       workspaceId: anchor.workspace_id,
@@ -294,11 +371,17 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     // later insert in this function throws.
     if (createdProjectIds.length === 0) { return; }
     const db = service();
-    // FK order: atc_acceptance_criteria/atcs -> acceptance_criteria ->
-    // user_stories -> modules/projects. Deleting the Projects cascades
-    // modules/atcs/user_stories/acceptance_criteria (all ON DELETE CASCADE
-    // from their respective parents per 0002/0003/0004).
+    // FK order: atc_acceptance_criteria/atcs/run_atcs -> acceptance_criteria/
+    // runs -> user_stories/project_environments -> modules/projects. Deleting
+    // the Projects cascades modules/atcs/user_stories/acceptance_criteria
+    // (0002/0003/0004) AND runs/project_environments/run_atcs (0031/0032) —
+    // all ON DELETE CASCADE. The Test row is NOT cascaded (runs.test_id is ON
+    // DELETE RESTRICT) — delete it AFTER the Projects, once the Run
+    // referencing it is already gone.
     await db.from('projects').delete().in('id', createdProjectIds);
+    if (createdTestId) {
+      await db.from('tests').delete().eq('id', createdTestId);
+    }
   });
 
   it('an AC with no linked (non-archived) ATC is uncovered', async () => {
