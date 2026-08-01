@@ -9,3 +9,10 @@ export const BUG_SEVERITY_VALUES = ['P1', 'P2', 'P3', 'P4'] as const;
 export type BugSeverity = (typeof BUG_SEVERITY_VALUES)[number];
 
 export const BUG_EVIDENCE_MAX = 10;
+
+// BK-40 Slice 3 — mirrors the `bugs.status` CHECK (0046_bugs.sql). BK-40 only
+// ever writes 'open' (Technical Decision 5); the full enum is needed now
+// because the standalone list (Slice 3) renders whatever status a bug is
+// already in, not just the one this ticket writes.
+export const BUG_STATUS_VALUES = ['open', 'in_progress', 'resolved', 'closed'] as const;
+export type BugStatus = (typeof BUG_STATUS_VALUES)[number];

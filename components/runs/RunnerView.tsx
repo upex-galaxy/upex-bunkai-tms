@@ -1147,8 +1147,7 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           open
           onClose={() => setBugDialogStepId(null)}
           onCreated={() => toast.success('Bug filed')}
-          runContext={{ runStepId: bugDialogStep.step.id }}
-          moduleLabel={view.module_name ?? '—'}
+          context={{ mode: 'run-linked', runStepId: bugDialogStep.step.id, moduleLabel: view.module_name ?? '—' }}
           initialTitle={bugPrefill.title}
           initialSeverity={bugPrefill.severity}
           initialStepsToReproduce={bugPrefill.stepsToReproduce}
