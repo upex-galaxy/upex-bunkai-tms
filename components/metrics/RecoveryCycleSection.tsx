@@ -183,11 +183,21 @@ function RecoveryCycleRow({ item }: { item: RecoveryCycleReportItem }) {
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         {item.first_green_at
           ? <span className="font-mono text-xs text-fg-2">{formatTimestamp(item.first_green_at)}</span>
-          : <span className="text-xs text-fg-4" aria-label="No passing run yet">—</span>}
+          // `first_green_at` is null for BOTH `in_progress` (genuinely no
+          // passing run yet) and `no_cycle` (never failed, so "first green
+          // after a fail" has no meaning — the story may well have plenty of
+          // passing runs). Reusing one label for both was the Stage 3 MAJOR:
+          // a healthy, always-green story would have read as "no passing run
+          // yet," which is false.
+          : (
+              <span className="text-xs text-fg-4" aria-label={item.state === 'no_cycle' ? 'No cycle — story never failed' : 'No passing run yet'}>
+                —
+              </span>
+            )}
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         {item.cycle_seconds === null
-          ? <span className="text-xs text-fg-4">—</span>
+          ? <span className="text-xs text-fg-4" aria-label="No cycle to measure">—</span>
           : (
               <span className="font-mono text-xs text-fg-2">
                 {formatCycleDuration(item.cycle_seconds)}
@@ -197,7 +207,7 @@ function RecoveryCycleRow({ item }: { item: RecoveryCycleReportItem }) {
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="status-chip inline-flex items-center gap-1" data-status={chip.status}>
-          {chip.dot && <span className="dot" data-status="running" />}
+          {chip.dot && <span className="dot" data-status={chip.status} />}
           {chip.label}
         </span>
       </td>
