@@ -335,106 +335,6 @@ export interface Database {
           },
         ]
       }
-      bugs: {
-        Row: {
-          atc_id: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          evidence_urls: string[]
-          id: string
-          module_id: string
-          project_id: string
-          run_id: string | null
-          run_step_id: string | null
-          severity: string
-          status: string
-          steps_to_reproduce: string
-          title: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          atc_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          evidence_urls?: string[]
-          id?: string
-          module_id: string
-          project_id: string
-          run_id?: string | null
-          run_step_id?: string | null
-          severity: string
-          status?: string
-          steps_to_reproduce?: string
-          title: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          atc_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          evidence_urls?: string[]
-          id?: string
-          module_id?: string
-          project_id?: string
-          run_id?: string | null
-          run_step_id?: string | null
-          severity?: string
-          status?: string
-          steps_to_reproduce?: string
-          title?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'bugs_atc_id_fkey'
-            columns: ['atc_id']
-            isOneToOne: false
-            referencedRelation: 'atcs'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'bugs_module_id_fkey'
-            columns: ['module_id']
-            isOneToOne: false
-            referencedRelation: 'modules'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'bugs_project_id_fkey'
-            columns: ['project_id']
-            isOneToOne: false
-            referencedRelation: 'projects'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'bugs_run_id_fkey'
-            columns: ['run_id']
-            isOneToOne: false
-            referencedRelation: 'runs'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'bugs_run_step_id_fkey'
-            columns: ['run_step_id']
-            isOneToOne: false
-            referencedRelation: 'run_steps'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'bugs_workspace_id_fkey'
-            columns: ['workspace_id']
-            isOneToOne: false
-            referencedRelation: 'workspaces'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       feature_flags: {
         Row: {
           created_at: string
@@ -1292,7 +1192,6 @@ export interface Database {
         Args: { p_name: string, p_slug: string }
         Returns: string
       }
-      bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
       bunkai_create_atc: {
         Args: {
@@ -1305,22 +1204,6 @@ export interface Database {
           p_tags: string[]
           p_title: string
           p_user_story_id: string
-        }
-        Returns: Json
-      }
-      bunkai_create_bug: {
-        Args: {
-          p_actor_user_id: string
-          p_atc_id: string
-          p_description: string
-          p_evidence_urls: string[]
-          p_module_id: string
-          p_project_id: string
-          p_run_id: string
-          p_run_step_id: string
-          p_severity: string
-          p_steps_to_reproduce: string
-          p_title: string
         }
         Returns: Json
       }
@@ -1403,10 +1286,6 @@ export interface Database {
           p_limit?: number
           p_workspace_id: string
         }
-        Returns: Json
-      }
-      bunkai_list_project_bugs: {
-        Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
       }
       bunkai_list_test_runs: {

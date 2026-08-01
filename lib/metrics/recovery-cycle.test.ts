@@ -4,7 +4,6 @@ import {
   computeElapsedSoFarSeconds,
   computeMedianRecoverySeconds,
   formatCycleDuration,
-
 } from '@lib/metrics/recovery-cycle';
 import { describe, expect, test } from 'bun:test';
 
