@@ -439,6 +439,24 @@ export async function reportProjectRuns(supabase: Client, args: ReportProjectRun
   });
 }
 
+// BK-46 — whole-project coverage rollup (untested ACs / not-run filter /
+// fully-covered modules). Same explicit-actor contract; the SECURITY DEFINER
+// RPC resolves the Project's workspace and gates the actor's active
+// membership (any role — a viewer reads, same as reportProjectRuns). No
+// pagination, no filter params — the RPC returns the whole payload and the UI
+// filters client-side. Returns `{ kpis, modules, no_coverage }`.
+export interface ReportProjectCoverageArgs {
+  actorUserId: string
+  projectId: string
+}
+
+export async function reportProjectCoverage(supabase: Client, args: ReportProjectCoverageArgs) {
+  return supabase.rpc('bunkai_report_project_coverage', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+  });
+}
+
 // BK-47 — read a Project's per-user-story recovery-cycle report (first
 // failing terminal run -> first subsequent all-passing terminal run). Same
 // explicit-actor contract as reportProjectRuns/reportProjectCoverage; the
