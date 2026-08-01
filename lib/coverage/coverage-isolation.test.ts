@@ -66,7 +66,7 @@ interface Fixture {
   workspaceId: string
   projectAId: string
   projectBId: string
-  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc', string>
+  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc' | 'moduleMix', string>
   atcIds: string[]
   acIds: string[]
   userStoryIds: string[]
@@ -75,6 +75,11 @@ interface Fixture {
 
 let fixture: Fixture | null = null;
 let skipReason: string | null = null;
+// Tracked independently of `fixture` (only assigned once beforeAll fully
+// completes) so afterAll can always reap the two throwaway Projects even if
+// a LATER step in beforeAll throws — a partial fixture is still a fixture
+// that needs cleanup, not a fixture-shaped hole in the shared DB.
+let createdProjectIds: string[] = [];
 
 describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-state', () => {
   beforeAll(async () => {
@@ -113,8 +118,17 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     if (projectsInsertError) { throw projectsInsertError; }
     const projectAId = (seededProjects ?? []).find(p => (p.slug as string).endsWith('-project-a'))!.id as string;
     const projectBId = (seededProjects ?? []).find(p => (p.slug as string).endsWith('-project-b'))!.id as string;
+    // Tracked immediately — everything else in this function cascades off
+    // these two Project rows, so this is the one line that must run before
+    // any later step that could throw.
+    createdProjectIds = [projectAId, projectBId];
 
-    // 6 modules in Project A, one per coverage-state case.
+    // 7 modules in Project A, one per coverage-state case, plus "moduleMix"
+    // which gets TWO ACs in different states (see usSpecs/acSpecs below) to
+    // exercise the MODULE-level precedence order directly (uncovered >
+    // not_run > fully_covered > no_acs) — the other 6 modules each carry
+    // exactly one AC, which only proves the PER-AC state, not that a module
+    // with heterogeneous AC states resolves to the right overall status.
     const moduleSpecs = [
       { key: 'uncovered' as const, path: 'uncovered', name: 'Uncovered' },
       { key: 'notRun' as const, path: 'not-run', name: 'Not Run' },
@@ -122,6 +136,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'mixed' as const, path: 'mixed', name: 'Mixed (union rule)' },
       { key: 'noAcs' as const, path: 'no-acs', name: 'No ACs' },
       { key: 'archivedAtc' as const, path: 'archived-atc', name: 'Archived ATC only' },
+      { key: 'moduleMix' as const, path: 'module-mix', name: 'Module Mix (precedence)' },
     ];
     const { data: seededModules, error: modulesError } = await db
       .from('modules')
@@ -140,13 +155,17 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       .single();
     if (moduleBError) { throw moduleBError; }
 
-    // One User Story per module (except "No ACs", which gets zero).
-    const usSpecs: Array<{ key: keyof Fixture['moduleIds'] | 'b', moduleId: string }> = [
+    // One User Story per module (except "No ACs", which gets zero) — EXCEPT
+    // "moduleMix", which gets TWO (moduleMixUncovered / moduleMixNotRun) so
+    // that one module carries ACs in two different states at once.
+    const usSpecs: Array<{ key: keyof Fixture['moduleIds'] | 'b' | 'moduleMixUncovered' | 'moduleMixNotRun', moduleId: string }> = [
       { key: 'uncovered', moduleId: moduleIds.uncovered },
       { key: 'notRun', moduleId: moduleIds.notRun },
       { key: 'executed', moduleId: moduleIds.executed },
       { key: 'mixed', moduleId: moduleIds.mixed },
       { key: 'archivedAtc', moduleId: moduleIds.archivedAtc },
+      { key: 'moduleMixUncovered', moduleId: moduleIds.moduleMix },
+      { key: 'moduleMixNotRun', moduleId: moduleIds.moduleMix },
       { key: 'b', moduleId: moduleB.id as string },
     ];
     const { data: seededStories, error: storiesError } = await db
@@ -171,21 +190,24 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
 
     // ATCs: notRun -> 1 unrun; executed -> 1 pass; mixed -> 1 pass + 1 unrun
     // (Q3 union rule — the AC must still read 'not_run'); archivedAtc -> 1
-    // pass ATC that is ARCHIVED (must not count as coverage at all). The
-    // 'uncovered'/'b' ACs get no ATC.
+    // pass ATC that is ARCHIVED (must not count as coverage at all);
+    // moduleMixNotRun -> 1 unrun (its sibling moduleMixUncovered AC gets no
+    // ATC, so module "moduleMix" carries one uncovered + one not_run AC).
+    // The 'uncovered'/'b' ACs get no ATC.
     const atcSpecs = [
-      { key: 'notRun', moduleKey: 'notRun' as const, status: 'unrun', archived: false },
-      { key: 'executed', moduleKey: 'executed' as const, status: 'pass', archived: false },
-      { key: 'mixedPass', moduleKey: 'mixed' as const, status: 'pass', archived: false },
-      { key: 'mixedUnrun', moduleKey: 'mixed' as const, status: 'unrun', archived: false },
-      { key: 'archived', moduleKey: 'archivedAtc' as const, status: 'pass', archived: true },
+      { key: 'notRun', moduleKey: 'notRun' as const, storyKey: 'notRun', status: 'unrun', archived: false },
+      { key: 'executed', moduleKey: 'executed' as const, storyKey: 'executed', status: 'pass', archived: false },
+      { key: 'mixedPass', moduleKey: 'mixed' as const, storyKey: 'mixed', status: 'pass', archived: false },
+      { key: 'mixedUnrun', moduleKey: 'mixed' as const, storyKey: 'mixed', status: 'unrun', archived: false },
+      { key: 'archived', moduleKey: 'archivedAtc' as const, storyKey: 'archivedAtc', status: 'pass', archived: true },
+      { key: 'moduleMixNotRun', moduleKey: 'moduleMix' as const, storyKey: 'moduleMixNotRun', status: 'unrun', archived: false },
     ];
     const { data: seededAtcs, error: atcsError } = await db
       .from('atcs')
       .insert(atcSpecs.map(a => ({
         project_id: projectAId,
         module_id: moduleIds[a.moduleKey],
-        user_story_id: storyIdByKey.get(a.moduleKey)!,
+        user_story_id: storyIdByKey.get(a.storyKey)!,
         slug: `${PREFIX}-atc-${a.key}`,
         title: `${PREFIX} atc ${a.key}`,
         layer: 'UI',
@@ -200,11 +222,12 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
 
     // Link: notRun's AC <- notRun ATC; executed's AC <- executed ATC;
     // mixed's AC <- BOTH mixedPass and mixedUnrun ATCs; archivedAtc's AC <-
-    // the archived ATC only.
+    // the archived ATC only; moduleMixNotRun's AC <- its unrun ATC.
     const links = [
       { atcKey: 'notRun', acKey: 'notRun' },
       { atcKey: 'executed', acKey: 'executed' },
       { atcKey: 'mixedPass', acKey: 'mixed' },
+      { atcKey: 'moduleMixNotRun', acKey: 'moduleMixNotRun' },
       { atcKey: 'mixedUnrun', acKey: 'mixed' },
       { atcKey: 'archived', acKey: 'archivedAtc' },
     ];
@@ -230,13 +253,17 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
   });
 
   afterAll(async () => {
-    if (!fixture) { return; }
+    // Gated on createdProjectIds, NOT on `fixture` — fixture is only assigned
+    // once every step below it succeeds, so gating cleanup on it would leak
+    // both throwaway Projects (and everything cascaded into them) if any
+    // later insert in this function throws.
+    if (createdProjectIds.length === 0) { return; }
     const db = service();
     // FK order: atc_acceptance_criteria/atcs -> acceptance_criteria ->
     // user_stories -> modules/projects. Deleting the Projects cascades
     // modules/atcs/user_stories/acceptance_criteria (all ON DELETE CASCADE
     // from their respective parents per 0002/0003/0004).
-    await db.from('projects').delete().in('id', [fixture.projectAId, fixture.projectBId]);
+    await db.from('projects').delete().in('id', createdProjectIds);
   });
 
   it('an AC with no linked (non-archived) ATC is uncovered', async () => {
@@ -272,6 +299,17 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     expect(mod.status).toBe('not_run');
     expect(mod.ac_not_run).toBe(1);
     expect(mod.ac_executed).toBe(0);
+  });
+
+  it('module-level precedence: a module with BOTH an uncovered and a not_run AC reads uncovered overall', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.moduleMix);
+    expect(mod.ac_total).toBe(2);
+    expect(mod.ac_uncovered).toBe(1);
+    expect(mod.ac_not_run).toBe(1);
+    // uncovered outranks not_run in the module-status precedence.
+    expect(mod.status).toBe('uncovered');
   });
 
   it('an archived ATC does not count as coverage — the AC reads uncovered', async () => {

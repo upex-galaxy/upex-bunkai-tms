@@ -34,6 +34,16 @@
 -- note: atcs.archived_at already exists live (used since 0021/0027-0029), the
 -- gap it warned about is already here, not hypothetical.
 --
+-- Scope note (ratified against the shipped mockup, not a code decision): the
+-- Jira AC2 Gherkin text ("shows only the criteria and modules whose coverage
+-- has never been executed") reads as if it wants per-AC itemization for the
+-- not-run state, symmetric to `no_coverage`'s per-AC list for the uncovered
+-- state. The shipped mockup (.context/designs/.../bk-44-metrics-coverage/
+-- metrics-dashboard.html) and master-design-plan.md §4.7 only ever show a
+-- per-MODULE "Never run" filter/count (no per-AC not-run list) — this RPC
+-- matches that, deliberately narrower than a literal reading of AC2. Flagging
+-- here since it was never separately logged as a ratified departure.
+--
 -- Technical Decision: no pagination, no query params. A project's module/AC
 -- coverage rollup is small and bounded (unlike the Runs report, which is
 -- append-heavy and genuinely unbounded) — one full-payload read, matching the
@@ -102,7 +112,16 @@ begin
   ),
   ac_state as (
     -- Per-AC coverage state (Q1/Q2/Q3 collapsed into one 3-way case — see
-    -- header comment). Only non-archived ATCs count as coverage.
+    -- header comment). Only non-archived ATCs count as coverage, AND only
+    -- ATCs belonging to THIS project (`a.project_id = p_project_id`) — the
+    -- atc_acceptance_criteria join table has no DB-level constraint tying an
+    -- ATC and an AC to the same project (its own RLS only gates write access
+    -- to the ATC side), so this predicate is the actual project-scope
+    -- enforcement here, mirroring proj_modules's own `m.project_id =
+    -- p_project_id` and 0041_run_project_report.sql's identical reasoning.
+    -- Without it, an ATC mis-linked (accidentally or via the still-granted
+    -- legacy bunkai_save_atc RPC) to an AC in a DIFFERENT project would
+    -- silently count as that AC's coverage — a cross-tenant leak.
     select
       s.ac_id, s.ac_title, s.ac_position,
       s.user_story_id, s.user_story_title, s.module_id,
@@ -115,7 +134,9 @@ begin
       end as state
       from ac_scope s
       left join public.atc_acceptance_criteria aac on aac.acceptance_criterion_id = s.ac_id
-      left join public.atcs a on a.id = aac.atc_id and a.archived_at is null
+      left join public.atcs a on a.id = aac.atc_id
+        and a.archived_at is null
+        and a.project_id = p_project_id
       group by s.ac_id, s.ac_title, s.ac_position, s.user_story_id, s.user_story_title, s.module_id
   ),
   module_rollup as (
@@ -160,7 +181,10 @@ begin
           'ac_not_run', mr.ac_not_run,
           'ac_executed', mr.ac_executed,
           'status', mr.status
-        ) order by mr.module_position
+        -- module_position has no per-project uniqueness constraint, so tie
+        -- on module_id for a deterministic order regardless of duplicate
+        -- positions.
+        ) order by mr.module_position, mr.module_id
       ), '[]'::jsonb)
       from module_rollup mr
     ),
@@ -173,7 +197,10 @@ begin
           'user_story_title', cs.user_story_title,
           'module_id', cs.module_id,
           'module_name', pm.name
-        ) order by pm.position, cs.ac_position
+        -- ac_position is unique only per user_story_id, not per module, so
+        -- two ACs from different stories in the same module can tie — add
+        -- ac_id as a deterministic final tiebreaker.
+        ) order by pm.position, cs.ac_position, cs.ac_id
       ), '[]'::jsonb)
       from ac_state cs
       join proj_modules pm on pm.id = cs.module_id
