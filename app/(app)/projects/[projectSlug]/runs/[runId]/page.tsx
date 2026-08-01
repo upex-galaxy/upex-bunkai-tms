@@ -47,12 +47,14 @@ export default async function RunDetailPage({ params }: PageProps) {
 
   const run = data as unknown as RunDetail;
 
-  // BK-36 / BK-39 / BK-35 (Q4) — aborting, finishing, and marking a step are
-  // all member+ write actions sharing the same role gate. Mirror the Test
-  // detail page's role derivation: viewers see the runner read-only (no
-  // Abort/Finish/mark affordance at all — structurally absent, not just
-  // hidden); the bunkai_abort_run / bunkai_finish_run / bunkai_mark_run_step
-  // RPCs stay the authoritative write gates regardless of the UI.
+  // BK-36 / BK-39 / BK-35 (Q4) / BK-40 — aborting, finishing, marking a step,
+  // and reporting a bug are all member+ write actions sharing the same role
+  // gate (the API's `atc:write` capability). Mirror the Test detail page's
+  // role derivation: viewers see the runner read-only (no Abort/Finish/mark/
+  // Report-bug affordance at all — structurally absent, not just hidden);
+  // the bunkai_abort_run / bunkai_finish_run / bunkai_mark_run_step /
+  // bunkai_create_bug RPCs stay the authoritative write gates regardless of
+  // the UI.
   const { data: memberRow } = await supabase
     .from('workspace_members')
     .select('role')
@@ -69,6 +71,7 @@ export default async function RunDetailPage({ params }: PageProps) {
       canAbort={canManageRun}
       canFinish={canManageRun}
       canMark={canManageRun}
+      canReportBug={canManageRun}
     />
   );
 }
