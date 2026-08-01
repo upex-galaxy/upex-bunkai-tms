@@ -28,13 +28,27 @@ interface PageProps {
 // whole payload is small and bounded (Technical Decision,
 // 0048_project_coverage_report.sql) and the segment filter is a pure
 // client-side re-render (`ProjectCoverageView`).
+//
+// SHARED ROUTE with BK-47 (avalanche-2026-07 coordination flag, queue.md):
+// master-design-plan.md §4.7 maps BOTH this ticket AND BK-47 ("Time to
+// green") into the SAME mockup screen (`metrics-dashboard.html`) and this
+// SAME route — BK-46 owns the KPI row + coverage-by-module table + no-
+// coverage panel (the `<CoverageSection>` block below); BK-47 owns a
+// separate recovery-cycle/time-to-green section. This file got here first,
+// so it OWNS the page shell: BK-47 should add its own `<Suspense>`-wrapped
+// section as a SIBLING inside the `<div className="flex flex-col gap-6">`
+// wrapper below, not restructure this file's existing Coverage section.
 export default async function ProjectCoveragePage({ params }: PageProps) {
   const { projectSlug } = await params;
 
   return (
-    <Suspense fallback={<ProjectCoverageSkeleton />}>
-      <ProjectCoverageSection projectSlug={projectSlug} />
-    </Suspense>
+    <div className="flex flex-col gap-6">
+      <Suspense fallback={<ProjectCoverageSkeleton />}>
+        <ProjectCoverageSection projectSlug={projectSlug} />
+      </Suspense>
+      {/* BK-47 (Time to green): add your own <Suspense>-wrapped section
+          here, as a sibling of ProjectCoverageSection above. */}
+    </div>
   );
 }
 
