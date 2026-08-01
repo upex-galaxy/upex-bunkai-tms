@@ -2370,6 +2370,84 @@
         "required": ["passed", "failed"],
         "description": "Counts over the WHOLE filtered set (every row matching the active filters, not just the returned page) — Business Rule #3 / Technical Decision D2. Deliberately the OPPOSITE of RunHistoryTotals: these numbers change as filters narrow. `running` and `aborted` Runs are not counted here (aborted is a terminal outcome but not a pass/fail verdict)."
       },
+      "RecoveryCycleReport": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecoveryCycleItem"
+            },
+            "description": "Every User Story with at least one Run touching it, ordered by module path then story title then id."
+          },
+          "median_recovery_seconds": {
+            "type": ["integer", "null"],
+            "description": "Median cycle_seconds across every `recovered` item only. Null when resolved_cycle_count is 0 (never a false \"0s\" reading)."
+          },
+          "resolved_cycle_count": {
+            "type": "integer",
+            "description": "Count of items with state `recovered` — the population median_recovery_seconds is computed over."
+          },
+          "story_count": {
+            "type": "integer",
+            "description": "Total items returned (all three states combined)."
+          }
+        },
+        "required": ["items", "median_recovery_seconds", "resolved_cycle_count", "story_count"]
+      },
+      "RecoveryCycleItem": {
+        "type": "object",
+        "properties": {
+          "user_story_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": ["string", "null"],
+            "description": "The User Story's optional external tracker key (e.g. a Jira key). Null when not set — never a fabricated code."
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_path": {
+            "type": "string"
+          },
+          "first_fail_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The first failing terminal Run's finished_at. Null only for `no_cycle` (never failed)."
+          },
+          "first_green_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The first qualifying all-passing terminal Run's finished_at that occurred after first_fail_at. Null unless state is `recovered`."
+          },
+          "state": {
+            "type": "string",
+            "enum": ["recovered", "in_progress", "no_cycle"],
+            "description": "recovered: a qualifying green Run followed the first fail. in_progress: still failing, no qualifying green Run yet. no_cycle: the story has never failed."
+          },
+          "cycle_seconds": {
+            "type": ["integer", "null"],
+            "description": "recovered: resolved fail->green duration, in seconds. in_progress: elapsed-so-far duration against this response's generation time, in seconds. no_cycle: null."
+          }
+        },
+        "required": [
+          "user_story_id",
+          "title",
+          "external_id",
+          "module_id",
+          "module_path",
+          "first_fail_at",
+          "first_green_at",
+          "state",
+          "cycle_seconds"
+        ]
+      },
       "Run": {
         "type": "object",
         "properties": {
@@ -7570,6 +7648,75 @@
           },
           "422": {
             "description": "Validation failed — `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/metrics/recovery-cycles": {
+      "get": {
+        "tags": ["Metrics"],
+        "summary": "Compute per-user-story recovery-cycle time (first failing run -> first all-passing run)",
+        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_project_recovery_cycles`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or query parameters: the whole-project rollup is small and bounded. Computed entirely from Run history (`runs`/`run_atcs`) — no Bugs-domain read (Decision 1). A Project with zero Runs returns an empty `items` with `median_recovery_seconds: null` and zeroed counts (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project whose recovery-cycle report to read."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The recovery-cycle report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCycleReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id (not a UUID) (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
             "content": {
               "application/json": {
                 "schema": {

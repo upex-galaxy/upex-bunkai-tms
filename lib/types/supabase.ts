@@ -1343,6 +1343,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
       }
+      bunkai_report_project_recovery_cycles: {
+        Args: { p_actor_user_id: string, p_project_id: string }
+        Returns: Json
+      }
       bunkai_report_project_runs: {
         Args: {
           p_actor_user_id: string
