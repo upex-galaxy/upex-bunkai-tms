@@ -49,4 +49,34 @@ describe('formatBugListRow', () => {
     });
     expect(row.modulePath).toBe('—');
   });
+
+  test('resolves every severity to its label + chip token, matching the mockup\'s own tone mapping', () => {
+    const bug = (severity: string) => formatBugListRow({
+      id: 'bug',
+      title: 'title',
+      severity,
+      status: 'open',
+      module: null,
+      run_id: null,
+    });
+    expect(bug('P1')).toMatchObject({ severityLabel: 'Critical', severityToken: 'fail' });
+    expect(bug('P2')).toMatchObject({ severityLabel: 'Major', severityToken: 'blocked' });
+    expect(bug('P3')).toMatchObject({ severityLabel: 'Minor', severityToken: 'running' });
+    expect(bug('P4')).toMatchObject({ severityLabel: 'Trivial', severityToken: 'skipped' });
+  });
+
+  test('resolves every status to its label + chip token, matching the mockup\'s own tone mapping', () => {
+    const bug = (status: string) => formatBugListRow({
+      id: 'bug',
+      title: 'title',
+      severity: 'P3',
+      status,
+      module: null,
+      run_id: null,
+    });
+    expect(bug('open')).toMatchObject({ statusLabel: 'Open', statusToken: 'fail' });
+    expect(bug('in_progress')).toMatchObject({ statusLabel: 'In progress', statusToken: 'running' });
+    expect(bug('resolved')).toMatchObject({ statusLabel: 'Resolved', statusToken: 'pass' });
+    expect(bug('closed')).toMatchObject({ statusLabel: 'Closed', statusToken: 'skipped' });
+  });
 });

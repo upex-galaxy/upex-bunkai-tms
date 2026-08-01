@@ -8,18 +8,16 @@ import { isValidUrl } from '@lib/utils/url';
 import { Bug, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
-// BK-40 Slice 2 — the "Report bug" dialog, matching RunnerView's existing
+// BK-40 — the "Report bug" / "New bug" dialog, matching RunnerView's existing
 // Abort/Finish overlay family (Technical Decision 9): a plain fixed-inset
 // overlay (no native <dialog>, which blocks the page), role="dialog",
 // click-outside-to-close, autoFocus on the first field. Kept as a top-level
 // component (unlike Abort/Finish, which are inlined in RunnerView.tsx)
-// because Slice 3's standalone "New bug" page reuses it verbatim
-// (Technical Decision 11 — "one shared form component ... parameterized by
-// an optional runContext prop"). Only the run-linked mode (a `runContext`
-// prop) is built and wired this slice — the standalone project/module-picker
-// fields Slice 3 needs are that slice's own additive work, matching this
-// ticket's own "bare-bones, additive-only" slice-boundary convention
-// (Technical Decision 2).
+// because both entry points share it verbatim (Technical Decision 11 — "one
+// shared form component ... parameterized by an optional runContext prop"):
+// Slice 2's run-linked "Report bug" (module server-derived, read-only) and
+// Slice 3's standalone "New bug" (module explicitly picked, since there is no
+// run to derive it from).
 
 const SEVERITY_LABEL: Record<BugSeverity, string> = {
   P1: 'Critical',
@@ -28,9 +26,25 @@ const SEVERITY_LABEL: Record<BugSeverity, string> = {
   P4: 'Trivial',
 };
 
-export interface BugRunLinkedContext {
+// BK-40 Slice 2 — run-linked: the module is server-derived from run_step_id
+// (Technical Decision 7), never client-supplied; `moduleLabel` is display-only.
+export interface BugFormDialogRunLinkedContext {
+  mode: 'run-linked'
   runStepId: string
+  moduleLabel: string
 }
+
+// BK-40 Slice 3 — standalone: there is no run to derive context from, so the
+// filer picks the module explicitly. `modules` is every active module in the
+// current project (the same query/shape `runs/page.tsx` and `atcs/new/page.tsx`
+// already use for their own Module pickers).
+export interface BugFormDialogStandaloneContext {
+  mode: 'standalone'
+  projectId: string
+  modules: { id: string, name: string }[]
+}
+
+export type BugFormDialogContext = BugFormDialogRunLinkedContext | BugFormDialogStandaloneContext;
 
 export interface BugRecord {
   id: string
@@ -45,8 +59,7 @@ interface BugFormDialogProps {
   open: boolean
   onClose: () => void
   onCreated: (bug: BugRecord) => void
-  runContext: BugRunLinkedContext
-  moduleLabel: string
+  context: BugFormDialogContext
   initialTitle: string
   initialSeverity: BugSeverity
   initialStepsToReproduce: string
@@ -57,8 +70,7 @@ export function BugFormDialog({
   open,
   onClose,
   onCreated,
-  runContext,
-  moduleLabel,
+  context,
   initialTitle,
   initialSeverity,
   initialStepsToReproduce,
@@ -70,6 +82,9 @@ export function BugFormDialog({
   const [stepsToReproduce, setStepsToReproduce] = useState(initialStepsToReproduce);
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>(initialEvidenceUrls);
   const [evidenceDraft, setEvidenceDraft] = useState('');
+  // Standalone mode only — which module was picked. Unused (and never
+  // validated) in run-linked mode, where the module is server-derived.
+  const [moduleId, setModuleId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,7 +116,7 @@ export function BugFormDialog({
   const handleSubmit = async () => {
     if (submitting) { return; }
 
-    // Client-side guard, mirroring handleAbort's short-reason check —
+    // Client-side guards, mirroring handleAbort's short-reason check —
     // immediate feedback ahead of the round trip. The RPC (via
     // BugCreateBodySchema) stays the enforcement point of record.
     const trimmedTitle = title.trim();
@@ -109,21 +124,29 @@ export function BugFormDialog({
       setError(BUG_TITLE_MESSAGE);
       return;
     }
+    if (context.mode === 'standalone' && !moduleId) {
+      setError('Select a module.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
     try {
+      const sharedFields = {
+        title: trimmedTitle,
+        severity,
+        description: description.trim() || undefined,
+        steps_to_reproduce: stepsToReproduce.trim() || undefined,
+        evidence_urls: evidenceUrls,
+      };
+      const requestBody = context.mode === 'run-linked'
+        ? { run_step_id: context.runStepId, ...sharedFields }
+        : { project_id: context.projectId, module_id: moduleId, ...sharedFields };
+
       const response = await fetch('/api/v1/bugs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          run_step_id: runContext.runStepId,
-          title: trimmedTitle,
-          severity,
-          description: description.trim() || undefined,
-          steps_to_reproduce: stepsToReproduce.trim() || undefined,
-          evidence_urls: evidenceUrls,
-        }),
+        body: JSON.stringify(requestBody),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as BugCreateErrorBody;
@@ -155,13 +178,13 @@ export function BugFormDialog({
         data-testid="bug-form-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Report bug"
+        aria-label={context.mode === 'run-linked' ? 'Report bug' : 'New bug'}
         className="w-full max-w-[480px] rounded-3 border border-stroke-2 bg-surface-1 p-5"
         onClick={e => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-fg-1">
           <Bug size={13} />
-          Report bug
+          {context.mode === 'run-linked' ? 'Report bug' : 'New bug'}
         </div>
 
         <label htmlFor="bug-title-input" className="mb-1.5 block text-xs text-fg-2">
@@ -208,18 +231,42 @@ export function BugFormDialog({
         <label htmlFor="bug-module-input" className="mb-1.5 mt-3 block text-xs text-fg-2">
           Module
         </label>
-        {/* Read-only — server-derived from run_step_id (Technical Decision 7),
-            never client-supplied. Shown for the filer's own confidence only;
-            the value is display-only and is never part of the request body. */}
-        <input
-          id="bug-module-input"
-          data-testid="bug-module-input"
-          type="text"
-          value={moduleLabel}
-          readOnly
-          disabled
-          className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-3"
-        />
+        {context.mode === 'run-linked'
+          ? (
+              // Read-only — server-derived from run_step_id (Technical
+              // Decision 7), never client-supplied. Shown for the filer's own
+              // confidence only; the value is display-only and is never part
+              // of the request body.
+              <input
+                id="bug-module-input"
+                data-testid="bug-module-input"
+                type="text"
+                value={context.moduleLabel}
+                readOnly
+                disabled
+                className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-3"
+              />
+            )
+          : (
+              // Standalone — no run to derive a module from, so the filer
+              // picks one explicitly. Sent as `module_id` in the request body.
+              <select
+                id="bug-module-input"
+                data-testid="bug-module-input"
+                value={moduleId}
+                onChange={(e) => {
+                  setModuleId(e.target.value);
+                  if (error) { setError(null); }
+                }}
+                disabled={submitting}
+                className="w-full rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-2 text-sm text-fg-1 focus:border-accent focus:outline-none"
+              >
+                <option value="">Select a module…</option>
+                {context.modules.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
 
         <label htmlFor="bug-description-input" className="mb-1.5 mt-3 block text-xs text-fg-2">
           Description (optional)
