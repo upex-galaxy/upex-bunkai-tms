@@ -50,6 +50,9 @@
 --                                        has no RPC-level analog since
 --                                        bunkai_create_bug always derives
 --                                        workspace_id from the project itself)
+--   45305  bugs_run_outside_project     (p_run_id does not belong to p_project_id)
+--   45306  bugs_run_step_outside_run    (p_run_step_id does not belong to p_run_id)
+--   45307  bugs_atc_outside_project     (p_atc_id does not belong to p_project_id)
 --
 -- Stage 3 adversarial review (post-first-pass) found bunkai_create_bug shipped
 -- with NO actor-bind guard (BLOCKER: any signed-in user could call the RPC
@@ -62,6 +65,26 @@
 -- not yet merged or depended upon downstream, so there is no "already
 -- shipped" shape to preserve (contrast 0039's append-only rationale for the
 -- already-merged 0038).
+--
+-- Final-assembly adversarial review (2026-08-01, before the integration ->
+-- staging PR) found two more gaps, both fixed in place for the same reason
+-- (still unmerged anywhere but this branch):
+--   * bunkai_create_bug validated module ∈ project but never validated that
+--     p_run_id/p_run_step_id/p_atc_id belong to the SAME project — a
+--     write-role member of any project could attach foreign-workspace
+--     provenance to their own bug via a direct RPC call (a cross-tenant
+--     existence oracle, plus a data-integrity violation). Closed by the new
+--     45305/45306/45307 checks below and the matching trigger update.
+--   * The module lookup's `archived_at is null` filter (mirrored from
+--     bunkai_create_atc, where it correctly gates creating NEW content)
+--     applied uniformly to the run-linked path too, where module_id is a
+--     frozen provenance snapshot from an already-finished run, not client
+--     input — archiving a module after the fact silently broke filing a bug
+--     against any historical run in it, contradicting this ticket's own
+--     "reportable after the run closes" design (RunnerView.tsx's
+--     canReportBug). The active-module check is now scoped to the
+--     STANDALONE path only, where it still defends client-supplied
+--     project_id/module_id against cross-project injection.
 
 -- ============================================================================
 -- 1. bugs
@@ -131,9 +154,11 @@ create policy bugs_insert_workspace_role_member_plus
 -- whether the write came through bunkai_create_bug or a raw REST insert/update
 -- against public.bugs directly. A write-role member of THEIR OWN workspace can
 -- satisfy the INSERT policy above with a real workspace_id while supplying a
--- project_id/module_id pair that belongs to a completely different workspace
--- they have no relationship to — this trigger rejects that internally
--- inconsistent row regardless of the RLS outcome.
+-- project_id/module_id pair (or run_id/run_step_id/atc_id provenance) that
+-- belongs to a completely different workspace they have no relationship to —
+-- this trigger rejects that internally inconsistent row regardless of the
+-- RLS outcome. Mirrors bunkai_create_bug's own 2/2b checks (this trigger is a
+-- no-op for anything written through the RPC, since it already validated).
 create or replace function public.bunkai_bugs_check_consistency()
 returns trigger
 set search_path = ''
@@ -155,6 +180,27 @@ begin
     where id = new.module_id;
   if v_module_project is null or v_module_project <> new.project_id then
     raise exception 'bugs_module_outside_project' using errcode = '45300';
+  end if;
+
+  if new.run_id is not null and not exists (
+    select 1 from public.runs where id = new.run_id and project_id = new.project_id
+  ) then
+    raise exception 'bugs_run_outside_project' using errcode = '45305';
+  end if;
+
+  if new.run_step_id is not null and not exists (
+    select 1
+      from public.run_steps rs
+      join public.run_atcs ra on ra.id = rs.run_atc_id
+      where rs.id = new.run_step_id and ra.run_id = new.run_id
+  ) then
+    raise exception 'bugs_run_step_outside_run' using errcode = '45306';
+  end if;
+
+  if new.atc_id is not null and not exists (
+    select 1 from public.atcs where id = new.atc_id and project_id = new.project_id
+  ) then
+    raise exception 'bugs_atc_outside_project' using errcode = '45307';
   end if;
 
   return new;
@@ -225,10 +271,20 @@ grant execute on function public.bunkai_bug_json(uuid) to authenticated, service
 --   1. AuthZ: bunkai_assert_actor_can_write_project (reused verbatim) — also
 --      resolves workspace_id and raises project_not_found (P0002) for a
 --      missing/foreign project, forbidden (42501) for a non-writer.
---   2. Module must exist, be active, and belong to p_project_id, else
+--   2. Module must exist and belong to p_project_id, else
 --      bugs_module_outside_project (45300). This is the actual enforcement
 --      point for the story's HIGH-risk cross-project-module-injection
 --      scenario — independent of whatever the HTTP layer already checked.
+--      The active-module (archived_at is null) gate applies ONLY when this
+--      is a standalone create (p_run_id is null) — a run-linked module_id is
+--      a frozen provenance snapshot from an already-finished run, not client
+--      input, and must stay filable even after the module is later archived.
+--   2b. If run-linked (any of p_run_id/p_run_step_id/p_atc_id supplied), each
+--      must belong to the SAME p_project_id/p_run_id being written into —
+--      bugs_run_outside_project (45305), bugs_run_step_outside_run (45306),
+--      bugs_atc_outside_project (45307). Closes the equivalent injection
+--      surface for a direct RPC caller supplying a legitimate
+--      project_id/module_id but foreign-workspace run/step/atc ids.
 --   3. RPC-level backstops for title/severity/evidence-count (Zod is the
 --      primary guard at the HTTP edge; the DB CHECK on evidence_urls is the
 --      hard floor beneath even this).
@@ -280,12 +336,52 @@ begin
   -- 1. AuthZ + project resolution (reused verbatim).
   v_workspace_id := public.bunkai_assert_actor_can_write_project(p_actor_user_id, p_project_id);
 
-  -- 2. Module must exist, be active, and belong to THIS project.
-  select project_id into v_module_project
-    from public.modules
-    where id = p_module_id and archived_at is null;
+  -- 2. Module must exist and belong to THIS project. Active-only for the
+  --    STANDALONE path (p_run_id is null) — a run-linked module_id is
+  --    server-derived provenance from an already-finished run, not client
+  --    input, and must stay filable even after the module is later archived.
+  if p_run_id is null then
+    select project_id into v_module_project
+      from public.modules
+      where id = p_module_id and archived_at is null;
+  else
+    select project_id into v_module_project
+      from public.modules
+      where id = p_module_id;
+  end if;
   if v_module_project is null or v_module_project <> p_project_id then
     raise exception 'bugs_module_outside_project' using errcode = '45300';
+  end if;
+
+  -- 2b. Run-linked provenance cross-validation — each of run/step/atc, when
+  --     supplied, must belong to the SAME project/run being written into.
+  if p_run_id is not null then
+    if not exists (
+      select 1 from public.runs
+      where id = p_run_id and project_id = p_project_id
+    ) then
+      raise exception 'bugs_run_outside_project' using errcode = '45305';
+    end if;
+  end if;
+
+  if p_run_step_id is not null then
+    if not exists (
+      select 1
+        from public.run_steps rs
+        join public.run_atcs ra on ra.id = rs.run_atc_id
+        where rs.id = p_run_step_id and ra.run_id = p_run_id
+    ) then
+      raise exception 'bugs_run_step_outside_run' using errcode = '45306';
+    end if;
+  end if;
+
+  if p_atc_id is not null then
+    if not exists (
+      select 1 from public.atcs
+      where id = p_atc_id and project_id = p_project_id
+    ) then
+      raise exception 'bugs_atc_outside_project' using errcode = '45307';
+    end if;
   end if;
 
   -- 3. RPC-level backstops.

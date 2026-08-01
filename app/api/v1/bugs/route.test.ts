@@ -4,7 +4,7 @@ import { describe, expect, it, mock } from 'bun:test';
 // it so the module graph loads under Bun, then import the testable exports.
 // Same convention as app/api/v1/runs/route.test.ts / lib/jira/import-runner.test.ts.
 void mock.module('server-only', () => ({}));
-const { locateRunStepBugContext } = await import('./route');
+const { assertRunLinkedStepIsFailed, locateRunStepBugContext } = await import('./route');
 const { BugCreateBodySchema } = await import('@lib/bugs/validation');
 const { mapBugRpcError } = await import('@lib/bugs/errors');
 const { ApiError } = await import('@lib/api/error-envelope');
@@ -77,6 +77,30 @@ describe('locateRunStepBugContext (ATP-P1/P2 — run context derivation)', () =>
   it('surfaces a null module_id (the run\'s own module snapshot can be null — 0040\'s Risk R-3)', () => {
     const context = locateRunStepBugContext(fakeRun({ moduleId: null }), STEP_ID);
     expect(context?.moduleId).toBeNull();
+  });
+});
+
+describe('assertRunLinkedStepIsFailed — the ATP-N1 enforcement decision itself', () => {
+  // Final-assembly review finding, 2026-08-01: the tests above only prove
+  // locateRunStepBugContext faithfully REPORTS a step's status — none of them
+  // ever invoked the conditional that turns a non-'failed' status into a 422.
+  // These exercise the actual guard the route calls.
+  it('ATP-N1: throws a 422 validation error for any non-failed step status', () => {
+    for (const status of ['pending', 'passed', 'blocked', 'skipped']) {
+      let captured: unknown;
+      try {
+        assertRunLinkedStepIsFailed(status);
+      }
+      catch (err) {
+        captured = err;
+      }
+      expect(captured).toBeInstanceOf(ApiError);
+      expect((captured as InstanceType<typeof ApiError>).status).toBe(422);
+    }
+  });
+
+  it('ATP-P1/P2: does not throw for a failed step', () => {
+    expect(() => assertRunLinkedStepIsFailed('failed')).not.toThrow();
   });
 });
 

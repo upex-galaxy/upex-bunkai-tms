@@ -117,6 +117,12 @@ interface RunnerViewProps {
   // happened and stays reportable after the run closes (no AC ties bug
   // filing to run status, see shouldShowReportBugButton).
   canReportBug?: boolean
+  // BK-40 — per-ATC module name (atc_id -> module name), for the "Report bug"
+  // dialog's read-only Module field. `run.module_name` alone is only the
+  // chain-position-1 snapshot — wrong whenever the Test's chain spans more
+  // than one module. Missing entries (atc_id not in the map) fall back to
+  // the run-level snapshot.
+  atcModuleNames?: Record<string, string>
 }
 
 // Shared error-envelope shape for both run terminal actions (abort + finish).
@@ -143,7 +149,7 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {} }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -1147,7 +1153,16 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
           open
           onClose={() => setBugDialogStepId(null)}
           onCreated={() => toast.success('Bug filed')}
-          context={{ mode: 'run-linked', runStepId: bugDialogStep.step.id, moduleLabel: view.module_name ?? '—' }}
+          context={{
+            mode: 'run-linked',
+            runStepId: bugDialogStep.step.id,
+            // The failing step's OWN ATC module — not the run-level
+            // chain-position-1 snapshot, which is wrong for any Test chain
+            // spanning more than one module. Falls back to the snapshot only
+            // when the per-ATC lookup has no entry (e.g. the ATC's own row
+            // was deleted after the run started).
+            moduleLabel: atcModuleNames[bugDialogStep.atc.atc_id] ?? view.module_name ?? '—',
+          }}
           initialTitle={bugPrefill.title}
           initialSeverity={bugPrefill.severity}
           initialStepsToReproduce={bugPrefill.stepsToReproduce}

@@ -22,6 +22,20 @@ export function mapBugRpcError(error: { code?: string, message: string }): never
       throw new ApiError('validation_failed', 'The module must belong to the current project.', {
         details: { reason: 'module_outside_project' },
       });
+    case '45305':
+      // Non-disclosure, same shape as module_outside_project: never confirm
+      // whether p_run_id exists at all, only that it doesn't belong here.
+      throw new ApiError('validation_failed', 'The run must belong to the current project.', {
+        details: { reason: 'run_outside_project' },
+      });
+    case '45306':
+      throw new ApiError('validation_failed', 'The run step must belong to the current run.', {
+        details: { reason: 'run_step_outside_run' },
+      });
+    case '45307':
+      throw new ApiError('validation_failed', 'The ATC must belong to the current project.', {
+        details: { reason: 'atc_outside_project' },
+      });
     case '45301':
       // RPC backstop — the Zod layer (lib/bugs/validation.ts) is the primary
       // guard and carries the AC-exact wording; a direct/non-HTTP RPC caller

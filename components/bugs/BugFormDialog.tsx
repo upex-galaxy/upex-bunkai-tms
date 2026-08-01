@@ -2,7 +2,13 @@
 
 import type { BugSeverity } from '@lib/bugs/constants';
 import { Button } from '@components/ui/button';
-import { BUG_EVIDENCE_MAX, BUG_SEVERITY_VALUES, BUG_TITLE_MAX, BUG_TITLE_MIN } from '@lib/bugs/constants';
+import {
+  BUG_EVIDENCE_MAX,
+  BUG_SEVERITY_LABEL,
+  BUG_SEVERITY_VALUES,
+  BUG_TITLE_MAX,
+  BUG_TITLE_MIN,
+} from '@lib/bugs/constants';
 import { BUG_TITLE_MESSAGE } from '@lib/bugs/validation';
 import { isValidUrl } from '@lib/utils/url';
 import { Bug, Plus, X } from 'lucide-react';
@@ -18,13 +24,6 @@ import { useState } from 'react';
 // Slice 2's run-linked "Report bug" (module server-derived, read-only) and
 // Slice 3's standalone "New bug" (module explicitly picked, since there is no
 // run to derive it from).
-
-const SEVERITY_LABEL: Record<BugSeverity, string> = {
-  P1: 'Critical',
-  P2: 'Major',
-  P3: 'Minor',
-  P4: 'Trivial',
-};
 
 // BK-40 Slice 2 — run-linked: the module is server-derived from run_step_id
 // (Technical Decision 7), never client-supplied; `moduleLabel` is display-only.
@@ -223,7 +222,7 @@ export function BugFormDialog({
             >
               {value}
               {' · '}
-              {SEVERITY_LABEL[value]}
+              {BUG_SEVERITY_LABEL[value]}
             </button>
           ))}
         </div>

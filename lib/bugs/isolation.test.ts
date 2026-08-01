@@ -97,6 +97,7 @@ interface Fixture {
   moduleBId: string
   runId: string
   pendingStepId: string
+  failedStepId: string
 }
 
 function service() {
@@ -219,6 +220,16 @@ describeOrSkip('BK-40 — bugs RPC isolation (cross-project-module-injection + r
       .single();
     if (runStepError) { throw runStepError; }
 
+    // A second step, already marked 'failed' — ATP-P2's own success path
+    // (a run-linked bug actually created from a failing step), distinct from
+    // the 'pending' step case (c) exercises.
+    const { data: failedStep, error: failedStepError } = await db
+      .from('run_steps')
+      .insert({ run_atc_id: runAtc.id as string, atc_step_id: null, position: 1, content: 'do the other thing', status: 'failed' })
+      .select('id')
+      .single();
+    if (failedStepError) { throw failedStepError; }
+
     fixture = {
       actorUserId: anchor.user_id,
       workspaceId: anchor.workspace_id,
@@ -228,6 +239,7 @@ describeOrSkip('BK-40 — bugs RPC isolation (cross-project-module-injection + r
       moduleBId,
       runId: run.id as string,
       pendingStepId: runStep.id as string,
+      failedStepId: failedStep.id as string,
     };
   });
 
@@ -297,6 +309,60 @@ describeOrSkip('BK-40 — bugs RPC isolation (cross-project-module-injection + r
     expect(rows).toHaveLength(0);
   });
 
+  it('ATP-N3 (missing half): a module_id that does not exist at all is rejected the same way as a cross-project one (45300)', async () => {
+    if (!fixture) { return warn(); }
+    const db = service();
+
+    // Case (b) above only exercises the `v_module_project <> p_project_id`
+    // disjunct (a REAL module belonging to a different project). This
+    // exercises the OTHER disjunct the same 45300 guards — `v_module_project
+    // is null` — a module_id that never existed at all.
+    const { data, error } = await db.rpc(CREATE_RPC, {
+      p_actor_user_id: fixture.actorUserId,
+      p_project_id: fixture.projectAId,
+      p_module_id: ZERO_UUID,
+      p_title: 'This bug must never be created (missing module)',
+      p_severity: 'P1',
+      p_description: null,
+      p_steps_to_reproduce: '',
+      p_evidence_urls: [],
+      p_run_id: null,
+      p_run_step_id: null,
+      p_atc_id: null,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe('45300');
+    expect(data).toBeNull();
+  });
+
+  it('ATP-B1 (RPC backstop): an 11th evidence link is rejected even when the Zod layer is bypassed (45303)', async () => {
+    if (!fixture) { return warn(); }
+    const db = service();
+
+    // validation.test.ts only proves the Zod schema rejects 11 urls at the
+    // HTTP edge — never that the RPC-level backstop (or the underlying
+    // evidence_urls CHECK) independently enforces the same bound for a
+    // direct RPC caller that bypasses Zod entirely.
+    const { data, error } = await db.rpc(CREATE_RPC, {
+      p_actor_user_id: fixture.actorUserId,
+      p_project_id: fixture.projectAId,
+      p_module_id: fixture.moduleAId,
+      p_title: 'This bug must never be created (too much evidence)',
+      p_severity: 'P1',
+      p_description: null,
+      p_steps_to_reproduce: '',
+      p_evidence_urls: Array.from({ length: 11 }, (_, i) => `https://example.com/${i}.png`),
+      p_run_id: null,
+      p_run_step_id: null,
+      p_atc_id: null,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe('45303');
+    expect(data).toBeNull();
+  });
+
   it('(c) a run-linked create against a NOT-failed step is rejected before any table write', async () => {
     if (!fixture) { return warn(); }
     const db = service();
@@ -322,6 +388,81 @@ describeOrSkip('BK-40 — bugs RPC isolation (cross-project-module-injection + r
       .from('bugs')
       .select('id')
       .eq('run_step_id', fixture.pendingStepId);
+    if (rowsError) { throw rowsError; }
+    expect(rows).toHaveLength(0);
+  });
+
+  it('(c2) ATP-P2: a run-linked bug filed from a FAILED step succeeds and persists correct provenance', async () => {
+    if (!fixture) { return warn(); }
+    const db = service();
+
+    // Final-assembly review finding, 2026-08-01: no test anywhere actually
+    // drove a run-linked create through bunkai_create_bug end-to-end — every
+    // prior case here only exercises the STANDALONE path (run_id/run_step_id/
+    // atc_id all null). This is the ticket's own namesake scenario ("File a
+    // defect from a failing run step").
+    const { data, error } = await db.rpc(CREATE_RPC, {
+      p_actor_user_id: fixture.actorUserId,
+      p_project_id: fixture.projectAId,
+      p_module_id: fixture.moduleAId,
+      p_title: 'Filed from a failing run step',
+      p_severity: 'P2',
+      p_description: null,
+      p_steps_to_reproduce: 'do the other thing',
+      p_evidence_urls: [],
+      p_run_id: fixture.runId,
+      p_run_step_id: fixture.failedStepId,
+      p_atc_id: null,
+    });
+
+    expect(error).toBeNull();
+    const bug = data as unknown as {
+      id: string
+      project_id: string
+      module_id: string
+      run_id: string | null
+      run_step_id: string | null
+      atc_id: string | null
+      status: string
+    };
+    expect(bug.project_id).toBe(fixture.projectAId);
+    expect(bug.module_id).toBe(fixture.moduleAId);
+    expect(bug.run_id).toBe(fixture.runId);
+    expect(bug.run_step_id).toBe(fixture.failedStepId);
+    expect(bug.status).toBe('open');
+  });
+
+  it('(c3) a p_run_id that does not belong to p_project_id is rejected (bugs_run_outside_project, 45305)', async () => {
+    if (!fixture) { return warn(); }
+    const db = service();
+
+    // The final-assembly review's own MAJOR finding: bunkai_create_bug never
+    // cross-validated run_id/run_step_id/atc_id against the target project —
+    // a write-role member of ANY project could attach foreign/nonexistent
+    // provenance to their own bug via a direct RPC call. A nonexistent
+    // p_run_id (never belongs to any project) is the simplest reproduction.
+    const { data, error } = await db.rpc(CREATE_RPC, {
+      p_actor_user_id: fixture.actorUserId,
+      p_project_id: fixture.projectAId,
+      p_module_id: fixture.moduleAId,
+      p_title: 'This bug must never be created either',
+      p_severity: 'P1',
+      p_description: null,
+      p_steps_to_reproduce: '',
+      p_evidence_urls: [],
+      p_run_id: ZERO_UUID,
+      p_run_step_id: fixture.failedStepId,
+      p_atc_id: null,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe('45305');
+    expect(data).toBeNull();
+
+    const { data: rows, error: rowsError } = await db
+      .from('bugs')
+      .select('id')
+      .eq('title', 'This bug must never be created either');
     if (rowsError) { throw rowsError; }
     expect(rows).toHaveLength(0);
   });

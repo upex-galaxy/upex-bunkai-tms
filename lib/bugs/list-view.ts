@@ -8,6 +8,7 @@
 // route).
 
 import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
+import { BUG_SEVERITY_LABEL } from '@lib/bugs/constants';
 
 export type BugListViewState = 'empty' | 'rows';
 
@@ -36,13 +37,6 @@ const BUG_SEVERITY_TOKEN: Record<BugSeverity, string> = {
   P2: 'blocked',
   P3: 'running',
   P4: 'skipped',
-};
-
-const BUG_SEVERITY_LABEL: Record<BugSeverity, string> = {
-  P1: 'Critical',
-  P2: 'Major',
-  P3: 'Minor',
-  P4: 'Trivial',
 };
 
 // Defensive casts, not a trust boundary: `bug.status`/`bug.severity` come off

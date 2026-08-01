@@ -66,6 +66,19 @@ export function locateRunStepBugContext(
   return null;
 }
 
+// Pure — the ATP-N1 backstop itself (not just the status report
+// `locateRunStepBugContext` above returns). Extracted so a test can exercise
+// the actual enforcement decision directly, rather than only proving the
+// step's status was read correctly (final-assembly review finding,
+// 2026-08-01 — the prior test coverage proved the LATTER, never the former).
+export function assertRunLinkedStepIsFailed(stepStatus: string): void {
+  if (stepStatus !== 'failed') {
+    throw new ApiError('validation_failed', 'Bug filing is only available for a failed run step.', {
+      details: { reason: 'run_step_not_failed' },
+    });
+  }
+}
+
 interface RunStepRow { run_atc_id: string }
 interface RunAtcRow { run_id: string }
 
@@ -127,25 +140,43 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     if (!context) {
       throw new ApiError('not_found', 'Run step not found.', { details: { reason: 'not_found' } });
     }
-    if (context.stepStatus !== 'failed') {
-      // ATP-N1 backstop at the HTTP edge: "Report defect" is not available for
-      // a step that isn't failed — a direct API caller gets the same rule.
-      throw new ApiError('validation_failed', 'Bug filing is only available for a failed run step.', {
-        details: { reason: 'run_step_not_failed' },
-      });
+    // ATP-N1 backstop at the HTTP edge: "Report defect" is not available for
+    // a step that isn't failed — a direct API caller gets the same rule.
+    assertRunLinkedStepIsFailed(context.stepStatus);
+
+    // The failing step's OWN ATC module — NOT context.moduleId (the run's
+    // chain-position-1 snapshot), which is wrong whenever the Test's chain
+    // spans more than one module (0040_run_module_snapshot.sql's own header:
+    // "a chain can span more than one module" — an acknowledged, normal
+    // scenario, not an edge case). Falls back to the run-level snapshot only
+    // when the ATC's own row was itself deleted after the run started
+    // (atcId is provenance-only, ON DELETE SET NULL) — the same rare case
+    // the null-module check below already covers.
+    let atcModuleId: string | null = null;
+    if (context.atcId) {
+      const { data: atcRow, error: atcModuleError } = await supabase
+        .from('atcs')
+        .select('module_id')
+        .eq('id', context.atcId)
+        .maybeSingle<{ module_id: string }>();
+      if (atcModuleError) {
+        throw new ApiError('internal_error', atcModuleError.message);
+      }
+      atcModuleId = atcRow?.module_id ?? null;
     }
-    if (context.moduleId === null) {
-      // Extremely rare: the run's module snapshot is null (e.g. its
-      // chain-position-1 ATC was deleted after the run started — see
-      // 0040_run_module_snapshot.sql's own Risk R-3 note). There is no module
-      // left to file the bug against.
+    const resolvedModuleId = atcModuleId ?? context.moduleId;
+    if (resolvedModuleId === null) {
+      // Extremely rare: neither the ATC's own module nor the run's snapshot
+      // resolved (e.g. both the ATC and the chain-position-1 ATC were
+      // deleted after the run started — see 0040_run_module_snapshot.sql's
+      // own Risk R-3 note). There is no module left to file the bug against.
       throw new ApiError('validation_failed', 'This run has no module to file a bug against.', {
         details: { reason: 'run_module_missing' },
       });
     }
 
     projectId = context.projectId;
-    moduleId = context.moduleId;
+    moduleId = resolvedModuleId;
     runId = context.runId;
     runStepId = body.run_step_id;
     atcId = context.atcId;
