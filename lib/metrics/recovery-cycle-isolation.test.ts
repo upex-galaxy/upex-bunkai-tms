@@ -85,6 +85,13 @@ function at(offsetMinutes: number): string {
   return new Date(base + offsetMinutes * 60_000).toISOString();
 }
 
+// Postgres returns `timestamptz` as `2026-06-01T12:00:00+00:00`, not JS's
+// `.toISOString()` shape (`2026-06-01T12:00:00.000Z`) — same instant,
+// different textual representation. Compare by instant, not by string.
+function sameInstant(actual: string | null, expected: string): boolean {
+  return actual !== null && new Date(actual).getTime() === new Date(expected).getTime();
+}
+
 interface StoryIds {
   recovered: string
   inProgress: string
@@ -258,7 +265,7 @@ describeOrSkip('BK-47 — bunkai_report_project_recovery_cycles isolation + corr
       })))
       .select('id, slug');
     if (atcsError) { throw atcsError; }
-    const atcIdByKey = new Map(
+    const atcIdByKey = new Map<string, string>(
       atcSpecs.map(a => [a.key, (seededAtcs ?? []).find(row => row.slug === `${PREFIX}-atc-${a.key}`)!.id as string]),
     );
 
@@ -372,8 +379,8 @@ describeOrSkip('BK-47 — bunkai_report_project_recovery_cycles isolation + corr
     const page = await reportRecoveryCycles(fixture.projectAId, fixture.actorUserId);
     const row = findStory(page, fixture.storyIds.recovered);
     expect(row.state).toBe('recovered');
-    expect(row.first_fail_at).toBe(at(0));
-    expect(row.first_green_at).toBe(at(10));
+    expect(sameInstant(row.first_fail_at, at(0))).toBe(true);
+    expect(sameInstant(row.first_green_at, at(10))).toBe(true);
     expect(row.external_id).toBe(`${PREFIX}-ext-recovered`);
   });
 
@@ -382,7 +389,7 @@ describeOrSkip('BK-47 — bunkai_report_project_recovery_cycles isolation + corr
     const page = await reportRecoveryCycles(fixture.projectAId, fixture.actorUserId);
     const row = findStory(page, fixture.storyIds.inProgress);
     expect(row.state).toBe('in_progress');
-    expect(row.first_fail_at).toBe(at(0));
+    expect(sameInstant(row.first_fail_at, at(0))).toBe(true);
     expect(row.first_green_at).toBeNull();
   });
 
@@ -414,10 +421,10 @@ describeOrSkip('BK-47 — bunkai_report_project_recovery_cycles isolation + corr
     const page = await reportRecoveryCycles(fixture.projectAId, fixture.actorUserId);
     const row = findStory(page, fixture.storyIds.preExistingPassIgnored);
     expect(row.state).toBe('recovered');
-    expect(row.first_fail_at).toBe(at(0));
-    expect(row.first_green_at).toBe(at(10));
+    expect(sameInstant(row.first_fail_at, at(0))).toBe(true);
+    expect(sameInstant(row.first_green_at, at(10))).toBe(true);
     // The pre-existing pass at at(-30) must never surface as first_green_at.
-    expect(row.first_green_at).not.toBe(at(-30));
+    expect(sameInstant(row.first_green_at, at(-30))).toBe(false);
   });
 
   it('an archived Story is excluded from items even though it has run history', async () => {
