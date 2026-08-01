@@ -35,19 +35,33 @@
 -- Custom SQLSTATE codes allocated for the bugs domain (class 45xxx, 453xx
 -- block — the next free block; 452xx is the runs domain, up to 45214 per
 -- 0045_activity_stream.sql):
---   45300  bugs_module_outside_project (module does not belong to the target project)
+--   45300  bugs_module_outside_project (module does not belong to the target project;
+--                                        raised both by bunkai_create_bug's own
+--                                        step 2 AND by the bunkai_bugs_check_consistency
+--                                        table trigger below — same condition, two
+--                                        enforcement layers, one code)
 --   45301  bug_title_invalid           (RPC backstop — Zod is the primary guard)
 --   45302  bug_severity_invalid        (RPC backstop — Zod is the primary guard)
 --   45303  bug_evidence_limit_exceeded (RPC backstop — Zod is the primary guard;
 --                                        the DB CHECK below is the hard floor)
+--   45304  bugs_project_outside_workspace (project's workspace_id does not match
+--                                        the row's workspace_id — raised by the
+--                                        bunkai_bugs_check_consistency table trigger;
+--                                        has no RPC-level analog since
+--                                        bunkai_create_bug always derives
+--                                        workspace_id from the project itself)
 --
 -- Stage 3 adversarial review (post-first-pass) found bunkai_create_bug shipped
 -- with NO actor-bind guard (BLOCKER: any signed-in user could call the RPC
 -- directly and pass a write-role victim's uuid as p_actor_user_id, bypassing
--- app/api/v1/bugs/route.ts entirely). Fixed in place below rather than as a
--- follow-up migration: this file was not yet merged or depended upon
--- downstream, so there is no "already shipped" shape to preserve (contrast
--- 0039's append-only rationale for the already-merged 0038).
+-- app/api/v1/bugs/route.ts entirely) and that the bugs INSERT policy never
+-- cross-checked project_id/module_id against workspace_id (MAJOR: a genuine
+-- write-role member of their OWN workspace could raw-REST-insert an
+-- internally-inconsistent row using a foreign project_id/module_id). Both are
+-- fixed in place below rather than as a follow-up migration: this file was
+-- not yet merged or depended upon downstream, so there is no "already
+-- shipped" shape to preserve (contrast 0039's append-only rationale for the
+-- already-merged 0038).
 
 -- ============================================================================
 -- 1. bugs
@@ -101,11 +115,57 @@ create policy bugs_select_workspace_member
 -- INSERT: defense-in-depth only — real inserts flow through bunkai_create_bug
 -- (SECURITY DEFINER / admin client). Mirrors runs_insert_workspace_role_member_plus
 -- (0031_runs.sql) exactly: member+ write role required.
+--
+-- This checks workspace_id ALONE — like its runs.sql precedent, it does not
+-- (and by itself cannot cheaply) verify project_id belongs to workspace_id or
+-- module_id belongs to project_id. That gap is closed below by the
+-- bunkai_bugs_check_consistency trigger, scoped to THIS table only (the same
+-- gap on runs is tracked separately and is out of scope here).
 drop policy if exists bugs_insert_workspace_role_member_plus on public.bugs;
 create policy bugs_insert_workspace_role_member_plus
   on public.bugs
   for insert
   with check ( public.bunkai_can_write_workspace(workspace_id) );
+
+-- Table-level defense-in-depth: cross-column consistency, independent of
+-- whether the write came through bunkai_create_bug or a raw REST insert/update
+-- against public.bugs directly. A write-role member of THEIR OWN workspace can
+-- satisfy the INSERT policy above with a real workspace_id while supplying a
+-- project_id/module_id pair that belongs to a completely different workspace
+-- they have no relationship to — this trigger rejects that internally
+-- inconsistent row regardless of the RLS outcome.
+create or replace function public.bunkai_bugs_check_consistency()
+returns trigger
+set search_path = ''
+language plpgsql
+as $$
+declare
+  v_project_workspace uuid;
+  v_module_project    uuid;
+begin
+  select workspace_id into v_project_workspace
+    from public.projects
+    where id = new.project_id;
+  if v_project_workspace is null or v_project_workspace <> new.workspace_id then
+    raise exception 'bugs_project_outside_workspace' using errcode = '45304';
+  end if;
+
+  select project_id into v_module_project
+    from public.modules
+    where id = new.module_id;
+  if v_module_project is null or v_module_project <> new.project_id then
+    raise exception 'bugs_module_outside_project' using errcode = '45300';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists bugs_check_consistency on public.bugs;
+create trigger bugs_check_consistency
+  before insert or update on public.bugs
+  for each row
+  execute function public.bunkai_bugs_check_consistency();
 
 -- ============================================================================
 -- 2. bunkai_bug_json — composer (header + nested module {id, name, path})
@@ -174,7 +234,10 @@ grant execute on function public.bunkai_bug_json(uuid) to authenticated, service
 --      hard floor beneath even this).
 --   4. Insert (status always defaults 'open' — BK-40 never writes any other
 --      status; the lifecycle enum exists now per Technical Decision 5, mirrors
---      runs.status's own precedent).
+--      runs.status's own precedent). The bunkai_bugs_check_consistency trigger
+--      (section 1 above) also fires here, but is a no-op for this path since
+--      workspace_id/project_id/module_id are already validated consistent by
+--      steps 1-2.
 --   5. Audit: activity_log, entity_type='bug', action='bug.filed'.
 --   6. Return bunkai_bug_json(new id).
 
