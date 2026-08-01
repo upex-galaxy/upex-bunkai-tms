@@ -127,5 +127,5 @@ autonomous_delivery:
   context_budget:
     handoff_checkpoint: every-phase # every-phase | every-slice. Never "at-end".
     stop_at_remaining_pct: 20 # begin the clean-stop sequence at this much budget left.
-  report_channel: null # null | tracker:<ISSUE-KEY> | file:<path>. Where Phase 4 posts the summary.
+  report_channel: tracker:BK-261 # Discovery Inbox — proposals + run summaries. Protocol in .context/orchestration/routines.md
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.

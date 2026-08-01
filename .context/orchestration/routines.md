@@ -29,7 +29,7 @@ autonomous_delivery:
   context_budget:
     handoff_checkpoint: every-phase
     stop_at_remaining_pct: 20
-  report_channel: null           # null | tracker:<ISSUE-KEY> | file:<path>
+  report_channel: tracker:BK-261 # the Discovery Inbox ticket. See "The inbox protocol" below.
   escalation_log: .session/autonomous-delivery/escalation-log.md
 ```
 
@@ -61,6 +61,38 @@ Model: **Sonnet 5**. Thinking effort: **ultracode**.
 
 ---
 
+## The inbox protocol — shared by all three routines
+
+`BK-261` ("Discovery Inbox") is the mailbox. Discovery posts proposals there; **all three** routines
+drain it. Draining is cheap — read a comment thread, create an issue for anything approved — so the
+two 8-hourly routines do it as their first step and the worst-case wait between your reply and the
+issue existing drops from 24 hours to about 8.
+
+Every proposal comment opens with a machine-readable header:
+
+    [PROPOSAL P-YYYY-MM-DD-NN | status: pending]
+
+Jira comments are flat, so that ID is the only thing tying a reply to a proposal. A reply counts when
+it contains the ID; the verdict word only has to be recognisable, and free prose around it is read.
+
+| Reply contains | Action on the next drain |
+|---|---|
+| `<ID> yes` (or sí, ok, approved, adelante) | Create the issue. Edit the proposal comment's header to `status: approved -> <NEW-KEY>` |
+| `<ID> no` + reason | Edit header to `status: rejected`. Preserve the reason. Never propose it again |
+| `<ID> later` | Leave pending. Re-surface once more, then treat as stale |
+| nothing | Leave pending, do NOT nag. See expiry below |
+
+**Expiry.** Count how many discovery runs a proposal has survived without a verdict, from its own
+date stamp. At **7** runs with no reply, edit the header to `status: stale`, stop re-surfacing it, and
+note it in the run report. Do not delete it and do not ask again — if the idea was good it will
+resurface from the research on its own merits.
+
+**Editing your own comment is how state is stored.** Do not keep a separate ledger and do not
+re-interpret prose on every run: the header IS the state. A proposal whose header still reads
+`pending` has no verdict, full stop.
+
+---
+
 ## Routine 1 — Stories
 
 Cadence: every 8 hours. One user story per run, end to end.
@@ -71,6 +103,13 @@ human is watching, and none will answer you mid-run. Finish or hand off cleanly.
 
 Invoke the `autonomous-delivery` skill in `story` mode and follow it. It owns the pipeline; this
 prompt only carries what is specific to this project.
+
+FIRST, DRAIN THE INBOX
+
+Before anything else, read the comments on `BK-261` (Discovery Inbox). For every proposal whose
+header says `pending` and that has a reply carrying its ID: act on the verdict — create the issue for
+an approval, mark a rejection — and edit that proposal's header to record what you did. This costs
+seconds and is why a proposal does not wait a full day for its verdict. Then continue.
 
 WHAT TO WORK ON
 
@@ -131,6 +170,10 @@ NON-NEGOTIABLE
     `ls supabase/migrations/`. The ledger runs ahead of your branch.
   - Put the Stage 3 adjudication — unresolved BLOCKER/MAJOR/MINOR/NIT counts and each one's
     disposition — in BOTH the PR body and the queue row. Checking only one has caused a false block.
+  - **Merge with `gh pr merge <n> --merge`. NEVER `--squash`, never `--rebase`.** The skill's Stage 4
+    walkthrough shows `--squash`; this repo's ruleset sets `allowed_merge_methods: ["merge"]`, so a
+    squash is rejected by the host and your Stage 4 fails at the last step. `--admin` is not needed:
+    `required_approving_review_count` is 0.
   - Never force-push, never rewrite pushed history, never `--no-verify`, never push to `main`.
 
 CLOSING
@@ -156,10 +199,25 @@ is watching, and none will answer you mid-run. Finish or hand off cleanly.
 
 Invoke the `autonomous-delivery` skill in `bug` mode and follow it.
 
+FIRST, DRAIN THE INBOX
+
+Before anything else, read the comments on `BK-261` (Discovery Inbox) and act on any proposal that has
+a verdict waiting, editing its header to record the outcome. Same protocol as the story routine. Then
+continue.
+
 WHAT TO WORK ON
 
-Query the tracker live for open bugs. Bugs start at status `Open` in this project, not `Ready For
-Dev` like stories — do not treat `Open` as "not actionable".
+Query the tracker live. This project calls a defect THREE different things, and all three are in
+scope with the same workflow — they are categories, not different processes:
+
+    project = BK AND issuetype in (Bug, Defect, Improvement) AND statusCategory != Done
+
+Do NOT filter on `issuetype = Bug` alone. That silently drops two thirds of the surface. `Improvement`
+in particular reads like a feature request but is used here for defects of degree — something that
+works but works wrongly.
+
+These start at status `Open`, not `Ready For Dev` like stories. Do not read `Open` as "not
+actionable"; for this issue class it is the normal starting state.
 
 Order by severity, then by how long they have been open. Take up to THREE, sequentially: each one
 fully closed — reviewed, PR opened, Stage 4 done — before starting the next. Never work two in
@@ -187,6 +245,10 @@ NON-NEGOTIABLE
   - Every §3 rule from the story routine applies unchanged: actor binds, result scoping, real
     production write paths in assertions, types regenerated and READ before committing.
   - Adjudication in BOTH the PR body and the queue row.
+  - **Merge with `gh pr merge <n> --merge`. NEVER `--squash`, never `--rebase`.** The skill's Stage 4
+    walkthrough shows `--squash`; this repo's ruleset sets `allowed_merge_methods: ["merge"]`, so a
+    squash is rejected by the host and your Stage 4 fails at the last step. `--admin` is not needed:
+    `required_approving_review_count` is 0.
   - Never force-push, never rewrite pushed history, never `--no-verify`, never push to `main`.
 
 CLOSING
@@ -239,17 +301,32 @@ the research, the evidence and a recommendation, not a decision. You may resolve
 inside a proposal autonomously via the decision protocol; you may not decide scope, priority or
 whether a feature exists.
 
+FIRST, DRAIN THE INBOX
+
+Read `BK-261` (Discovery Inbox) before generating anything. Handle every proposal that has a verdict
+waiting, per the inbox protocol: create the issue for an approval, record a rejection with its reason,
+and edit each proposal comment's header to reflect what you did. The header IS the state — do not keep
+a parallel ledger.
+
+Then apply expiry: any proposal still `pending` after SEVEN discovery runs, counted from its own date
+stamp, gets its header set to `status: stale`. Stop re-surfacing it and note it in the run report. Do
+not delete it and do not ask again. A good idea will come back out of the research on its own.
+
 REPORTING AND APPROVAL
 
-Post the proposals to the configured channel. If it is Slack: post one message per proposal, each
-self-contained, ending with an explicit question. Interactive buttons will NOT work — no backend is
-listening for them — so ask for a threaded reply instead.
+Post each new proposal as its own comment on `BK-261`, self-contained, opening with the header:
 
-Then STOP. Do not create tracker issues in this run. The NEXT discovery run reads the thread replies,
-and creates issues only for proposals that got an explicit yes. That way approval is asynchronous and
-nothing is created on silence.
+    [PROPOSAL P-YYYY-MM-DD-NN | status: pending]
 
-If a prior run's proposals have replies waiting, handle those FIRST, before generating anything new.
+and closing with the exact reply syntax the owner should use. Use ADF via the `md-to-adf.ts` converter
+— a raw markdown comment renders as literal `#` and `|` characters.
+
+Then STOP. Do not create tracker issues for anything you proposed in THIS run. Approval is
+asynchronous by design: the next drain — which may be a story or bug routine, not necessarily the next
+discovery run — reads the verdict and acts. Nothing is ever created on silence.
+
+Interactive approval buttons are not available. This runs headless, where chat connectors are not
+reliably reachable, which is exactly why the mailbox is a tracker ticket and not a Slack channel.
 
 CLOSING
 
