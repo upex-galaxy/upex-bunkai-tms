@@ -220,9 +220,38 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       atcSpecs.map(a => [a.key, (seededAtcs ?? []).find(x => x.slug === `${PREFIX}-atc-${a.key}`)!.id as string]),
     );
 
+    // Cross-project mis-link probe: a Project-B ATC (its OWN project_id,
+    // module_id and user_story_id all self-consistently belong to Project B)
+    // linked via atc_acceptance_criteria to Project A's "uncovered" AC — the
+    // exact "ATC mis-linked to an AC in a DIFFERENT project" threat the
+    // ac_state CTE's `a.project_id = p_project_id` predicate (0048's own
+    // header comment) exists to defend against. Deliberately seeded 'pass'
+    // (not 'unrun'): if the guard were ever missing, this AC would flip
+    // 'uncovered' -> 'executed' (the module 'uncovered' -> 'fully_covered'),
+    // matching the migration's own stated threat ("would silently count as
+    // that AC's coverage") — a sharper regression signal than 'unrun' would
+    // give, which would only shift 'uncovered' -> 'not_run'.
+    const { data: crossProjectAtc, error: crossProjectAtcError } = await db
+      .from('atcs')
+      .insert({
+        project_id: projectBId,
+        module_id: moduleB.id as string,
+        user_story_id: storyIdByKey.get('b')!,
+        slug: `${PREFIX}-atc-crossProject`,
+        title: `${PREFIX} atc crossProject`,
+        layer: 'UI',
+        status: 'pass',
+        archived_at: null,
+      })
+      .select('id')
+      .single();
+    if (crossProjectAtcError) { throw crossProjectAtcError; }
+
     // Link: notRun's AC <- notRun ATC; executed's AC <- executed ATC;
     // mixed's AC <- BOTH mixedPass and mixedUnrun ATCs; archivedAtc's AC <-
-    // the archived ATC only; moduleMixNotRun's AC <- its unrun ATC.
+    // the archived ATC only; moduleMixNotRun's AC <- its unrun ATC; the
+    // 'uncovered' AC <- the cross-project Project-B ATC above (must NOT
+    // count).
     const links = [
       { atcKey: 'notRun', acKey: 'notRun' },
       { atcKey: 'executed', acKey: 'executed' },
@@ -233,10 +262,16 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     ];
     const { error: linkError } = await db
       .from('atc_acceptance_criteria')
-      .insert(links.map(l => ({
-        atc_id: atcIdByKey.get(l.atcKey)!,
-        acceptance_criterion_id: acIdByKey.get(l.acKey)!,
-      })));
+      .insert([
+        ...links.map(l => ({
+          atc_id: atcIdByKey.get(l.atcKey)!,
+          acceptance_criterion_id: acIdByKey.get(l.acKey)!,
+        })),
+        {
+          atc_id: crossProjectAtc.id as string,
+          acceptance_criterion_id: acIdByKey.get('uncovered')!,
+        },
+      ]);
     if (linkError) { throw linkError; }
 
     fixture = {
@@ -245,7 +280,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       projectAId,
       projectBId,
       moduleIds,
-      atcIds: [...atcIdByKey.values()],
+      atcIds: [...atcIdByKey.values(), crossProjectAtc.id as string],
       acIds: [...acIdByKey.values()],
       userStoryIds: [...storyIdByKey.values()],
       foreignProjectId,
@@ -273,6 +308,21 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     expect(mod.status).toBe('uncovered');
     expect(mod.ac_uncovered).toBe(1);
     expect(page.no_coverage.some(nc => nc.module_id === fixture!.moduleIds.uncovered)).toBe(true);
+  });
+
+  it('a cross-project ATC mis-linked to this AC does not count as coverage (ac_state project-scope guard)', async () => {
+    if (!fixture) { return warn(); }
+    // The 'uncovered' AC is ALSO linked (via the beforeAll fixture) to a
+    // 'pass'-status ATC that legitimately belongs to Project B. If the
+    // ac_state CTE's `a.project_id = p_project_id` predicate on the atcs
+    // join were ever missing, this AC would read 'executed' and the module
+    // 'fully_covered' instead of 'uncovered' — the exact leak 0048's own
+    // header comment names as the reason for that predicate.
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.uncovered);
+    expect(mod.status).toBe('uncovered');
+    expect(mod.ac_uncovered).toBe(1);
+    expect(mod.ac_executed).toBe(0);
   });
 
   it('an AC linked to an unrun ATC is not_run', async () => {
