@@ -40,6 +40,14 @@
 --   45302  bug_severity_invalid        (RPC backstop — Zod is the primary guard)
 --   45303  bug_evidence_limit_exceeded (RPC backstop — Zod is the primary guard;
 --                                        the DB CHECK below is the hard floor)
+--
+-- Stage 3 adversarial review (post-first-pass) found bunkai_create_bug shipped
+-- with NO actor-bind guard (BLOCKER: any signed-in user could call the RPC
+-- directly and pass a write-role victim's uuid as p_actor_user_id, bypassing
+-- app/api/v1/bugs/route.ts entirely). Fixed in place below rather than as a
+-- follow-up migration: this file was not yet merged or depended upon
+-- downstream, so there is no "already shipped" shape to preserve (contrast
+-- 0039's append-only rationale for the already-merged 0038).
 
 -- ============================================================================
 -- 1. bugs
@@ -144,7 +152,16 @@ grant execute on function public.bunkai_bug_json(uuid) to authenticated, service
 -- ============================================================================
 --
 -- Validation order is load-bearing (observable behavior), mirrors
--- bunkai_create_atc in shape:
+-- bunkai_create_atc in shape, plus the actor-bind guard bunkai_list_project_bugs
+-- (below) already carries and bunkai_create_bug initially did NOT (Stage 3
+-- BLOCKER — see the file header):
+--   0. Actor bind. NULL auth.uid() = service-role / admin client, for which the
+--      parameter IS the identity; a present-but-different uid is a spoof — an
+--      attacker's own JWT paired with a write-role victim's uuid as
+--      p_actor_user_id, bypassing the HTTP route entirely via a direct
+--      supabase.rpc() call. Collapses into the SAME project_not_found (P0002)
+--      bunkai_assert_actor_can_write_project itself raises for a missing/foreign
+--      project (non-disclosure: never a third, distinct error shape).
 --   1. AuthZ: bunkai_assert_actor_can_write_project (reused verbatim) — also
 --      resolves workspace_id and raises project_not_found (P0002) for a
 --      missing/foreign project, forbidden (42501) for a non-writer.
@@ -188,6 +205,15 @@ declare
   v_evidence       text[] := coalesce(p_evidence_urls, '{}');
   v_bug_id         uuid;
 begin
+  -- 0. Actor bind. NULL auth.uid() = service-role / admin client, for which
+  --    the parameter IS the identity; a present-but-different uid is a spoof
+  --    and collapses into the missing-Project answer (non-disclosure) — the
+  --    SAME P0002 bunkai_assert_actor_can_write_project itself raises for a
+  --    missing/foreign project, so this never invents a third error shape.
+  if auth.uid() is not null and auth.uid() <> p_actor_user_id then
+    raise exception 'project_not_found' using errcode = 'P0002';
+  end if;
+
   -- 1. AuthZ + project resolution (reused verbatim).
   v_workspace_id := public.bunkai_assert_actor_can_write_project(p_actor_user_id, p_project_id);
 
