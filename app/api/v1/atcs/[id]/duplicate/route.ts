@@ -10,8 +10,9 @@ import { duplicateAtc } from '@lib/supabase/rpc';
 // Auth: Bearer `atc:write` (or a cookie session). The SECURITY DEFINER RPC
 // reads the source header + ordered steps/assertions + AC bindings and inserts
 // an independent ATC graph in ONE transaction: fresh slug, version = 1, and a
-// title defaulting to `<source> (copy)` (or the optional body `title`). Emits
-// an `atc.created` event — the copy is a normal create downstream.
+// title defaulting to `<source> (copy)` (or the optional body `new_title` —
+// BK-184: the request field name matches FR-014's documented contract).
+// Emits an `atc.created` event — the copy is a normal create downstream.
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const sourceAtcId = extractAtcId(request);
@@ -32,7 +33,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     catch {
       throw new ApiError('bad_request', 'Request body must be valid JSON.');
     }
-    title = AtcDuplicateBodySchema.parse(parsed).title;
+    title = AtcDuplicateBodySchema.parse(parsed).new_title;
   }
 
   const supabase = createAdminClient();

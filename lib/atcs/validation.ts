@@ -53,11 +53,13 @@ export const AtcUpdateBodySchema = AtcWriteBodySchema.extend({
   module_id: z.string().uuid().optional(),
 });
 
-// BK-23 — duplicate body. Only an optional title (reusing the 3–200 rule); the
-// server reads everything else from the source ATC. An empty body is valid and
-// defaults the copy's title to `<source> (copy)`.
+// BK-23 — duplicate body. Only an optional `new_title` (reusing the 3–200
+// rule; field name matches FR-014's documented request contract — see
+// BK-184, where the implementation had drifted to `title`); the server reads
+// everything else from the source ATC. An empty body is valid and defaults
+// the copy's title to `<source> (copy)`.
 export const AtcDuplicateBodySchema = z.object({
-  title: z.string().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX).optional(),
+  new_title: z.string().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX).optional(),
 });
 
 // BK-23 — default title for a duplicate when the caller supplies none. Single

@@ -1925,7 +1925,7 @@
       "AtcDuplicateBody": {
         "type": "object",
         "properties": {
-          "title": {
+          "new_title": {
             "type": "string",
             "minLength": 3,
             "maxLength": 200,
