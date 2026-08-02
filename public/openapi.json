@@ -3647,6 +3647,85 @@
           "module_id",
           "module_name"
         ]
+      },
+      "DefectHeatmapReport": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": ["7d", "30d", "90d"]
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Freshness timestamp for this read — a live, unpaginated query, not a cached snapshot."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DefectHeatmapItem"
+            },
+            "description": "One cell per ACTIVE (non-archived) module, ordered by module path then id."
+          }
+        },
+        "required": ["window", "generated_at", "items"]
+      },
+      "DefectHeatmapItem": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_name": {
+            "type": "string"
+          },
+          "module_path": {
+            "type": "string",
+            "description": "Full slash-separated module path, so identically-named nested modules stay distinguishable."
+          },
+          "defect_count": {
+            "type": "integer",
+            "description": "Defect count for this module (including its full descendant subtree) within the selected window."
+          },
+          "heat": {
+            "type": "string",
+            "enum": ["clean", "low", "elevated", "hotspot"],
+            "description": "Clean: 0. Low: 1-2. Elevated: 3-4. Hotspot: 5+ (master-design-plan §4.6)."
+          },
+          "current_week_count": {
+            "type": "integer",
+            "description": "Defect count in the latest rolling 7-day UTC bucket (independent of the selected window)."
+          },
+          "previous_week_count": {
+            "type": "integer",
+            "description": "Defect count in the immediately preceding 7-day UTC bucket."
+          },
+          "trend_direction": {
+            "type": "string",
+            "enum": ["rising", "falling", "flat"]
+          },
+          "trend_delta": {
+            "type": "integer",
+            "description": "current_week_count - previous_week_count. Always present, always finite."
+          },
+          "trend_pct": {
+            "type": ["number", "null"],
+            "description": "Signed percent change. Null exactly when previous_week_count is 0 and current_week_count is positive (never Infinity) — a 0/0 pair reads 0, not null."
+          }
+        },
+        "required": [
+          "module_id",
+          "module_name",
+          "module_path",
+          "defect_count",
+          "heat",
+          "current_week_count",
+          "previous_week_count",
+          "trend_direction",
+          "trend_delta",
+          "trend_pct"
+        ]
       }
     },
     "parameters": {}
@@ -8999,6 +9078,86 @@
           },
           "400": {
             "description": "Malformed Project id (not a UUID) (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bugs/heatmap": {
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "Compute a per-module defect heatmap (count + week-over-week trend) for a chosen window",
+        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors GET /api/v1/projects/{id}/metrics/recovery-cycles. One SECURITY DEFINER RPC (`bunkai_report_project_defect_heatmap`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or filters: the whole-project rollup is small and bounded. Each module's defect_count rolls up its full descendant subtree (path-prefix match); archived modules are excluded from the heatmap by default but a filed defect against a since-archived descendant still counts toward an active ancestor. A Project with zero bugs returns every active module at Clean/0 (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project whose defect heatmap to read."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["7d", "30d", "90d"],
+              "default": "30d"
+            },
+            "description": "The rollup window for defect_count. Defaults to 30d. An unsupported value is a 400 bad_request (not the repo's usual validation_failed/422 — AC-11's explicit wording for this error)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The defect heatmap report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectHeatmapReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id (not a UUID), or an unsupported window value (`bad_request`).",
             "content": {
               "application/json": {
                 "schema": {

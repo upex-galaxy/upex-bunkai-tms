@@ -477,6 +477,28 @@ export async function reportProjectRecoveryCycles(supabase: Client, args: Report
   });
 }
 
+// BK-42 — read a Project's per-module defect heatmap (count over the chosen
+// window + week-over-week trend). Same explicit-actor contract as
+// reportProjectRuns/reportProjectCoverage/reportProjectRecoveryCycles; the
+// SECURITY DEFINER RPC resolves the Project's workspace and gates the
+// actor's active membership (any role — a viewer reads). No pagination — a
+// whole-project, unpaged read (0052_defect_heatmap_report.sql). Returns
+// `{ window, generated_at, items }` raw (no heat bucket / trend derivation)
+// — lib/metrics/defect-heatmap.ts derives everything else.
+export interface ReportProjectDefectHeatmapArgs {
+  actorUserId: string
+  projectId: string
+  window: '7d' | '30d' | '90d'
+}
+
+export async function reportProjectDefectHeatmap(supabase: Client, args: ReportProjectDefectHeatmapArgs) {
+  return supabase.rpc('bunkai_report_project_defect_heatmap', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_window: args.window,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the
