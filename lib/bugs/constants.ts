@@ -27,3 +27,10 @@ export const BUG_EVIDENCE_MAX = 10;
 // already in, not just the one this ticket writes.
 export const BUG_STATUS_VALUES = ['open', 'in_progress', 'resolved', 'closed'] as const;
 export type BugStatus = (typeof BUG_STATUS_VALUES)[number];
+
+// BK-41 — pagination bounds for GET /api/v1/bugs (Decision 4's contract:
+// 1..50, default 30 — matches `lib/activity/constants.ts`'s ACTIVITY_PAGE_SIZE
+// / activity route's own hardcoded max so `/bugs` stays consistent with its
+// two closest siblings, `/activity` and `/tests/{id}/runs`).
+export const BUGS_LIST_PAGE_SIZE = 30;
+export const BUGS_LIST_MAX_PAGE_SIZE = 50;
