@@ -6,6 +6,7 @@ import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
 import type { BugAggregates } from '@lib/bugs/list-view';
 import type { ReactNode } from 'react';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
+import { BugsHeatmapView } from '@components/bugs/BugsHeatmapView';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import {
@@ -20,7 +21,7 @@ import {
   formatBugListRow,
 } from '@lib/bugs/list-view';
 import { cn } from '@lib/utils';
-import { ArrowDown, Bug, Inbox, ListX, RefreshCw, X } from 'lucide-react';
+import { ArrowDown, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -30,8 +31,9 @@ import { toast } from 'sonner';
 // keyset "load more" pagination, and a second, distinct empty state — see
 // business-rules.md ("counts always reflect the currently applied filters"
 // / "an explicit empty state is shown") and AC-7. The Heatmap view toggle
-// (same screen, BK-42) is out of scope here (implementation-plan.md
-// Decision 13) — this component renders ONLY the List half.
+// (BK-42, `BugsHeatmapView.tsx`) is the second selectable view of this SAME
+// screen (master-design-plan §4.6 build-order note) — this component now
+// owns the view switch itself and renders either half.
 //
 // Structural precedent: `RunHistoryView.tsx`'s filter+load-older+two-empty-
 // states shape, generalized from RunHistoryView's single-select `outcome`
@@ -209,7 +211,14 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
   return params.filtersActive ? 'empty-no-match' : 'empty-never';
 }
 
+type BugsScreenView = 'list' | 'heatmap';
+
 export function BugsListView({ projectId, modules, canCreateBug, initialPage, initialError = null }: BugsListViewProps) {
+  // BK-42 — the screen's own List/Heatmap view switch (master-design-plan
+  // §4.6). Not persisted/URL-synced — no deep-link requirement in either
+  // story's scope, same reasoning already applied to the List half's own
+  // filters above.
+  const [view, setView] = useState<BugsScreenView>('list');
   const [items, setItems] = useState<BugsListRpcRow[]>(initialPage.data);
   const [aggregates, setAggregates] = useState<BugAggregates>(initialPage.aggregates);
   const [cursor, setCursor] = useState<string | null>(initialPage.next_cursor);
@@ -375,280 +384,316 @@ export function BugsListView({ projectId, modules, canCreateBug, initialPage, in
     <div data-testid="bugs-list-view" className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[1000px] flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h1 className="text-lg font-semibold text-fg-0">Bug Reports</h1>
-            {canCreateBug && (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                data-testid="bugs-list-new-button"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Bug size={11} />
-                New bug
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              <div role="group" aria-label="View" className="flex overflow-hidden rounded-2 border border-stroke-2">
+                <button
+                  type="button"
+                  aria-pressed={view === 'list'}
+                  data-testid="bugs-view-list"
+                  onClick={() => setView('list')}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 px-3 text-sm font-medium transition-colors duration-token ease-token',
+                    view === 'list' ? 'bg-accent text-white' : 'bg-surface-2 text-fg-2 hover:bg-surface-4',
+                  )}
+                >
+                  <ListIcon size={13} />
+                  List
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={view === 'heatmap'}
+                  data-testid="bugs-view-heatmap"
+                  onClick={() => setView('heatmap')}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 border-l border-stroke-2 px-3 text-sm font-medium transition-colors duration-token ease-token',
+                    view === 'heatmap' ? 'bg-accent text-white' : 'bg-surface-2 text-fg-2 hover:bg-surface-4',
+                  )}
+                >
+                  <Grid3x3 size={13} />
+                  Heatmap
+                </button>
+              </div>
+              {canCreateBug && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  data-testid="bugs-list-new-button"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Bug size={11} />
+                  New bug
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Filter toolbar — module (subtree rollup, server-side), status and
+          {view === 'heatmap' && <BugsHeatmapView projectId={projectId} />}
+
+          {view === 'list' && (
+            <>
+              {/* Filter toolbar — module (subtree rollup, server-side), status and
               severity (both multi-select, OR-within-field / AND-across-fields
               per Decision 6). Mirrors the mockup's `.toolbar` grouping. */}
-          <div
-            data-testid="bugs-list-toolbar"
-            className="flex flex-wrap items-end gap-4 rounded-3 border border-stroke-2 bg-surface-2 p-3 shadow-card"
-          >
-            <label className="flex flex-col gap-1.5">
-              <span className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Module</span>
-              <select
-                data-testid="bugs-list-module-filter"
-                value={moduleId ?? ''}
-                onChange={e => onModuleChange(e.target.value)}
-                className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+              <div
+                data-testid="bugs-list-toolbar"
+                className="flex flex-wrap items-end gap-4 rounded-3 border border-stroke-2 bg-surface-2 p-3 shadow-card"
               >
-                <option value="">All modules</option>
-                {modules.map(m => (
-                  <option key={m.id} value={m.id}>{m.path}</option>
-                ))}
-              </select>
-              <span className="text-2xs text-fg-3">Includes all nested sub-modules</span>
-            </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Module</span>
+                  <select
+                    data-testid="bugs-list-module-filter"
+                    value={moduleId ?? ''}
+                    onChange={e => onModuleChange(e.target.value)}
+                    className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                  >
+                    <option value="">All modules</option>
+                    {modules.map(m => (
+                      <option key={m.id} value={m.id}>{m.path}</option>
+                    ))}
+                  </select>
+                  <span className="text-2xs text-fg-3">Includes all nested sub-modules</span>
+                </label>
 
-            <div className="flex flex-col gap-1.5">
-              <span id="bugs-status-filter-label" className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Status</span>
-              <div role="group" aria-labelledby="bugs-status-filter-label" className="flex flex-wrap gap-1.5">
-                {BUG_STATUS_VALUES.map(value => (
-                  <FilterChip
-                    key={value}
-                    pressed={statuses.has(value)}
-                    tone={STATUS_FILTER_TONE[value]}
-                    label={STATUS_FILTER_LABEL[value]}
-                    onClick={() => toggleStatus(value)}
-                    testId={`bugs-list-filter-status-${value}`}
-                  />
-                ))}
+                <div className="flex flex-col gap-1.5">
+                  <span id="bugs-status-filter-label" className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Status</span>
+                  <div role="group" aria-labelledby="bugs-status-filter-label" className="flex flex-wrap gap-1.5">
+                    {BUG_STATUS_VALUES.map(value => (
+                      <FilterChip
+                        key={value}
+                        pressed={statuses.has(value)}
+                        tone={STATUS_FILTER_TONE[value]}
+                        label={STATUS_FILTER_LABEL[value]}
+                        onClick={() => toggleStatus(value)}
+                        testId={`bugs-list-filter-status-${value}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span id="bugs-severity-filter-label" className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Severity</span>
+                  <div role="group" aria-labelledby="bugs-severity-filter-label" className="flex flex-wrap gap-1.5">
+                    {BUG_SEVERITY_VALUES.map(value => (
+                      <FilterChip
+                        key={value}
+                        pressed={severities.has(value)}
+                        tone={SEVERITY_FILTER_TONE[value]}
+                        label={(
+                          <>
+                            <span className="font-mono">{value}</span>
+                            {' '}
+                            {BUG_SEVERITY_LABEL[value]}
+                          </>
+                        )}
+                        onClick={() => toggleSeverity(value)}
+                        testId={`bugs-list-filter-severity-${value}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {filtersActive && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    data-testid="bugs-list-reset-filters"
+                    className="ml-auto"
+                    onClick={resetFilters}
+                  >
+                    <X size={12} />
+                    Reset filters
+                  </Button>
+                )}
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <span id="bugs-severity-filter-label" className="text-2xs font-semibold uppercase tracking-[0.04em] text-fg-2">Severity</span>
-              <div role="group" aria-labelledby="bugs-severity-filter-label" className="flex flex-wrap gap-1.5">
-                {BUG_SEVERITY_VALUES.map(value => (
-                  <FilterChip
-                    key={value}
-                    pressed={severities.has(value)}
-                    tone={SEVERITY_FILTER_TONE[value]}
-                    label={(
-                      <>
-                        <span className="font-mono">{value}</span>
-                        {' '}
-                        {BUG_SEVERITY_LABEL[value]}
-                      </>
-                    )}
-                    onClick={() => toggleSeverity(value)}
-                    testId={`bugs-list-filter-severity-${value}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {filtersActive && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                data-testid="bugs-list-reset-filters"
-                className="ml-auto"
-                onClick={resetFilters}
-              >
-                <X size={12} />
-                Reset filters
-              </Button>
-            )}
-          </div>
-
-          {/* Counts panel — severity/status breakdown over the FULL filtered
+              {/* Counts panel — severity/status breakdown over the FULL filtered
               set (AC-6), not just the page currently loaded. Shown for every
               non-error state so a genuine "everything is zero" reads exactly
               as informative as a populated one. */}
-          {state !== 'error' && (
-            <div
-              data-testid="bugs-list-counts"
-              aria-live="polite"
-              className="flex flex-wrap items-center gap-3 text-sm"
-            >
-              <span className="font-mono text-fg-0">{filteredTotal}</span>
-              <span className="text-fg-2">{filteredTotal === 1 ? 'defect in view' : 'defects in view'}</span>
-              <span className="mx-1 h-3.5 w-px bg-stroke-2" aria-hidden="true" />
-              <span className="text-fg-2">Severity</span>
-              {BUG_SEVERITY_VALUES.map(value => (
-                <CountChip
-                  key={value}
-                  tone={SEVERITY_FILTER_TONE[value]}
-                  label={value}
-                  count={aggregates.by_severity[value]}
-                  testId={`bugs-list-count-severity-${value}`}
-                />
-              ))}
-              <span className="mx-1 h-3.5 w-px bg-stroke-2" aria-hidden="true" />
-              <span className="text-fg-2">Status</span>
-              {BUG_STATUS_VALUES.map(value => (
-                <CountChip
-                  key={value}
-                  tone={STATUS_FILTER_TONE[value]}
-                  label={STATUS_FILTER_LABEL[value]}
-                  count={aggregates.by_status[value]}
-                  testId={`bugs-list-count-status-${value}`}
-                />
-              ))}
-            </div>
-          )}
-
-          <Card className="overflow-hidden">
-            {state === 'error' && (
-              <div data-testid="bugs-list-error" className="flex flex-col items-start gap-3 p-4">
-                <p className="text-sm text-fg-2">{error}</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  data-testid="bugs-list-retry"
-                  disabled={loading}
-                  onClick={retry}
+              {state !== 'error' && (
+                <div
+                  data-testid="bugs-list-counts"
+                  aria-live="polite"
+                  className="flex flex-wrap items-center gap-3 text-sm"
                 >
-                  <RefreshCw size={13} />
-                  {loading ? 'Retrying…' : 'Retry'}
-                </Button>
-              </div>
-            )}
-
-            {state === 'empty-never' && (
-              <div
-                data-testid="bugs-list-empty"
-                className="flex flex-col items-center gap-2 px-4 py-8 text-center"
-              >
-                <ListX size={18} className="text-fg-3" />
-                <span className="text-md font-semibold text-fg-1">{BUG_LIST_EMPTY_TITLE}</span>
-                <span className="max-w-[46ch] text-sm text-fg-3">{BUG_LIST_EMPTY_DESCRIPTION}</span>
-              </div>
-            )}
-
-            {state === 'empty-no-match' && (
-              <div
-                data-testid="bugs-list-no-match"
-                className="flex flex-col items-center gap-2 px-4 py-8 text-center"
-              >
-                <Inbox size={18} className="text-fg-3" />
-                <span className="text-md font-semibold text-fg-1">{BUGS_LIST_NO_MATCH_TITLE}</span>
-                <span className="max-w-[46ch] text-sm text-fg-3">{BUGS_LIST_NO_MATCH_DESCRIPTION}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  data-testid="bugs-list-no-match-clear"
-                  className="mt-1"
-                  onClick={resetFilters}
-                >
-                  <X size={12} />
-                  Clear filters
-                </Button>
-              </div>
-            )}
-
-            {state === 'rows' && (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr>
-                        {['Bug', 'Title', 'Module', 'Severity', 'Status', 'Run'].map(column => (
-                          <th
-                            key={column}
-                            scope="col"
-                            className="whitespace-nowrap border-b border-stroke-2 bg-surface-1 px-3 py-2 text-left text-2xs font-medium uppercase tracking-[0.06em] text-fg-3"
-                          >
-                            {column}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody
-                      data-testid="bugs-list-rows"
-                      aria-busy={loading}
-                      className={cn('transition-opacity duration-token ease-token', loading && 'opacity-40')}
-                    >
-                      {rows.map(row => (
-                        <tr
-                          key={row.id}
-                          data-testid={`bugs-list-row-${row.id}`}
-                          className="transition-colors duration-token ease-token hover:bg-surface-3"
-                        >
-                          <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                            <span className="font-mono text-xs font-medium text-fg-0" title={row.id}>
-                              {row.id.slice(0, 8)}
-                            </span>
-                          </td>
-                          <td className="max-w-[280px] truncate border-t border-stroke-1 px-3 py-1.5 text-sm text-fg-1">
-                            {row.title}
-                          </td>
-                          <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                            <span className="font-mono text-xs text-fg-2">{row.modulePath}</span>
-                          </td>
-                          <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                            <span className="status-chip" data-status={row.severityToken}>
-                              <span className="dot" data-status={row.severityToken} />
-                              {row.severity}
-                              {' · '}
-                              {row.severityLabel}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                            <span className="status-chip" data-status={row.statusToken}>
-                              <span className="dot" data-status={row.statusToken} />
-                              {row.statusLabel}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                            <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <span className="font-mono text-fg-0">{filteredTotal}</span>
+                  <span className="text-fg-2">{filteredTotal === 1 ? 'defect in view' : 'defects in view'}</span>
+                  <span className="mx-1 h-3.5 w-px bg-stroke-2" aria-hidden="true" />
+                  <span className="text-fg-2">Severity</span>
+                  {BUG_SEVERITY_VALUES.map(value => (
+                    <CountChip
+                      key={value}
+                      tone={SEVERITY_FILTER_TONE[value]}
+                      label={value}
+                      count={aggregates.by_severity[value]}
+                      testId={`bugs-list-count-severity-${value}`}
+                    />
+                  ))}
+                  <span className="mx-1 h-3.5 w-px bg-stroke-2" aria-hidden="true" />
+                  <span className="text-fg-2">Status</span>
+                  {BUG_STATUS_VALUES.map(value => (
+                    <CountChip
+                      key={value}
+                      tone={STATUS_FILTER_TONE[value]}
+                      label={STATUS_FILTER_LABEL[value]}
+                      count={aggregates.by_status[value]}
+                      testId={`bugs-list-count-status-${value}`}
+                    />
+                  ))}
                 </div>
+              )}
 
-                {(cursor !== null || appendError !== null) && (
-                  <div className="flex flex-col items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2">
-                    {appendError !== null && (
-                      <p data-testid="bugs-list-append-error" className="text-center text-sm text-fg-2">
-                        {appendError}
-                      </p>
-                    )}
-                    {cursor !== null && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        data-testid="bugs-list-load-more"
-                        disabled={loading || loadingOlder}
-                        onClick={() => { void loadMore(); }}
-                      >
-                        {appendError === null ? <ArrowDown size={12} /> : <RefreshCw size={13} />}
-                        {moreLabel}
-                      </Button>
-                    )}
+              <Card className="overflow-hidden">
+                {state === 'error' && (
+                  <div data-testid="bugs-list-error" className="flex flex-col items-start gap-3 p-4">
+                    <p className="text-sm text-fg-2">{error}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      data-testid="bugs-list-retry"
+                      disabled={loading}
+                      onClick={retry}
+                    >
+                      <RefreshCw size={13} />
+                      {loading ? 'Retrying…' : 'Retry'}
+                    </Button>
                   </div>
                 )}
 
-                <div
-                  ref={footRef}
-                  tabIndex={-1}
-                  aria-live="polite"
-                  data-testid="bugs-list-foot"
-                  className="flex items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2 font-mono text-xs text-fg-3 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-accent"
-                >
-                  {footText}
-                </div>
-              </>
-            )}
-          </Card>
+                {state === 'empty-never' && (
+                  <div
+                    data-testid="bugs-list-empty"
+                    className="flex flex-col items-center gap-2 px-4 py-8 text-center"
+                  >
+                    <ListX size={18} className="text-fg-3" />
+                    <span className="text-md font-semibold text-fg-1">{BUG_LIST_EMPTY_TITLE}</span>
+                    <span className="max-w-[46ch] text-sm text-fg-3">{BUG_LIST_EMPTY_DESCRIPTION}</span>
+                  </div>
+                )}
+
+                {state === 'empty-no-match' && (
+                  <div
+                    data-testid="bugs-list-no-match"
+                    className="flex flex-col items-center gap-2 px-4 py-8 text-center"
+                  >
+                    <Inbox size={18} className="text-fg-3" />
+                    <span className="text-md font-semibold text-fg-1">{BUGS_LIST_NO_MATCH_TITLE}</span>
+                    <span className="max-w-[46ch] text-sm text-fg-3">{BUGS_LIST_NO_MATCH_DESCRIPTION}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      data-testid="bugs-list-no-match-clear"
+                      className="mt-1"
+                      onClick={resetFilters}
+                    >
+                      <X size={12} />
+                      Clear filters
+                    </Button>
+                  </div>
+                )}
+
+                {state === 'rows' && (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            {['Bug', 'Title', 'Module', 'Severity', 'Status', 'Run'].map(column => (
+                              <th
+                                key={column}
+                                scope="col"
+                                className="whitespace-nowrap border-b border-stroke-2 bg-surface-1 px-3 py-2 text-left text-2xs font-medium uppercase tracking-[0.06em] text-fg-3"
+                              >
+                                {column}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody
+                          data-testid="bugs-list-rows"
+                          aria-busy={loading}
+                          className={cn('transition-opacity duration-token ease-token', loading && 'opacity-40')}
+                        >
+                          {rows.map(row => (
+                            <tr
+                              key={row.id}
+                              data-testid={`bugs-list-row-${row.id}`}
+                              className="transition-colors duration-token ease-token hover:bg-surface-3"
+                            >
+                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                <span className="font-mono text-xs font-medium text-fg-0" title={row.id}>
+                                  {row.id.slice(0, 8)}
+                                </span>
+                              </td>
+                              <td className="max-w-[280px] truncate border-t border-stroke-1 px-3 py-1.5 text-sm text-fg-1">
+                                {row.title}
+                              </td>
+                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                <span className="font-mono text-xs text-fg-2">{row.modulePath}</span>
+                              </td>
+                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                <span className="status-chip" data-status={row.severityToken}>
+                                  <span className="dot" data-status={row.severityToken} />
+                                  {row.severity}
+                                  {' · '}
+                                  {row.severityLabel}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                <span className="status-chip" data-status={row.statusToken}>
+                                  <span className="dot" data-status={row.statusToken} />
+                                  {row.statusLabel}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {(cursor !== null || appendError !== null) && (
+                      <div className="flex flex-col items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2">
+                        {appendError !== null && (
+                          <p data-testid="bugs-list-append-error" className="text-center text-sm text-fg-2">
+                            {appendError}
+                          </p>
+                        )}
+                        {cursor !== null && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            data-testid="bugs-list-load-more"
+                            disabled={loading || loadingOlder}
+                            onClick={() => { void loadMore(); }}
+                          >
+                            {appendError === null ? <ArrowDown size={12} /> : <RefreshCw size={13} />}
+                            {moreLabel}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    <div
+                      ref={footRef}
+                      tabIndex={-1}
+                      aria-live="polite"
+                      data-testid="bugs-list-foot"
+                      className="flex items-center gap-2 border-t border-stroke-2 bg-surface-1 px-3 py-2 font-mono text-xs text-fg-3 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                    >
+                      {footText}
+                    </div>
+                  </>
+                )}
+              </Card>
+            </>
+          )}
         </div>
       </div>
 

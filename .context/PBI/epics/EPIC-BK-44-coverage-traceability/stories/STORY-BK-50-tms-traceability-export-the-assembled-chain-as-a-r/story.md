@@ -3,10 +3,9 @@
 **Jira Key:** [BK-50](https://jira.upexgalaxy.com/browse/BK-50)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** 5
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -22,9 +21,6 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -40,9 +36,9 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/10/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
-- **Assignee:** Alicia Juste
+- **Assignee:** Ely
 - **Labels:** +shift-left-2026-07-09, +shift-left-reviewed, new-feature
 
 ---
