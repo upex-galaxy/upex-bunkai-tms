@@ -6,6 +6,17 @@
 > attached in Jira (inline-image comment) and a spec section in `master-design-plan.md`.
 > Consume top-to-bottom with `/sprint-development`, one item at a time.
 
+> **STALE AS OF 2026-08-02 — do not trust the statuses below.** Phases 1-2 (Settings cluster) and
+> Phase 2 (Runs tail, BK-35/37/38) are all fully shipped and merged to `origin/staging` (Ready For
+> QA / Ready For Release) — none of it is still "the queue." In Phase 3, BK-40 and BK-41 are also
+> shipped (Ready For QA); BK-42 was picked up 2026-08-02 (branch `feat/BK-42-defect-heatmap`,
+> code-complete pending a migration-apply decision) and BK-43 remains genuinely workable, refinement
+> resolved. In Phase 4, BK-46 is shipped (Ready For QA), NOT still queued as this file implies; BK-45
+> remains blocked on unresolved refinement questions (not a dependency gate); BK-49 is shipped
+> (`/activity` route). For the current, corrected picture, read
+> **`.context/dev-roadmap.md` §6 → "Current Ready-For-Dev pool (as of 2026-08-02)"** instead of
+> trusting any phase table below — this file is kept as a historical snapshot, not regenerated.
+
 ## Phase 0 — Open defects (fix first; production quality gates everything)
 
 > **Workflow rule (owner, 2026-07-30)**: an Open bug MUST be assigned to Ely — Open + unassigned

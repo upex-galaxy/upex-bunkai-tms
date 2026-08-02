@@ -192,7 +192,7 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 | **ES2.5** | BK-88, BK-89 (after BK-87) | BK-87 | BK-88 mockup ✅ 2026-07-30 (`settings-tokens.html`) — remaining gate: its own 9 Qs. **BK-89 promoted to RFD 2026-06-24** but open Dev contract (add `role` to `GET /workspaces` + active-workspace transport) — resolve before coding; mockup ✅ (`settings-workspaces.html`). |
 | **ES3 ✅ (fully drained 2026-07-31)** | BK-36 ✅, BK-37 ✅, BK-39 ✅, BK-38 ✅, BK-35 ✅, BK-90 ✅ — all shipped, all merged to staging, all Ready For QA / Ready For Release | BK-34 ✅ ; BK-89 ✅ | Entire ES3 fan-out drained in a single 2026-07-31 batch (avalanche-style run). BK-39 was actually the oldest of the batch (PR #60, merged 2026-06-25) — the roadmap had simply never been updated to reflect it. All six confirmed genuine `git merge-base --is-ancestor` hits against `origin/staging`, not tracker-status inference. |
 | **ES2.5 ✅ (drained 2026-07-31)** | BK-88 ✅ | BK-87 ✅ | PRs #68+#70 merged to staging. Ready For QA. Shipped with 4 PO Qs + 1 security Q unanswered in-thread (see settings-cluster note in §3) — flagged for QA/PO follow-up, not a re-open trigger. |
-| **ES4 (live frontier — epic BK-31 Bugs)** | BK-41 ✅ (dev-done — merged to staging as 3 stacked slices, PRs #101/#103/#105, Ready For QA, assigned jesusgpythondev) ; BK-42, BK-43 — refinement genuinely resolved (comments 12068/12069, 2026-08-01 explicit live PO+Dev ratification), still `Ready For Dev`, workable now | BK-40 ✅ ; BK-41 for its own downstream (none yet) | Refinement gap flagged 2026-08-01 is CLEARED for all three (see §6) — BK-42/BK-43 are genuinely next, no further human refinement pass needed before claiming them. |
+| **ES4 (live frontier — epic BK-31 Bugs)** | BK-41 ✅ (dev-done — merged to staging as 3 stacked slices, PRs #101/#103/#105, Ready For QA, assigned jesusgpythondev) ; BK-42, BK-43 — refinement genuinely resolved (comments 12068/12069, 2026-08-01 explicit live PO+Dev ratification), still `Ready For Dev` — **BK-42 picked up 2026-08-02** (branch `feat/BK-42-defect-heatmap`, code-complete pending a migration-apply decision — see §6 pre-dev-blocker table); BK-43 remains workable, not yet claimed | BK-40 ✅ ; BK-41 for its own downstream (none yet) | Refinement gap flagged 2026-08-01 is CLEARED for both — re-verified 2026-08-02 directly via `acli jira workitem comment list` (NOT the `jira:sync-issues` cache, which silently drops each story's newest 1 comment — see the discovery note in §6 pre-dev-blocker table; a naive re-check off the cache alone would have wrongly flagged BK-43 as unresolved). |
 | **ES4 (BK-44 Coverage)** | BK-45, BK-50 | BK-24 ✅, BK-30 ✅, **BK-31 (NOT complete — its own children BK-41/42/43 above are unmerged)** | Hard-blocked regardless of refinement quality until epic BK-31 actually finishes. |
 | **ES5 (BK-208 Notifications, post-MVP)** | BK-209 (first-of-cluster, "free" per §3.1) ; BK-211/212/213 (blocked on BK-209) | none (BK-209) ; BK-209 (rest) | BK-209 is dependency-clear and has all its refinement questions genuinely *answered* in-thread, but its "PO Ratification — 2026-07-11" comment was posted 11 minutes *before* the actual Q&A content it claims to ratify, by a different account than the one that answered — a blanket 28-story batch delegation, not per-story human sign-off. Also 13 SP (advisory) and first-of-epic (new notification substrate, no prior schema to extend) — oversized for an unattended pick per the scope-growth check. Flagged conditional: needs an explicit human "go" before either an autonomous or interactive run claims it. |
 
@@ -266,6 +266,34 @@ These are gating questions / contract decisions captured during shift-left refin
 | BK-88 (informational, already shipped) | 4 PO Qs (revoked-token visibility, confirmation copy, expiry display, clipboard fallback) + 1 security Q raised 6/10 were never answered before merge — only the privilege-escalation bug (BK-135) got fixed. Not a re-open trigger; flagged for a QA/PO follow-up pass. |
 | BK-90 (informational, already shipped) | 6/10 refinement answers explicitly labeled "practice-exercise... not real confirmations"; a 7/31 03:07 "confirmed by PO" comment was self-reversed 4 minutes later by the same author. Shipped anyway. Not a re-open trigger; flagged for QA follow-up. |
 | Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
+
+### Current Ready-For-Dev pool (as of 2026-08-02)
+
+Live-queried directly against Jira (`acli jira workitem view` + `acli jira workitem comment list`
+per story — **not** the `jira:sync-issues` PBI cache; that cache was independently found to
+silently drop each story's newest comment during this pass, which would have wrongly read BK-42
+and BK-43 as unresolved — see the discovery note below). This is the actual `Ready For Dev` set
+across the epics touched by this pass, superseding any narrower framing above.
+
+| Story | Refinement status | Notes |
+|-------|-------------------|-------|
+| **BK-42** | ✅ Resolved (comment 12068) | **Picked up 2026-08-02** by this run — branch `feat/BK-42-defect-heatmap`, code-complete pending a migration-apply decision (see the pre-dev-blocker table above and the escalation log). |
+| BK-43 | ✅ Resolved (comment 12069) | Genuinely workable, not yet claimed. |
+| BK-45 | ⚠️ **NOT resolved** | Only 2 comments total exist on the issue (Benjamin Segovia's 2026-06-11 refinement + Ely's 2026-07-30 mockup note) — no ratification since. Quoting the 6/11 comment directly: *"Top blockers: (1) BK-24/BK-30/BK-31 still in Planificación — chain layers not sprintable yet. (2) 11 open PO/Dev questions in ATP DRAFT... @Ely please review open questions before sprint planning."* The AC field still carries 4 live `NEEDS PO/DEV CONFIRMATION` placeholders (empty-state copy, uncovered-indicator copy — none resolved). Do not autonomous-claim until a real ratification lands. |
+| BK-50 | Blocked on BK-45 | Exports the chain BK-45 renders — no BK-45 branch exists yet (not started), so BK-50 is transitively blocked regardless of its own readiness. |
+| BK-209 | ✅ Resolved (comment 12070) but flagged conditional | First-of-cluster, dependency-free, but still needs an explicit human "go" per the existing conditional flag above (13 SP, new notification substrate) — not re-litigated here. |
+| BK-211 | Blocked on BK-209 | No BK-209 branch exists yet (not started). |
+| BK-212 | Blocked on BK-209 | Same as BK-211; also pairs with epic BK-31 bug events. |
+| BK-213 | Blocked on BK-209 | Also needs BK-87 Settings hub (already ✅ shipped) — BK-209 is the only real gate. |
+
+**Discovery, not yet fixed**: `bun run jira:sync-issues get <KEY> --include-comments` calls
+`GET /rest/api/3/issue/{key}/comment` with no pagination params and no ordering assumption bug
+visible in the code, yet independently and reproducibly omitted the single newest comment on
+BK-42, BK-43, and (checked for completeness) BK-41 — each confirmed present, `visibility: public`,
+via a direct `acli jira workitem comment list --paginate --json` call moments later. Root cause not
+diagnosed (out of scope for this pass); flagged here so nobody trusts "no comments since X" from the
+local cache alone without a live cross-check, and a follow-up ticket should investigate
+`fetchComments()` in `scripts/sync-jira-issues.ts`.
 
 > **Systemic pattern flagged 2026-08-01** (see escalation log): a recurring shift-left gap — stories reach `Ready For Dev`/`Ready For QA` via either (a) explicitly-disclaimed "simulated/practice" refinement answers, or (b) a blanket forward-dated "AI-as-PO" ratification comment that precedes the actual Q&A it claims to cover, or (c) a self-reversed claim of PO confirmation with no independent human artifact behind it. This is not one story's problem — it hit BK-3, BK-41, BK-42, BK-43, BK-90, BK-209 independently. Worth a process-level look, not a per-ticket fix.
 
