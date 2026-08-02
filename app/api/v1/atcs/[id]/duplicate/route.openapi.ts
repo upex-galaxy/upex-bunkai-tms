@@ -2,10 +2,12 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 import { AtcSchema } from '../../route.openapi';
 
 // BK-23 — optional title only; the server reads the source ATC for everything
-// else. An empty body defaults the copy title to `<source> (copy)`.
+// else. An empty body defaults the copy title to `<source> (copy)`. Field is
+// `new_title` (BK-184: matches FR-014's documented request contract — the
+// implementation had drifted to `title`).
 const DuplicateBodySchema = z
   .object({
-    title: z.string().min(3).max(200).optional().describe('Optional title for the copy. Omit to default to `<source> (copy)`.'),
+    new_title: z.string().min(3).max(200).optional().describe('Optional title for the copy. Omit to default to `<source> (copy)`.'),
   })
   .openapi('AtcDuplicateBody');
 
