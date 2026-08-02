@@ -573,6 +573,46 @@ export async function listProjectBugs(supabase: Client, args: { actorUserId: str
   });
 }
 
+// BK-41 — filtered, paginated, aggregate-bearing read of a Project's bugs
+// (migration 0051_bugs_list.sql). UNLIKE `createBug`/`listProjectBugs`,
+// `bunkai_list_bugs` is SECURITY INVOKER and takes NO explicit actor param —
+// same shape as `listActivity` below. It runs its SELECT under the CALLING
+// role, so RLS's `bugs_select_workspace_member` (0046_bugs.sql) evaluates
+// against the caller's own auth.uid(). The `supabase` argument passed here
+// MUST be the caller's own RLS-scoped client (`getAuth(ctx).db`) — NEVER
+// `createAdminClient()`. An admin client has no authenticated auth.uid(),
+// which would make that RLS check moot and reopen the exact cross-project
+// leak `lib/bugs/list-isolation.test.ts` exists to prove closed.
+export interface ListBugsArgs {
+  projectId: string
+  moduleId?: string | null
+  statuses?: string[] | null
+  severities?: string[] | null
+  limit?: number
+  cursorSeverity?: string | null
+  cursorCreatedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listBugs(supabase: Client, args: ListBugsArgs) {
+  return supabase.rpc('bunkai_list_bugs', {
+    p_project_id: args.projectId,
+    // Every param below is OPTIONAL on the RPC signature (`p_module_id?:
+    // string`, etc — migration 0051's own `default null` params), so the
+    // generated type accepts `undefined`, never `null` (mirrors
+    // `searchAtcs`'s own `?? undefined` pattern for the same optional-param
+    // shape) — unlike `createBug`'s NOT-null-typed-but-null-accepting params,
+    // which use the `(x ?? null) as string` cast instead.
+    p_module_id: args.moduleId ?? undefined,
+    p_statuses: args.statuses ?? undefined,
+    p_severities: args.severities ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_severity: args.cursorSeverity ?? undefined,
+    p_cursor_created_at: args.cursorCreatedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}
+
 // BK-49 — read-only workspace activity feed (migration
 // 0045_activity_stream.sql). UNLIKE every other wrapper in this file,
 // bunkai_list_activity is SECURITY INVOKER and takes NO explicit actor
