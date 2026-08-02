@@ -3,6 +3,7 @@
 import type { Atc, ModuleTreeNode, UserStoryWithChildren } from '@lib/types';
 import { Sidebar } from '@components/layout/Sidebar';
 import { Breadcrumb } from '@components/layout/Topbar';
+import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch, MoreHorizontal, Pencil, Plus, Server, Trash2 } from 'lucide-react';
@@ -225,32 +226,20 @@ export function ProjectExplorer({
   const handleDuplicateAtc = async (atc: Atc) => {
     if (duplicatingAtcId) { return; }
     setDuplicatingAtcId(atc.id);
-    try {
-      const response = await fetch(`/api/v1/atcs/${atc.id}/duplicate`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
-        toast.error(body.error?.message ?? 'Could not duplicate the ATC.');
-        return;
-      }
-      const body = (await response.json().catch(() => ({}))) as { atc?: { id?: string } };
-      toast.success('ATC duplicated');
-      if (body.atc?.id) {
-        router.push(`/projects/${projectSlug}/atcs/${body.atc.id}`);
-      }
-      else {
-        router.refresh();
-      }
-    }
-    catch {
-      toast.error('Network error while duplicating the ATC.');
-    }
-    finally {
+    const result = await duplicateAtc(atc.id);
+    if (!result.ok) {
+      toast.error(result.errorMessage);
       setDuplicatingAtcId(null);
+      return;
     }
+    toast.success('ATC duplicated');
+    if (result.atcId) {
+      router.push(`/projects/${projectSlug}/atcs/${result.atcId}`);
+    }
+    else {
+      router.refresh();
+    }
+    setDuplicatingAtcId(null);
   };
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
