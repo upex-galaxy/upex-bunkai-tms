@@ -70,13 +70,11 @@
 -- own validation is the primary guard, same convention as
 -- bug_severity_invalid/0046).
 --
--- *** NOT YET APPLIED TO THE SHARED SUPABASE PROJECT AS OF THIS COMMIT. ***
--- Written and reviewed per BK-42's implementation plan, but this autonomous
--- run's `autonomous_delivery.migrations: confirm` gate requires a human to
--- apply it (`mcp__supabase__apply_migration` or `supabase db push`) before
--- `lib/metrics/defect-heatmap-isolation.test.ts` can pass and this feature
--- can be verified end-to-end. See the escalation log entry filed alongside
--- this migration for the exact apply command and ledger context.
+-- Applied to the shared Supabase project 2026-08-02 (owner-approved, per the
+-- `autonomous_delivery.migrations: confirm` gate) — see the escalation log
+-- entry filed alongside this migration for the review trail. Live definition
+-- diffed against this file post-apply; no drift. Grants verified
+-- (`authenticated`/`service_role` only, no `anon`/`public`).
 
 create or replace function public.bunkai_report_project_defect_heatmap(
   p_actor_user_id uuid,

@@ -22,14 +22,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // adjusted for a reproducible test, the same way recovery-cycle-isolation's
 // own run fixtures use an explicit injected clock instead of `Date.now()`.
 //
-// DB-dependent + env-gated: needs only SUPABASE_SERVICE_ROLE_KEY. As of this
-// commit, migration 0052 has NOT been applied to the live database (this
-// autonomous run's `autonomous_delivery.migrations: confirm` gate — see the
-// escalation log) — the deployment probe below is therefore EXPECTED to
-// skip the whole suite until an operator applies it; this is the correct,
-// inert state for a proposed-but-unapplied migration, not a test failure
-// (same convention lib/bugs/list-isolation.test.ts already established for
-// migration 0051).
+// DB-dependent + env-gated: needs only SUPABASE_SERVICE_ROLE_KEY. Migration
+// 0052 was applied to the live database 2026-08-02 (owner-approved). The
+// deployment probe below stays in place as a permanent guard — same
+// convention as lib/bugs/list-isolation.test.ts (migration 0051) — so the
+// suite degrades to a loud skip instead of a hard failure if this ever runs
+// against an environment where 0052 hasn't landed yet (e.g. a fresh preview
+// DB), rather than a confusing PGRST202 test failure.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -189,20 +188,28 @@ describeOrSkip('BK-42 — bunkai_report_project_defect_heatmap isolation + corre
     const moduleSearchId = (seededModules ?? []).find(m => m.path === 'search')!.id as string;
     const moduleBId = (seededModules ?? []).find(m => m.project_id === projectBId)!.id as string;
 
-    await db.from('modules').update({ archived_at: new Date().toISOString() }).eq('id', moduleLegacyId);
-
     // File every bug through the REAL bunkai_create_bug RPC, then backdate
     // (see fileBackdatedBug's own comment + the file header).
     await fileBackdatedBug(db, { actorUserId, projectId: projectAId, moduleId: moduleCheckoutId, title: `${PREFIX} checkout own, current week`, ageDays: 1 });
     await fileBackdatedBug(db, { actorUserId, projectId: projectAId, moduleId: modulePaymentId, title: `${PREFIX} payment child, current week`, ageDays: 2 });
     await fileBackdatedBug(db, { actorUserId, projectId: projectAId, moduleId: modulePaymentId, title: `${PREFIX} payment child, previous week`, ageDays: 10 });
-    // Archived-descendant bug — must still roll up into checkout's count.
+    // Archived-descendant bug — filed via the REAL standalone path WHILE the
+    // module is still active (bunkai_create_bug's own 0046 guard deliberately
+    // REJECTS filing a standalone bug into an already-archived module — the
+    // active-module check only applies to p_run_id-less creates, see 0046's
+    // step-2 comment — so a bug can only ever attach to a module that was
+    // active AT FILING TIME). The module is archived immediately after, which
+    // is the only realistic way an archived module ends up with bugs: filed
+    // while active, archived later. Must still roll up into checkout's count.
     await fileBackdatedBug(db, { actorUserId, projectId: projectAId, moduleId: moduleLegacyId, title: `${PREFIX} legacy archived child`, ageDays: 3 });
     // Outside the 30d window entirely (40 days old) — must NOT count toward
     // the 30d rollup, but MUST count toward the 90d rollup.
     await fileBackdatedBug(db, { actorUserId, projectId: projectAId, moduleId: moduleCheckoutId, title: `${PREFIX} checkout, outside 30d window`, ageDays: 40 });
     // Project B leak probe.
     await fileBackdatedBug(db, { actorUserId, projectId: projectBId, moduleId: moduleBId, title: `${PREFIX} project B bug`, ageDays: 1 });
+
+    // Archive AFTER filing — see comment above.
+    await db.from('modules').update({ archived_at: new Date().toISOString() }).eq('id', moduleLegacyId);
 
     fixture = {
       actorUserId,
