@@ -203,26 +203,32 @@ export function EmailFirstForm() {
     }
   };
 
+  // BK-181: calls the dedicated resend rail (email only, no password) instead
+  // of re-triggering POST /api/v1/auth/signup. The old signup-reuse approach
+  // required `password` to still be valid state at this point; when it
+  // wasn't, signup's own `min(8)` schema 422'd and the raw backend validation
+  // message ("Request body failed validation.") leaked straight into the UI
+  // alert. `/api/v1/auth/resend` needs no password, so that failure mode is
+  // structurally gone, not just message-wrapped.
   const resendCode = async () => {
     if (submitting) { return; }
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch('/api/v1/auth/signup', {
+      const response = await fetch('/api/v1/auth/resend', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
-      if (response.status === 202 || response.status === 409) {
-        toast.success('A new code is on its way to your inbox.');
+      if (response.status === 202) {
+        toast.success('A new code has been sent to your email.');
         return;
       }
       if (response.status === 429) {
         setError('Too many attempts. Please wait a moment and retry.');
         return;
       }
-      const body = (await response.json().catch(() => null)) as AuthApiError | null;
-      setError(body?.error?.message ?? `Could not request a new code (${response.status}).`);
+      setError('Could not request a new code. Please try again in a moment.');
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error requesting a new code.');

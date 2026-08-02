@@ -32,6 +32,8 @@ import '../app/api/v1/auth/signin/route.openapi';
 
 import '../app/api/v1/auth/signup/route.openapi';
 
+import '../app/api/v1/auth/resend/route.openapi';
+
 import '../app/api/v1/health/route.openapi';
 
 import '../app/api/v1/route.openapi';

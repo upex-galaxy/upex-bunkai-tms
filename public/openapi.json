@@ -389,6 +389,32 @@
         },
         "required": ["email", "password"]
       },
+      "ResendResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["sent"]
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": ["status", "email"]
+      },
+      "ResendBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          }
+        },
+        "required": ["email"]
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -3812,6 +3838,55 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Resend the sign-up email verification code",
+        "description": "Resends the 6-digit sign-up confirmation code for an account that is still pending verification. Takes only the email — no password — so it is safe to call from the verification screen without re-triggering account creation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Resend accepted; a new verification code has been emailed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendResponse"
                 }
               }
             }
