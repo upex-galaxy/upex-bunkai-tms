@@ -1,7 +1,9 @@
 'use server';
 
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
+import { TAG_CAP_MESSAGE } from '@lib/atcs/builder-guards';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
+import { MAX_ATC_TAGS } from '@lib/atcs/validation';
 import { atcUsage, updateAtc } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { revalidatePath } from 'next/cache';
@@ -41,6 +43,9 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   }
   if (input.title.trim().length === 0) {
     return { ok: false, error: 'Title is required.' };
+  }
+  if (input.tags.length > MAX_ATC_TAGS) {
+    return { ok: false, error: TAG_CAP_MESSAGE };
   }
 
   const supabase = await createClient();

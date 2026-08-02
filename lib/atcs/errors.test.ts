@@ -50,6 +50,13 @@ describe('mapAtcRpcError', () => {
     expect(err.status).toBe(422);
   });
 
+  test('45024 tags limit exceeded → 422 validation_failed (BK-144 RPC backstop)', () => {
+    const err = caught(() => mapAtcRpcError({ code: '45024', message: 'atc_tags_limit_exceeded' }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'tags_limit_exceeded' });
+  });
+
   test('unknown SQLSTATE → 500 internal_error preserving the message', () => {
     const err = caught(() => mapAtcRpcError({ code: 'XX999', message: 'boom' }));
     expect(err.code).toBe('internal_error');

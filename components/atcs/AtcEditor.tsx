@@ -8,6 +8,7 @@ import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
+import { canAddTag, TAG_CAP_MESSAGE, tagCapReached } from '@lib/atcs/builder-guards';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Files, Save } from 'lucide-react';
@@ -80,6 +81,7 @@ export function AtcEditor({
   const [layer, setLayer] = useState<AtcLayer>(atc.layer);
   const [tags, setTags] = useState<string[]>(atc.tags);
   const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string | null>(atc.user_story_id);
   const [acIds, setAcIds] = useState<string[]>(initialAcIds);
 
@@ -101,9 +103,17 @@ export function AtcEditor({
 
   const addTag = () => {
     const t = tagInput.trim().toLowerCase();
-    if (!t || tags.includes(t)) { return; }
+    if (tagCapReached(tags)) {
+      setTagError(TAG_CAP_MESSAGE);
+      return;
+    }
+    if (!canAddTag(tags, t)) {
+      setTagInput('');
+      return;
+    }
     setTags([...tags, t]);
     setTagInput('');
+    if (tagError) { setTagError(null); }
   };
 
   const removeTag = (t: string) => setTags(tags.filter(x => x !== t));
@@ -378,7 +388,7 @@ export function AtcEditor({
                 <span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Tags
                 </span>
-                <span className="text-xs text-fg-3">press Enter to add</span>
+                <span className="text-xs text-fg-3">press Enter to add · max 10</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 rounded-3 border border-stroke-2 bg-surface-2 p-2">
                 {tags.map(t => (
@@ -405,10 +415,16 @@ export function AtcEditor({
                       addTag();
                     }
                   }}
+                  disabled={tagCapReached(tags)}
                   placeholder={tags.length ? '' : 'regression, smoke, P1…'}
-                  className="min-w-[120px] flex-1 bg-transparent font-mono text-xs text-fg-0 outline-none placeholder:text-fg-4"
+                  className="min-w-[120px] flex-1 bg-transparent font-mono text-xs text-fg-0 outline-none placeholder:text-fg-4 disabled:cursor-not-allowed disabled:placeholder:text-fg-4"
                 />
               </div>
+              {tagError && (
+                <p className="mt-1 text-xs text-signal-fail" data-testid="atc-tag-error">
+                  {tagError}
+                </p>
+              )}
             </section>
           </div>
         </div>
