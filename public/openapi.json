@@ -389,6 +389,32 @@
         },
         "required": ["email", "password"]
       },
+      "ResendResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["sent"]
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": ["status", "email"]
+      },
+      "ResendBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "example": "qa.user@example.com"
+          }
+        },
+        "required": ["email"]
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -1899,7 +1925,7 @@
       "AtcDuplicateBody": {
         "type": "object",
         "properties": {
-          "title": {
+          "new_title": {
             "type": "string",
             "minLength": 3,
             "maxLength": 200,
@@ -3424,6 +3450,68 @@
         },
         "required": ["project_id", "module_id", "title", "severity"]
       },
+      "BugsListPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bug"
+            },
+            "description": "The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5)."
+          },
+          "aggregates": {
+            "$ref": "#/components/schemas/BugsAggregates"
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next page, or null when this is the last page. base64url — echo it back verbatim as `?cursor=`; never construct or parse one."
+          }
+        },
+        "required": ["data", "aggregates", "next_cursor"]
+      },
+      "BugsAggregates": {
+        "type": "object",
+        "properties": {
+          "by_severity": {
+            "type": "object",
+            "properties": {
+              "P1": {
+                "type": "integer"
+              },
+              "P2": {
+                "type": "integer"
+              },
+              "P3": {
+                "type": "integer"
+              },
+              "P4": {
+                "type": "integer"
+              }
+            },
+            "required": ["P1", "P2", "P3", "P4"]
+          },
+          "by_status": {
+            "type": "object",
+            "properties": {
+              "open": {
+                "type": "integer"
+              },
+              "in_progress": {
+                "type": "integer"
+              },
+              "resolved": {
+                "type": "integer"
+              },
+              "closed": {
+                "type": "integer"
+              }
+            },
+            "required": ["open", "in_progress", "resolved", "closed"]
+          }
+        },
+        "required": ["by_severity", "by_status"]
+      },
       "BugListResponse": {
         "type": "object",
         "properties": {
@@ -3558,6 +3646,85 @@
           "user_story_title",
           "module_id",
           "module_name"
+        ]
+      },
+      "DefectHeatmapReport": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": ["7d", "30d", "90d"]
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Freshness timestamp for this read — a live, unpaginated query, not a cached snapshot."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DefectHeatmapItem"
+            },
+            "description": "One cell per ACTIVE (non-archived) module, ordered by module path then id."
+          }
+        },
+        "required": ["window", "generated_at", "items"]
+      },
+      "DefectHeatmapItem": {
+        "type": "object",
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_name": {
+            "type": "string"
+          },
+          "module_path": {
+            "type": "string",
+            "description": "Full slash-separated module path, so identically-named nested modules stay distinguishable."
+          },
+          "defect_count": {
+            "type": "integer",
+            "description": "Defect count for this module (including its full descendant subtree) within the selected window."
+          },
+          "heat": {
+            "type": "string",
+            "enum": ["clean", "low", "elevated", "hotspot"],
+            "description": "Clean: 0. Low: 1-2. Elevated: 3-4. Hotspot: 5+ (master-design-plan §4.6)."
+          },
+          "current_week_count": {
+            "type": "integer",
+            "description": "Defect count in the latest rolling 7-day UTC bucket (independent of the selected window)."
+          },
+          "previous_week_count": {
+            "type": "integer",
+            "description": "Defect count in the immediately preceding 7-day UTC bucket."
+          },
+          "trend_direction": {
+            "type": "string",
+            "enum": ["rising", "falling", "flat"]
+          },
+          "trend_delta": {
+            "type": "integer",
+            "description": "current_week_count - previous_week_count. Always present, always finite."
+          },
+          "trend_pct": {
+            "type": ["number", "null"],
+            "description": "Signed percent change. Null exactly when previous_week_count is 0 and current_week_count is positive (never Infinity) — a 0/0 pair reads 0, not null."
+          }
+        },
+        "required": [
+          "module_id",
+          "module_name",
+          "module_path",
+          "defect_count",
+          "heat",
+          "current_week_count",
+          "previous_week_count",
+          "trend_direction",
+          "trend_delta",
+          "trend_pct"
         ]
       }
     },
@@ -3812,6 +3979,55 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Resend the sign-up email verification code",
+        "description": "Resends the 6-digit sign-up confirmation code for an account that is still pending verification. Takes only the email — no password — so it is safe to call from the verification screen without re-triggering account creation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Resend accepted; a new verification code has been emailed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendResponse"
                 }
               }
             }
@@ -8638,6 +8854,122 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "List and filter defects for a project, with aggregates",
+        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`). `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The project to list defects for. A project the caller cannot see returns a 200 with an empty page (Decision 9) rather than a 403 or 404 — the same non-disclosure collapse GET /api/v1/activity uses for a foreign workspace_id."
+          },
+          {
+            "name": "module_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Scope the list to this module and its full nested subtree (matched by `modules.path` prefix, depth up to 6 — Decision 7). A module outside `project_id` is rejected as `validation_failed` (`module_not_in_project`), but ONLY once `project_id` itself is confirmed visible (Decision 10)."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of statuses, OR-within-field (Decision 6), e.g. `open,in_progress`. Each value must be one of open | in_progress | resolved | closed — an unrecognized value (e.g. `in-progress` with a hyphen) is rejected as `validation_failed`."
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of severities, OR-within-field (Decision 6), e.g. `P1,P2`. Combined with `status`, filters are AND-across-fields. Each value must be one of P1 | P2 | P3 | P4."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30
+            },
+            "description": "Page size, 1..50 (default 30). Out of range is rejected (422); the RPC additionally clamps for direct callers."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the filtered defect list, with aggregates over the full filtered set (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BugsListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An undecodable `cursor` (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — missing/invalid `project_id`, an unrecognized `status`/`severity` value, `limit` outside 1..50, or `module_id` outside `project_id` (`module_not_in_project`, disclosed only once `project_id` is confirmed visible).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/projects/{id}/bugs": {
@@ -8746,6 +9078,86 @@
           },
           "400": {
             "description": "Malformed Project id (not a UUID) (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/bugs/heatmap": {
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "Compute a per-module defect heatmap (count + week-over-week trend) for a chosen window",
+        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors GET /api/v1/projects/{id}/metrics/recovery-cycles. One SECURITY DEFINER RPC (`bunkai_report_project_defect_heatmap`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or filters: the whole-project rollup is small and bounded. Each module's defect_count rolls up its full descendant subtree (path-prefix match); archived modules are excluded from the heatmap by default but a filed defect against a since-archived descendant still counts toward an active ancestor. A Project with zero bugs returns every active module at Clean/0 (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project whose defect heatmap to read."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["7d", "30d", "90d"],
+              "default": "30d"
+            },
+            "description": "The rollup window for defect_count. Defaults to 30d. An unsupported value is a 400 bad_request (not the repo's usual validation_failed/422 — AC-11's explicit wording for this error)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The defect heatmap report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectHeatmapReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id (not a UUID), or an unsupported window value (`bad_request`).",
             "content": {
               "application/json": {
                 "schema": {

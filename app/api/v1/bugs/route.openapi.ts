@@ -84,4 +84,98 @@ registry.registerPath({
   },
 });
 
-export { BugModuleSchema, BugSchema };
+// BK-41 — the filtered, paginated, aggregate-bearing defect list. `data`
+// items reuse the exact `BugSchema` shape above (`bunkai_list_bugs`'s
+// `jsonb_build_object` call, migration 0051_bugs_list.sql, projects the same
+// fields as `bunkai_bug_json`). `aggregates` is computed over the FULL
+// filtered set (before `limit`/`cursor`), never derived from only the
+// returned page (AC-6/ATP-7).
+
+const BugsAggregatesSchema = z
+  .object({
+    by_severity: z.object({ P1: z.number().int(), P2: z.number().int(), P3: z.number().int(), P4: z.number().int() }),
+    by_status: z.object({
+      open: z.number().int(),
+      in_progress: z.number().int(),
+      resolved: z.number().int(),
+      closed: z.number().int(),
+    }),
+  })
+  .openapi('BugsAggregates');
+
+const BugsListPageSchema = z
+  .object({
+    data: z.array(BugSchema).describe('The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5).'),
+    aggregates: BugsAggregatesSchema,
+    next_cursor: z
+      .string()
+      .nullable()
+      .describe('Opaque token for the next page, or null when this is the last page. base64url — echo it back verbatim as `?cursor=`; never construct or parse one.'),
+  })
+  .openapi('BugsListPage');
+
+const ProjectIdParam = {
+  name: 'project_id',
+  in: 'query' as const,
+  required: true,
+  schema: { type: 'string' as const, format: 'uuid' as const },
+  description: 'The project to list defects for. A project the caller cannot see returns a 200 with an empty page (Decision 9) rather than a 403 or 404 — the same non-disclosure collapse GET /api/v1/activity uses for a foreign workspace_id.',
+};
+
+const ModuleIdParam = {
+  name: 'module_id',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const, format: 'uuid' as const },
+  description: 'Scope the list to this module and its full nested subtree (matched by `modules.path` prefix, depth up to 6 — Decision 7). A module outside `project_id` is rejected as `validation_failed` (`module_not_in_project`), but ONLY once `project_id` itself is confirmed visible (Decision 10).',
+};
+
+const StatusParam = {
+  name: 'status',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const },
+  description: 'Comma-separated list of statuses, OR-within-field (Decision 6), e.g. `open,in_progress`. Each value must be one of open | in_progress | resolved | closed — an unrecognized value (e.g. `in-progress` with a hyphen) is rejected as `validation_failed`.',
+};
+
+const SeverityParam = {
+  name: 'severity',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const },
+  description: 'Comma-separated list of severities, OR-within-field (Decision 6), e.g. `P1,P2`. Combined with `status`, filters are AND-across-fields. Each value must be one of P1 | P2 | P3 | P4.',
+};
+
+const LimitParam = {
+  name: 'limit',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'integer' as const, minimum: 1, maximum: 50, default: 30 },
+  description: 'Page size, 1..50 (default 30). Out of range is rejected (422); the RPC additionally clamps for direct callers.',
+};
+
+const CursorParam = {
+  name: 'cursor',
+  in: 'query' as const,
+  required: false,
+  schema: { type: 'string' as const },
+  description: 'Opaque page token taken verbatim from the previous response\'s `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page.',
+};
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/bugs',
+  tags: ['Bugs'],
+  summary: 'List and filter defects for a project, with aggregates',
+  description: 'Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`). `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller\'s own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [ProjectIdParam, ModuleIdParam, StatusParam, SeverityParam, LimitParam, CursorParam],
+  responses: {
+    200: { description: 'One page of the filtered defect list, with aggregates over the full filtered set (possibly empty).', content: { 'application/json': { schema: BugsListPageSchema } } },
+    400: { description: 'An undecodable `cursor` (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed — missing/invalid `project_id`, an unrecognized `status`/`severity` value, `limit` outside 1..50, or `module_id` outside `project_id` (`module_not_in_project`, disclosed only once `project_id` is confirmed visible).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
+export { BugModuleSchema, BugsAggregatesSchema, BugSchema, BugsListPageSchema };

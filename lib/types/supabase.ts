@@ -1405,6 +1405,19 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_bugs: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_cursor_severity?: string
+          p_limit?: number
+          p_module_id?: string
+          p_project_id: string
+          p_severities?: string[]
+          p_statuses?: string[]
+        }
+        Returns: Json
+      }
       bunkai_list_project_bugs: {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
@@ -1462,6 +1475,16 @@ export interface Database {
       }
       bunkai_report_project_coverage: {
         Args: { p_actor_user_id: string, p_project_id: string }
+        Returns: Json
+      }
+      // BK-42 (0052_defect_heatmap_report.sql) — hand-added, NOT yet reflected
+      // by a live `types:gen` regeneration: this migration is written but not
+      // applied to the shared Supabase instance (autonomous_delivery.migrations:
+      // confirm gate, see the escalation log). Re-run `bun run types:gen`
+      // once an operator applies the migration and drop this comment if the
+      // regenerated shape ever diverges from what's hand-typed here.
+      bunkai_report_project_defect_heatmap: {
+        Args: { p_actor_user_id: string, p_project_id: string, p_window: string }
         Returns: Json
       }
       bunkai_report_project_recovery_cycles: {

@@ -32,6 +32,8 @@ import '../app/api/v1/auth/signin/route.openapi';
 
 import '../app/api/v1/auth/signup/route.openapi';
 
+import '../app/api/v1/auth/resend/route.openapi';
+
 import '../app/api/v1/health/route.openapi';
 
 import '../app/api/v1/route.openapi';
@@ -119,6 +121,8 @@ import '../app/api/v1/bugs/route.openapi';
 import '../app/api/v1/projects/[id]/bugs/route.openapi';
 
 import '../app/api/v1/projects/[id]/coverage/route.openapi';
+
+import '../app/api/v1/projects/[id]/bugs/heatmap/route.openapi';
 
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');

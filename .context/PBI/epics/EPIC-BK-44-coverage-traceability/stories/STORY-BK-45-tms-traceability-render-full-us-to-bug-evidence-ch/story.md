@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** 8
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -22,9 +21,6 @@ As a QA Lead, I want to open any user story and see its full evidence chain — 
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -33,7 +29,7 @@ As a QA Lead, I want to open any user story and see its full evidence chain — 
 
 ### Story (1)
 
-- [BK-50](https://jira.upexgalaxy.com/browse/BK-50): TMS-Traceability | Export the assembled chain as a read-only snapshot _(Estimation)_
+- [BK-50](https://jira.upexgalaxy.com/browse/BK-50): TMS-Traceability | Export the assembled chain as a read-only snapshot _(Ready For Dev)_
 
 ### Epics (3)
 
@@ -46,7 +42,7 @@ As a QA Lead, I want to open any user story and see its full evidence chain — 
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/7/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-06-11, shift-left-reviewed

@@ -1,14 +1,16 @@
 'use client';
 
 import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcStep, Module, UserStory } from '@lib/types';
+import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
+import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { cn } from '@lib/utils';
-import { ChevronLeft, Save } from 'lucide-react';
+import { ChevronLeft, Files, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -71,7 +73,9 @@ export function AtcEditor({
   onSave,
 }: AtcEditorProps) {
   const router = useRouter();
+  const { canCreate } = useWorkbench();
   const [isPending, startTransition] = useTransition();
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [title, setTitle] = useState(atc.title);
   const [layer, setLayer] = useState<AtcLayer>(atc.layer);
   const [tags, setTags] = useState<string[]>(atc.tags);
@@ -133,6 +137,32 @@ export function AtcEditor({
     });
   };
 
+  // BK-185 — the explorer's right-click context menu already offered a
+  // one-click Duplicate (BK-23), but the detail view itself — where a user
+  // is already looking at the ATC they want to copy — had no entry point at
+  // all. Mirrors the explorer's handler: same shared `duplicateAtc` client
+  // call, same toast + redirect-to-new-ATC contract.
+  const handleDuplicate = () => {
+    if (isDuplicating) { return; }
+    setIsDuplicating(true);
+    void (async () => {
+      const result = await duplicateAtc(atc.id);
+      if (!result.ok) {
+        toast.error(result.errorMessage);
+        setIsDuplicating(false);
+        return;
+      }
+      toast.success('ATC duplicated');
+      if (result.atcId) {
+        router.push(`/projects/${projectSlug}/atcs/${result.atcId}`);
+      }
+      else {
+        router.refresh();
+      }
+      setIsDuplicating(false);
+    })();
+  };
+
   const breadcrumbItems = useMemo(
     () => [...modulePath.split('/'), atc.id],
     [modulePath, atc.id],
@@ -168,6 +198,18 @@ export function AtcEditor({
           >
             Cancel
           </Button>
+          {canCreate && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleDuplicate}
+              disabled={isDuplicating}
+              title="Duplicate this ATC with its steps and assertions"
+            >
+              <Files size={11} />
+              {isDuplicating ? 'Duplicating…' : 'Duplicate'}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="primary"
