@@ -32,7 +32,17 @@ describe('resolveNotificationHref', () => {
     expect(href).toBeNull();
   });
 
-  test('bug is deliberately unmapped even when available + payload looks complete (no BK-31 route yet)', () => {
+  test('a run-linked bug with entity_available + project_slug + run_id resolves the run route with a bugId deep link', () => {
+    const href = resolveNotificationHref({
+      entity_type: 'bug',
+      entity_id: 'bug-1',
+      entity_available: true,
+      payload: { project_slug: 'checkout-platform', run_id: 'run-1' },
+    });
+    expect(href).toBe('/projects/checkout-platform/runs/run-1?bugId=bug-1');
+  });
+
+  test('a standalone bug (no run_id in payload) resolves no route — no fallback route is defined for it', () => {
     const href = resolveNotificationHref({
       entity_type: 'bug',
       entity_id: 'bug-1',
@@ -40,6 +50,27 @@ describe('resolveNotificationHref', () => {
       payload: { project_slug: 'checkout-platform' },
     });
     expect(href).toBeNull();
+  });
+
+  test('bug entity_available: false never resolves a route, regardless of run_id', () => {
+    const href = resolveNotificationHref({
+      entity_type: 'bug',
+      entity_id: 'bug-1',
+      entity_available: false,
+      payload: { project_slug: 'checkout-platform', run_id: 'run-1' },
+    });
+    expect(href).toBeNull();
+  });
+
+  test('a bugId containing "/", "?", or ".." is percent-encoded, not interpolated raw', () => {
+    const maliciousBugId = '../evil?x=1';
+    const href = resolveNotificationHref({
+      entity_type: 'bug',
+      entity_id: maliciousBugId,
+      entity_available: true,
+      payload: { project_slug: 'checkout-platform', run_id: 'run-1' },
+    });
+    expect(href).toBe(`/projects/checkout-platform/runs/run-1?bugId=${encodeURIComponent(maliciousBugId)}`);
   });
 
   test('a missing project_slug in payload resolves no route (today\'s producers do not populate it yet)', () => {
