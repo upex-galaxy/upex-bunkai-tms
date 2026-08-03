@@ -61,4 +61,18 @@ describe('resolveNotificationHref', () => {
     });
     expect(href).toBeNull();
   });
+
+  test('a project_slug containing "/", "?", or ".." is percent-encoded, not interpolated raw', () => {
+    const maliciousSlug = '../../etc?x=1';
+    const href = resolveNotificationHref({
+      entity_type: 'run',
+      entity_id: 'run-1',
+      entity_available: true,
+      payload: { project_slug: maliciousSlug },
+    });
+    expect(href).toBe(`/projects/${encodeURIComponent(maliciousSlug)}/runs/run-1`);
+    // Proves the route keeps its expected shape (no extra "/" segments
+    // sneaked in from the payload) rather than only checking the string.
+    expect(href?.split('/')).toHaveLength(5);
+  });
 });

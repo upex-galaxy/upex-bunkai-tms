@@ -32,11 +32,18 @@ export function resolveNotificationHref(notification: NotificationEntityRef): st
     return null;
   }
 
+  // `projectSlug` is producer-controlled JSONB (no producer has shipped yet —
+  // BK-211/BK-212 — so nothing validates its shape at write time). Encode it
+  // before interpolating into the href so a malformed/adversarial payload
+  // (embedded `/`, `?`, `..`) degrades to a broken/escaped link instead of
+  // reshaping the route or injecting a query string.
+  const safeProjectSlug = encodeURIComponent(projectSlug);
+
   switch (notification.entity_type) {
     case 'run':
-      return `/projects/${projectSlug}/runs/${notification.entity_id}`;
+      return `/projects/${safeProjectSlug}/runs/${notification.entity_id}`;
     case 'test':
-      return `/projects/${projectSlug}/tests/${notification.entity_id}`;
+      return `/projects/${safeProjectSlug}/tests/${notification.entity_id}`;
     default:
       // `bug` (blocked on BK-31/BK-212) and any future/unknown entity_type —
       // no detail route to send the user to yet.
