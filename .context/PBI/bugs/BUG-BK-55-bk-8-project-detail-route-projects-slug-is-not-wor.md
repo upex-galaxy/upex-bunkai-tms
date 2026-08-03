@@ -4,10 +4,6 @@
 **Priority:** High
 **Status:** Duplicated
 **Components:** Project & Module Hierarchy
-**Severity:** Mayor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -46,31 +42,6 @@ Detail navigation is scoped to the active workspace (per Workflow AC step 9: `/w
 Per-workspace slug uniqueness (a core design rule, and an explicit AC: "same slug valid across different workspaces") is undermined at the navigation layer. A multi-workspace user cannot reach all of their projects. Not a cross-tenant leak (RLS still limits to member workspaces), but a real addressability/navigation defect and a deviation from Workflow AC step 9.
 
 ## Evidence
-
-`test-session-memory.md` (UI-3 row) + screenshot `evidence/bug-crossworkspace-checkout-v2.png`.
-
----
-
-## 🐞 Actual Result
-
-- `/projects/checkout-v2` loads the ***WS2**** project (breadcrumb "QA BK-8 Second WS / Checkout v2") even though WS1 is active — the WS1 `checkout-v2` is ****unreachable***.
-- `/projects/hi-project` loads the WS2 project while WS1 is active — the route ***crosses the active-workspace boundary***.
-
----
-
-## ✅ Expected Result
-
-Detail navigation is scoped to the active workspace (per Workflow AC step 9: `/workspaces/{ws-slug}/projects/{project-slug}`). A slug present in another workspace should not resolve under the active workspace; both same-named projects must remain independently addressable.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
-
----
-
-## 🧫 Evidence
 
 `test-session-memory.md` (UI-3 row) + screenshot `evidence/bug-crossworkspace-checkout-v2.png`.
 

@@ -2,14 +2,10 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-46)
 
-Ah, claro — querés ver el ***contenido completo del ATP*** para poder copiarlo, pero el agente lo mostró cortado o no lo ves entero. Te lo paso limpio y completo acá, listo para que selecciones y copies de una:
-
----
-
 ***Shift-Left ATP DRAFT — BK-46 (2026-06-26)***
 
 Pre-sprint draft. Outlines only — no test code. Subject to PO confirmation on Q1/Q2/Q3.
-Coverage estimate: 20 outlines | 7 Positive / 6 Negative / 4 Boundary / 3 Integration
+Coverage estimate: 20 outlines | 8 Positive / 5 Negative / 4 Boundary / 3 Integration
 
 ***GROUP 1 — No-ATC coverage gap (5 outlines)***
 
@@ -24,28 +20,29 @@ Coverage estimate: 20 outlines | 7 Positive / 6 Negative / 4 Boundary / 3 Integr
 1. Should show an AC in the "not run" filter when its only linked ATC has status = 'unrun' [Positive]
 2. Should NOT show an AC when all its linked ATCs have status = 'pass' [Negative]
 3. Should NOT show an AC with no linked ATC at all in the "not run" filter [Negative]
-4. Should NOT show an AC in "not run" filter when at least one linked ATC has status = 'pass' (multi-ATC) [Negative — NEEDS PO CONFIRMATION Q3]
-
-
-10. Should show an AC in "not run" filter when ALL linked ATCs are 'unrun' (multi-ATC) [Positive]
+4. Should show an AC in the "not run" filter when at least one linked ATC has status = 'unrun', even if other linked ATCs are 'pass' (multi-ATC, union rule) [Positive — PO decision 2026-06-27 (Q3): union rule confirmed, a passed ATC does not clear pending coverage from other unrun ATCs on the same AC]
+5. Should show an AC in "not run" filter when ALL linked ATCs are 'unrun' (multi-ATC) [Positive]
 
 ***GROUP 3 — Fully covered module indicator (3 outlines)***
-11. Should display "fully covered" when all ACs have ATCs with non-unrun status [Positive — NEEDS PO CONFIRMATION Q2]
-12. Should NOT display "fully covered" when any AC has no linked ATC [Negative]
-13. Should NOT display "fully covered" when any AC's linked ATCs are all 'unrun' [Negative — NEEDS PO CONFIRMATION Q2]
+
+1. Should display "fully covered" when all ACs have ATCs with non-unrun status [Positive — PO decision 2026-06-27 (Q2): confirmed, "fully covered" = ATC linked AND executed]
+2. Should NOT display "fully covered" when any AC has no linked ATC [Negative]
+3. Should NOT display "fully covered" when any AC's linked ATCs are all 'unrun' [Negative — PO decision 2026-06-27 (Q2): confirmed, unrun-only coverage does not count as fully covered]
 
 ***GROUP 4 — Access control (2 outlines)***
-14. Should be accessible to the role defined for coverage view access [Positive — NEEDS PO CONFIRMATION Q5]
-15. Should deny access to unauthenticated requests [Negative]
+
+1. Should be accessible to the role defined for coverage view access [Positive — NEEDS PO CONFIRMATION Q5]
+2. Should deny access to unauthenticated requests [Negative]
 
 ***GROUP 5 — Edge cases (5 outlines)***
-16. Should handle a module with no user stories without error [Boundary]
-17. Should handle a project with no acceptance criteria without error [Boundary]
-18. Should reflect updated coverage after a new ATC is linked to a previously uncovered AC [Integration]
-19. Should reflect updated coverage after an ATC is hard-deleted (AC reverts to uncovered) [Integration]
-20. Should handle large projects without degraded load time [Boundary — perf threshold TBD]
 
-***SCHEMA GAP (futuro):*** atcs no tiene soft-delete hoy. Si se agrega ATC archiving, definir antes si ATCs archivados cuentan como cobertura — de lo contrario la coverage view queda rota silenciosamente. (Ver Q7 en artefacto local de refinement.)
+1. Should handle a module with no user stories without error [Boundary]
+2. Should handle a project with no acceptance criteria without error [Boundary]
+3. Should reflect updated coverage after a new ATC is linked to a previously uncovered AC [Integration]
+4. Should reflect updated coverage after an ATC is hard-deleted (AC reverts to uncovered) [Integration]
+5. Should handle large projects without degraded load time [Boundary — perf threshold TBD]
+
+***SCHEMA GAP (future)******:*** atcs has no soft-delete today. If ATC archiving is added later, define upfront whether archived ATCs count as coverage — otherwise the coverage view breaks silently. (See Q7 in the local refinement artifact.)
 
 ---
 _Synced from Jira by sync-jira-issues_

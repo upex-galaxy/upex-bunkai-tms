@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 3
+**Story Points:** -
 
 ---
 
@@ -39,9 +39,6 @@ Re-validation of the codebase against the real ACs' "global chrome" / "account a
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -50,18 +47,18 @@ Re-validation of the codebase against the real ACs' "global chrome" / "account a
 
 ### Bug (1)
 
-- [BK-176](https://jira.upexgalaxy.com/browse/BK-176): Account Settings: Sign-out: Client-side redirect to /login does not fire after successful server-side sign-out _(Open)_
+- [BK-176](https://jira.upexgalaxy.com/browse/BK-176): Account Settings: Sign-out: Client-side redirect to /login does not fire after successful server-side sign-out _(Ready For QA)_
 
 ### Story (1)
 
-- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For Dev)_
+- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed

@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Shift-Left QA
 **Priority:** Medium
-**Story Points:** 3
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -61,21 +60,7 @@ As a Senior QA Engineer, I want to filter the evidence chain by result, module a
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-
----
-
 ## Traceability
-
-### Test (1)
-
-- [BK-189](https://jira.upexgalaxy.com/browse/BK-189): Test TMS-Traceability | Filter the chain by verdict, module, and date range _(Draft)_
 
 ### Epic (1)
 
@@ -86,7 +71,7 @@ As a Senior QA Engineer, I want to filter the evidence chain by result, module a
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/9/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** pinto.lucas.nahuel
 - **Labels:** new-feature, shift-left-2026-06-16, shift-left-reviewed, sprint-planning-estimated

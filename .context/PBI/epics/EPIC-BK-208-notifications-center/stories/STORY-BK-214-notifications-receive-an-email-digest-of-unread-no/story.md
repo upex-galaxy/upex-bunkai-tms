@@ -21,32 +21,19 @@ Mateo reads dashboards, not feeds — he opens Bunkai when there is a reason to.
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-
----
-
 ## Traceability
 
 ### Storys (2)
 
-- [BK-209](https://jira.upexgalaxy.com/browse/BK-209): Notifications | View an inbox of workspace events _(Backlog)_
-- [BK-213](https://jira.upexgalaxy.com/browse/BK-213): Notifications | Configure notification preferences per event type _(Backlog)_
+- [BK-209](https://jira.upexgalaxy.com/browse/BK-209): Notifications | View an inbox of workspace events _(Ready For Dev)_
+- [BK-213](https://jira.upexgalaxy.com/browse/BK-213): Notifications | Configure notification preferences per event type _(Ready For Dev)_
 
 ---
 
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** new-feature, post-mvp

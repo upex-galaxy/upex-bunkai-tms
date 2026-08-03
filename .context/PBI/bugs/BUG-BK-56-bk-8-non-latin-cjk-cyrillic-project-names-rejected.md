@@ -4,10 +4,6 @@
 **Priority:** Low
 **Status:** Duplicated
 **Components:** Project & Module Hierarchy
-**Severity:** Menor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -48,30 +44,6 @@ Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. La
 International users cannot name a project in their own script. Improvement-grade, but real for a product positioned as multi-tenant SaaS.
 
 ## Evidence
-
-`test-session-memory.md` (T13b row).
-
----
-
-## 🐞 Actual Result
-
-Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. Latin-accented names work (`Café Münchën` → `cafe-munchen`), but CJK/Cyrillic are rejected.
-
----
-
-## ✅ Expected Result
-
-`201` — these are valid names with ≥1 letter. (For a multi-tenant SaaS, non-Latin project names should be allowed; slug may transliterate or fall back to a generated value.)
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
-
----
-
-## 🧫 Evidence
 
 `test-session-memory.md` (T13b row).
 

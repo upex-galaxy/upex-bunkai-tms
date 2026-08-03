@@ -21,19 +21,6 @@ This is the foundation story of the Team Chat epic. Every Workspace gets a gener
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-
----
-
 ## Traceability
 
 ### Storys (5)
@@ -41,7 +28,7 @@ This is the foundation story of the Team Chat epic. Every Workspace gets a gener
 - [BK-216](https://jira.upexgalaxy.com/browse/BK-216): Team Chat | Chat in a dedicated per-project channel _(Backlog)_
 - [BK-217](https://jira.upexgalaxy.com/browse/BK-217): Team Chat | Mention a teammate to get their attention _(Backlog)_
 - [BK-218](https://jira.upexgalaxy.com/browse/BK-218): Team Chat | Share an ATC, test, or run as a rich link _(Backlog)_
-- [BK-219](https://jira.upexgalaxy.com/browse/BK-219): Team Chat | Edit and delete my own messages _(Backlog)_
+- [BK-219](https://jira.upexgalaxy.com/browse/BK-219): Team Chat | Edit and delete my own messages _(Estimation)_
 - [BK-220](https://jira.upexgalaxy.com/browse/BK-220): Team Chat | Search the message history _(Backlog)_
 
 ### Epic (1)
@@ -53,7 +40,7 @@ This is the foundation story of the Team Chat epic. Every Workspace gets a gener
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

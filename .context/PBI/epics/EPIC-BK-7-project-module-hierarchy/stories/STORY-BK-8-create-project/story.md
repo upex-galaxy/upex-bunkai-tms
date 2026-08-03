@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 8
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -56,14 +55,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -85,9 +77,9 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/30/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
-- **Assignee:** Nahuel Gomez
+- **Assignee:** Ely
 - **Labels:** hierarchy, mvp, shift-left-2026-05-28, shift-left-reviewed, wave-1
 
 ---

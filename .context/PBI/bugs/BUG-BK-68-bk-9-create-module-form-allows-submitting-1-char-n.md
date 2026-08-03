@@ -4,22 +4,12 @@
 **Priority:** Low
 **Status:** Closed
 **Components:** Project & Module Hierarchy
-**Severity:** Menor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
 ## Description
 
 ACTUAL: The Create Module submit button is enabled when the module name is exactly 1 character. The form submits and the server returns HTTP 422 with reason=name*too*short. isValid check in create-module-form.tsx line 90: `name.trim().length > 0` — only checks non-empty, not >= 2. EXPECTED: Submit should be disabled (or inline error shown) when name.trim().length < 2, matching the API MIN*NAME*LENGTH = 2 constraint. IMPACT: Extra server round-trip; bad UX — user has to wait for server error instead of seeing inline feedback. REPRO: Open New Module form → type 1 character → Submit button is enabled → click → receives 422 error from server. ENVIRONMENT: staging | RELATED: BK-9
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

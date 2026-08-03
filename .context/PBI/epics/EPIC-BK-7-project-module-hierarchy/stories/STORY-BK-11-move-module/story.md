@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 3
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -29,19 +28,6 @@
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
-
----
-
 ## Traceability
 
 ### Story (1)
@@ -53,7 +39,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 6/26/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Nahuel Gomez
 - **Labels:** hierarchy, mvp, wave-1

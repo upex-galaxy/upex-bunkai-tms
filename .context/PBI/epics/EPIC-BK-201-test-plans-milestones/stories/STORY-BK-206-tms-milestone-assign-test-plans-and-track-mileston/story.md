@@ -21,24 +21,11 @@ With plans reporting their own progress and milestones carrying target dates, th
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-
----
-
 ## Traceability
 
 ### Storys (2)
 
-- [BK-205](https://jira.upexgalaxy.com/browse/BK-205): TMS-Milestone | Create a milestone with a target date _(Backlog)_
+- [BK-205](https://jira.upexgalaxy.com/browse/BK-205): TMS-Milestone | Create a milestone with a target date _(Estimation)_
 - [BK-204](https://jira.upexgalaxy.com/browse/BK-204): TMS-Test Plan | Track plan progress from run outcomes _(Backlog)_
 
 ---
@@ -46,7 +33,7 @@ With plans reporting their own progress and milestones carrying target dates, th
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** new-feature, post-mvp

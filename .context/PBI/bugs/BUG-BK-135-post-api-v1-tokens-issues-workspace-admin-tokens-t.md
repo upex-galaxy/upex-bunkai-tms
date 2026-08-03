@@ -4,10 +4,6 @@
 **Priority:** Highest
 **Status:** Closed
 **Components:** Tenancy & Identity
-**Severity:** Crítica
-**Error Type:** Security
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -127,12 +123,6 @@ None available. Admin-scoped PATs already in circulation must be manually revoke
 ## Note
 
 Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK-109) al original (BK-88) según indicación de Ely.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

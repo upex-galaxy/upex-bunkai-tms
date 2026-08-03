@@ -21,33 +21,20 @@ Bunkai Cloud is onboarding paying teams. The Billing section is a new sub-view o
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-
----
-
 ## Traceability
 
 ### Storys (3)
 
 - [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Backlog)_
 - [BK-232](https://jira.upexgalaxy.com/browse/BK-232): Billing | See plan-limit warnings with an upgrade path _(Backlog)_
-- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For Dev)_
+- [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 
 ---
 
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

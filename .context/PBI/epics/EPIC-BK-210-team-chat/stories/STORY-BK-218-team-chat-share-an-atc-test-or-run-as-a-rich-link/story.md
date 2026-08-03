@@ -21,19 +21,6 @@ Chat about QA work constantly references the work itself: "this ATC is flaky", "
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Mockup](./mockup.md)
-
----
-
 ## Traceability
 
 ### Story (1)
@@ -51,7 +38,7 @@ Chat about QA work constantly references the work itself: "this ATC is flaky", "
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/11/2026
+- **Updated:** 7/30/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 
