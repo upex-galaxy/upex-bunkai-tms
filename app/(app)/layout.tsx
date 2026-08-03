@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -26,6 +27,13 @@ async function getShellData() {
 
   let projects: { id: string, slug: string, name: string }[] = [];
   let userRole: MemberRole | null = null;
+  // BK-209 (Slice 3: UI) — the bell badge's initial count, read the same way
+  // every other server-driven shell element here is (a direct RLS-scoped
+  // query/RPC, no round-trip through the API route) so the badge paints
+  // correct on first load instead of a client waterfall. `limit: 1` — only
+  // `unread_count` is needed here; the full item list is fetched lazily by
+  // AppSidebar the first time the panel opens.
+  let unreadCount = 0;
   if (activeWorkspaceId) {
     const { data } = await supabase
       .from('projects')
@@ -46,9 +54,13 @@ async function getShellData() {
         .maybeSingle();
       userRole = (membership?.role as MemberRole | undefined) ?? null;
     }
+
+    const { data: notificationsPage } = await listNotifications(supabase, { workspaceId: activeWorkspaceId, limit: 1 });
+    const page = notificationsPage as { unread_count?: number } | null;
+    unreadCount = page?.unread_count ?? 0;
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole, unreadCount };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -63,6 +75,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           projects={shell.projects}
           userEmail={shell.userEmail}
           userRole={shell.userRole}
+          initialUnreadCount={shell.unreadCount}
         />
         <div className="flex min-h-0 flex-col overflow-hidden">
           {children}
