@@ -37,9 +37,21 @@ export async function performBugStatusTransition(
 ) {
   const { data, error } = await transitionBugStatus(db, args);
   if (error) {
+    // Review fix — 45310's message must NAME the actual next valid stage,
+    // which the RPC error itself doesn't carry. One extra read of the bug's
+    // OWN current status (unchanged, since the RPC aborted before writing),
+    // only on this specific error path — see `mapBugRpcError`'s 45310 case.
+    if (error.code === '45310') {
+      mapBugRpcError(error, { notFoundEntity: 'bug', currentStatus: await fetchBugStatus(db, args.bugId) });
+    }
     mapBugRpcError(error, { notFoundEntity: 'bug' });
   }
   return data;
+}
+
+async function fetchBugStatus(db: SupabaseClient<Database>, bugId: string): Promise<string | undefined> {
+  const { data } = await db.from('bugs').select('status').eq('id', bugId).maybeSingle();
+  return data?.status;
 }
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {

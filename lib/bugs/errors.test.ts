@@ -16,7 +16,7 @@ import { describe, expect, test } from 'bun:test';
 // code/status/message/details.
 function capture(
   error: { code?: string, message: string },
-  opts?: { notFoundEntity?: 'project_or_module' | 'bug' },
+  opts?: { notFoundEntity?: 'project_or_module' | 'bug', currentStatus?: string },
 ): ApiError {
   try {
     mapBugRpcError(error, opts);
@@ -59,11 +59,37 @@ describe('mapBugRpcError', () => {
     expect(err.details).toEqual({ reason: 'status_transition_skipped' });
   });
 
+  // Review fix — the AC ("Skipping a lifecycle stage is rejected") requires
+  // the message to NAME the actual required next stage, not just state the
+  // general rule. `currentStatus` is what the caller (performBugStatusTransition)
+  // re-derives client-side and passes in on this specific error path.
+  test('BK-264 review fix: 45310 with currentStatus "open" pins the literal message naming "in_progress" as the required next stage', () => {
+    const err = capture({ code: '45310', message: 'bug_status_transition_skipped' }, { currentStatus: 'open' });
+    expect(err.message).toBe('A bug must move to \'in_progress\' first.');
+  });
+
+  test('BK-264 review fix: 45310 with currentStatus "resolved" pins the literal message naming "closed" as the required next stage', () => {
+    const err = capture({ code: '45310', message: 'bug_status_transition_skipped' }, { currentStatus: 'resolved' });
+    expect(err.message).toBe('A bug must move to \'closed\' first.');
+  });
+
+  test('BK-264 review fix: 45310 without currentStatus falls back to the generic message (defensive — the caller should always supply it)', () => {
+    const err = capture({ code: '45310', message: 'bug_status_transition_skipped' });
+    expect(err.message).toBe('A bug can only move forward one status stage at a time.');
+  });
+
   test('BK-264: 45311 → validation_failed 422 (bug_status_transition_backward)', () => {
     const err = capture({ code: '45311', message: 'bug_status_transition_backward' });
     expect(err.code).toBe('validation_failed');
     expect(err.status).toBe(422);
     expect(err.details).toEqual({ reason: 'status_transition_backward' });
+  });
+
+  // Review fix — pins the literal message text for the backward-move case too
+  // (previously only `details.reason` was asserted for either 45310/45311).
+  test('BK-264 review fix: 45311 pins the literal message text', () => {
+    const err = capture({ code: '45311', message: 'bug_status_transition_backward' });
+    expect(err.message).toBe('A bug\'s status cannot move backward.');
   });
 
   test('BK-264: 45312 → validation_failed 422 (bug_assignee_not_workspace_member)', () => {

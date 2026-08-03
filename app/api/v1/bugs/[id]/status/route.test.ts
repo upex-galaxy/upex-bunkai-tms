@@ -26,12 +26,26 @@ const BUG_ID = '11111111-1111-4111-8111-111111111111';
 
 interface RpcCall { fn: string, args: unknown }
 
-function fakeRpcDb(response: { data: unknown, error: { code?: string, message: string } | null }, calls: RpcCall[] = []): SupabaseClient<Database> {
+// `currentStatus`, when given, backs the `.from('bugs').select('status')...`
+// follow-up read `performBugStatusTransition` issues ONLY on the 45310 error
+// path (review fix — see route.ts + lib/bugs/errors.ts's 45310 case).
+function fakeRpcDb(
+  response: { data: unknown, error: { code?: string, message: string } | null },
+  calls: RpcCall[] = [],
+  currentStatus?: string,
+): SupabaseClient<Database> {
   return {
     rpc: async (fn: string, args: unknown) => {
       calls.push({ fn, args });
       return response;
     },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: currentStatus ? { status: currentStatus } : null, error: null }),
+        }),
+      }),
+    }),
   } as unknown as SupabaseClient<Database>;
 }
 
@@ -65,8 +79,8 @@ describe('performBugStatusTransition', () => {
     expect(calls[0].args).toEqual({ p_bug_id: BUG_ID, p_new_status: to });
   });
 
-  it('skip-stage transition (45310) maps to 422 validation_failed with a skip-specific reason', async () => {
-    const db = fakeRpcDb({ data: null, error: { code: '45310', message: 'bug_status_transition_skipped' } });
+  it('skip-stage transition (45310) maps to 422 validation_failed, naming the actual next required stage', async () => {
+    const db = fakeRpcDb({ data: null, error: { code: '45310', message: 'bug_status_transition_skipped' } }, [], 'open');
     try {
       await performBugStatusTransition(db, { bugId: BUG_ID, newStatus: 'resolved' });
       throw new Error('expected to throw');
@@ -76,6 +90,7 @@ describe('performBugStatusTransition', () => {
       expect((err as InstanceType<typeof ApiError>).code).toBe('validation_failed');
       expect((err as InstanceType<typeof ApiError>).status).toBe(422);
       expect((err as InstanceType<typeof ApiError>).details).toEqual({ reason: 'status_transition_skipped' });
+      expect((err as InstanceType<typeof ApiError>).message).toBe('A bug must move to \'in_progress\' first.');
     }
   });
 

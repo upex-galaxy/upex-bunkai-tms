@@ -1,4 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { BUG_STATUS_VALUES } from '@lib/bugs/constants';
 
 // BK-40 — map a bunkai_create_bug / bunkai_list_project_bugs RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise the bugs-
@@ -18,7 +19,7 @@ import { ApiError } from '@lib/api/error-envelope';
 // site (`mapBugRpcError(error)`, no options) keeps its exact prior behavior.
 export function mapBugRpcError(
   error: { code?: string, message: string },
-  opts: { notFoundEntity?: 'project_or_module' | 'bug' } = {},
+  opts: { notFoundEntity?: 'project_or_module' | 'bug', currentStatus?: string } = {},
 ): never {
   switch (error.code) {
     case '42501':
@@ -39,12 +40,31 @@ export function mapBugRpcError(
       throw new ApiError('not_found', 'Project or module not found.', {
         details: { reason: 'not_found' },
       });
-    case '45310':
+    case '45310': {
       // BK-264 — bunkai_transition_bug_status: the target status is more than
       // one lifecycle stage ahead of the current one (e.g. open -> resolved).
-      throw new ApiError('validation_failed', 'A bug can only move forward one status stage at a time.', {
+      //
+      // Review fix — the AC requires the message to NAME the actual required
+      // next stage (e.g. "must move to 'in_progress' first"), not just state
+      // the general rule. The RPC's raised exception carries no DETAIL/HINT
+      // with that info (0054_bug_assignment_status.sql's `raise exception ...
+      // using errcode = '45310'` sets no further payload), so the caller
+      // re-derives it here from the bug's own current status (unchanged,
+      // since the transition aborted before writing — see
+      // performBugStatusTransition, which fetches it only on this error
+      // path). BUG_STATUS_VALUES' array order IS the same rank table
+      // bunkai_transition_bug_status uses (open=1 .. closed=4), so the next
+      // valid stage is simply the following array element.
+      const currentIndex = opts.currentStatus
+        ? BUG_STATUS_VALUES.indexOf(opts.currentStatus as (typeof BUG_STATUS_VALUES)[number])
+        : -1;
+      const nextStage = currentIndex >= 0 ? BUG_STATUS_VALUES[currentIndex + 1] : undefined;
+      throw new ApiError('validation_failed', nextStage
+        ? `A bug must move to '${nextStage}' first.`
+        : 'A bug can only move forward one status stage at a time.', {
         details: { reason: 'status_transition_skipped' },
       });
+    }
     case '45311':
       // BK-264 — bunkai_transition_bug_status: the target status is not
       // strictly ahead of the current one (backward move, or a same-status
