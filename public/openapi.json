@@ -3803,6 +3803,36 @@
           "created_at",
           "entity_available"
         ]
+      },
+      "MarkNotificationReadResponse": {
+        "type": "object",
+        "properties": {
+          "notification": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "read_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "required": ["id", "read_at"]
+          }
+        },
+        "required": ["notification"]
+      },
+      "MarkAllNotificationsReadResponse": {
+        "type": "object",
+        "properties": {
+          "updated_count": {
+            "type": "integer",
+            "description": "How many previously-unread notifications were just marked read. 0 is a valid, successful result (e.g. a repeat call, or an already-empty inbox) — never an error."
+          }
+        },
+        "required": ["updated_count"]
       }
     },
     "parameters": {}
@@ -9344,6 +9374,132 @@
           },
           "422": {
             "description": "Validation failed — workspace id not a UUID, or `limit` outside 1..50 (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark one notification read",
+        "description": "Marks one of the caller's own notifications read. Plain RLS-scoped update, no RPC — `notifications_update_recipient_member` (migration 0053_notifications.sql) is the entire authorization surface, so a foreign id or another recipient's row is indistinguishable from a nonexistent one (404, non-disclosing). Idempotent: marking an already-read notification succeeds again rather than erroring.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The notification is now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkNotificationReadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The id is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification not found, not the caller's own, or the caller lost workspace membership (`not_found`, non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/notifications/read-all": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark every visible unread notification read, for one workspace",
+        "description": "Marks all of the caller's own unread notifications in one workspace read. Plain RLS-scoped bulk update, no RPC — `notifications_update_recipient_member` (migration 0053_notifications.sql) is the entire authorization surface. Scoped to exactly ONE workspace (the path `id`) — never cross-workspace, per the PO-ratified business rule. Idempotent: a repeat call updates zero rows and still returns 200 with `updated_count: 0`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every visible unread notification in this workspace is now marked read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllNotificationsReadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
