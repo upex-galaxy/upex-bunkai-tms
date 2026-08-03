@@ -2,6 +2,7 @@
 
 import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
 import { NotificationRow } from '@components/notifications/NotificationRow';
+import { groupNotificationsByDay } from '@lib/notifications/group-by-day';
 import {
   formatUnreadSummary,
   resolveNotificationsViewState,
@@ -110,14 +111,28 @@ export function NotificationsPanel({
 
         {state === 'rows' && (
           <div data-testid="notifications_list">
-            {items.map(item => (
-              <NotificationRow
-                key={item.id}
-                notification={item}
-                marking={markingIds.has(item.id)}
-                onMarkRead={() => onMarkOneRead(item)}
-                onOpen={() => onRowActivate(item)}
-              />
+            {/* Design intent (business-rules.md): "items grouped by day
+                (Today, Yesterday, then dates)" — `items` already arrives
+                newest-first from the RPC, so grouping only buckets, it
+                never re-sorts. */}
+            {groupNotificationsByDay(items).map(group => (
+              <div key={group.label} data-testid="notifications_day_group">
+                <div
+                  data-testid="notifications_day_group_label"
+                  className="border-b border-stroke-1 bg-surface-1 px-4 py-1.5 text-2xs font-medium uppercase tracking-[0.06em] text-fg-3"
+                >
+                  {group.label}
+                </div>
+                {group.items.map(item => (
+                  <NotificationRow
+                    key={item.id}
+                    notification={item}
+                    marking={markingIds.has(item.id)}
+                    onMarkRead={() => onMarkOneRead(item)}
+                    onOpen={() => onRowActivate(item)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}
