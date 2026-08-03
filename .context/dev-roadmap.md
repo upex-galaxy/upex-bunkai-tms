@@ -160,11 +160,14 @@ BK-221 Automation & CI Ingestion:
   BK-227 Automation status ──> BK-27
 
 BK-208 Notifications Center:
-  BK-209 Inbox ──> (free — first buildable story of the cluster)
-  BK-211 Run events ──> BK-209, BK-39, BK-36
-  BK-212 Bug events ──> BK-209, epic BK-31
-  BK-213 Preferences ──> BK-209, BK-87
-  BK-214 Email digest ──> BK-209  ··> BK-213
+  BK-209 Inbox ✅ dev-done (2026-08-03) — merged to staging via PR #113 (feat/BK-209-notifications-inbox); notifications table+RLS+RPC, inbox API, bell/panel UI, realtime wiring. Ready For QA.
+  BK-211 Run events ──> BK-209 ✅, BK-39, BK-36
+  BK-212 Bug events ──> BK-209 ✅, BK-264 ✅ (added below — the epic BK-31 edge resolved to a concrete prerequisite story once planning found bug assignment/status-transition had no ticket at all)
+  BK-213 Preferences ──> BK-209 ✅, BK-87
+  BK-214 Email digest ──> BK-209 ✅  ··> BK-213
+
+BK-31 Bugs & Defect Heatmap (addendum, 2026-08-03):
+  BK-264 TMS-Defect Triage (assign + status transition) ✅ dev-done (2026-08-03) — merged to staging via PR #114 (feat/BK-264-defect-triage); discovered mid-sprint as the missing prerequisite for BK-212 (bugs table had no assignee column and no status-transition write path). Linked as a Dependencies predecessor of BK-212 in Jira. Ready For QA.
 
 BK-210 Team Chat:
   BK-215 Workspace channel ──> epic BK-1   (gate for the whole epic)
