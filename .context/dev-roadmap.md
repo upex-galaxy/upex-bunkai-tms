@@ -162,7 +162,7 @@ BK-221 Automation & CI Ingestion:
 BK-208 Notifications Center:
   BK-209 Inbox ✅ dev-done (2026-08-03) — merged to staging via PR #113 (feat/BK-209-notifications-inbox); notifications table+RLS+RPC, inbox API, bell/panel UI, realtime wiring. Ready For QA.
   BK-211 Run events ──> BK-209 ✅, BK-39, BK-36
-  BK-212 Bug events ──> BK-209 ✅, BK-264 ✅ (added below — the epic BK-31 edge resolved to a concrete prerequisite story once planning found bug assignment/status-transition had no ticket at all)
+  BK-212 Bug events ✅ dev-done (2026-08-03) — merged to staging via PR #115 (feat/BK-212-bug-notifications); activity_log-driven notify trigger + inbox rendering + deep link into run detail. Depended on BK-209 ✅ and BK-264 ✅ (added below — the epic BK-31 edge resolved to a concrete prerequisite story once planning found bug assignment/status-transition had no ticket at all). Ready For QA.
   BK-213 Preferences ──> BK-209 ✅, BK-87
   BK-214 Email digest ──> BK-209 ✅  ··> BK-213
 
