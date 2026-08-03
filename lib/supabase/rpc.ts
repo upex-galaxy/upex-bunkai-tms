@@ -477,6 +477,28 @@ export async function reportProjectRecoveryCycles(supabase: Client, args: Report
   });
 }
 
+// BK-42 — read a Project's per-module defect heatmap (count over the chosen
+// window + week-over-week trend). Same explicit-actor contract as
+// reportProjectRuns/reportProjectCoverage/reportProjectRecoveryCycles; the
+// SECURITY DEFINER RPC resolves the Project's workspace and gates the
+// actor's active membership (any role — a viewer reads). No pagination — a
+// whole-project, unpaged read (0052_defect_heatmap_report.sql). Returns
+// `{ window, generated_at, items }` raw (no heat bucket / trend derivation)
+// — lib/metrics/defect-heatmap.ts derives everything else.
+export interface ReportProjectDefectHeatmapArgs {
+  actorUserId: string
+  projectId: string
+  window: '7d' | '30d' | '90d'
+}
+
+export async function reportProjectDefectHeatmap(supabase: Client, args: ReportProjectDefectHeatmapArgs) {
+  return supabase.rpc('bunkai_report_project_defect_heatmap', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_window: args.window,
+  });
+}
+
 // BK-148 — manage a Project's environments via the SECURITY DEFINER RPCs. Same
 // explicit-actor contract as the other wrappers (PAT/cookie callers resolve to a
 // user id the route passes in); each RPC gates member+ write access on the
@@ -570,6 +592,46 @@ export async function listProjectBugs(supabase: Client, args: { actorUserId: str
   return supabase.rpc('bunkai_list_project_bugs', {
     p_actor_user_id: args.actorUserId,
     p_project_id: args.projectId,
+  });
+}
+
+// BK-41 — filtered, paginated, aggregate-bearing read of a Project's bugs
+// (migration 0051_bugs_list.sql). UNLIKE `createBug`/`listProjectBugs`,
+// `bunkai_list_bugs` is SECURITY INVOKER and takes NO explicit actor param —
+// same shape as `listActivity` below. It runs its SELECT under the CALLING
+// role, so RLS's `bugs_select_workspace_member` (0046_bugs.sql) evaluates
+// against the caller's own auth.uid(). The `supabase` argument passed here
+// MUST be the caller's own RLS-scoped client (`getAuth(ctx).db`) — NEVER
+// `createAdminClient()`. An admin client has no authenticated auth.uid(),
+// which would make that RLS check moot and reopen the exact cross-project
+// leak `lib/bugs/list-isolation.test.ts` exists to prove closed.
+export interface ListBugsArgs {
+  projectId: string
+  moduleId?: string | null
+  statuses?: string[] | null
+  severities?: string[] | null
+  limit?: number
+  cursorSeverity?: string | null
+  cursorCreatedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listBugs(supabase: Client, args: ListBugsArgs) {
+  return supabase.rpc('bunkai_list_bugs', {
+    p_project_id: args.projectId,
+    // Every param below is OPTIONAL on the RPC signature (`p_module_id?:
+    // string`, etc — migration 0051's own `default null` params), so the
+    // generated type accepts `undefined`, never `null` (mirrors
+    // `searchAtcs`'s own `?? undefined` pattern for the same optional-param
+    // shape) — unlike `createBug`'s NOT-null-typed-but-null-accepting params,
+    // which use the `(x ?? null) as string` cast instead.
+    p_module_id: args.moduleId ?? undefined,
+    p_statuses: args.statuses ?? undefined,
+    p_severities: args.severities ?? undefined,
+    p_limit: args.limit ?? undefined,
+    p_cursor_severity: args.cursorSeverity ?? undefined,
+    p_cursor_created_at: args.cursorCreatedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
   });
 }
 

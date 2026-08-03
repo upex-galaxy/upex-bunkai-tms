@@ -1,8 +1,8 @@
 # BK-41 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
-```gherkin
+```
 # BK-41 - TMS-Defect List | List and filter defects by module, status, severity
 # Endpoint under test: GET /api/v1/bugs
 # Auth: PAT scope bugs:read; RLS via project_membership

@@ -12,6 +12,18 @@ import { BUG_SEVERITY_LABEL } from '@lib/bugs/constants';
 
 export type BugListViewState = 'empty' | 'rows';
 
+// BK-41 — the `bunkai_list_bugs` RPC's aggregate shape (migration
+// 0051_bugs_list.sql: `by_severity`/`by_status`, computed over the FULL
+// filtered set, never just the current page — AC-6/ATP-7). Lives here
+// (rather than only in the API layer) so the eventual filter-chips/counts
+// panel (Slice 3, `BugsListView.tsx`) and the API's own response shaping
+// (`app/api/v1/bugs/list-response.ts`) share ONE type instead of two
+// independently-maintained copies.
+export interface BugAggregates {
+  by_severity: Record<BugSeverity, number>
+  by_status: Record<BugStatus, number>
+}
+
 // BK-40 Slice 3 — status/severity -> the live `.status-chip`/`.dot`
 // `data-status` tokens (`app/globals.css`), same substitution shape
 // RunHistoryView/RunnerView already establish for their own domains. Tone
