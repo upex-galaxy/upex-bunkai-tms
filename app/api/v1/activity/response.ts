@@ -4,7 +4,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ACTIVITY_ALLOWED_ACTIONS } from '@lib/activity/constants';
 import { encodeActivityCursor } from '@lib/activity/history-validation';
-import { ACTION_LABELS } from '@lib/activity/labels';
+import { resolveActionLabel } from '@lib/activity/labels';
 import { ApiError } from '@lib/api/error-envelope';
 import { listActivity, resolveActivityActors } from '@lib/supabase/rpc';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -158,18 +158,40 @@ function nonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
-// Maps one RPC row + its already-resolved actor email (or null — AC1 1.5's
-// "a workspace member" UI fallback is a presentation concern of Slice 3, not
-// this response shape) into the wire item. `payload` passes through
+// BK-264 (Slice 4) — the ONE payload field `bug.assigned` / `bug.reassigned`'s
+// action_label needs resolved to an email: the NEW assignee (migration
+// 0054's `assignee_user_id`). `bug.unassigned` / `bug.status_changed` never
+// need this (their label carries no assignee fragment — see
+// `lib/activity/labels.ts`), so this returns null for every other action
+// rather than resolving an id nothing will render.
+function resolveAssigneeUserId(row: Pick<ActivityRpcRow, 'action' | 'payload'>): string | null {
+  if (row.action !== 'bug.assigned' && row.action !== 'bug.reassigned') {
+    return null;
+  }
+  return nonEmptyString(row.payload.assignee_user_id);
+}
+
+export interface BuildActivityItemParams {
+  row: ActivityRpcRow
+  actorEmail: string | null
+  // The row's assignee email, already resolved by the caller through the
+  // SAME ADR-0011 batch as `actorEmail` (see `fetchActivityPage` below) —
+  // null for every action that has no assignee to show.
+  assigneeEmail: string | null
+}
+
+// Maps one RPC row + its already-resolved actor/assignee email (or null —
+// AC1 1.4/1.5's "a workspace member" UI fallback is a presentation concern,
+// not this response shape) into the wire item. `payload` passes through
 // UNCHANGED from the RPC row — this function does not re-derive or re-filter
 // it; the allowlist projection is owned entirely by migration 0045's SQL
 // (single source of truth, not duplicated in TypeScript).
-export function buildActivityItem(row: ActivityRpcRow, actorEmail: string | null): ActivityItemResponse {
+export function buildActivityItem({ row, actorEmail, assigneeEmail }: BuildActivityItemParams): ActivityItemResponse {
   return {
     id: row.id,
     entity_type: row.entity_type,
     action: row.action,
-    action_label: ACTION_LABELS[row.action as ActivityAction] ?? row.action,
+    action_label: resolveActionLabel({ action: row.action, payload: row.payload, assigneeEmail }),
     actor: { user_id: row.actor_user_id, email: row.actor_user_id ? actorEmail : null },
     item: { label: deriveItemLabel(row), entity_id: row.entity_id },
     payload: row.payload,
@@ -195,11 +217,13 @@ export interface ActivityPageResponse {
 
 // `db` MUST be the caller's own RLS-scoped client (`getAuth(ctx).db`) — see
 // the extensive comment on `listActivity` in `lib/supabase/rpc.ts` for why
-// (Risk R2). Batch-resolves actors ONLY for the page's distinct non-null
-// `actor_user_id`s, and skips `bunkai_resolve_activity_actors` entirely when
-// that set is empty (API design step 5) — which is also why a foreign,
-// RLS-emptied `workspace_id` never reaches the actor-resolver at all: zero
-// rows means zero actor ids to resolve.
+// (Risk R2). Batch-resolves users ONLY for the page's distinct non-null
+// `actor_user_id`s PLUS (BK-264, Slice 4) any `bug.assigned` / `bug.reassigned`
+// row's `assignee_user_id` — ONE `bunkai_resolve_activity_actors` call
+// (ADR-0011) covers both, never a second resolver — and skips it entirely
+// when that combined set is empty (API design step 5) — which is also why a
+// foreign, RLS-emptied `workspace_id` never reaches the resolver at all: zero
+// rows means zero ids to resolve.
 export async function fetchActivityPage(
   db: SupabaseClient<Database>,
   params: FetchActivityPageParams,
@@ -218,27 +242,32 @@ export async function fetchActivityPage(
   const payload = data as unknown as ActivityRpcPayload;
   const rows = payload.items ?? [];
 
-  const actorIds = [...new Set(
-    rows.map(row => row.actor_user_id).filter((id): id is string => id !== null),
-  )];
+  const actorIds = rows.map(row => row.actor_user_id).filter((id): id is string => id !== null);
+  const assigneeIds = rows.map(row => resolveAssigneeUserId(row)).filter((id): id is string => id !== null);
+  const userIds = [...new Set([...actorIds, ...assigneeIds])];
 
-  const actorEmailById = new Map<string, string | null>();
-  if (actorIds.length > 0) {
+  const emailById = new Map<string, string | null>();
+  if (userIds.length > 0) {
     const { data: actors, error: actorsError } = await resolveActivityActors(db, {
       workspaceId: params.workspaceId,
-      userIds: actorIds,
+      userIds,
     });
     if (actorsError) {
       mapActivityRpcError(actorsError);
     }
     for (const actor of actors ?? []) {
-      actorEmailById.set(actor.user_id, actor.email);
+      emailById.set(actor.user_id, actor.email);
     }
   }
 
-  const items = rows.map(row =>
-    buildActivityItem(row, row.actor_user_id ? (actorEmailById.get(row.actor_user_id) ?? null) : null),
-  );
+  const items = rows.map((row) => {
+    const assigneeUserId = resolveAssigneeUserId(row);
+    return buildActivityItem({
+      row,
+      actorEmail: row.actor_user_id ? (emailById.get(row.actor_user_id) ?? null) : null,
+      assigneeEmail: assigneeUserId ? (emailById.get(assigneeUserId) ?? null) : null,
+    });
+  });
 
   return {
     items,
