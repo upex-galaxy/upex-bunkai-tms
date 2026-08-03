@@ -699,6 +699,50 @@ export interface Database {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_environments: {
         Row: {
           created_at: string
@@ -1422,6 +1466,15 @@ export interface Database {
           p_project_id: string
           p_severities?: string[]
           p_statuses?: string[]
+        }
+        Returns: Json
+      }
+      bunkai_list_notifications: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_limit?: number
+          p_workspace_id: string
         }
         Returns: Json
       }
