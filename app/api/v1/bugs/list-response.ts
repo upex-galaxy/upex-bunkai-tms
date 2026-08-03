@@ -4,7 +4,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
 import { encodeBugsCursor } from '@lib/bugs/list-cursor';
-import { listBugs } from '@lib/supabase/rpc';
+import { listBugs, resolveActivityActors } from '@lib/supabase/rpc';
 
 // BK-41 (Slice 2: API) — dependency-free / DB-parametrized logic for
 // GET /api/v1/bugs, split out of `route.ts` so the visibility gate, the
@@ -121,9 +121,26 @@ export interface BugsListRpcRow {
   description: string | null
   steps_to_reproduce: string
   evidence_urls: string[]
+  // BK-264 — added to the RPC's own composed json in migration
+  // 0054_bug_assignment_status.sql (Slice 1). Raw pass-through; the wire
+  // ITEM below additionally carries a resolved `assignee` display object.
+  assignee_user_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+// BK-264 (Slice 2) — the resolved-display-info shape for one row's
+// `assignee_user_id`, mirrors `ActivityItemResponse.actor` in
+// `app/api/v1/activity/response.ts`. `null` whenever the row itself is
+// unassigned.
+export interface BugsListAssignee {
+  user_id: string
+  email: string | null
+}
+
+export interface BugsListItemResponse extends BugsListRpcRow {
+  assignee: BugsListAssignee | null
 }
 
 // Reuses `lib/bugs/list-view.ts`'s `BugAggregates` type — ONE shape shared
@@ -141,7 +158,7 @@ interface BugsListRpcPayload {
 }
 
 export interface BugsListPageResponse {
-  data: BugsListRpcRow[]
+  data: BugsListItemResponse[]
   aggregates: BugAggregates
   next_cursor: string | null
 }
@@ -190,9 +207,50 @@ export async function fetchBugsListPage(
   }
 
   const payload = data as unknown as BugsListRpcPayload;
+  const rows = payload.data ?? [];
+
+  // BK-264 — resolve assignee display info the SAME way GET /api/v1/activity
+  // resolves actor display info (ADR-0011): batch-resolve ONLY the page's
+  // distinct non-null `assignee_user_id`s, and skip the resolver call
+  // entirely when that set is empty (mirrors `fetchActivityPage`'s own
+  // early-out in app/api/v1/activity/response.ts). `bunkai_resolve_activity_
+  // actors` is workspace-scoped and generic to any user id despite its
+  // activity-era name (ADR-0011's own "reusable pattern" follow-up note) — no
+  // second, divergent user-resolution RPC is introduced here. The workspace
+  // id comes from the rows themselves (every bug in one page shares the SAME
+  // project, hence the same workspace) rather than a second round trip.
+  const assigneeIds = [...new Set(
+    rows.map(row => row.assignee_user_id).filter((id): id is string => id !== null),
+  )];
+
+  const assigneeEmailById = new Map<string, string | null>();
+  if (assigneeIds.length > 0) {
+    const { data: assignees, error: resolveError } = await resolveActivityActors(db, {
+      workspaceId: rows[0].workspace_id,
+      userIds: assigneeIds,
+    });
+    if (resolveError) {
+      // Practically unreachable: `bunkai_resolve_activity_actors` only
+      // rejects a caller who is not a member of the given workspace, and this
+      // point is only ever reached with rows this SAME caller's own
+      // RLS-scoped `bunkai_list_bugs` call already returned — mirrors
+      // `mapActivityRpcError`'s own note on this RPC's 42501 backstop.
+      throw new ApiError('internal_error', resolveError.message);
+    }
+    for (const assignee of assignees ?? []) {
+      assigneeEmailById.set(assignee.user_id, assignee.email);
+    }
+  }
+
+  const items: BugsListItemResponse[] = rows.map(row => ({
+    ...row,
+    assignee: row.assignee_user_id
+      ? { user_id: row.assignee_user_id, email: assigneeEmailById.get(row.assignee_user_id) ?? null }
+      : null,
+  }));
 
   return {
-    data: payload.data,
+    data: items,
     aggregates: payload.aggregates,
     next_cursor: payload.next_cursor === null
       ? null

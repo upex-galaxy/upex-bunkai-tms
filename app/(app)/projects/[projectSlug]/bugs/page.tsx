@@ -3,6 +3,8 @@ import { fetchBugsListPage } from '@app/api/v1/bugs/list-response';
 import { BugsListSkeleton, BugsListView } from '@components/bugs/BugsListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { BUGS_LIST_PAGE_SIZE } from '@lib/bugs/constants';
+import { createAdminClient } from '@lib/supabase/admin';
+import { resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -85,6 +87,50 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
     canCreateBug = membership != null && membership.role !== 'viewer';
   }
 
+  // BK-264 — every active member of the current workspace, feeding the List
+  // view's own Assignee picker (a bug can only be assigned to a workspace
+  // member — assigning outside this set is what the assign RPC's own
+  // 45312/45313 rejections exist for).
+  //
+  // Admin client, deliberately: `workspace_members_select_self_or_admin`
+  // (0001_tenancy.sql) lets a caller see ONLY their own row unless they are
+  // themselves admin/owner — a plain 'member' (e.g. this story's own "Mateo
+  // Silva, QA Lead" persona) would otherwise see just themselves in this
+  // picker and could never assign a bug to a teammate (discovered live during
+  // this slice's own UI validation — the roster silently collapsed to one row
+  // under a member-role test identity). `activeWorkspaceId` above is already
+  // an RLS-PROVEN membership (resolved from the caller's own RLS-scoped
+  // `workspaces` query earlier in this function) before this admin read ever
+  // runs, so scoping strictly to that workspace_id discloses nothing a
+  // non-member could reach. `workspace_members` carries no email column, so
+  // display info is batch-resolved through the SAME `bunkai_resolve_activity_
+  // actors` RPC the list response itself already uses for the `assignee`
+  // field on each row (ADR-0011's "reusable pattern" note) — called through
+  // the caller's OWN RLS-scoped client below (that RPC's SECURITY DEFINER
+  // membership check reads auth.uid(), which the admin client has none of).
+  const { data: memberRows } = await createAdminClient()
+    .from('workspace_members')
+    .select('user_id, role')
+    .eq('workspace_id', activeWorkspaceId)
+    .eq('status', 'active')
+    .order('joined_at', { ascending: true });
+  const memberUserIds = (memberRows ?? []).map(m => m.user_id);
+  const memberEmailById = new Map<string, string | null>();
+  if (memberUserIds.length > 0) {
+    const { data: resolvedMembers } = await resolveActivityActors(supabase, {
+      workspaceId: activeWorkspaceId,
+      userIds: memberUserIds,
+    });
+    for (const resolved of resolvedMembers ?? []) {
+      memberEmailById.set(resolved.user_id, resolved.email);
+    }
+  }
+  const workspaceMembers = (memberRows ?? []).map(m => ({
+    user_id: m.user_id,
+    role: m.role,
+    email: memberEmailById.get(m.user_id) ?? null,
+  }));
+
   const EMPTY_PAGE: BugsListPageResponse = {
     data: [],
     aggregates: { by_severity: { P1: 0, P2: 0, P3: 0, P4: 0 }, by_status: { open: 0, in_progress: 0, resolved: 0, closed: 0 } },
@@ -117,6 +163,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
         projectId={project.id}
         modules={modules}
         canCreateBug={canCreateBug}
+        workspaceMembers={workspaceMembers}
         initialPage={page}
       />
     );
@@ -127,6 +174,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
         projectId={project.id}
         modules={modules}
         canCreateBug={canCreateBug}
+        workspaceMembers={workspaceMembers}
         initialPage={EMPTY_PAGE}
         initialError="Could not load this Project's bugs."
       />

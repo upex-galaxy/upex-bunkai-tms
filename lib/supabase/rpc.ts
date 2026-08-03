@@ -664,6 +664,41 @@ export async function listActivity(supabase: Client, args: ListActivityArgs) {
   });
 }
 
+// BK-264 — assign / reassign / unassign a bug via the SECURITY DEFINER RPC
+// (migration 0054_bug_assignment_status.sql). UNLIKE createBug/listProjectBugs,
+// this RPC takes NO p_actor_user_id — it reads auth.uid() directly and is
+// GRANTED TO `authenticated` ONLY (no `service_role` grant). The `supabase`
+// argument passed here MUST therefore be the caller's own RLS-scoped client
+// (`getAuth(ctx).db`) — NEVER `createAdminClient()`, which would either fail
+// outright (service_role holds no EXECUTE on this function) or, if it ever
+// somehow ran, see a NULL auth.uid() and always fail the write-role gate.
+// `assigneeUserId: null` unassigns; omitting the RPC arg (via `?? undefined`)
+// lets Postgres apply the function's own `default null`, same shape as
+// `listBugs`'s optional params.
+export async function assignBug(
+  supabase: Client,
+  args: { bugId: string, assigneeUserId: string | null },
+) {
+  return supabase.rpc('bunkai_assign_bug', {
+    p_bug_id: args.bugId,
+    p_assignee_user_id: args.assigneeUserId ?? undefined,
+  });
+}
+
+// BK-264 — advance a bug's status one lifecycle stage at a time via the
+// SECURITY DEFINER RPC (migration 0054_bug_assignment_status.sql). Same
+// no-p_actor_user_id / `authenticated`-only shape as assignBug above — same
+// caller's-own-RLS-scoped-client requirement applies.
+export async function transitionBugStatus(
+  supabase: Client,
+  args: { bugId: string, newStatus: string },
+) {
+  return supabase.rpc('bunkai_transition_bug_status', {
+    p_bug_id: args.bugId,
+    p_new_status: args.newStatus,
+  });
+}
+
 // BK-49 — batch-resolve actor emails for one page of activity rows
 // (ADR-0011). SECURITY DEFINER: asserts the CALLER's own co-membership of
 // `workspaceId` in-band (auth.uid(), non-spoofable, no explicit actor param)

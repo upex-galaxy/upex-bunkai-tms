@@ -3314,7 +3314,7 @@
           "status": {
             "type": "string",
             "enum": ["open", "in_progress", "resolved", "closed"],
-            "description": "BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories."
+            "description": "BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories. BK-264 adds POST /api/v1/bugs/{id}/status to advance it one stage at a time."
           },
           "description": {
             "type": ["string", "null"]
@@ -3329,6 +3329,11 @@
               "format": "uri"
             },
             "maxItems": 10
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "BK-264 — the workspace member currently assigned to this bug, or null if unassigned. Always null immediately after creation (BK-40 never accepts an assignee at filing time). Set via POST /api/v1/bugs/{id}/assign."
           },
           "created_by": {
             "type": ["string", "null"],
@@ -3358,6 +3363,7 @@
           "description",
           "steps_to_reproduce",
           "evidence_urls",
+          "assignee_user_id",
           "created_by",
           "created_at",
           "updated_at"
@@ -3456,9 +3462,9 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Bug"
+              "$ref": "#/components/schemas/BugListItem"
             },
-            "description": "The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5)."
+            "description": "The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5). Each item carries a resolved `assignee` (BK-264), the same way GET /api/v1/activity resolves actor display info."
           },
           "aggregates": {
             "$ref": "#/components/schemas/BugsAggregates"
@@ -3469,6 +3475,37 @@
           }
         },
         "required": ["data", "aggregates", "next_cursor"]
+      },
+      "BugListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Bug"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assignee": {
+                "$ref": "#/components/schemas/BugAssignee"
+              }
+            },
+            "required": ["assignee"]
+          }
+        ]
+      },
+      "BugAssignee": {
+        "type": ["object", "null"],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "format": "email"
+          }
+        },
+        "required": ["user_id", "email"],
+        "description": "Resolved display info for `assignee_user_id`, or null when unassigned."
       },
       "BugsAggregates": {
         "type": "object",
@@ -3511,6 +3548,27 @@
           }
         },
         "required": ["by_severity", "by_status"]
+      },
+      "BugAssignBody": {
+        "type": "object",
+        "properties": {
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The workspace member to assign this bug to, or null to unassign. Must be an active, non-viewer member of the bug's own workspace."
+          }
+        },
+        "required": ["assignee_user_id"]
+      },
+      "BugStatusTransitionBody": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "closed"]
+          }
+        },
+        "required": ["status"]
       },
       "BugListResponse": {
         "type": "object",
@@ -8961,6 +9019,214 @@
           },
           "422": {
             "description": "Validation failed — missing/invalid `project_id`, an unrecognized `status`/`severity` value, `limit` outside 1..50, or `module_id` outside `project_id` (`module_not_in_project`, disclosed only once `project_id` is confirmed visible).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bugs/{id}/assign": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "Assign, reassign, or unassign a bug",
+        "description": "Bearer `atc:write` (or cookie session); member+ write access. `bunkai_assign_bug` (migration 0054) is a no-op (no new activity row) when the requested assignee is already the current one. Emits `bug.assigned` / `bug.reassigned` / `bug.unassigned` depending on the prior state.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugAssignBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bug assignment updated. Returns the updated Bug.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bug": {
+                      "$ref": "#/components/schemas/Bug"
+                    }
+                  },
+                  "required": ["bug"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a workspace member without write access (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bug not found — also returned for a caller who is not even a member of the bug's workspace (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — the requested assignee is not an active member of this workspace (`assignee_not_workspace_member`), or is a view-only member (`assignee_view_only`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bugs/{id}/status": {
+      "post": {
+        "tags": ["Bugs"],
+        "summary": "Advance a bug's status one lifecycle stage at a time",
+        "description": "Bearer `atc:write` (or cookie session); member+ write access. `bunkai_transition_bug_status` (migration 0054) enforces the lifecycle order open -> in_progress -> resolved -> closed: exactly one stage forward per call, never backward, never skipping a stage. Emits `bug.status_changed` with the previous status, new status, and current assignee.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugStatusTransitionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bug status updated. Returns the updated Bug.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bug": {
+                      "$ref": "#/components/schemas/Bug"
+                    }
+                  },
+                  "required": ["bug"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID) or malformed JSON body (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or a workspace member without write access (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bug not found — also returned for a caller who is not even a member of the bug's workspace (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — the target status skips a lifecycle stage (`status_transition_skipped`), or moves backward / stays the same (`status_transition_backward`).",
             "content": {
               "application/json": {
                 "schema": {
