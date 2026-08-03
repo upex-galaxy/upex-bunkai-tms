@@ -1,7 +1,7 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-08-02 (BK-42 shipped — Ready For QA, merged to staging; carries forward the 2026-08-01 autonomous-delivery `story` run + interactive BK-41 delivery, and the 2026-07-31 surgical Home Dashboard epic BK-254 addition; rest of the graph not re-sorted end to end)
+> **Last sync**: 2026-08-03 (autonomous-delivery `story` run audit — BK-46 and BK-49 reconciled: both were already merged to `origin/staging` and ancestor-verified, but this doc still listed them as unmerged blockers; no story claimed this run, see §6 pool review. Carries forward the 2026-08-02 BK-42 ship, the 2026-08-01 autonomous-delivery `story` run + interactive BK-41 delivery, and the 2026-07-31 surgical Home Dashboard epic BK-254 addition; rest of the graph not re-sorted end to end)
 > **Maintained by**: hand-authored synthesis. Live story status is **never frozen here** — it is queried on demand (see §6). See §7.
 
 ---
@@ -134,11 +134,11 @@ The active frontier (Sprint-2 dev). This is the part Jira cannot express as a ro
 | BK-89 View workspaces | BK-90 Leave workspace | hard | leave action lives in the workspaces list + needs its active-workspace contract |
 | BK-40 File defect from a failing run step | BK-258 TMS-Home \| Show open bug count and severity breakdown | hard | a queryable open-bug count needs bugs to exist first — BK-40 is the write path that creates them |
 | BK-41 List and filter defects by module/status/severity | BK-258 TMS-Home \| Show open bug count and severity breakdown | hard | the severity breakdown needs a severity-filterable read surface, which BK-41 is the first to build |
-| BK-46 Surface untested ACs/modules with not-run filter | BK-259 TMS-Home \| Show workspace test coverage summary | hard | computing an overall coverage % needs the tested-vs-untested computation BK-46 builds first; no other Coverage story computes it |
+| BK-46 Surface untested ACs/modules with not-run filter ✅ dev-done (merged to staging, PR #93 + 4-slice chain, ancestor-verified 2026-08-03) | BK-259 TMS-Home \| Show workspace test coverage summary | hard | computing an overall coverage % needs the tested-vs-untested computation BK-46 builds first; no other Coverage story computes it. **Gate now CLEARED** — BK-259 still sits in `Backlog` (not yet promoted to `Ready For Dev`/refined), which is a separate PM step from this dependency edge. |
 
 **No incoming edge (start anytime, gated only by their own readiness):** BK-20, BK-3, BK-86, BK-255 (TMS-Home welcome banner), BK-256 (TMS-Home active runs — reads BK-30, already dev-done in this graph), BK-257 (TMS-Home recent projects).
 
-**Soft / informational only (not a sort-blocking edge):** BK-260 (TMS-Home condensed activity feed) — Jira `Relates` to BK-49 (Activity stream). BK-49's code is complete across 4 merged PRs but sits on its own `feat/BK-49-activity-stream` branch, not yet merged into `origin/staging` as of 2026-07-31 — BK-260 reuses BK-49's endpoint as a thin presentation layer, so treat this as a soft coupling to verify at pickup time (is `feat/BK-49-activity-stream` merged to staging yet?), not a hard topological gate.
+**Soft / informational only (not a sort-blocking edge):** BK-260 (TMS-Home condensed activity feed) — Jira `Relates` to BK-49 (Activity stream). BK-49's `feat/BK-49-activity-stream` branch (PR #83 + its 3-slice chain) is **now merged into `origin/staging`, ancestor-verified 2026-08-03** (as of 2026-07-31 it was still unmerged; that has since changed) — BK-260 reuses BK-49's endpoint as a thin presentation layer, so its soft coupling is satisfied. BK-260 still sits in `Backlog` (not yet promoted to `Ready For Dev`), which is a separate PM step from this dependency edge.
 
 ### 3.1 Post-MVP expansion cluster — compact edge summary (full links live in Jira)
 
@@ -192,8 +192,8 @@ BK-254 Home Dashboard:
   BK-256 Active runs table     ──> (free — reads BK-30, already dev-done in this graph)
   BK-257 Recent projects       ──> (free — reads BK-7/BK-13, already dev-done in this graph)
   BK-258 Open bugs summary     ──> BK-40, BK-41            (hard — Bugs domain read surface does not exist yet)
-  BK-259 Coverage summary      ──> BK-46                   (hard — Coverage % computation does not exist yet)
-  BK-260 Condensed activity    ··> BK-49                   (soft — reuses BK-49's endpoint; BK-49 code-complete, not yet merged to origin/staging)
+  BK-259 Coverage summary      ──> BK-46 ✅ dev-done         (hard — gate CLEARED 2026-08-03; BK-259 still Backlog, needs refinement/promotion, not a dependency block)
+  BK-260 Condensed activity    ··> BK-49 ✅ dev-done         (soft — gate CLEARED 2026-08-03; BK-49 merged to origin/staging; BK-260 still Backlog, needs refinement/promotion)
 ```
 
 **Open design question (not a dependency, flagged for a human):** the `home.jsx` mockup shows a "SPRINT 24-Q2 · DAY 7/10" eyebrow line implying a Sprint/iteration entity. No such entity exists in the schema or in `business-data-map.md`. BK-255 deliberately does not build it — see its Out of Scope field and the `## Gap` comment on BK-255.
@@ -218,8 +218,8 @@ An **Execution Sprint (ES)** is a gate-released batch: a set of stories safely w
 | **ES4 (epic BK-31 Bugs)** | BK-41 ✅, **BK-42 ✅ (shipped 2026-08-02)** — both dev-done, merged to staging, Ready For QA ; BK-43 — refinement genuinely resolved (comment 12069, 2026-08-01), still `Ready For Dev`, not yet claimed | BK-40 ✅ ; BK-41/BK-42 for their own downstream (none yet) | BK-42: PR #108 merged (`c2fb9722`, ancestor-verified), migration `0052_defect_heatmap_report.sql` applied 2026-08-02. Only BK-43 remains before epic BK-31 (Bugs & Defect Heatmap) is fully drained. |
 | **ES4 (BK-44 Coverage)** | BK-45, BK-50 | BK-24 ✅, BK-30 ✅, **BK-31 (NOT complete — BK-43 above is unmerged)** | Hard-blocked regardless of refinement quality until epic BK-31 actually finishes (only BK-43 left). |
 | **ES5 (BK-208 Notifications, post-MVP)** | BK-209 (first-of-cluster, "free" per §3.1) ; BK-211/212/213 (blocked on BK-209) | none (BK-209) ; BK-209 (rest) | BK-209 is dependency-clear and has all its refinement questions genuinely *answered* in-thread, but its "PO Ratification — 2026-07-11" comment was posted 11 minutes *before* the actual Q&A content it claims to ratify, by a different account than the one that answered — a blanket 28-story batch delegation, not per-story human sign-off. Also 13 SP (advisory) and first-of-epic (new notification substrate, no prior schema to extend) — oversized for an unattended pick per the scope-growth check. Flagged conditional: needs an explicit human "go" before either an autonomous or interactive run claims it. |
-| **ES-HOME (seeded 2026-07-31)** | BK-255, BK-256, BK-257 — no upstream edges in this graph; BK-260 — soft-coupled to BK-49 (verify `feat/BK-49-activity-stream` merged to staging at pickup time) | none (BK-30's read data already dev-done in this graph) | New Home Dashboard epic (BK-254). Not part of the pre-existing sort — appended as its own tier; full-graph re-sort not re-run this pass (see header note). |
-| **ES-HOME-BLOCKED** | BK-258 — workable once BK-40 AND BK-41 are dev-done; BK-259 — workable once BK-46 is dev-done | BK-40/BK-41 (epic BK-31, ES4 tier); BK-46 (epic BK-44, ES4 tier) | 2 of BK-254's 6 stories sit behind the same ES4 gate as their parent epics — not artificially gated, genuinely blocked on sibling epic progress. BK-40/BK-41 are now both merged, so BK-258's own gate is CLEARED; BK-259 still waits on BK-46. |
+| **ES-HOME (seeded 2026-07-31)** | BK-255, BK-256, BK-257 — no upstream edges in this graph; BK-260 — soft-coupled to BK-49 ✅ **merged to origin/staging, ancestor-verified 2026-08-03** | none (BK-30's read data already dev-done in this graph) | New Home Dashboard epic (BK-254). Not part of the pre-existing sort — appended as its own tier; full-graph re-sort not re-run this pass (see header note). |
+| **ES-HOME-UNBLOCKED (2026-08-03)** | BK-258 — dependency gate CLEARED (BK-40+BK-41 merged); BK-259 — dependency gate CLEARED (BK-46 merged, ancestor-verified 2026-08-03, roadmap was stale); BK-260 — dependency gate CLEARED (BK-49 merged) | — (all three now unblocked at the dependency layer) | All 3 of BK-254's dependency-gated stories have their upstream code merged to `origin/staging`. None are yet promoted to `Ready For Dev` in the tracker (still `Backlog`) — that promotion is a `/product-management` refinement step, not a dependency block. Previously this doc under-reported BK-46/BK-49 as unmerged; corrected after a direct `git merge-base --is-ancestor` check against `origin/staging` during the 2026-08-03 autonomous-delivery `story` run audit. |
 
 ---
 
@@ -292,7 +292,7 @@ These are gating questions / contract decisions captured during shift-left refin
 | BK-90 (informational, already shipped) | 6/10 refinement answers explicitly labeled "practice-exercise... not real confirmations"; a 7/31 03:07 "confirmed by PO" comment was self-reversed 4 minutes later by the same author. Shipped anyway. Not a re-open trigger; flagged for QA follow-up. |
 | Design §8 | ~~Add screen rows for BK-35 / 36 / 37 / 39.~~ **Resolved (2026-06-20)** — master-design-plan §8 already has screen rows for BK-35/36/37/38/39 (lines ~276–280). No action. |
 
-### Current Ready-For-Dev pool (as of 2026-08-02)
+### Current Ready-For-Dev pool (as of 2026-08-03)
 
 Live-queried directly against Jira (`acli jira workitem view` + `acli jira workitem comment list`
 per story — **not** the `jira:sync-issues` PBI cache; that cache was independently found to
@@ -303,13 +303,17 @@ across the epics touched by this pass, superseding any narrower framing above.
 | Story | Refinement status | Notes |
 |-------|-------------------|-------|
 | ~~BK-42~~ | ✅ Resolved (comment 12068) | **SHIPPED 2026-08-02** — no longer Ready For Dev. PR #108 merged to staging (`c2fb9722`), migration `0052_defect_heatmap_report.sql` applied, Ready For QA. Left in this table only as the historical record of why it was picked; see the pre-dev-blocker table above and the escalation log for the full trail. |
-| BK-43 | ✅ Resolved (comment 12069) | Genuinely workable, not yet claimed. |
-| BK-45 | ⚠️ **NOT resolved** | Only 2 comments total exist on the issue (Benjamin Segovia's 2026-06-11 refinement + Ely's 2026-07-30 mockup note) — no ratification since. Quoting the 6/11 comment directly: *"Top blockers: (1) BK-24/BK-30/BK-31 still in Planificación — chain layers not sprintable yet. (2) 11 open PO/Dev questions in ATP DRAFT... @Ely please review open questions before sprint planning."* The AC field still carries 4 live `NEEDS PO/DEV CONFIRMATION` placeholders (empty-state copy, uncovered-indicator copy — none resolved). Do not autonomous-claim until a real ratification lands. |
-| BK-50 | Blocked on BK-45 | Exports the chain BK-45 renders — no BK-45 branch exists yet (not started), so BK-50 is transitively blocked regardless of its own readiness. |
-| BK-209 | ✅ Resolved (comment 12070) but flagged conditional | First-of-cluster, dependency-free, but still needs an explicit human "go" per the existing conditional flag above (13 SP, new notification substrate) — not re-litigated here. |
-| BK-211 | Blocked on BK-209 | No BK-209 branch exists yet (not started). |
-| BK-212 | Blocked on BK-209 | Same as BK-211; also pairs with epic BK-31 bug events. |
-| BK-213 | Blocked on BK-209 | Also needs BK-87 Settings hub (already ✅ shipped) — BK-209 is the only real gate. |
+| BK-43 | ✅ Resolved (comment 12069) | **2026-08-03 autonomous-delivery `story` run: considered, NOT claimed.** Dependency-clear and refinement-resolved, but the acceptance criteria imply a genuinely new architectural surface for this codebase — an outbound integration to an unnamed "external tracker" with automatic sync-on-file, retry-on-failure, and a sync-failed UI state; no connector/webhook/retry pattern exists yet anywhere in this repo, and the target system isn't even named. This trips the scope-growth check (new architectural pattern, no reusable precedent) — deferred to a human-present `/sprint-development` session, not an unattended pick. |
+| BK-45 | ⚠️ **NOT resolved** | Only 2 comments total exist on the issue (Benjamin Segovia's 2026-06-11 refinement + Ely's 2026-07-30 mockup note) — no ratification since. Quoting the 6/11 comment directly: *"Top blockers: (1) BK-24/BK-30/BK-31 still in Planificación — chain layers not sprintable yet. (2) 11 open PO/Dev questions in ATP DRAFT... @Ely please review open questions before sprint planning."* The AC field still carries 4 live `NEEDS PO/DEV CONFIRMATION` placeholders (empty-state copy, uncovered-indicator copy — none resolved). Do not autonomous-claim until a real ratification lands. Re-confirmed unresolved 2026-08-03. |
+| BK-50 | Blocked on BK-45 | Exports the chain BK-45 renders — no BK-45 branch exists yet (not started), so BK-50 is transitively blocked regardless of its own readiness. Re-confirmed 2026-08-03. |
+| BK-188 | N/A — not a codeable story | "QA Engineering Support — Complete Summary (Jun 2026)" — a QA reporting/summary artifact misfiled as `Story` type, not a feature to implement. Excluded from candidate consideration 2026-08-03; flag for PM to re-type or close. |
+| ~~BK-209~~ | ✅ Resolved (comment 12070) | **SHIPPED 2026-08-03** — merged to staging via PR #113 (`feat/BK-209-notifications-inbox`), ancestor-verified. No longer Ready For Dev (now Ready For QA). Was the gate for the whole BK-208 cluster (BK-211/212/213/214). |
+| ~~BK-264~~ | N/A — created mid-sprint, no refinement phase | **SHIPPED 2026-08-03** — merged to staging via PR #114 (`feat/BK-264-defect-triage`), ancestor-verified. Unblocked BK-212. |
+| BK-211 | ⚠️ **Genuinely NOT resolved** | BK-209 gate is now CLEARED (merged 2026-08-03), so this is dependency-unblocked — but its own refinement is not: the "PO Ratification — 2026-07-11" comment (11407, blank one-liner) precedes the actual Q&A (11408) — the forward-dated blanket pattern this doc already flags as category (b). Q3 explicitly states *"pending PO ratification (since 2026-07-17)... still awaiting PO sign-off"* — an open question, not resolved. Do not autonomous-claim. |
+| BK-212 | Already in-flight — excluded | Open PR **#115** (`feat/BK-212-bug-notifications`, base `staging`), status `In Review`. Not a candidate — a branch/PR already exists per the eligibility rule. (Its refinement trail also has the same blank forward-dated "PO Ratification" comment with no later re-affirmation, unlike BK-43/BK-209 — worth a QA/PO follow-up regardless of it already being in review.) |
+| BK-213 | ⚠️ **Genuinely NOT resolved** | BK-209 gate CLEARED, dependency-unblocked — but same blank forward-dated "PO Ratification — 2026-07-11" (11569) with no genuine PO/Dev sign-off comment since; QA (not PO) closed Q1/Q2 citing precedent, Q3 (non-retroactivity fixture) explicitly left open. Do not autonomous-claim. |
+
+**2026-08-03 run conclusion**: no story in the live Ready-For-Dev pool passed all eligibility gates (dependency-clear + genuinely refined + unclaimed + not oversized). Story-mode run ended empty — see run report. This is a correct outcome, not a failure.
 
 **Discovery, not yet fixed**: `bun run jira:sync-issues get <KEY> --include-comments` calls
 `GET /rest/api/3/issue/{key}/comment` with no pagination params and no ordering assumption bug
@@ -320,7 +324,7 @@ diagnosed (out of scope for this pass); flagged here so nobody trusts "no commen
 local cache alone without a live cross-check, and a follow-up ticket should investigate
 `fetchComments()` in `scripts/sync-jira-issues.ts`.
 
-> **Systemic pattern flagged 2026-08-01** (see escalation log): a recurring shift-left gap — stories reach `Ready For Dev`/`Ready For QA` via either (a) explicitly-disclaimed "simulated/practice" refinement answers, or (b) a blanket forward-dated "AI-as-PO" ratification comment that precedes the actual Q&A it claims to cover, or (c) a self-reversed claim of PO confirmation with no independent human artifact behind it. This is not one story's problem — it hit BK-3, BK-41, BK-42, BK-43, BK-90, BK-209 independently. Worth a process-level look, not a per-ticket fix.
+> **Systemic pattern flagged 2026-08-01, still recurring 2026-08-03** (see escalation log): a recurring shift-left gap — stories reach `Ready For Dev`/`Ready For QA` via either (a) explicitly-disclaimed "simulated/practice" refinement answers, or (b) a blanket forward-dated "AI-as-PO" ratification comment that precedes the actual Q&A it claims to cover, or (c) a self-reversed claim of PO confirmation with no independent human artifact behind it. This is not one story's problem — it hit BK-3, BK-41, BK-42, BK-43, BK-90, BK-209, and (2026-08-03) BK-211, BK-212, BK-213 independently. Worth a process-level look, not a per-ticket fix.
 
 ### Edge-mapping TODO — stories seen on the board but not yet in the §3 graph
 
