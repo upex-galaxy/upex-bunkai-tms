@@ -696,6 +696,50 @@ export interface Database {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_environments: {
         Row: {
           created_at: string
@@ -1418,6 +1462,15 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_notifications: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_limit?: number
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       bunkai_list_project_bugs: {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
@@ -1477,14 +1530,12 @@ export interface Database {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
       }
-      // BK-42 (0052_defect_heatmap_report.sql) — hand-added, NOT yet reflected
-      // by a live `types:gen` regeneration: this migration is written but not
-      // applied to the shared Supabase instance (autonomous_delivery.migrations:
-      // confirm gate, see the escalation log). Re-run `bun run types:gen`
-      // once an operator applies the migration and drop this comment if the
-      // regenerated shape ever diverges from what's hand-typed here.
       bunkai_report_project_defect_heatmap: {
-        Args: { p_actor_user_id: string, p_project_id: string, p_window: string }
+        Args: {
+          p_actor_user_id: string
+          p_project_id: string
+          p_window: string
+        }
         Returns: Json
       }
       bunkai_report_project_recovery_cycles: {
