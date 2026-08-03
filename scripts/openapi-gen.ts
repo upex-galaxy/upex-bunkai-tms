@@ -124,6 +124,8 @@ import '../app/api/v1/projects/[id]/coverage/route.openapi';
 
 import '../app/api/v1/projects/[id]/bugs/heatmap/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/notifications/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });

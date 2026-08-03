@@ -679,3 +679,29 @@ export async function resolveActivityActors(
     p_user_ids: args.userIds,
   });
 }
+
+// BK-209 (Slice 2: API) — the caller's own notification inbox for one
+// workspace, newest first + unread count (migration 0053_notifications.sql).
+// `bunkai_list_notifications` is SECURITY INVOKER and takes NO explicit actor
+// param: it runs its SELECT under the CALLING role, so RLS's
+// notifications_select_recipient_member_retained evaluates against the
+// caller's own auth.uid(). The `supabase` argument passed here MUST be the
+// caller's own RLS-scoped client (`getAuth(ctx).db`) — never
+// `createAdminClient()`. An admin client has no authenticated auth.uid(),
+// which would make that RLS check moot (same Risk R2 shape as
+// `listActivity`/`listBugs` above).
+export interface ListNotificationsArgs {
+  workspaceId: string
+  limit?: number
+  cursorCreatedAt?: string | null
+  cursorId?: string | null
+}
+
+export async function listNotifications(supabase: Client, args: ListNotificationsArgs) {
+  return supabase.rpc('bunkai_list_notifications', {
+    p_workspace_id: args.workspaceId,
+    p_limit: args.limit ?? undefined,
+    p_cursor_created_at: args.cursorCreatedAt ?? undefined,
+    p_cursor_id: args.cursorId ?? undefined,
+  });
+}

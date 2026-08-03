@@ -3726,6 +3726,83 @@
           "trend_delta",
           "trend_pct"
         ]
+      },
+      "NotificationsPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationItem"
+            },
+            "description": "The page, ordered newest first (created_at desc, id desc)."
+          },
+          "unread_count": {
+            "type": "integer",
+            "description": "Count of unread notifications visible to the caller in this workspace — independent of pagination, NOT capped here (the UI applies the \"99+\" display cap, business-rules.md)."
+          },
+          "next_cursor": {
+            "type": ["string", "null"],
+            "description": "Opaque token for the next (older) page, or null when this is the last page. base64url — echo it back verbatim as `?cursor=`; never construct or parse one."
+          }
+        },
+        "required": ["items", "unread_count", "next_cursor"]
+      },
+      "NotificationItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "notifications row id — stable React key."
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Producer-defined event key (e.g. a future \"run.finished\"). Open text — no fixed enum yet in this slice."
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "The kind of entity this notification is about (e.g. \"run\", \"test\", \"bug\")."
+          },
+          "entity_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The target entity id, or null when the notification has no single target."
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Producer-defined snapshot captured at write time — shape is not yet fixed (no producer story lands in this slice)."
+          },
+          "read_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "null = unread. Set once, via mark-one-read or mark-all-read."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entity_available": {
+            "type": "boolean",
+            "description": "false when the target entity was deleted, or is no longer visible to the caller (e.g. lost workspace/project access) — the client shows \"This item is no longer available.\" instead of navigating. Always false for entity_type \"bug\" in this slice (no bug detail route exists yet)."
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "event_type",
+          "entity_type",
+          "entity_id",
+          "payload",
+          "read_at",
+          "created_at",
+          "entity_available"
+        ]
       }
     },
     "parameters": {}
@@ -9178,6 +9255,95 @@
           },
           "404": {
             "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List the caller's notification inbox for one workspace, newest first",
+        "description": "Cookie session or Bearer PAT; no scope requirement — a personal read, not a `workspace:admin` operation. `bunkai_list_notifications` is SECURITY INVOKER — it runs under the caller's own RLS, so a foreign/inaccessible workspace id silently returns an empty page rather than leaking existence. Pagination is KEYSET on `(created_at desc, id desc)`. `unread_count` is independent of pagination. An empty `items` is always a valid 200 — this endpoint never answers 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 30
+            },
+            "description": "Page size, 1..50 (default 30). Out of range is rejected (422); the RPC additionally clamps for direct callers."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token taken verbatim from the previous response's `next_cursor`. A malformed token returns 400 — it never silently falls back to the first page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the notification inbox (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationsPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An undecodable `cursor` (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed — workspace id not a UUID, or `limit` outside 1..50 (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {
