@@ -113,3 +113,16 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
   // Any future entity_type: no vocabulary defined yet.
   return { text: 'Workspace notification', signal: null, reason: null };
 }
+
+// BK-212 review fix — `entity_available` alone is not sufficient: a
+// standalone bug (bugs.run_id null) has `entity_available: true` (migration
+// 0057's CASE only checks the bug row exists) but resolveNotificationHref
+// (lib/notifications/entity-routes.ts) still returns null for it, since
+// there is no run to deep-link into. A row is only really "available to
+// open" when BOTH the entity exists/is visible AND a route actually
+// resolved for it — otherwise the row must show the same "no longer
+// available" affordance as a genuinely-deleted entity, not render as a
+// silent no-op click.
+export function resolveNotificationUnavailable(entityAvailable: boolean, href: string | null): boolean {
+  return !entityAvailable || href === null;
+}

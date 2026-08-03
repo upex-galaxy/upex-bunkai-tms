@@ -3,6 +3,7 @@ import {
   formatUnreadSummary,
   resolveNotificationsViewState,
   resolveNotificationTitle,
+  resolveNotificationUnavailable,
 } from '@lib/notifications/view';
 import { describe, expect, test } from 'bun:test';
 
@@ -128,5 +129,21 @@ describe('resolveNotificationTitle', () => {
   test('any other/future entity_type falls back to a generic label', () => {
     const title = resolveNotificationTitle({ event_type: 'something.happened', entity_type: 'future_entity', payload: {} });
     expect(title).toEqual({ text: 'Workspace notification', signal: null, reason: null });
+  });
+});
+
+describe('resolveNotificationUnavailable', () => {
+  test('entity_available: false is unavailable regardless of href', () => {
+    expect(resolveNotificationUnavailable(false, null)).toBe(true);
+    expect(resolveNotificationUnavailable(false, '/projects/checkout-platform/runs/run-1')).toBe(true);
+  });
+
+  test('a run/test with entity_available: true and a resolved href is available', () => {
+    expect(resolveNotificationUnavailable(true, '/projects/checkout-platform/runs/run-1')).toBe(false);
+    expect(resolveNotificationUnavailable(true, '/projects/checkout-platform/tests/test-1')).toBe(false);
+  });
+
+  test('a standalone bug (entity_available: true, href: null) is unavailable — no route could be resolved for it', () => {
+    expect(resolveNotificationUnavailable(true, null)).toBe(true);
   });
 });
