@@ -1,4 +1,10 @@
-import { BugCreateBodySchema, BugStandaloneCreateBodySchema, isRunLinkedBugBody } from '@lib/bugs/validation';
+import {
+  BugAssignBodySchema,
+  BugCreateBodySchema,
+  BugStandaloneCreateBodySchema,
+  BugStatusTransitionBodySchema,
+  isRunLinkedBugBody,
+} from '@lib/bugs/validation';
 import { describe, expect, test } from 'bun:test';
 
 // Zod v4's `.uuid()` enforces RFC 4122 version/variant nibbles, so these must
@@ -124,6 +130,55 @@ describe('BugCreateBodySchema — variant discrimination', () => {
       title: 'A perfectly reasonable bug title',
       severity: 'P1',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+// BK-264 (Slice 2) — POST /api/v1/bugs/{id}/assign body.
+const ASSIGNEE_ID = '44444444-4444-4444-8444-444444444444';
+
+describe('BugAssignBodySchema', () => {
+  test('accepts a UUID assignee_user_id', () => {
+    const result = BugAssignBodySchema.safeParse({ assignee_user_id: ASSIGNEE_ID });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assignee_user_id).toBe(ASSIGNEE_ID);
+    }
+  });
+
+  test('accepts a null assignee_user_id (unassign)', () => {
+    const result = BugAssignBodySchema.safeParse({ assignee_user_id: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.assignee_user_id).toBeNull();
+    }
+  });
+
+  test('rejects a missing assignee_user_id key', () => {
+    const result = BugAssignBodySchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  test('rejects a non-UUID assignee_user_id', () => {
+    const result = BugAssignBodySchema.safeParse({ assignee_user_id: 'not-a-uuid' });
+    expect(result.success).toBe(false);
+  });
+});
+
+// BK-264 (Slice 2) — POST /api/v1/bugs/{id}/status body.
+describe('BugStatusTransitionBodySchema', () => {
+  test.each(['open', 'in_progress', 'resolved', 'closed'])('accepts status %s', (status) => {
+    const result = BugStatusTransitionBodySchema.safeParse({ status });
+    expect(result.success).toBe(true);
+  });
+
+  test('rejects an unrecognized status value', () => {
+    const result = BugStatusTransitionBodySchema.safeParse({ status: 'in-progress' });
+    expect(result.success).toBe(false);
+  });
+
+  test('rejects a missing status key', () => {
+    const result = BugStatusTransitionBodySchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });

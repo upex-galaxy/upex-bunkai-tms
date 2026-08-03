@@ -6,17 +6,63 @@ import { ApiError } from '@lib/api/error-envelope';
 // SQLSTATEs. Mirrors lib/runs/errors.ts's switch-on-SQLSTATE shape. The mapper
 // always throws (`: never`), so `if (error) mapBugRpcError(error)` is
 // exhaustive — control never falls through.
-export function mapBugRpcError(error: { code?: string, message: string }): never {
+//
+// BK-264 (Slice 2) — this mapper is now shared by THREE RPC families:
+// bunkai_create_bug/bunkai_list_project_bugs (P0002 = "project or module not
+// found"), bunkai_assign_bug, and bunkai_transition_bug_status (P0002 =
+// "bug not found" — migration 0054's own non-disclosure boundary: a missing
+// bug and a bug in a workspace the caller isn't even a member of collapse
+// into the SAME not-found). The `notFoundEntity` option lets each call site
+// pick the correct wording for ITS OWN P0002 without duplicating the switch;
+// it defaults to 'project_or_module' so the existing POST /api/v1/bugs call
+// site (`mapBugRpcError(error)`, no options) keeps its exact prior behavior.
+export function mapBugRpcError(
+  error: { code?: string, message: string },
+  opts: { notFoundEntity?: 'project_or_module' | 'bug' } = {},
+): never {
   switch (error.code) {
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
         details: { reason: 'not_a_member' },
       });
     case 'P0002':
-      // Non-disclosure: a missing/foreign project OR a module outside it both
-      // collapse into the SAME not_found — never leak WHICH one caused it.
+      // Non-disclosure: for create/list, a missing/foreign project OR a
+      // module outside it both collapse into the SAME not_found. For
+      // assign/status-transition, a missing bug OR a bug in a workspace the
+      // caller isn't even a member of collapse into the SAME not_found —
+      // never leak WHICH case caused it, either way.
+      if (opts.notFoundEntity === 'bug') {
+        throw new ApiError('not_found', 'Bug not found.', {
+          details: { reason: 'not_found' },
+        });
+      }
       throw new ApiError('not_found', 'Project or module not found.', {
         details: { reason: 'not_found' },
+      });
+    case '45310':
+      // BK-264 — bunkai_transition_bug_status: the target status is more than
+      // one lifecycle stage ahead of the current one (e.g. open -> resolved).
+      throw new ApiError('validation_failed', 'A bug can only move forward one status stage at a time.', {
+        details: { reason: 'status_transition_skipped' },
+      });
+    case '45311':
+      // BK-264 — bunkai_transition_bug_status: the target status is not
+      // strictly ahead of the current one (backward move, or a same-status
+      // no-move, or an unrecognized status value).
+      throw new ApiError('validation_failed', 'A bug\'s status cannot move backward.', {
+        details: { reason: 'status_transition_backward' },
+      });
+    case '45312':
+      // BK-264 — bunkai_assign_bug: the target assignee has no active
+      // workspace_members row for THIS bug's workspace.
+      throw new ApiError('validation_failed', 'The assignee must be an active member of this workspace.', {
+        details: { reason: 'assignee_not_workspace_member' },
+      });
+    case '45313':
+      // BK-264 — bunkai_assign_bug: the target assignee is an active member,
+      // but their role is view-only.
+      throw new ApiError('validation_failed', 'A view-only workspace member cannot be assigned bugs.', {
+        details: { reason: 'assignee_view_only' },
       });
     case '45300':
       throw new ApiError('validation_failed', 'The module must belong to the current project.', {
