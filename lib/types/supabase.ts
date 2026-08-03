@@ -709,6 +709,7 @@ export interface Database {
           payload: Json
           read_at: string | null
           recipient_user_id: string
+          source_event_id: string | null
           workspace_id: string
         }
         Insert: {
@@ -720,6 +721,7 @@ export interface Database {
           payload?: Json
           read_at?: string | null
           recipient_user_id: string
+          source_event_id?: string | null
           workspace_id: string
         }
         Update: {
@@ -731,6 +733,7 @@ export interface Database {
           payload?: Json
           read_at?: string | null
           recipient_user_id?: string
+          source_event_id?: string | null
           workspace_id?: string
         }
         Relationships: [
