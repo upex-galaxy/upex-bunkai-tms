@@ -55,15 +55,10 @@ interface NotificationTitleInput {
   payload: Record<string, unknown>
 }
 
-// Event vocabulary: only `run` and `test` entity types have a real
-// vocabulary this slice can render today. BK-211 (run lifecycle) and BK-212
-// (bug lifecycle) are the sibling producer stories that will actually
-// populate `event_type`/`payload`, but neither has shipped — and
-// `entity_type: 'bug'` always resolves `entity_available: false` regardless
-// (migration 0053_notifications.sql), so a bug notification never needs more
-// than the generic label below; it always renders the unavailable fallback.
-// Unknown/future event types fall back to a neutral label rather than
-// guessing at a payload shape no producer has defined yet.
+// Event vocabulary: `run`, `test`, and (BK-212 Slice 2) `bug` entity types
+// have a real vocabulary this slice can render. Unknown/future event types
+// fall back to a neutral label rather than guessing at a payload shape no
+// producer has defined yet.
 export function resolveNotificationTitle(notification: NotificationTitleInput): NotificationTitleView {
   const { event_type: eventType, entity_type: entityType, payload } = notification;
 
@@ -88,8 +83,46 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
     return { text: 'Test update', signal: null, reason: null };
   }
 
-  // `bug` + any future entity_type: no vocabulary defined yet, and
-  // entity_available is always false for these today, so the row renders
-  // the unavailable fallback regardless of this label's specificity.
+  // BK-212 Slice 2 — bug assignment/status vocabulary. `payload.title` is
+  // always populated by the producer (migration 0056/0057:
+  // bunkai_notify_bug_event never inserts a row without a resolved bug
+  // title) — the string fallback below is defensive, not the expected path.
+  if (entityType === 'bug') {
+    const bugTitle = typeof payload.title === 'string' ? payload.title : 'a bug';
+
+    if (eventType === 'bug.assigned' || eventType === 'bug.reassigned') {
+      // AC1 (acceptance-criteria.md): "Bug assigned to you: Checkout total
+      // rounds incorrectly" — frozen copy, not a paraphrase.
+      return { text: `Bug assigned to you: ${bugTitle}`, signal: null, reason: null };
+    }
+    if (eventType === 'bug.status_changed') {
+      // AC2/AC3: "the bug status changed to in progress". business-rules.md:
+      // "notifications display whatever status names that lifecycle
+      // defines, without inventing their own" — render the DB's own status
+      // value verbatim, only humanizing the underscore BK-31's schema uses
+      // (`in_progress` -> "in progress"), never a different word.
+      const status = typeof payload.status === 'string' ? payload.status.replace(/_/g, ' ') : 'an unknown status';
+      return { text: `Bug status changed to ${status}`, signal: null, reason: null };
+    }
+    // Any other/future bug event (e.g. bug.unassigned, which this story
+    // never notifies on — see 0056's header): neutral label, mirrors the
+    // "Run update"/"Test update" fallback shape above.
+    return { text: 'Bug update', signal: null, reason: null };
+  }
+
+  // Any future entity_type: no vocabulary defined yet.
   return { text: 'Workspace notification', signal: null, reason: null };
+}
+
+// BK-212 review fix — `entity_available` alone is not sufficient: a
+// standalone bug (bugs.run_id null) has `entity_available: true` (migration
+// 0057's CASE only checks the bug row exists) but resolveNotificationHref
+// (lib/notifications/entity-routes.ts) still returns null for it, since
+// there is no run to deep-link into. A row is only really "available to
+// open" when BOTH the entity exists/is visible AND a route actually
+// resolved for it — otherwise the row must show the same "no longer
+// available" affordance as a genuinely-deleted entity, not render as a
+// silent no-op click.
+export function resolveNotificationUnavailable(entityAvailable: boolean, href: string | null): boolean {
+  return !entityAvailable || href === null;
 }

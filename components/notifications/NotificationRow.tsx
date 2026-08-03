@@ -3,7 +3,7 @@
 import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
 import { resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { formatRelativeTime } from '@lib/notifications/relative-time';
-import { resolveNotificationTitle } from '@lib/notifications/view';
+import { resolveNotificationTitle, resolveNotificationUnavailable } from '@lib/notifications/view';
 import { Check, Info } from 'lucide-react';
 
 // BK-209 (Slice 3: UI) — one notification row inside NotificationsPanel.
@@ -31,7 +31,9 @@ export function NotificationRow({ notification, marking, onMarkRead, onOpen }: N
   const href = resolveNotificationHref(notification);
   // AC5 — the fallback note is proactive: it renders whenever the entity is
   // not available, not only after the user has already clicked through once.
-  const unavailable = !notification.entity_available;
+  // A row is also unavailable when entity_available is true but no route
+  // could be resolved (e.g. a standalone bug — see resolveNotificationUnavailable).
+  const unavailable = resolveNotificationUnavailable(notification.entity_available, href);
 
   const handleActivate = () => {
     onOpen();
