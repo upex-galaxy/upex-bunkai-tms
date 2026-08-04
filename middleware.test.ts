@@ -26,6 +26,14 @@ describe('isProtected', () => {
     expect(isProtected('/activity')).toBe(true);
   });
 
+  // BK-255 — /home is the landing route for every signed-in member
+  // (`app/page.tsx` redirects there), so the app's front door has to sit behind
+  // the same edge gate as every other (app) route. The page's own getUser()
+  // check is defense in depth, not the gate.
+  test('/home is protected (BK-255)', () => {
+    expect(isProtected('/home')).toBe(true);
+  });
+
   test('public routes stay unprotected', () => {
     expect(isProtected('/login')).toBe(false);
     expect(isProtected('/')).toBe(false);
@@ -34,6 +42,7 @@ describe('isProtected', () => {
   test('a route that merely starts with the same characters is not a false match', () => {
     expect(isProtected('/settingsomething')).toBe(false);
     expect(isProtected('/activitysomething')).toBe(false);
+    expect(isProtected('/homepage')).toBe(false);
   });
 
   test('PROTECTED_PREFIXES includes /settings exactly once', () => {
@@ -42,5 +51,9 @@ describe('isProtected', () => {
 
   test('PROTECTED_PREFIXES includes /activity exactly once', () => {
     expect(PROTECTED_PREFIXES.filter(p => p === '/activity')).toHaveLength(1);
+  });
+
+  test('PROTECTED_PREFIXES includes /home exactly once', () => {
+    expect(PROTECTED_PREFIXES.filter(p => p === '/home')).toHaveLength(1);
   });
 });
