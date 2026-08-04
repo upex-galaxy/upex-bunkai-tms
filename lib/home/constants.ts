@@ -82,3 +82,27 @@ export const HOME_ACTIVE_RUNS_STEP_SCAN_LIMIT = 2000;
 // wrong, only make an already-stale project sort slightly lower among other
 // already-stale ones.
 export const HOME_PROJECT_ACTIVITY_SCAN_LIMIT = 1000;
+
+// BK-258 — which `bugs.status` values Home counts as "open".
+//
+// The shipped status vocabulary is `open | in_progress | resolved | closed`
+// (0046_bugs.sql), moved forward one stage at a time and never backward
+// (`bunkai_transition_bug_status`, 0054). "Open" here means UNRESOLVED — the
+// two states before a fix exists — not the literal `open` status alone.
+//
+// The literal reading was rejected because it makes the number move the wrong
+// way: a lead who triages ten defects into `in_progress` would watch the Home
+// count drop by ten without a single bug being fixed, and would read the screen
+// as "quality improved" on the morning her team started working. The story asks
+// this widget to answer "what does quality look like right now"; a defect
+// someone is actively fixing is still an outstanding defect.
+//
+// `resolved` and `closed` are both post-fix and both excluded. The distinction
+// between them (fixed vs. verified-and-filed-away) matters to the bug list, not
+// to a workspace-level "how much is outstanding" figure.
+//
+// This list is the SINGLE definition: `lib/home/open-bugs.ts` reads it, the
+// endpoint publishes it verbatim as `open_statuses`, and
+// `0061_home_open_bugs_index.sql`'s partial predicate mirrors it — so the
+// widget, the API contract and the index can only drift apart visibly.
+export const HOME_OPEN_BUG_STATUSES = ['open', 'in_progress'] as const;

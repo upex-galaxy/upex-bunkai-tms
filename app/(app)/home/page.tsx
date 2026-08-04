@@ -6,6 +6,11 @@ import {
   ActiveRunsSkeleton,
 } from '@components/home/ActiveRuns';
 import {
+  OpenBugsCard,
+  OpenBugsError,
+  OpenBugsSkeleton,
+} from '@components/home/OpenBugs';
+import {
   RecentActivityCard,
   RecentActivityError,
   RecentActivitySkeleton,
@@ -29,6 +34,7 @@ import {
   HOME_CHANGE_WINDOW_HOURS,
   HOME_TEST_CHANGE_ACTIONS,
 } from '@lib/home/constants';
+import { countOpenBugs } from '@lib/home/open-bugs';
 import { selectRecentActivity } from '@lib/home/recent-activity';
 import { listRecentProjects } from '@lib/home/recent-projects';
 import { buildWelcomeSummary, resolveDisplayName } from '@lib/home/welcome-summary';
@@ -111,7 +117,11 @@ export default async function HomePage() {
         </Suspense>
       </WelcomeBanner>
 
-      {/* BK-258..BK-260 compose their widgets here, below the banner. */}
+      {/* The mockup's KPI row sits directly under the greeting. BK-259's
+          Coverage card joins this one here. */}
+      <Suspense fallback={<OpenBugsSkeleton />}>
+        <OpenBugs workspaceId={activeWorkspaceId} />
+      </Suspense>
 
       <Suspense fallback={<ActiveRunsSkeleton />}>
         <ActiveRuns workspaceId={activeWorkspaceId} />
@@ -164,6 +174,35 @@ async function ActiveRuns({ workspaceId }: { workspaceId: string }) {
   }
   catch {
     return <ActiveRunsError />;
+  }
+}
+
+// BK-258 — the "Open bugs" stat card. Same shape as every other widget on this
+// page: its own async component in its own <Suspense> boundary, so the four
+// counts behind it cannot delay — or, on failure, blank — the banner above or
+// the table below.
+//
+// The rollup lives in `lib/home/open-bugs.ts` and is shared with
+// GET /api/v1/workspaces/{id}/open-bugs, so the card and the endpoint cannot
+// drift. Called directly rather than fetched over HTTP: same process, same
+// RLS-scoped client, no extra round trip and no cookie forwarding.
+//
+// RLS does the scoping: `bugs_select_workspace_member` (0046) narrows every
+// count to workspaces the caller belongs to, so a forged `bk_active_ws` cookie
+// pointing at someone else's workspace counts zero rather than leaking that
+// workspace's defect posture.
+async function OpenBugs({ workspaceId }: { workspaceId: string }) {
+  try {
+    const supabase = await createClient();
+    const result = await countOpenBugs(supabase, { workspaceId });
+    // A failed read is NOT a clean workspace — see OpenBugsError.
+    if (!result.ok) {
+      return <OpenBugsError />;
+    }
+    return <OpenBugsCard rollup={result} />;
+  }
+  catch {
+    return <OpenBugsError />;
   }
 }
 
