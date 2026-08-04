@@ -18,10 +18,16 @@ import { listRecentProjects } from '@lib/home/recent-projects';
 //                   is rejected — never silently clamped, so a caller asking
 //                   for 500 finds out rather than quietly getting 20.
 //
-// Auth: cookie session or Bearer PAT, no scope requirement — reading which
-// projects a workspace has is a plain member read, the same posture as
-// `/api/v1/activity` and the notification inbox, not a `workspace:admin`
-// operation.
+// Auth: cookie session or Bearer PAT holding `atc:read`. Not a
+// `workspace:admin` operation — this is a member read, so it deliberately does
+// NOT call `assertWorkspaceContext` (ADR-0006 binds a PAT to its own workspace
+// for admin operations only). But it is not ungated either: every row carries an
+// exact per-project ATC count, which is derived ATC data, and the two sibling
+// endpoints that read ATC data (`/api/v1/atcs/search`, `/api/v1/atcs/{id}/usage`)
+// both require `atc:read`. Without it the narrowest possible token — a CI runner
+// scoped to `run:execute` — could enumerate project inventory across every
+// workspace its issuing user belongs to. Cookie sessions hold the full
+// capability set (`ALL_CAPABILITIES`), so this constrains PATs only.
 //
 // Non-disclosure: a foreign, nonexistent, or lost-membership workspace id
 // collapses into the SAME `200 {"projects": []}` an empty workspace returns.
@@ -59,7 +65,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       last_activity_at: project.lastActivityAt,
     })),
   }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function parseLimit(raw: string | null): number {
   if (raw === null) {

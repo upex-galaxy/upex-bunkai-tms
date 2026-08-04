@@ -14,7 +14,7 @@ const RecentProjectSchema = z
     last_activity_at: z
       .string()
       .datetime({ offset: true })
-      .describe('The newest of: an ATC written or revised, a module added, a run started/stepped/finished, and — as the floor — the project\'s own creation. Never null: a project that has never been touched still reports when it was created. Module renames and moves do NOT advance it (`modules` carries no `updated_at`), and bug activity is deliberately excluded (that surface belongs to the Home open-bugs widget).'),
+      .describe('The newest of: an ATC written or revised, a module added, a run started/finished/aborted, and — as the floor — the project\'s own creation. Never null: a project that has never been touched still reports when it was created. Three things do NOT advance it: module renames and moves (`modules` carries no `updated_at`), marking a step inside an in-progress run (step marking does not write the `runs` row), and bug activity (deliberately excluded — that surface belongs to the Home open-bugs widget).'),
   })
   .openapi('RecentProject');
 
@@ -46,13 +46,14 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}/recent-projects',
   tags: ['Workspaces'],
   summary: 'List a workspace\'s projects by most recent activity, with their module and ATC counts',
-  description: 'Cookie session or Bearer PAT; no scope requirement — reading which projects a workspace has is a plain member read. Runs entirely under the caller\'s own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME `200 {"projects": []}` an empty workspace does — never a 403, never an existence echo. A read that FAILS answers 500, never an empty list, so a caller can always tell a quiet workspace from a broken one.',
+  description: 'Bearer `atc:read` (or cookie session) — every row carries an exact per-project ATC count, so it is gated like the other ATC reads. Runs entirely under the caller\'s own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME `200 {"projects": []}` an empty workspace does — never an existence echo. A read that FAILS answers 500, never an empty list, so a caller can always tell a quiet workspace from a broken one.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [WorkspaceIdParam, LimitParam],
   responses: {
     200: { description: 'The workspace\'s most recently active projects (possibly empty).', content: { 'application/json': { schema: RecentProjectsSchema } } },
     400: { description: 'The workspace id in the path is not a UUID (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: '`limit` is not an integer in 1..20 (`validation_failed`, `details.reason = limit_out_of_range`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     500: { description: 'The rollup could not be read (`internal_error`). Deliberately not collapsed into an empty list.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
