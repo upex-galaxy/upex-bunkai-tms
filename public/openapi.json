@@ -1049,6 +1049,49 @@
         },
         "required": ["name"]
       },
+      "RecentProjects": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecentProject"
+            },
+            "description": "Ordered by `last_activity_at` descending, name ascending as the tie-break. At most `limit` entries."
+          }
+        },
+        "required": ["projects"]
+      },
+      "RecentProject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL slug, unique per workspace — the project route is `/projects/{slug}`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "module_count": {
+            "type": "integer",
+            "description": "Active (non-archived) modules in the project. An exact count, not a scan-derived floor."
+          },
+          "atc_count": {
+            "type": "integer",
+            "description": "Active (non-archived) ATCs in the project. An exact count, not a scan-derived floor."
+          },
+          "last_activity_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The newest of: an ATC written or revised, a module added, a run started/finished/aborted, and — as the floor — the project's own creation. Never null: a project that has never been touched still reports when it was created. Three things do NOT advance it: module renames and moves (`modules` carries no `updated_at`), marking a step inside an in-progress run (step marking does not write the `runs` row), and bug activity (deliberately excluded — that surface belongs to the Home open-bugs widget)."
+          }
+        },
+        "required": ["id", "slug", "name", "module_count", "atc_count", "last_activity_at"]
+      },
       "ModuleCreateResponse": {
         "type": "object",
         "properties": {
@@ -5257,6 +5300,106 @@
           },
           "422": {
             "description": "Validation failed (including names that map to a reserved slug).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/recent-projects": {
+      "get": {
+        "tags": ["Workspaces"],
+        "summary": "List a workspace's projects by most recent activity, with their module and ATC counts",
+        "description": "Bearer `atc:read` (or cookie session) — every row carries an exact per-project ATC count, so it is gated like the other ATC reads. Runs entirely under the caller's own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME `200 {\"projects\": []}` an empty workspace does — never an existence echo. A read that FAILS answers 500, never an empty list, so a caller can always tell a quiet workspace from a broken one.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
+            },
+            "description": "How many projects to return, 1..20 (default 5 — the Home widget's page size). Out of range is rejected with 422, never silently clamped."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's most recently active projects (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecentProjects"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id in the path is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`limit` is not an integer in 1..20 (`validation_failed`, `details.reason = limit_out_of_range`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The rollup could not be read (`internal_error`). Deliberately not collapsed into an empty list.",
             "content": {
               "application/json": {
                 "schema": {

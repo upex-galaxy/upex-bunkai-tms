@@ -44,3 +44,16 @@ export const HOME_CHANGE_WINDOW_HOURS = 24;
 // this many ATC/Test events inside the window makes the figure a floor; at 24
 // hours that is a volume no workspace in this product reaches.
 export const HOME_ACTIVITY_SCAN_LIMIT = 1000;
+
+// BK-257 — how many projects the Home "Recent projects" widget shows. The
+// widget is a shortcut back into recent work, not the project list: `/projects`
+// (BK-266) owns the full, unbounded index, and the widget's footer links there.
+export const HOME_RECENT_PROJECTS_LIMIT = 5;
+
+// Ceiling on the rows each per-project activity scan reads (see the cost note
+// in `lib/home/recent-projects.ts`). It bounds the ORDERING signal only — the
+// module and ATC counts the widget prints are exact `count` reads issued after
+// the ordering is settled, so this ceiling can never make a displayed number
+// wrong, only make an already-stale project sort slightly lower among other
+// already-stale ones.
+export const HOME_PROJECT_ACTIVITY_SCAN_LIMIT = 1000;

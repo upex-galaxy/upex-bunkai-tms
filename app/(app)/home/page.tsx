@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
 import {
+  RecentProjectsCard,
+  RecentProjectsError,
+  RecentProjectsSkeleton,
+} from '@components/home/RecentProjects';
+import {
   WelcomeBanner,
   WelcomeSummaryLine,
   WelcomeSummarySkeleton,
@@ -11,6 +16,7 @@ import {
   HOME_CHANGE_WINDOW_HOURS,
   HOME_TEST_CHANGE_ACTIONS,
 } from '@lib/home/constants';
+import { listRecentProjects } from '@lib/home/recent-projects';
 import { buildWelcomeSummary, resolveDisplayName } from '@lib/home/welcome-summary';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -92,6 +98,10 @@ export default async function HomePage() {
       </WelcomeBanner>
 
       {/* BK-256..BK-260 compose their widgets here, below the banner. */}
+
+      <Suspense fallback={<RecentProjectsSkeleton />}>
+        <RecentProjects workspaceId={activeWorkspaceId} />
+      </Suspense>
     </HomeShell>
   );
 }
@@ -109,6 +119,30 @@ function HomeShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+// BK-257 — the "Recent projects" widget. Its own async component inside its own
+// <Suspense> boundary, exactly as the welcome summary is: the rollup behind it
+// issues several reads, and none of them may delay — or, on failure, blank —
+// the banner above.
+//
+// The rollup itself lives in `lib/home/recent-projects.ts` and is shared with
+// GET /api/v1/workspaces/{id}/recent-projects, so the widget and the endpoint
+// cannot drift. Called directly rather than fetched over HTTP: same process,
+// same RLS-scoped client, no extra round trip and no cookie forwarding.
+async function RecentProjects({ workspaceId }: { workspaceId: string }) {
+  try {
+    const supabase = await createClient();
+    const result = await listRecentProjects(supabase, { workspaceId });
+    // A failed read is NOT an empty workspace — see RecentProjectsError.
+    if (!result.ok) {
+      return <RecentProjectsError />;
+    }
+    return <RecentProjectsCard projects={result.projects} />;
+  }
+  catch {
+    return <RecentProjectsError />;
+  }
 }
 
 // The "what changed recently" line (AC2, AC3), isolated in its own async
