@@ -395,7 +395,14 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
         return;
       }
       setWsOpen(false);
-      router.replace('/projects');
+      // Project-scoped routes carry a slug that will not resolve in the new
+      // workspace, so those still bounce to /projects. Home is workspace-level:
+      // re-rendering it in place is the whole point of switching from there
+      // (BK-255 — it is the screen that names which workspace you are in), so
+      // ejecting to /projects would navigate away from the answer.
+      if (pathname !== '/home') {
+        router.replace('/projects');
+      }
       router.refresh();
     }
     catch (err) {
