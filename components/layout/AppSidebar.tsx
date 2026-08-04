@@ -162,7 +162,9 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0] ?? null;
 
   const nav: NavItem[] = [
-    { id: 'home', icon: Home, label: 'Home', href: null },
+    // BK-255 — Home is live: it hosts the welcome banner now, and the rest of
+    // the dashboard (BK-256..BK-260) composes into the same route.
+    { id: 'home', icon: Home, label: 'Home', href: '/home' },
     { id: 'activity', icon: Activity, label: 'Activity', href: '/activity' },
     { id: 'projects', icon: Folder, label: 'Projects', href: '/projects', badge: projects.length },
     { id: 'library', icon: Library, label: 'ATC Library', href: null },
