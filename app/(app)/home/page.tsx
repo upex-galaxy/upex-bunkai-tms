@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
 import {
+  ActiveRunsCard,
+  ActiveRunsError,
+  ActiveRunsSkeleton,
+} from '@components/home/ActiveRuns';
+import {
   RecentProjectsCard,
   RecentProjectsError,
   RecentProjectsSkeleton,
@@ -10,6 +15,7 @@ import {
   WelcomeSummarySkeleton,
 } from '@components/home/WelcomeBanner';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { listActiveRuns } from '@lib/home/active-runs';
 import {
   HOME_ACTIVITY_SCAN_LIMIT,
   HOME_ATC_CHANGE_ACTIONS,
@@ -97,7 +103,11 @@ export default async function HomePage() {
         </Suspense>
       </WelcomeBanner>
 
-      {/* BK-256..BK-260 compose their widgets here, below the banner. */}
+      {/* BK-258..BK-260 compose their widgets here, below the banner. */}
+
+      <Suspense fallback={<ActiveRunsSkeleton />}>
+        <ActiveRuns workspaceId={activeWorkspaceId} />
+      </Suspense>
 
       <Suspense fallback={<RecentProjectsSkeleton />}>
         <RecentProjects workspaceId={activeWorkspaceId} />
@@ -119,6 +129,30 @@ function HomeShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+// BK-256 — the "Active test runs" widget. Same shape as the two widgets around
+// it: its own async component in its own <Suspense> boundary, so the four exact
+// step counts it issues per listed run cannot delay — or, on failure, blank —
+// the banner above or the projects list below.
+//
+// The rollup lives in `lib/home/active-runs.ts` and is shared with
+// GET /api/v1/workspaces/{id}/active-runs, so the widget and the endpoint cannot
+// drift. Called directly rather than fetched over HTTP: same process, same
+// RLS-scoped client, no extra round trip and no cookie forwarding.
+async function ActiveRuns({ workspaceId }: { workspaceId: string }) {
+  try {
+    const supabase = await createClient();
+    const result = await listActiveRuns(supabase, { workspaceId });
+    // A failed read is NOT an idle workspace — see ActiveRunsError.
+    if (!result.ok) {
+      return <ActiveRunsError />;
+    }
+    return <ActiveRunsCard runs={result.runs} activeCount={result.activeCount} />;
+  }
+  catch {
+    return <ActiveRunsError />;
+  }
 }
 
 // BK-257 — the "Recent projects" widget. Its own async component inside its own
