@@ -699,6 +699,33 @@ export interface Database {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          channel: string
+          enabled: boolean
+          event_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          enabled?: boolean
+          event_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
