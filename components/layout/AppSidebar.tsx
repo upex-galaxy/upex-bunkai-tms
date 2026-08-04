@@ -502,7 +502,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
             )}
           </div>
           <Link
-            href="/projects"
+            href="/projects/new"
             title="New project"
             className="inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-2 hover:text-fg-1"
           >
