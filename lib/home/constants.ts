@@ -83,6 +83,24 @@ export const HOME_ACTIVE_RUNS_STEP_SCAN_LIMIT = 2000;
 // already-stale ones.
 export const HOME_PROJECT_ACTIVITY_SCAN_LIMIT = 1000;
 
+// BK-259 — how many per-project coverage RPCs the Home "Coverage" card runs at
+// once.
+//
+// The workspace figure is the sum of every project's coverage, and the only
+// thing entitled to decide a project's coverage is
+// `bunkai_report_project_coverage` — so the rollup is one call per project and
+// that count cannot be capped without making the percentage a fiction (see
+// `lib/home/coverage.ts`). What CAN be bounded is how many run in parallel.
+//
+// This is deliberately NOT `Promise.all` over every project: Home is the
+// post-login landing page, so an unbounded fan-out turns a single sign-in in a
+// twenty-project workspace into twenty simultaneous whole-project scans — a
+// connection-pool spike that would be felt by every other member's request, not
+// just by the person who signed in. Four keeps the card's latency close to the
+// parallel case (the calls are I/O-bound and short) while leaving the pool room
+// to serve the rest of the page's widgets, which are loading at the same time.
+export const HOME_COVERAGE_PROJECT_CONCURRENCY = 4;
+
 // BK-258 — which `bugs.status` values Home counts as "open".
 //
 // The shipped status vocabulary is `open | in_progress | resolved | closed`
