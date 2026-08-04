@@ -40,14 +40,24 @@ function entryHref(projectSlug: string, segment: string | null): string {
   return segment === null ? `/projects/${projectSlug}` : `/projects/${projectSlug}/${segment}`;
 }
 
-// The active entry is resolved by EXACT path match, never by prefix. Two
-// reasons: `aria-current="page"` means "this link IS the current page", and a
-// prefix rule would light up "Test Runs" on `/tests/{testId}/runs` (a Test's
-// own run history, BK-37), which belongs to the workbench, not to the
-// project-wide run report. On a detail route no entry is current — the
-// workbench tab bar is what indicates the open item there.
+// Active-entry rule, mirroring `isSettingsNavItemActive` (lib/settings/nav-items.ts):
+// the exact route or any nested sub-route. The one exception is "All ATCs",
+// whose href IS the project root — a prefix rule there would mark it current on
+// every route in the project, so it matches exactly and nothing else.
+//
+// The three segment entries take the nested form so a section's own detail
+// route keeps its entry current: `/runs/{runId}` (a run report, BK-38) stays on
+// "Test Runs". It cannot over-match a Test's own run history — that route is
+// `/tests/{testId}/runs`, which does not sit under `/runs/`.
+function isEntryActive(pathname: string, href: string, segment: string | null): boolean {
+  if (segment === null) {
+    return pathname === href;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function resolveProjectSectionLabel(pathname: string, projectSlug: string): string | null {
-  const entry = ENTRIES.find(e => pathname === entryHref(projectSlug, e.segment));
+  const entry = ENTRIES.find(e => isEntryActive(pathname, entryHref(projectSlug, e.segment), e.segment));
   return entry?.label ?? null;
 }
 
@@ -62,7 +72,7 @@ export function ProjectSubNav({ projectSlug }: { projectSlug: string }) {
     >
       {ENTRIES.map((entry) => {
         const href = entryHref(projectSlug, entry.segment);
-        const active = pathname === href;
+        const active = isEntryActive(pathname, href, entry.segment);
         const Icon = entry.icon;
         return (
           <Link

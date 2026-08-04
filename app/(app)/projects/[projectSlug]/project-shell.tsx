@@ -67,10 +67,16 @@ function ShellChrome({ children }: { children: ReactNode }) {
   // as it read before this ticket.
   const sectionLabel = resolveProjectSectionLabel(pathname, projectSlug) ?? 'All ATCs';
 
+  const projectIndexHref = `/projects/${projectSlug}`;
+
   const selectView = (next: WorkbenchView) => {
     setView(next);
-    // The view toggle picks an index browse mode; leave any open detail route.
-    if (isDetail) { router.push(`/projects/${projectSlug}`); }
+    // The view toggle picks a browse mode for the workbench, so it has to land
+    // there from ANY other route inside the project — an open ATC or Test, a
+    // run report, or one of the three section surfaces (BK-265 made those
+    // clickable, which turned a previously unreachable dead control into a
+    // live one that only toggled the explorer rail).
+    if (pathname !== projectIndexHref) { router.push(projectIndexHref); }
   };
 
   return (
