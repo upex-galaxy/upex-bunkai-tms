@@ -58,8 +58,11 @@ const DAY_MS = 24 * HOUR_MS;
 // timestamp in this app renders (`/activity`, run history, BK-257's recent
 // projects — ratified as master-design-plan §5 D21(c)), so the two are not
 // allowed to drift apart: the component renders this string as the visible
-// label and puts `formatAbsoluteTime`'s exact UTC value in the element's
-// `title`, one hover away. Recorded as §5 D22.
+// label of a `<time dateTime>` element whose machine-readable value is the
+// row's exact instant, with `formatActivityTime`'s UTC rendering of the same
+// instant in `title`. That formatter is SHARED with `/activity` — one
+// implementation, so the two surfaces cannot stamp an event differently.
+// Recorded as §5 D22.
 //
 // Safe to compute on the server: Home is a dynamic route (it reads cookies and
 // the session), this runs inside a server component with no client counterpart,
@@ -91,12 +94,4 @@ export function formatRelativeTime(iso: string, now: Date): string {
   // feed's own window is 24h. Kept so the helper never lies by rounding a
   // three-day-old event down to "23h ago".
   return `${Math.floor(elapsed / DAY_MS)}d ago`;
-}
-
-// The exact value behind every relative label, in the app's house format:
-// timezone-stable on server and client alike, matching `/activity`'s
-// `formatActivityTime` and run history's `formatRanAt`.
-// '2026-08-04T09:41:00+00:00' -> '2026-08-04 09:41'.
-export function formatAbsoluteTime(iso: string): string {
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 }

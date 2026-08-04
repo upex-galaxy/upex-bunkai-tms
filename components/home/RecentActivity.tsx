@@ -1,8 +1,8 @@
 import type { ActivityItemResponse } from '@app/api/v1/activity/response';
 import { Card } from '@components/ui/card';
-import { extractRunVerdict, resolveActorLabel } from '@lib/activity/view';
+import { extractRunVerdict, formatActivityTime, resolveActorLabel } from '@lib/activity/view';
 import { HOME_CHANGE_WINDOW_HOURS } from '@lib/home/constants';
-import { formatAbsoluteTime, formatRelativeTime } from '@lib/home/recent-activity';
+import { formatRelativeTime } from '@lib/home/recent-activity';
 import { AlertTriangle, Box, Bug, ChevronRight, History, Play } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,9 +26,12 @@ import Link from 'next/link';
 //     the live UI is the fidelity source, the mockup is inspiration).
 //   * Relative time ("12m ago") is the visible label — AC1 asks for it in so
 //     many words, and it is the whole point of a "what just happened" surface.
-//     The absolute UTC value every other timestamp in this app shows is one
-//     hover away in `title`, so this widget and `/activity` never contradict
-//     each other; they differ in granularity only.
+//     The row's exact instant rides along in a `<time dateTime>` element, and
+//     the UTC rendering every other timestamp in this app shows sits in
+//     `title`, from the SAME `formatActivityTime` `/activity` renders with —
+//     so the two surfaces differ in granularity, never in the instant they
+//     name. (`title` is a mouse affordance: see D22(b) for what that does and
+//     does not reach.)
 //   * Rows are not clickable. `/activity` does not link its rows either (a
 //     drill-through into the source entity has no story yet), and a widget
 //     that invented one would be the only place in the product where an
@@ -46,6 +49,17 @@ interface RecentActivityCardProps {
   now: Date
 }
 
+// The empty state claims only what THIS feed measures, never a fact about the
+// workspace. Home carries two surfaces that both talk about "the last 24
+// hours" over DIFFERENT event sets: the welcome banner (BK-255) counts
+// `HOME_ATC_CHANGE_ACTIONS` + `HOME_TEST_CHANGE_ACTIONS` (which include
+// `atc.updated` and the test reorder/tag events), while this feed shows
+// `ACTIVITY_ALLOWED_ACTIONS` (which include modules, runs and bug triage, and
+// exclude every edit-in-place action). Sharing `HOME_CHANGE_WINDOW_HOURS`
+// makes the two agree on the WINDOW, not on the events inside it — so a
+// workspace-wide "nothing happened" here would be flatly contradicted by the
+// banner above on any day spent editing existing ATCs. Scoping the sentence to
+// the feed, and naming what the feed tracks, is what keeps it true.
 export function RecentActivityCard({ items, now }: RecentActivityCardProps) {
   return (
     <RecentActivityShell>
@@ -56,9 +70,12 @@ export function RecentActivityCard({ items, now }: RecentActivityCardProps) {
               className="flex flex-col items-center gap-2 px-4 py-8 text-center"
             >
               <History size={18} className="text-fg-3" />
-              <span className="text-md font-semibold text-fg-1">Nothing in the last 24 hours</span>
+              <span className="text-md font-semibold text-fg-1">
+                {`No tracked events in the last ${HOME_CHANGE_WINDOW_HOURS} hours`}
+              </span>
               <span className="max-w-[46ch] text-sm text-fg-3">
-                Authoring an ATC, finishing a run or triaging a defect will show up here.
+                This feed tracks new modules, ATCs and tests, finished runs and defect
+                triage. Creating one will show it here.
               </span>
               <Link
                 href="/activity"
@@ -79,20 +96,38 @@ export function RecentActivityCard({ items, now }: RecentActivityCardProps) {
                 >
                   <ActivityGlyph entityType={item.entity_type} />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="min-w-0 truncate text-xs text-fg-2">
-                      <span className="font-mono text-fg-1">{resolveActorLabel(item.actor)}</span>
-                      {' '}
-                      {item.action_label}
+                    {/*
+                      The verdict chip sits OUTSIDE the truncating span, not
+                      inside it. `truncate` clips from the end of the line, and
+                      a finished run's outcome appears nowhere else on the row
+                      — `deriveItemLabel` renders `run.finished` as the generic
+                      "a run" — so a long actor address must eat the action
+                      label, never the Passed/Failed the row exists to report.
+                    */}
+                    <span className="flex min-w-0 items-center gap-1 text-xs text-fg-2">
+                      <span className="min-w-0 truncate">
+                        <span className="font-mono text-fg-1">{resolveActorLabel(item.actor)}</span>
+                        {' '}
+                        {item.action_label}
+                      </span>
                       <RunVerdictChip action={item.action} payload={item.payload} />
                     </span>
                     <span className="min-w-0 truncate text-sm text-fg-0">{item.item.label}</span>
                   </span>
-                  <span
+                  {/*
+                    `dateTime` carries the row's exact instant in the markup
+                    itself, so the value D21(c) mandates is not locked behind
+                    `title` — which is a mouse affordance and reaches no touch
+                    user at all (D22(b) records that limit rather than papering
+                    over it).
+                  */}
+                  <time
+                    dateTime={item.created_at}
                     className="shrink-0 whitespace-nowrap pt-0.5 font-mono text-2xs text-fg-4"
-                    title={`${formatAbsoluteTime(item.created_at)} UTC`}
+                    title={`${formatActivityTime(item.created_at)} UTC`}
                   >
                     {formatRelativeTime(item.created_at, now)}
-                  </span>
+                  </time>
                 </li>
               ))}
             </ul>
@@ -202,6 +237,10 @@ function ActivityGlyph({ entityType }: { entityType: string }) {
 // renders it as a chip beside the action. This widget does the same, from the
 // same `extractRunVerdict`, rather than dropping it — a finished run whose
 // outcome is invisible is the least useful row a QA feed could show.
+//
+// `shrink-0` is load-bearing: the chip is a flex sibling of the truncating
+// actor/action text, and without it the flex algorithm would shrink the chip
+// to fit rather than truncate the text beside it.
 function RunVerdictChip({ action, payload }: { action: string, payload: Record<string, unknown> }) {
   const verdict = extractRunVerdict(action, payload);
   if (verdict === null) {
@@ -209,12 +248,9 @@ function RunVerdictChip({ action, payload }: { action: string, payload: Record<s
   }
   const status = verdict === 'passed' ? 'pass' : 'fail';
   return (
-    <>
-      {' '}
-      <span className="status-chip" data-status={status}>
-        <span className="dot" data-status={status} />
-        {verdict === 'passed' ? 'Passed' : 'Failed'}
-      </span>
-    </>
+    <span className="status-chip shrink-0" data-status={status}>
+      <span className="dot" data-status={status} />
+      {verdict === 'passed' ? 'Passed' : 'Failed'}
+    </span>
   );
 }
