@@ -50,6 +50,13 @@ export const HOME_ACTIVITY_SCAN_LIMIT = 1000;
 // (BK-266) owns the full, unbounded index, and the widget's footer links there.
 export const HOME_RECENT_PROJECTS_LIMIT = 5;
 
+// BK-256 — how many active runs the Home "Active test runs" table lists. The
+// widget is a triage surface ("is anything stalled right now?"), not a runs
+// index: the COUNT in its header is workspace-wide and exact regardless of this
+// number, and each project's own `/projects/{slug}/runs` report owns the full,
+// filterable list.
+export const HOME_ACTIVE_RUNS_LIMIT = 5;
+
 // Ceiling on the rows each per-project activity scan reads (see the cost note
 // in `lib/home/recent-projects.ts`). It bounds the ORDERING signal only — the
 // module and ATC counts the widget prints are exact `count` reads issued after
