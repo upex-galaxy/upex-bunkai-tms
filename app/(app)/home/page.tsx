@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react';
+import { fetchActivityPage } from '@app/api/v1/activity/response';
 import {
   ActiveRunsCard,
   ActiveRunsError,
   ActiveRunsSkeleton,
 } from '@components/home/ActiveRuns';
+import {
+  RecentActivityCard,
+  RecentActivityError,
+  RecentActivitySkeleton,
+} from '@components/home/RecentActivity';
 import {
   RecentProjectsCard,
   RecentProjectsError,
@@ -17,11 +23,13 @@ import {
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { listActiveRuns } from '@lib/home/active-runs';
 import {
+  HOME_ACTIVITY_FEED_LIMIT,
   HOME_ACTIVITY_SCAN_LIMIT,
   HOME_ATC_CHANGE_ACTIONS,
   HOME_CHANGE_WINDOW_HOURS,
   HOME_TEST_CHANGE_ACTIONS,
 } from '@lib/home/constants';
+import { selectRecentActivity } from '@lib/home/recent-activity';
 import { listRecentProjects } from '@lib/home/recent-projects';
 import { buildWelcomeSummary, resolveDisplayName } from '@lib/home/welcome-summary';
 import { createClient } from '@lib/supabase/server';
@@ -112,6 +120,10 @@ export default async function HomePage() {
       <Suspense fallback={<RecentProjectsSkeleton />}>
         <RecentProjects workspaceId={activeWorkspaceId} />
       </Suspense>
+
+      <Suspense fallback={<RecentActivitySkeleton />}>
+        <RecentActivity workspaceId={activeWorkspaceId} />
+      </Suspense>
     </HomeShell>
   );
 }
@@ -176,6 +188,59 @@ async function RecentProjects({ workspaceId }: { workspaceId: string }) {
   }
   catch {
     return <RecentProjectsError />;
+  }
+}
+
+// BK-260 — the condensed "Recent activity" feed. Its own async component in
+// its own <Suspense> boundary, like every other widget on this page, so the
+// feed read can neither delay nor blank the banner and lists above it.
+//
+// It reuses `fetchActivityPage` — the SAME function `/api/v1/activity` and
+// `/activity` are both built on (BK-49) — rather than issuing its own query,
+// so an event cannot read one way on Home and another on the full feed. This
+// story therefore adds NO workspace-level endpoint: the numbers behind it are
+// already verifiable by API through
+// `GET /api/v1/activity?workspace_id={id}&limit={n}`. Called directly, not
+// over HTTP: same process, same RLS-scoped client, no extra round trip and no
+// cookie forwarding.
+//
+// RLS does the scoping, as it does for the route: `bunkai_list_activity`
+// (migration 0045) is SECURITY INVOKER and runs under the caller's own role,
+// so `activity_log_select_workspace_member` (0009) evaluates against THIS
+// request's auth.uid() — a forged `bk_active_ws` cookie pointing at someone
+// else's workspace returns zero rows, never a leak.
+//
+// The page asks for exactly `HOME_ACTIVITY_FEED_LIMIT` rows and then drops
+// whatever falls outside the 24h window. That is exact rather than
+// approximate: the feed is newest-first, so nothing inside the window can hide
+// behind a row the window rejects — see `selectRecentActivity`.
+async function RecentActivity({ workspaceId }: { workspaceId: string }) {
+  try {
+    const supabase = await createClient();
+    const page = await fetchActivityPage(supabase, {
+      workspaceId,
+      limit: HOME_ACTIVITY_FEED_LIMIT,
+      cursorCreatedAt: null,
+      cursorId: null,
+    });
+
+    // One instant for the whole render, so every row's age is measured from
+    // the same clock reading.
+    const now = new Date();
+    const items = selectRecentActivity({
+      items: page.items,
+      now,
+      windowHours: HOME_CHANGE_WINDOW_HOURS,
+      limit: HOME_ACTIVITY_FEED_LIMIT,
+    });
+
+    return <RecentActivityCard items={items} now={now} />;
+  }
+  catch {
+    // A failed read is NOT a quiet workspace — see RecentActivityError.
+    // `fetchActivityPage` signals RPC failure by throwing (ApiError), which is
+    // the whole error surface here; there is no `{ ok: false }` to check.
+    return <RecentActivityError />;
   }
 }
 
