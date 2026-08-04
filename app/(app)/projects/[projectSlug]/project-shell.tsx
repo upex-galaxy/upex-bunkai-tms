@@ -8,9 +8,10 @@ import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
 import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AtcSearchFilter } from './atc-search-filter';
 import { ProjectExplorer } from './project-explorer';
+import { ProjectSubNav, resolveProjectSectionLabel } from './project-sub-nav';
 import { TestTagFilter } from './test-tag-filter';
 import { useWorkbench, WorkbenchProvider } from './workbench-context';
 
@@ -36,6 +37,7 @@ export function ProjectShell({ children, ...data }: WorkbenchData & { children: 
 
 function ShellChrome({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     projectId,
     projectSlug,
@@ -59,6 +61,12 @@ function ShellChrome({ children }: { children: ReactNode }) {
   // in Tree mode (Table / Mind map are full-width browse surfaces).
   const explorerVisible = isDetail || view === 'tree';
 
+  // The last breadcrumb crumb tracks the sub-nav's active entry (BK-265) so the
+  // shell can no longer claim "All ATCs" while the user is on Metrics. Off the
+  // four section routes (an open ATC / Test / run) it stays "All ATCs", exactly
+  // as it read before this ticket.
+  const sectionLabel = resolveProjectSectionLabel(pathname, projectSlug) ?? 'All ATCs';
+
   const selectView = (next: WorkbenchView) => {
     setView(next);
     // The view toggle picks an index browse mode; leave any open detail route.
@@ -68,7 +76,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface-0">
       <Topbar
-        left={<Breadcrumb items={[workspaceName, projectName, 'All ATCs']} />}
+        left={<Breadcrumb items={[workspaceName, projectName, sectionLabel]} />}
         center={(
           <div
             className="inline-flex items-center gap-0.5 rounded-2 border border-stroke-1 bg-surface-1 p-0.5"
@@ -120,6 +128,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
           </>
         )}
       />
+      <ProjectSubNav projectSlug={projectSlug} />
       <div className="flex flex-1 overflow-hidden">
         {explorerVisible && (
           <ProjectExplorer
