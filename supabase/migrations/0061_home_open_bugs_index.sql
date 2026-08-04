@@ -26,8 +26,16 @@
 -- WHAT THIS BUYS
 -- --------------
 -- Equality on the leading column, then equality on `severity`, is exactly the
--- shape a btree walks: each count becomes an index-only scan over one severity's
--- slice of one workspace, with no heap access at all.
+-- shape a btree walks: each count seeks straight to one severity's slice of one
+-- workspace instead of walking that workspace's whole defect history.
+--
+-- The rollup then inner-joins `modules` to drop bugs whose own module is
+-- archived (the rule every bug list already applies — see the note in
+-- lib/home/open-bugs.ts), so the bugs side is an Index Scan rather than an
+-- Index Only Scan: `module_id` comes from the heap, and one `modules_pkey`
+-- probe follows per surviving row. Both costs are proportional to the
+-- OUTSTANDING defects in that severity — the numbers actually displayed — not
+-- to the table, which is the property this index exists to buy.
 --
 -- PARTIAL on the unresolved statuses is what makes it cheap to carry. Only bugs
 -- that are still open or in progress are indexed, so the index stays

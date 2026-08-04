@@ -44,15 +44,45 @@ import { HOME_OPEN_BUG_STATUSES } from '@lib/home/constants';
 // the total moves with it, so the figures stay internally consistent — which is
 // the property the AC actually asks for.
 //
+// WHY ARCHIVED MODULES ARE EXCLUDED
+// ---------------------------------
+// A bug hangs off exactly one module (`bugs.module_id` is NOT NULL, 0046), and
+// every surface that LISTS bugs drops the ones whose own module is archived:
+// `bunkai_list_bugs` (0051, Decision 12) and `bunkai_list_project_bugs` (0046)
+// both inner-join `modules ... and m.archived_at is null`, and the defect
+// heatmap (0052) does the same. `/api/v1/bugs` is project-scoped and goes
+// through that RPC, so there is no other bug list anywhere in the product.
+//
+// Counting them here would therefore print a headline figure nobody can reach:
+// archive a module holding three open defects and Home would assert twelve
+// while every list, filter and heatmap cell in the app sums to nine, with no
+// screen able to account for the gap. So this rollup applies the same rule its
+// own lists apply — the widget stays reconcilable with the surfaces a lead
+// checks it against, which is the only thing that makes the number actionable.
+// It also matches the convention next door: `lib/home/recent-projects.ts`
+// (BK-257) already excludes archived modules and ATCs from its per-project
+// counts.
+//
+// The join is an INNER embed (`modules!inner(archived_at)`) with the filter on
+// the embedded column, the same technique `lib/home/active-runs.ts` uses for
+// `run_atcs!inner(run_id)` — Postgres does the join, and the filter constrains
+// the `count` itself rather than just the (empty) body of a `head` request.
+// `modules_select_workspace_member` (0002) scopes on the same active-membership
+// test as `bugs_select_workspace_member`, so the added join cannot hide a row
+// from a caller who was already entitled to count it.
+//
 // COST SHAPE
 // ----------
 // Four `head: true` counts — no rows cross the wire, and each rides
 // `bugs_workspace_id_severity_unresolved_idx` (0061), a partial index whose
-// predicate mirrors `HOME_OPEN_BUG_STATUSES` literally, so each count is an
-// index-only scan over one severity's slice of the workspace's OUTSTANDING
-// defects. There is deliberately no scan ceiling: `count` is exact by
-// construction, so unlike the row-scanning rollups next to it this one has no
-// truncation point that could make a printed number a floor.
+// predicate mirrors `HOME_OPEN_BUG_STATUSES` literally, so each count seeks
+// straight to one severity's slice of the workspace's OUTSTANDING defects with
+// no residual `status` filter. The module join then costs one `modules_pkey`
+// probe per surviving bug — bounded by the outstanding defect load the card is
+// displaying, not by the workspace's defect history, which is the property the
+// index exists to buy. There is deliberately no scan ceiling: `count` is exact
+// by construction, so unlike the row-scanning rollups next to it this one has
+// no truncation point that could make a printed number a floor.
 //
 // RLS: every read runs through the caller's own client, so
 // `bugs_select_workspace_member` (0046) scopes the counts to workspaces the
@@ -89,10 +119,11 @@ export async function countOpenBugs(
       severity,
       result: await db
         .from('bugs')
-        .select('id', { count: 'exact', head: true })
+        .select('id, modules!inner(archived_at)', { count: 'exact', head: true })
         .eq('workspace_id', params.workspaceId)
         .eq('severity', severity)
-        .in('status', openStatuses),
+        .in('status', openStatuses)
+        .is('modules.archived_at', null),
     })),
   );
 
