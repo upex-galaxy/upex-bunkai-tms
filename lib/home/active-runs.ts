@@ -157,12 +157,15 @@ export async function listActiveRuns(
   const runs: ActiveRun[] = [];
   for (const [index, row] of rows.entries()) {
     const project = projectById.get(row.project_id);
-    // A run whose project the caller cannot read is not this widget's to
-    // render, and inventing a placeholder name would put an unclickable row on
-    // the page. RLS makes this unreachable in practice; dropping it keeps the
-    // widget honest if it ever is not.
+    // An unresolvable project fails the WHOLE widget rather than dropping the
+    // row. Dropping it would leave the header counting a run the table does not
+    // list — worst case a header reading "· 3" above "Nothing running right
+    // now", which is the exact contradiction this widget exists to avoid. One
+    // failed part fails the widget, the same line `listRecentProjects` draws for
+    // a failed count. RLS makes this unreachable in practice (a caller who can
+    // read the run can read its project); it is a guard, not a path.
     if (project === undefined) {
-      continue;
+      return { ok: false };
     }
 
     const counts = stepCounts[index];
