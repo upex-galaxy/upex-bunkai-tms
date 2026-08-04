@@ -1,0 +1,48 @@
+-- 0060_home_active_runs_index.sql — BK-256: covering index for the Home
+-- "Active test runs" page read and its workspace-wide count.
+--
+-- WHY
+-- ---
+-- `listActiveRuns` (lib/home/active-runs.ts) issues two queries against `runs`
+-- on every /home render, both with the same predicate and one with an ORDER BY:
+--
+--   select count(*) from runs where workspace_id = $1 and status = 'running'
+--   select ...      from runs where workspace_id = $1 and status = 'running'
+--     order by started_at desc, id desc limit 5
+--
+-- None of the five existing `runs` indexes can serve that ordering. The two that
+-- lead with `workspace_id` sort by nothing (runs_workspace_id_idx, 0031) or by
+-- the wrong column (runs_workspace_id_updated_at_idx, 0059); the three composite
+-- ones lead with `test_id` (0031, 0038) or `project_id` (0041, 0031), which this
+-- access path does not filter on. So Postgres scanned every run the workspace
+-- had ever recorded, filtered `status`, and top-N sorted the result — to return
+-- five rows, on the post-login landing page every member hits.
+--
+-- This is the same class of problem 0059 fixed one story earlier for the Recent
+-- projects scans, and the note there applies verbatim: `runs` has no archive, so
+-- it accumulates one row per execution forever and the cost grows with the
+-- workspace's whole execution history rather than with what is displayed.
+--
+-- WHAT THIS BUYS
+-- --------------
+-- Equality on the leading column, then the two ORDER BY columns in their exact
+-- order and direction, is the shape a btree walks directly: the page read
+-- becomes an index-ordered LIMIT with no sort node at all.
+--
+-- PARTIAL on `status = 'running'` is what makes it cheap to carry. Only runs
+-- actually in flight are indexed, so the index stays proportional to concurrent
+-- executions (single digits in this product) rather than to execution history,
+-- and every write that finishes or aborts a run REMOVES its entry. Postgres can
+-- use a partial index only for queries whose WHERE implies the predicate, which
+-- both queries above do literally.
+--
+-- It serves three readers, not one: the page read, the `count(*)` beside it, and
+-- the identical count the Home welcome banner (BK-255) already issues from
+-- app/(app)/home/page.tsx.
+--
+-- Additive only: one `create index if not exists`, no DDL on any existing
+-- object, no behavioural change. Re-runnable.
+
+create index if not exists runs_workspace_id_started_at_running_idx
+  on public.runs (workspace_id, started_at desc, id desc)
+  where status = 'running';
