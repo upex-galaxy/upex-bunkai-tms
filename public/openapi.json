@@ -1240,11 +1240,11 @@
           },
           "ac_executed": {
             "type": "integer",
-            "description": "How many of `ac_bound` have been verified: at least one ATC is linked AND no linked ATC is still awaiting its first execution. An acceptance criterion whose ATCs are bound but never run is deliberately NOT counted here. Always <= `ac_bound`."
+            "description": "How many of `ac_bound` are currently verified: at least one ATC is linked AND no linked ATC is still pending in its most recent run. POINT-IN-TIME, NOT CUMULATIVE — this is not a count of criteria that have ever been executed. Each ATC resolves to the status of its most recent run only, and adding an ATC to a newly created run resets it to pending, so this figure legitimately falls when a team opens a regression run and rises again as they work through it. Always <= `ac_bound`."
           },
           "ac_not_run": {
             "type": "integer",
-            "description": "Bound but not yet verified — `ac_bound - ac_executed`. Kept as its own figure because \"test cases exist but nobody has run them\" is a different problem from \"no test cases exist\", and a single coverage percentage hides the difference."
+            "description": "Bound but not currently verified — `ac_bound - ac_executed`: at least one linked ATC is pending in its most recent run. Kept as its own figure because \"test cases exist but are not verified right now\" is a different problem from \"no test cases exist\", and a single coverage percentage hides the difference. Note this does NOT mean \"never executed\": an ATC with a long execution history returns to this bucket as soon as it joins a new run."
           },
           "ac_uncovered": {
             "type": "integer",
@@ -1256,7 +1256,7 @@
           },
           "executed_coverage_percent": {
             "type": ["integer", "null"],
-            "description": "`ac_executed / ac_total` as a whole percent, rounded half-up — the stricter reading, counting only acceptance criteria whose coverage has actually been run. Matches the per-project Metrics screen's \"Executed coverage\" tile. NULL when `ac_total` is 0."
+            "description": "`ac_executed / ac_total` as a whole percent, rounded half-up — the stricter reading, counting only acceptance criteria whose coverage is verified right now. Matches the per-project Metrics screen's \"Executed coverage\" tile. Inherits `ac_executed`'s point-in-time semantics, so do NOT treat a drop in this figure as lost coverage: opening a regression run over already-tested criteria lowers it by design. `ac_coverage_percent` is the stable one. NULL when `ac_total` is 0."
           },
           "modules_total": {
             "type": "integer",
@@ -1264,7 +1264,7 @@
           },
           "modules_fully_covered": {
             "type": "integer",
-            "description": "Modules where every acceptance criterion is executed — no uncovered and no never-run criteria. Modules with no acceptance criteria at all are not counted as fully covered."
+            "description": "Modules where every acceptance criterion is currently verified — none uncovered and none awaiting execution. Modules with no acceptance criteria at all are not counted as fully covered."
           },
           "project_count": {
             "type": "integer",
@@ -5786,7 +5786,7 @@
       "get": {
         "tags": ["Workspaces"],
         "summary": "Summarize test coverage across a whole workspace",
-        "description": "Bearer `atc:read` (or cookie session) — coverage is a workspace-wide inventory of test assets, the same class of read the sibling Home endpoints (`/recent-projects`, `/active-runs`, `/open-bugs`) are gated on. Computed by summing `bunkai_report_project_coverage` — the SAME rollup behind `GET /api/v1/projects/{id}/coverage` and the project Metrics screen — over every project in the workspace, so the two endpoints can never disagree about whether an acceptance criterion is covered. The workspace figure is AC-weighted (`sum(ac_bound) / sum(ac_total)`), not an average of per-project percentages. The shortfall is reported as TWO separate figures on purpose: `ac_not_run` (test cases bound, never executed) and `ac_uncovered` (nothing bound at all) are different problems and a single percentage conflates them. NO trend or prior-period delta is returned: nothing in the schema records when an ATC was bound to an acceptance criterion or when a step was executed, so a historical coverage figure cannot be sourced without inventing one. Runs entirely under the caller's own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME zeroed `200` (with null percentages) that an empty workspace does — never an existence echo. A read that FAILS answers 500, never zeroes.",
+        "description": "Bearer `atc:read` (or cookie session) — coverage is a workspace-wide inventory of test assets, the same class of read the sibling Home endpoints (`/recent-projects`, `/active-runs`, `/open-bugs`) are gated on. Computed by summing `bunkai_report_project_coverage` — the SAME rollup behind `GET /api/v1/projects/{id}/coverage` and the project Metrics screen — over every project in the workspace, so the two endpoints can never disagree about whether an acceptance criterion is covered. The workspace figure is AC-weighted (`sum(ac_bound) / sum(ac_total)`), not an average of per-project percentages. The shortfall is reported as TWO separate figures on purpose: `ac_not_run` (test cases bound, awaiting execution) and `ac_uncovered` (nothing bound at all) are different problems and a single percentage conflates them. Execution state is POINT-IN-TIME, not cumulative — each ATC counts by its most recent run only, and joining a new run resets it to pending — so `ac_executed` and `executed_coverage_percent` fall when a regression run opens and are not a history of what has ever been tested; `ac_coverage_percent` is the figure that only moves when coverage itself does. A successful response may be up to 60 seconds stale (the rollup is memoized per workspace to keep this off the hot path of every landing-page load); adding or removing a project invalidates it at once. NO trend or prior-period delta is returned: nothing in the schema records when an ATC was bound to an acceptance criterion or when a step was executed, so a historical coverage figure cannot be sourced without inventing one. Runs entirely under the caller's own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME zeroed `200` (with null percentages) that an empty workspace does — never an existence echo. A read that FAILS answers 500, never zeroes.",
         "security": [
           {
             "cookieAuth": []
@@ -5848,7 +5848,7 @@
             }
           },
           "500": {
-            "description": "The rollup could not be read (`internal_error`). Deliberately not collapsed into zeroes — one unreadable project fails the whole figure rather than silently shrinking the denominator.",
+            "description": "The rollup could not be read (`internal_error`). Deliberately not collapsed into zeroes — one unreadable project fails the whole figure rather than silently shrinking the denominator. Also returned, for the same reason, when the workspace holds more projects than one pass may roll up (60): a percentage over some of a workspace's projects is a wrong number that looks like a right one, so the endpoint refuses instead of approximating.",
             "content": {
               "application/json": {
                 "schema": {

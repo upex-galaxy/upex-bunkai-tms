@@ -1,6 +1,10 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { HOME_COVERAGE_PROJECT_CONCURRENCY } from '@lib/home/constants';
+import {
+  HOME_COVERAGE_CACHE_TTL_MS,
+  HOME_COVERAGE_MAX_PROJECTS,
+  HOME_COVERAGE_PROJECT_CONCURRENCY,
+} from '@lib/home/constants';
 import { reportProjectCoverage } from '@lib/supabase/rpc';
 
 // BK-259 — the workspace-level rollup behind Home's "Coverage" stat card: how
@@ -56,11 +60,29 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 //
 // That choice makes the headline "has a test case", not "has been verified", so
 // the card must not stop there — and does not. §4.7 of the master design plan
-// draws a line this widget is required to keep: "never run" (ATCs bound, zero
-// executions) has to read differently from "no coverage" (nothing bound at
-// all). Both counts ship alongside the headline, in the card and on the wire,
-// so a workspace whose ACs are all bound and none ever executed reads as 100%
-// bound / 0 executed rather than as a clean bill of health.
+// draws a line this widget is required to keep: coverage that is bound but not
+// verified has to read differently from "no coverage" (nothing bound at all).
+// Both counts ship alongside the headline, in the card and on the wire, so a
+// workspace whose ACs are all bound and none executed reads as 100% bound / 0
+// executed rather than as a clean bill of health.
+//
+// "EXECUTED" IS POINT-IN-TIME, NOT "HAS EVER BEEN RUN"
+// ---------------------------------------------------
+// Worth stating plainly, because the natural-language reading of these figures
+// is wrong in a way that matters. `atc_real_status` (0050) resolves each ATC to
+// the status of its MOST RECENT `run_atcs` row across any run — the PO's Q1
+// framing, "current point-in-time value, not execution history" — and
+// `bunkai_create_run` (0031) inserts every ATC into a new run as `pending`.
+//
+// So this is NOT a monotonic "has been run at least once" tally: an ATC
+// executed every sprint for a year reverts to unrun the moment it is added to a
+// fresh regression run, and `acExecuted` for the whole workspace can legitimately
+// fall to zero on the morning QA opens a new run, with nothing deleted,
+// unbound, or archived. That is the shipped, intended meaning of the project
+// Metrics screen's own tiles — this rollup only adds them up — but it makes
+// "never run" an actively false label for `acNotRun`, so neither the card nor
+// the wire contract uses one. Both say AWAITING EXECUTION, which is what the
+// number actually reports.
 //
 // DERIVED, NOT SEPARATELY COUNTED
 // -------------------------------
@@ -80,16 +102,31 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 // the workspace, and the RPC is the only thing entitled to decide what each
 // one's state is.
 //
-// Two consequences worth naming rather than discovering later:
+// Three consequences worth naming rather than discovering later:
 //   * The per-project payload carries `modules` and `no_coverage` arrays this
 //     rollup discards — it needs the `kpis` object only. Nothing on this page
-//     renders per-AC gaps; the project Metrics screen owns that.
+//     renders per-AC gaps; the project Metrics screen owns that. It cannot be
+//     trimmed from here either: PostgREST cannot project into a jsonb-returning
+//     function, so the whole payload crosses the wire whatever we ask for.
 //   * `bunkai_report_project_coverage`'s `atc_real_status` CTE (0050) is not
 //     project-scoped, so each call costs one pass over `run_atcs`. That cost is
 //     the existing RPC's, not this rollup's, and it is not fixable from here —
-//     narrowing it means redefining a shipped, in-QA function. Flagged so the
-//     next person to touch Home coverage knows the ceiling is per-project call
-//     count, and that the fix lives in the RPC.
+//     narrowing it means redefining a shipped, in-QA function.
+//   * Therefore total work per uncached render grows with (projects × run
+//     history), on the app's LANDING page, for every member on every sign-in.
+//     Concurrency caps how much of that runs at once; it caps neither how often
+//     it runs nor how large it can get. Two bounds below do:
+//       - a short-TTL memo per workspace (`HOME_COVERAGE_CACHE_TTL_MS`), so
+//         repeat loads and simultaneous members share one sweep;
+//       - a hard project ceiling (`HOME_COVERAGE_MAX_PROJECTS`) that fails to
+//         the card's error state rather than printing a partial percentage.
+//     If a real workspace ever reaches that ceiling, the fix is NOT a bigger
+//     number: it is a `bunkai_report_workspace_coverage` RPC that computes
+//     `atc_real_status` ONCE for the workspace and returns just the kpi counts.
+//     That would reuse this same CTE chain rather than re-derive it, so it does
+//     not create the second definition of "covered" this module exists to
+//     avoid — it extracts the existing one. Out of scope here (BK-259 ships no
+//     schema change); flagged so the next person has the design, not a puzzle.
 // No index is added for this story: this module issues no ordering, no
 // filtering and no scan of its own beyond the workspace's project list, which
 // `lib/home/recent-projects.ts` already reads the same way.
@@ -109,10 +146,14 @@ export interface WorkspaceCoverageRollup {
   acTotal: number
   // ...of which have at least one non-archived ATC linked (run or not).
   acBound: number
-  // ...of which have at least one linked ATC AND no linked ATC still awaiting
-  // its first execution.
+  // ...of which have at least one linked ATC AND no linked ATC whose MOST
+  // RECENT run is still pending. Point-in-time, not cumulative — see the
+  // "EXECUTED IS POINT-IN-TIME" note above before reading this as "has ever
+  // been run".
   acExecuted: number
-  // Bound but not yet verified. Derived: `acBound - acExecuted`.
+  // Bound, with at least one linked ATC awaiting execution in its most recent
+  // run. Derived: `acBound - acExecuted`. NOT "never run" — an ATC that has
+  // been executed many times lands here again as soon as a new run includes it.
   acNotRun: number
   // Nothing bound at all. Derived: `acTotal - acBound`.
   acUncovered: number
@@ -190,6 +231,43 @@ export async function summarizeWorkspaceCoverage(
     return { ok: true, ...EMPTY_ROLLUP, projectCount: 0 };
   }
 
+  // THE CACHE GATE IS THIS LINE, NOT THE LOOKUP BELOW.
+  //
+  // The project list above is read through the CALLER's own RLS-scoped client
+  // and is re-read on every request — it is never cached and never skipped.
+  // That ordering is what keeps a shared cache safe: `projects_select_workspace_member`
+  // (0002) returns rows only to members, so reaching this point at all proves
+  // the caller belongs to this workspace. A non-member (or someone whose
+  // membership was just revoked, or an API caller passing a workspace id that
+  // is not theirs — the route takes an arbitrary id from the path) gets an
+  // EMPTY list and returns above, without ever consulting or populating the
+  // cache.
+  //
+  // Caching on workspace id ALONE, ahead of that read, would have been a
+  // cross-tenant leak rather than an optimization: one member's sweep would
+  // populate an entry that `GET /api/v1/workspaces/{id}/coverage` would then
+  // serve to anybody who guessed the id, turning the endpoint's documented
+  // non-disclosure answer into a real coverage posture. Every member who DOES
+  // pass this gate sees the same workspace-level figures, so sharing the result
+  // among them discloses nothing they could not read themselves.
+  //
+  // The key carries the project id set, so adding or removing a project
+  // invalidates immediately instead of waiting out the TTL; only the coverage
+  // WITHIN an unchanged set of projects is allowed to be up to
+  // `HOME_COVERAGE_CACHE_TTL_MS` stale.
+  const cacheKey = `${params.workspaceId}:${[...projectIds].sort().join(',')}`;
+  const cached = readCachedRollup(cacheKey);
+  if (cached !== null) {
+    return { ok: true, ...cached };
+  }
+
+  // Refuse rather than approximate. A partial rollup would be a confident
+  // percentage over a denominator missing whole projects — see
+  // `HOME_COVERAGE_MAX_PROJECTS` for why that is worse than the error card.
+  if (projectIds.length > HOME_COVERAGE_MAX_PROJECTS) {
+    return { ok: false };
+  }
+
   const perProject = await mapWithConcurrency(
     projectIds,
     HOME_COVERAGE_PROJECT_CONCURRENCY,
@@ -225,13 +303,60 @@ export async function summarizeWorkspaceCoverage(
     totals.modulesFullyCovered += kpis.modulesFullyCovered;
   }
 
-  return {
-    ok: true,
+  const rollup: WorkspaceCoverageRollup = {
     ...totals,
     acNotRun: totals.acBound - totals.acExecuted,
     acUncovered: totals.acTotal - totals.acBound,
     projectCount: projectIds.length,
   };
+
+  // Only a COMPLETE rollup is ever cached. Every failure path above returns
+  // before here, so a transient RPC error cannot be pinned into the cache and
+  // replayed at everyone for a minute.
+  writeCachedRollup(cacheKey, rollup);
+
+  return { ok: true, ...rollup };
+}
+
+// An in-process, per-instance TTL memo of completed rollups. Deliberately NOT
+// Next's `unstable_cache`: that would have to close over the request-scoped
+// Supabase client, whose session refresh can reach for cookies — a dynamic API
+// that throws inside a cache scope — and this repo has no data-cache layer to
+// follow the conventions of. A plain Map is something the next reader can hold
+// entirely in their head, and it needs no framework guarantees to be correct.
+//
+// Being per-instance is a real limit, stated rather than glossed: a cold
+// serverless instance always pays full price, and N instances mean up to N
+// sweeps per TTL instead of one. It still removes the case that actually hurt —
+// the same member reloading Home, and a team all landing on it at 9am, each
+// paying a full per-project sweep of a workspace whose coverage has not moved.
+// A shared cache (Redis, or the Data Cache once something else here needs one)
+// is the upgrade path; it would not change any of the logic above.
+const rollupCache = new Map<string, { expiresAt: number, value: WorkspaceCoverageRollup }>();
+
+function readCachedRollup(key: string): WorkspaceCoverageRollup | null {
+  const entry = rollupCache.get(key);
+  if (entry === undefined) {
+    return null;
+  }
+  if (entry.expiresAt <= Date.now()) {
+    rollupCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function writeCachedRollup(key: string, value: WorkspaceCoverageRollup): void {
+  const now = Date.now();
+  // Sweep on write. Without it the map would retain one entry per workspace
+  // (and per project-set) for the life of the instance — a slow leak on a
+  // long-lived server, since nothing else ever visits these keys again.
+  for (const [existingKey, entry] of rollupCache) {
+    if (entry.expiresAt <= now) {
+      rollupCache.delete(existingKey);
+    }
+  }
+  rollupCache.set(key, { expiresAt: now + HOME_COVERAGE_CACHE_TTL_MS, value });
 }
 
 // A missing key, a non-number, or a negative one is a broken read, not a zero.

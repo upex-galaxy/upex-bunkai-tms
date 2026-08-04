@@ -17,14 +17,25 @@ import { AlertTriangle } from 'lucide-react';
 //
 // THE BREAKDOWN IS NOT DECORATION
 // -------------------------------
-// §4.7 requires "never run" (ATCs bound, zero executions) to read differently
-// from "no coverage" (nothing bound at all), and this card is where the two are
-// easiest to blur: a single percentage that counts a bound-but-never-executed
-// acceptance criterion as covered will read as "verified" to everyone who
-// glances at it. So the three states always ship together, each with the tone
-// the project Metrics screen already gives it — executed `pass`, bound-never-run
+// §4.7 requires bound-but-unverified coverage to read differently from "no
+// coverage" (nothing bound at all), and this card is where the two are easiest
+// to blur: a single percentage that counts a bound-but-unexecuted acceptance
+// criterion as covered will read as "verified" to everyone who glances at it.
+// So the three states always ship together, each with the tone the project
+// Metrics screen already gives it — executed `pass`, awaiting execution
 // `skipped`, unbound `fail` — and each chip spells out its own word, so the
 // distinction survives greyscale, a screenshot, and a red-green deficiency.
+//
+// The middle chip says "awaiting execution", NOT "never run". The underlying
+// state is point-in-time: `atc_real_status` (0050) reads each ATC's MOST RECENT
+// run, and `bunkai_create_run` (0031) enters every ATC into a new run as
+// pending. So an ATC executed every sprint for a year appears in this chip
+// again the moment QA opens a regression run over it — "never run" would be a
+// flatly false statement about those acceptance criteria, and would have this
+// card assert a regression where a team had merely started testing. See the
+// note in `lib/home/coverage.ts`. (The project Metrics screen still labels the
+// same quantity "Never run"; aligning that shipped BK-46 surface is a follow-up
+// rather than a silent edit to a story already in QA.)
 //
 // Departures from the mockup, both deliberate:
 //   * NO delta. The mockup's KPI reads "+4.2 vs last sprint". Nothing in this
@@ -104,7 +115,7 @@ export function CoverageSummaryCard({ rollup }: CoverageSummaryCardProps) {
               data-testid="home-coverage-executed"
               className="status-chip"
               data-status="pass"
-              title={`${rollup.acExecuted} acceptance criteria have test coverage that has actually been executed`}
+              title={`${rollup.acExecuted} acceptance criteria have test coverage whose most recent run is complete`}
             >
               <span className="font-mono font-semibold">{rollup.acExecuted}</span>
               executed
@@ -115,10 +126,10 @@ export function CoverageSummaryCard({ rollup }: CoverageSummaryCardProps) {
               data-testid="home-coverage-not-run"
               className="status-chip"
               data-status="skipped"
-              title={`${rollup.acNotRun} acceptance criteria have test cases bound but at least one of them has never been run`}
+              title={`${rollup.acNotRun} acceptance criteria have test cases bound, but at least one of them is still pending in its most recent run`}
             >
               <span className="font-mono font-semibold">{rollup.acNotRun}</span>
-              bound, never run
+              awaiting execution
             </span>
           </li>
           <li>

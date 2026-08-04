@@ -101,6 +101,45 @@ export const HOME_PROJECT_ACTIVITY_SCAN_LIMIT = 1000;
 // to serve the rest of the page's widgets, which are loading at the same time.
 export const HOME_COVERAGE_PROJECT_CONCURRENCY = 4;
 
+// BK-259 — how long a computed workspace coverage rollup may be reused.
+//
+// Concurrency bounds how much runs AT ONCE; it does not bound how OFTEN. Home
+// is the post-login landing page, so without this every member paid the whole
+// per-project fan-out on every single load, and ten members signing in at 9am
+// meant ten identical full sweeps of the same workspace. Coverage moves when
+// somebody binds an ATC or finishes a run — minutes apart at the very fastest —
+// so serving a figure up to a minute old costs the reader nothing and removes
+// almost all of the repeat work.
+//
+// Deliberately short: this is a stampede damper, not a materialized view. A
+// lead who binds a test case and reloads to check expects to see it, and a
+// minute is inside the window where "it will show up in a moment" is a sane
+// thing for the product to imply.
+export const HOME_COVERAGE_CACHE_TTL_MS = 60_000;
+
+// BK-259 — the largest number of projects the Home coverage card will roll up
+// in one pass.
+//
+// This is a safety valve, NOT a page size. The rollup is one
+// `bunkai_report_project_coverage` call per project, and that RPC's
+// `atc_real_status` CTE (0050) is deliberately not project-scoped, so each call
+// costs a pass over `run_atcs`. Total work therefore grows with projects ×
+// run history, on the app's landing page, for every member — the one place in
+// this product where unbounded work is least acceptable.
+//
+// Tripping it renders the card's EXISTING error state, not a partial figure.
+// That is the whole point: a percentage computed over some of a workspace's
+// projects is not a smaller truth, it is a wrong number that looks exactly like
+// a right one, and this card's entire design (see `lib/home/coverage.ts`) is
+// built on never printing one. "Coverage could not be measured" is recoverable;
+// "78%" that silently omitted half the workspace is not.
+//
+// 60 against a largest real workspace of 15 projects — four times current
+// headroom, so it cannot fire on today's data. If a workspace ever legitimately
+// reaches it, the fix is the workspace-level RPC noted in `coverage.ts`, not a
+// higher number here.
+export const HOME_COVERAGE_MAX_PROJECTS = 60;
+
 // BK-258 — which `bugs.status` values Home counts as "open".
 //
 // The shipped status vocabulary is `open | in_progress | resolved | closed`
