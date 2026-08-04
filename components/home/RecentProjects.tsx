@@ -22,6 +22,12 @@ import Link from 'next/link';
 //     (Critical Rule #14): match the app, not the mockup's copy.
 //   * The mockup's `PRJ-xxx` code column becomes the project slug, which is what
 //     this product actually identifies a project by (and what `/projects` shows).
+//   * The counts share the slug's meta line instead of holding their own column.
+//     The mockup's 6-column grid loses two cells here (no status dot, no coverage
+//     bar), and a dedicated counts column in what remains only fits on a wide
+//     viewport — which is how they ended up hidden below `sm` and out of AC1 on a
+//     phone. On the meta line they are present at every width and truncate with
+//     the rest of the line instead of disappearing.
 //
 // Kept from the mockup: the card + section header shape, "Sorted by activity"
 // hint, the "View all" escape hatch to `/projects`, one row per project with
@@ -68,18 +74,19 @@ export function RecentProjectsCard({ projects }: RecentProjectsCardProps) {
                       <span className="min-w-0 truncate text-sm font-semibold text-fg-0">
                         {project.name}
                       </span>
-                      <span className="min-w-0 truncate font-mono text-2xs text-fg-4">
-                        /
-                        {project.slug}
+                      <span className="min-w-0 truncate text-2xs text-fg-3">
+                        <span className="font-mono text-fg-4">
+                          /
+                          {project.slug}
+                        </span>
+                        {' · '}
+                        <span className="font-mono text-fg-2">{project.moduleCount}</span>
+                        {' '}
+                        {project.moduleCount === 1 ? 'module' : 'modules'}
+                        {' · '}
+                        <span className="font-mono text-fg-2">{project.atcCount}</span>
+                        {' ATC'}
                       </span>
-                    </span>
-                    <span className="hidden shrink-0 text-xs text-fg-3 sm:inline">
-                      <span className="font-mono text-fg-2">{project.moduleCount}</span>
-                      {' '}
-                      {project.moduleCount === 1 ? 'module' : 'modules'}
-                      {' · '}
-                      <span className="font-mono text-fg-2">{project.atcCount}</span>
-                      {' ATC'}
                     </span>
                     <span
                       className="shrink-0 font-mono text-2xs text-fg-4"
