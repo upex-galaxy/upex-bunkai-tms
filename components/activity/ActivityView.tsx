@@ -4,7 +4,7 @@ import type { ActivityItemResponse, ActivityPageResponse } from '@app/api/v1/act
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { ACTIVITY_PAGE_SIZE } from '@lib/activity/constants';
-import { extractRunVerdict, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
+import { extractRunVerdict, formatActivityTime, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
 import { Activity as ActivityIcon, ArrowDown, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -36,15 +36,6 @@ interface ApiErrorBody {
 }
 
 const FALLBACK_ERROR_MESSAGE = 'Could not load the activity feed.';
-
-// Deterministic UTC rendering: this is a CLIENT component but still
-// server-renders its first paint, so `toLocale*` would drift between the
-// server and the browser timezone and trip a hydration mismatch. Slicing the
-// ISO string is timezone-stable on both (mirrors RunHistoryView's
-// `formatRanAt`). '2026-07-29T11:52:00+00:00' -> '2026-07-29 11:52'.
-function formatActivityTime(iso: string): string {
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
-}
 
 async function fetchActivity(
   cursor: string | null,

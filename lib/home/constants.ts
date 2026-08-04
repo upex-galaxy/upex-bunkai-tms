@@ -57,6 +57,15 @@ export const HOME_RECENT_PROJECTS_LIMIT = 5;
 // filterable list.
 export const HOME_ACTIVE_RUNS_LIMIT = 5;
 
+// BK-260 — how many events the Home "Recent activity" feed shows. The widget is
+// a catch-up glance, not the feed: `/activity` (BK-49) owns the full, paginated
+// history and the widget's header links there. This is also the page size asked
+// of `fetchActivityPage`, because the 24h window (`HOME_CHANGE_WINDOW_HOURS`
+// above — shared with the welcome banner so the two cannot disagree about what
+// "recent" means) only ever REMOVES rows from that page, never needs more of
+// them. See `lib/home/recent-activity.ts`.
+export const HOME_ACTIVITY_FEED_LIMIT = 6;
+
 // Ceiling on the rows the single grouped `run_steps` scan reads for the listed
 // runs (see the cost note in `lib/home/active-runs.ts`). Unlike the recent
 // projects scan limit above, this one bounds numbers the widget PRINTS, so it is
