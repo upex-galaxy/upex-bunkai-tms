@@ -1183,6 +1183,50 @@
           "last_activity_at"
         ]
       },
+      "OpenBugs": {
+        "type": "object",
+        "properties": {
+          "open_count": {
+            "type": "integer",
+            "description": "How many bugs are OPEN across the WHOLE workspace, where open means UNRESOLVED: `bugs.status` is one of the values in `open_statuses` (`open` or `in_progress`). Both are pre-resolution states — a defect somebody is actively fixing is still outstanding — so triaging a bug from `open` to `in_progress` deliberately does NOT decrease this number; only resolving or closing it does. `resolved` and `closed` are both excluded. DERIVED as the sum of `by_severity` rather than counted separately, so the total and the breakdown can never contradict each other."
+          },
+          "by_severity": {
+            "$ref": "#/components/schemas/OpenBugsBySeverity"
+          },
+          "open_statuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["open", "in_progress"]
+            },
+            "description": "The exact `bugs.status` values counted above, published so the rule is machine-readable rather than inferred. This is the same list the Home stat card renders from and the same one the supporting partial index is built on, so the three cannot drift apart."
+          }
+        },
+        "required": ["open_count", "by_severity", "open_statuses"]
+      },
+      "OpenBugsBySeverity": {
+        "type": "object",
+        "properties": {
+          "P1": {
+            "type": "integer",
+            "description": "Critical."
+          },
+          "P2": {
+            "type": "integer",
+            "description": "Major."
+          },
+          "P3": {
+            "type": "integer",
+            "description": "Minor."
+          },
+          "P4": {
+            "type": "integer",
+            "description": "Trivial."
+          }
+        },
+        "required": ["P1", "P2", "P3", "P4"],
+        "description": "Open bugs per severity. The four keys are exhaustive — `bugs.severity` is CHECK-constrained to exactly P1..P4 — so these always sum to `open_count`."
+      },
       "ModuleCreateResponse": {
         "type": "object",
         "properties": {
@@ -5591,6 +5635,84 @@
           },
           "500": {
             "description": "The rollup could not be read (`internal_error`). Deliberately not collapsed into an empty list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/open-bugs": {
+      "get": {
+        "tags": ["Workspaces"],
+        "summary": "Count the open bugs across a whole workspace, broken down by severity",
+        "description": "Bearer `atc:read` (or cookie session) — the response is a workspace-wide defect posture, the same class of workspace inventory the sibling Home reads (`/recent-projects`, `/active-runs`) are gated on. OPEN means UNRESOLVED: `bugs.status in ('open', 'in_progress')`, the two states before a fix exists; `resolved` and `closed` are excluded. The counted statuses are echoed back as `open_statuses` so the definition travels with the numbers. `open_count` is the sum of `by_severity` by construction, never an independent count, so the total always reconciles with the breakdown. Runs entirely under the caller's own RLS, so a foreign, nonexistent, or lost-membership workspace id returns the SAME zeroed `200` a workspace with no open bugs does — never an existence echo. A read that FAILS answers 500, never zeroes.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's open-bug count and its severity breakdown (possibly all zero).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenBugs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id in the path is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The rollup could not be read (`internal_error`). Deliberately not collapsed into zeroes.",
             "content": {
               "application/json": {
                 "schema": {

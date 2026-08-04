@@ -64,6 +64,8 @@ import '../app/api/v1/workspaces/[id]/recent-projects/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/active-runs/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/open-bugs/route.openapi';
+
 import '../app/api/v1/projects/[id]/modules/route.openapi';
 
 import '../app/api/v1/projects/[id]/environments/route.openapi';
