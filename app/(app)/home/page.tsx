@@ -132,9 +132,9 @@ function HomeShell({ children }: { children: ReactNode }) {
 }
 
 // BK-256 — the "Active test runs" widget. Same shape as the two widgets around
-// it: its own async component in its own <Suspense> boundary, so the four exact
-// step counts it issues per listed run cannot delay — or, on failure, blank —
-// the banner above or the projects list below.
+// it: its own async component in its own <Suspense> boundary, so the handful of
+// reads behind it cannot delay — or, on failure, blank — the banner above or the
+// projects list below.
 //
 // The rollup lives in `lib/home/active-runs.ts` and is shared with
 // GET /api/v1/workspaces/{id}/active-runs, so the widget and the endpoint cannot
