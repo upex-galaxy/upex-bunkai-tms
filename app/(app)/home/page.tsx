@@ -6,6 +6,11 @@ import {
   ActiveRunsSkeleton,
 } from '@components/home/ActiveRuns';
 import {
+  CoverageSummaryCard,
+  CoverageSummaryError,
+  CoverageSummarySkeleton,
+} from '@components/home/CoverageSummary';
+import {
   OpenBugsCard,
   OpenBugsError,
   OpenBugsSkeleton,
@@ -34,6 +39,7 @@ import {
   HOME_CHANGE_WINDOW_HOURS,
   HOME_TEST_CHANGE_ACTIONS,
 } from '@lib/home/constants';
+import { summarizeWorkspaceCoverage } from '@lib/home/coverage';
 import { countOpenBugs } from '@lib/home/open-bugs';
 import { selectRecentActivity } from '@lib/home/recent-activity';
 import { listRecentProjects } from '@lib/home/recent-projects';
@@ -117,10 +123,15 @@ export default async function HomePage() {
         </Suspense>
       </WelcomeBanner>
 
-      {/* The mockup's KPI row sits directly under the greeting. BK-259's
-          Coverage card joins this one here. */}
+      {/* The mockup's KPI row sits directly under the greeting: open bugs
+          (BK-258) then coverage (BK-259), stacked rather than gridded — see
+          each card's own note on why the 4-up grid was not built. */}
       <Suspense fallback={<OpenBugsSkeleton />}>
         <OpenBugs workspaceId={activeWorkspaceId} />
+      </Suspense>
+
+      <Suspense fallback={<CoverageSummarySkeleton />}>
+        <CoverageSummary workspaceId={activeWorkspaceId} actorUserId={user.id} />
       </Suspense>
 
       <Suspense fallback={<ActiveRunsSkeleton />}>
@@ -203,6 +214,44 @@ async function OpenBugs({ workspaceId }: { workspaceId: string }) {
   }
   catch {
     return <OpenBugsError />;
+  }
+}
+
+// BK-259 — the "Coverage" stat card. Same shape as every other widget on this
+// page: its own async component in its own <Suspense> boundary, so the
+// per-project coverage reads behind it cannot delay — or, on failure, blank —
+// the banner above or the table below. That boundary matters more here than
+// anywhere else on the page: the open-bug counts above it are four `head`
+// counts, while this one visits every acceptance criterion in the workspace.
+//
+// The rollup lives in `lib/home/coverage.ts` and is shared with
+// GET /api/v1/workspaces/{id}/coverage, so the card and the endpoint cannot
+// drift. That module does not define coverage itself — it sums
+// `bunkai_report_project_coverage`, the same RPC the project Metrics screen
+// (BK-46) reads, so Home and Metrics cannot report two different coverages for
+// the same acceptance criteria.
+//
+// The actor id is passed down rather than re-read: the RPC takes an explicit
+// actor and binds it against `auth.uid()` (0048), and this page has already
+// resolved the session above.
+//
+// RLS does the scoping: the project list is read through the caller's own
+// client (`projects_select_workspace_member`, 0002) and each RPC call re-checks
+// the actor's active membership on its own account, so a forged `bk_active_ws`
+// cookie pointing at someone else's workspace measures nothing rather than
+// leaking that workspace's coverage posture.
+async function CoverageSummary({ workspaceId, actorUserId }: { workspaceId: string, actorUserId: string }) {
+  try {
+    const supabase = await createClient();
+    const result = await summarizeWorkspaceCoverage(supabase, { workspaceId, actorUserId });
+    // A failed read is NOT an uncovered workspace — see CoverageSummaryError.
+    if (!result.ok) {
+      return <CoverageSummaryError />;
+    }
+    return <CoverageSummaryCard rollup={result} />;
+  }
+  catch {
+    return <CoverageSummaryError />;
   }
 }
 
