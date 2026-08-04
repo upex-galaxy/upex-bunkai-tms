@@ -4,7 +4,7 @@ import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createClient } from '@lib/supabase/server';
 import { cn } from '@lib/utils';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
-import { FolderPlus, Plus } from 'lucide-react';
+import { AlertTriangle, FolderPlus, Plus } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -51,12 +51,18 @@ export default async function ProjectsIndexPage() {
   // the index never contradicts the sidebar's own project list, which is read
   // the same way in `app/(app)/layout.tsx`. Switching workspace moves the
   // cookie, which re-resolves `activeWorkspaceId` and re-scopes this read.
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('projects')
     .select('slug, name, description, created_at')
     .eq('workspace_id', activeWorkspaceId)
     .order('created_at', { ascending: true });
   const projects = data ?? [];
+  // A failed read is NOT an empty workspace. Collapsing the two would make the
+  // page assert "No projects yet" to a member whose workspace is full, and send
+  // them to /projects/new to retype a name the API then refuses as duplicate.
+  // `/activity` (§4.16) draws the same line — a read failure gets its own state.
+  const loadFailed = error !== null;
+  const showEmptyState = !loadFailed && projects.length === 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -69,10 +75,13 @@ export default async function ProjectsIndexPage() {
               : 'Projects in this workspace.'}
           </p>
         </div>
-        {/* The empty state carries the only create affordance when there is
-            nothing to list (AC4 — "a single clear way"), so this one is hidden
-            in that case rather than competing with it. */}
-        {projects.length > 0 && (
+        {/* Hidden only while the empty state is on screen: that state's own CTA
+            is the page's primary call to action, and a second create button in
+            the header would compete with it inside the same content region.
+            (The sidebar's persistent "+" is a separate, always-available rail
+            affordance — this gate is about hierarchy here, not exclusivity.)
+            A failed read still shows it, since no empty-state CTA renders. */}
+        {!showEmptyState && (
           <Link
             href="/projects/new"
             data-testid="projects-new-link"
@@ -87,61 +96,77 @@ export default async function ProjectsIndexPage() {
       <div className="flex-1 overflow-auto p-4">
         <div className="mx-auto flex max-w-[820px] flex-col gap-3">
           <Card className="overflow-hidden">
-            {projects.length === 0
+            {loadFailed
               ? (
                   <div
-                    data-testid="projects-empty"
+                    data-testid="projects-error"
                     className="flex flex-col items-center gap-2 px-4 py-10 text-center"
                   >
-                    <FolderPlus size={18} className="text-fg-3" />
-                    <span className="text-md font-semibold text-fg-1">No projects yet</span>
-                    <span className="max-w-[46ch] text-sm text-fg-3">
-                      A project groups the modules, user stories, and ATCs your team authors.
-                      Create the first one to start covering this workspace.
+                    <AlertTriangle size={16} className="text-signal-fail" />
+                    <span className="text-md font-semibold text-fg-1">
+                      Could not load projects
                     </span>
-                    <Link
-                      href="/projects/new"
-                      data-testid="projects-empty-create"
-                      className={cn(buttonVariants({ variant: 'primary' }), 'mt-2')}
-                    >
-                      <Plus size={14} />
-                      Create your first project
-                    </Link>
+                    <span className="max-w-[46ch] text-sm text-fg-3">
+                      This workspace&apos;s projects could not be read just now. Reload the
+                      page to try again — nothing has been changed.
+                    </span>
                   </div>
                 )
-              : (
-                  <ul data-testid="projects-list" className="m-0 grid grid-cols-1 p-0">
-                    {projects.map(project => (
-                      <li key={project.slug} className="border-b border-stroke-2 last:border-b-0">
-                        <Link
-                          href={`/projects/${project.slug}`}
-                          data-testid={`projects-list-item-${project.slug}`}
-                          className="flex flex-col gap-1 px-4 py-3 transition-colors duration-token ease-token hover:bg-surface-3 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-accent"
-                        >
-                          <span className="flex items-baseline justify-between gap-3">
-                            <span className="min-w-0 truncate text-md font-semibold text-fg-0">
-                              {project.name}
+              : showEmptyState
+                ? (
+                    <div
+                      data-testid="projects-empty"
+                      className="flex flex-col items-center gap-2 px-4 py-10 text-center"
+                    >
+                      <FolderPlus size={18} className="text-fg-3" />
+                      <span className="text-md font-semibold text-fg-1">No projects yet</span>
+                      <span className="max-w-[46ch] text-sm text-fg-3">
+                        A project groups the modules, user stories, and ATCs your team authors.
+                        Create the first one to start covering this workspace.
+                      </span>
+                      <Link
+                        href="/projects/new"
+                        data-testid="projects-empty-create"
+                        className={cn(buttonVariants({ variant: 'primary' }), 'mt-2')}
+                      >
+                        <Plus size={14} />
+                        Create your first project
+                      </Link>
+                    </div>
+                  )
+                : (
+                    <ul data-testid="projects-list" className="m-0 grid grid-cols-1 p-0">
+                      {projects.map(project => (
+                        <li key={project.slug} className="border-b border-stroke-2 last:border-b-0">
+                          <Link
+                            href={`/projects/${project.slug}`}
+                            data-testid={`projects-list-item-${project.slug}`}
+                            className="flex flex-col gap-1 px-4 py-3 transition-colors duration-token ease-token hover:bg-surface-3 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-accent"
+                          >
+                            <span className="flex items-baseline justify-between gap-3">
+                              <span className="min-w-0 truncate text-md font-semibold text-fg-0">
+                                {project.name}
+                              </span>
+                              <span className="shrink-0 font-mono text-2xs text-fg-4">
+                                {formatCreatedAt(project.created_at)}
+                              </span>
                             </span>
-                            <span className="shrink-0 font-mono text-2xs text-fg-4">
-                              {formatCreatedAt(project.created_at)}
+                            <span className="truncate font-mono text-xs text-fg-3">
+                              /
+                              {project.slug}
                             </span>
-                          </span>
-                          <span className="truncate font-mono text-xs text-fg-3">
-                            /
-                            {project.slug}
-                          </span>
-                          {/* BR-7 — a description is optional: absent means no
+                            {/* BR-7 — a description is optional: absent means no
                               placeholder and no empty line, not a blank row. */}
-                          {project.description !== null && project.description.trim().length > 0 && (
-                            <span className="line-clamp-2 text-sm text-fg-2">
-                              {project.description}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                            {project.description !== null && project.description.trim().length > 0 && (
+                              <span className="line-clamp-2 text-sm text-fg-2">
+                                {project.description}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
           </Card>
         </div>
       </div>

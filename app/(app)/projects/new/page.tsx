@@ -41,11 +41,17 @@ export default async function NewProjectPage() {
 
   // Only whether the workspace already holds a project — the form uses it to
   // pick between the first-time welcome and the plain create-another heading.
-  const { data: existing } = await supabase
+  const { data: existing, error } = await supabase
     .from('projects')
     .select('slug')
     .eq('workspace_id', activeWorkspaceId)
     .limit(1);
+
+  // A failed read must not be read as "no projects": that would greet a member
+  // whose workspace is already full with the first-time "Your workspace is
+  // ready" welcome. The create-another heading asserts nothing either way, so
+  // it is the honest fallback when we could not find out.
+  const hasProjects = error !== null || Boolean(existing && existing.length > 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
@@ -60,7 +66,7 @@ export default async function NewProjectPage() {
         </Link>
         <CreateProjectForm
           workspaceId={activeWorkspaceId}
-          hasProjects={Boolean(existing && existing.length > 0)}
+          hasProjects={hasProjects}
         />
       </div>
     </div>
