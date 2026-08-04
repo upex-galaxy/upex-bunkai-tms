@@ -8,6 +8,12 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+// The 201 body from POST /api/v1/workspaces/{id}/projects. Only the slug is
+// read here — it is the address of the project we send the member to.
+interface CreateProjectResponse {
+  project?: { slug?: string }
+}
+
 interface ApiErrorBody {
   error?: {
     code?: string
@@ -94,18 +100,21 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
         setSubmitting(false);
         return;
       }
-      // 201 — the new project now exists. Clear the form and refresh the
-      // Server Component so the project list below picks it up; the user stays
-      // on /projects (each list item links through to the project detail page).
-      setName('');
-      setDescription('');
+      // 201 — the new project now exists. BK-266: creating from the dedicated
+      // route lands the member INSIDE the project just created, so we navigate
+      // to its detail page rather than staying put. `refresh()` re-renders the
+      // app shell so the sidebar's project list picks the new one up.
+      const body = (await response.json().catch(() => ({}))) as CreateProjectResponse;
+      const slug = body.project?.slug;
       toast.success('Project created');
+      // Deliberately no `setSubmitting(false)` on this path: navigation is in
+      // flight and the form unmounts with the route, so re-enabling the button
+      // would only offer a second submit of the same name.
+      router.replace(slug ? `/projects/${slug}` : '/projects');
       router.refresh();
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
-    }
-    finally {
       setSubmitting(false);
     }
   };
