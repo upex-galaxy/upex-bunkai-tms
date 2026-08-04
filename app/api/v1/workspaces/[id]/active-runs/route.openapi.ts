@@ -19,6 +19,7 @@ const ActiveRunSchema = z
     blocked_steps: z.number().int(),
     failed_steps: z.number().int().describe('Failed steps do NOT end a run: it stays active until it is explicitly finished or aborted.'),
     started_at: z.string().datetime({ offset: true }),
+    last_activity_at: z.string().datetime({ offset: true }).describe('When the run was last worked on: the newest `executed_at` among its steps, falling back to `started_at` when no step has been marked yet. This is the ordering key. It is NOT `runs.updated_at` — marking a step locks that row but never updates it, so that column is frozen at the run\'s start for a run in flight. `last_activity_at == started_at` therefore means "nothing has happened since this run began".'),
   })
   .openapi('ActiveRun');
 
@@ -30,7 +31,7 @@ const ActiveRunsSchema = z
       .describe('How many runs are in progress across the WHOLE workspace. Exact, and deliberately NOT capped by `limit` — a workspace with eight running runs reports 8 while returning at most `limit` rows. This is the same predicate (`runs.status = \'running\'`) the Home welcome banner counts, so the two numbers on that screen agree by construction.'),
     runs: z
       .array(ActiveRunSchema)
-      .describe('Ordered by `started_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries.'),
+      .describe('Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array\'s length the remainder is NOT reachable from here — there is no cursor and no workspace-wide runs index; read the missing runs from each project\'s own run report.'),
   })
   .openapi('ActiveRuns');
 

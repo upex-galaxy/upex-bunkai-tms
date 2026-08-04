@@ -57,6 +57,15 @@ export const HOME_RECENT_PROJECTS_LIMIT = 5;
 // filterable list.
 export const HOME_ACTIVE_RUNS_LIMIT = 5;
 
+// Ceiling on the rows the single grouped `run_steps` scan reads for the listed
+// runs (see the cost note in `lib/home/active-runs.ts`). Unlike the recent
+// projects scan limit above, this one bounds numbers the widget PRINTS, so it is
+// not allowed to silently cap: the scan asks for an exact count alongside the
+// rows and refuses the whole rollup if the two disagree. The ceiling is
+// therefore a blast radius, not a truncation point — 2000 rows covers 400 steps
+// on each of the widget's 5 runs, or 100 on each of the endpoint's maximum 20.
+export const HOME_ACTIVE_RUNS_STEP_SCAN_LIMIT = 2000;
+
 // Ceiling on the rows each per-project activity scan reads (see the cost note
 // in `lib/home/recent-projects.ts`). It bounds the ORDERING signal only — the
 // module and ATC counts the widget prints are exact `count` reads issued after

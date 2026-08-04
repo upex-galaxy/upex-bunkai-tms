@@ -69,6 +69,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       blocked_steps: run.blockedSteps,
       failed_steps: run.failedSteps,
       started_at: run.startedAt,
+      last_activity_at: run.lastActivityAt,
     })),
   }, { status: 200 });
 }, { auth: 'required', requires: ['atc:read'] });

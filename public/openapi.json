@@ -1104,7 +1104,7 @@
             "items": {
               "$ref": "#/components/schemas/ActiveRun"
             },
-            "description": "Ordered by `started_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries."
+            "description": "Ordered by `last_activity_at` descending (id descending as the tie-break), so the first entry is the run to resume. At most `limit` entries. NOTE the two-stage boundary: `started_at` descending decides WHICH runs make the page (that is what the database can order cheaply), and `last_activity_at` orders the page. A run old enough to fall outside `limit` by start date is not pulled back in by recent step activity. When `active_count` exceeds this array's length the remainder is NOT reachable from here — there is no cursor and no workspace-wide runs index; read the missing runs from each project's own run report."
           }
         },
         "required": ["active_count", "runs"]
@@ -1160,6 +1160,11 @@
           "started_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "last_activity_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the run was last worked on: the newest `executed_at` among its steps, falling back to `started_at` when no step has been marked yet. This is the ordering key. It is NOT `runs.updated_at` — marking a step locks that row but never updates it, so that column is frozen at the run's start for a run in flight. `last_activity_at == started_at` therefore means \"nothing has happened since this run began\"."
           }
         },
         "required": [
@@ -1174,7 +1179,8 @@
           "done_steps",
           "blocked_steps",
           "failed_steps",
-          "started_at"
+          "started_at",
+          "last_activity_at"
         ]
       },
       "ModuleCreateResponse": {
