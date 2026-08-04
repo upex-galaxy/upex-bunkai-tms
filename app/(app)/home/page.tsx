@@ -1,10 +1,16 @@
+import type { ReactNode } from 'react';
 import {
   WelcomeBanner,
   WelcomeSummaryLine,
   WelcomeSummarySkeleton,
 } from '@components/home/WelcomeBanner';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { HOME_ATC_CHANGE_ACTIONS, HOME_TEST_CHANGE_ACTIONS } from '@lib/home/constants';
+import {
+  HOME_ACTIVITY_SCAN_LIMIT,
+  HOME_ATC_CHANGE_ACTIONS,
+  HOME_CHANGE_WINDOW_HOURS,
+  HOME_TEST_CHANGE_ACTIONS,
+} from '@lib/home/constants';
 import { buildWelcomeSummary, resolveDisplayName } from '@lib/home/welcome-summary';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -12,7 +18,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 
-const UNAVAILABLE_COPY = 'What changed since you were last here could not be loaded just now.';
+const SUMMARY_UNAVAILABLE_COPY = 'What changed recently could not be loaded just now.';
+const WORKSPACE_UNAVAILABLE_COPY
+  = 'This workspace could not be loaded just now. Reload the page to try again — nothing has been changed.';
 
 // BK-255 — the Home dashboard (master-design-plan §4.2, `home.jsx`). This
 // story ships the route plus its welcome banner ONLY; the stat cards, recent
@@ -20,10 +28,11 @@ const UNAVAILABLE_COPY = 'What changed since you were last here could not be loa
 // the composable column below, under the banner.
 //
 // `app/page.tsx` now sends every signed-in member here instead of to
-// /projects, so this route inherits that entry point's obligations: it repeats
-// the same auth check and the same no-workspace redirect the projects index
-// runs, rather than assuming a caller has already been filtered. The (app)
-// layout above renders the shell but guards nothing.
+// /projects, so this route inherits that entry point's obligations: `/home` is
+// registered in middleware.ts's PROTECTED_PREFIXES (the edge gate), and the
+// getUser() check below repeats it as defense in depth, exactly as /projects
+// and /settings do. The (app) layout above renders the shell but guards
+// nothing.
 export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -31,13 +40,31 @@ export default async function HomePage() {
     redirect('/login?next=/home');
   }
 
+  const displayName = resolveDisplayName({ metadata: user.user_metadata, email: user.email });
+
   // Same cookie-honouring resolution the shell layout and the projects index
   // already run, so the banner can never name a different workspace than the
   // sidebar switcher is showing.
-  const { data: workspaces } = await supabase
+  const { data: workspaces, error: workspacesError } = await supabase
     .from('workspaces')
     .select('id, name')
     .order('created_at', { ascending: true });
+
+  // A failed read is NOT a member without a workspace. Collapsing the two
+  // would send someone with a fully populated workspace to /onboarding to
+  // "create your first workspace" — and, since /onboarding bounces an existing
+  // member back to /projects, which re-runs this same failing read, straight
+  // into a redirect ping-pong. `/projects` (BK-266) draws the same line.
+  if (workspacesError !== null) {
+    return (
+      <HomeShell>
+        <WelcomeBanner displayName={displayName} workspaceName={null}>
+          <WelcomeSummaryLine>{WORKSPACE_UNAVAILABLE_COPY}</WelcomeSummaryLine>
+        </WelcomeBanner>
+      </HomeShell>
+    );
+  }
+
   const list = workspaces ?? [];
 
   // A member with no workspace at all belongs in onboarding, exactly as
@@ -53,72 +80,69 @@ export default async function HomePage() {
     = resolveActiveWorkspaceId(cookieActive, list.map(w => w.id)) ?? list[0].id;
   const activeWorkspace = list.find(w => w.id === activeWorkspaceId) ?? null;
 
-  // `last_sign_in_at` comes back on the session user itself — no admin lookup
-  // needed here, unlike Settings > Account (BK-87), which reaches for the
-  // admin client because it also wants auth.users' canonical email. This is
-  // the same field that page already labels "Last active", so Home and
-  // Settings answer "when were you last active" identically.
-  const lastActiveAt = user.last_sign_in_at ?? null;
+  return (
+    <HomeShell>
+      <WelcomeBanner
+        displayName={displayName}
+        workspaceName={activeWorkspace?.name ?? null}
+      >
+        <Suspense fallback={<WelcomeSummarySkeleton />}>
+          <WelcomeSummary workspaceId={activeWorkspaceId} />
+        </Suspense>
+      </WelcomeBanner>
 
+      {/* BK-256..BK-260 compose their widgets here, below the banner. */}
+    </HomeShell>
+  );
+}
+
+// The page's scroll container and content column. Both render paths (resolved
+// workspace, failed workspace read) use it, so the greeting sits in the same
+// place whichever one runs.
+function HomeShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto">
         <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-7 pb-10 pt-6">
-          <WelcomeBanner
-            displayName={resolveDisplayName({ metadata: user.user_metadata, email: user.email })}
-            workspaceName={activeWorkspace?.name ?? null}
-          >
-            <Suspense fallback={<WelcomeSummarySkeleton />}>
-              <WelcomeSummary workspaceId={activeWorkspaceId} lastActiveAt={lastActiveAt} />
-            </Suspense>
-          </WelcomeBanner>
-
-          {/* BK-256..BK-260 compose their widgets here, below the banner. */}
+          {children}
         </div>
       </div>
     </div>
   );
 }
 
-// The "what changed since you were last here" line (AC2, AC3), isolated in its
-// own async component so it streams inside the page's <Suspense> boundary and
-// three counting queries can never delay — or, on failure, blank — the
-// greeting that AC1 requires.
-async function WelcomeSummary({
-  workspaceId,
-  lastActiveAt,
-}: {
-  workspaceId: string
-  lastActiveAt: string | null
-}) {
+// The "what changed recently" line (AC2, AC3), isolated in its own async
+// component so it streams inside the page's <Suspense> boundary and the
+// counting queries can never delay — or, on failure, blank — the greeting that
+// AC1 requires.
+async function WelcomeSummary({ workspaceId }: { workspaceId: string }) {
   try {
     const supabase = await createClient();
 
-    // All three reads are RLS-scoped to the caller: activity_log's
+    const since = new Date(
+      Date.now() - HOME_CHANGE_WINDOW_HOURS * 60 * 60 * 1000,
+    ).toISOString();
+
+    // Both reads are RLS-scoped to the caller: activity_log's
     // `activity_log_select_workspace_member` and runs'
     // `runs_select_workspace_member` (0009 / 0031) narrow them to workspaces
     // the caller belongs to, so a forged cookie pointing at someone else's
     // workspace counts zero rows rather than leaking a number.
     //
-    // `head: true` — only the count is wanted; no row payload crosses the
-    // wire. Independent of each other, so they run concurrently.
-    const [atcs, tests, runs] = await Promise.all([
-      lastActiveAt === null
-        ? Promise.resolve({ count: 0, error: null })
-        : supabase
-            .from('activity_log')
-            .select('id', { count: 'exact', head: true })
-            .eq('workspace_id', workspaceId)
-            .in('action', [...HOME_ATC_CHANGE_ACTIONS])
-            .gt('created_at', lastActiveAt),
-      lastActiveAt === null
-        ? Promise.resolve({ count: 0, error: null })
-        : supabase
-            .from('activity_log')
-            .select('id', { count: 'exact', head: true })
-            .eq('workspace_id', workspaceId)
-            .in('action', [...HOME_TEST_CHANGE_ACTIONS])
-            .gt('created_at', lastActiveAt),
+    // The activity read pulls rows rather than asking Postgres for a count,
+    // because the figure the banner reports is DISTINCT entities, not events
+    // (see the de-duplication below). ATC and Test actions come back in one
+    // query and are partitioned here — same table, same window, no reason to
+    // pay two round trips. Runs stays a `head: true` count: it is a plain row
+    // count with nothing to de-duplicate.
+    const [changes, runs] = await Promise.all([
+      supabase
+        .from('activity_log')
+        .select('id, action, entity_id')
+        .eq('workspace_id', workspaceId)
+        .in('action', [...HOME_ATC_CHANGE_ACTIONS, ...HOME_TEST_CHANGE_ACTIONS])
+        .gt('created_at', since)
+        .limit(HOME_ACTIVITY_SCAN_LIMIT),
       supabase
         .from('runs')
         .select('id', { count: 'exact', head: true })
@@ -129,22 +153,39 @@ async function WelcomeSummary({
     // A failed read is NOT a quiet workspace — collapsing the two would have
     // the banner assert "nothing new to review" to a member whose team shipped
     // all week. Same line `/projects` (BK-266) and `/activity` (BK-49) draw.
-    if (atcs.error !== null || tests.error !== null || runs.error !== null) {
-      return <WelcomeSummaryLine>{UNAVAILABLE_COPY}</WelcomeSummaryLine>;
+    if (changes.error !== null || runs.error !== null) {
+      return <WelcomeSummaryLine>{SUMMARY_UNAVAILABLE_COPY}</WelcomeSummaryLine>;
+    }
+
+    // One ATC saved three times is one changed ATC, so the number the member
+    // reads is the size of the entity set, not the row count. `entity_id` is
+    // nullable on the table; for every action listed here the emitting RPC
+    // always sets it, and falling back to the row's own id keeps a
+    // hypothetical null row counting as itself rather than collapsing with
+    // another one.
+    const atcIds = new Set<string>();
+    const testIds = new Set<string>();
+    for (const row of changes.data ?? []) {
+      const key = row.entity_id ?? row.id;
+      if ((HOME_ATC_CHANGE_ACTIONS as readonly string[]).includes(row.action)) {
+        atcIds.add(key);
+      }
+      else if ((HOME_TEST_CHANGE_ACTIONS as readonly string[]).includes(row.action)) {
+        testIds.add(key);
+      }
     }
 
     return (
       <WelcomeSummaryLine>
         {buildWelcomeSummary({
-          atcChanges: atcs.count ?? 0,
-          testChanges: tests.count ?? 0,
+          atcChanges: atcIds.size,
+          testChanges: testIds.size,
           activeRuns: runs.count ?? 0,
-          hasBaseline: lastActiveAt !== null,
         })}
       </WelcomeSummaryLine>
     );
   }
   catch {
-    return <WelcomeSummaryLine>{UNAVAILABLE_COPY}</WelcomeSummaryLine>;
+    return <WelcomeSummaryLine>{SUMMARY_UNAVAILABLE_COPY}</WelcomeSummaryLine>;
   }
 }

@@ -21,3 +21,26 @@ export const HOME_TEST_CHANGE_ACTIONS = [
   'test.reordered',
   'test.tags_changed',
 ] as const;
+
+// How far back the banner looks when it says "what changed recently".
+//
+// This was originally the member's `last_sign_in_at`, which does NOT survive
+// contact with how the app actually keeps sessions alive: GoTrue only advances
+// that field on a real sign-in, never on the cookie refresh that carries a
+// session forward. So the baseline was frozen for a session's whole life —
+// zero on the dominant path (sign in, land on Home seconds later) and, for a
+// member signed in for a fortnight, an ever-growing window that re-announced
+// work they reviewed a week ago. A fixed window is the honest version: it
+// measures exactly what the copy claims, and the copy is written from this
+// constant so the two cannot drift. 24 hours also matches the window §4.2
+// already specifies for this same screen's Recent activity feed (BK-258), so
+// the banner and the feed under it will not disagree about what "recent" is.
+export const HOME_CHANGE_WINDOW_HOURS = 24;
+
+// Ceiling on the activity rows the banner scans to work out how many DISTINCT
+// ATCs and Tests changed. The count is over `entity_id`, not over rows — one
+// ATC saved three times is one changed ATC — which means the rows have to come
+// back rather than be counted server-side. A workspace that logs more than
+// this many ATC/Test events inside the window makes the figure a floor; at 24
+// hours that is a volume no workspace in this product reaches.
+export const HOME_ACTIVITY_SCAN_LIMIT = 1000;

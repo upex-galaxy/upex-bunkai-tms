@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 interface WelcomeBannerProps {
   displayName: string | null
   workspaceName: string | null
-  // The "what changed since you were last here" line. Passed as a slot so the
+  // The "what changed recently" line. Passed as a slot so the
   // page can stream it inside its own <Suspense> boundary: the greeting and
   // the workspace name (AC1) must paint immediately and must never be blocked
   // — or blanked — by the three counting queries behind the summary (AC2/AC3).

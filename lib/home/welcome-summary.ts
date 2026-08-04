@@ -1,9 +1,14 @@
 // BK-255 — the two pieces of derived copy the Home welcome banner renders: the
-// signed-in member's display name, and the one-line summary of what changed in
-// the workspace since they were last active.
+// signed-in member's display name, and the one-line summary of what recently
+// changed in the workspace.
 //
 // Framework-agnostic per the Stack §10 utilities rule — no React, no Next, no
-// Supabase types. The page owns the reads; this module owns the wording.
+// Supabase types. The page owns the reads; this module owns the wording. The
+// one import is the sibling constants module, which is itself zero-import, so
+// the window the copy names and the window the page queries stay the same
+// number.
+
+import { HOME_CHANGE_WINDOW_HOURS } from '@lib/home/constants';
 
 // ---------------------------------------------------------------------------
 // Display name
@@ -68,39 +73,38 @@ function nameFromEmail(email: string | null | undefined): string | null {
 // ---------------------------------------------------------------------------
 
 export interface WelcomeSummaryInput {
-  // Activity-log entries for ATCs since the baseline (created + updated).
+  // How many DISTINCT ATCs were touched inside the window — not how many
+  // activity rows exist. Every emitting RPC writes one row per operation, so
+  // an ATC opened and saved three times produces three rows; calling that
+  // "3 ATCs changed" would overstate what the member has to look at.
   atcChanges: number
-  // Activity-log entries for Tests since the baseline (created, reordered,
-  // tags changed).
+  // Same, for Tests (created, reordered, tags changed).
   testChanges: number
   // Runs in the workspace whose status is still `running`. Deliberately NOT
-  // windowed by the baseline: "currently executing" is a present-tense fact,
-  // and a run that started before the member's last sign-in is still one they
-  // would want to know about (the story's Scope field words it this way).
+  // windowed: "currently executing" is a present-tense fact, and a run that
+  // started before the window opened is still one the member would want to
+  // know about (the story's Scope field words it this way).
   activeRuns: number
-  // False when the member's last-active timestamp could not be resolved. The
-  // change counts are then meaningless — there is no window to count within —
-  // so every "since you last signed in" clause is suppressed rather than
-  // asserted against an unknown baseline.
-  hasBaseline: boolean
 }
+
+// The window phrase every clause below shares, derived from the constant the
+// page queries with — the copy cannot claim a period the query did not measure.
+const WINDOW_PHRASE = `in the last ${HOME_CHANGE_WINDOW_HOURS} hours`;
 
 export function buildWelcomeSummary(input: WelcomeSummaryInput): string {
   const changed: string[] = [];
-  if (input.hasBaseline) {
-    const atcs = safeCount(input.atcChanges);
-    const tests = safeCount(input.testChanges);
-    if (atcs > 0) {
-      changed.push(`${atcs} ${atcs === 1 ? 'ATC' : 'ATCs'}`);
-    }
-    if (tests > 0) {
-      changed.push(`${tests} ${tests === 1 ? 'test' : 'tests'}`);
-    }
+  const atcs = safeCount(input.atcChanges);
+  const tests = safeCount(input.testChanges);
+  if (atcs > 0) {
+    changed.push(`${atcs} ${atcs === 1 ? 'ATC' : 'ATCs'}`);
+  }
+  if (tests > 0) {
+    changed.push(`${tests} ${tests === 1 ? 'test' : 'tests'}`);
   }
 
   const sentences: string[] = [];
   if (changed.length > 0) {
-    sentences.push(`${changed.join(' and ')} changed since you last signed in.`);
+    sentences.push(`${changed.join(' and ')} changed ${WINDOW_PHRASE}.`);
   }
 
   const runs = safeCount(input.activeRuns);
@@ -110,13 +114,10 @@ export function buildWelcomeSummary(input: WelcomeSummaryInput): string {
       : `${runs} runs are executing right now.`);
   }
 
-  // AC3 — a genuinely quiet workspace says so, in as many words. The wording
-  // splits on whether a baseline exists so the quiet state never claims a
-  // comparison it could not actually make.
+  // AC3 — a genuinely quiet workspace says so, in as many words, and names the
+  // period it is quiet over rather than implying "since forever".
   if (sentences.length === 0) {
-    return input.hasBaseline
-      ? 'Nothing new to review since you last signed in.'
-      : 'Nothing new to review right now.';
+    return `Nothing new to review ${WINDOW_PHRASE}.`;
   }
 
   return sentences.join(' ');
