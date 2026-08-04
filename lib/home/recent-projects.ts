@@ -25,15 +25,23 @@ import {
 // carry `project_id` plus a maintained timestamp:
 //
 //   * `atcs.updated_at`     — authoring (an ATC was written or revised)
-//   * `modules.created_at`  — structure (a module was added; `modules` has no
-//                             `updated_at` column, so renames/moves are invisible
-//                             to this signal — see the AC note in the PR)
-//   * `runs.updated_at`     — execution (a run was started, stepped or finished)
+//   * `modules.created_at`  — structure (a module was added)
+//   * `runs.updated_at`     — execution (a run was started, finished or aborted)
 //   * `projects.created_at` — the FLOOR: a project that has never been touched
 //                             still has the moment it was created. This is what
 //                             keeps a brand-new, empty project visible on Home
 //                             instead of silently missing from the one screen
-//                             that is supposed to help you find it.
+//                             that is supposed to help you find it. That floor is
+//                             also why AC3's literal "shows just that project"
+//                             reading was not built — ratified as
+//                             `master-design-plan.md` §5 D21(e).
+//
+// Two documented boundaries on that list, both schema-imposed, neither hidden:
+// a module RENAME or MOVE does not advance the signal (`modules` carries no
+// `updated_at`), and marking a run STEP does not either — `bunkai_mark_run_step`
+// (0042) writes `run_steps` and `run_atcs` and takes a lock on `runs`, but never
+// UPDATEs that row, so its `updated_at` trigger does not fire. A three-hour
+// execution therefore reads as one timestamp: when the run was started.
 //
 // Bug activity is NOT counted. `bugs` would qualify structurally, but the
 // defect surface on Home is BK-258's, and pulling it in here would make two
@@ -42,7 +50,11 @@ import {
 // COST SHAPE — bounded, and independent of workspace size
 // ------------------------------------------------------
 // Two phases, both bounded:
-//   Phase A (ordering) — three capped, newest-first scans. A project whose last
+//   Phase A (ordering) — three capped, newest-first scans, each riding a
+//     covering index added for exactly this access path (0059: `atcs
+//     (project_id, updated_at desc)`, `modules (project_id, created_at desc)`,
+//     `runs (workspace_id, updated_at desc)`) so the scans do not sort the
+//     workspace's whole history on the app's landing page. A project whose last
 //     activity falls outside the cap sorts below every project inside it, which
 //     is where it belongs anyway; the only imprecision is the relative order of
 //     projects that are ALL stale, and it can only ever understate staleness,
@@ -79,6 +91,24 @@ interface ListRecentProjectsParams {
   limit?: number
 }
 
+// PostgREST puts an `.in()` list in the GET query string, so the request line
+// grows by roughly 40 URL-encoded bytes per project id against a fixed gateway
+// header buffer (~8 KB on Kong). `atcs` and `modules` carry no workspace column,
+// so the project ids are the only way to scope them — but the list is sent in
+// batches rather than inlined whole, so a workspace with hundreds of projects
+// costs more round trips instead of hitting a 414 that would leave its Home
+// widget permanently on the error state. `runs` needs none of this: it has its
+// own `workspace_id`.
+const PROJECT_ID_BATCH = 100;
+
+function batchProjectIds(projectIds: string[]): string[][] {
+  const batches: string[][] = [];
+  for (let start = 0; start < projectIds.length; start += PROJECT_ID_BATCH) {
+    batches.push(projectIds.slice(start, start + PROJECT_ID_BATCH));
+  }
+  return batches;
+}
+
 export async function listRecentProjects(
   db: SupabaseClient<Database>,
   { workspaceId, limit = HOME_RECENT_PROJECTS_LIMIT }: ListRecentProjectsParams,
@@ -95,26 +125,27 @@ export async function listRecentProjects(
     return { ok: true, projects: [] };
   }
 
-  const projectIds = projects.map(project => project.id);
+  const projectIdBatches = batchProjectIds(projects.map(project => project.id));
 
-  // Phase A — the three activity scans, in parallel. Each returns the workspace's
-  // newest rows for one signal; the FIRST row seen for a project is that
-  // project's latest, because the scan is already ordered newest-first.
+  // Phase A — the three activity scans, in parallel. Each returns the newest
+  // rows for one signal; the FIRST row seen for a project is that project's
+  // latest, because the scan is already ordered newest-first. The cap applies
+  // per batch, so batching can only widen the sample, never narrow it.
   const [atcActivity, moduleActivity, runActivity] = await Promise.all([
-    db
+    Promise.all(projectIdBatches.map(projectIds => db
       .from('atcs')
       .select('project_id, updated_at')
       .in('project_id', projectIds)
       .is('archived_at', null)
       .order('updated_at', { ascending: false })
-      .limit(HOME_PROJECT_ACTIVITY_SCAN_LIMIT),
-    db
+      .limit(HOME_PROJECT_ACTIVITY_SCAN_LIMIT))),
+    Promise.all(projectIdBatches.map(projectIds => db
       .from('modules')
       .select('project_id, created_at')
       .in('project_id', projectIds)
       .is('archived_at', null)
       .order('created_at', { ascending: false })
-      .limit(HOME_PROJECT_ACTIVITY_SCAN_LIMIT),
+      .limit(HOME_PROJECT_ACTIVITY_SCAN_LIMIT))),
     db
       .from('runs')
       .select('project_id, updated_at')
@@ -124,8 +155,8 @@ export async function listRecentProjects(
   ]);
 
   if (
-    atcActivity.error !== null
-    || moduleActivity.error !== null
+    atcActivity.some(batch => batch.error !== null)
+    || moduleActivity.some(batch => batch.error !== null)
     || runActivity.error !== null
   ) {
     return { ok: false };
@@ -142,11 +173,15 @@ export async function listRecentProjects(
     }
   };
 
-  for (const row of atcActivity.data ?? []) {
-    recordLatest(row.project_id, row.updated_at);
+  for (const batch of atcActivity) {
+    for (const row of batch.data ?? []) {
+      recordLatest(row.project_id, row.updated_at);
+    }
   }
-  for (const row of moduleActivity.data ?? []) {
-    recordLatest(row.project_id, row.created_at);
+  for (const batch of moduleActivity) {
+    for (const row of batch.data ?? []) {
+      recordLatest(row.project_id, row.created_at);
+    }
   }
   for (const row of runActivity.data ?? []) {
     recordLatest(row.project_id, row.updated_at);
