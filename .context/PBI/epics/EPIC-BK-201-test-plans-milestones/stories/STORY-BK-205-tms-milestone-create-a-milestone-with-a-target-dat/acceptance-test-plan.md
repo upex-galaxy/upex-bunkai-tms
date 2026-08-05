@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
 
-# Shift-Left Refinement: BK-205 — TMS-Milestone | Create a milestone with a target date
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-205#icft=BK-205](https://jira.upexgalaxy.com/browse/BK-205#icft=BK-205) — TMS-Milestone | Create a milestone with a target date
 
 ***Status****: Refined — Awaiting PO Estimation | ****Mode****: Shift-Left (pre-sprint) | ****Refined on****: 2026-07-22 | ****Modality***: Xray
 
@@ -12,22 +12,22 @@
 
 ## Phase 1 — Critical Analysis
 
-***Business context***: Primary persona: Mateo Silva (QA Lead) — creates milestones to anchor testing to a release goal. Secondary: Lucia (viewer) — negative case, cannot create. Value: a lightweight named delivery goal ("Release 2.4") to plan around, ahead of the readiness-aggregation capability (sibling Story BK-206). KPI: release predictability / QA planning cadence (Epic BK-201). Journey: first of two Milestone stories — this Story is the container (create + list + detail shell); BK-206 attaches Test Plans and computes readiness.
+***Business context***: Primary persona: Mateo Silva (QA Lead) — creates milestones to anchor testing to a release goal. Secondary: Lucia (viewer) — negative case, cannot create. Value: a lightweight named delivery goal ("Release 2.4") to plan around, ahead of the readiness-aggregation capability (sibling Story [https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206](https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206)). KPI: release predictability / QA planning cadence (Epic [https://jira.upexgalaxy.com/browse/BK-201#icft=BK-201](https://jira.upexgalaxy.com/browse/BK-201#icft=BK-201)). Journey: first of two Milestone stories — this Story is the container (create + list + detail shell); [https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206](https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206) attaches Test Plans and computes readiness.
 
 ***Technical context****: Frontend — new "Milestones" rail entry, list (name/date badge/days-remaining/creator), detail tab, create dialog (name/date/description) per `business-rules.md`/`mockup.md`. Backend — ****no endpoint found***; `business-api-map.md` has zero "milestone" mentions. External services — none. Integration — Milestone belongs to one `project` (confirmed live) and create/edit permission gates off existing `workspace_members` roles (`viewer ⊂ member ⊂ admin ⊂ owner`, confirmed live). No new external integration.
 
 ***Story complexity***:
 
-| Axis | Rating | Why |
+| ***Axis**** | ****Rating**** | ****Why*** |
 | --- | --- | --- |
 | Business logic | Medium | uniqueness (case-insensitive + trim, not internal-whitespace-collapse), date validation (today-or-later), role gate (member+) |
 | Integration | Low–Medium | reuses `projects`+`workspace_members`; no new `milestones` entity yet |
 | Data validation | Medium | name required 1–100 chars trimmed + unique; date required, lower-bound only; description optional, no stated upper bound |
 | UI | Medium | new list view, detail tab, create dialog, date badge + days-remaining widget |
 
-***Estimated test effort****: Medium. Creation is a single well-scoped CRUD-lite op (no readiness/aggregation logic — deferred to BK-206), but `scope.md` also promises milestone ****editing*** with zero corresponding ACs (Gap #1) — don't finalize effort until resolved.
+***Estimated test effort****: Medium. Creation is a single well-scoped CRUD-lite op (no readiness/aggregation logic — deferred to [https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206](https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206)), but `scope.md` also promises milestone ****editing*** with zero corresponding ACs (Gap #1) — don't finalize effort until resolved.
 
-***Epic-level inheritance***: No `module-context.md` exists yet for EPIC-BK-201 — nothing to inherit. `epic.md`'s "nothing in this epic is manually editable progress" applies to readiness (BK-206), not this Story's create/edit of milestone fields. No PO/Dev answers exist above the Story-level PO Ratification comment (2026-07-11, in `comments.md`).
+***Epic-level inheritance***: No `module-context.md` exists yet for EPIC-BK-201 — nothing to inherit. `epic.md`'s "nothing in this epic is manually editable progress" applies to readiness ([https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206](https://jira.upexgalaxy.com/browse/BK-206#icft=BK-206)), not this Story's create/edit of milestone fields. No PO/Dev answers exist above the Story-level PO Ratification comment (2026-07-11, in `comments.md`).
 
 ---
 
@@ -35,7 +35,7 @@
 
 ### Ambiguities
 
-| # | Location | Question for PO/Dev | Impact | Suggested clarification |
+| ***#**** | ****Location**** | ****Question for PO/Dev**** | ****Impact**** | ****Suggested clarification*** |
 | --- | --- | --- | --- | --- |
 | 1 | AC1 Given — "member of the project" | Literal workspace role `member`, or just "has access" regardless of role? | Determines role exercised in happy-path AC | Reword: "has workspace role `member` (or higher) and access to project X" |
 | 2 | business-rules.md — visibility | Does `viewer` count as "workspace member" for ***visibility**** (yes, per inheritance) even though AC5 blocks them from ****creating***? | Read vs. write split must be unambiguous for RBAC design | Confirm viewers see list/detail but not create |
@@ -46,7 +46,7 @@
 
 ### Gaps (missing info)
 
-| # | Type | Why critical | What to add | Risk if omitted |
+| ***#**** | ****Type**** | ****Why critical**** | ****What to add**** | ****Risk if omitted*** |
 | --- | --- | --- | --- | --- |
 | 1 | AC/Scope mismatch | `scope.md` lists editing (name/description/target date "while active") as in-scope; ***zero ACs cover editing*** | Add edit ACs: duplicate-name-on-edit, past-date-on-edit, who may edit | Story can't be verified against its own scope; edit ships untested or silently deferred |
 | 2 | Business rule | Name has explicit 1–100 char bound (ratified); description has ***no stated length limit*** | Add a max length (or state "unbounded") | Unbounded text risks DB/UI overflow; blocks a concrete BVA outline |
@@ -56,7 +56,7 @@
 
 ### Edge cases not in Story
 
-| # | Scenario | Expected (best guess) | Criticality | Action |
+| ***#**** | ****Scenario**** | ****Expected (best guess)**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Two users create same name near-simultaneously | Exactly one succeeds; other gets duplicate rejection; no dup row | High | Add to AC (***NEEDS PO/DEV CONFIRMATION***) — ties Gap #4 |
 | 2 | Edit active milestone's name into an existing duplicate | Rejected, same duplicate-name message | High | Add to AC (***NEEDS PO/DEV CONFIRMATION***) — ties Gap #1 |
@@ -72,7 +72,7 @@
 
 ***Contradictions***: `scope.md` states editing is in-scope; `acceptance-criteria.md` has zero edit scenarios — a scope-vs-AC-set mismatch (Gap #1) significant enough to block clean estimation. No other contradictions found; the creation-flow narrative across `story.md`/`workflow.md`/`mockup.md`/`acceptance-criteria.md` is internally consistent.
 
-***Testability validation — Verdict******:****** Partial.*** Issues: AC5's "option not available to her" is UI-only, no assertable server contract (Gap #3). AC3/AC4 state rejection messages exist but not verbatim copy — acceptable for DRAFT, must pin before in-sprint execution. No test-data examples for boundary cases (`today−1`, name 1/100/101 chars) — expected, deferred to in-sprint. Cannot fully isolate authorization test design until Ambiguity #5 (workspace- vs project-level check) is resolved.
+***Testability validation — Verdict:**** ****Partial.*** Issues: AC5's "option not available to her" is UI-only, no assertable server contract (Gap #3). AC3/AC4 state rejection messages exist but not verbatim copy — acceptable for DRAFT, must pin before in-sprint execution. No test-data examples for boundary cases (`today−1`, name 1/100/101 chars) — expected, deferred to in-sprint. Cannot fully isolate authorization test design until Ambiguity #5 (workspace- vs project-level check) is resolved.
 
 ---
 
@@ -80,7 +80,7 @@
 
 One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus new edge-case scenarios). "Flag" = NEEDS PO/DEV CONFIRMATION where marked.
 
-| # | Source AC | Scenario | Type | Priority | Given | When | Then | Flag |
+| ***#**** | ****Source AC**** | ****Scenario**** | ****Type**** | ****Priority**** | ****Given**** | ****When**** | ****Then**** | ****Flag*** |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.1 | AC1 | Create milestone; list with date + days-remaining | Positive | Critical | Mateo has role member+ in "Bunkai Web"; today 2026-07-11 | Creates "Release 2.4", target 2026-08-15, desc "Second summer cut" | Listed with name, "Aug 15, 2026" badge, "35 days left", saved description |  |
 | 2.1 | AC2 | Create without description | Positive | High | Mateo viewing Milestones | Creates "Hotfix window 2.4.1", target 2026-09-01, no description | Created, listed with empty-description state, date + countdown |  |
@@ -111,7 +111,7 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 
 ### Coverage estimate
 
-| Type | Count | Notes |
+| ***Type**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 5 | Happy-path creation + uniqueness/cross-project/RBAC-positive corollaries |
 | Negative | 8 | Required-field, past-date, duplicate-name, RBAC-negative variants |
@@ -158,7 +158,7 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 
 ## Phase 5 — Edge Cases (DRAFT)
 
-| # | Edge case | In original Story? | Criticality | Action |
+| ***#**** | ****Edge case**** | ****In original Story?**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Two users create same name near-simultaneously (race) | No | High | Add to AC (✅) |
 | 2 | Edit active milestone's name into an existing duplicate | No | High | Add to AC (✅) |
@@ -211,7 +211,7 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 
 ## Suggested Story Improvements
 
-| # | Current state | Suggested change | Benefit |
+| ***#**** | ****Current state**** | ****Suggested change**** | ****Benefit*** |
 | --- | --- | --- | --- |
 | 1 | AC1 Given: "Mateo is a member of the project" | "Mateo has the workspace role `member` (or higher) and access to project X" | Removes Ambiguity #1 |
 | 2 | business-rules.md: "member role or higher" with no admin/owner AC | Add explicit admin/owner AC scenarios, or state role-inheritance is sufficient | Closes Gap #5 |
@@ -228,7 +228,7 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 - ***Regression scope gap***: `master-test-plan.md` has zero "milestone" mentions — feature not yet in regression scope, consistent with being unimplemented.
 - ***Code-level confirmation****: search of `../upex-bunkai-tms` (`app/`, `components/`, `cli/`, excluding `node_modules`/`.next`) for "milestone" returned ****zero matches*** — no scaffolding exists, consistent with `post-mvp`/`Backlog` labeling and `business-feature-map.md` §2.10 (Status: Planned).
 - ***Dependency substrate available***: `projects` and `workspace_members` ARE confirmed live — only the new `milestones` entity, API surface, and UI are missing.
-- ***Required pre-work***: run a `/business-data-map` and `/business-api-map` refresh once BK-205 nears implementation, to capture the new `milestones` table/endpoints before Stage 4/5 design begins.
+- ***Required pre-work***: run a `/business-data-map` and `/business-api-map` refresh once [https://jira.upexgalaxy.com/browse/BK-205#icft=BK-205](https://jira.upexgalaxy.com/browse/BK-205#icft=BK-205) nears implementation, to capture the new `milestones` table/endpoints before Stage 4/5 design begins.
 
 ---
 
@@ -238,13 +238,13 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 
 ***During implementation***: Unit/API coverage for name EP+BVA (empty, whitespace-only, 1/100/101 chars) and duplicate detection (case-fold + trim, explicitly NOT internal-whitespace-collapse). Unit/API coverage for target-date BVA (`today−1` rejected, `today` accepted). RBAC decision-table coverage (viewer: UI-hidden + API 403; member/admin/owner: allowed) once Technical Question #4 is resolved.
 
-***Post-implementation (in-sprint by ****`/sprint-testing`****)***: `/sprint-testing` will detect the `shift-left-reviewed` label, read this file, and build the full ATP (parametrization tables, test-data JSON, numbered steps) as a superset of this draft. Run an exploratory charter for the concurrent-create race (Edge Case #1) and, once editing is clarified/implemented, for the edit-related gaps (Edge Cases #2–#3).
+***Post-implementation (in-sprint by**** `/sprint-testing`****)***: `/sprint-testing` will detect the `shift-left-reviewed` label, read this file, and build the full ATP (parametrization tables, test-data JSON, numbered steps) as a superset of this draft. Run an exploratory charter for the concurrent-create race (Edge Case #1) and, once editing is clarified/implemented, for the edit-related gaps (Edge Cases #2–#3).
 
 ---
 
 ## Risks & mitigation
 
-| # | Risk | Likelihood | Impact | Mitigated by which outlines |
+| ***#**** | ****Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigated by which outlines*** |
 | --- | --- | --- | --- | --- |
 | 1 | Editing scope/AC mismatch ships unresolved (Gap #1) | Medium | High | Critical Question #1; Suggested Improvement #5; Scenarios E1/E2 |
 | 2 | UI-only permission enforcement leaves an API bypass (Gap #3) | Medium | High | Critical Question #2; Negative outline "API request from viewer rejected" |
@@ -259,6 +259,19 @@ One consolidated table (was 18 separate scenario blocks across AC1–AC5 plus ne
 - [ ] Dev answers Technical Questions #1–#5 before estimation
 - [ ] Story enters sprint at status `Ready For Dev` once estimated
 - [ ] When Story reaches `Ready For QA`, `/sprint-testing` will short-circuit refinement (label `shift-left-reviewed` detected)
+
+## Refresh — 2026-08-04 (Mockup Cross-Reference)
+
+Live mockup reviewed (local server + Playwright): `../upex-bunkai-tms/.context/designs/.../milestones-board.html`. Ratified in this session's Three Amigos refresh (full detail in the description and in the local `shift-left-refinement.md`):
+
+- Q1 (target date upper bound) — ratified: no upper bound.
+- Q2 (internal-whitespace duplicate) — ratified: allowed as distinct.
+- Edit UX corrected: inline card, not a modal — supersedes the 2026-07-24 Dev Frontend decision.
+- ***NEW BLOCKING — C1***: the mockup's detail view always renders BK-206's Attach-plans/readiness UI with no "BK-205-only" state, conflicting with this Story's own `scope.md` ("empty plans area"). Needs explicit PO/Dev/Design ratification before Ready For Dev — see description for the full writeup.
+
+## C1 resolved — 2026-08-05
+
+`scope.md` wins: BK-206 still in Backlog, this Story ships the detail view with an empty plans area only, no Attach-plans/readiness UI. New AC scenario added to make it testable ("Should open a milestone's detail view showing only its own details and an empty plans area", `@scope-boundary`). All Critical Questions from this refinement (Q1, Q2, C1) are now closed — see description for full history.
 
 ---
 _Synced from Jira by sync-jira-issues_

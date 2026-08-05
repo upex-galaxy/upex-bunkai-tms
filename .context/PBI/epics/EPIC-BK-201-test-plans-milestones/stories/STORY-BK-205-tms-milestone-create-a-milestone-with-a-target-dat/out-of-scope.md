@@ -1,6 +1,6 @@
 # BK-205 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
 
 - Attaching test plans and readiness aggregation — sibling story "Assign test plans and track milestone readiness".
 - Overdue signaling — arrives with readiness in the sibling milestone story.
