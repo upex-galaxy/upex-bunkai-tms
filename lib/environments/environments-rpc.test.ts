@@ -19,7 +19,7 @@ import { afterAll, describe, expect, it } from 'bun:test';
 //   * cross-workspace: an EXISTING env in a foreign workspace → not_found
 //     (P0002), not forbidden (BK-200 — the RPC previously leaked existence via
 //     403 here because the resolution query bypasses RLS as the DEFINER owner;
-//     see 0053_environment_cross_workspace_404.sql).
+//     see 0063_environment_cross_workspace_404.sql).
 //
 // 401 (unauthenticated) is enforced at the route layer (withApiHandler), not the
 // RPC — the RPC always receives an explicit resolved actor — so it is out of

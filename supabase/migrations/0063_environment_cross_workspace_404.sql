@@ -1,4 +1,4 @@
--- 0053_environment_cross_workspace_404.sql — BK-200: non-disclosing 404 for
+-- 0063_environment_cross_workspace_404.sql — BK-200: non-disclosing 404 for
 -- cross-workspace environment PATCH/DELETE
 --
 -- Root cause (verified against the live migration ledger + pg_roles, not just
