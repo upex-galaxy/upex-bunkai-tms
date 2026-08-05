@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 1
+**Story Points:** -
 
 ---
 
@@ -31,13 +31,7 @@ As a Senior QA Engineer, I want to manage the list of environments for a project
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -69,7 +63,7 @@ As a Senior QA Engineer, I want to manage the list of environments for a project
 ## Metadata
 
 - **Created:** 6/20/2026
-- **Updated:** 7/10/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** micaelavirgagarcia
 - **Labels:** feature-extension, post-mvp

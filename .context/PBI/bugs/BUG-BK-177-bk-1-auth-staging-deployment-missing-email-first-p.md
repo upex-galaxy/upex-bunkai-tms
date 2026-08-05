@@ -4,10 +4,6 @@
 **Priority:** Highest
 **Status:** REJECTED
 **Components:** Tenancy & Identity
-**Severity:** Crítica
-**Error Type:** Integration
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -43,30 +39,6 @@ This blocks BK-166's QA pass end to end — all 42 planned Stage-1 test outlines
 ## Related Stories
 
 - Related: BK-166 (blocks its QA sign-off)
-
----
-
-## 🐞 Actual Result
-
-Staging serves the legacy magic-link-only login UI; no password/create-account/verify step ever appears and no network call fires on email input. POST /api/v1/auth/check-email and /confirm return HTTP 404. POST /api/v1/auth/signup and /signin exist but return HTTP 422 instead of the documented 400 on validation failure.
-
----
-
-## ✅ Expected Result
-
-Staging should serve the BK-166 email-first password flow merged via PR #54 (commit 16863ca on staging, 2026-06-22): a Continue step routing to password-signin or account-creation, with all 4 /api/v1/auth/* routes reachable and returning their documented contracts.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Working As Designed (WAD)
-
----
-
-## 🧫 Evidence
-
-evidence/BK-166-smoke-login.png (attached separately)
 
 ---
 

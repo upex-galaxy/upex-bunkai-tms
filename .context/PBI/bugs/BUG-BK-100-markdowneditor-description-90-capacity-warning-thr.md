@@ -4,10 +4,6 @@
 **Priority:** Medium
 **Status:** Closed
 **Components:** User Stories & Acceptance Criteria
-**Severity:** Moderada
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -47,12 +43,6 @@ Minor: the counter uses KiB (divided by 1024) instead of KB (divided by 1000). A
 - tc-07-no-warning.png: 44.4 KB in counter with neutral color at 45,500 bytes
 
 ***Fix***: bugfix
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

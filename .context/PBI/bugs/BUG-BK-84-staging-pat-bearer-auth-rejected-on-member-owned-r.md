@@ -4,10 +4,6 @@
 **Priority:** Highest
 **Status:** Closed
 **Components:** Tenancy & Identity
-**Severity:** Crítica
-**Error Type:** Integration
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -82,30 +78,6 @@ UNKNOWN -- not yet verified whether browser/cookie-session auth (Supabase sessio
 **ROOT CAUSE (TENTATIVE)**
 
 Not yet confirmed -- pending dev triage. Best current hypothesis: environment/config-level (`environment_error`), specifically a route-allowlist gap in the `requireAuth` middleware on staging. Set as TENTATIVE; do not treat as final until a developer confirms.
-
----
-
-## 🐞 Actual Result
-
-PAT is honored only for an apparent Identity-tier whitelist (/me, /workspaces) and rejected everywhere else with 401 {"code":"unauthorized","message":"You must be signed in."} -- including routes entirely unrelated to Imports (Projects, Modules, Tokens), which rules out an Imports-specific cause. Re-tested with a second freshly-minted PAT -- identical 401s (rules out token staleness/expiry/clock-skew). DB-verified the token is genuinely valid: access*tokens row revoked*at IS NULL, no expiry, last*used*at populated.
-
----
-
-## ✅ Expected Result
-
-The PAT should authenticate uniformly across all requireAuth-protected routes, per the documented contract in api/schemas/auth.types.ts:70,81 ("PAT token (bk*pat**) for Bearer auth on requireAuth endpoints").
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
-
----
-
-## 🧫 Evidence
-
-Canonical repro record: .context/PBI/epics/EPIC-BK-12-user-stories-acceptance-criteria/stories/STORY-BK-17-async-one-way-jira-import-by-jql-adf-markdown-idem/test-session-memory.md, section "Smoke Test Verdict - 2026-06-07T13:53Z - NO-GO (BLOCKING)". Raw request/response captures: /tmp/bk17-atp/{login.json, login2.json, me.json, post*probe.json, post*probe2.json, known*job2.json, malformed.json, create*proj.json, create_mod.json, tokens.json}.
 
 ---
 

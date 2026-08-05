@@ -4,10 +4,6 @@
 **Priority:** Medium
 **Status:** Closed
 **Components:** Tenancy & Identity
-**Severity:** Moderada
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -74,12 +70,6 @@ HTTP 200 with body containing the new active workspace details:
 ***Severity***: Moderate
 ***Test Environment***: Staging
 ***Fix***: bugfix
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

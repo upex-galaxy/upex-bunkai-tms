@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Highest
-**Story Points:** 5
+**Story Points:** -
 
 ---
 
@@ -25,14 +25,7 @@ Surfaced during the BK-32 review as a design-level gap: detail views currently o
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -47,7 +40,7 @@ Surfaced during the BK-32 review as a design-level gap: detail views currently o
 ## Metadata
 
 - **Created:** 6/19/2026
-- **Updated:** 6/26/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Nahuel Gomez
 - **Labels:** app-shell, from-bk32-review, ux

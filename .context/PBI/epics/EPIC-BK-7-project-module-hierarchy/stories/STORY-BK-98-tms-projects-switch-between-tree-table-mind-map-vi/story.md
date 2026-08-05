@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 1
+**Story Points:** -
 
 ---
 
@@ -40,15 +40,14 @@ Renders into the ***Projects**** screen — master-design-plan §4.3, mockup `sc
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
+- [Mockup](./mockup.md)
 
 ---
 
 ## Metadata
 
 - **Created:** 6/9/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** design-fidelity, hotfix-documented, projects-explorer, view-switcher

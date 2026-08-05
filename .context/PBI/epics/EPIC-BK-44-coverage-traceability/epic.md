@@ -3,7 +3,7 @@
 **Jira Key:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 29
+**Total Story Points:** 0
 
 ---
 
@@ -23,12 +23,12 @@ It delivers four connected views: the full evidence chain from a user story down
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-45](https://jira.upexgalaxy.com/browse/BK-45) | TMS-Traceability | Render full US to bug evidence chain in one read | 8 | Medium | Ready For Dev |
-| [BK-46](https://jira.upexgalaxy.com/browse/BK-46) | TMS-Coverage | Surface untested ACs and modules with not-run filter | 8 | Medium | Ready For Dev |
-| [BK-47](https://jira.upexgalaxy.com/browse/BK-47) | TMS-Coverage | Compute time-to-green per user story from run and bug history | - | Medium | Shift-Left QA |
-| [BK-48](https://jira.upexgalaxy.com/browse/BK-48) | TMS-Traceability | Filter the chain by verdict, module, and date range | 3 | Medium | Shift-Left QA |
-| [BK-49](https://jira.upexgalaxy.com/browse/BK-49) | TMS-Activity | Stream a read-side feed over the existing activity log | 5 | Medium | Ready For Dev |
-| [BK-50](https://jira.upexgalaxy.com/browse/BK-50) | TMS-Traceability | Export the assembled chain as a read-only snapshot | 5 | Medium | Estimation |
+| [BK-45](https://jira.upexgalaxy.com/browse/BK-45) | TMS-Traceability | Render full US to bug evidence chain in one read | - | Medium | Ready For Dev |
+| [BK-46](https://jira.upexgalaxy.com/browse/BK-46) | TMS-Coverage | Surface untested ACs and modules with not-run filter | - | Medium | Ready For QA |
+| [BK-47](https://jira.upexgalaxy.com/browse/BK-47) | TMS-Coverage | Compute time-to-green per user story from run and bug history | - | Medium | Ready For QA |
+| [BK-48](https://jira.upexgalaxy.com/browse/BK-48) | TMS-Traceability | Filter the chain by verdict, module, and date range | - | Medium | Shift-Left QA |
+| [BK-49](https://jira.upexgalaxy.com/browse/BK-49) | TMS-Activity | Stream a read-side feed over the existing activity log | - | Medium | Ready For QA |
+| [BK-50](https://jira.upexgalaxy.com/browse/BK-50) | TMS-Traceability | Export the assembled chain as a read-only snapshot | - | Medium | Ready For Dev |
 
 ---
 

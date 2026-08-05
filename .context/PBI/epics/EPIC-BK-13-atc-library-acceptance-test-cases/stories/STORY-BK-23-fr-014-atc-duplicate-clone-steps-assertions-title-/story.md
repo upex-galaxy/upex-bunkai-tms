@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** BLOCKED
 **Priority:** Medium
-**Story Points:** 5
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -33,13 +32,7 @@
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -53,7 +46,7 @@
 
 ### Bug (1)
 
-- [BK-175](https://jira.upexgalaxy.com/browse/BK-175): Auth: Login: Magic-link OTP email has no code-entry field on staging _(Open)_
+- [BK-175](https://jira.upexgalaxy.com/browse/BK-175): Auth: Login: Magic-link OTP email has no code-entry field on staging _(In Review)_
 
 ### Story (1)
 
@@ -64,7 +57,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** atc, clone, mvp, wave-2

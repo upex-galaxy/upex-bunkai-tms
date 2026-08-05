@@ -20,16 +20,18 @@ autonomous_delivery:
   enabled: true
   modes: [story, bug, discovery]
   caps:
-    story: 1          # hard cap — measured, not guessed. See note below.
-    bug: 3            # sequential, each fully closed before the next
-    discovery: 0      # the cap is on CODE; discovery never writes any
+    story: 1                 # hard cap — measured, not guessed. See note below.
+    bug: 3                   # sequential, each fully closed before the next
+    discovery: 0              # application CODE cap — always zero, discovery never writes code
+    discovery_definitions: 2  # NEW user stories drafted + created per run, gated on synchronous chat approval
   lock_staleness_minutes: 90
   migrations: confirm            # confirm | autonomous
   isolation: worktree
   context_budget:
     handoff_checkpoint: every-phase
     stop_at_remaining_pct: 20
-  report_channel: tracker:BK-261 # the Discovery Inbox ticket. See "The inbox protocol" below.
+  report_channel: tracker:BK-261 # plain run-summary log, all 3 routines. NOT a mailbox — see "THE APPROVAL
+                                 # GATE" inside Routine 3's prompt below; approval happens live in that chat.
   escalation_log: .session/autonomous-delivery/escalation-log.md
 ```
 
@@ -45,51 +47,50 @@ regardless of the setting. The reason this gate exists: during the avalanche run
 applied out-of-band to the shared instance and a *different* ticket's type regeneration silently
 absorbed its schema into an unrelated PR.
 
-**3. Schedule with a 4-hour stagger** so two routines never overlap. Suggested, adjust to your
+**3. Uncheck each Routine's "Worktree" option.** The skill now manages its own isolation —
+`EnterWorktree` in Phase 0a, `ExitWorktree(remove)` in Phase 4 — instead of relying on the scheduler's
+implicit assignment. This is deliberate, not an oversight: a worktree the scheduler assigns is one
+`ExitWorktree` cannot see or close (it only tracks worktrees the session entered itself), so leaving
+the option checked guarantees a dangling worktree on every run that commits anything. See
+`autonomous-delivery/SKILL.md` Phase 0a / Phase 4 and Hazard 5.10.
+
+**4. Schedule with a 4-hour stagger** so two routines never overlap. Suggested, adjust to your
 timezone:
 
 | Routine | Cadence | Suggested times |
 |---|---|---|
 | Bugs | every 8h | 02:00 · 10:00 · 18:00 |
 | Stories | every 8h | 06:00 · 14:00 · 22:00 |
-| Discovery | daily | 12:00 |
+| Story Creation (discovery) | daily | 12:00 |
 
 The skill takes a lock per mode, so an overrunning routine is skipped rather than colliding — but
 staggering keeps that from being the normal case.
 
-Model: **Sonnet 5**. Thinking effort: **ultracode**.
+**Model split.** Set the routine's own model to **Opus 5** — that is the model doing the audit/select
+reasoning (Phase 0-2) inline, and it is where contradictory evidence and dependency judgment calls
+actually benefit from the stronger model. Every subagent the routine DISPATCHES (Phase 3 execution,
+and any Phase 2 judge panel) is pinned to **Sonnet 5** explicitly by the skill itself, regardless of
+what the routine session is running — mechanical execution and root-cause work does not need Opus, and
+letting it inherit the orchestrator's model by omission is pure cost with no upside. You do not have to
+do anything to get this split beyond picking Opus 5 for the routine; the `model` override on every
+dispatch is the skill's job (`autonomous-delivery/SKILL.md`'s `model_preferences` block). Thinking
+effort: **ultracode**.
 
 ---
 
-## The inbox protocol — shared by all three routines
+## `BK-261` is a plain report log, not a mailbox
 
-`BK-261` ("Discovery Inbox") is the mailbox. Discovery posts proposals there; **all three** routines
-drain it. Draining is cheap — read a comment thread, create an issue for anything approved — so the
-two 8-hourly routines do it as their first step and the worst-case wait between your reply and the
-issue existing drops from 24 hours to about 8.
+All three routines post their run summaries to `BK-261` (the `report_channel`). That is its entire
+role now. There is no reply-parsing protocol here anymore, no proposal header, no async
+approve/reject-by-comment cycle — Discovery's proposals are approved synchronously, live, in that
+routine's own chat session (see "Routine 3" below). Nobody should reply to a `BK-261` comment
+expecting a routine to read it; nothing here is ever waited on.
 
-Every proposal comment opens with a machine-readable header:
-
-    [PROPOSAL P-YYYY-MM-DD-NN | status: pending]
-
-Jira comments are flat, so that ID is the only thing tying a reply to a proposal. A reply counts when
-it contains the ID; the verdict word only has to be recognisable, and free prose around it is read.
-
-| Reply contains | Action on the next drain |
-|---|---|
-| `<ID> yes` (or sí, ok, approved, adelante) | Create the issue. Edit the proposal comment's header to `status: approved -> <NEW-KEY>` |
-| `<ID> no` + reason | Edit header to `status: rejected`. Preserve the reason. Never propose it again |
-| `<ID> later` | Leave pending. Re-surface once more, then treat as stale |
-| nothing | Leave pending, do NOT nag. See expiry below |
-
-**Expiry.** Count how many discovery runs a proposal has survived without a verdict, from its own
-date stamp. At **7** runs with no reply, edit the header to `status: stale`, stop re-surfacing it, and
-note it in the run report. Do not delete it and do not ask again — if the idea was good it will
-resurface from the research on its own merits.
-
-**Editing your own comment is how state is stored.** Do not keep a separate ledger and do not
-re-interpret prose on every run: the header IS the state. A proposal whose header still reads
-`pending` has no verdict, full stop.
+(Earlier revisions of this document had Discovery post pending proposals to `BK-261` with a
+machine-readable header and have Stories/Bugs "drain" verdicts from replies on their next run. That
+design is retired — the operator found watching a routine's own chat and answering directly simpler
+than round-tripping through Jira comments. If you find a stray `[PROPOSAL P-...]`-headed comment from
+before this change, it is historical; it is not read by anything anymore.)
 
 ---
 
@@ -103,13 +104,6 @@ human is watching, and none will answer you mid-run. Finish or hand off cleanly.
 
 Invoke the `autonomous-delivery` skill in `story` mode and follow it. It owns the pipeline; this
 prompt only carries what is specific to this project.
-
-FIRST, DRAIN THE INBOX
-
-Before anything else, read the comments on `BK-261` (Discovery Inbox). For every proposal whose
-header says `pending` and that has a reply carrying its ID: act on the verdict — create the issue for
-an approval, mark a rejection — and edit that proposal's header to record what you did. This costs
-seconds and is why a proposal does not wait a full day for its verdict. Then continue.
 
 WHAT TO WORK ON
 
@@ -199,12 +193,6 @@ is watching, and none will answer you mid-run. Finish or hand off cleanly.
 
 Invoke the `autonomous-delivery` skill in `bug` mode and follow it.
 
-FIRST, DRAIN THE INBOX
-
-Before anything else, read the comments on `BK-261` (Discovery Inbox) and act on any proposal that has
-a verdict waiting, editing its header to record the outcome. Same protocol as the story routine. Then
-continue.
-
 WHAT TO WORK ON
 
 Query the tracker live. This project calls a defect THREE different things, and all three are in
@@ -263,21 +251,36 @@ Write one run report covering all bugs handled. Post to the report channel if co
 
 ---
 
-## Routine 3 — Discovery
+## Routine 3 — Story Creation
 
-Cadence: once daily. Produces proposals only — never code.
+Cadence: once daily. Unlike the other two, this routine is not fully unattended by design — its
+proposal must be approved live, in this routine's own chat session, before anything gets created. It
+never writes application code; the only artifacts it ever creates are epics and user stories.
 
 ```
-You are running the scheduled DISCOVERY routine for this repository. You produce PROPOSALS. You never
-write application code, never open a code pull request, and never create tracker issues without
-approval.
+You are running the scheduled STORY-CREATION routine for this repository (mode: discovery). Unlike the
+other two routines, THIS one waits on you by design: you check in on this session's chat, at any point
+during the day (or a later day, if it comes to that), to approve or redirect what it proposes. You
+never write application code in any branch — the only artifacts you ever create are epics and user
+stories.
 
 Invoke the `autonomous-delivery` skill in `discovery` mode and follow it. It dispatches
-`product-management` for the actual authoring.
+`product-management` for the actual authoring, only after approval.
 
-WHAT TO LOOK FOR
+FIRST: CHECK FOR AN UNANSWERED PROPOSAL FROM A PRIOR RUN
 
-Read the current state and ask what the product actually needs next. Sources, in order:
+Read `.session/autonomous-delivery/discovery/pending-decision.md`. If it exists and its status is
+still `awaiting_reply`: do NOT run a fresh analysis. Re-state the EXACT same recommendation from that
+file, ask the same question again, and stop — release the lock, end the turn. Never generate a new
+proposal on top of one that is still waiting; that is exactly the flooding this file exists to
+prevent. The same recommendation stands until the operator answers it, however many days that takes.
+
+If the file does not exist, or its status is `resolved`: proceed with a fresh analysis below.
+
+WHAT TO ANALYZE
+
+Ground everything in what Bunkai's app genuinely needs next, from the perspective of a QA engineer who
+wants the best possible test-management tool — not in abstract feature ideas. Sources, in order:
 
   - `.context/master-implementation-plan.md` and `.context/dev-roadmap.md` — what is planned, and
     what the plan assumes exists but does not
@@ -285,53 +288,86 @@ Read the current state and ask what the product actually needs next. Sources, in
   - `.context/ADR/` — decisions marked `Proposed` that never got accepted, and debt they created
   - escalation logs and run reports — deferred items, "flagged not fixed" notes, known gaps
   - the design plan's screen map — screens that stories point at but that nobody has ticketed
+  - `upex-galaxy/agentic-qa-boilerplate` on GitHub — READ-ONLY reference material, never clone-and-
+    modify, never open a PR there, never write to it. This is UPEX's own reference repo for the KATA
+    testing architecture Bunkai is modeled on. Pull whatever skills or docs in there help you actually
+    understand what KATA is and how that architecture should be reflected in Bunkai's TMS, so Bunkai
+    stays compatible with (or at least conceptually aligned to) the real thing. Use it as a source of
+    ideas for what might be missing, never as a spec to copy blindly — Bunkai's own PRD/ADRs/roadmap
+    still govern intent.
 
-That last one is a real gap this project has hit: three stories mapped to a Home screen that has no
-ticket anywhere in the backlog. Look specifically for that shape — work everyone assumes is somebody
-else's.
+That Home-screen gap is a real shape this project has hit before: three stories mapped to a screen
+that has no ticket anywhere in the backlog. Look specifically for that pattern — work everyone assumes
+is somebody else's.
 
-Propose at most THREE items per run: a new story, a new epic, or a refinement of something existing.
-Each proposal needs the problem it solves, why now, a rough size, and what it depends on. A proposal
-without a stated problem is a feature request, not a proposal.
+Proposals can be UI, UX, data, or API in nature — whatever the app actually needs, not just one lane.
 
-DECIDE NOTHING PRODUCT-SHAPED
+WHAT YOU MAY PROPOSE, IN ORDER OF PREFERENCE
 
-Whether to build something is the owner's call, always. Your job is to make that call cheap: bring
-the research, the evidence and a recommendation, not a decision. You may resolve technical questions
-inside a proposal autonomously via the decision protocol; you may not decide scope, priority or
+  1. One or two user stories under an EXISTING epic. This is the default and the common case.
+  2. A single, clearly urgent user story on its own, if something genuinely cannot wait for epic
+     grouping.
+  3. A NEW epic with its first user stories — only when the app genuinely needs a new feature area,
+     not a slot inside an existing one. This is the heaviest option and needs its own explicit
+     go-ahead on the EPIC ITSELF, separate from its stories, before any of them get drafted.
+
+Cap: at most TWO new user stories fully defined and created per run, whether they land under an
+existing epic or a brand-new one. Definition work (INVEST refinement, acceptance criteria, 3-amigos)
+is far lighter than a full `/sprint-development` pass, and stories drafted together in the same run
+stay mutually consistent — but the cap exists so the backlog does not flood on a daily cadence. If you
+find more good candidates than the cap allows, prioritize the best 1-2 and note the rest in the run
+report for a future run to reconsider. Do not discard the thinking, just do not act on it this run.
+
+THE APPROVAL GATE — LIVE, IN THIS CHAT, NEVER VIA A TRACKER COMMENT
+
+This is the one place in this system that deliberately waits on a human, by explicit operator
+instruction, scoped ONLY to this gate. The story and bug routines still must never wait — do not
+generalize this exception to them.
+
+Once you have analyzed and settled on a recommendation:
+
+  1. Write it to `.session/autonomous-delivery/discovery/pending-decision.md`: which epic (existing
+     or the case for a new one), the 1-2 stories with a one-line pitch each, why now, and what it
+     depends on. Set its status to `awaiting_reply`.
+  2. Release the `discovery` mode lock immediately — you may not get an answer today, and the lock
+     must not block tomorrow's fire from re-surfacing this same question.
+  3. Ask the question directly in this chat, plainly, and STOP. Do not create anything yet. If a new
+     epic is part of the recommendation, ask about the epic specifically, separate from its stories —
+     the operator may want the epic without your specific first-story picks, or the reverse.
+
+If the operator answers within this same open session — moments later or hours later, same day or a
+later one this exact session is still sitting open — resume immediately: dispatch
+`/product-management` to actually create what was approved, set `pending-decision.md`'s status to
+`resolved` with a one-line note of what got created, and continue to CLOSING below.
+
+If nobody answers before this routine's next scheduled fire: that fire reads `pending-decision.md`,
+sees `awaiting_reply`, and re-surfaces this EXACT recommendation per the check at the top of this
+prompt. It does not re-analyze, does not propose something new, and does not nag beyond restating the
+same question once per fire.
+
+DECIDE NOTHING PRODUCT-SHAPED WITHOUT THE GATE
+
+Whether to build something, and which of two similarly-good candidates wins, is the operator's call,
+always. Bring the research, the evidence, and a clear recommendation — never skip the gate because a
+candidate seems obviously good to you.
+
+You may resolve purely technical questions inside a proposal autonomously via the decision protocol
+(e.g. how a story should be sliced technically once approved) — you may not decide scope, priority, or
 whether a feature exists.
 
-FIRST, DRAIN THE INBOX
+REPORTING
 
-Read `BK-261` (Discovery Inbox) before generating anything. Handle every proposal that has a verdict
-waiting, per the inbox protocol: create the issue for an approval, record a rejection with its reason,
-and edit each proposal comment's header to reflect what you did. The header IS the state — do not keep
-a parallel ledger.
-
-Then apply expiry: any proposal still `pending` after SEVEN discovery runs, counted from its own date
-stamp, gets its header set to `status: stale`. Stop re-surfacing it and note it in the run report. Do
-not delete it and do not ask again. A good idea will come back out of the research on its own.
-
-REPORTING AND APPROVAL
-
-Post each new proposal as its own comment on `BK-261`, self-contained, opening with the header:
-
-    [PROPOSAL P-YYYY-MM-DD-NN | status: pending]
-
-and closing with the exact reply syntax the owner should use. Use ADF via the `md-to-adf.ts` converter
-— a raw markdown comment renders as literal `#` and `|` characters.
-
-Then STOP. Do not create tracker issues for anything you proposed in THIS run. Approval is
-asynchronous by design: the next drain — which may be a story or bug routine, not necessarily the next
-discovery run — reads the verdict and acts. Nothing is ever created on silence.
-
-Interactive approval buttons are not available. This runs headless, where chat connectors are not
-reliably reachable, which is exactly why the mailbox is a tracker ticket and not a Slack channel.
+`BK-261` (or whatever `report_channel` is configured) is a plain log now — post what you found, what
+you proposed or re-surfaced, and what got created or is still pending. It carries no reply-parsing
+protocol; nobody should reply to it expecting this routine to read that reply. Approval only ever
+happens live, in this chat, per the gate above.
 
 CLOSING
 
-Write a run report listing what you proposed, what you found waiting from last time, and what you
-created as a result. Never leave a proposal posted without a record of it.
+Write a run report: what you analyzed, what you proposed (or re-surfaced), what the operator decided
+if they answered this session, what got created, and what is still pending for next time. If a new
+epic was proposed and not yet approved, say so explicitly — do not draft its stories preemptively "in
+case" it gets approved later.
 ```
 
 ---

@@ -5,10 +5,6 @@
 **Priority:** Low
 **Status:** Open
 **Components:** ATC Library (Acceptance Test Cases)
-**Severity:** Menor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -51,12 +47,6 @@ ATC saves successfully with a 2-character title. No error is displayed.
 ### Test Environment
 
 staging (https://staging-upexbunkai.vercel.app) — verified by code analysis 2026-07-06
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

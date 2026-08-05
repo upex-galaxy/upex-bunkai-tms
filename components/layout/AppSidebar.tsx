@@ -1,16 +1,25 @@
 'use client';
 
+import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notifications/response';
+import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import type { MemberRole } from '@lib/types';
 import type { ComponentType } from 'react';
 import { CommandPalette } from '@components/layout/CommandPalette';
+import { NotificationsPanel } from '@components/notifications/NotificationsPanel';
 import { useAuth } from '@components/providers/auth-context';
 import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
+import { resolveNotificationHref } from '@lib/notifications/entity-routes';
+import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-notifications-channel';
+import { formatUnreadBadgeCount } from '@lib/notifications/view';
+import { createRefetchScheduler, shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
+import { createClient } from '@lib/supabase/client';
 import { cn } from '@lib/utils';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Activity,
   BarChart3,
+  Bell,
   Bug,
   Check,
   ChevronDown,
@@ -26,7 +35,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
 // Global navigation shell — the persistent left rail rendered on every (app)
@@ -56,6 +66,11 @@ interface AppSidebarProps {
   projects: ShellProject[]
   userEmail: string | null
   userRole: MemberRole | null
+  // BK-209 (Slice 3: UI) — server-fetched so the bell badge paints correct on
+  // first load, matching how every other server-driven element here
+  // (workspaces, projects, role) skips a client waterfall. Local state below
+  // takes over from here (optimistic mark-read/mark-all + Realtime pushes).
+  initialUnreadCount: number
 }
 
 interface NavItem {
@@ -79,7 +94,29 @@ function projectCode(slug: string): string {
   return slug.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase() || '—';
 }
 
-export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole }: AppSidebarProps) {
+interface NotificationsApiErrorBody {
+  error?: { message?: string }
+}
+
+type NotificationsFetchResult
+  = | { ok: true, items: NotificationRpcRow[], unreadCount: number }
+    | { ok: false, message: string };
+
+const NOTIFICATIONS_FALLBACK_ERROR = 'Could not load notifications.';
+
+// Mirrors ActivityView's own module-level `fetchActivity` helper — a plain
+// function, not a hook, since it has no state of its own beyond its args.
+async function fetchNotificationsData(workspaceId: string): Promise<NotificationsFetchResult> {
+  const response = await fetch(`/api/v1/workspaces/${workspaceId}/notifications`);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as NotificationsApiErrorBody;
+    return { ok: false, message: body.error?.message ?? NOTIFICATIONS_FALLBACK_ERROR };
+  }
+  const body = (await response.json()) as { items: NotificationRpcRow[], unread_count: number };
+  return { ok: true, items: body.items, unreadCount: body.unread_count };
+}
+
+export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
@@ -88,10 +125,46 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const [busy, setBusy] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
+  // BK-209 (Slice 3: UI) — notifications bell + panel state. `unreadCount`
+  // seeds from the server prop, then is kept current by: (a) optimistic
+  // updates on mark-one/mark-all, (b) the Realtime subscription below, and
+  // (c) reconciling back to the server value whenever `initialUnreadCount`
+  // changes (a fresh SSR read, e.g. after router.refresh()) — mirrors
+  // RunnerView's `useEffect(() => setView(run), [run])` reconciliation.
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const [notifications, setNotifications] = useState<NotificationRpcRow[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
+  // The list is fetched lazily, the first time the panel opens — not on
+  // every page load — so a page view that never opens the bell costs
+  // nothing beyond the one SSR-seeded count.
+  const notifLoadedRef = useRef(false);
+  // The panel is portaled to <body> (see the render below): <aside> is
+  // `overflow-hidden` (root className above) so a 380px-wide panel anchored
+  // via plain CSS `absolute left-full` gets silently clipped at the rail's
+  // own 224px edge — caught during live-UI validation, not visible from
+  // source alone. Position is computed from the bell's own bounding rect at
+  // open time instead.
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const [notifPanelPosition, setNotifPanelPosition] = useState<{ top: number, left: number } | null>(null);
+  // Monotonic ticket so an in-flight read (loadNotifications, or the
+  // Realtime "reconcile on subscribe" refetch) can never clobber a FRESHER
+  // state update that landed while it was still in flight — every read
+  // captures the counter's value at start and discards its own result if
+  // the counter has moved on by the time it resolves; every mutation
+  // (mark-one/mark-all) bumps it right before applying its own update, so
+  // any earlier, still-in-flight read is retroactively marked stale.
+  const notifRequestSeqRef = useRef(0);
+
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0] ?? null;
 
   const nav: NavItem[] = [
-    { id: 'home', icon: Home, label: 'Home', href: null },
+    // BK-255 — Home is live: it hosts the welcome banner now, and the rest of
+    // the dashboard (BK-256..BK-260) composes into the same route.
+    { id: 'home', icon: Home, label: 'Home', href: '/home' },
     { id: 'activity', icon: Activity, label: 'Activity', href: '/activity' },
     { id: 'projects', icon: Folder, label: 'Projects', href: '/projects', badge: projects.length },
     { id: 'library', icon: Library, label: 'ATC Library', href: null },
@@ -116,6 +189,197 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     return () => window.removeEventListener('keydown', onKey);
   }, [wsOpen]);
 
+  // BK-209 — same Escape-to-close idiom, for the notifications panel.
+  useEffect(() => {
+    if (!notifOpen) { return; }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setNotifOpen(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [notifOpen]);
+
+  // Reconcile the local badge count with a fresh server read (mount, or any
+  // router.refresh() that re-runs AppLayout's getShellData()).
+  useEffect(() => {
+    setUnreadCount(initialUnreadCount);
+  }, [initialUnreadCount]);
+
+  // A workspace switch invalidates whatever notification list/state was
+  // loaded for the PREVIOUS workspace — reset so a reopen fetches fresh
+  // rather than showing another workspace's items.
+  useEffect(() => {
+    notifLoadedRef.current = false;
+    setNotifications([]);
+    setNotifError(null);
+    setNotifOpen(false);
+  }, [activeWorkspaceId]);
+
+  const loadNotifications = async () => {
+    if (!activeWorkspaceId) { return; }
+    setNotifLoading(true);
+    setNotifError(null);
+    const seq = ++notifRequestSeqRef.current;
+    const result = await fetchNotificationsData(activeWorkspaceId);
+    setNotifLoading(false);
+    // A newer read (a later loadNotifications/realtime-refetch call, or a
+    // mark-one/mark-all mutation's own optimistic apply) has already landed
+    // — this response is stale, discard the DATA (but the loading flag
+    // above still clears) rather than clobber fresher state (caught during
+    // live-UI validation: a same-tab mark-read could lose to an in-flight
+    // realtime "reconcile on subscribe" refetch that started earlier but
+    // resolved later).
+    if (seq !== notifRequestSeqRef.current) { return; }
+    if (result.ok) {
+      setNotifications(result.items);
+      setUnreadCount(result.unreadCount);
+      notifLoadedRef.current = true;
+    }
+    else {
+      setNotifError(result.message);
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (notifOpen) {
+      setNotifOpen(false);
+      return;
+    }
+    const rect = bellButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setNotifPanelPosition({ top: rect.bottom + 8, left: rect.left });
+    }
+    setNotifOpen(true);
+    if (!notifLoadedRef.current) {
+      void loadNotifications();
+    }
+  };
+
+  // BK-209 / ADR-0010 (RT-2 pattern reuse) — Realtime subscription: new
+  // notifications and read-state changes update the badge (always) and the
+  // visible list (when the panel happens to be open) without a manual
+  // refresh. Scoped to `[activeWorkspaceId]`, mirroring RunnerView's
+  // `[view.id]` scoping — a workspace switch tears down the old channel and
+  // opens a new one for the newly active workspace.
+  const prevRealtimeStatusRef = useRef<RealtimeConnectionStatus | null>(null);
+  useEffect(() => {
+    if (!activeWorkspaceId) { return; }
+
+    const supabase = createClient();
+    const config = buildNotificationsChannelConfig(activeWorkspaceId);
+    prevRealtimeStatusRef.current = null;
+
+    const refetch = async () => {
+      const seq = ++notifRequestSeqRef.current;
+      const result = await fetchNotificationsData(activeWorkspaceId);
+      // Superseded by a newer read or a mutation's own optimistic apply —
+      // discard rather than clobber fresher state (see loadNotifications).
+      if (seq !== notifRequestSeqRef.current) { return; }
+      if (result.ok) {
+        setNotifications(result.items);
+        setUnreadCount(result.unreadCount);
+        notifLoadedRef.current = true;
+      }
+      // Silent on failure — mirrors RunnerView's realtime refetch: a
+      // transient blip just means the next event or reconnect retries via
+      // this same path.
+    };
+
+    const scheduler = createRefetchScheduler(() => { void refetch(); });
+
+    const channel = supabase.channel(config.channelName);
+    for (const binding of config.bindings) {
+      channel.on<Record<string, unknown>>(
+        'postgres_changes',
+        { event: binding.event, schema: binding.schema, table: binding.table, filter: binding.filter },
+        () => scheduler.trigger(),
+      );
+    }
+    channel.subscribe((status) => {
+      const next = String(status) as RealtimeConnectionStatus;
+      if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
+        scheduler.trigger();
+      }
+      prevRealtimeStatusRef.current = next;
+    });
+
+    return () => {
+      scheduler.cancel();
+      void supabase.removeChannel(channel);
+    };
+  }, [activeWorkspaceId]);
+
+  const markOneRead = async (notification: NotificationRpcRow) => {
+    if (notification.read_at !== null || markingIds.has(notification.id)) { return; }
+    setMarkingIds(prev => new Set(prev).add(notification.id));
+    try {
+      const response = await fetch(`/api/v1/notifications/${notification.id}/read`, { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as NotificationsApiErrorBody;
+        toast.error(body.error?.message ?? 'Could not mark this notification as read.');
+        return;
+      }
+      const body = (await response.json()) as { notification: { id: string, read_at: string } };
+      // Bump BEFORE applying — retroactively marks any earlier, still-in-
+      // flight read (e.g. the Realtime "reconcile on subscribe" refetch) as
+      // stale, so it can't clobber this fresher update when it resolves.
+      notifRequestSeqRef.current += 1;
+      setNotifications(prev => prev.map(n => (n.id === notification.id ? { ...n, read_at: body.notification.read_at } : n)));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+    catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error.');
+    }
+    finally {
+      setMarkingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notification.id);
+        return next;
+      });
+    }
+  };
+
+  const markAllRead = async () => {
+    if (!activeWorkspaceId || markingAll || unreadCount === 0) { return; }
+    setMarkingAll(true);
+    try {
+      const response = await fetch(`/api/v1/workspaces/${activeWorkspaceId}/notifications/read-all`, { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as NotificationsApiErrorBody;
+        toast.error(body.error?.message ?? 'Could not mark all notifications as read.');
+        return;
+      }
+      const nowIso = new Date().toISOString();
+      notifRequestSeqRef.current += 1;
+      setNotifications(prev => prev.map(n => (n.read_at === null ? { ...n, read_at: nowIso } : n)));
+      setUnreadCount(0);
+    }
+    catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error.');
+    }
+    finally {
+      setMarkingAll(false);
+    }
+  };
+
+  // AC4/AC5 — click marks read (idempotent no-op if already read) and, only
+  // when a route actually resolves (entity_available AND the payload
+  // carries enough to build one — see lib/notifications/entity-routes.ts),
+  // navigates and closes the panel (business-rules.md design intent: "Row
+  // click closes because it navigates"). Otherwise the panel stays open and
+  // the row's own unavailable note (already visible, not click-gated) is the
+  // whole story.
+  const handleRowActivate = (notification: NotificationRpcRow) => {
+    if (notification.read_at === null) {
+      void markOneRead(notification);
+    }
+    const href = resolveNotificationHref(notification);
+    if (href !== null) {
+      setNotifOpen(false);
+      router.push(href);
+    }
+  };
+
   const switchWorkspace = async (workspaceId: string) => {
     if (busy || workspaceId === activeWorkspaceId) { setWsOpen(false); return; }
     setBusy(true);
@@ -131,7 +395,14 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
         return;
       }
       setWsOpen(false);
-      router.replace('/projects');
+      // Project-scoped routes carry a slug that will not resolve in the new
+      // workspace, so those still bounce to /projects. Home is workspace-level:
+      // re-rendering it in place is the whole point of switching from there
+      // (BK-255 — it is the screen that names which workspace you are in), so
+      // ejecting to /projects would navigate away from the answer.
+      if (pathname !== '/home') {
+        router.replace('/projects');
+      }
       router.refresh();
     }
     catch (err) {
@@ -171,7 +442,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
 
   return (
     <aside className="flex h-screen flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
-      {/* Logo + New */}
+      {/* Logo + Notifications bell + New */}
       <div className="flex items-center justify-between gap-2 px-3.5 pb-3 pt-3.5">
         <span className="inline-flex items-center gap-2">
           <span className="inline-flex size-6 items-center justify-center rounded-1 bg-accent font-jp text-base font-bold leading-none tracking-tight text-white">
@@ -179,13 +450,74 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
           </span>
           <span className="text-base font-bold tracking-tight text-fg-0">Bunkai</span>
         </span>
-        <Link
-          href="/projects"
-          title="New project"
-          className="inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-2 hover:text-fg-1"
-        >
-          <Plus size={14} />
-        </Link>
+        <span className="inline-flex items-center gap-1">
+          {/* BK-209 — bell entry point (§5 D17: sidebar, not the mockup's
+              topbar — the app's actual persistent global shell is this rail,
+              not a topbar; see master-design-plan.md §5). Placed beside the
+              "New project" affordance at the very top of the rail, the
+              closest live equivalent to the mockup's "next to search, in the
+              topbar" placement. */}
+          <div className="relative">
+            <button
+              ref={bellButtonRef}
+              type="button"
+              data-testid="notifications_bell"
+              aria-haspopup="true"
+              aria-expanded={notifOpen}
+              aria-controls="notifications-panel"
+              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications, all read'}
+              onClick={toggleNotifications}
+              className="relative inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-2 hover:text-fg-1"
+            >
+              <Bell size={14} />
+              {unreadCount > 0 && (
+                <span
+                  data-testid="notifications_badge"
+                  className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full border-2 border-surface-1 bg-accent px-1 font-mono text-[10px] font-semibold leading-none text-white"
+                >
+                  {formatUnreadBadgeCount(unreadCount)}
+                </span>
+              )}
+            </button>
+
+            {/* Portaled to <body> — <aside> is `overflow-hidden` (root
+                className above), which would silently clip a 380px-wide panel
+                anchored via plain in-flow CSS at the rail's own 224px edge
+                (caught during live-UI validation). Positioned from the
+                bell's own bounding rect, computed in toggleNotifications. */}
+            {notifOpen && notifPanelPosition && createPortal(
+              <>
+                <div className="fixed inset-0 z-40" aria-hidden onClick={() => setNotifOpen(false)} />
+                <div
+                  id="notifications-panel"
+                  className="fixed z-50"
+                  style={{ top: notifPanelPosition.top, left: notifPanelPosition.left }}
+                >
+                  <NotificationsPanel
+                    items={notifications}
+                    unreadCount={unreadCount}
+                    loading={notifLoading}
+                    error={notifError}
+                    markingAll={markingAll}
+                    markingIds={markingIds}
+                    onRetry={() => { void loadNotifications(); }}
+                    onMarkAllRead={() => { void markAllRead(); }}
+                    onRowActivate={handleRowActivate}
+                    onMarkOneRead={(notification) => { void markOneRead(notification); }}
+                  />
+                </div>
+              </>,
+              document.body,
+            )}
+          </div>
+          <Link
+            href="/projects/new"
+            title="New project"
+            className="inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-2 hover:text-fg-1"
+          >
+            <Plus size={14} />
+          </Link>
+        </span>
       </div>
 
       {/* Workspace switcher */}

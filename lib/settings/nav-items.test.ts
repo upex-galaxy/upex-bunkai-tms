@@ -28,6 +28,13 @@ describe('SETTINGS_NAV_AVAILABLE / SETTINGS_NAV_COMING_SOON', () => {
     expect(SETTINGS_NAV_AVAILABLE[0]?.id).toBe('account');
     expect(SETTINGS_NAV_AVAILABLE[0]?.href).toBe('/settings/account');
   });
+
+  // BK-213 — Notifications moved from "coming soon" to "available"
+  // (master-design-plan.md §4.13: "Notifications now LIVE in the nav").
+  test('notifications is now available, not coming soon', () => {
+    expect(SETTINGS_NAV_AVAILABLE.find(item => item.id === 'notifications')?.href).toBe('/settings/notifications');
+    expect(SETTINGS_NAV_COMING_SOON.some(item => item.id === 'notifications')).toBe(false);
+  });
 });
 
 describe('isSettingsNavItemActive', () => {

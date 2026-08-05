@@ -1,6 +1,7 @@
-import type { RunDetail } from '@components/runs/RunnerView';
+import type { LinkedBugSummary, RunDetail } from '@components/runs/RunnerView';
 import { RunnerView } from '@components/runs/RunnerView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { formatBugListRow } from '@lib/bugs/list-view';
 import { getRunExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -9,6 +10,11 @@ import { notFound } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ projectSlug: string, runId: string }>
+  // BK-212 Slice 2 — `bugId`, when present, is the deep-link target a bug
+  // notification's href carries (lib/notifications/entity-routes.ts's `bug`
+  // case). Optional and additive: the page renders exactly as it did before
+  // this story whenever it is absent.
+  searchParams: Promise<{ bugId?: string }>
 }
 
 // BK-34 — read-only expanded Run detail page (the manual runner). Runs are
@@ -18,8 +24,9 @@ interface PageProps {
 // headless API route uses (`bunkai_get_run_expanded`), so both surfaces return
 // byte-identical data. Missing / not-visible / foreign-workspace Runs all
 // collapse into one safe `notFound()` (non-disclosure).
-export default async function RunDetailPage({ params }: PageProps) {
+export default async function RunDetailPage({ params, searchParams }: PageProps) {
   const { projectSlug, runId } = await params;
+  const { bugId } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,6 +94,35 @@ export default async function RunDetailPage({ params }: PageProps) {
     .maybeSingle();
   const canManageRun = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
+  // BK-212 Slice 2 — resolve the deep-linked bug (if any), scoped to THIS
+  // run. `bugs` RLS (bugs_select_workspace_member, 0046_bugs.sql) already
+  // gates this plain read to the caller's own workspace membership, same
+  // convention as the atcs/modules/workspace_members reads above. A
+  // foreign/nonexistent/RLS-hidden bug id, or one whose own `run_id` does not
+  // match THIS run (a stale/foreign `bugId`, never trusted blindly), both
+  // degrade to no linked-bug context — the page renders exactly as it did
+  // before this story, not an error.
+  let linkedBug: LinkedBugSummary | null = null;
+  if (bugId) {
+    const { data: bugRow } = await supabase
+      .from('bugs')
+      .select('id, title, severity, status, run_id, run_step_id')
+      .eq('id', bugId)
+      .maybeSingle();
+    if (bugRow && bugRow.run_id === run.id) {
+      const formatted = formatBugListRow({ ...bugRow, module: null });
+      linkedBug = {
+        id: formatted.id,
+        title: formatted.title,
+        severityLabel: formatted.severityLabel,
+        severityToken: formatted.severityToken,
+        statusLabel: formatted.statusLabel,
+        statusToken: formatted.statusToken,
+        runStepId: bugRow.run_step_id,
+      };
+    }
+  }
+
   return (
     <RunnerView
       run={run}
@@ -96,6 +132,7 @@ export default async function RunDetailPage({ params }: PageProps) {
       canMark={canManageRun}
       canReportBug={canManageRun}
       atcModuleNames={atcModuleNames}
+      linkedBug={linkedBug}
     />
   );
 }

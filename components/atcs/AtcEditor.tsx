@@ -8,6 +8,7 @@ import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
+import { TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Files, Save } from 'lucide-react';
@@ -87,7 +88,10 @@ export function AtcEditor({
   const [assertionsYaml, setAssertionsYaml] = useState(() => assertionsToYaml(initialAssertions));
 
   const isAnchored = !!storyId && acIds.length >= 1;
-  const canSave = isAnchored && title.trim().length > 0 && !isPending;
+  // BK-145 — reuse the BK-18/19 title bounds (3-200 chars) the create flow
+  // (NewAtcEditor) and the headless API already enforce, so the edit path
+  // stops silently accepting a 1-2 char title.
+  const canSave = isAnchored && titleValid(title) && !isPending;
 
   const selectedStory = useMemo(
     () => stories.find(s => s.id === storyId) ?? null,
@@ -221,7 +225,9 @@ export function AtcEditor({
                     ? 'Pick a User Story to enable Save'
                     : acIds.length === 0
                       ? 'Bind at least one Acceptance Criterion to enable Save'
-                      : 'Add a title to enable Save'
+                      : !titleValid(title)
+                          ? TITLE_MESSAGE
+                          : 'Add a title to enable Save'
                 : 'Save ATC (⌘S)'
             }
             className={cn(
@@ -253,6 +259,11 @@ export function AtcEditor({
                   placeholder="A single observable behaviour — start with a verb"
                   className="h-10 text-md font-semibold"
                 />
+                {title.trim().length > 0 && !titleValid(title) && (
+                  <p className="mt-1 text-xs text-signal-fail" data-testid="atc-title-error">
+                    {TITLE_MESSAGE}
+                  </p>
+                )}
               </label>
             </header>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { BugsListPageResponse, BugsListRpcRow } from '@app/api/v1/bugs/list-response';
+import type { BugsListItemResponse, BugsListPageResponse } from '@app/api/v1/bugs/list-response';
 import type { BugRecord } from '@components/bugs/BugFormDialog';
 import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
 import type { BugAggregates } from '@lib/bugs/list-view';
@@ -21,7 +21,7 @@ import {
   formatBugListRow,
 } from '@lib/bugs/list-view';
 import { cn } from '@lib/utils';
-import { ArrowDown, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -50,6 +50,18 @@ export interface BugsModuleOption {
   path: string
 }
 
+// BK-264 — one active workspace member, for the List view's own Assignee
+// picker (server-fetched in `bugs/page.tsx` alongside `modules`, same
+// "preload the small fixed option set server-side" shape). `email` is
+// nullable — mirrors `BugsListAssignee`'s own shape (`list-response.ts`),
+// since the resolver RPC can return a null email for a user row it cannot
+// fully resolve.
+export interface BugsWorkspaceMemberOption {
+  user_id: string
+  email: string | null
+  role: string
+}
+
 interface BugsListViewProps {
   projectId: string
   modules: BugsModuleOption[]
@@ -57,6 +69,13 @@ interface BugsListViewProps {
   // RunnerView's `canReportBug` — a viewer sees the list read-only, no "New
   // bug" button at all (structurally absent, not merely hidden).
   canCreateBug: boolean
+  // BK-264 — every active member of the current workspace, feeding the
+  // Assignee picker below. Deliberately NOT filtered to non-viewer roles: the
+  // AC requires a clear, distinct rejection message when a viewer is picked
+  // (assign RPC's 45313/`assignee_view_only`), which only a real UI attempt
+  // can exercise — pre-filtering the options would make that AC unreachable
+  // from this screen.
+  workspaceMembers: BugsWorkspaceMemberOption[]
   initialPage: BugsListPageResponse
   // Set when the SERVER-side first-page read failed; the client renders the
   // error block with a Retry that re-queries through the API route.
@@ -136,6 +155,27 @@ const SEVERITY_FILTER_TONE: Record<BugSeverity, string> = {
   P4: 'skipped',
 };
 
+// BK-264 — the bugs status lifecycle only ever moves forward one stage at a
+// time (`bunkai_transition_bug_status`, migration 0054_bug_assignment_status.
+// sql): open -> in_progress -> resolved -> closed, `closed` terminal. Rather
+// than a `<select>` that would have to expose (and then disable) the skipped/
+// backward options, the control only ever offers the SINGLE valid next
+// action — the client enforces the same adjacency the server does, so a
+// skip/backward request can never be constructed from this screen in the
+// first place.
+const NEXT_BUG_STATUS: Record<BugStatus, BugStatus | null> = {
+  open: 'in_progress',
+  in_progress: 'resolved',
+  resolved: 'closed',
+  closed: null,
+};
+const BUG_STATUS_ACTION_LABEL: Record<BugStatus, string> = {
+  open: 'Start progress',
+  in_progress: 'Mark resolved',
+  resolved: 'Close',
+  closed: '',
+};
+
 interface ToneClasses { text: string, bg: string, border: string, dot: string }
 const TONE_CLASSES: Record<string, ToneClasses> = {
   fail: { text: 'text-signal-fail', bg: 'bg-signal-fail-bg', border: 'border-signal-fail', dot: 'bg-signal-fail' },
@@ -213,15 +253,31 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
 
 type BugsScreenView = 'list' | 'heatmap';
 
-export function BugsListView({ projectId, modules, canCreateBug, initialPage, initialError = null }: BugsListViewProps) {
+export function BugsListView({ projectId, modules, canCreateBug, workspaceMembers, initialPage, initialError = null }: BugsListViewProps) {
+  // BK-264 — assign/status-transition are gated by the SAME member+
+  // (not-viewer) permission `canCreateBug` already represents (both mutations
+  // require the identical write-role RPCs a viewer always fails), so no
+  // second permission concept is introduced — just a name that reads
+  // correctly at each call site below.
+  const canManageBugs = canCreateBug;
+
   // BK-42 — the screen's own List/Heatmap view switch (master-design-plan
   // §4.6). Not persisted/URL-synced — no deep-link requirement in either
   // story's scope, same reasoning already applied to the List half's own
   // filters above.
   const [view, setView] = useState<BugsScreenView>('list');
-  const [items, setItems] = useState<BugsListRpcRow[]>(initialPage.data);
+  const [items, setItems] = useState<BugsListItemResponse[]>(initialPage.data);
   const [aggregates, setAggregates] = useState<BugAggregates>(initialPage.aggregates);
   const [cursor, setCursor] = useState<string | null>(initialPage.next_cursor);
+
+  // BK-264 — per-row assign / status-advance state. Keyed by bug id (NOT a
+  // single shared field) so one row's in-flight request or error never
+  // clobbers a sibling row's — mirrors the append-error/first-page-error
+  // split already established above, scaled down to per-row granularity.
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignErrorById, setAssignErrorById] = useState<Record<string, string>>({});
+  const [transitioningId, setTransitioningId] = useState<string | null>(null);
+  const [transitionErrorById, setTransitionErrorById] = useState<Record<string, string>>({});
 
   const [moduleId, setModuleId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Set<BugStatus>>(new Set());
@@ -367,6 +423,89 @@ export function BugsListView({ projectId, modules, canCreateBug, initialPage, in
   const handleCreated = (_bug: BugRecord) => {
     toast.success('Bug filed');
     void runQuery({ moduleId, statuses, severities }, startRequest());
+  };
+
+  // BK-264 — assign / reassign / unassign one bug (`POST /api/v1/bugs/{id}/
+  // assign`). On success, re-query page 1 under the CURRENT filters — same
+  // reasoning as `handleCreated` above: the route only echoes the raw
+  // `assignee_user_id` back (no resolved display info, per that route's own
+  // contract), and a full re-query is the simplest way to pick up the
+  // resolved `assignee` email while keeping the aggregates panel accurate,
+  // rather than hand-merging `workspaceMembers` locally. On failure, the rest
+  // of the table is left untouched — only THIS row's own error is set, so one
+  // bad assignment never blanks the page (unlike the first-page `error`
+  // state, which is reserved for a failed LIST read).
+  const handleAssign = async (bugId: string, assigneeUserId: string | null) => {
+    setAssigningId(bugId);
+    setAssignErrorById((prev) => {
+      if (!(bugId in prev)) { return prev; }
+      const next = { ...prev };
+      delete next[bugId];
+      return next;
+    });
+    try {
+      const response = await fetch(`/api/v1/bugs/${bugId}/assign`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assignee_user_id: assigneeUserId }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+        // Server copy rendered VERBATIM — same convention as fetchBugsPage/
+        // BugFormDialog/RunnerView's handleMarkSubmit. Each of the assign
+        // RPC's rejections (not_a_member, assignee_not_workspace_member,
+        // assignee_view_only, not_found) already carries its OWN distinct,
+        // actionable wording server-side (`lib/bugs/errors.ts`) — this layer
+        // never re-derives or branches on `reason` to avoid a second,
+        // divergent copy of that mapping.
+        setAssignErrorById(prev => ({ ...prev, [bugId]: body.error?.message ?? 'Could not update the assignee.' }));
+        return;
+      }
+      toast.success(assigneeUserId === null ? 'Bug unassigned' : 'Bug assigned');
+      void runQuery({ moduleId, statuses, severities }, startRequest());
+    }
+    catch (err) {
+      setAssignErrorById(prev => ({ ...prev, [bugId]: err instanceof Error ? err.message : 'Network error.' }));
+    }
+    finally {
+      setAssigningId(null);
+    }
+  };
+
+  // BK-264 — advance one bug's status exactly one lifecycle stage
+  // (`POST /api/v1/bugs/{id}/status`). The control that calls this only ever
+  // offers `NEXT_BUG_STATUS[currentStatus]` (see that map's own comment) —
+  // a skip or backward request can never be constructed from this screen, so
+  // the 45310/45311 rejections are unreachable from here by construction, not
+  // just handled after the fact.
+  const handleStatusAdvance = async (bugId: string, nextStatus: BugStatus) => {
+    setTransitioningId(bugId);
+    setTransitionErrorById((prev) => {
+      if (!(bugId in prev)) { return prev; }
+      const next = { ...prev };
+      delete next[bugId];
+      return next;
+    });
+    try {
+      const response = await fetch(`/api/v1/bugs/${bugId}/status`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+        setTransitionErrorById(prev => ({ ...prev, [bugId]: body.error?.message ?? 'Could not update this bug\'s status.' }));
+        return;
+      }
+      toast.success('Bug status updated');
+      void runQuery({ moduleId, statuses, severities }, startRequest());
+    }
+    catch (err) {
+      setTransitionErrorById(prev => ({ ...prev, [bugId]: err instanceof Error ? err.message : 'Network error.' }));
+    }
+    finally {
+      setTransitioningId(null);
+    }
   };
 
   const rows = items.map(formatBugListRow);
@@ -602,7 +741,7 @@ export function BugsListView({ projectId, modules, canCreateBug, initialPage, in
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
-                            {['Bug', 'Title', 'Module', 'Severity', 'Status', 'Run'].map(column => (
+                            {['Bug', 'Title', 'Module', 'Severity', 'Status', 'Assignee', 'Run'].map(column => (
                               <th
                                 key={column}
                                 scope="col"
@@ -618,42 +757,121 @@ export function BugsListView({ projectId, modules, canCreateBug, initialPage, in
                           aria-busy={loading}
                           className={cn('transition-opacity duration-token ease-token', loading && 'opacity-40')}
                         >
-                          {rows.map(row => (
-                            <tr
-                              key={row.id}
-                              data-testid={`bugs-list-row-${row.id}`}
-                              className="transition-colors duration-token ease-token hover:bg-surface-3"
-                            >
-                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                <span className="font-mono text-xs font-medium text-fg-0" title={row.id}>
-                                  {row.id.slice(0, 8)}
-                                </span>
-                              </td>
-                              <td className="max-w-[280px] truncate border-t border-stroke-1 px-3 py-1.5 text-sm text-fg-1">
-                                {row.title}
-                              </td>
-                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                <span className="font-mono text-xs text-fg-2">{row.modulePath}</span>
-                              </td>
-                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                <span className="status-chip" data-status={row.severityToken}>
-                                  <span className="dot" data-status={row.severityToken} />
-                                  {row.severity}
-                                  {' · '}
-                                  {row.severityLabel}
-                                </span>
-                              </td>
-                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                <span className="status-chip" data-status={row.statusToken}>
-                                  <span className="dot" data-status={row.statusToken} />
-                                  {row.statusLabel}
-                                </span>
-                              </td>
-                              <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>
-                              </td>
-                            </tr>
-                          ))}
+                          {items.map((item, rowIndex) => {
+                            const row = rows[rowIndex];
+                            // BK-264 — the single valid next status, if any
+                            // (`closed` is terminal). Only THIS action is
+                            // ever offered, so a skip/backward move is never
+                            // constructable from this control.
+                            const nextStatus = NEXT_BUG_STATUS[row.status as BugStatus] ?? null;
+                            return (
+                              <tr
+                                key={row.id}
+                                data-testid={`bugs-list-row-${row.id}`}
+                                className="transition-colors duration-token ease-token hover:bg-surface-3"
+                              >
+                                <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                  <span className="font-mono text-xs font-medium text-fg-0" title={row.id}>
+                                    {row.id.slice(0, 8)}
+                                  </span>
+                                </td>
+                                <td className="max-w-[280px] truncate border-t border-stroke-1 px-3 py-1.5 text-sm text-fg-1">
+                                  {row.title}
+                                </td>
+                                <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                  <span className="font-mono text-xs text-fg-2">{row.modulePath}</span>
+                                </td>
+                                <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                  <span className="status-chip" data-status={row.severityToken}>
+                                    <span className="dot" data-status={row.severityToken} />
+                                    {row.severity}
+                                    {' · '}
+                                    {row.severityLabel}
+                                  </span>
+                                </td>
+                                <td className="border-t border-stroke-1 px-3 py-1.5">
+                                  <div className="flex flex-col items-start gap-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="status-chip" data-status={row.statusToken}>
+                                        <span className="dot" data-status={row.statusToken} />
+                                        {row.statusLabel}
+                                      </span>
+                                      {/* BK-264 — the ONLY interactive status
+                                      control on this row: a single forward
+                                      action, shown only for a member+ actor
+                                      (canManageBugs) and only when the bug
+                                      isn't already `closed` (terminal). A
+                                      viewer sees the plain chip above with no
+                                      popup affordance — structurally
+                                      read-only, mirrors master-design-plan
+                                      §4.7's BK-227 dropdown-vs-read-only-badge
+                                      precedent for a comparable member+/
+                                      viewer split. */}
+                                      {canManageBugs && nextStatus && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          data-testid="bugs-list-status-advance"
+                                          disabled={transitioningId === item.id}
+                                          onClick={() => { void handleStatusAdvance(item.id, nextStatus); }}
+                                        >
+                                          <ArrowRight size={11} />
+                                          {transitioningId === item.id ? 'Updating…' : BUG_STATUS_ACTION_LABEL[row.status as BugStatus]}
+                                        </Button>
+                                      )}
+                                    </div>
+                                    {transitionErrorById[item.id] && (
+                                      <p data-testid="bugs-list-status-error" className="max-w-[220px] whitespace-normal text-2xs text-signal-fail">
+                                        {transitionErrorById[item.id]}
+                                      </p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="border-t border-stroke-1 px-3 py-1.5">
+                                  {canManageBugs
+                                    ? (
+                                        <div className="flex flex-col items-start gap-1">
+                                          <select
+                                            aria-label="Assignee"
+                                            data-testid="bugs-list-assignee-select"
+                                            value={item.assignee_user_id ?? ''}
+                                            disabled={assigningId === item.id}
+                                            onChange={(e) => {
+                                              void handleAssign(item.id, e.target.value === '' ? null : e.target.value);
+                                            }}
+                                            className="h-7 min-w-[160px] rounded-2 border border-stroke-2 bg-surface-2 px-2 font-mono text-xs text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                                          >
+                                            <option value="">Unassigned</option>
+                                            {workspaceMembers.map(member => (
+                                              <option key={member.user_id} value={member.user_id}>
+                                                {member.email ?? member.user_id.slice(0, 8)}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          {assignErrorById[item.id] && (
+                                            <p data-testid="bugs-list-assignee-error" className="max-w-[200px] whitespace-normal text-2xs text-signal-fail">
+                                              {assignErrorById[item.id]}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )
+                                    : (
+                                        // Structurally read-only for a viewer —
+                                        // no select, no popup affordance — same
+                                        // "not merely disabled styling" shape
+                                        // the status control above uses.
+                                        <span data-testid="bugs-list-assignee-readonly" className="text-xs text-fg-2">
+                                          {item.assignee ? (item.assignee.email ?? 'Assigned') : 'Unassigned'}
+                                        </span>
+                                      )}
+                                </td>
+                                <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+                                  <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

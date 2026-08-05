@@ -24,15 +24,38 @@ const BugSchema = z
     atc_id: z.string().uuid().nullable().describe('Provenance link to the source ATC; null for a standalone bug.'),
     title: z.string(),
     severity: z.enum(['P1', 'P2', 'P3', 'P4']),
-    status: z.enum(['open', 'in_progress', 'resolved', 'closed']).describe('BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories.'),
+    status: z.enum(['open', 'in_progress', 'resolved', 'closed']).describe('BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories. BK-264 adds POST /api/v1/bugs/{id}/status to advance it one stage at a time.'),
     description: z.string().nullable(),
     steps_to_reproduce: z.string(),
     evidence_urls: z.array(z.string().url()).max(10),
+    assignee_user_id: z.string().uuid().nullable().describe('BK-264 — the workspace member currently assigned to this bug, or null if unassigned. Always null immediately after creation (BK-40 never accepts an assignee at filing time). Set via POST /api/v1/bugs/{id}/assign.'),
     created_by: z.string().uuid().nullable(),
     created_at: z.string().datetime(),
     updated_at: z.string().datetime(),
   })
   .openapi('Bug');
+
+// BK-264 (Slice 2) — GET /api/v1/bugs resolves assignee display info the SAME
+// way GET /api/v1/activity resolves actor display info (ADR-0011's
+// `bunkai_resolve_activity_actors`, workspace-scoped and generic to any user
+// id, not actor-specific despite its activity-era name). Only the LIST
+// endpoint carries this nested object — POST /bugs, POST /bugs/{id}/assign,
+// and POST /bugs/{id}/status return the plain `Bug` shape above (its
+// `assignee_user_id` is always null right after creation, and the two
+// mutation routes return the RPC's own composed json verbatim, which does
+// not resolve display info).
+const BugAssigneeSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    email: z.string().email().nullable(),
+  })
+  .openapi('BugAssignee');
+
+const BugListItemSchema = BugSchema
+  .extend({
+    assignee: BugAssigneeSchema.nullable().describe('Resolved display info for `assignee_user_id`, or null when unassigned.'),
+  })
+  .openapi('BugListItem');
 
 const RunLinkedCreateBodySchema = z
   .object({
@@ -105,7 +128,7 @@ const BugsAggregatesSchema = z
 
 const BugsListPageSchema = z
   .object({
-    data: z.array(BugSchema).describe('The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5).'),
+    data: z.array(BugListItemSchema).describe('The page, ordered severity ascending (P1..P4) then created_at desc, id desc (Decision 5). Each item carries a resolved `assignee` (BK-264), the same way GET /api/v1/activity resolves actor display info.'),
     aggregates: BugsAggregatesSchema,
     next_cursor: z
       .string()

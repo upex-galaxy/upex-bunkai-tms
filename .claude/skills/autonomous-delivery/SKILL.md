@@ -1,19 +1,25 @@
 ---
 name: autonomous-delivery
-description: "SCHEDULED / UNATTENDED entry point for a delivery run with no human on the line. Audits real state (git is truth, the tracker is a hint), selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out, and reports. Three modes: `story` (1 per run, hard cap), `bug` (up to 3, sequential), `discovery` (proposals only, never writes code). Four phases: Phase 0 Lock -> Phase 1 Audit -> Phase 2 Select -> Phase 3 Execute -> Phase 4 Close and report. Triggers on: scheduled delivery run, unattended run, autonomous run, cron delivery, routine run, nightly delivery, overnight sprint run, run the queue unattended, pick up the next unblocked ticket by yourself, autonomous-delivery, `/autonomous-delivery story`, `/autonomous-delivery bug`, `/autonomous-delivery discovery`. Do NOT use for: interactive per-ticket work with a human present (use /sprint-development directly — this skill only wraps it in audit + selection + handoff), backlog seeding or AC refinement on a named ticket (use /product-management directly), branch / PR / conflict operations (use /git-flow-master), foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), or unit-test TDD slices (use /unit-testing)."
+description: "SCHEDULED entry point for a delivery run. Audits real state (git is truth, the tracker is a hint), selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out, and reports. Three modes: `story` (1 per run, hard cap, fully unattended) and `bug` (up to 3, sequential, fully unattended) never wait on a human; `discovery` (up to 2 new user stories or epic per run, never application code) is the one mode that DOES wait — its proposal must be approved synchronously in that routine's own chat session before anything is created. Four phases: Phase 0 Lock -> Phase 1 Audit -> Phase 2 Select -> Phase 3 Execute -> Phase 4 Close and report. Triggers on: scheduled delivery run, unattended run, autonomous run, cron delivery, routine run, nightly delivery, overnight sprint run, run the queue unattended, pick up the next unblocked ticket by yourself, autonomous-delivery, `/autonomous-delivery story`, `/autonomous-delivery bug`, `/autonomous-delivery discovery`. Do NOT use for: interactive per-ticket work with a human present (use /sprint-development directly — this skill only wraps it in audit + selection + handoff), backlog seeding or AC refinement on a named ticket (use /product-management directly), branch / PR / conflict operations (use /git-flow-master), foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), or unit-test TDD slices (use /unit-testing)."
 license: MIT
 compatibility: [claude-code, opencode]
 phase: implementation
 ---
 
-<!-- Model preferences (advisory; dispatchers may use to route) -->
+<!-- Model preferences: the top-level routine session runs on whatever model the schedule is configured
+     with (Opus 5 recommended for the audit/select reasoning below). Every Agent() dispatch this skill
+     makes is NOT advisory — Phase 2's judge panel and Phase 3's execution dispatch MUST pass an explicit
+     `model` override. Omitting it means the subagent silently inherits the orchestrator's model, which is
+     the wrong default when the orchestrator is running something stronger (and pricier) than the
+     mechanical work actually needs. -->
 <!--
 model_preferences:
   audit: sonnet          # mechanical state verification
-  selection: opus        # dependency reasoning under contradictory evidence
-  execution: sonnet      # delegated to the owning pipeline skill
-  judge_panel: opus      # scored decision lenses
-  archive: haiku         # mechanical close-out
+  selection: opus        # dependency reasoning under contradictory evidence — this is the ORCHESTRATOR
+                          # thinking inline, not a dispatch; it runs on whatever model the session itself is on
+  execution: sonnet      # ENFORCED — every Phase 3 Agent() call passes model: "sonnet" explicitly
+  judge_panel: opus      # ENFORCED — every Phase 2 scored-judge-panel Agent() call passes model: "opus" explicitly
+  archive: haiku         # mechanical close-out, if dispatched as a separate agent
 -->
 
 # Autonomous Delivery — Scheduled Runs With Nobody Watching
@@ -32,7 +38,7 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 - **`git fetch` immediately before every ancestor or fast-forward check, unconditionally.** A merge performed through the host's API updates the real ref at once; your remote-tracking ref updates only on the next fetch. "I fetched a few minutes ago" has produced a confident, wrong answer.
 - **One lock per mode, never a queue.** A live lock for your mode means another run owns it: exit cleanly with a report. Do not wait, do not queue, do not run anyway. A lock older than `lock_staleness_minutes` is abandoned — reclaim it and log the reclamation.
 - **An empty run is a correct outcome.** Nothing genuinely unblocked means stop and say so. Selecting marginal work to avoid an empty report is the failure this phase exists to prevent.
-- **Caps are hard: `story` 1 per run, `bug` 3 sequential (each fully closed before the next), `discovery` writes no code.** Every measured story became a multi-thousand-line chain; two do not fit in one run's context.
+- **Caps are hard: `story` 1 per run, `bug` 3 sequential (each fully closed before the next), `discovery` up to 2 new user stories per run (never application code, and only after its synchronous approval gate — see Autonomy).** Every measured story became a multi-thousand-line chain; two do not fit in one run's context.
 - **Write the handoff as you go, never at the end.** A run that exhausts its context cannot write up why. Checkpoint after every phase and after every completed slice.
 - **When context runs low, push the branch FIRST, then record resume state, then stop.** Unpushed commits in a disposable worktree are the only unrecoverable loss in this system. A clean mid-work handoff is a success; a mid-ticket death with unpushed work is the failure to design against.
 - **Applying a schema migration to shared infrastructure is irreversible and hits every concurrent agent.** Under `migrations: confirm` (default) it stops for approval, stating target and additive-vs-destructive. Under `migrations: autonomous` it proceeds for ADDITIVE changes only and still stops for anything that drops, renames, or rewrites a live object. Writing the migration file is always autonomous; applying it is not.
@@ -52,11 +58,11 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 
 Use this skill when a **scheduler, cron, routine, or timed wake-up** starts a session with no human present and a mode argument. That is the entire trigger surface.
 
-| Mode | Selects | Cap | Dispatches to | Writes code |
-| --- | --- | --- | --- | --- |
-| `story` | highest-priority genuinely-unblocked user story | **1 per run, hard** | `/sprint-development` | yes |
-| `bug` | genuinely-unblocked defects, oldest-severest first | **up to 3, strictly sequential** | `/sprint-development` (bug entry point) | yes |
-| `discovery` | refinement, epic, or backlog gaps | proposals only | `/product-management` | **never** |
+| Mode | Selects | Cap | Dispatches to | Writes code | Waits on a human |
+| --- | --- | --- | --- | --- | --- |
+| `story` | highest-priority genuinely-unblocked user story | **1 per run, hard** | `/sprint-development` | yes | never |
+| `bug` | genuinely-unblocked defects, oldest-severest first | **up to 3, strictly sequential** | `/sprint-development` (bug entry point) | yes | never |
+| `discovery` | new user stories the app genuinely needs (existing epic, or new epic + its first stories) | **2 new stories per run, hard** | `/product-management` (only after synchronous approval) | **never** | **yes — by design, this one mode's exception; see Autonomy §Discovery's synchronous approval gate** |
 
 The invoking routine passes the mode: `/autonomous-delivery story`. No mode, or an unrecognized one, is a fast-fail — do not guess a default.
 
@@ -87,18 +93,22 @@ autonomous_delivery:
   caps:
     story: 1 # HARD. Raising this is a measured mistake, not a tuning knob.
     bug: 3 # sequential; each fully closed before the next starts.
-    discovery: 0 # proposals only — the cap is on CODE, and it is zero.
+    discovery: 0 # application CODE cap — always zero, discovery never writes code.
+    discovery_definitions: 2 # NEW user stories drafted + created per run — gated on synchronous chat approval.
   lock_staleness_minutes: 90 # older than this -> abandoned, reclaimable with a logged note.
   migrations: confirm # confirm | autonomous. See "Migration gate".
   isolation: worktree # worktree | in-place. worktree is strongly preferred.
   context_budget:
     handoff_checkpoint: every-phase # every-phase | every-slice. Never "at-end".
     stop_at_remaining_pct: 20 # begin the clean-stop sequence at this much budget left.
-  report_channel: null # null | tracker:<ISSUE-KEY> | file:<path>. Where Phase 4 posts the summary.
+  report_channel: null # null | tracker:<ISSUE-KEY> | file:<path>. A plain summary log for all three modes —
+    # NOT a mailbox. Discovery's proposal approval is synchronous, in that routine's own chat, never a reply here.
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
 ```
 
 **Config claims cite the file they came from.** Read the block; never quote a default from this document as project state (`agentic-dev-core/references/orchestration-doctrine.md` -> "Value provenance").
+
+**On `isolation: worktree` and the scheduling app's own "Worktree" option.** Leave the Routine/schedule's own "Worktree" checkbox **unchecked**. This skill self-manages its isolation via the `EnterWorktree` / `ExitWorktree` tools (Phase 0 entry, Phase 4 exit) instead of relying on the scheduler's implicit assignment — that is what makes Phase 4 able to actually close the run's own worktree rather than leaving it on disk for a human to remove. If the scheduler's Worktree option is left checked, the session already starts inside a worktree that `ExitWorktree` cannot see or remove (it only tracks worktrees this session entered itself) — see Hazard 5.10.
 
 ---
 
@@ -116,6 +126,10 @@ autonomous_delivery:
 │   ├── progress.md              # append-only, per session-management.md §7
 │   ├── handoff.md               # written AS YOU GO, never at the end
 │   └── run-report.md            # Phase 4 output
+└── discovery/
+    └── pending-decision.md      # DISCOVERY ONLY — an unanswered proposal, re-surfaced verbatim by every
+                                  # fire until the operator answers, however many days that takes. See
+                                  # Autonomy §Discovery's synchronous approval gate.
 ```
 
 **Unattended adaptation to the resume contract (deliberate, stated here so it is not read as a violation).** `session-management.md` §4 ends the resume check by presenting resume / restart / abort and WAITING for user input. There is no user. Phase 0 resolves it deterministically instead:
@@ -131,13 +145,15 @@ autonomous_delivery:
 
 | Phase / step | Pattern | Subagent role |
 | --- | --- | --- |
+| Phase 0 — Enter isolation | inline | orchestrator only; `EnterWorktree` for the run's OWN session, before config/lock work touches anything |
 | Phase 0 — Lock + resume resolution | inline | orchestrator only; a lock decision delegated is a lock decision raced |
 | Phase 1 — Audit | Parallel | one verifier per evidence source: git ancestry, open pull requests + unmerged branches, tracker status, queue/board + claim files |
 | Phase 2 — Select | inline | orchestrator reasons over Phase 1's report; planning is never delegated |
-| Phase 2 — scored judge panel (only when a call is genuinely novel) | Parallel | 3-5 independent lenses per `decision-protocol.md` §4 |
-| Phase 3 — Execute | Single, in an isolated worktree | the owning pipeline skill runs its own stages; this skill does not decompose them |
+| Phase 2 — scored judge panel (only when a call is genuinely novel) | Parallel, **model: opus, explicit** | 3-5 independent lenses per `decision-protocol.md` §4 |
+| Phase 3 — Execute | Single, in an isolated worktree, **model: sonnet, explicit** | the owning pipeline skill runs its own stages; this skill does not decompose them |
+| Phase 3.5 — Per-ticket cleanup | inline | orchestrator only; rescue that ticket's session artifacts, then `git worktree remove` its worktree — immediately, not batched |
 | Phase 3 — context checkpoint | inline | orchestrator writes handoff + progress between slices |
-| Phase 4 — Close and report | Sequential | close-out per the owning skill, then rescue session records, then release lock, then report |
+| Phase 4 — Close and report | Sequential | close-out per the owning skill, rescue session records, release lock, report, then `ExitWorktree` on the run's OWN worktree |
 
 > **Phase 1's parallelism is the point.** Four evidence sources that disagree is the normal case, and the orchestrator can only notice the disagreement if it sees all four independently. Collapsing them into one agent produces a single reconciled narrative with the contradiction already smoothed away.
 
@@ -148,16 +164,29 @@ autonomous_delivery:
 ## Main flow
 
 ```
-[scheduler fires: /autonomous-delivery <mode>]
+[scheduler fires: /autonomous-delivery <mode>]  <- session starts in the plain checkout, NOT a worktree
+       |                                           (the scheduler's own "Worktree" option is unchecked)
+       v
+   +--------------------------------+
+   | Phase 0a: ENTER ISOLATION       |  inline, FIRST action
+   |  - EnterWorktree (if isolation: |
+   |    worktree in config)         |
+   |  - copy in .env + .session/    |
+   |  - realign to origin/<integr.> |
+   |    (fresh worktree defaults to |
+   |    the DEFAULT branch, not the |
+   |    integration branch)         |
+   +--------------------------------+
        |
        v
    +--------------------------------+
-   | Phase 0: LOCK                  |  inline
+   | Phase 0b: LOCK                  |  inline
    |  - config read + mode validate |
    |  - lock: take / reclaim / exit |
    |  - resume resolution (table)   |
    +--------------------------------+
-       |  live lock for this mode -> EXIT CLEANLY (report, no queue, no wait)
+       |  live lock for this mode -> rescue nothing new, ExitWorktree(keep only if you entered pre-existing
+       |                              work; usually remove), EXIT CLEANLY (report, no queue, no wait)
        v
    +--------------------------------+
    | Phase 1: AUDIT                 |  Parallel x4
@@ -175,16 +204,17 @@ autonomous_delivery:
    |  - caps, scope-growth check    |
    |  - claim, re-read, back off    |
    +--------------------------------+
-       |  nothing genuinely unblocked -> EXIT CLEANLY (empty run is correct)
+       |  nothing genuinely unblocked -> rescue nothing new, close isolation, EXIT CLEANLY (empty run is correct)
        v
    +--------------------------------+
-   | Phase 3: EXECUTE               |  Single, isolated worktree
+   | Phase 3: EXECUTE               |  Single, isolated worktree, model: sonnet (explicit)
    |  story/bug -> /sprint-development
    |  discovery -> /product-management
    |  - migration gate              |
    |  - handoff as you go           |
    |  - context budget monitor      |
    +--------------------------------+
+       |  every ticket -> Phase 3.5 cleanup (rescue + remove that ticket's worktree) before the next
        |  budget exhausted -> PUSH BRANCH, record resume state, stop (this is a SUCCESS)
        v
    +--------------------------------+
@@ -193,16 +223,35 @@ autonomous_delivery:
    |  - rescue session records      |
    |  - release lock                |
    |  - run report + channel post   |
+   |  - copy .session/ back to home |
+   |    checkout, then ExitWorktree |
+   |    (remove) on the run's OWN   |
+   |    worktree                    |
    +--------------------------------+
 ```
 
 ---
 
-## Phase 0 — Lock
+## Phase 0 — Enter isolation, then lock
 
-Concurrent routines must not collide, and the collision they must not have is two runs implementing the same ticket into two branches.
+Concurrent routines must not collide, and the collision they must not have is two runs implementing the same ticket into two branches. Before any of that: `story` and `bug` runs need their OWN worktree, entered explicitly, so it can be closed explicitly — a scheduler-assigned worktree cannot be (see the Configuration note on the scheduler's "Worktree" option). `discovery` needs no worktree at all — see §0a.
 
-1. **Read the config.** `enabled: false`, or a mode absent from `modes`, ends the run here with a one-line report. This is not a failure.
+### 0a. Enter isolation (before touching config, lock, or git state) — `story` / `bug` ONLY
+
+**`discovery` mode skips this whole subsection.** It never writes application code and never creates a git branch — the only things it produces are Jira/tracker content via `/product-management`. A worktree buys it nothing and costs it the one thing its approval gate depends on: `.session/discovery/pending-decision.md` (and the mode lock, and the shared escalation log) must be the SAME file the next fire reads, not a copy made inside a worktree that gets removed before anyone reads it back. `discovery` operates directly in the plain checkout, for its entire run, start to finish. Go straight to §0b.
+
+For `story` and `bug`:
+
+1. **Note the home checkout path** — `pwd` right now, before anything else. This is where `.session/` and reports get rescued back to at Phase 4, and it is NOT recoverable once you've moved (worktree-relative paths only from here on; see Hazard 5.3).
+2. **Read `autonomous_delivery.isolation`** from `.agents/project.yaml` (tracked, present in the plain checkout — no worktree needed yet to read it). If `in-place`, skip to §0b.
+3. **Check whether you are already inside a worktree** (`pwd` under `.claude/worktrees/`, or the equivalent for this environment). If so, the scheduler's own "Worktree" option was left checked despite the Configuration note above — `EnterWorktree` errors when called from inside an existing worktree session, so do NOT call it. Instead: proceed in-place in this already-assigned worktree, note in the run report that the scheduler's Worktree checkbox needs to be unchecked for this routine, and flag that `ExitWorktree` will NOT be able to close this worktree at Phase 4 (Hazard 5.10) — a human will need to `git worktree remove` it manually afterward. This is a degraded-but-functional path, not a hard failure.
+4. **Otherwise, `EnterWorktree`** with no fixed `name` (let it auto-generate — a fixed per-mode name risks a collision with a stale worktree from a crashed prior run; the mode-lock already prevents same-mode overlap, so collision-avoidance here is pure hygiene, not a race guard).
+5. **Copy in what a fresh worktree does not carry**: `.env`, and the **whole `.session/` tree** from the home checkout (not just this mode's subfolder — `escalation-log.md` is shared across modes, and Phase 0b's resume table plus decision-protocol's "search the record first" both need it). Without this, the lock/progress/escalation history from every prior run is invisible and Phase 0b's resume table sees a false "fresh run" every single time. This copy is a point-in-time READ snapshot — `story` and `bug` runs may legitimately overlap (locks are per-mode), so treat anything outside your own mode's subfolder as read-only reference, not a value to write back verbatim (see Phase 4 step 3 for why).
+6. **Realign the base branch.** `EnterWorktree`'s default (`fresh`) branches from `origin/<the repo's default branch>` — for this repo that is `main`, NOT `staging` (`git_strategy.branches.integration`). Immediately: `git fetch origin && git reset --hard origin/<integration-branch>` (safe — nothing has been committed on this brand-new branch yet). Skipping this plants every commit this run makes on top of `main` instead of `staging`. See Hazard 5.10.
+
+### 0b. Lock
+
+1. **Read the rest of the config.** `enabled: false`, or a mode absent from `modes`, ends the run here with a one-line report — copy `.session/` back to the home checkout first if anything in it changed (it shouldn't have, this early), then `ExitWorktree(remove)`. This is not a failure.
 2. **Validate the mode** against the three literals `story`, `bug`, `discovery`. Anything else is a fast-fail — never fall back to a default mode.
 3. **Verify push identity before anything else.** A multi-account CLI with the wrong cached identity reads and fetches fine and fails only at the first push, hours later, with a permission error that looks like branch protection. Confirm the active account has write scope now.
 4. **Take the lock** at `.session/autonomous-delivery/<mode>/lock.json`:
@@ -212,7 +261,8 @@ Concurrent routines must not collide, and the collision they must not have is tw
   "mode": "story",
   "owner": "<session id or pid — whatever this harness makes stable and observable>",
   "host": "<machine identifier>",
-  "worktree": "<absolute path of the worktree this run will use>",
+  "worktree": "<absolute path of the worktree this run entered via EnterWorktree>",
+  "home_checkout": "<absolute path noted in §0a step 1 — where .session/ gets rescued back to>",
   "started_at": "<ISO-8601 UTC>",
   "heartbeat_at": "<ISO-8601 UTC, refreshed at every phase boundary>"
 }
@@ -220,8 +270,8 @@ Concurrent routines must not collide, and the collision they must not have is tw
 
 5. **Lock arbitration**, in this order:
    - **No lock file** -> write it, proceed.
-   - **Lock exists, `heartbeat_at` newer than `lock_staleness_minutes`** -> a live run owns this mode. **Exit cleanly with a report naming the owner and its start time.** Do not queue. Do not sleep and retry. Do not proceed anyway. The next scheduled fire is the retry.
-   - **Lock exists, `heartbeat_at` older than `lock_staleness_minutes`** -> treat as abandoned. Reclaim it, and append a note to the escalation log recording whose lock was reclaimed, its age, and what the resume table then decided. A silent reclamation loses the only evidence that a prior run died.
+   - **Lock exists, `heartbeat_at` newer than `lock_staleness_minutes`** -> a live run owns this mode. **Exit cleanly with a report naming the owner and its start time.** Do not queue. Do not sleep and retry. Do not proceed anyway. The next scheduled fire is the retry. Close YOUR OWN worktree (nothing was claimed in it) before ending.
+   - **Lock exists, `heartbeat_at` older than `lock_staleness_minutes`** -> treat as abandoned. Reclaim it, and append a note to the escalation log recording whose lock was reclaimed, its age, and what the resume table then decided. A silent reclamation loses the only evidence that a prior run died. Note: the dead run's own worktree is a separate, likely-orphaned directory under `.claude/worktrees/` — it is not this run's `worktree` path in the reclaimed lock; if it's still on disk, note its path in the escalation log for a human to inspect and remove (do not remove another run's worktree yourself — see Anti-pattern A20).
    - **Lock exists and names THIS session** -> a prior phase of this same run; continue.
 6. **Resolve resume** per the table in "Session & Dispatch". Refresh `heartbeat_at` at every phase boundary from here on; a run that stops refreshing is exactly what the staleness window is for.
 
@@ -273,12 +323,12 @@ Pick work whose dependencies are **actually** satisfied. Four inputs, and they a
 
 ### Selection algorithm
 
-1. Build the candidate set for the mode: `story` -> stories at ready-for-dev; `bug` -> open defects; `discovery` -> refinement gaps (`/product-management`'s own workflows define what counts).
+1. Build the candidate set for the mode: `story` -> stories at ready-for-dev; `bug` -> open defects; `discovery` -> new-story or new-epic candidates the app genuinely needs (existing-epic stories, a single urgent story, or a new epic + its first stories — see `discovery`'s prompt for the full source list, including the KATA reference repo).
 2. Drop any candidate whose hard blocker is not **merged** by Phase 1's verdict. Log the skip with the reason. A blocked candidate is not an escalation — it is a skip.
 3. Drop any candidate that is **already past dev** by live status, regardless of what the queue file claims.
 4. **Readiness is not status.** Read the refinement trail before accepting a candidate: unresolved blocking refinement questions, explicitly-disclaimed practice-exercise answers, and unchecked edge-case lists all mean not-ready even when the status field says otherwise. A ticket can be moved to ready-for-dev with a declared blocker still open and no comment trail explaining the move.
 5. **Scope-growth check.** If a candidate carries signals of being larger than a normal pick — high point estimate, no mockup where the design plan expects one, an architectural decision implied by its acceptance criteria, more than one migration — **do not claim it in an unattended run.** Log it as a candidate needing a human-present session, and take the next one. Auto-claiming the largest thing on the board by "pull the next available row" is a measured way to burn a whole run.
-6. **Apply the cap**: `story` takes exactly one. `bug` takes up to three and processes them **strictly sequentially**, each fully closed through Phase 4's close-out before the next is claimed. `discovery` produces proposals and writes no code.
+6. **Apply the cap**: `story` takes exactly one. `bug` takes up to three and processes them **strictly sequentially**, each fully closed through Phase 4's close-out before the next is claimed. `discovery` recommends at most `discovery_definitions` (default 2) new user stories per run — and never creates any of them without its synchronous approval gate firing first (see Autonomy §Discovery's synchronous approval gate). It never writes application code, regardless of the outcome of that gate.
 7. **Claim it** using the claim protocol: write your name and status into the row, save, then **re-read the file**. If a different name is there, a peer won the race — back off and take the next candidate. Never fight over a row.
 8. **If nothing survives**: exit cleanly. Write the run report saying what was considered and why each was dropped. **An empty run is a correct outcome, not a failure**, and a report that explains the emptiness is worth more than a marginal ticket.
 
@@ -294,19 +344,34 @@ Dispatch the owning skill. This skill orchestrates; it does not duplicate stages
 | --- | --- | --- |
 | `story` | `/sprint-development` (new-story entry) | ticket key, Phase 1 verdict table, the claim, the worktree path, the migration gate setting, the context budget |
 | `bug` | `/sprint-development` (bug entry — root cause first) | same, once per bug, sequentially |
-| `discovery` | `/product-management` (its refinement / epic / AC workflows) | the gap found in Phase 2 and the evidence for it |
+| `discovery` | `/product-management` (its refinement / epic / AC workflows) — **only after the synchronous approval gate resolves `awaiting_reply` -> `resolved`** | the recommendation from Phase 2, the evidence for it, and the operator's go-ahead |
 
 Every dispatch uses the 7-component briefing from `agentic-dev-core/references/briefing-template.md`. Component 7 (Rules) MUST carry the migration gate, the worktree path, the no-rebase-on-pushed-branches rule, and the context-budget stop procedure — a rule that lives only in this file never reaches the executor.
 
+**Every Phase 3 dispatch passes `model: "sonnet"` explicitly.** Do not omit it. The top-level routine session may be running Opus 5 for its own audit/select reasoning; an Agent() call with no `model` override silently inherits that, which is expensive and buys nothing for work that is delegated to `/sprint-development`'s own stages anyway. (The Agent tool's `model` enum is `sonnet | opus | haiku | fable` — there is no versioned `-5` suffix; pass the bare name.)
+
 ### Isolation
 
-`isolation: worktree` (the default) means the dispatched agent works in its own git worktree. This is not tidiness: a background subagent writes into its dispatcher's working directory by default, its uncommitted files ride along through every branch switch the dispatcher makes, and it **outlives its dispatcher** — one dispatched shortly before its dispatcher retired went on to finish a slice, push a branch, open a pull request and merge it, with nobody watching.
+`isolation: worktree` (the default) means the dispatched agent works in its own git worktree. This is not tidiness: a background subagent writes into its dispatcher's working directory by default, its uncommitted files ride along through every branch switch the dispatcher makes, and it **outlives its dispatcher** — one dispatched shortly before its dispatcher retired went on to finish a slice, push a branch, open a pull request and merge it, with nobody watching. This applies to `story` and `bug` dispatches to `/sprint-development` — both write code and create branches. `discovery`'s dispatch to `/product-management` creates only Jira/tracker content, touches no git branch, and gets no `isolation` override — there is nothing for a worktree to protect there.
 
 Three worktree consequences the dispatch briefing must state, because they are invisible until they bite:
 
 - **Gitignored files do not come with a worktree.** Environment files are not tracked, so the worktree has no credentials. An agent that finds no declared identity available has been observed **improvising one**. Copy the environment file in immediately on entry, before any credential-needing step.
 - **An absolute path inside a worktree silently reads and writes the MAIN checkout.** There is no error. Reads return another branch's content, writes land on the wrong branch and report success. Use paths relative to the worktree for anything that should reflect your branch. If a write succeeds but a later search in the same session cannot find it, suspect the path before suspecting the tool.
 - **Session files written inside a worktree are gitignored and die with it.** Rescue them in Phase 4 **before** the worktree is removed.
+
+### Phase 3.5 — Per-ticket cleanup (do this immediately, not batched at Phase 4)
+
+The Agent tool does **not** remove a dispatched agent's worktree once it holds any changes — that is deliberate on its part (so a still-useful worktree survives for follow-up), but it means the orchestrator must close it explicitly, per ticket, the moment that ticket's work is done. "Done" means one of: merged, escalated with its branch pushed, or stopped at the migration-apply gate with its branch pushed. In every one of those cases there is nothing left to lose by removing the local copy — the remote branch already has it.
+
+Immediately after a dispatched agent reports back, before selecting or dispatching the next ticket:
+
+1. **Confirm the branch is pushed** (or that the agent made zero commits — nothing to lose either way). Never remove a worktree holding unpushed work; if that happens, something upstream failed to push-first and this is now itself an escalation, not a cleanup step.
+2. **Rescue anything in that worktree's `.session/` tree** that this run's own progress log doesn't already capture (the dispatched agent may have written its own nested-skill progress files, e.g. `/sprint-development`'s `.session/sprint-development/<KEY>/`) into the home checkout.
+3. **`git worktree remove <path>`.** Not `ExitWorktree` — that tool only tracks worktrees entered via `EnterWorktree` by name/path from THIS session, and a dispatched Agent's `isolation: worktree` worktree was created by the Agent tool, not by an `EnterWorktree` call this session made. Plain `git worktree remove` is the correct tool here. Two edge cases: it refuses on modified tracked files without `--force` (should not happen if step 1's push-confirmation held — treat a refusal as a sign something was missed, not a reason to force through it); and it errors "not a working tree" if the Agent tool already auto-removed a zero-change worktree before you get here — check the path exists first, and treat "already gone" as success, not a failure to retry.
+4. **Log the removal** in `progress.md` — one line, alongside that ticket's outcome — so a reader can tell the worktree was closed deliberately, not simply forgotten.
+
+Never defer this to Phase 4. A run processing three bugs that waits until the end to clean up has three dangling worktrees sitting on disk for the entire remaining run for no reason, and a mid-run context exhaustion means they never get cleaned at all.
 
 ### Migration gate
 
@@ -349,13 +414,26 @@ Three obligations, in order of importance:
 ```
 1. PUSH the branch.                 <- first, always. Unpushed work in a disposable
                                        worktree is the only unrecoverable loss here.
-2. Rescue session records out of the worktree into the main checkout.
+2. Rescue session records out of the worktree into the main checkout (this run's own
+   `.session/<mode>/` subfolder wholesale; APPEND-only into shared `escalation-log.md`
+   — never overwrite it, per Phase 4 step 3).
 3. Append the resume state to handoff.md: exact branch, exact tip SHA, which pull
    requests exist and their state, what is done, what is not, and the NEXT CONCRETE
    COMMAND. Written so a stranger could resume from it cold.
 4. Append the final progress.md entry.
 5. Release the lock.
 6. Report.
+7. Close every worktree this run leaves behind — a budget-exhausted stop is not an
+   exemption from Phase 3.5 / Phase 4's cleanup, it is one more reason to need it. If a
+   dispatched agent's own budget is what ran out (not the orchestrator's), the AGENT does
+   NOT remove its own worktree — it stops after step 6 above and reports back; the
+   ORCHESTRATOR runs Phase 3.5 cleanup on it in the usual way once the report is read and
+   the push is confirmed. If the ORCHESTRATOR's own budget is what ran out: remove any
+   already-closed dispatched-agent worktrees still lingering (there should be none if
+   Phase 3.5 was followed), then close the run's OWN worktree last, via
+   `ExitWorktree(remove)`, as the final action — never leave it on disk "because the run
+   ended early." An early stop is still a clean stop, and A24 does not have a budget
+   exception.
 ```
 
 **A run that hands off cleanly is a success.** Judge a run by whether the next one can pick it up, not by whether it shipped.
@@ -388,8 +466,29 @@ For an unattended run, three amplifications:
 - **The record to search FIRST is `.session/autonomous-delivery/escalation-log.md`, read in full, plus `.context/ADR/` and the ticket's siblings.** Search for the SHAPE of the question, not its wording. A ruling that governs you may have been written an hour ago by a run you never saw.
 - **Escalating is expensive here in a way it is not interactively.** There is nobody to answer. An escalation ends the run's forward progress until the next human touch, so an over-stop on a technical call costs a whole scheduled slot. The escalate-only categories are exhaustive: product and business decisions, a genuinely NEW security posture (applying an already-ratified pattern is implementation), irreversible or destructive actions, and anything the operator explicitly reserved.
 - **Record every autonomous decision where the next run's Phase 1 will find it** — the escalation log, at the moment the decision is made. A decision that is not recorded did not happen, and the next run will re-derive it and land somewhere else.
+- **Every scored judge panel dispatch passes `model: "opus"` explicitly**, same rule and same reason as Phase 3's execution dispatches (see Phase 3 §Isolation) — a panel's independent lenses are exactly the kind of judgment call the stronger model is for, and an omitted override just inherits whatever the orchestrator happens to be running.
 
 **Escalation, when it does fire, is a clean stop, not a hang.** Write the escalation entry (what happened, why it is this category, what the human needs to decide, what the downstream cost of waiting is), push anything unpushed, release the lock, and end the run. Never park a scheduled session waiting on an answer that cannot arrive.
+
+### Exception — Discovery's synchronous approval gate
+
+Every discovery-mode recommendation is a product decision (`decision-protocol.md` §5 category 1) and always escalates — that part is unchanged, and it was always true even under the old async-mailbox design. What changed, by explicit operator instruction, is HOW it escalates and how PATIENT that escalation is allowed to be — and this exception is scoped to discovery's approval gate alone. Story and bug mode escalations are untouched: they remain a clean stop, push-and-end, never a wait, exactly as above.
+
+For discovery specifically: the operator has confirmed they will check in on that routine's own chat session at any point during the day (or on a later day) to answer, so the run is allowed to end its turn on an open question and sit there — rather than being forced to abandon and report like every other escalation in this skill.
+
+This is exactly why `discovery` skips worktree isolation entirely (Phase 0a) — `pending-decision.md` below must be the one real file the next fire reads, not a copy trapped inside a worktree that gets removed before that fire ever sees it.
+
+**Mechanics**, once a recommendation is settled (existing-epic story/stories, a single urgent story, or a new epic + its first stories):
+
+1. Write the recommendation to `.session/autonomous-delivery/discovery/pending-decision.md` — the proposal itself, the rationale, what it depends on — with `status: awaiting_reply`.
+2. Release the `discovery` mode lock immediately. The operator may not answer today, and the lock must not block tomorrow's fire from re-surfacing the same question — a discovery run sitting on an unanswered question is not "in progress" in the sense the lock exists to protect.
+3. Ask the question directly in that session's chat, plainly, and end the turn there. Do not create anything yet.
+
+**On a later fire of discovery mode** (same day or a subsequent one): read `pending-decision.md` FIRST, before any fresh analysis.
+- `status: awaiting_reply` -> re-state the EXACT same recommendation, ask again, end the turn again. Never regenerate a new proposal on top of one still pending — that is precisely the backlog-flooding this exception exists to avoid, and it is why the file, not a fresh Jira mailbox comment, is the source of truth here.
+- `status: resolved` (or the file absent) -> proceed with a normal fresh analysis.
+
+**If the operator answers within the same open session** — whether moments later or hours later that same day — resume immediately: dispatch `/product-management` to actually create what was approved, mark `pending-decision.md` `resolved` with a one-line note of what got created, and continue to Phase 4 as normal.
 
 ---
 
@@ -398,11 +497,13 @@ For an unattended run, three amplifications:
 Sequential, and the order matters because each step can be lost by the one before it.
 
 1. **Complete the owning skill's own close-out.** For `/sprint-development` that is its Stage 4 tail: verify the tracker's auto-transition actually fired (it is inconsistent — check live, every ticket, every type), reassign the story to its shift-left QA owner and **verify the assignee actually changed** (some tracker CLI paths report success while clearing the field), post the handoff comment, and sync the tracker cache. This skill does not reimplement any of it; it verifies it happened.
-2. **Rescue session records BEFORE the worktree is removed.** Session directories are gitignored and live inside the worktree; removing the worktree destroys them. Copy them into the main checkout's session tree first. Writing a good handoff and then losing the underlying records is the exact failure this ordering prevents.
-3. **Release the lock** — delete `lock.json`. A run that escalated or stopped on budget releases it too; a lock is held by a running session, not by an unfinished ticket.
-4. **Write the run report** to `.session/autonomous-delivery/<mode>/run-report.md` per `references/run-report-format.md` §1. Include the empty-run case: what was considered, what was dropped, why.
-5. **Post the summary** to `report_channel` when one is configured. `null` means the file is the report — do not improvise a destination.
-6. **Archive** the session directory per `session-management.md` §8 and call the memory session summary with the archive path included.
+2. **Confirm every dispatched-agent worktree from this run is already gone.** If Phase 3.5 was followed per ticket, this is a no-op check. If any are still on disk (a mid-run interruption skipped the cleanup step), rescue and remove them now, per ticket, before continuing — do not carry them into the archive step below by accident.
+3. **Rescue session records BEFORE the run's OWN worktree is removed — surgically, never a blind tree overwrite.** Session directories are gitignored and live inside the worktree; removing the worktree destroys them. Copy THIS RUN's own `.session/autonomous-delivery/<mode>/` subfolder back to the `home_checkout` path wholesale (nothing else writes there, so a full overwrite is safe). For `escalation-log.md` (shared across modes), APPEND only the entries THIS run itself added — never overwrite the whole file with your worktree's copy. `story` and `bug` runs may overlap by design (locks are per-mode); a sibling run may have appended its own entries to the home checkout's live `escalation-log.md` while this run was still executing, and a blind overwrite would silently erase them. Writing a good handoff and then losing the underlying records — your own or a sibling's — is the exact failure this ordering, and this append-only rule, exist to prevent.
+4. **Release the lock** — delete `lock.json` (in the copy now sitting at `home_checkout`, since that is what survives). A run that escalated or stopped on budget releases it too; a lock is held by a running session, not by an unfinished ticket.
+5. **Write the run report** to `.session/autonomous-delivery/<mode>/run-report.md` per `references/run-report-format.md` §1. Include the empty-run case: what was considered, what was dropped, why.
+6. **Post the summary** to `report_channel` when one is configured. `null` means the file is the report — do not improvise a destination.
+7. **Archive** the session directory (now at `home_checkout`) per `session-management.md` §8 and call the memory session summary with the archive path included.
+8. **Close the run's OWN worktree.** If this run entered one via `EnterWorktree` in Phase 0a (`story`/`bug` only — `discovery` never enters one, so this step is a no-op for it), call `ExitWorktree` with `action: "remove"` now that everything durable has been copied out and the branch (if any) is pushed. This is the step that makes the run leave nothing behind — a routine that ships two pull requests and then abandons its own worktree on disk has not actually finished cleanly. `ExitWorktree(remove)` **refuses** when the worktree holds uncommitted files or commits not on the original branch unless `discard_changes: true` — do not pass that flag reflexively to force it through; a refusal here means something is genuinely uncommitted that step 3 should have already rescued, which is itself worth a line in the run report. If the branch genuinely cannot be pushed (a real failure, not the normal case), use `action: "keep"` instead and name the exact worktree path and branch in the run report so a human can recover it — never force a discard to make the cleanup step "succeed."
 
 Every discrepancy Phase 1 found, every autonomous decision made, and every check the run could not perform is named explicitly in the report. Nothing evaporates silently: what an unattended run could not verify becomes an explicit flag for the humans who can.
 
@@ -428,7 +529,11 @@ Every item below has been observed. Each is a check the run performs, not a caut
 | H12 | A privileged function filtering on a caller-supplied identity or scope authorizes nothing | `/sprint-development`'s `references/rpc-authorization.md` gate — this run never waives it |
 | H13 | Per-slice review passing is not evidence the assembled chain is sound | Budget the assembled-diff review as seriously as any slice's |
 | H14 | A tracker status flips to ready-for-dev with blocking refinement questions still open | Read the refinement trail in Phase 2, not the status field |
-| H15 | Session records die with the worktree that held them | Rescue before removal, Phase 4 step 2 |
+| H15 | Session records die with the worktree that held them | Rescue before removal, Phase 4 step 3 |
+| H16 | The scheduler's own "Worktree" option assigns a worktree `ExitWorktree` cannot see or close (it only tracks worktrees THIS session entered via `EnterWorktree`) | Leave that option unchecked; the run enters and exits its own isolation explicitly, Phase 0a / Phase 4 step 8 |
+| H17 | A fresh `EnterWorktree` branches from the repo's default branch, not necessarily the integration branch this project actually works against | Fetch + realign to `origin/<integration-branch>` immediately after entry, Phase 0a step 5 |
+| H18 | A dispatched agent's worktree is never auto-removed once it holds changes — that is deliberate on the Agent tool's part | Explicit `git worktree remove` per ticket, immediately, Phase 3.5 |
+| H19 | `discovery`'s synchronous approval gate re-proposes on top of an already-pending, unanswered recommendation, flooding the backlog | Read `pending-decision.md` FIRST; `awaiting_reply` re-surfaces the same recommendation verbatim, never a new one |
 
 ---
 
@@ -438,7 +543,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A2.** NEVER queue, sleep-and-retry, or proceed anyway when a live lock exists for your mode. Exit cleanly; the next scheduled fire is the retry.
 - **A3.** NEVER take a second story in one run. The cap is one, it is hard, and it is derived from measurement rather than caution.
 - **A4.** NEVER start the next bug before the current one is fully closed through Phase 4.
-- **A5.** NEVER write code in `discovery` mode. It proposes; that is the whole mode.
+- **A5.** NEVER write application code in `discovery` mode. It analyzes, proposes, and — only after the operator's explicit go-ahead given live in that session's chat — defines and creates the approved epic/stories via `/product-management`. Code is always another mode's job.
 - **A6.** NEVER defer the handoff to the end of the run. Write it as you go, or you will not write it.
 - **A7.** NEVER stop on a low budget with unpushed commits. Push first, then record, then stop.
 - **A8.** NEVER apply a destructive migration autonomously — no setting covers it, and clearing a local error is not a reason.
@@ -451,16 +556,22 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A15.** NEVER manufacture a non-empty run. If nothing is genuinely unblocked, report that.
 - **A16.** NEVER re-ask a settled question, and never treat an answer obtained without the prior ruling in front of the human as a supersession. It is an uninformed re-ask and it overrides nothing.
 - **A17.** NEVER escalate a technical call this run is equipped to settle. There is nobody to answer, and the stop costs a whole scheduled slot.
-- **A18.** NEVER leave an escalation parked waiting for a reply. Write the entry, push, release the lock, end the run.
+- **A18.** NEVER leave an escalation parked waiting for a reply, for `story` or `bug` mode. Write the entry, push, release the lock, end the run. (`discovery`'s approval gate is the one explicit, scoped exception to this — see Autonomy §Discovery's synchronous approval gate. Do not read that exception as license to park anywhere else.)
 - **A19.** NEVER remove a worktree before rescuing the session records inside it.
 - **A20.** NEVER edit another run's board row (except to claim an unclaimed one per protocol), branch, or worktree.
 - **A21.** NEVER include AI-attribution lines in commits, pull request bodies, or tracker comments.
 - **A22.** NEVER reimplement a stage that `/sprint-development` or `/product-management` owns. Dispatch it.
+- **A23.** NEVER leave a dispatched agent's worktree on disk once its ticket is closed (merged, escalated-with-push, or gate-stopped-with-push). Remove it immediately in Phase 3.5, per ticket — never batch this at Phase 4.
+- **A24.** NEVER end a run without closing its OWN worktree (`ExitWorktree remove`) once the branch is pushed or there was nothing to push. A routine that finishes its work but abandons its own worktree has not finished cleanly.
+- **A25.** NEVER omit an explicit `model` override on a Phase 2 judge-panel or Phase 3 execution dispatch. An omitted model silently inherits the orchestrator's, which may be a stronger and pricier model than mechanical execution needs.
+- **A26.** NEVER trust a fresh `EnterWorktree`'s default base without checking it. It branches from the repo's default branch, which is not necessarily this project's integration branch — realign before any work lands on it.
 
 ---
 
 ## Pre-flight checklist
 
+- [ ] Scheduler's own "Worktree" option left unchecked; this run entered its own isolation via `EnterWorktree` in Phase 0a (if `isolation: worktree`)
+- [ ] `.env` and the whole `.session/` tree copied in from the home checkout immediately after entry; base realigned to `origin/<integration-branch>`, not the repo's default branch
 - [ ] Mode is one of `story` / `bug` / `discovery`, present in `autonomous_delivery.modes`, and `enabled: true`
 - [ ] Push identity verified as having write scope, before the first push rather than at it
 - [ ] Lock taken, reclaimed-with-a-logged-note, or the run exited cleanly on a live lock
@@ -471,16 +582,18 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - [ ] Live migration ledger queried; queue/board/claim file read in full; both protection endpoints checked
 - [ ] Candidate's refinement trail read — readiness established, not inferred from status
 - [ ] Scope-growth check applied; oversized or novel work deferred to a human-present session
-- [ ] Cap respected (`story` 1, `bug` 3 sequential, `discovery` no code)
+- [ ] Cap respected (`story` 1, `bug` 3 sequential, `discovery` up to `discovery_definitions` new stories, never code, never created before the approval gate fires)
 - [ ] Claim written, file re-read, and the row conceded if contested
-- [ ] Dispatched agent given an isolated worktree, its environment file copied in, and briefing component 7 carrying the migration gate + budget stop procedure
+- [ ] Dispatched agent given an isolated worktree, its environment file copied in, briefing component 7 carrying the migration gate + budget stop procedure, and an explicit `model` override (sonnet for execution, opus for a judge panel)
 - [ ] Migration gate honoured; live definition re-read and diffed after every apply
 - [ ] At least one assertion exercises a real production write path
 - [ ] Handoff appended at every phase boundary — never deferred
 - [ ] On low budget: branch pushed FIRST, resume state recorded, then stop
+- [ ] Every dispatched agent's worktree removed immediately after its ticket closes (Phase 3.5) — none carried batched into Phase 4
 - [ ] Owning skill's close-out verified (auto-transition fired, assignee actually changed)
 - [ ] Session records rescued out of the worktree before removal
 - [ ] Lock released, run report written, channel posted if configured, session archived
+- [ ] This run's OWN worktree closed via `ExitWorktree(remove)` once its branch (if any) is pushed — nothing left on disk
 - [ ] Every autonomous decision recorded where the next run's Phase 1 will find it
 
 ---

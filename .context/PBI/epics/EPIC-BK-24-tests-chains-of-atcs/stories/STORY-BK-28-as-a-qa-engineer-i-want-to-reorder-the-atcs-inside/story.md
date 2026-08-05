@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 5
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -219,19 +218,6 @@ Pending confirmation: Delivery/PO confirms whether BK-28 is estimated now or hel
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
-
----
-
 ## Traceability
 
 ### Story (1)
@@ -243,7 +229,7 @@ Pending confirmation: Delivery/PO confirms whether BK-28 is estimated now or hel
 ## Metadata
 
 - **Created:** 5/27/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** jesusgpythondev
 - **Labels:** master-sprint-4, mvp, shift-left-2026-06-09, shift-left-reviewed, tests-epic

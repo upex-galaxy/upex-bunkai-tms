@@ -3,10 +3,9 @@
 **Jira Key:** [BK-49](https://jira.upexgalaxy.com/browse/BK-49)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** In Progress
+**Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** 5
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -88,10 +87,6 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -100,7 +95,11 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ### Bug (1)
 
-- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Open)_
+- [BK-182](https://jira.upexgalaxy.com/browse/BK-182): Bearer run creation cannot resolve active workspace _(Ready For QA)_
+
+### Story (1)
+
+- [BK-260](https://jira.upexgalaxy.com/browse/BK-260): TMS-Home | Show a condensed recent activity feed _(Backlog)_
 
 ---
 
@@ -109,7 +108,7 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 - **Created:** 6/1/2026
 - **Updated:** 7/31/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** José Andrés Lorca
 - **Labels:** implementation-plan-ready, new-feature, shift-left-2026-06-29, shift-left-reviewed
 
 ---

@@ -46,3 +46,21 @@ export function extractRunVerdict(action: string, payload: Record<string, unknow
   const verdict = payload.verdict;
   return verdict === 'passed' || verdict === 'failed' ? verdict : null;
 }
+
+// The ONE timestamp formatter for an activity row, wherever that row is
+// rendered — `/activity`'s full feed (BK-49) and Home's condensed one
+// (BK-260) both call this, so a change to how an event is stamped cannot
+// reach one surface and miss the other. Home leans on exactly that: it shows
+// a RELATIVE label as a bounded exception to §5 D21(c) and carries this exact
+// value alongside it, which is only a real guarantee while there is a single
+// implementation to drift from. It lived as two byte-identical private copies
+// until BK-260's review; do not re-inline it.
+//
+// Deterministic UTC by string-slicing rather than `toLocale*`: `/activity` is
+// a CLIENT component that still server-renders its first paint, so a
+// timezone-dependent format would drift between server and browser and trip a
+// hydration mismatch (mirrors run history's `formatRanAt`).
+// '2026-07-29T11:52:00+00:00' -> '2026-07-29 11:52'.
+export function formatActivityTime(iso: string): string {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+}

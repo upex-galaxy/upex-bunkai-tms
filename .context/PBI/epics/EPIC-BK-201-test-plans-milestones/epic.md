@@ -39,7 +39,7 @@ Bunkai already lets teams execute Tests through ad-hoc manual Runs. What QA Lead
 | [BK-202](https://jira.upexgalaxy.com/browse/BK-202) | TMS-Test Plan | Create a test plan grouping tests for a goal | - | Medium | Backlog |
 | [BK-203](https://jira.upexgalaxy.com/browse/BK-203) | TMS-Test Plan | Add and remove tests from a plan | - | Medium | Backlog |
 | [BK-204](https://jira.upexgalaxy.com/browse/BK-204) | TMS-Test Plan | Track plan progress from run outcomes | - | Medium | Backlog |
-| [BK-205](https://jira.upexgalaxy.com/browse/BK-205) | TMS-Milestone | Create a milestone with a target date | - | Medium | Backlog |
+| [BK-205](https://jira.upexgalaxy.com/browse/BK-205) | TMS-Milestone | Create a milestone with a target date | - | Medium | Estimation |
 | [BK-206](https://jira.upexgalaxy.com/browse/BK-206) | TMS-Milestone | Assign test plans and track milestone readiness | - | Medium | Backlog |
 | [BK-207](https://jira.upexgalaxy.com/browse/BK-207) | TMS-Test Plan | Close a plan with an outcome summary | - | Medium | Backlog |
 

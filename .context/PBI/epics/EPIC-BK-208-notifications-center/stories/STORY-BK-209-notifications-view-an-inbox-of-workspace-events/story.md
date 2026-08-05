@@ -106,7 +106,7 @@ Today nothing in Bunkai tells Elena that something happened; she discovers outco
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/3/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** new-feature, post-mvp, shift-left-2026-07-15, shift-left-reviewed
