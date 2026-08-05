@@ -1,6 +1,6 @@
 # BK-205 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
 
 - Create a Milestone inside a project with a name, a required target date, and an optional description.
 - Milestones list per project showing name, target date, days remaining, and creator.
