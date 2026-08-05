@@ -1470,6 +1470,115 @@
         },
         "required": ["deleted"]
       },
+      "MilestoneListResponse": {
+        "type": "object",
+        "properties": {
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Milestone"
+            },
+            "description": "Ordered by target_date ascending, id ascending."
+          }
+        },
+        "required": ["milestones"]
+      },
+      "Milestone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize (internal whitespace collapsed, then trimmed). Unique per project, case-insensitive."
+          },
+          "target_date": {
+            "type": "string",
+            "description": "Calendar date (YYYY-MM-DD). Today or later at create; within 5 years of the write date."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars."
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "target_date",
+          "description",
+          "created_by",
+          "created_at"
+        ]
+      },
+      "MilestoneCreateResponse": {
+        "type": "object",
+        "properties": {
+          "milestone": {
+            "$ref": "#/components/schemas/Milestone"
+          }
+        },
+        "required": ["milestone"]
+      },
+      "MilestoneCreateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize. Unique per project, case-insensitive."
+          },
+          "target_date": {
+            "type": "string",
+            "description": "Calendar date (YYYY-MM-DD). Must be today or later, and within 5 years of today."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars. Defaults to empty."
+          }
+        },
+        "required": ["name", "target_date"]
+      },
+      "MilestoneUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "milestone": {
+            "$ref": "#/components/schemas/Milestone"
+          }
+        },
+        "required": ["milestone"]
+      },
+      "MilestoneUpdateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize. Unique per project, case-insensitive."
+          },
+          "target_date": {
+            "type": "string",
+            "description": "Calendar date (YYYY-MM-DD). Bounds (today-or-later, within 5 years) apply ONLY when this differs from the milestone's current stored value."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars. Defaults to empty."
+          }
+        },
+        "required": ["name", "target_date"]
+      },
       "ModuleUpdateResponse": {
         "type": "object",
         "properties": {
@@ -6366,6 +6475,268 @@
           },
           "409": {
             "description": "The environment is in use by one or more runs and cannot be removed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/milestones": {
+      "get": {
+        "tags": ["Milestones"],
+        "summary": "List a project's milestones",
+        "description": "Lists the project's milestones ordered by target date (ascending), id ascending as the tie-break. Visible to any workspace member; a non-member receives an empty list.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Milestones listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Milestones"],
+        "summary": "Create a milestone in a project",
+        "description": "Member-only (role >= member). Normalizes the name (collapses internal whitespace, then trims) and enforces 1–100 chars; description is capped at 500 chars. The target date must be today or later and within 5 years of the write date — both server UTC. The name is unique per project (case-insensitive, whitespace-normalized); a duplicate returns 409. Non-members return 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MilestoneCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Milestone created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not a member of the project's workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A milestone with this name already exists in the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name/description length, or target date out of bounds).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/milestones/{id}": {
+      "patch": {
+        "tags": ["Milestones"],
+        "summary": "Edit a milestone",
+        "description": "Member-only (role >= member). Same normalize/length rules as create. The target-date bounds (today-or-later, within 5 years) are enforced ONLY when the submitted date differs from the milestone's current stored value — an unchanged past-dated milestone stays editable (e.g. a description-only edit). Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MilestoneUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Milestone updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed milestone id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is a member but holds only the viewer role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Milestone not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A milestone with this name already exists in the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name/description length, or target date out of bounds when changed).",
             "content": {
               "application/json": {
                 "schema": {

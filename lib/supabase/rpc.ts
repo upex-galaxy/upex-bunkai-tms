@@ -740,3 +740,44 @@ export async function listNotifications(supabase: Client, args: ListNotification
     p_cursor_id: args.cursorId ?? undefined,
   });
 }
+
+// BK-205 — create / edit a Milestone via the SECURITY DEFINER RPCs (migration
+// 0064_milestones.sql). UNLIKE createEnvironment/createBug, these RPCs carry
+// NO p_actor_user_id — they read auth.uid() directly and are granted to
+// `authenticated` ONLY (no `service_role` grant), the same
+// `bunkai_assign_bug` shape. The `supabase` argument passed here MUST
+// therefore be the caller's own RLS-scoped client (`getAuth(ctx).db`) —
+// NEVER `createAdminClient()`, which would either fail outright (service_role
+// holds no EXECUTE on these functions) or, if it ever somehow ran, see a NULL
+// auth.uid() and always fail the write-role gate.
+export interface CreateMilestoneArgs {
+  projectId: string
+  name: string
+  targetDate: string
+  description?: string
+}
+
+export async function createMilestone(supabase: Client, args: CreateMilestoneArgs) {
+  return supabase.rpc('bunkai_create_milestone', {
+    p_project_id: args.projectId,
+    p_name: args.name,
+    p_target_date: args.targetDate,
+    p_description: args.description ?? '',
+  });
+}
+
+export interface UpdateMilestoneArgs {
+  milestoneId: string
+  name: string
+  targetDate: string
+  description?: string
+}
+
+export async function updateMilestone(supabase: Client, args: UpdateMilestoneArgs) {
+  return supabase.rpc('bunkai_update_milestone', {
+    p_milestone_id: args.milestoneId,
+    p_name: args.name,
+    p_target_date: args.targetDate,
+    p_description: args.description ?? '',
+  });
+}

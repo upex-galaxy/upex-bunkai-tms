@@ -149,6 +149,20 @@ Covers the remaining write sites not already documented above: two `test.*` even
 
 > **Footnote — `run_step.marked` (BK-35):** BK-35 ("mark run step", migration `0042_run_step_mark.sql`) merged into `staging` before BK-49's own DB migration was authored — `run_step.marked` is a confirmed, live write site, the 13th distinct `(entity_type, action)` pair, not an anticipated one. It is deliberately excluded from BK-49's MVP allowlist (`ACTIVITY_ALLOWED_ACTIONS` / `bunkai_list_activity`'s `p_actions` default) on a scope-volume basis, not a not-yet-merged one: it fires once per step per run and would drown every other event type in the feed within a day of use (ratified 2026-07-31, see the story's `comments.md`). Not documented in the table above for the same reason — it is out of MVP scope, not undiscovered.
 
+## Milestone events (BK-205)
+
+Emitted inside the two SECURITY DEFINER milestone RPCs (`bunkai_create_milestone`, `bunkai_update_milestone` — migration `0064_milestones.sql`), atomically with the mutation. Actor = `auth.uid()` (no explicit actor parameter — same shape as the Module events above). These rows exist to make the milestone's `created_by` resolvable via `bunkai_resolve_activity_actors` (ADR-0011); no notification fires on them — `bunkai_notify_bug_event` is guarded to `entity_type = 'bug'` — and neither action is in `ACTIVITY_ALLOWED_ACTIONS`, so neither surfaces in the `/activity` feed. Milestone **delete** does not exist — there is no delete RPC in this story.
+
+All milestone events share: `entity_type` = `milestone`, `entity_id` = the milestone id, `workspace_id` = the project's workspace.
+
+### `milestone.created`
+
+`payload`: `{ "name": "<normalized name>", "target_date": "<iso date>" }`
+
+### `milestone.updated`
+
+`payload`: only the fields that actually changed, positive-projected (never a blanket copy) — any of `name`, `target_date`, `description`.
+
 ## Consumers
 
 - **BK-20** (ATC search) — reindex on `atc.created` / `atc.updated`.

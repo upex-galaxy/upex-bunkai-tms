@@ -2,14 +2,19 @@
 
 import type { ComponentType } from 'react';
 import { cn } from '@lib/utils';
-import { BarChart3, Bug, Library, Play } from 'lucide-react';
+import { BarChart3, Bug, Flag, Library, Play } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 // Project sub-nav (BK-265). The three project surfaces shipped by BK-38
 // (Test Runs), BK-41/BK-42 (Bug Reports) and BK-46 (Metrics) had no `href`
 // anywhere in the app — they were reachable only by typing the URL. This is
-// the entry point for them.
+// the entry point for them. BK-205 adds a fifth entry, Milestones — same
+// reasoning: `/projects/{slug}/milestones` is a real, built, project-scoped
+// route with no `href` anywhere until this story (AI Product Owner decision,
+// BK-205 — Critical Rule #14 makes the live UI the source of truth for
+// navigation, and this sub-nav is the exact home D18 ratified for this
+// decision shape).
 //
 // It lives in the persistent project shell (project-shell.tsx), NOT in each
 // page, so it survives navigation across the project's detail routes — the
@@ -34,6 +39,7 @@ const ENTRIES: SubNavEntry[] = [
   { id: 'runs', label: 'Test Runs', icon: Play, segment: 'runs' },
   { id: 'bugs', label: 'Bug Reports', icon: Bug, segment: 'bugs' },
   { id: 'metrics', label: 'Metrics', icon: BarChart3, segment: 'metrics' },
+  { id: 'milestones', label: 'Milestones', icon: Flag, segment: 'milestones' },
 ];
 
 function entryHref(projectSlug: string, segment: string | null): string {
