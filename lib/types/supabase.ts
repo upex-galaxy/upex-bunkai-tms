@@ -648,6 +648,57 @@ export interface Database {
         }
         Relationships: []
       }
+      milestones: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          name: string
+          project_id: string
+          target_date: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name: string
+          project_id: string
+          target_date: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name?: string
+          project_id?: string
+          target_date?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'milestones_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'milestones_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       modules: {
         Row: {
           archived_at: string | null
@@ -1409,6 +1460,15 @@ export interface Database {
         Args: { p_actor_user_id: string, p_name: string, p_project_id: string }
         Returns: Json
       }
+      bunkai_create_milestone: {
+        Args: {
+          p_description?: string
+          p_name: string
+          p_project_id: string
+          p_target_date: string
+        }
+        Returns: Json
+      }
       bunkai_create_run: {
         Args: {
           p_actor_user_id: string
@@ -1659,6 +1719,15 @@ export interface Database {
           p_steps: Json
           p_tags: string[]
           p_title: string
+        }
+        Returns: Json
+      }
+      bunkai_update_milestone: {
+        Args: {
+          p_description?: string
+          p_milestone_id: string
+          p_name: string
+          p_target_date: string
         }
         Returns: Json
       }

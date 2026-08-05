@@ -74,6 +74,10 @@ import '../app/api/v1/projects/[id]/environments/route.openapi';
 
 import '../app/api/v1/environments/[id]/route.openapi';
 
+import '../app/api/v1/projects/[id]/milestones/route.openapi';
+
+import '../app/api/v1/milestones/[id]/route.openapi';
+
 import '../app/api/v1/modules/[id]/route.openapi';
 
 import '../app/api/v1/modules/[id]/user-stories/route.openapi';
