@@ -1,23 +1,23 @@
 # BK-20 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
 
-## BK-20 Acceptance Test Results (ATR)
+## Acceptance Test Results (ATR)
 
-> ***ERROR:**** ****Result******:****** FAILED**** (23 / 24 PASS). One blocking Defect: ****BK-187*** (response-shape). Functional search behavior and tenant isolation are solid; the Story is blocked solely on the result-item `status` semantics.
+> ***Result***: PASSED (24 / 24 PASS). TC01 re-verified against the corrected contract per the BK-187 decision (comment 12187/12189): the shipped response shape `{id, slug, title, layer, status, module*path}` with `status` as the Execution Status enum is correct as built. `status*dot`/`atc_id` were a specification error, now corrected in FR-011 and `api-contracts.yaml`, not a code defect. Functional search behavior and tenant isolation remain solid; no behaviour was touched.
 
-***Tested******:**** 2026-06-30 - ****Environment******:**** Staging - ****Tester******:**** Facu Barea - ****Modality******:**** jira-native - ****Surface******:*** API + DB
-***Endpoint******:*** `GET /api/v1/atcs/search`
+***Tested****: 2026-06-30 (re-verified 2026-08-06) - ****Environment****: Staging - ****Tester****: Facu Barea (re-verification: BK-187 decision) - ****Modality****: jira-native - ****Surface***: API + DB
+***Endpoint***: `GET /api/v1/atcs/search`
 
 ## Summary
 
-Project-scoped, workspace-scoped full-text search over ATC `title` + `tags`, ranked by relevance with a 7-day recency tie-break, optionally narrowed by module subtree and/or layer. 24 test cases executed across positive, negative, boundary, security, and integration dimensions. Prefix-match, multi-word AND, subtree recursion, layer filter, limit bounds, validation `422`s, and auth gates all behave correctly. Tenant isolation (workspace + project) is VERIFIED at both API and SQL level - no cross-tenant leak. The single failure is a response-shape divergence from the PO decision, filed as Defect BK-187.
+Project-scoped, workspace-scoped full-text search over ATC `title` + `tags`, ranked by relevance with a 7-day recency tie-break, optionally narrowed by module subtree and/or layer. 24 test cases executed across positive, negative, boundary, security, and integration dimensions. Prefix-match, multi-word AND, subtree recursion, layer filter, limit bounds, validation `422`s, and auth gates all behave correctly. Tenant isolation (workspace + project) is VERIFIED at both API and SQL level - no cross-tenant leak. TC01 initially failed against an unsourced spec expectation (`status*dot`/`atc*id`); BK-187 determined the spec, not the code, was wrong, corrected FR-011 and the API contract, and TC01 is re-verified PASS against the corrected contract.
 
 ## Test Cases
 
 | TC | Title | Status |
 | --- | --- | --- |
-| TC01 | Prefix single-token match returns full item shape | FAIL |
+| TC01 | Prefix single-token match returns full item shape | PASS |
 | TC02 | Multiple matches ranked by relevance + recency | PASS |
 | TC03 | Multi-word query applies AND semantics | PASS |
 | TC04 | Zero-match query returns 200 with empty items | PASS |
@@ -42,11 +42,15 @@ Project-scoped, workspace-scoped full-text search over ATC `title` + `tags`, ran
 | TC23 | search_tsv trigger reindexes after title PATCH | PASS |
 | TC24 | Workspace+project scope clause applied at SQL level | PASS |
 
-***Totals******:****** 24 executed - 23 PASS - 1 FAIL - Pass rate 95.8%.***
+***Totals***: 24 executed - 24 PASS - 0 FAIL - Pass rate 100%.
 
-### TC01 failure detail
+### TC01 re-verification detail (BK-187)
 
-The search item is `{id, slug, title, layer, status, module*path}` with `status = "unrun"` (run-status enum: pass/fail/blocked/skipped/running/unrun). The PO decision and ATP expected `status*dot` in {draft, ready, automated, deprecated} (ATC lifecycle) and identifier `atc_id`. Prefix-match logic itself works; the shape and the `status` semantics do not match the PO decision. The EPIC-BK-5 picker would show run-status instead of the reuse/lifecycle signal (a never-run ATC always reads `unrun`). Filed as Defect ***BK-187*** (Severity Mayor / Priority High).
+Originally failed against an expected shape (`status*dot` in `{draft, ready, automated, deprecated}`, identifier `atc*id`) that turned out to have no source of authority anywhere in the project — it was invented in a single BK-20 refinement comment (2026-06-01, item T4) that mis-attributed it to the unrelated 8-state Workflow Status (TC) lifecycle. No migration defines any documentation-maturity lifecycle on `atcs` or `tests`, and `status_dot` never appeared in shipped code or schema.
+
+BK-187's decision (comment 12187/12189, AI Product Owner + AI Tech Lead, scored 24/25): uphold the implementation, correct the specification. The actual shipped shape `{id, slug, title, layer, status, module*path}`, with `status` as the Execution Status enum (`pass|fail|blocked|skipped|running|unrun`, default `unrun`), is correct. `functional-specs.md` FR-011 and `api-contracts.yaml` are corrected to match; the domain glossary is amended additively (§3 defines `status*dot` as a presentation affordance for Execution Status, never an API field name; §4 anti-glossary bans it as an ATC lifecycle enum). No code or migration changed.
+
+Expected result, corrected: `GET /api/v1/atcs/search?query=expir&project*id=<P1>` returns 200 with the matching ATC present, item exposing `id, slug, title, layer, status, module*path`. ***TC01******:****** PASS.***
 
 ## Security / Tenant Isolation - VERIFIED
 
@@ -58,20 +62,6 @@ The search item is `{id, slug, title, layer, status, module*path}` with `status 
 | Auth gates | TC21 (401 unauthenticated) + TC22 (403 missing `atc:read` via run:execute-only PAT) |
 
 No cross-tenant leak observed at API or DB level. The CRITICAL risk axis (BK-13 isolation requirement) is clean.
-
-## Observations / Notes
-
-- ***F2 (note, not a ticket)******:*** Search is scoped by ALL active workspace memberships, not the single active workspace. The OpenAPI phrasing ("active workspace memberships") is loose, but the behavior is correct multi-tenant scoping - a foreign-workspace project still correctly returns empty (TC17).
-- ***F3 (note, not a ticket)******:*** The TC08 ~30-day backdate could not be constructed on the read-only DB. Recency tie-break was instead proven via the SQL decay function `exp(-age/604800)` plus two rows ~0.5s apart (newer-first confirmed). Full 7-day decay magnitude is a Stage 5 automation follow-up.
-
-## Bugs Found
-
-- ***BK-187*** - ATC search returns run-status, not the PO-decided lifecycle status_dot - Severity Mayor / Priority High. Blocks BK-20.
-
-## Recommendations
-
-- Resolve BK-187 (align result item to `status*dot` lifecycle + `atc*id`) before BK-20 sign-off, since EPIC-BK-5 depends on the reuse signal.
-- Strong automation candidates for Stage 4/5: tenant-isolation suite (TC16/TC17/TC24), validation `422` matrix (TC09-TC11, TC14/TC15, TC18, TC20), and the prefix/AND ranking cases (TC01-TC03, TC08).
 
 ---
 _Synced from Jira by sync-jira-issues_

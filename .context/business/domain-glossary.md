@@ -103,6 +103,7 @@ Post-MVP entities (epics BK-201 / BK-208 / BK-210 / BK-221 / BK-224), added 2026
 | **Seat** | One active workspace member counted against the Tier limit. |
 | **Subscription** | The workspace's active paid arrangement: renewal date, payment method. |
 | **Invoice** | Billing document for one charge period, downloadable. |
+| **status_dot** | Design/mockup term for the coloured dot that renders a row's Execution Status (§2) in tree, list, and autocomplete surfaces. Its values are the execution set `pass \| fail \| blocked \| skipped \| running \| unrun`. It is a presentation affordance, not a data field: it names a dot, not a lifecycle, and it does not appear as an API field name — APIs expose the underlying value as `status`. No documentation-maturity lifecycle exists on `atcs` or `tests`. Recorded 2026-08-06 with the BK-187 decision. |
 
 ---
 
@@ -116,6 +117,7 @@ Post-MVP entities (epics BK-201 / BK-208 / BK-210 / BK-221 / BK-224), added 2026
 | "test component" | **ATC**, **end-to-end test**, or **integration test** — by context | Ambiguous and generic ("a component of testing" says nothing). If the sentence means the minimal atomic unit that satisfies an AC → **ATC**. If it means the assembled chain walking a journey → **end-to-end test** or **integration test**. Never leave "test component" in specs, ACs, or Jira content. |
 | "reorder a Test by ATC" / "reorder the `atc_id`s" | **reorder the chain by step_id** (chain-step handle) | A Test chain may hold the same `atc_id` at several positions, so an `atc_id` cannot identify a single row. Reorder addresses rows by **step_id** (`test_steps.id`). Speak of `atc_id` only for the resulting *run order*, never as the reorder handle. Recorded during BK-28 (chain reorder). |
 | bare "plan" / "Plan" | **Test Plan**, **Billing Plan (Tier)**, or **ATP** — by context | Three distinct concepts collide on the word: the TMS grouping of Tests (Test Plan, §3), the workspace subscription level (Billing Plan / Tier, §3), and the per-US QA artifact (ATP, §1). Bare "plan" in specs, ACs, or Jira content is ambiguous — always use the full term. Recorded 2026-07-11 with the post-MVP entities (BK-201/208/210/221/224). |
+| `status_dot` as an ATC lifecycle enum (`draft` / `ready` / `automated` / `deprecated`) | **Execution Status**, exposed in APIs as `status` | No ATC documentation-lifecycle column exists in the schema, and `status_dot` appears in zero lines of shipped code. The four-value set originated in a BK-20 refinement comment (2026-06-01, T4) that mis-attributed it to the 8-state **Workflow Status (TC)** (§2). It blocked BK-20 for five weeks. Recorded 2026-08-06 with the BK-187 decision. |
 
 ---
 

@@ -1,6 +1,6 @@
 # BK-20 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
 
 1. Elena opens the ATC picker (for example while composing a Test) or the search box.
 2. She types part of a title or a tag, for example `login token expired`.
