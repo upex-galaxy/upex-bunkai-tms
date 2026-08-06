@@ -3,7 +3,7 @@
 **Jira Key:** [BK-211](https://jira.upexgalaxy.com/browse/BK-211)
 **Epic:** [BK-208](https://jira.upexgalaxy.com/browse/BK-208) (Notifications Center)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Review
 **Priority:** Medium
 **Story Points:** 5
 
@@ -31,6 +31,7 @@ Runs already end in exactly two final verdicts — passed or failed — or get a
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
 - [Mockup](./mockup.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
