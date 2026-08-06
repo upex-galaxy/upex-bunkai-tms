@@ -15,11 +15,13 @@ export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   { id: 'account', label: 'Account', href: '/settings/account' },
   { id: 'tokens', label: 'Tokens', href: '/settings/tokens' },
   { id: 'workspaces', label: 'Workspaces', href: '/settings/workspaces' },
+  // BK-213 — Notifications ships, moved out of "coming soon" (master-design-
+  // plan.md §4.13: "Notifications now LIVE in the nav").
+  { id: 'notifications', label: 'Notifications', href: '/settings/notifications' },
 ];
 
 export const SETTINGS_NAV_COMING_SOON: SettingsNavItem[] = [
   { id: 'members', label: 'Members', href: null },
-  { id: 'notifications', label: 'Notifications', href: null },
   { id: 'billing', label: 'Billing', href: null },
   { id: 'environments', label: 'Environments', href: null },
 ];

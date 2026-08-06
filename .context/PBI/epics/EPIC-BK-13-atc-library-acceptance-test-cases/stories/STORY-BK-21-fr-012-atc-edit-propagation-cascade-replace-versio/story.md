@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** QA Approved
 **Priority:** Medium
-**Story Points:** 5
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -33,13 +32,7 @@
 
 > Each rich-text field is a separate file in this folder.
 
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
-- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -55,7 +48,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** Ramiro Majdalani
 - **Labels:** atc, mvp, propagation, wave-2

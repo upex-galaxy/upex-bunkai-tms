@@ -4,10 +4,6 @@
 **Priority:** Medium
 **Status:** Duplicated
 **Components:** Project & Module Hierarchy, Tenancy & Identity
-**Severity:** Moderada
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -50,12 +46,6 @@ PAT bearer tokens are rejected with 401 on module and workspace resource endpoin
 ## Related Stories
 
 - Related: BK-10 (TC-I04)
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

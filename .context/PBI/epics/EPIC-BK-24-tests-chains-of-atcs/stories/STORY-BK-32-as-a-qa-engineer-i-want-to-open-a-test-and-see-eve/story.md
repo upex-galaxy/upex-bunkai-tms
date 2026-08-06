@@ -5,8 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** 3
-**Web Link:** https://staging-upexbunkai.vercel.app/
+**Story Points:** -
 
 ---
 
@@ -123,19 +122,6 @@ Scenario: Expanded read returns full chain in one round trip
 
 ---
 
-## Fields
-
-> Each rich-text field is a separate file in this folder.
-
-- [Acceptance Criteria](./acceptance-criteria.md)
-- [Business Rules](./business-rules.md)
-- [Scope](./scope.md)
-- [Out Of Scope](./out-of-scope.md)
-- [Workflow](./workflow.md)
-- [Implementation Plan (Dev)](./implementation-plan.md)
-
----
-
 ## Traceability
 
 ### Storys (2)
@@ -148,7 +134,7 @@ Scenario: Expanded read returns full chain in one round trip
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/6/2026
+- **Updated:** 7/24/2026
 - **Reporter:** Ely
 - **Assignee:** jesusgpythondev
 - **Labels:** needs-dev-confirmation, needs-po-confirmation, shift-left-2026-06-14, shift-left-reviewed, tests-epic

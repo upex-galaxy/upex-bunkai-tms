@@ -5,10 +5,6 @@
 **Priority:** Medium
 **Status:** Closed
 **Components:** ATC Library (Acceptance Test Cases)
-**Severity:** Moderada
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -38,12 +34,6 @@ staging (https://staging-upexbunkai.vercel.app)
 ## Related Story
 
 BK-19 — TMS-ATC Builder
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

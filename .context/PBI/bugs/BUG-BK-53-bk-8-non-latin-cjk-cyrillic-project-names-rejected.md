@@ -4,10 +4,6 @@
 **Priority:** Low
 **Status:** Closed
 **Components:** Project & Module Hierarchy
-**Severity:** Menor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -50,12 +46,6 @@ International users cannot name a project in their own script. Improvement-grade
 ## Evidence
 
 `test-session-memory.md` (T13b row).
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

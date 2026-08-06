@@ -1,4 +1,4 @@
-import { BUG_EVIDENCE_MAX, BUG_SEVERITY_VALUES, BUG_TITLE_MAX, BUG_TITLE_MIN } from '@lib/bugs/constants';
+import { BUG_EVIDENCE_MAX, BUG_SEVERITY_VALUES, BUG_STATUS_VALUES, BUG_TITLE_MAX, BUG_TITLE_MIN } from '@lib/bugs/constants';
 import { z } from 'zod';
 
 // BK-40 — file-a-bug request validation. Mirrors the `bunkai_create_bug` RPC
@@ -67,3 +67,23 @@ export type BugCreateBody = z.infer<typeof BugCreateBodySchema>;
 export function isRunLinkedBugBody(body: BugCreateBody): body is BugRunLinkedCreateBody {
   return 'run_step_id' in body;
 }
+
+// BK-264 (Slice 2) — POST /api/v1/bugs/{id}/assign body. `assignee_user_id:
+// null` unassigns (mirrors bunkai_assign_bug's own `p_assignee_user_id
+// default null` — the wire body uses the SAME snake_case convention as every
+// other bugs-domain body in this file, project_id/module_id included).
+export const BugAssignBodySchema = z.object({
+  assignee_user_id: z.string().uuid().nullable(),
+});
+
+export type BugAssignBody = z.infer<typeof BugAssignBodySchema>;
+
+// BK-264 (Slice 2) — POST /api/v1/bugs/{id}/status body. `status` must be one
+// of the bugs domain's own lifecycle values; `bunkai_transition_bug_status`
+// is the enforcement point of record for adjacency (one stage forward at a
+// time, never backward) — this layer only backstops the VALUE itself.
+export const BugStatusTransitionBodySchema = z.object({
+  status: z.enum(BUG_STATUS_VALUES),
+});
+
+export type BugStatusTransitionBody = z.infer<typeof BugStatusTransitionBodySchema>;

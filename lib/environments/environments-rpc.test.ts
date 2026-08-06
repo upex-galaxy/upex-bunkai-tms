@@ -15,7 +15,11 @@ import { afterAll, describe, expect, it } from 'bun:test';
 //   * delete removes an unused env; BLOCKS with the count when a run references
 //     it → environment_in_use (45211, count in message);
 //   * authorization: a non-member actor → forbidden (42501), no disclosure;
-//   * cross-workspace: a missing/foreign env id → not_found (P0002).
+//   * cross-workspace: a missing env id → not_found (P0002);
+//   * cross-workspace: an EXISTING env in a foreign workspace → not_found
+//     (P0002), not forbidden (BK-200 — the RPC previously leaked existence via
+//     403 here because the resolution query bypasses RLS as the DEFINER owner;
+//     see 0063_environment_cross_workspace_404.sql).
 //
 // 401 (unauthenticated) is enforced at the route layer (withApiHandler), not the
 // RPC — the RPC always receives an explicit resolved actor — so it is out of
@@ -200,13 +204,63 @@ describeOrSkip('BK-148 — environments CRUD RPCs', () => {
     expect(data).toBeNull();
   });
 
-  it('not-found — renaming a nonexistent / cross-workspace env → P0002', async () => {
+  it('not-found — renaming a nonexistent env → P0002', async () => {
     const db = service();
     const pick = await pickWritableProject(db);
     if (!pick) { console.warn('[environments] skipped notfound: seed state.'); return; }
     const { data, error } = await db.rpc(RENAME_RPC, { p_actor_user_id: pick.actorId, p_environment_id: RANDOM_UUID, p_name: `${NAME_PREFIX}Ghost` });
     expect(error?.code).toBe('P0002');
     expect(data).toBeNull();
+  });
+
+  // BK-200 (was BK-148 TC#2) — the regression this ticket is about. The
+  // environment here is REAL and lives in workspace A; the actor is a genuine
+  // active member of a DIFFERENT workspace B (falls back to the zero-uuid only
+  // if the seed has no second workspace with an active member — see
+  // pickNonMember). Before the 0053 fix this returned 42501 (forbidden),
+  // disclosing that the id belongs to a real environment in another workspace.
+  // It must now return the SAME P0002 (not_found) as a genuinely missing id,
+  // AND the environment must be provably untouched by the rejected write.
+  it('BK-200 — rename on an EXISTING cross-workspace env → not_found (P0002), not forbidden', async () => {
+    const db = service();
+    const pick = await pickWritableProject(db);
+    if (!pick) { console.warn('[environments] skipped BK-200-rename: seed state.'); return; }
+    const created = await db.rpc(CREATE_RPC, { p_actor_user_id: pick.actorId, p_project_id: pick.projectId, p_name: `${NAME_PREFIX}Bk200Rename` });
+    expect(created.error).toBeNull();
+    const envId = (created.data as { id: string }).id;
+
+    const foreignActorId = await pickNonMember(db, pick.workspaceId);
+    const { data, error } = await db.rpc(RENAME_RPC, {
+      p_actor_user_id: foreignActorId,
+      p_environment_id: envId,
+      p_name: `${NAME_PREFIX}Bk200Renamed`,
+    });
+    expect(error?.code).toBe('P0002');
+    expect(error?.code).not.toBe('42501');
+    expect(data).toBeNull();
+
+    // The rejected write must not have mutated the row (name unchanged).
+    const { data: after } = await db.from('project_environments').select('name').eq('id', envId).maybeSingle();
+    expect((after as { name: string } | null)?.name).toBe(`${NAME_PREFIX}Bk200Rename`);
+  });
+
+  it('BK-200 — delete on an EXISTING cross-workspace env → not_found (P0002), not forbidden', async () => {
+    const db = service();
+    const pick = await pickWritableProject(db);
+    if (!pick) { console.warn('[environments] skipped BK-200-delete: seed state.'); return; }
+    const created = await db.rpc(CREATE_RPC, { p_actor_user_id: pick.actorId, p_project_id: pick.projectId, p_name: `${NAME_PREFIX}Bk200Delete` });
+    expect(created.error).toBeNull();
+    const envId = (created.data as { id: string }).id;
+
+    const foreignActorId = await pickNonMember(db, pick.workspaceId);
+    const { data, error } = await db.rpc(DELETE_RPC, { p_actor_user_id: foreignActorId, p_environment_id: envId });
+    expect(error?.code).toBe('P0002');
+    expect(error?.code).not.toBe('42501');
+    expect(data).toBeNull();
+
+    // The rejected delete must not have removed the row.
+    const { count } = await db.from('project_environments').select('id', { count: 'exact', head: true }).eq('id', envId);
+    expect(count).toBe(1);
   });
 
   it('list ordering — environments come back name asc', async () => {

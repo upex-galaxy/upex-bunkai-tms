@@ -4,10 +4,6 @@
 **Priority:** Medium
 **Status:** Ready For QA
 **Components:** Manual Execution & Runs
-**Severity:** Moderada
-**Error Type:** Integration
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -80,45 +76,6 @@ Bearer callers with valid workspace membership and `run:execute` should resolve 
 | Atlassian bug report guidance | Explicit severity, environment, steps, expected result, actual result. |
 | BrowserStack / QA best practices | Repro from known state, observed vs expected, evidence and environment included. |
 | BK board examples from Ely/Nahuel | `Repro`, `Expected`, `Actual`, `Root Cause`, `Impact`, `Related` sections kept concise and actionable. |
-
----
-
-## 🐞 Actual Result
-
-`POST /api/v1/runs` with a valid Bearer PAT returns `No active workspace could be resolved for this request.` This happens even after `/api/v1/me` confirms an active workspace, role, and `run:execute` scope for the same token.
-
----
-
-## ✅ Expected Result
-
-Bearer callers with valid workspace membership and `run:execute` should resolve active workspace context and create a Run, while still enforcing membership and scope checks.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Integration Error
-
----
-
-## 🚩 Workaround
-
-> ***SUCCESS:***  Manual QA can create the Run through cookie-session UI/API flow, then use Bearer to validate finish behavior on the existing Run. This does not unblock AI/CI/PAT Run creation.
-
----
-
-## 🧫 Evidence
-
-## Evidence attachments - BK-182
-
-| Evidence | Attachment | Result |
-| --- | --- | --- |
-| Bearer `/api/v1/me` active workspace | `BK-182-step02-bearer-me-active-workspace.png` | HTTP 200; active workspace `545d5efe-a168-4f32-a4be-a148a2fc96db`; role `owner`; scopes include `run:execute`. |
-| Bearer `POST /api/v1/runs` workspace-resolution failure | `BK-182-step03-bearer-run-creation-fails.png` | HTTP 422 `validation_failed`: `No active workspace could be resolved for this request.` |
-
-***Classification******:*** QA-formal product defect represented operationally as Jira issue type `Bug`.
-
-***Scope note******:*** Existing bug report/description unchanged; attachments and inline evidence comment added only.
 
 ---
 

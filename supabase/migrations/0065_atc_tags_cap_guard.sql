@@ -1,4 +1,4 @@
--- 0053_atc_tags_cap_guard.sql — BK-144: enforce the 10-tag cap on ATCs at the
+-- 0065_atc_tags_cap_guard.sql — BK-144: enforce the 10-tag cap on ATCs at the
 -- RPC + DB layers, not just the UI/API-route layers.
 --
 -- Context: the web editor's `saveAtcAction` server action calls

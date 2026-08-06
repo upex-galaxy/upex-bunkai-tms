@@ -1,5 +1,5 @@
 import type { SaveAtcActionInput } from './actions';
-import { TAG_CAP_MESSAGE } from '@lib/atcs/builder-guards';
+import { TAG_CAP_MESSAGE, TITLE_MESSAGE } from '@lib/atcs/builder-guards';
 import { describe, expect, mock, test } from 'bun:test';
 
 // BK-144 — regression test for the ATC tag cap.
@@ -23,6 +23,7 @@ import { describe, expect, mock, test } from 'bun:test';
 // an unambiguous signal: the tags guard resolves cleanly, so anything that
 // gets PAST it hits the stub instead, proving the guard let a valid payload
 // through rather than silently swallowing it.
+void mock.module('server-only', () => ({}));
 void mock.module('@lib/supabase/server', () => ({
   createClient: async () => {
     throw new Error('createClient() reached — the tags-cap guard should have returned before this point');
@@ -70,5 +71,27 @@ describe('saveAtcAction — tags cap (BK-144)', () => {
     catch (err) {
       expect((err as Error).message).toContain('createClient() reached');
     }
+  });
+});
+
+// BK-145 — the same save path never enforced the BK-18 title bounds (3-200
+// chars) that the create flow and the headless PATCH /api/v1/atcs/{id} route
+// already apply via `AtcUpdateBodySchema`. A 1-2 char title saved silently
+// with no error at any layer (QA-confirmed regression, 2026-07-06). The title
+// guard fires before Supabase is reached, so the stub above is never hit.
+describe('saveAtcAction (BK-145 — title minimum length)', () => {
+  test('rejects a 2-character title with the shared TITLE_MESSAGE, without touching Supabase', async () => {
+    const result = await saveAtcAction(baseInput({ title: 'ab' }));
+    expect(result).toEqual({ ok: false, error: TITLE_MESSAGE });
+  });
+
+  test('rejects a whitespace-only title the same way (trim before measuring)', async () => {
+    const result = await saveAtcAction(baseInput({ title: '   ' }));
+    expect(result).toEqual({ ok: false, error: TITLE_MESSAGE });
+  });
+
+  test('rejects a title over the 200-char maximum', async () => {
+    const result = await saveAtcAction(baseInput({ title: 'x'.repeat(201) }));
+    expect(result).toEqual({ ok: false, error: TITLE_MESSAGE });
   });
 });

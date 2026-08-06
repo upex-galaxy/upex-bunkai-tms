@@ -5,10 +5,6 @@
 **Priority:** Medium
 **Status:** Closed
 **Components:** User Stories & Acceptance Criteria
-**Severity:** Moderada
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -36,12 +32,6 @@ Keep descriptions under 50,000 bytes.
 ## Evidence
 
 TC-25 FAILED during BK-15 QA session (2026-06-18). Root cause: MAX*AC*DESCRIPTION_BYTES likely uses 50 ** 1000 (decimal KB) instead of 50 ** 1024 (binary KiB) in lib/acceptance-criteria/validation.ts.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

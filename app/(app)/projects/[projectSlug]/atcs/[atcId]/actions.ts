@@ -1,7 +1,7 @@
 'use server';
 
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
-import { TAG_CAP_MESSAGE } from '@lib/atcs/builder-guards';
+import { TAG_CAP_MESSAGE, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { MAX_ATC_TAGS } from '@lib/atcs/validation';
 import { atcUsage, updateAtc } from '@lib/supabase/rpc';
@@ -41,8 +41,14 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   if (input.acIds.length === 0) {
     return { ok: false, error: 'Bind at least one acceptance criterion.' };
   }
-  if (input.title.trim().length === 0) {
-    return { ok: false, error: 'Title is required.' };
+  // BK-145 — the web editor's save path bypasses AtcUpdateBodySchema entirely
+  // (it calls bunkai_update_atc directly, never the PATCH route), so it never
+  // enforced the BK-18 title bounds (3-200 chars) the create flow and the
+  // headless API already apply. Reuse the same guard + message so a short (or
+  // overlong) title is rejected identically everywhere, instead of silently
+  // saving a 1-2 char title.
+  if (!titleValid(input.title)) {
+    return { ok: false, error: TITLE_MESSAGE };
   }
   if (input.tags.length > MAX_ATC_TAGS) {
     return { ok: false, error: TAG_CAP_MESSAGE };

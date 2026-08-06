@@ -1,0 +1,1638 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bunkai — Recorrido de producto para QA Engineers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+   Bunkai design tokens — byte-exact with DESIGN.md §3–§5.
+   Type ramp scaled for projection; ratios preserved.
+   ============================================================ */
+      :root {
+        /* surfaces */
+        --bg-0: #0a0b0d;
+        --bg-1: #101216;
+        --bg-2: #14171c;
+        --bg-3: #1a1e25;
+        --bg-4: #232830;
+        --bg-5: #2d333c;
+        /* foreground */
+        --fg-0: #f1f3f5;
+        --fg-1: #d4d8de;
+        --fg-2: #9aa1ab;
+        --fg-3: #6b727c;
+        --fg-4: #4a5057;
+        /* strokes */
+        --stroke-1: rgba(255, 255, 255, 0.05);
+        --stroke-2: rgba(255, 255, 255, 0.08);
+        --stroke-3: rgba(255, 255, 255, 0.13);
+        --stroke-strong: rgba(255, 255, 255, 0.22);
+        /* accent — vermillion */
+        --accent: #d9543f;
+        --accent-hi: #e87060;
+        --accent-glow: rgba(217, 84, 63, 0.18);
+        --accent-soft: rgba(217, 84, 63, 0.1);
+        /* signal */
+        --pass: #2fb673;
+        --pass-bg: rgba(47, 182, 115, 0.1);
+        --fail: #e5484d;
+        --fail-bg: rgba(229, 72, 77, 0.1);
+        --blocked: #e8a838;
+        --blocked-bg: rgba(232, 168, 56, 0.1);
+        --skipped: #8a91a0;
+        --skipped-bg: rgba(138, 145, 160, 0.08);
+        --running: #4f8cf7;
+        --running-bg: rgba(79, 140, 247, 0.1);
+        /* layers */
+        --layer-ui: #8b6df0;
+        --layer-api: #4f8cf7;
+        --layer-unit: #2fb673;
+        /* geometry */
+        --r-1: 3px;
+        --r-2: 5px;
+        --r-3: 7px;
+        --r-4: 10px;
+        --shadow-pop: 0 12px 28px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+        --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+        /* type */
+        --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+        --font-jp: 'Noto Serif JP', serif;
+        --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg-0);
+        color: var(--fg-1);
+        font-family: var(--font-sans);
+        font-size: 19px;
+        line-height: 1.45;
+        font-feature-settings: 'cv11', 'ss01';
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+
+      /* ================= slide system ================= */
+      .deck {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 56px 72px 70px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(24px);
+        transition:
+          opacity 0.28s var(--ease),
+          transform 0.28s var(--ease);
+        overflow: hidden;
+      }
+      .slide.is-active {
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+        z-index: 2;
+      }
+      .notes {
+        display: none;
+      }
+
+      /* ================= typography ================= */
+      .eyebrow {
+        font-size: 12.5px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--fg-3);
+        font-family: var(--font-mono);
+        margin: 0 0 14px;
+      }
+      .eyebrow b {
+        color: var(--accent);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 70px;
+        line-height: 1.02;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin: 0 0 20px;
+        color: var(--fg-0);
+      }
+      h2 {
+        font-size: 46px;
+        line-height: 1.08;
+        font-weight: 700;
+        letter-spacing: -0.022em;
+        margin: 0 0 10px;
+        color: var(--fg-0);
+      }
+      h3 {
+        font-size: 21px;
+        line-height: 1.25;
+        font-weight: 600;
+        margin: 0 0 8px;
+        color: var(--fg-0);
+      }
+      h4 {
+        font-size: 16.5px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        color: var(--fg-0);
+      }
+      p {
+        margin: 0 0 10px;
+      }
+      .lede {
+        font-size: 23px;
+        line-height: 1.5;
+        color: var(--fg-2);
+        font-weight: 400;
+        max-width: 70ch;
+      }
+      .small {
+        font-size: 15.5px;
+        color: var(--fg-2);
+      }
+      .tiny {
+        font-size: 13.5px;
+        color: var(--fg-3);
+      }
+      .mono {
+        font-family: var(--font-mono);
+      }
+      .hot {
+        color: var(--accent);
+      }
+      strong {
+        color: var(--fg-0);
+        font-weight: 600;
+      }
+      .rule {
+        height: 2px;
+        width: 56px;
+        background: var(--accent);
+        border-radius: 1px;
+        margin: 0 0 22px;
+      }
+
+      /* ================= chrome ================= */
+      .chrome {
+        position: absolute;
+        left: 72px;
+        right: 72px;
+        bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: var(--fg-4);
+        letter-spacing: 0.06em;
+        z-index: 10;
+        pointer-events: none;
+      }
+      .progress {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 2px;
+        z-index: 20;
+        background: var(--stroke-1);
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        transition: width 0.25s var(--ease);
+      }
+
+      /* ================= atoms ================= */
+      .card {
+        background: var(--bg-2);
+        border: 1px solid var(--stroke-2);
+        border-radius: var(--r-3);
+        padding: 18px 20px;
+        box-shadow: var(--shadow-card);
+      }
+      .card.raised {
+        background: var(--bg-3);
+      }
+      .card.accent {
+        border-top: 2px solid var(--accent);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border-radius: var(--r-1);
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        border: 1px solid var(--stroke-2);
+        background: var(--bg-3);
+        color: var(--fg-2);
+      }
+      .chip[data-status='pass'] {
+        color: var(--pass);
+        background: var(--pass-bg);
+        border-color: rgba(47, 182, 115, 0.3);
+      }
+      .chip[data-status='fail'] {
+        color: var(--fail);
+        background: var(--fail-bg);
+        border-color: rgba(229, 72, 77, 0.3);
+      }
+      .chip[data-status='blocked'] {
+        color: var(--blocked);
+        background: var(--blocked-bg);
+        border-color: rgba(232, 168, 56, 0.3);
+      }
+      .chip[data-status='running'] {
+        color: var(--running);
+        background: var(--running-bg);
+        border-color: rgba(79, 140, 247, 0.3);
+      }
+      .chip[data-status='skipped'] {
+        color: var(--skipped);
+        background: var(--skipped-bg);
+      }
+      .chip[data-layer='UI'] {
+        color: var(--layer-ui);
+        background: rgba(139, 109, 240, 0.1);
+        border-color: rgba(139, 109, 240, 0.3);
+      }
+      .chip[data-layer='API'] {
+        color: var(--layer-api);
+        background: rgba(79, 140, 247, 0.1);
+        border-color: rgba(79, 140, 247, 0.3);
+      }
+      .chip[data-layer='Unit'] {
+        color: var(--layer-unit);
+        background: rgba(47, 182, 115, 0.1);
+        border-color: rgba(47, 182, 115, 0.3);
+      }
+      .chip.hot {
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-color: rgba(217, 84, 63, 0.32);
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+        flex: none;
+      }
+      .kbd {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: var(--r-1);
+        background: var(--bg-3);
+        border: 1px solid var(--stroke-3);
+        border-bottom-width: 2px;
+        color: var(--fg-2);
+      }
+
+      /* ================= layout ================= */
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .g3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .g4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .g5 {
+        grid-template-columns: repeat(5, 1fr);
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        align-items: start;
+      }
+      .split.wide-l {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+      .mt {
+        margin-top: 20px;
+      }
+      .mt-l {
+        margin-top: 30px;
+      }
+      .mt-s {
+        margin-top: 10px;
+      }
+
+      /* ================= tables ================= */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 15.5px;
+      }
+      th {
+        text-align: left;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--fg-3);
+        font-weight: 500;
+        padding: 0 12px 8px 0;
+        border-bottom: 1px solid var(--stroke-2);
+      }
+      td {
+        padding: 9px 12px 9px 0;
+        border-bottom: 1px solid var(--stroke-1);
+        color: var(--fg-2);
+        vertical-align: top;
+      }
+      td strong {
+        color: var(--fg-0);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* ================= flow diagram ================= */
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-top: 26px;
+      }
+      .flow .node {
+        flex: 1;
+        background: var(--bg-2);
+        border: 1px solid var(--stroke-2);
+        border-radius: var(--r-3);
+        padding: 14px 12px;
+        text-align: center;
+        position: relative;
+      }
+      .flow .node .n {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: var(--fg-4);
+        letter-spacing: 0.08em;
+      }
+      .flow .node .t {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--fg-0);
+        margin-top: 4px;
+      }
+      .flow .node .s {
+        font-size: 11.5px;
+        color: var(--fg-3);
+        margin-top: 5px;
+        line-height: 1.35;
+      }
+      .flow .node.key {
+        border-color: rgba(217, 84, 63, 0.4);
+        background: linear-gradient(180deg, var(--accent-soft), var(--bg-2));
+      }
+      .flow .arr {
+        flex: none;
+        width: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--fg-4);
+        font-family: var(--font-mono);
+        font-size: 15px;
+      }
+
+      /* ================= chain visual ================= */
+      .chain {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .brick {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        padding: 7px 11px;
+        border-radius: var(--r-2);
+        background: var(--bg-3);
+        border: 1px solid var(--stroke-3);
+        color: var(--fg-1);
+        white-space: nowrap;
+      }
+      .brick.hl {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-hi);
+      }
+      .plus {
+        color: var(--fg-4);
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+
+      /* ================= code block ================= */
+      pre {
+        font-family: var(--font-mono);
+        font-size: 14.5px;
+        line-height: 1.55;
+        background: var(--bg-1);
+        border: 1px solid var(--stroke-2);
+        border-radius: var(--r-3);
+        padding: 16px 18px;
+        margin: 0;
+        overflow: auto;
+        color: var(--fg-1);
+      }
+      pre .c {
+        color: var(--fg-4);
+      }
+      pre .k {
+        color: var(--layer-ui);
+      }
+      pre .d {
+        color: var(--accent);
+      }
+      pre .s {
+        color: var(--pass);
+      }
+
+      /* ================= misc ================= */
+      .stat {
+        font-family: var(--font-mono);
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--fg-0);
+        line-height: 1;
+      }
+      .stat.hot {
+        color: var(--accent);
+      }
+      ul.clean {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ul.clean li {
+        padding: 9px 0 9px 20px;
+        position: relative;
+        color: var(--fg-2);
+        font-size: 16.5px;
+        border-bottom: 1px solid var(--stroke-1);
+      }
+      ul.clean li:last-child {
+        border-bottom: none;
+      }
+      ul.clean li::before {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 15px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      ul.clean li strong {
+        color: var(--fg-0);
+      }
+      .bar {
+        height: 4px;
+        border-radius: 2px;
+        background: var(--bg-4);
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+      }
+      .wordmark {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+      }
+      .wordmark .jp {
+        font-family: var(--font-jp);
+        font-weight: 700;
+        font-size: 60px;
+        color: var(--fg-0);
+        line-height: 1;
+      }
+      .wordmark .lat {
+        font-size: 60px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--fg-0);
+        line-height: 1;
+      }
+
+      /* ================= overview ================= */
+      .overview {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 11, 13, 0.94);
+        backdrop-filter: blur(10px);
+        z-index: 50;
+        display: none;
+        padding: 44px;
+        overflow: auto;
+      }
+      .overview.open {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        align-content: start;
+      }
+      .overview .thumb {
+        background: var(--bg-2);
+        border: 1px solid var(--stroke-2);
+        border-radius: var(--r-3);
+        aspect-ratio: 16/9;
+        padding: 14px;
+        cursor: pointer;
+        position: relative;
+        transition: border-color 0.12s var(--ease);
+      }
+      .overview .thumb:hover {
+        border-color: var(--accent);
+      }
+      .overview .thumb .n {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--fg-4);
+      }
+      .overview .thumb .t {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--fg-1);
+        margin-top: 6px;
+        line-height: 1.3;
+      }
+
+      /* ================= entry animation ================= */
+      .is-active .anim {
+        animation: rise 0.34s var(--ease) both;
+      }
+      .is-active .anim:nth-child(2) {
+        animation-delay: 0.04s;
+      }
+      .is-active .anim:nth-child(3) {
+        animation-delay: 0.08s;
+      }
+      .is-active .anim:nth-child(4) {
+        animation-delay: 0.12s;
+      }
+      .is-active .anim:nth-child(5) {
+        animation-delay: 0.16s;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+      <!-- 1 · Portada -->
+      <section class="slide" data-title="Bunkai">
+        <p class="eyebrow">Recorrido de producto · para QA Engineers · <b>2026</b></p>
+        <div class="wordmark"><span class="jp">分解</span><span class="lat">Bunkai</span></div>
+        <p class="lede mt">
+          El Test Management System open source cuyo
+          <strong>modelo de datos vuelve inevitable el buen QA</strong>.
+        </p>
+        <div class="chain mt-l">
+          <span class="chip hot">ATCs reutilizables</span>
+          <span class="chip">Trazabilidad obligatoria</span>
+          <span class="chip">Manual · Agéntico · Automatizado</span>
+          <span class="chip">Defectos nativos</span>
+          <span class="chip">API-first</span>
+        </div>
+        <p class="tiny mt-l">
+          Se pronuncia BUN-kai. Es el término real de artes marciales japonesas para descomponer un
+          kata en sus aplicaciones. No es la palabra del anime.
+        </p>
+        <div class="chrome"><span>bunkai.io</span><span>01 / 15</span></div>
+        <div class="notes">
+          Abrir por el nombre. Bunkai es la práctica de descomponer un kata en piezas aplicables.
+          Esa es literalmente la tesis del producto: descomponer un test en piezas reutilizables.
+          Fijar expectativa: 15 slides, mirada de producto, la arquitectura queda para el final.
+        </div>
+      </section>
+
+      <!-- 2 · El dolor -->
+      <section class="slide" data-title="El dolor">
+        <p class="eyebrow">01 · el problema</p>
+        <h2 class="anim">
+          Los TMS de hoy son bóvedas de documentos<br />con ejecución pegada encima.
+        </h2>
+        <div class="rule mt-s"></div>
+        <div class="grid g2 mt anim">
+          <div class="card">
+            <h3><span class="hot">01</span> El mismo paso, cuarenta veces</h3>
+            <p class="small">
+              <span class="mono">navegar a /login</span> está copiado en 40 casos de prueba. Cambia
+              el flujo y editás 40 lugares, o se te escapan 12.
+            </p>
+          </div>
+          <div class="card">
+            <h3><span class="hot">02</span> Nadie sabe qué sigue siendo válido</h3>
+            <p class="small">
+              El producto avanza, el repositorio se pudre. Release tras release la suite se despega
+              de la app y nadie puede señalar qué tests todavía sirven.
+            </p>
+          </div>
+          <div class="card">
+            <h3><span class="hot">03</span> "¿Qué cubre esta historia?"</h3>
+            <p class="small">
+              Pregunta un manager. Nadie puede responder con certeza. La trazabilidad vive en un
+              spreadsheet, una página de Confluence y la memoria de alguien.
+            </p>
+          </div>
+          <div class="card">
+            <h3><span class="hot">04</span> Los bugs se van del loop de QA</h3>
+            <p class="small">
+              El TMS delega a Jira apenas algo falla, así que qué ATC falló, en qué estado de run y
+              en qué módulo, se pierde.
+            </p>
+          </div>
+        </div>
+        <p class="lede mt-l anim">
+          Y el dolor de fondo: <strong>ninguno enseña ingeniería de calidad.</strong> Te dejan hacer
+          mal QA rapidísimo.
+        </p>
+        <div class="chrome"><span>el problema</span><span>02 / 15</span></div>
+        <div class="notes">
+          No correr esta slide. Todos los QA de la sala vivieron los cuatro. Pedir que levanten la
+          mano por el número uno. El remate es la última línea: son herramientas neutras, por eso la
+          mala práctica sobrevive para siempre.
+        </div>
+      </section>
+
+      <!-- 3 · La tesis -->
+      <section class="slide" data-title="La tesis">
+        <p class="eyebrow">02 · la tesis</p>
+        <h2 class="anim">
+          Atacamos el problema desde el<br /><span class="hot">modelo de datos</span>, no desde la
+          lista de features.
+        </h2>
+        <div class="rule mt-s"></div>
+        <div class="grid g3 mt-l anim">
+          <div class="card accent">
+            <h3>Un ATC no puede existir sin una historia</h3>
+            <p class="small">
+              Anclarlo a una User Story y a por lo menos un criterio de aceptación es una
+              restricción del esquema, no un campo opcional. Los tests huérfanos los rechaza la base
+              de datos.
+            </p>
+          </div>
+          <div class="card accent">
+            <h3>Un Test no puede existir sin ATCs</h3>
+            <p class="small">
+              Un Test es una cadena de referencias. No hay un campo de texto libre donde pegar
+              pasos, así que no hay nada que duplicar.
+            </p>
+          </div>
+          <div class="card accent">
+            <h3>Un bug no puede existir sin un módulo</h3>
+            <p class="small">
+              Cada defecto está anclado a dónde vive. Por eso el heatmap, las tendencias y los
+              números de cobertura salen gratis.
+            </p>
+          </div>
+        </div>
+        <p class="lede mt-l anim">
+          La estructura del producto enseña buen QA <strong>por cómo funciona</strong>. No hace
+          falta un documento de proceso que lo imponga.
+        </p>
+        <div class="chrome"><span>la tesis</span><span>03 / 15</span></div>
+        <div class="notes">
+          Esta es la slide para clavar fuerte. La competencia agrega features; Bunkai agrega
+          restricciones. Las restricciones son lo que hace que una metodología se sostenga. Si
+          alguien objeta "eso es fricción" — sí, deliberada, en el momento de escribir, para sacarla
+          en el mantenimiento.
+        </div>
+      </section>
+
+      <!-- 4 · El ATC -->
+      <section class="slide" data-title="El ATC">
+        <p class="eyebrow">03 · la pieza base</p>
+        <h2 class="anim">ATC — Acceptance Test Case</h2>
+        <p class="lede anim">
+          Un mini-flujo completo: una precondición, una acción, todas las aserciones que se
+          desprenden de ahí. Reutilizable, atómico, anclado.
+        </p>
+        <div class="split mt-l anim">
+          <div class="card raised">
+            <div class="chain" style="margin-bottom: 12px">
+              <span class="mono hot" style="font-size: 13px">ATC-014</span>
+              <span class="chip" data-layer="UI">UI</span>
+              <span class="chip" data-status="pass">Pass</span>
+            </div>
+            <h3>Iniciar sesión con credenciales válidas</h3>
+            <p class="tiny mono" style="margin-bottom: 12px">anclado a BK-166 · AC-2, AC-3</p>
+            <table>
+              <tr>
+                <td style="width: 26px"><span class="mono tiny">1</span></td>
+                <td>Abrir <span class="mono">/login</span></td>
+              </tr>
+              <tr>
+                <td><span class="mono tiny">2</span></td>
+                <td>Completar email y contraseña</td>
+              </tr>
+              <tr>
+                <td><span class="mono tiny">3</span></td>
+                <td>Enviar</td>
+              </tr>
+            </table>
+            <p
+              class="tiny mt-s"
+              style="text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-3)"
+            >
+              Aserciones
+            </p>
+            <table>
+              <tr>
+                <td><span class="dot" style="background: var(--pass)"></span></td>
+                <td>Redirige al home del workspace</td>
+              </tr>
+              <tr>
+                <td><span class="dot" style="background: var(--pass)"></span></td>
+                <td>Queda seteada la cookie de sesión</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <ul class="clean">
+              <li>
+                <strong>Flujo completo, nunca un clic suelto.</strong> "Hacer clic en el botón de
+                login" no es un ATC. "Iniciar sesión con credenciales válidas" sí lo es.
+              </li>
+              <li>
+                <strong>Identidad = precondición + acción.</strong> ¿Mismo estado, mismo disparador,
+                más expectativas? Mismo ATC, más aserciones. Eso es lo que lo vuelve atómico.
+              </li>
+              <li>
+                <strong>Con capa declarada.</strong> Cada ATC dice si es UI, API o Unit, así una
+                cadena puede mezclar capas y un reporte puede cortar por ellas.
+              </li>
+              <li>
+                <strong>Se escribe una vez, con dueño único.</strong> ATC-014 es la única definición
+                de "iniciar sesión" en todo el repositorio.
+              </li>
+            </ul>
+            <div class="chain mt">
+              <span class="chip" data-layer="UI">UI</span
+              ><span class="chip" data-layer="API">API</span
+              ><span class="chip" data-layer="Unit">Unit</span>
+            </div>
+          </div>
+        </div>
+        <div class="chrome"><span>la pieza base</span><span>04 / 15</span></div>
+        <div class="notes">
+          La slide más importante del deck. Decir la sigla en voz alta: Acceptance Test Case, no
+          "atomic test component" — esa expansión está mal y la corregimos en todo el backlog. La
+          atomicidad es una propiedad de cómo se construye, no su nombre. Detenerse en la regla dos:
+          precondición más acción definen el caso; todo lo demás es una aserción.
+        </div>
+      </section>
+
+      <!-- 5 · Tests como cadenas -->
+      <section class="slide" data-title="Los Tests son cadenas">
+        <p class="eyebrow">04 · ensamblaje</p>
+        <h2 class="anim">
+          Un Test es una cadena de ATCs.<br />Pensalo como LEGO, no como documentos.
+        </h2>
+        <div class="rule mt-s"></div>
+        <div class="card mt anim">
+          <p class="tiny mono" style="color: var(--fg-3)">
+            TEST-07 · Checkout camino feliz ·
+            <span class="chip" data-status="pass" style="margin-left: 6px">Pass</span>
+          </p>
+          <div class="chain mt-s">
+            <span class="brick hl">ATC-014 · login</span><span class="plus">→</span>
+            <span class="brick">ATC-031 · buscar producto</span><span class="plus">→</span>
+            <span class="brick">ATC-044 · agregar al carrito</span><span class="plus">→</span>
+            <span class="brick">ATC-052 · pagar con tarjeta</span>
+          </div>
+        </div>
+        <div class="card mt-s anim">
+          <p class="tiny mono" style="color: var(--fg-3)">
+            TEST-19 · Sesión expirada al pagar ·
+            <span class="chip" data-status="fail" style="margin-left: 6px">Fail</span>
+          </p>
+          <div class="chain mt-s">
+            <span class="brick hl">ATC-014 · login</span><span class="plus">→</span>
+            <span class="brick">ATC-044 · agregar al carrito</span><span class="plus">→</span>
+            <span class="brick">ATC-061 · expirar sesión</span><span class="plus">→</span>
+            <span class="brick">ATC-052 · pagar con tarjeta</span>
+          </div>
+        </div>
+        <div class="grid g3 mt-l anim">
+          <div class="card">
+            <div class="stat hot">1 edición</div>
+            <p class="small mt-s">
+              Arreglás el flujo de login en <span class="mono">ATC-014</span> y los dos tests quedan
+              correctos. Las cadenas guardan <strong>referencias, no copias</strong>.
+            </p>
+          </div>
+          <div class="card">
+            <div class="stat">N tests</div>
+            <p class="small mt-s">
+              Cada ATC muestra en vivo <strong>"usado en N tests"</strong>, así sabés el radio de
+              impacto antes de editar.
+            </p>
+          </div>
+          <div class="card">
+            <div class="stat">&lt; 1.0</div>
+            <p class="small mt-s">
+              La métrica de salud: tests por ATC único abajo de 1.0 significa que la reutilización
+              está pasando de verdad.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>ensamblaje</span><span>05 / 15</span></div>
+        <div class="notes">
+          Señalar ATC-014 apareciendo en las dos cadenas. Ahí está toda la propuesta de valor en una
+          imagen. Mencionar que el mismo ATC puede repetirse legalmente en varias posiciones de una
+          cadena, y por eso cada fila tiene su propio step id: así se reordena.
+        </div>
+      </section>
+
+      <!-- 6 · El flujo completo -->
+      <section class="slide" data-title="El flujo completo">
+        <p class="eyebrow">05 · el loop</p>
+        <h2 class="anim">Una sola cadena, de punta a punta.<br />Nada queda colgando.</h2>
+        <div class="flow anim">
+          <div class="node">
+            <div class="n">01</div>
+            <div class="t">User Story</div>
+            <div class="s">El requerimiento, importado de Jira o escrito acá</div>
+          </div>
+          <div class="arr">→</div>
+          <div class="node">
+            <div class="n">02</div>
+            <div class="t">Criterios</div>
+            <div class="s">Condiciones atómicas y testeables de esa historia</div>
+          </div>
+          <div class="arr">→</div>
+          <div class="node key">
+            <div class="n">03</div>
+            <div class="t">ATC</div>
+            <div class="s">Caso reutilizable, atado a ≥1 criterio</div>
+          </div>
+          <div class="arr">→</div>
+          <div class="node key">
+            <div class="n">04</div>
+            <div class="t">Test</div>
+            <div class="s">Cadena ordenada de referencias a ATCs</div>
+          </div>
+          <div class="arr">→</div>
+          <div class="node">
+            <div class="n">05</div>
+            <div class="t">Run</div>
+            <div class="s">Una ejecución contra un ambiente</div>
+          </div>
+          <div class="arr">→</div>
+          <div class="node">
+            <div class="n">06</div>
+            <div class="t">Bug</div>
+            <div class="s">Cargado desde el paso que falló, en contexto</div>
+          </div>
+        </div>
+        <div class="grid g3 mt-l anim">
+          <div class="card">
+            <h4>Todo cuelga de un Módulo</h4>
+            <p class="tiny">
+              Un nodo real del árbol, hasta seis niveles de profundidad, no el nombre de una
+              carpeta. La cobertura y el heatmap de defectos agregan por ahí.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Los Runs congelan su contenido</h4>
+            <p class="tiny">
+              Editar un ATC el mes que viene nunca reescribe lo que el run del mes pasado ejecutó de
+              verdad. El historial se mantiene honesto.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Se lee en los dos sentidos</h4>
+            <p class="tiny">
+              De una historia hasta la evidencia de su bug, o de un bug de vuelta hasta el criterio
+              que viola. Una lectura, sin spreadsheet.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>el loop</span><span>06 / 15</span></div>
+        <div class="notes">
+          Recorrer de izquierda a derecha una vez, despacio, y después recorrerlo de derecha a
+          izquierda para mostrar que la trazabilidad es bidireccional. Los dos nodos en bermellón
+          son los que ningún competidor tiene como entidades de primera clase.
+        </div>
+      </section>
+
+      <!-- 7 · Modos de ejecución -->
+      <section class="slide" data-title="Tres modos de ejecución">
+        <p class="eyebrow">06 · ejecución</p>
+        <h2 class="anim">Tres formas de ejecutar.<br />Un solo modelo de datos abajo.</h2>
+        <p class="lede anim">
+          Un reporte de regresión puede alimentarse de cualquier mezcla de los tres, porque todos
+          producen el mismo tipo de Run contra los mismos ATCs.
+        </p>
+        <div class="grid g3 mt-l anim">
+          <div class="card accent">
+            <span class="chip" data-status="skipped">ejecutor: humano</span>
+            <h3 class="mt-s">Manual</h3>
+            <p class="small">
+              Arrancás un run contra un ambiente, marcás cada paso como pass, fail o blocked,
+              adjuntás evidencia y cerrás con un veredicto. Si abortás con un motivo, el run se
+              conserva, no se borra.
+            </p>
+          </div>
+          <div class="card accent">
+            <span class="chip" data-status="running">ejecutor: agente</span>
+            <h3 class="mt-s">Agéntico</h3>
+            <p class="small">
+              Una IA opera exactamente la misma API que opera una persona. El agente es un
+              consumidor de primera clase del producto, no un chatbot pegado al costado.
+            </p>
+          </div>
+          <div class="card accent">
+            <span class="chip" data-status="pass">ejecutor: ci</span>
+            <h3 class="mt-s">Automatizado</h3>
+            <p class="small">
+              Tu pipeline envía los resultados por paso, o sube un archivo de resultados, y aparece
+              un Run ligado a su commit y su rama. Mismos ATCs, mismos reportes.
+            </p>
+          </div>
+        </div>
+        <div class="card mt-l anim">
+          <p class="small" style="margin: 0">
+            <strong>Por qué importa comercialmente:</strong> ningún otro TMS trata al agente como
+            ejecutor de primera clase, y ninguno unifica los tres flujos en una sola vista de
+            regresión. La inteligencia vive afuera de la app; la app es la superficie de operación.
+          </p>
+        </div>
+        <div class="chrome"><span>ejecución</span><span>07 / 15</span></div>
+        <div class="notes">
+          Ser honesto con el estado: manual ya está en producción, la ingesta automatizada es el
+          próximo épico, y lo agéntico ya funciona vía la API pública con personal access tokens. No
+          sobrevender: el punto es que los tres caen en la misma tabla, que es la parte difícil y ya
+          está resuelta.
+        </div>
+      </section>
+
+      <!-- 8 · Defectos -->
+      <section class="slide" data-title="Los defectos se quedan adentro">
+        <p class="eyebrow">07 · defectos</p>
+        <h2 class="anim">Los bugs viven dentro del ciclo de pruebas.</h2>
+        <p class="lede anim">
+          Se cargan desde el paso que falló, anclados a módulo, ATC y run. El tracker recibe una
+          copia si la querés; lo que no recibe es la propiedad del dato.
+        </p>
+        <div class="split wide-l mt-l anim">
+          <div>
+            <ul class="clean">
+              <li>
+                <strong>Cargados en contexto.</strong> Una acción sobre un paso en rojo crea el
+                defecto con el estado del run ya adjunto.
+              </li>
+              <li>
+                <strong>Categorizados por construcción.</strong> Módulo, severidad y estado son
+                obligatorios, así que las métricas son un subproducto y no un proyecto de reporting.
+              </li>
+              <li>
+                <strong>Heatmap por módulo.</strong> Conteo y tendencia semana contra semana, para
+                ver qué parte del producto se está degradando, no solo cuántos bugs hay.
+              </li>
+              <li>
+                <strong>Sync de una vía, opcional.</strong> Jira sigue en el loop para quienes viven
+                ahí. QA se queda con la fuente de verdad.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <p class="tiny mono" style="color: var(--fg-3); margin-bottom: 14px">
+              DEFECTOS POR MÓDULO · ÚLTIMOS 7 DÍAS
+            </p>
+            <p class="small" style="margin-bottom: 4px">
+              Checkout <span class="mono" style="float: right; color: var(--fail)">14 ▲ 6</span>
+            </p>
+            <div class="bar"><i style="width: 100%; background: var(--fail)"></i></div>
+            <p class="small mt-s" style="margin-bottom: 4px">
+              Auth <span class="mono" style="float: right; color: var(--blocked)">6 ▲ 1</span>
+            </p>
+            <div class="bar"><i style="width: 43%; background: var(--blocked)"></i></div>
+            <p class="small mt-s" style="margin-bottom: 4px">
+              Search <span class="mono" style="float: right; color: var(--fg-2)">3 ▬</span>
+            </p>
+            <div class="bar"><i style="width: 21%; background: var(--fg-3)"></i></div>
+            <p class="small mt-s" style="margin-bottom: 4px">
+              Billing <span class="mono" style="float: right; color: var(--pass)">1 ▼ 2</span>
+            </p>
+            <div class="bar"><i style="width: 7%; background: var(--pass)"></i></div>
+            <p class="tiny mt" style="color: var(--fg-4)">Datos ilustrativos.</p>
+          </div>
+        </div>
+        <div class="chrome"><span>defectos</span><span>08 / 15</span></div>
+        <div class="notes">
+          El heatmap es la slide que vende a leads y managers más que a los QA individuales.
+          Encuadrarla así: esta es la conversación que querés tener en una retro, y hoy no la podés
+          tener porque el dato del bug vive en un tracker que no sabe nada de tu estructura de
+          tests.
+        </div>
+      </section>
+
+      <!-- 9 · Cobertura -->
+      <section class="slide" data-title="Cobertura y trazabilidad">
+        <p class="eyebrow">08 · cobertura</p>
+        <h2 class="anim">Respuestas, no porcentajes.</h2>
+        <p class="lede anim">
+          "Pasa el ochenta por ciento de los tests" no dice nada sobre si esos tests validan lo que
+          importa. Estas cuatro preguntas sí.
+        </p>
+        <div class="grid g2 mt-l anim">
+          <div class="card">
+            <h3>¿Qué está sin testear ahora mismo?</h3>
+            <p class="small">
+              Criterios y módulos sin ningún ATC atado, más un filtro de "nunca ejecutado" para lo
+              que existe pero nadie corrió. Los huecos pasan a ser una lista, no una sensación.
+            </p>
+          </div>
+          <div class="card">
+            <h3>¿Cuánto falta para que esta historia esté verde?</h3>
+            <p class="small">
+              Tiempo hasta verde por User Story, calculado con el historial de runs y de bugs. Un
+              número real de ciclo para la fase de QA.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Mostrame la cadena entera.</h3>
+            <p class="small">
+              Historia, criterio, ATC, test, run y evidencia del bug, renderizado en una sola
+              lectura y filtrable por veredicto, módulo y rango de fechas.
+            </p>
+          </div>
+          <div class="card">
+            <h3>¿Se lo puedo dar a un auditor?</h3>
+            <p class="small">
+              Exportás la cadena armada como snapshot de solo lectura. Los equipos regulados reciben
+              evidencia, no capturas pegadas en un documento.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>cobertura</span><span>09 / 15</span></div>
+        <div class="notes">
+          Leer los cuatro títulos como preguntas que a la sala ya le hacen y no puede responder. Ese
+          encuadre convierte mejor que enumerar las funcionalidades.
+        </div>
+      </section>
+
+      <!-- 10 · Ergonomía -->
+      <section class="slide" data-title="Cómo se siente">
+        <p class="eyebrow">09 · ergonomía</p>
+        <h2 class="anim">Se siente como tu editor,<br />no como una wiki.</h2>
+        <div class="rule mt-s"></div>
+        <div class="grid g4 mt anim">
+          <div class="card">
+            <h4>Explorador lateral</h4>
+            <p class="tiny">
+              Un árbol de módulos real, con arrastrar para mover, renombrar, borrado suave y los
+              ambientes de cada proyecto administrados ahí mismo.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Pestañas</h4>
+            <p class="tiny">
+              Abrís ATCs, tests y runs como pestañas sobre un explorador que no se va. Tu contexto
+              sobrevive a la navegación.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Tres vistas</h4>
+            <p class="tiny">
+              Árbol para la estructura, tabla para el trabajo en volumen, mapa mental para ver cómo
+              se conecta un módulo de verdad.
+            </p>
+          </div>
+          <div class="card">
+            <h4>Paleta de comandos</h4>
+            <p class="tiny">
+              <span class="kbd">⌘K</span> llega a cualquier acción principal. Que todo se haga con
+              teclado es requisito, no bonus.
+            </p>
+          </div>
+        </div>
+        <div class="grid g3 mt-l anim">
+          <div class="card raised">
+            <h4>Densidad a propósito</h4>
+            <p class="tiny">
+              Un QA maneja cientos de ATCs por día. El espacio existe para aclarar, no para relajar.
+              El modo cómodo es un toggle que activás vos.
+            </p>
+          </div>
+          <div class="card raised">
+            <h4>El color significa estado</h4>
+            <p class="tiny">
+              Pass, fail, blocked, skipped, running. Nada más se gana un color, así una fila roja
+              siempre quiere decir lo mismo.
+            </p>
+          </div>
+          <div class="card raised">
+            <h4>El oscuro es el canónico</h4>
+            <p class="tiny">
+              El tema oscuro es la fuente de verdad, se diseñó primero. El claro lo sigue a él, no
+              al revés.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>ergonomía</span><span>10 / 15</span></div>
+        <div class="notes">
+          Slide corta, casi un respiro. Si tenés la app abierta, este es el momento para pasar a
+          demo en vivo del explorador y la paleta de comandos en lugar de hablar sobre las tarjetas.
+        </div>
+      </section>
+
+      <!-- 11 · Origen KATA -->
+      <section class="slide" data-title="De dónde viene">
+        <p class="eyebrow">10 · origen</p>
+        <h2 class="anim">Esto no empezó como producto.<br />Empezó como arquitectura.</h2>
+        <div class="split mt-l anim">
+          <div>
+            <p class="lede">
+              Bunkai es la productización de <strong>KATA</strong> — Component Action Test
+              Architecture — y de la metodología <strong>IQL</strong> a la que pertenece.
+            </p>
+            <ul class="clean mt">
+              <li>
+                <strong>IQL — Integrated Quality Lifecycle.</strong> Planificación, documentación,
+                ejecución y reporte como un solo ciclo trazable. KATA es su brazo de automatización.
+              </li>
+              <li>
+                <strong>KATA.</strong> Una arquitectura de automatización por capas donde un ATC
+                vive como un método decorado de un componente de dominio, mapeado uno a uno con un
+                ticket.
+              </li>
+              <li>
+                <strong>El nombre cierra el círculo.</strong> Un kata es la forma. Bunkai es la
+                práctica de descomponer esa forma en las piezas que realmente aplicás.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div class="card" style="padding: 16px 18px">
+              <p class="tiny mono" style="color: var(--fg-3); margin-bottom: 10px">
+                CAPAS DE KATA — LA DE ARRIBA USA LA DE ABAJO, NUNCA AL REVÉS
+              </p>
+              <table>
+                <tr>
+                  <td style="width: 34px"><span class="mono tiny hot">4</span></td>
+                  <td>
+                    <strong>Fixtures</strong><br /><span class="tiny"
+                      >Punto de entrada de inyección de dependencias</span
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="mono tiny hot">3.5</span></td>
+                  <td>
+                    <strong>Steps</strong><br /><span class="tiny"
+                      >Cadenas de ATCs reutilizadas como precondición</span
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="mono tiny hot">3</span></td>
+                  <td>
+                    <strong>Componentes de dominio</strong><br /><span class="tiny"
+                      >Lógica de negocio — acá viven los ATCs</span
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="mono tiny hot">2</span></td>
+                  <td>
+                    <strong>Componentes base</strong><br /><span class="tiny"
+                      >Helpers de HTTP y de navegador</span
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="mono tiny hot">1</span></td>
+                  <td>
+                    <strong>TestContext</strong><br /><span class="tiny"
+                      >Config, logger, factories de datos, ambientes</span
+                    >
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <p class="tiny mt-s">
+              Implementación de referencia: el framework
+              <span class="mono">bunkai-qa-engineering</span>.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>origen</span><span>11 / 15</span></div>
+        <div class="notes">
+          Esta es la slide de credibilidad. El producto no es una suposición sobre lo que un equipo
+          de QA necesita: es una metodología que ya funciona, corriendo suites, convertida en
+          sistema. Si alguien pregunta si la estructura es teórica, la respuesta es que el framework
+          viene ejecutando contra ella hace meses.
+        </div>
+      </section>
+
+      <!-- 12 · KATA ↔ Bunkai -->
+      <section class="slide" data-title="Código ↔ producto">
+        <p class="eyebrow">11 · la correlación</p>
+        <h2 class="anim">El mismo ATC, de los dos lados.</h2>
+        <div class="split wide-l mt anim">
+          <div>
+            <pre><span class="c">// KATA — LoginPage.ts, componente de dominio (capa 3)</span>
+<span class="d">@atc</span>(<span class="s">'BK-166'</span>)
+<span class="k">async</span> loginWithValidCredentials(data: LoginData) {
+  <span class="k">await</span> <span class="k">this</span>.page.goto(<span class="s">'/login'</span>);
+  <span class="k">await</span> <span class="k">this</span>.page.locator(<span class="s">'#email'</span>).fill(data.email);
+  <span class="k">await</span> <span class="k">this</span>.page.locator(<span class="s">'#password'</span>).fill(data.pass);
+  <span class="k">await</span> <span class="k">this</span>.page.locator(<span class="s">'button[type=submit]'</span>).click();
+  <span class="k">await</span> expect(<span class="k">this</span>.page).toHaveURL(/dashboard/);
+}</pre>
+            <p class="tiny mt-s">Un método decorado. Un ticket. Un flujo completo.</p>
+          </div>
+          <div>
+            <table>
+              <thead>
+                <tr>
+                  <th>En KATA (el código)</th>
+                  <th>En Bunkai (el producto)</th>
+                </tr>
+              </thead>
+              <tr>
+                <td>Método <span class="mono">@atc('BK-166')</span></td>
+                <td>Entidad <strong>ATC</strong>, capa UI</td>
+              </tr>
+              <tr>
+                <td>Archivo de componente de dominio</td>
+                <td><strong>Módulo</strong> en el árbol</td>
+              </tr>
+              <tr>
+                <td>Cadena en <span class="mono">tests/e2e/</span></td>
+                <td><strong>Test</strong> — cadena ordenada de ATCs</td>
+              </tr>
+              <tr>
+                <td>Capa Steps (3.5)</td>
+                <td>ATCs reutilizados como prefijo de precondición</td>
+              </tr>
+              <tr>
+                <td>Ejecución de Playwright</td>
+                <td>
+                  <strong>Run</strong>, ejecutor <span class="mono">ci</span> o
+                  <span class="mono">agent</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Salida del reporter</td>
+                <td>Resultados del run, cobertura, heatmap</td>
+              </tr>
+            </table>
+            <p class="small mt">
+              Escribís la automatización en KATA y la gestionás en Bunkai. Mismo vocabulario, mismos
+              identificadores, sin capa de traducción entre el framework y el sistema de gestión de
+              pruebas.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>la correlación</span><span>12 / 15</span></div>
+        <div class="notes">
+          El premio de la slide anterior. Todos los que escribieron una suite de Playwright
+          entienden la columna de la izquierda; la de la derecha es lo que al TMS siempre le faltó.
+          Marcar que el id del ticket es la clave de unión: eso es lo que hace que los dos lados
+          calcen sin archivo de mapeo.
+        </div>
+      </section>
+
+      <!-- 13 · Competidores -->
+      <section class="slide" data-title="Frente a los incumbentes">
+        <p class="eyebrow">12 · posicionamiento</p>
+        <h2 class="anim">Donde los incumbentes no pueden seguirnos.</h2>
+        <div class="card mt anim" style="padding: 20px 22px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%"></th>
+                <th>Xray</th>
+                <th>Zephyr Scale</th>
+                <th>TestRail</th>
+                <th style="color: var(--accent)">Bunkai</th>
+              </tr>
+            </thead>
+            <tr>
+              <td><strong>Unidad de test reutilizable</strong></td>
+              <td>Monolítica</td>
+              <td>Monolítica</td>
+              <td>Monolítica</td>
+              <td><span class="chip" data-status="pass">ATC, primera clase</span></td>
+            </tr>
+            <tr>
+              <td><strong>Trazabilidad obligatoria</strong></td>
+              <td>Campo opcional</td>
+              <td>Campo opcional</td>
+              <td>Campo opcional</td>
+              <td><span class="chip" data-status="pass">Restricción de esquema</span></td>
+            </tr>
+            <tr>
+              <td><strong>Ciclo de defectos nativo</strong></td>
+              <td>Delegado</td>
+              <td>Delegado</td>
+              <td>Mínimo</td>
+              <td><span class="chip" data-status="pass">Dentro del ciclo</span></td>
+            </tr>
+            <tr>
+              <td><strong>Ejecución agéntica</strong></td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td><span class="chip" data-status="pass">Primera clase</span></td>
+            </tr>
+            <tr>
+              <td><strong>Self-hosted / open source</strong></td>
+              <td>—</td>
+              <td>—</td>
+              <td>Comercial</td>
+              <td><span class="chip" data-status="pass">Open core</span></td>
+            </tr>
+          </table>
+        </div>
+        <div class="grid g2 mt-l anim">
+          <div class="card">
+            <h4>Por qué no lo pueden copiar</h4>
+            <p class="tiny">
+              Los ATCs reutilizables son un cambio de modelo de datos, no una feature.
+              Retrofitearlos implica migrar el caso monolítico de cada cliente, y además rehacer el
+              modelo de distribución para poder entregar self-hosted.
+            </p>
+          </div>
+          <div class="card">
+            <h4>A quién le abre la puerta</h4>
+            <p class="tiny">
+              Equipos de fintech, healthtech y legaltech que legalmente no pueden poner specs y
+              datos de prueba en el SaaS de un tercero. La soberanía del dato se resuelve con
+              propiedad.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>posicionamiento</span><span>13 / 15</span></div>
+        <div class="notes">
+          Mantenerlo factual. Los incumbentes son maduros y están bien integrados con Jira: decirlo.
+          La afirmación es angosta y defendible: en estas cinco filas no pueden seguirnos sin
+          reconstruirse, y esas cinco filas son justo las que empujan el costo de mantenimiento.
+        </div>
+      </section>
+
+      <!-- 14 · Estado -->
+      <section class="slide" data-title="Dónde estamos">
+        <p class="eyebrow">13 · estado</p>
+        <h2 class="anim">El core está construido. Ahora crece.</h2>
+        <div class="grid g2 mt anim">
+          <div>
+            <p class="tiny mono" style="color: var(--fg-3); margin-bottom: 10px">
+              EN PRODUCCIÓN O EN QA
+            </p>
+            <ul class="clean">
+              <li>
+                <strong>Tenancy e identidad</strong> — workspaces, roles, invitaciones, magic link,
+                OAuth, contraseña
+              </li>
+              <li>
+                <strong>Proyectos, módulos y ambientes</strong> — árbol anidado, tres vistas,
+                pestañas
+              </li>
+              <li>
+                <strong>Historias, criterios e import de Jira</strong> — editor markdown, traer por
+                JQL
+              </li>
+              <li>
+                <strong>Librería de ATCs</strong> — builder, propagación de ediciones, reporte de
+                uso
+              </li>
+              <li><strong>Tests</strong> — armado de cadena, reordenar, tags, vista expandida</li>
+              <li>
+                <strong>Runs manuales</strong> — veredicto por paso, abortar, historial, reportes
+              </li>
+              <li><strong>Defectos</strong> — carga, listado, heatmap, sync de una vía</li>
+              <li>
+                <strong>Cobertura y trazabilidad</strong> — huecos, tiempo hasta verde, feed de
+                actividad, export
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p class="tiny mono" style="color: var(--fg-3); margin-bottom: 10px">LO QUE SIGUE</p>
+            <ul class="clean">
+              <li>
+                <strong>Test plans y milestones</strong> — agrupar tests para un release, seguir
+                preparación contra una fecha
+              </li>
+              <li>
+                <strong>Centro de notificaciones</strong> — inbox de eventos de runs y bugs,
+                preferencias por tipo, digest por email
+              </li>
+              <li>
+                <strong>Automatización e ingesta de CI</strong> — enviar o transmitir runs
+                automatizados, subir archivos de resultados, ligar al commit
+              </li>
+              <li>
+                <strong>Chat de equipo</strong> — canales por workspace y por proyecto, menciones,
+                links enriquecidos a entidades
+              </li>
+              <li>
+                <strong>Dashboard de inicio</strong> — runs activos, bugs abiertos, cobertura de un
+                vistazo
+              </li>
+              <li><strong>Facturación</strong> — asientos, tiers, facturas</li>
+            </ul>
+            <p class="tiny mt">
+              Community self-hosted · Cloud · Enterprise — mismo código, habilitado por licencia.
+            </p>
+          </div>
+        </div>
+        <div class="chrome"><span>estado</span><span>14 / 15</span></div>
+        <div class="notes">
+          No leer línea por línea. Señalar la columna izquierda y decir que el loop completo de QA
+          ya cierra hoy; señalar la derecha y decir que todo lo que viene se apoya sobre ese loop,
+          no debajo de él. Si preguntan fechas, remitir al roadmap en lugar de improvisar.
+        </div>
+      </section>
+
+      <!-- 15 · Apéndice -->
+      <section class="slide" data-title="Apéndice">
+        <p class="eyebrow">14 · apéndice · para curiosos</p>
+        <h2 class="anim">La parte que dijimos que dejábamos para el final.</h2>
+        <div class="grid g3 mt anim">
+          <div class="card">
+            <h3>API-first, literal</h3>
+            <p class="small">
+              REST con un contrato OpenAPI como fuente de verdad, personal access tokens y un CLI.
+              La UI es un cliente más; los agentes y los pipelines son los otros.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Multi-tenant por fila</h3>
+            <p class="small">
+              El aislamiento se aplica en la capa de base de datos, así que nadie recibe
+              notificaciones de, ni puede leer, una entidad fuera de su workspace.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Historial de runs inmutable</h3>
+            <p class="small">
+              Los runs congelan el contenido del ATC que ejecutaron. Editar un ATC propaga hacia
+              adelante a los tests, nunca hacia atrás sobre resultados ya registrados.
+            </p>
+          </div>
+        </div>
+        <div class="grid g2 mt-l anim">
+          <div class="card raised">
+            <h4>Stack</h4>
+            <p class="tiny">
+              Next.js sobre Vercel, Postgres con row-level security, tipado de punta a punta desde
+              el contrato OpenAPI. Una distribución self-hosted es el objetivo para la edición
+              community.
+            </p>
+          </div>
+          <div class="card raised">
+            <h4>Dónde seguir</h4>
+            <p class="tiny">
+              El glosario de dominio define cada término de esta presentación. Los mapas de datos,
+              de features y de API cubren entidades, pantallas y endpoints. La referencia de KATA
+              vive en el repo del framework.
+            </p>
+          </div>
+        </div>
+        <p class="lede mt-l anim">
+          Todo lo anterior es consecuencia de una sola decisión:
+          <strong class="hot">poner la disciplina en el modelo de datos.</strong>
+        </p>
+        <div class="chrome"><span>apéndice</span><span>15 / 15</span></div>
+        <div class="notes">
+          Slide opcional. Saltarla entera si la sala es de producto. Si después se quedan los devs,
+          este es el trampolín a la charla de arquitectura. Cerrar con la última línea en cualquiera
+          de los dos casos.
+        </div>
+      </section>
+    </div>
+
+    <div class="overview" id="ov"></div>
+    <div class="progress"><i id="pg"></i></div>
+
+    <script>
+      (function () {
+        var slides = [].slice.call(document.querySelectorAll('.slide'));
+        var ov = document.getElementById('ov'),
+          pg = document.getElementById('pg');
+        var i = 0;
+
+        function go(n) {
+          i = Math.max(0, Math.min(slides.length - 1, n));
+          slides.forEach(function (s, k) {
+            s.classList.toggle('is-active', k === i);
+          });
+          pg.style.width = ((i + 1) / slides.length) * 100 + '%';
+          history.replaceState(null, '', '#/' + (i + 1));
+        }
+
+        slides.forEach(function (s, k) {
+          var t = document.createElement('div');
+          t.className = 'thumb';
+          t.innerHTML =
+            '<div class="n">' +
+            String(k + 1).padStart(2, '0') +
+            '</div><div class="t">' +
+            (s.dataset.title || '') +
+            '</div>';
+          t.onclick = function () {
+            ov.classList.remove('open');
+            go(k);
+          };
+          ov.appendChild(t);
+        });
+
+        document.addEventListener('keydown', function (e) {
+          var k = e.key;
+          if (k === 'ArrowRight' || k === 'PageDown' || k === ' ') {
+            e.preventDefault();
+            go(i + 1);
+          } else if (k === 'ArrowLeft' || k === 'PageUp') {
+            e.preventDefault();
+            go(i - 1);
+          } else if (k === 'Home') {
+            go(0);
+          } else if (k === 'End') {
+            go(slides.length - 1);
+          } else if (k === 'o' || k === 'O') {
+            ov.classList.toggle('open');
+          } else if (k === 'Escape') {
+            ov.classList.remove('open');
+          } else if (k === 'f' || k === 'F') {
+            document.fullscreenElement
+              ? document.exitFullscreen()
+              : document.documentElement.requestFullscreen();
+          } else if (k === 'n' || k === 'N') {
+            var nt = slides[i].querySelector('.notes');
+            if (nt) alert(nt.textContent.trim());
+          }
+        });
+
+        var m = (location.hash || '').match(/#\/(\d+)/);
+        go(m ? parseInt(m[1], 10) - 1 : 0);
+      })();
+    </script>
+  </body>
+</html>

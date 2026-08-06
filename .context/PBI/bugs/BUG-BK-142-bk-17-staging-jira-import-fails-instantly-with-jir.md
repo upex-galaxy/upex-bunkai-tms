@@ -4,10 +4,6 @@
 **Priority:** Highest
 **Status:** Closed
 **Components:** User Stories & Acceptance Criteria
-**Severity:** Crítica
-**Error Type:** Integration
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -60,38 +56,6 @@ Last successful import job `b4b8e74c-...` completed ***2026-06-05T10****:55:****
 ## Suggested Fix
 
 Verify/restore `ATLASSIAN*URL`, `ATLASSIAN*EMAIL`, `ATLASSIAN*API*TOKEN` on the Vercel project + environment scope that serves `staging-upexbunkai.vercel.app`, then redeploy.
-
----
-
-## 🐞 Actual Result
-
-Every `POST /api/v1/imports` job fails instantly (~0.1s) with `status: "failed"` and `errors[0] = ```` — confirmed across 6 consecutive jobs over 84 minutes.
-
----
-
-## ✅ Expected Result
-
-The job transitions `queued -> running -> completed`, the worker successfully calls Jira `/rest/api/3/search/jql`, and `imported_count` reflects the number of issues matched by the JQL (per AC1).
-
----
-
-## 🔍 Root Cause
-
-**Category:** Configuration Error 
-
----
-
-## 🚩 Workaround
-
-None. This is an environment-level configuration blocker — no application-level workaround exists. AC1-AC5 cannot be exercised until the staging deployment's `ATLASSIAN_*` environment variables are restored.
-
----
-
-## 🧫 Evidence
-
-- `evidence/TC-POS-01-import-post.json`, `evidence/TC-POS-01-poll-failed.json`, `evidence/SMOKE-jira-creds-regression-import-jobs-history.json` (under `.context/PBI/.../STORY-BK-17-.../evidence/`)
-- `/tmp/bk17-signin**.json`, `/tmp/bk17-import-post**.json`, `/tmp/bk17-import-poll*.json` (retest captures, 2026-06-15)
-- Local credential check: `GET {ATLASSIAN_URL}/rest/api/3/myself` with `.env` creds -> 200 OK
 
 ---
 

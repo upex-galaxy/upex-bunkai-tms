@@ -1,0 +1,53 @@
+-- Migration: 0058 — BK-145: enforce ATC title minimum length at the DB layer
+-- Authored: 2026-08-03
+--
+-- PENDING HUMAN APPROVAL — WRITTEN, NOT APPLIED.
+-- `.agents/project.yaml` -> `autonomous_delivery.migrations: confirm` (the
+-- shared Supabase instance backs local/staging/production off a single
+-- project ref — see ADR-0012). This file is part of the BK-145 PR as
+-- defense-in-depth; it has NOT been run against the live database. A human
+-- must review + apply it explicitly (`supabase db push` / the Supabase MCP
+-- `apply_migration` tool) before it takes effect anywhere.
+--
+-- Root cause (BK-145): `public.atcs.title` is `text not null` with no length
+-- floor. Neither the web editor's save path (`saveAtcAction` ->
+-- `bunkai_update_atc`, migration 0035) nor the create RPC enforced the BK-18
+-- title bounds (`ATC_TITLE_MIN = 3`, `lib/atcs/validation.ts`) that the
+-- headless API already applies via `AtcUpdateBodySchema`/`AtcCreateBodySchema`
+-- (zod, app-layer only). BK-145's Tier A fix (same PR) closes the two
+-- app-layer gaps that actually let a short title reach the RPC: the web
+-- editor's `canSave` guard (`components/atcs/AtcEditor.tsx`) and the
+-- `saveAtcAction` server action (`app/(app)/projects/[projectSlug]/atcs/
+-- [atcId]/actions.ts`) now both reuse the shared `titleValid`/`TITLE_MESSAGE`
+-- guard (`lib/atcs/builder-guards.ts`) the create flow already used. This
+-- migration adds the missing floor as a CHECK constraint so the invariant
+-- holds even for a future write path that bypasses the app layer entirely
+-- (a new RPC, a direct SQL fix-up, a PAT-authenticated route added later).
+--
+-- Additive, not a rewrite: a CHECK constraint, not `create or replace
+-- function`. Preferred over adding `raise exception` inside
+-- `bunkai_update_atc` / `bunkai_create_atc` per the ticket's own two
+-- alternatives — replacing an existing live SECURITY DEFINER function is a
+-- bigger, riskier change than adding a constraint, and out of scope for an
+-- autonomous run regardless (same confirm gate would apply to a function
+-- rewrite, but the blast radius of a mistyped CREATE OR REPLACE is larger).
+--
+-- NOT VALID: added without validating existing rows so this ships as a
+-- pure schema change with no table scan / lock escalation risk description
+-- at review time. Before/while applying, the approving human should:
+--   1. Check for pre-existing offending rows:
+--        select id, title from public.atcs where length(title) < 3;
+--      (BK-145 QA confirmed at least one such row can exist on staging from
+--      the regression window — 2026-07-06 verification saved a 2-char title
+--      with no error at any layer.)
+--   2. Decide a remediation for any hits (rename vs. leave as a known
+--      grandfathered exception) — this migration does not silently touch
+--      existing data.
+--   3. Run `alter table public.atcs validate constraint
+--      atcs_title_min_length;` once step 1/2 are clear, so the constraint is
+--      enforced for the full table, not just new/updated rows.
+
+alter table public.atcs
+  add constraint atcs_title_min_length
+  check (length(title) >= 3)
+  not valid;

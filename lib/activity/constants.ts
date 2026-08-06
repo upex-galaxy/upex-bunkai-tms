@@ -18,6 +18,12 @@ export const ACTIVITY_PAGE_SIZE = 30;
 // enforcement point. Kept in sync BY HAND with that SQL literal (Decision
 // 2's flagged trade-off) — changing one without the other silently drifts
 // `ACTION_LABELS` coverage from the server's actual filter.
+// BK-264 (Slice 4) — the 4 Bug-triage events (assign/reassign/unassign,
+// status transition) the DB has been writing since Slice 1
+// (0054_bug_assignment_status.sql) join the feed here. `bug.filed` is a
+// separate, PRE-EXISTING gap (bunkai_create_bug already emits it, flagged
+// during Slice 1/2) — intentionally left out of this list; it is not this
+// story's event to add.
 export const ACTIVITY_ALLOWED_ACTIONS = [
   'module.renamed',
   'module.description_updated',
@@ -27,6 +33,10 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'test.created',
   'run.finished',
   'run.aborted',
+  'bug.assigned',
+  'bug.reassigned',
+  'bug.unassigned',
+  'bug.status_changed',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];

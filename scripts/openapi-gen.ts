@@ -60,11 +60,23 @@ import '../app/api/v1/workspaces/[id]/membership/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/projects/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/recent-projects/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/active-runs/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/open-bugs/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/coverage/route.openapi';
+
 import '../app/api/v1/projects/[id]/modules/route.openapi';
 
 import '../app/api/v1/projects/[id]/environments/route.openapi';
 
 import '../app/api/v1/environments/[id]/route.openapi';
+
+import '../app/api/v1/projects/[id]/milestones/route.openapi';
+
+import '../app/api/v1/milestones/[id]/route.openapi';
 
 import '../app/api/v1/modules/[id]/route.openapi';
 
@@ -118,11 +130,23 @@ import '../app/api/v1/runs/[id]/steps/[stepId]/mark/route.openapi';
 
 import '../app/api/v1/bugs/route.openapi';
 
+import '../app/api/v1/bugs/[id]/assign/route.openapi';
+
+import '../app/api/v1/bugs/[id]/status/route.openapi';
+
 import '../app/api/v1/projects/[id]/bugs/route.openapi';
 
 import '../app/api/v1/projects/[id]/coverage/route.openapi';
 
 import '../app/api/v1/projects/[id]/bugs/heatmap/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/notifications/route.openapi';
+
+import '../app/api/v1/notifications/[id]/read/route.openapi';
+
+import '../app/api/v1/workspaces/[id]/notifications/read-all/route.openapi';
+
+import '../app/api/v1/notification-preferences/route.openapi';
 
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');

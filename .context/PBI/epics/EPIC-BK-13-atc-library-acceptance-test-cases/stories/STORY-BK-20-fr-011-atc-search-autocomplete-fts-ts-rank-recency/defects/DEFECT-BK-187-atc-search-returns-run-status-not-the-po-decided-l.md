@@ -5,10 +5,6 @@
 **Priority:** High
 **Status:** Open
 **Components:** ATC Library (Acceptance Test Cases)
-**Severity:** Mayor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -38,32 +34,6 @@
 ## Evidence
 
 - `evidence/stage2-api-results.json` -> `SMOKE.item0`: item keys = `[id, slug, layer, title, status, module_path]`, with `status = "unrun"`.
-
----
-
-## 🐞 Actual Result
-
-Response item shape: `{id, slug, title, layer, status, module_path}`.
-
-The `status` field = `unrun` (run-status enum: `pass` / `fail` / `blocked` / `skipped` / `running` / `unrun`). The identifier field is `id`. There is no `status*dot` field and no `atc*id` field.
-
----
-
-## ✅ Expected Result
-
-Per the PO decision, each search item exposes `status*dot` in {`draft`, `ready`, `automated`, `deprecated`} (the ATC lifecycle status) and an identifier field named `atc*id`, so the EPIC-BK-5 picker can present the reuse / lifecycle signal.
-
----
-
-## 🧫 Evidence
-
-Raw API dump: `evidence/stage2-api-results.json` -> `SMOKE.item0`.
-
-- `item0*keys` = `[id, layer, module*path, slug, status, title]`
-- `item0.status` = `unrun`
-- `item0.id` = `c1357f01-a9cb-4112-8d6a-3f1696c45524`
-
-Captured 2026-06-30 on staging via a PAT with the `atc:read` scope.
 
 ---
 

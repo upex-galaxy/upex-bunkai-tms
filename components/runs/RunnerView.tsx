@@ -123,6 +123,29 @@ interface RunnerViewProps {
   // than one module. Missing entries (atc_id not in the map) fall back to
   // the run-level snapshot.
   atcModuleNames?: Record<string, string>
+  // BK-212 Slice 2 — the bug a notification's deep link points at (`?bugId=`,
+  // resolved + RLS/run-scoped server-side by the page). `null`/absent renders
+  // this view exactly as it did before this story: no banner, no highlight.
+  linkedBug?: LinkedBugSummary | null
+}
+
+// BK-212 Slice 2 — pre-formatted (severity/status label + `.status-chip`
+// token) summary of the bug a notification deep-links to, mirroring
+// `lib/bugs/list-view.ts`'s `formatBugListRow` shape rather than re-deriving
+// labels/tokens here — same chip vocabulary the standalone bugs list already
+// renders (BugsListView.tsx).
+export interface LinkedBugSummary {
+  id: string
+  title: string
+  severityLabel: string
+  severityToken: string
+  statusLabel: string
+  statusToken: string
+  // The run_step_id this bug was filed against (0046_bugs.sql provenance) —
+  // null for a bug filed against the run but not tied to one step (should
+  // not happen for a run-linked bug in practice, but stays defensive). When
+  // set, the matching step is highlighted + scrolled into view on mount.
+  runStepId: string | null
 }
 
 // Shared error-envelope shape for both run terminal actions (abort + finish).
@@ -149,7 +172,7 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {} }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -194,6 +217,21 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   useEffect(() => {
     setView(run);
   }, [run]);
+
+  // BK-212 Slice 2 — scroll the deep-linked bug's originating step into view
+  // once, on first paint (mirrors AC1's "clicking it takes her to that bug
+  // with its run context" — landing on the page alone isn't enough, the
+  // specific step needs to be reachable without hunting through the chain).
+  // A ref map keyed by step id (not a single ref) because the highlighted
+  // step is data-driven, not the first/last one.
+  const stepRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  useEffect(() => {
+    if (!linkedBug?.runStepId) { return; }
+    stepRefs.current.get(linkedBug.runStepId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Deliberately runs once per linked step id, not on every `view` update —
+    // re-scrolling on an unrelated realtime refresh would yank the viewport
+    // out from under whoever is reading the page.
+  }, [linkedBug?.runStepId]);
 
   // Refine the run tab's placeholder label ('Run') to the test title once the
   // composed payload is in hand. `registerRunLabel` is stable + a no-op when the
@@ -645,6 +683,30 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
         </div>
       )}
 
+      {/* BK-212 Slice 2 — linked-bug banner: the run context a bug
+          notification's deep link lands on (AC1 "clicking it takes her to
+          that bug with its run context"). Mirrors the abort-reason/
+          final-verdict banners' chrome; only renders when `?bugId=` resolved
+          to a bug that actually belongs to THIS run (page.tsx). */}
+      {linkedBug && (
+        <div className="flex flex-shrink-0 items-start border-b border-stroke-1 bg-surface-2 px-4 py-2">
+          <div
+            data-testid="runner-linked-bug-banner"
+            className="mx-auto flex w-full max-w-[820px] flex-wrap items-center gap-2"
+          >
+            <Bug size={13} className="shrink-0 text-fg-3" />
+            <span className="shrink-0 font-mono text-2xs font-medium uppercase tracking-wider text-fg-3">
+              Linked bug
+            </span>
+            <span data-testid="runner-linked-bug-title" className="min-w-0 flex-1 truncate text-xs font-medium text-fg-0">
+              {linkedBug.title}
+            </span>
+            <span className="status-chip" data-status={linkedBug.severityToken}>{linkedBug.severityLabel}</span>
+            <span className="status-chip" data-status={linkedBug.statusToken}>{linkedBug.statusLabel}</span>
+          </div>
+        </div>
+      )}
+
       {/* ordered snapshot chain — a pending checklist. Centered max-width column,
           aligned with the header content. */}
       <div className="flex-1 overflow-auto p-4">
@@ -692,12 +754,21 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
                       stepStatus: s.status,
                     });
                     const isMarkFormOpen = markStepId === s.id;
+                    // BK-212 Slice 2 — this is the step the linked bug (if
+                    // any) was filed against; highlighted + the scroll target
+                    // of the effect above.
+                    const isLinkedBugStep = linkedBug?.runStepId === s.id;
 
                     return (
                       <li
                         key={s.id}
+                        ref={(el) => {
+                          if (el) { stepRefs.current.set(s.id, el); }
+                          else { stepRefs.current.delete(s.id); }
+                        }}
                         data-testid={`runner-step-${atc.position}-${s.position}`}
-                        className={`grid grid-cols-[28px_1fr] items-stretch ${i === 0 ? '' : 'border-t border-stroke-1'}`}
+                        data-linked-bug={isLinkedBugStep ? 'true' : undefined}
+                        className={`grid grid-cols-[28px_1fr] items-stretch ${i === 0 ? '' : 'border-t border-stroke-1'} ${isLinkedBugStep ? 'ring-2 ring-inset ring-accent' : ''}`}
                       >
                         <span className="inline-flex items-center justify-center border-r border-stroke-1 font-mono text-xs font-medium text-fg-3">
                           {String(s.position).padStart(2, '0')}

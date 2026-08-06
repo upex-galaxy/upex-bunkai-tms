@@ -4,10 +4,6 @@
 **Priority:** High
 **Status:** Closed
 **Components:** ATC Library (Acceptance Test Cases)
-**Severity:** Mayor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -48,33 +44,6 @@ The happy-path edit endpoint `PATCH /api/v1/atcs/{id}`, called with the ***corre
 - `evidence/h2-patch-412-bug.md` — full request/response + before/after DB table
 - `evidence/h2-patch-response.json` — raw 412 response captured from the client
 - `evidence/db-final.txt` — DB state confirming version 2 + cascade replace + `atc.updated`
-
----
-
-## 🐞 Actual Result
-
-`PATCH /api/v1/atcs/{id}` with the correct `If-Match: 1` returns ***HTTP 412 PRECONDITION*************FAILED*** — a non-JSON platform error page with no JSON error envelope and no `request*id`. Despite the error status, the update commits fully: version 1 → 2, title updated, `atc*steps` 3 → 2 (cascade-replaced), `atc*assertions` 2 → 0 (cleared), and an `atc.updated` row written to `activity*log`. The documented success body (200 + `version` + `affected*test_ids`) is never delivered to the caller.
-
----
-
-## ✅ Expected Result
-
-`PATCH /api/v1/atcs/{id}` with an `If-Match` header that matches the ATC's current version should return ***HTTP 200*** with the success body: the updated resource at the incremented version (`version: 2`) and `affected*test*ids` (`[]` in MVP). Only a genuinely stale or mismatched `If-Match` should return 409 (conflict) or 412 (precondition failed); a matching precondition must succeed.
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
-
----
-
-## 🧫 Evidence
-
-- `evidence/h2-patch-412-bug.md` — full request, the raw 412 response, and the before/after DB table
-- `evidence/h2-patch-response.json` — raw 412 platform error page captured from the client
-- `evidence/db-final.txt` — DB state confirming version 2, cascade-replaced steps, cleared assertions, and the `atc.updated` activity_log row
-- Corroboration: N8 returned 409 with `current_version: 2`, proving H2 advanced the version
 
 ---
 

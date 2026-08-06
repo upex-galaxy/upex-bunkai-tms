@@ -337,6 +337,7 @@ export interface Database {
       }
       bugs: {
         Row: {
+          assignee_user_id: string | null
           atc_id: string | null
           created_at: string
           created_by: string | null
@@ -355,6 +356,7 @@ export interface Database {
           workspace_id: string
         }
         Insert: {
+          assignee_user_id?: string | null
           atc_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -373,6 +375,7 @@ export interface Database {
           workspace_id: string
         }
         Update: {
+          assignee_user_id?: string | null
           atc_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -645,6 +648,57 @@ export interface Database {
         }
         Relationships: []
       }
+      milestones: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          name: string
+          project_id: string
+          target_date: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name: string
+          project_id: string
+          target_date: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          name?: string
+          project_id?: string
+          target_date?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'milestones_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'milestones_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       modules: {
         Row: {
           archived_at: string | null
@@ -692,6 +746,80 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          channel: string
+          enabled: boolean
+          event_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          enabled?: boolean
+          event_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          payload: Json
+          read_at: string | null
+          recipient_user_id: string
+          source_event_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id: string
+          source_event_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          recipient_user_id?: string
+          source_event_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
         ]
@@ -1283,6 +1411,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_workspace_id: string }
         Returns: undefined
       }
+      bunkai_assign_bug: {
+        Args: { p_assignee_user_id?: string, p_bug_id: string }
+        Returns: Json
+      }
       bunkai_atc_json: { Args: { p_atc_id: string }, Returns: Json }
       bunkai_atc_usage: {
         Args: { p_actor_user_id: string, p_atc_id: string }
@@ -1326,6 +1458,15 @@ export interface Database {
       }
       bunkai_create_environment: {
         Args: { p_actor_user_id: string, p_name: string, p_project_id: string }
+        Returns: Json
+      }
+      bunkai_create_milestone: {
+        Args: {
+          p_description?: string
+          p_name: string
+          p_project_id: string
+          p_target_date: string
+        }
         Returns: Json
       }
       bunkai_create_run: {
@@ -1418,6 +1559,15 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_list_notifications: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_limit?: number
+          p_workspace_id: string
+        }
+        Returns: Json
+      }
       bunkai_list_project_bugs: {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
@@ -1477,14 +1627,12 @@ export interface Database {
         Args: { p_actor_user_id: string, p_project_id: string }
         Returns: Json
       }
-      // BK-42 (0052_defect_heatmap_report.sql) — hand-added, NOT yet reflected
-      // by a live `types:gen` regeneration: this migration is written but not
-      // applied to the shared Supabase instance (autonomous_delivery.migrations:
-      // confirm gate, see the escalation log). Re-run `bun run types:gen`
-      // once an operator applies the migration and drop this comment if the
-      // regenerated shape ever diverges from what's hand-typed here.
       bunkai_report_project_defect_heatmap: {
-        Args: { p_actor_user_id: string, p_project_id: string, p_window: string }
+        Args: {
+          p_actor_user_id: string
+          p_project_id: string
+          p_window: string
+        }
         Returns: Json
       }
       bunkai_report_project_recovery_cycles: {
@@ -1556,6 +1704,10 @@ export interface Database {
         Args: { p_tags: string[] }
         Returns: boolean
       }
+      bunkai_transition_bug_status: {
+        Args: { p_bug_id: string, p_new_status: string }
+        Returns: Json
+      }
       bunkai_update_atc: {
         Args: {
           p_ac_ids: string[]
@@ -1567,6 +1719,15 @@ export interface Database {
           p_steps: Json
           p_tags: string[]
           p_title: string
+        }
+        Returns: Json
+      }
+      bunkai_update_milestone: {
+        Args: {
+          p_description?: string
+          p_milestone_id: string
+          p_name: string
+          p_target_date: string
         }
         Returns: Json
       }

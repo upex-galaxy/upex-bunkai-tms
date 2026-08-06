@@ -4,10 +4,6 @@
 **Priority:** High
 **Status:** Duplicated
 **Components:** Project & Module Hierarchy
-**Severity:** Mayor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -48,30 +44,6 @@ All six requests returned ***HTTP 201*** and created the project. Verified in DB
 Reserved slugs collide with Next.js route segments under `app/(app)/projects/[projectSlug]/`. Once sibling static routes (e.g. `/projects/new`, `/projects/settings`) ship, those user projects become unreachable/shadowed. AC-11 fails outright.
 
 ## Evidence
-
-`.context/PBI/epics/EPIC-BK-7-project-module-hierarchy/stories/STORY-BK-8-create-a-project-inside-a-workspace/test-session-memory.md` (T09 row) + DB rows.
-
----
-
-## 🐞 Actual Result
-
-All six requests returned ***HTTP 201*** and created the project. Verified in DB (`public.projects`) — rows present with slugs `api`, `new`, `settings`, `admin`, `null`, `docs` in workspace `bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe`.
-
----
-
-## ✅ Expected Result
-
-`422 validation*failed` (or `400`) with `details.reason = slug*reserved` / error code `SLUG_RESERVED`, per AC-11 and the Dev shift-left commitment (reserved list: `api, new, create, edit, delete, settings, admin, null, undefined, true, false, me, self, health, docs, openapi, static, public`).
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
-
----
-
-## 🧫 Evidence
 
 `.context/PBI/epics/EPIC-BK-7-project-module-hierarchy/stories/STORY-BK-8-create-a-project-inside-a-workspace/test-session-memory.md` (T09 row) + DB rows.
 

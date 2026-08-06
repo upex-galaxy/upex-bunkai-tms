@@ -48,6 +48,22 @@ function fakeRpcDb(response: RpcResult, calls: Call[] = []): SupabaseClient<Data
   } as unknown as SupabaseClient<Database>;
 }
 
+// BK-264 — a fake `db` that answers DIFFERENTLY per RPC name, needed once
+// `fetchBugsListPage` makes a SECOND rpc call (`bunkai_resolve_activity_
+// actors`) whenever a page has at least one assigned bug.
+function fakeRpcDbByFn(responses: Record<string, RpcResult>, calls: Call[] = []): SupabaseClient<Database> {
+  return {
+    rpc: async (fn: string, args: unknown) => {
+      calls.push({ fn, args });
+      const response = responses[fn];
+      if (!response) {
+        throw new Error(`fakeRpcDbByFn: no canned response for "${fn}"`);
+      }
+      return response;
+    },
+  } as unknown as SupabaseClient<Database>;
+}
+
 describe('resolveBugsProjectVisibility (Decision 9)', () => {
   it('returns true when the project row is visible under the caller\'s RLS', async () => {
     const db = fakeMaybeSingleDb({ data: { id: PROJECT_ID }, error: null });
@@ -224,6 +240,150 @@ describe('fetchBugsListPage', () => {
       'bad_request',
       400,
     );
+  });
+});
+
+// BK-264 (Slice 2) — GET /api/v1/bugs now surfaces `assignee_user_id` +
+// resolved display info, the SAME way GET /api/v1/activity resolves actor
+// display info (ADR-0011's `bunkai_resolve_activity_actors`).
+const WORKSPACE_ID = '55555555-5555-4555-8555-555555555555';
+const ASSIGNEE_ID = '66666666-6666-4666-8666-666666666666';
+const OTHER_ASSIGNEE_ID = '77777777-7777-4777-8777-777777777777';
+
+function bugRow(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: BUG_ID,
+    workspace_id: WORKSPACE_ID,
+    project_id: PROJECT_ID,
+    module_id: MODULE_ID,
+    module: { id: MODULE_ID, name: 'Checkout', path: 'checkout' },
+    run_id: null,
+    run_step_id: null,
+    atc_id: null,
+    title: 'A perfectly reasonable bug title',
+    severity: 'P2',
+    status: 'open',
+    description: null,
+    steps_to_reproduce: '',
+    evidence_urls: [],
+    assignee_user_id: null,
+    created_by: null,
+    created_at: '2026-07-29T11:52:00+00:00',
+    updated_at: '2026-07-29T11:52:00+00:00',
+    ...overrides,
+  };
+}
+
+describe('fetchBugsListPage — assignee display resolution (BK-264)', () => {
+  it('an unassigned row gets assignee: null WITHOUT calling bunkai_resolve_activity_actors at all', async () => {
+    const calls: Call[] = [];
+    const db = fakeRpcDbByFn({
+      bunkai_list_bugs: { data: { data: [bugRow()], aggregates: ZERO_BUGS_AGGREGATES, next_cursor: null }, error: null },
+    }, calls);
+
+    const page = await fetchBugsListPage(db, {
+      projectId: PROJECT_ID,
+      moduleId: null,
+      statuses: null,
+      severities: null,
+      limit: 30,
+      cursorSeverity: null,
+      cursorCreatedAt: null,
+      cursorId: null,
+    });
+
+    expect(page.data).toHaveLength(1);
+    expect(page.data[0].assignee).toBeNull();
+    expect(page.data[0].assignee_user_id).toBeNull();
+    expect(calls.map(c => c.fn)).toEqual(['bunkai_list_bugs']);
+  });
+
+  it('an assigned row resolves assignee {user_id, email} via bunkai_resolve_activity_actors, scoped to the row\'s own workspace_id', async () => {
+    const calls: Call[] = [];
+    const db = fakeRpcDbByFn({
+      bunkai_list_bugs: {
+        data: { data: [bugRow({ assignee_user_id: ASSIGNEE_ID })], aggregates: ZERO_BUGS_AGGREGATES, next_cursor: null },
+        error: null,
+      },
+      bunkai_resolve_activity_actors: { data: [{ user_id: ASSIGNEE_ID, email: 'jane@example.com' }], error: null },
+    }, calls);
+
+    const page = await fetchBugsListPage(db, {
+      projectId: PROJECT_ID,
+      moduleId: null,
+      statuses: null,
+      severities: null,
+      limit: 30,
+      cursorSeverity: null,
+      cursorCreatedAt: null,
+      cursorId: null,
+    });
+
+    expect(page.data[0].assignee).toEqual({ user_id: ASSIGNEE_ID, email: 'jane@example.com' });
+    const resolveCall = calls.find(c => c.fn === 'bunkai_resolve_activity_actors');
+    expect(resolveCall?.args).toEqual({ p_workspace_id: WORKSPACE_ID, p_user_ids: [ASSIGNEE_ID] });
+  });
+
+  it('resolves only the DISTINCT assignee ids on the page (not one call per row)', async () => {
+    const calls: Call[] = [];
+    const db = fakeRpcDbByFn({
+      bunkai_list_bugs: {
+        data: {
+          data: [
+            bugRow({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', assignee_user_id: ASSIGNEE_ID }),
+            bugRow({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', assignee_user_id: ASSIGNEE_ID }),
+            bugRow({ id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', assignee_user_id: OTHER_ASSIGNEE_ID }),
+          ],
+          aggregates: ZERO_BUGS_AGGREGATES,
+          next_cursor: null,
+        },
+        error: null,
+      },
+      bunkai_resolve_activity_actors: {
+        data: [
+          { user_id: ASSIGNEE_ID, email: 'jane@example.com' },
+          { user_id: OTHER_ASSIGNEE_ID, email: 'john@example.com' },
+        ],
+        error: null,
+      },
+    }, calls);
+
+    await fetchBugsListPage(db, {
+      projectId: PROJECT_ID,
+      moduleId: null,
+      statuses: null,
+      severities: null,
+      limit: 30,
+      cursorSeverity: null,
+      cursorCreatedAt: null,
+      cursorId: null,
+    });
+
+    const resolveCall = calls.find(c => c.fn === 'bunkai_resolve_activity_actors');
+    expect(resolveCall?.args).toEqual({ p_workspace_id: WORKSPACE_ID, p_user_ids: [ASSIGNEE_ID, OTHER_ASSIGNEE_ID] });
+  });
+
+  it('an assignee id the resolver does not return (edge case) falls back to assignee.email: null, never a crash', async () => {
+    const db = fakeRpcDbByFn({
+      bunkai_list_bugs: {
+        data: { data: [bugRow({ assignee_user_id: ASSIGNEE_ID })], aggregates: ZERO_BUGS_AGGREGATES, next_cursor: null },
+        error: null,
+      },
+      bunkai_resolve_activity_actors: { data: [], error: null },
+    });
+
+    const page = await fetchBugsListPage(db, {
+      projectId: PROJECT_ID,
+      moduleId: null,
+      statuses: null,
+      severities: null,
+      limit: 30,
+      cursorSeverity: null,
+      cursorCreatedAt: null,
+      cursorId: null,
+    });
+
+    expect(page.data[0].assignee).toEqual({ user_id: ASSIGNEE_ID, email: null });
   });
 });
 

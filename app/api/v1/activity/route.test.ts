@@ -195,8 +195,8 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
   });
 
   it('buildActivityItem populates action_label from ACTION_LABELS and passes payload through unchanged', () => {
-    const item = buildActivityItem(
-      {
+    const item = buildActivityItem({
+      row: {
         id: ROW_1,
         entity_type: 'atc',
         entity_id: 'aa000000-0000-0000-0000-000000000000',
@@ -205,8 +205,9 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
         created_at: '2026-07-29T11:52:00+00:00',
         payload: { title: 'Login succeeds' },
       },
-      'alice@example.com',
-    );
+      actorEmail: 'alice@example.com',
+      assigneeEmail: null,
+    });
     expect(item.action_label).toBe('created an ATC');
     expect(item.actor).toEqual({ user_id: USER_A, email: 'alice@example.com' });
     expect(item.item).toEqual({ label: 'Login succeeds', entity_id: 'aa000000-0000-0000-0000-000000000000' });
@@ -214,8 +215,8 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
   });
 
   it('buildActivityItem never surfaces an email when actor_user_id is null, even if one was passed in by mistake', () => {
-    const item = buildActivityItem(
-      {
+    const item = buildActivityItem({
+      row: {
         id: ROW_1,
         entity_type: 'module',
         entity_id: null,
@@ -224,9 +225,48 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
         created_at: '2026-07-29T11:52:00+00:00',
         payload: {},
       },
-      'should-not-appear@example.com',
-    );
+      actorEmail: 'should-not-appear@example.com',
+      assigneeEmail: null,
+    });
     expect(item.actor).toEqual({ user_id: null, email: null });
+  });
+
+  // BK-264 (Slice 4) — the 4 Bug-triage actions' dynamic action_label,
+  // exercised at this layer (not just `resolveActionLabel` in isolation) so
+  // the assignee-email wiring through `buildActivityItem`'s object param is
+  // covered too.
+  it('buildActivityItem renders bug.assigned with the resolved assignee email', () => {
+    const item = buildActivityItem({
+      row: {
+        id: ROW_1,
+        entity_type: 'bug',
+        entity_id: 'cc000000-0000-0000-0000-000000000000',
+        action: 'bug.assigned',
+        actor_user_id: USER_A,
+        created_at: '2026-08-03T11:52:00+00:00',
+        payload: { previous_assignee_user_id: null, assignee_user_id: USER_B },
+      },
+      actorEmail: 'mateo.silva@example.com',
+      assigneeEmail: 'sara.iglesias@example.com',
+    });
+    expect(item.action_label).toBe('assigned this defect to sara.iglesias@example.com');
+  });
+
+  it('buildActivityItem renders bug.status_changed to "closed" with the AC\'s special-cased copy, never "moved this defect to closed"', () => {
+    const item = buildActivityItem({
+      row: {
+        id: ROW_1,
+        entity_type: 'bug',
+        entity_id: 'cc000000-0000-0000-0000-000000000000',
+        action: 'bug.status_changed',
+        actor_user_id: USER_A,
+        created_at: '2026-08-03T11:52:00+00:00',
+        payload: { previous_status: 'resolved', status: 'closed', assignee_user_id: USER_B },
+      },
+      actorEmail: 'elena.vargas@example.com',
+      assigneeEmail: null,
+    });
+    expect(item.action_label).toBe('closed this defect');
   });
 });
 
@@ -322,6 +362,41 @@ describe('fetchActivityPage (API design steps 4-6)', () => {
     expect(resolveCalls).toHaveLength(1);
     expect((resolveCalls[0].args as { p_user_ids: string[] }).p_user_ids).toEqual([USER_A]);
     expect(page.items.every(item => item.actor.email === 'alice@example.com')).toBe(true);
+  });
+
+  // BK-264 (Slice 4) — a bug.assigned row's assignee_user_id must join the
+  // SAME resolver batch as actor_user_id (ADR-0011: one resolver, one call),
+  // never a second RPC round-trip.
+  it('folds a bug.assigned row\'s assignee_user_id into the SAME actor-resolver batch, in one call', async () => {
+    const calls: RpcCall[] = [];
+    const db = fakeRpcDb({
+      list: {
+        data: {
+          items: [
+            {
+              id: ROW_1,
+              entity_type: 'bug',
+              entity_id: 'cc000000-0000-0000-0000-000000000000',
+              action: 'bug.assigned',
+              actor_user_id: USER_A,
+              created_at: '2026-08-03T11:52:00+00:00',
+              payload: { previous_assignee_user_id: null, assignee_user_id: USER_B },
+            },
+          ],
+          next_cursor: null,
+        },
+        error: null,
+      },
+      resolve: { data: [{ user_id: USER_A, email: 'mateo.silva@example.com' }, { user_id: USER_B, email: 'sara.iglesias@example.com' }], error: null },
+    }, calls);
+
+    const page = await fetchActivityPage(db, { workspaceId: WS, limit: 30, cursorCreatedAt: null, cursorId: null });
+
+    const resolveCalls = calls.filter(c => c.fn === 'bunkai_resolve_activity_actors');
+    expect(resolveCalls).toHaveLength(1);
+    expect((resolveCalls[0].args as { p_user_ids: string[] }).p_user_ids).toEqual([USER_A, USER_B]);
+    expect(page.items[0].actor.email).toBe('mateo.silva@example.com');
+    expect(page.items[0].action_label).toBe('assigned this defect to sara.iglesias@example.com');
   });
 
   it('skips the actor-resolver RPC entirely when every row has a null actor', async () => {

@@ -1,0 +1,62 @@
+-- 0061_home_open_bugs_index.sql — BK-258: covering index for the Home "Open
+-- bugs" count and its severity breakdown.
+--
+-- WHY
+-- ---
+-- `countOpenBugs` (lib/home/open-bugs.ts) issues four counts against `bugs` on
+-- every /home render, one per severity, all sharing the same predicate:
+--
+--   select count(*) from bugs
+--    where workspace_id = $1 and severity = $2
+--      and status in ('open', 'in_progress')
+--
+-- The three existing `bugs` indexes (0046_bugs.sql) are
+-- `(project_id, created_at desc)`, `(workspace_id)` and `(module_id)`. Only the
+-- second one is usable here, and it leads with the ONLY column this predicate
+-- can satisfy from an index — so Postgres walked every bug the workspace had
+-- ever recorded and heap-fetched each row to test `severity` and `status`. That
+-- runs on `/home`, the post-login landing page every member hits (app/page.tsx
+-- routes signed-in members there), and its cost grew with the workspace's whole
+-- defect history rather than with the four numbers displayed.
+--
+-- This is the same class of problem 0059 and 0060 fixed for the Recent projects
+-- and Active runs scans, and the note there applies verbatim: `bugs` has no
+-- archive, so it accumulates one row per defect ever filed and never shrinks.
+--
+-- WHAT THIS BUYS
+-- --------------
+-- Equality on the leading column, then equality on `severity`, is exactly the
+-- shape a btree walks: each count seeks straight to one severity's slice of one
+-- workspace instead of walking that workspace's whole defect history.
+--
+-- The rollup then inner-joins `modules` to drop bugs whose own module is
+-- archived (the rule every bug list already applies — see the note in
+-- lib/home/open-bugs.ts), so the bugs side is an Index Scan rather than an
+-- Index Only Scan: `module_id` comes from the heap, and one `modules_pkey`
+-- probe follows per surviving row. Both costs are proportional to the
+-- OUTSTANDING defects in that severity — the numbers actually displayed — not
+-- to the table, which is the property this index exists to buy.
+--
+-- PARTIAL on the unresolved statuses is what makes it cheap to carry. Only bugs
+-- that are still open or in progress are indexed, so the index stays
+-- proportional to the OUTSTANDING defect load rather than to defect history, and
+-- resolving a bug REMOVES its entry. Postgres can use a partial index only for
+-- queries whose WHERE implies the predicate, which the rollup's
+-- `status in ('open', 'in_progress')` does literally — the same list, in the
+-- same module (`HOME_OPEN_BUG_STATUSES`), so the two cannot drift apart without
+-- the drift being visible in one diff.
+--
+-- It serves five readers, not four: the four per-severity counts the widget
+-- prints, plus the identical set behind
+-- GET /api/v1/workspaces/{id}/open-bugs.
+--
+-- NOTE ON NUMBERING: 0060 is the highest migration on origin/staging at the time
+-- this branch was cut (feature/BK-258-home-open-bugs, off origin/staging), so
+-- 0061 is the next free number here.
+--
+-- Additive only: one `create index if not exists`, no DDL on any existing
+-- object, no behavioural change. Re-runnable.
+
+create index if not exists bugs_workspace_id_severity_unresolved_idx
+  on public.bugs (workspace_id, severity)
+  where status in ('open', 'in_progress');

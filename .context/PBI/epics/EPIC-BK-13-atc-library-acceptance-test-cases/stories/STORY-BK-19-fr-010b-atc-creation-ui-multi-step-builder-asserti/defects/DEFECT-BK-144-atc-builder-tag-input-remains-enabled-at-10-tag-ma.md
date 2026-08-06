@@ -5,10 +5,6 @@
 **Priority:** Low
 **Status:** Open
 **Components:** ATC Library (Acceptance Test Cases)
-**Severity:** Menor
-**Error Type:** Functional
-**Test Environment:** Staging
-**Fix Type:** Bugfix
 
 ---
 
@@ -49,12 +45,6 @@ Input stays enabled. 11th tag is added to state. ATC saves successfully with unl
 1. AtcEditor.tsx addTag(): add if (tags.length >= 10) return guard (or show inline message).
 2. AtcEditor.tsx <input>: add disabled={tags.length >= 10} prop.
 3. saveAtcAction: add if (input.tags.length > 10) return { ok: false, error: "An ATC can have at most 10 tags." }
-
----
-
-## 🔍 Root Cause
-
-**Category:** Code Error
 
 ---
 

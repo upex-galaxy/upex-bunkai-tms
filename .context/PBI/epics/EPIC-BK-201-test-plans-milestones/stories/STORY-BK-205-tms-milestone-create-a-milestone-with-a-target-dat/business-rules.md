@@ -1,6 +1,6 @@
 # BK-205 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-205)
 
 - A Milestone belongs to exactly one project and is visible to every workspace member of that project.
 - Milestone names are unique per project, case-insensitive, compared after trimming spaces.
