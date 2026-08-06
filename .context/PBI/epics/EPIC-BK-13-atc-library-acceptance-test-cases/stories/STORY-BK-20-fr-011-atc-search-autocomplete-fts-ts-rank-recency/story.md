@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** BLOCKED
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -32,8 +33,13 @@
 
 > Each rich-text field is a separate file in this folder.
 
-- [Mockup](./mockup.md)
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -41,7 +47,7 @@
 
 ### Defect (1)
 
-- [BK-187](https://jira.upexgalaxy.com/browse/BK-187): ATC search returns run-status, not the PO-decided lifecycle status_dot _(Open)_
+- [BK-187](https://jira.upexgalaxy.com/browse/BK-187): ATC search returns run-status, not the PO-decided lifecycle status_dot _(In Review)_
 
 ### Story (1)
 
@@ -52,7 +58,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/6/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** atc, fts, mvp, search, shift-left-2026-06-01, shift-left-reviewed, wave-2

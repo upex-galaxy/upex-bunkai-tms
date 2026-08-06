@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-20)
 
-# Shift-Left Refinement: BK-20 — TMS-ATC Search
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20) — TMS-ATC Search
 
 ***Status****: Refined — Awaiting PO Estimation | ****Refined on****: 2026-06-01 | ****Modality***: Jira-native
 
@@ -15,7 +15,7 @@
 - ***Ranking****: `ts*rank(search*tsv, query) ** exp(-epoch_diff / 604800)` — relevance × 7-day recency decay
 - ***FTS****: prefix-aware — `to*tsquery('simple', $1 || ':**')` for single token; `plainto*tsquery` for multi-word
 - ***Auth***: `requireAuth()` — cookie OR Bearer PAT
-- ***Dependency***: BK-18 schema confirmed. BK-20 adds its own `search_tsv` migration.
+- ***Dependency***: [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18) schema confirmed. [https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20) adds its own `search_tsv` migration.
 
 ***Complexity***: Business logic HIGH (ranking + subtree + security) · Integration MEDIUM · UI LOW (API-only)
 ***Test effort***: 21 outlines
@@ -97,7 +97,7 @@
 | ------- | ---------- |
 | FTS semantics  | Prefix: `to*tsquery + :*` (single token) / `plainto*tsquery` (multi-word)  |
 | Auth  | `requireAuth()` — cookie OR Bearer PAT  |
-| Layer filter  | IN scope BK-20 — AC added (SG4)  |
+| Layer filter  | IN scope [https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20) — AC added (SG4)  |
 | `search*tsv` implementation  | Trigger-maintained (`atcs*tsv_trg`)  |
 | Non-existent `module_id`  | 200 `{items:[]`} — no 404  |
 | `updated_at` constraint  | NOT NULL DEFAULT now() — required in migration  |
