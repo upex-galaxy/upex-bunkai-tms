@@ -1,6 +1,6 @@
 # BK-211 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
 
 - The recipient of a run's terminal events is the user who started the run; broader audiences (watchers, project subscribers) are not part of this story.
 - The actor never self-notifies: if the run starter is also the person finishing or aborting, no notification is created.
