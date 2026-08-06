@@ -37,7 +37,8 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 - **Git is the source of truth; the tracker is a hint.** A ticket shipped only when `git merge-base --is-ancestor <mergeCommit> <integration-branch>` succeeds. A status of ready-for-QA, done, or merged proves nothing — merge automation commonly fires on ANY pull request merge, including a chain's internal ones. Never advance a dependency on a status flip.
 - **`git fetch` immediately before every ancestor or fast-forward check, unconditionally.** A merge performed through the host's API updates the real ref at once; your remote-tracking ref updates only on the next fetch. "I fetched a few minutes ago" has produced a confident, wrong answer.
 - **One lock per mode, never a queue.** A live lock for your mode means another run owns it: exit cleanly with a report. Do not wait, do not queue, do not run anyway. A lock older than `lock_staleness_minutes` is abandoned — reclaim it and log the reclamation.
-- **An empty run is a correct outcome.** Nothing genuinely unblocked means stop and say so. Selecting marginal work to avoid an empty report is the failure this phase exists to prevent.
+- **Product questions are DECIDED, never escalated (`CLAUDE.md` Rule #18).** This project has no human PO — an open product, business, functional, scope, UX-copy or design-intent question on a ticket is work to do, not a blocker. **Search the record FIRST** (`.session/autonomous-delivery/escalation-log.md` in full, `.context/ADR/`, the ticket's siblings) — a ruling that already governs it is followed and cited, never re-derived. Only if genuinely unsettled, dispatch a decision subagent (`AI Product Owner / Business Analyst`, `AI Tech Lead`, or both when joint, `model: "opus"` explicit), have it score 2-4 candidate answers against explicit criteria, publish the winner to the ticket under an attributed heading (`## AI Product Owner — Decision: <question>`), resync the cache, and CONTINUE. Never style an AI ruling as human sign-off, and never leave one unattributed. Escalate ONLY a genuinely new security posture, irreversible/destructive actions, and whatever the operator explicitly reserved. See `decision-protocol.md` §5.1.
+- **Exactly two things legitimately block a candidate**, and an empty run is only correct when one of them is what you actually found: (a) a **real dependency** — the prerequisite is not an ancestor of the integration branch, verified by git, never by a status; (b) **a story that never went through shift-left at all** — a QA-authoring gap, recorded for assignment, never invented yourself. An unresolved or self-ratified refinement question is category (a) for neither: it is a decision to dispatch. Selecting marginal work to avoid an empty report is still a failure — but so is reporting empty over a question you were equipped to settle.
 - **Caps are hard: `story` 1 per run, `bug` 3 sequential (each fully closed before the next), `discovery` up to 2 new user stories per run (never application code, and only after its synchronous approval gate — see Autonomy).** Every measured story became a multi-thousand-line chain; two do not fit in one run's context.
 - **Write the handoff as you go, never at the end.** A run that exhausts its context cannot write up why. Checkpoint after every phase and after every completed slice.
 - **When context runs low, push the branch FIRST, then record resume state, then stop.** Unpushed commits in a disposable worktree are the only unrecoverable loss in this system. A clean mid-work handoff is a success; a mid-ticket death with unpushed work is the failure to design against.
@@ -49,7 +50,7 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 - **Never reach for a repo-wide destructive git command** — `git reset --hard`, `git restore .`, `git checkout -- .`, untargeted `git stash`, `git clean -f`. Critical Rule #13 forbids them because agent sessions share this working tree, and the permission layer DENIES them, so a run that reaches for one stalls rather than proceeding. To move a branch pointer use `git checkout -B <branch> <ref>`; to discard, name the exact paths YOU modified.
 - **Green tests are not evidence the feature works.** Fixtures that seed the column the code reads, rather than the column production writes, keep every test green over a dead data path. Require at least one assertion against a real production write path before calling an acceptance criterion covered.
 - **Editing a skill's rules does nothing until the registry is regenerated** (`bun run skills:registry`). The registry is what reaches a subagent briefing; a rule that never reached the briefing never reached any executor.
-- **Decide technical calls yourself, after searching the record.** Follow `agentic-dev-core/references/decision-protocol.md`: search -> follow if settled -> scored judge panel if genuinely novel -> escalate ONLY product, novel security posture, irreversible, and whatever the operator reserved. Record every autonomous decision where the NEXT run's Phase 1 will find it.
+- **Search the record before deciding anything, and record every decision after.** Follow `agentic-dev-core/references/decision-protocol.md`: search -> follow if settled -> scored panel or decision subagent if genuinely novel. A ruling that governs you may have been written an hour ago by a run you never saw; re-deriving it lands somewhere else and creates two contradictory rules. Write every autonomous decision where the NEXT run's Phase 1 will find it, at the moment it is made.
 
 **Read full SKILL.md when**: you are running any phase of a scheduled run, a gate fires, or the briefing tells you to load the full skill.
 
@@ -342,7 +343,10 @@ Pick work whose dependencies are **actually** satisfied. Four inputs, and they a
 1. Build the candidate set for the mode: `story` -> stories at ready-for-dev; `bug` -> open defects; `discovery` -> new-story or new-epic candidates the app genuinely needs (existing-epic stories, a single urgent story, or a new epic + its first stories — see `discovery`'s prompt for the full source list, including the KATA reference repo).
 2. Drop any candidate whose hard blocker is not **merged** by Phase 1's verdict. Log the skip with the reason. A blocked candidate is not an escalation — it is a skip.
 3. Drop any candidate that is **already past dev** by live status, regardless of what the queue file claims.
-4. **Readiness is not status.** Read the refinement trail before accepting a candidate: unresolved blocking refinement questions, explicitly-disclaimed practice-exercise answers, and unchecked edge-case lists all mean not-ready even when the status field says otherwise. A ticket can be moved to ready-for-dev with a declared blocker still open and no comment trail explaining the move.
+4. **Readiness is not status — but an unresolved question is work, not a rejection.** Read the refinement trail before accepting a candidate; never infer readiness from the status field. A ticket can be moved to ready-for-dev with a declared blocker still open and no comment trail explaining the move. What you do about it depends on WHICH of the two cases you are in, and conflating them is the failure mode this step exists to prevent:
+   - **(a) The story went through shift-left, and some questions are open or self-ratified** — unresolved blocking questions, explicitly-disclaimed practice/DRAFT answers, "pending PO sign-off" markers, an AI persona closing its own blocker. **This is NOT a reason to drop the candidate.** Per `CLAUDE.md` Rule #18 and `decision-protocol.md` §5.1, dispatch the decision subagent (`AI Product Owner / Business Analyst`, `AI Tech Lead`, or both), let it score the open questions, publish the attributed rulings to the ticket, resync the cache, and THEN proceed with the candidate. Deciding is the job; waiting is the failure mode.
+   - **(b) The story never went through shift-left at all** — no refinement trail, no acceptance criteria, nothing to ratify. **This one genuinely blocks.** It is a QA-authoring gap, not a question, and inventing the refinement yourself is not the fix. Record it for assignment to whoever (human or their agent) runs shift-left, and take the next candidate.
+   - A design-contract departure (a decision that diverges from the mockup) additionally needs its `master-design-plan.md` §5 divergence row — and an ADR when architectural — written as part of the ruling, per Critical Rule #15. The subagent produces those; it does not merely assert the departure is fine.
 5. **Scope-growth check.** If a candidate carries signals of being larger than a normal pick — high point estimate, no mockup where the design plan expects one, an architectural decision implied by its acceptance criteria, more than one migration — **do not claim it in an unattended run.** Log it as a candidate needing a human-present session, and take the next one. Auto-claiming the largest thing on the board by "pull the next available row" is a measured way to burn a whole run.
 6. **Apply the cap**: `story` takes exactly one. `bug` takes up to three and processes them **strictly sequentially**, each fully closed through Phase 4's close-out before the next is claimed. `discovery` recommends at most `discovery_definitions` (default 2) new user stories per run — and never creates any of them without its synchronous approval gate firing first (see Autonomy §Discovery's synchronous approval gate). It never writes application code, regardless of the outcome of that gate.
 7. **Claim it** using the claim protocol: write your name and status into the row, save, then **re-read the file**. If a different name is there, a peer won the race — back off and take the next candidate. Never fight over a row.
@@ -469,18 +473,28 @@ SEARCH THE RECORD -> settled? FOLLOW IT
         |
         | not settled
         v
-  product / novel security / irreversible / reserved?
+  novel security / irreversible / operator-reserved?
         |  no                                  |  yes
         v                                      v
-  SCORED JUDGE PANEL (3-5 lenses)          ESCALATE (informed)
-        |                                      |
-        +--------> WRITE IT DOWN <-------------+
+  is it product/business/functional?       ESCALATE (informed)
+        |  no            |  yes                |
+        v                v                     |
+  SCORED JUDGE     DISPATCH DECISION           |
+  PANEL (3-5)      SUBAGENT (AI PO/BA          |
+        |          and/or AI Tech Lead)        |
+        |          scored, then PUBLISH        |
+        |          ATTRIBUTED to the ticket    |
+        |                |                     |
+        +----> WRITE IT DOWN <-----------------+
 ```
 
-For an unattended run, three amplifications:
+**Product is NOT an escalation category in this project** (`CLAUDE.md` Rule #18 — Bunkai TMS has no human PO by default; the AI holds the best product and technical knowledge here because it can read the whole context surface). See `decision-protocol.md` §5.1 for the two role profiles, the mandatory scored method, and the attribution format.
+
+For an unattended run, four amplifications:
 
 - **The record to search FIRST is `.session/autonomous-delivery/escalation-log.md`, read in full, plus `.context/ADR/` and the ticket's siblings.** Search for the SHAPE of the question, not its wording. A ruling that governs you may have been written an hour ago by a run you never saw.
-- **Escalating is expensive here in a way it is not interactively.** There is nobody to answer. An escalation ends the run's forward progress until the next human touch, so an over-stop on a technical call costs a whole scheduled slot. The escalate-only categories are exhaustive: product and business decisions, a genuinely NEW security posture (applying an already-ratified pattern is implementation), irreversible or destructive actions, and anything the operator explicitly reserved.
+- **Escalating is expensive here in a way it is not interactively.** There is nobody to answer. An escalation ends the run's forward progress until the next human touch, so an over-stop costs a whole scheduled slot. The escalate-only categories are exhaustive and product is NOT among them: a genuinely NEW security posture (applying an already-ratified pattern is implementation), irreversible or destructive actions, and anything the operator explicitly reserved.
+- **An open product question is work to do, not a reason to stop.** Dispatch the decision subagent per `decision-protocol.md` §5.1 — `AI Product Owner / Business Analyst` for product/business/functional/scope/UX-copy/design-intent, `AI Tech Lead` for schema/index/API-contract/auth/performance/migration-shape, both when the call is joint. It scores 2-4 candidate answers against explicit criteria, publishes the winner to the ticket under an attributed heading, and the run CONTINUES. Dispatch it with `model: "opus"` explicitly, same rule as the judge panel. The two blockers that survive this: a real dependency (git-ancestry-verified), and a story that never went through shift-left at all (a QA-authoring gap — record it for assignment, never invent the refinement).
 - **Record every autonomous decision where the next run's Phase 1 will find it** — the escalation log, at the moment the decision is made. A decision that is not recorded did not happen, and the next run will re-derive it and land somewhere else.
 - **Every scored judge panel dispatch passes `model: "opus"` explicitly**, same rule and same reason as Phase 3's execution dispatches (see Phase 3 §Isolation) — a panel's independent lenses are exactly the kind of judgment call the stronger model is for, and an omitted override just inherits whatever the orchestrator happens to be running.
 
@@ -572,6 +586,8 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A15.** NEVER manufacture a non-empty run. If nothing is genuinely unblocked, report that.
 - **A16.** NEVER re-ask a settled question, and never treat an answer obtained without the prior ruling in front of the human as a supersession. It is an uninformed re-ask and it overrides nothing.
 - **A17.** NEVER escalate a technical call this run is equipped to settle. There is nobody to answer, and the stop costs a whole scheduled slot.
+- **A17b.** NEVER escalate, park, or drop a candidate over a PRODUCT, business, functional, scope or design-intent question. Rule #18 makes that a decision to dispatch, score, publish attributed to the ticket, and move on. The only survivors are a git-verified dependency and a story that never had shift-left at all.
+- **A17c.** NEVER publish an AI decision styled as human PO sign-off, and never leave a ruling unattributed. Every published decision names its deciding profile in the heading. Unattributed or human-looking rulings are exactly what Rule #18 exists to end — this repo has already logged a non-human account closing its own blocker and moving the ticket to Ready For Dev twenty-four minutes later.
 - **A18.** NEVER leave an escalation parked waiting for a reply, for `story` or `bug` mode. Write the entry, push, release the lock, end the run. (`discovery`'s approval gate is the one explicit, scoped exception to this — see Autonomy §Discovery's synchronous approval gate. Do not read that exception as license to park anywhere else.)
 - **A19.** NEVER remove a worktree before rescuing the session records inside it.
 - **A20.** NEVER edit another run's board row (except to claim an unclaimed one per protocol), branch, or worktree.
@@ -597,6 +613,8 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - [ ] Merged-vs-claimed table produced; every tracker/git discrepancy written to the escalation log with evidence
 - [ ] Live migration ledger queried; queue/board/claim file read in full; both protection endpoints checked
 - [ ] Candidate's refinement trail read — readiness established, not inferred from status
+- [ ] Open product/business/functional questions on the candidate DECIDED via a dispatched `AI PO/BA` (and/or `AI Tech Lead`) subagent with scored alternatives, published to the ticket under an attributed heading, cache resynced — not escalated, not used as a reason to drop the candidate
+- [ ] Only two blocker types accepted: a git-ancestry-verified dependency, and a story that never went through shift-left at all (recorded for assignment, refinement NOT invented)
 - [ ] Scope-growth check applied; oversized or novel work deferred to a human-present session
 - [ ] Cap respected (`story` 1, `bug` 3 sequential, `discovery` up to `discovery_definitions` new stories, never code, never created before the approval gate fires)
 - [ ] Claim written, file re-read, and the row conceded if contested
@@ -626,7 +644,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 ### Out of scope
 
 - **QA verification** — a separate workflow picks up from the QA-ready state.
-- **Choosing what to build** — that is product work and it escalates.
+- **Choosing what to build** — the strategic "which epic next" call. Note this is NOT the same as answering an open product question ON a selected ticket: that one is decided in-run per `decision-protocol.md` §5.1, never escalated.
 
 If a pre-requisite check fails, STOP and report. Do not continue and do not improvise around it.
 
