@@ -400,15 +400,37 @@ git checkout -b fix/TICKET-desc main   # branch off main, NOT staging
 git checkout staging && git merge main && git push origin staging   # back-merge SAME DAY → restores invariant
 ```
 
-**Both `main` and `staging` protected** (GitHub rule: changes via PR). Direct pushes need admin bypass + explicit user confirm per §1 #4-#5.
+**Both `main` and `staging` protected** (GitHub rule: changes via PR). Direct pushes need the org-admin bypass + explicit user confirm per §1 #4-#5.
 
-**Protection is enforced through RULESETS, not classic branch protection.** `GET repos/{o}/{r}/branches/{b}/protection` returns `404` on both branches — that is NOT evidence they are unprotected. Read `GET repos/{o}/{r}/rules/branches/{b}` instead; it returns `pull_request` (0 required approvals), `required_signatures`, `non_fast_forward`, `deletion`, `creation`. Commits must be signed (SSH signing is configured locally).
+**Protection is enforced through RULESETS, not classic branch protection.** `GET repos/{o}/{r}/branches/{b}/protection` returns `404` on both branches — that is NOT evidence they are unprotected. Read `GET repos/{o}/{r}/rules/branches/{b}` instead. Commits must be signed (SSH signing is configured locally).
 
-**Accepted divergence — `direct_push_to_protected: confirm`** (declared in `.agents/project.yaml`). `.agents/project.yaml` declares `confirm` while the host requires a pull request. This is deliberate, not drift: the repo has a single committer who is also the owner, so the PR requirement is ceremony rather than review — verified 2026-08-06, PRs on this repo show `mergeStateStatus: CLEAN` with `required_approving_review_count: 0`. Do NOT re-raise this as branch-protection drift, and do NOT "correct" `project.yaml` to `forbidden`. The moment a second committer joins, this exception is void and the policy moves to `forbidden`.
+### Verified state of ruleset `16809486` "ProtectPublic" (enforcement `active`, re-verified 2026-08-06 end of day)
 
-**Correction (verified 2026-08-06 against ruleset `16809486` "ProtectPublic", enforcement `active`) — supersedes an earlier, wrong claim in this section**: `bypass_actors` on that ruleset is `null`. Nobody, including the owner/admin, is registered as a bypass actor. The previous claim that "the owner's admin role bypasses the ruleset" and that a direct push "prints `remote: Bypassed rule violations` and succeeds" was never actually verified and does not hold — a direct push to `main` or `staging` is genuinely blocked today, not merely discouraged. A bypass is reported as a bypass, never as permission, if that ever changes.
+Applies to `~DEFAULT_BRANCH`, `refs/heads/staging`, `refs/heads/main`, `refs/heads/dev`. Rules: `deletion`, `non_fast_forward`, `creation`, `required_signatures`, `pull_request`.
 
-**Also verified 2026-08-06: no `CODEOWNERS` file exists anywhere in this repo**, so the ruleset's `require_code_owner_review: true` is currently inert — there is no owner list for it to enforce against. **The day a `CODEOWNERS` file is added, that flag starts blocking every routine merge silently**, and (per the correction above) there is no bypass actor to fall back on. Before any `CODEOWNERS` file lands, either remove `require_code_owner_review` from the ruleset or register a bypass actor — deliberately, not as something discovered by a blocked merge.
+`pull_request` parameters:
+
+| Parameter | Value |
+| --- | --- |
+| `required_approving_review_count` | `0` |
+| `require_code_owner_review` | **`false`** — turned off 2026-08-06 (operator decision) |
+| `required_review_thread_resolution` | `true` |
+| `allowed_merge_methods` | `["merge"]` only |
+| `dismiss_stale_reviews_on_push` | `true` |
+| `dismissal_restriction` | enabled: `RepositoryRole` 5 (admin) + user `saiotest` |
+
+**`bypass_actors`: `[{ actor_type: "OrganizationAdmin", bypass_mode: "always" }]`.** `saiotest` — the automation identity (`.agents/project.yaml` -> `autonomous_delivery.automation_gh_account`) — **is an org admin of `upex-galaxy`** (`role: admin`, `state: active`, verified via `GET orgs/upex-galaxy/memberships/saiotest`). So it bypasses this ruleset **always**, including the pull-request requirement. A direct push to `staging` or `main` from that identity WILL succeed.
+
+That makes `.agents/project.yaml`'s `direct_push_to_protected: confirm` accurate rather than a divergence: the host permits it, and `confirm` is the policy layer on top. **Critical Rules #4 and #5 are now the ONLY thing standing between an agent and a direct push to `main` — there is no technical guard underneath them.** Treat them accordingly. And a bypass is still reported as a bypass, never as permission.
+
+**Two traps this section exists to prevent, both of which have already cost real time:**
+
+1. **`dismissal_restriction` is NOT a bypass.** The "Restrict who can dismiss pull request reviews" box in the ruleset UI governs only who may dismiss an existing review. Registering someone there grants them nothing about merging. The real bypass is the separate **Bypass list** at the top of the ruleset page (`bypass_actors` in the API). These were confused once already.
+2. **Read `bypass_actors` live before asserting anything about it.** It read `null` earlier on 2026-08-06 and `OrganizationAdmin/always` later the same day. Two consecutive statements in this file were wrong because each was written from a stale read. Query it; do not quote this table as current state without re-checking.
+
+**No `CODEOWNERS` file exists anywhere in this repo** (verified 2026-08-06). With `require_code_owner_review` now `false`, adding one is no longer a silent merge-blocker — but if that flag is ever turned back on, a `CODEOWNERS` landing afterwards starts gating every routine merge. The org-admin bypass would still carry `saiotest` through; a non-admin contributor would be blocked.
+
+**`required_review_thread_resolution: true` is deliberate and is NOT a blocker for agents**: any identity with write access can resolve its own review threads, and the org-admin bypass covers it regardless. It is kept so unresolved human review conversations still gate a human's merge.
 
 ### Critical commit rules
 
