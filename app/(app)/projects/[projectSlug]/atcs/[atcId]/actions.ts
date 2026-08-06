@@ -1,8 +1,9 @@
 'use server';
 
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
-import { TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
+import { TAG_CAP_MESSAGE, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
+import { MAX_ATC_TAGS } from '@lib/atcs/validation';
 import { atcUsage, updateAtc } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { revalidatePath } from 'next/cache';
@@ -48,6 +49,9 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   // saving a 1-2 char title.
   if (!titleValid(input.title)) {
     return { ok: false, error: TITLE_MESSAGE };
+  }
+  if (input.tags.length > MAX_ATC_TAGS) {
+    return { ok: false, error: TAG_CAP_MESSAGE };
   }
 
   const supabase = await createClient();

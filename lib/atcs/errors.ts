@@ -40,6 +40,14 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
       throw new ApiError('slug_collision', 'An ATC with this slug already exists in the project. Retry to generate a new one.', {
         details: { reason: 'slug_collision' },
       });
+    case '45024':
+      // BK-144 — RPC-layer backstop (migration 0053). The route's zod schema
+      // (AtcWriteBodySchema.tags.max(MAX_ATC_TAGS)) already rejects this before
+      // the RPC is reached, so this only fires for a caller that skips the
+      // route entirely (e.g. a direct PostgREST call).
+      throw new ApiError('validation_failed', 'An ATC can have at most 10 tags.', {
+        details: { reason: 'tags_limit_exceeded' },
+      });
     default:
       throw new ApiError('internal_error', error.message);
   }
