@@ -1,6 +1,6 @@
 # BK-211 — Mockup
 
-> Jira field: `customfield_10137` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
 
 ***Design intent — mockup pending***
 
