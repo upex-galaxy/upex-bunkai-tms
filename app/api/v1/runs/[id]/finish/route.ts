@@ -46,6 +46,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     actorUserId: principal.userId,
     runId,
     verdict: parsed.data.verdict,
+    // BK-211/12196/12198 — the run-event notification trigger's
+    // self-suppression predicate needs the session kind, not just the actor
+    // id (a PAT impersonates its owning user under ADR-0001 Path B).
+    via: principal.via,
   });
   if (error) {
     mapRunRpcError(error);
