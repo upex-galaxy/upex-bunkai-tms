@@ -63,6 +63,14 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
   const { event_type: eventType, entity_type: entityType, payload } = notification;
 
   if (entityType === 'run') {
+    // BK-211 (comment 12173, "Run-event row copy" decision) — the title
+    // carries the test name; the verdict stays a chip, never re-encoded as
+    // prose. `payload.title` (runs.test_title, the start-time snapshot) is
+    // populated by every row the producer (0066_run_event_notifications.sql)
+    // inserts — the fallback to the bare, currently-shipped copy below is
+    // defensive, not the expected path, mirroring the bug branch's own
+    // `bugTitle` fallback further down this function.
+    const testTitle = typeof payload.title === 'string' && payload.title.length > 0 ? payload.title : null;
     if (eventType === 'run.finished') {
       const verdict = payload.verdict;
       const signal: NotificationTitleView['signal'] = verdict === 'passed'
@@ -70,11 +78,15 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
         : verdict === 'failed'
           ? { label: 'failed', status: 'fail' }
           : null;
-      return { text: 'Run finished', signal, reason: null };
+      return { text: testTitle === null ? 'Run finished' : `Run finished: ${testTitle}`, signal, reason: null };
     }
     if (eventType === 'run.aborted') {
       const reason = typeof payload.reason === 'string' ? payload.reason : null;
-      return { text: 'Run aborted', signal: { label: 'aborted', status: 'aborted' }, reason };
+      return {
+        text: testTitle === null ? 'Run aborted' : `Run aborted: ${testTitle}`,
+        signal: { label: 'aborted', status: 'aborted' },
+        reason,
+      };
     }
     return { text: 'Run update', signal: null, reason: null };
   }

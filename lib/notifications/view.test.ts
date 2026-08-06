@@ -69,9 +69,46 @@ describe('resolveNotificationTitle', () => {
     expect(title).toEqual({ text: 'Run finished', signal: null, reason: null });
   });
 
+  // BK-211 (comment 12173, "Run-event row copy" decision) — AC1: "Run
+  // finished: Login regression chain — passed". Title carries the test
+  // name; the verdict stays a chip, never re-encoded into the title string.
+  test('run.finished with a payload title prepends "Run finished: {title}"', () => {
+    const title = resolveNotificationTitle({
+      event_type: 'run.finished',
+      entity_type: 'run',
+      payload: { title: 'Login regression chain', verdict: 'passed' },
+    });
+    expect(title).toEqual({ text: 'Run finished: Login regression chain', signal: { label: 'passed', status: 'pass' }, reason: null });
+  });
+
+  test('run.finished with an empty-string payload title falls back to the bare copy', () => {
+    const title = resolveNotificationTitle({
+      event_type: 'run.finished',
+      entity_type: 'run',
+      payload: { title: '', verdict: 'passed' },
+    });
+    expect(title.text).toBe('Run finished');
+  });
+
   test('run.aborted carries the optional reason through, when present', () => {
     const title = resolveNotificationTitle({ event_type: 'run.aborted', entity_type: 'run', payload: { reason: 'Wrong build deployed' } });
     expect(title).toEqual({ text: 'Run aborted', signal: { label: 'aborted', status: 'aborted' }, reason: 'Wrong build deployed' });
+  });
+
+  // AC3: "she sees a notification that the run was aborted including the
+  // reason 'Wrong build deployed'" — title carries the test name, reason
+  // stays on the dedicated second line NotificationRow.tsx already renders.
+  test('run.aborted with a payload title prepends "Run aborted: {title}"', () => {
+    const title = resolveNotificationTitle({
+      event_type: 'run.aborted',
+      entity_type: 'run',
+      payload: { title: 'Profile settings chain', reason: 'Wrong build deployed' },
+    });
+    expect(title).toEqual({
+      text: 'Run aborted: Profile settings chain',
+      signal: { label: 'aborted', status: 'aborted' },
+      reason: 'Wrong build deployed',
+    });
   });
 
   test('an unrecognized run event still gets a neutral run label, not a crash', () => {

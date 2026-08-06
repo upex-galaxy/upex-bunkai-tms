@@ -748,5 +748,26 @@ Still ***BUILDABLE***, still a single additive migration `0066` for the trigger,
 
 ---
 
+### Ely - 8/6/2026, 3:54:22 PM
+
+## Implementation complete — PR open, migration gate unresolved
+
+PR: https://github.com/upex-galaxy/upex-bunkai-tms/pull/137 (`feature/BK-211-run-terminal-notifications` -> `staging`)
+
+Implements the ratified decision trail (12169, 12173, 12196, 12198) as specified — no product questions re-opened.
+
+***Migration gate — the reason this stops at PR, not merge-ready-and-deployed.*** Two migrations are written and committed, neither applied:
+
+- `0066*run*event_notifications.sql` — additive (new trigger only), eligible for autonomous apply.
+- `0067*run*finish*abort*via.sql` — rewrite of two live `SECURITY DEFINER` functions (`bunkai*finish*run` / `bunkai*abort*run`, adding `p_via`), requires human approval per `.agents/project.yaml` migration policy.
+
+Applying 0066 alone would leave the trigger reading a `via` payload key nothing writes yet, so every self-finish would notify — a silent regression on the no-self-notification rule (AC5). Both must be applied together, in order, by a human with migration authority.
+
+***Verification***: `bun test` 1337/1339 pass (2 pre-existing failures in `lib/atcs/search-isolation.test.ts`, unrelated — full-text ATC search, no file this change touches). `types:check` and `lint:check` both clean. Independent Stage 3 review: 0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NIT.
+
+***Next step for a human***: apply `0066` then `0067` against project `fmbpikzpkafptqximhxn` (e.g. `mcp_*supabase**apply*migration` or `supabase db push`), re-run `lib/notifications/run-event-trigger-isolation.test.ts` to confirm it goes green (currently skips loudly, naming these two files), then merge the PR (merge-commit method, per the repo's ruleset).
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

@@ -305,14 +305,22 @@ export async function getRunExpanded(supabase: Client, args: { actorUserId: stri
 // (else run_not_abortable), trims + bounds the reason (3..500), closes the Run as
 // 'aborted' (finished_at set, version bumped) and marks every not-yet-executed
 // step 'skipped' while preserving recorded results. Returns the composed Run json.
+//
+// `via` (BK-211/12198) — the terminal call's session kind ('cookie' | 'bearer'),
+// forwarded from `principal.via` — is a channel descriptor for the run-event
+// notification trigger (0066_run_event_notifications.sql), never an identity or
+// scope parameter. Optional: an omitted `via` lands on the RPC's own `p_via
+// default null`, which the trigger reads as non-interactive and therefore
+// notifies (the safe default — a missed terminal notification is silent).
 export async function abortRun(
   supabase: Client,
-  args: { actorUserId: string, runId: string, reason: string },
+  args: { actorUserId: string, runId: string, reason: string, via?: 'cookie' | 'bearer' },
 ) {
   return supabase.rpc('bunkai_abort_run', {
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_reason: args.reason,
+    p_via: args.via ?? null,
   });
 }
 
@@ -323,14 +331,17 @@ export async function abortRun(
 // version bumped) and marks every not-yet-executed step 'skipped' while preserving
 // recorded results. Human / agent / ci callers pass the same gate. Returns the
 // composed Run json.
+//
+// `via` — see abortRun's comment above; identical contract.
 export async function finishRun(
   supabase: Client,
-  args: { actorUserId: string, runId: string, verdict: 'passed' | 'failed' },
+  args: { actorUserId: string, runId: string, verdict: 'passed' | 'failed', via?: 'cookie' | 'bearer' },
 ) {
   return supabase.rpc('bunkai_finish_run', {
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_verdict: args.verdict,
+    p_via: args.via ?? null,
   });
 }
 
