@@ -42,7 +42,8 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 - **Caps are hard: `story` 1 per run, `bug` 3 sequential (each fully closed before the next), `discovery` up to 2 new user stories per run (never application code, and only after its synchronous approval gate — see Autonomy).** Every measured story became a multi-thousand-line chain; two do not fit in one run's context.
 - **Write the handoff as you go, never at the end.** A run that exhausts its context cannot write up why. Checkpoint after every phase and after every completed slice.
 - **When context runs low, push the branch FIRST, then record resume state, then stop.** Unpushed commits in a disposable worktree are the only unrecoverable loss in this system. A clean mid-work handoff is a success; a mid-ticket death with unpushed work is the failure to design against.
-- **Applying a schema migration to shared infrastructure is irreversible and hits every concurrent agent.** Under `migrations: confirm` (default) it stops for approval, stating target and additive-vs-destructive. Under `migrations: autonomous` it proceeds for ADDITIVE changes only and still stops for anything that drops, renames, or rewrites a live object. Writing the migration file is always autonomous; applying it is not.
+- **Applying a schema migration to shared infrastructure is irreversible and hits every concurrent agent.** Under `migrations: confirm` (default) it stops for approval, stating target and additive-vs-destructive. Under `migrations: autonomous` it proceeds for ADDITIVE changes only and still stops for anything that drops, renames, or rewrites a live object. Under `migrations: unrestricted` it proceeds for EVERY class, including destructive ones — this project's current setting (operator decision, 2026-08-06; see Configuration). Writing the migration file is always autonomous; applying it is not. Two rules bind at every level, `unrestricted` included: never apply a migration merely to clear a local error, and always re-read the live definition after every apply (incl. re-applies) and diff it against the committed file.
+- **A cached `gh` identity can silently flip between phases in a multi-account setup.** `gh auth status` showing the correct account (with repo write/merge scope) at Phase 0 is not evidence it is still active at merge time — `git push` keeps working under a separate keychain credential even after the active `gh` account changes, so the failure surfaces only at `gh pr merge`, looking like a permissions or branch-protection error. Assert the expected account (`autonomous_delivery.automation_gh_account` in `.agents/project.yaml`) and `gh auth switch --user <account>` if it drifted — at Phase 0, again immediately before the first push, and again immediately before any merge.
 - **Take the migration number from the live ledger immediately before writing the file**, never from a local directory listing. The ledger can be ahead of your branch by a peer's unmerged migration, and behind no file you can list.
 - **Read regenerated output before committing it.** Types, clients, and API specs generated from a shared live instance silently absorb a concurrent sibling's unmerged schema. Diff it; strip foreign entries after proving zero consumers.
 - **Give every dispatched agent its own worktree.** A background subagent writes into its dispatcher's working directory by default, outlives its dispatcher, and keeps mutating shared state after the dispatcher is gone. Fixing this after `git status` looks wrong is too late.
@@ -98,7 +99,8 @@ autonomous_delivery:
     discovery: 0 # application CODE cap — always zero, discovery never writes code.
     discovery_definitions: 2 # NEW user stories drafted + created per run — gated on synchronous chat approval.
   lock_staleness_minutes: 90 # older than this -> abandoned, reclaimable with a logged note.
-  migrations: confirm # confirm | autonomous. See "Migration gate".
+  automation_gh_account: null # gh identity this run asserts before every push and merge. See Phase 0b step 3.
+  migrations: confirm # confirm | autonomous | unrestricted. See "Migration gate".
   isolation: worktree # worktree | in-place. worktree is strongly preferred.
   context_budget:
     handoff_checkpoint: every-phase # every-phase | every-slice. Never "at-end".
@@ -270,7 +272,7 @@ For `story` and `bug`:
 
 1. **Read the rest of the config.** `enabled: false`, or a mode absent from `modes`, ends the run here with a one-line report — copy `.session/` back to the home checkout first if anything in it changed (it shouldn't have, this early), then `ExitWorktree(remove)`. This is not a failure.
 2. **Validate the mode** against the three literals `story`, `bug`, `discovery`. Anything else is a fast-fail — never fall back to a default mode.
-3. **Verify push identity before anything else.** A multi-account CLI with the wrong cached identity reads and fetches fine and fails only at the first push, hours later, with a permission error that looks like branch protection. Confirm the active account has write scope now.
+3. **Assert push identity before anything else, and re-assert it at every point of no return.** A multi-account CLI with the wrong cached identity reads and fetches fine and fails only at the first push or merge, hours later, with a permission error that looks like branch protection. Observing the identity once is not enough — a real run had `saiotest` (correct, repo admin) active at Phase 0 and `elycuracity` (read-only on this repo) active by the time it reached `gh pr merge`, with every step in between succeeding silently because `git push` uses a separate keychain credential that never drifted. Check `gh auth status` against `autonomous_delivery.automation_gh_account` (`.agents/project.yaml`); if the active account is wrong, `gh auth switch --user <account>` before proceeding. **Re-run this exact check again immediately before the FIRST push of the run, and again immediately before ANY merge** — not just here at Phase 0. See Hazard H20.
 4. **Take the lock** at `.session/autonomous-delivery/<mode>/lock.json`:
 
 ```json
@@ -403,13 +405,14 @@ Writing the migration file is ordinary technical work and is always autonomous. 
 | --- | --- | --- |
 | `confirm` (default) | **Pause and request approval**, stating the target instance, exactly what the migration does, and that it is additive. | **Pause and request approval**, stating target, what it does, and that it is destructive. Offer a real second option (defer to a fast-follow), not a yes/no. |
 | `autonomous` | Proceed. Take the number from the live ledger immediately before writing the file. | **Still stops.** `autonomous` never covers dropping, renaming, or rewriting a live object. |
+| `unrestricted` | Proceed. Take the number from the live ledger immediately before writing the file. | **Proceed.** Every class applies unattended, including drop / rename / `CREATE OR REPLACE` rewrites of an existing live object. Take the number from the live ledger immediately before writing the file, same as additive. |
 
-Two rules regardless of setting:
+Two rules regardless of setting, `unrestricted` included:
 
 - **Never apply a migration merely to clear a local error.** If a local failure seems to need a live schema change, that is a finding, not a step.
 - **Re-read the live definition after every apply** — including re-applies where you believe nothing changed — and diff it against the committed file. Hand-retyping SQL into an apply call has dropped a clause by fat-finger, caught only by the habit of diffing afterwards.
 
-A `CREATE OR REPLACE` that changes an existing live object's **output** is a rewrite, not an additive change, even when the fix is narrow, confirmed, and unambiguous. Do not pattern-match a bug-fix precedent onto it.
+A `CREATE OR REPLACE` that changes an existing live object's **output** is a rewrite, not an additive change, even when the fix is narrow, confirmed, and unambiguous. Do not pattern-match a bug-fix precedent onto it. Under `unrestricted` this classification no longer changes whether the apply proceeds (both columns proceed), but it still matters for the run report: log it as destructive, not additive, so the record stays honest about what actually happened.
 
 ### Verification that actually verifies
 
@@ -564,6 +567,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 | H17 | A fresh `EnterWorktree` branches from the repo's default branch, which is not guaranteed to be the integration branch this project works against (today it IS — `origin/HEAD -> staging`) | Fetch + `git merge-base --is-ancestor` check after entry; realign with `git checkout -B`, NEVER `git reset --hard` (Rule #13 denies it), Phase 0a step 6 |
 | H18 | A dispatched agent's worktree is never auto-removed once it holds changes — that is deliberate on the Agent tool's part | Explicit `git worktree remove` per ticket, immediately, Phase 3.5 |
 | H19 | `discovery`'s synchronous approval gate re-proposes on top of an already-pending, unanswered recommendation, flooding the backlog | Read `pending-decision.md` FIRST; `awaiting_reply` re-surfaces the same recommendation verbatim, never a new one |
+| H20 | A multi-account `gh` CLI's active identity silently flips between Phase 0 and merge time — `git push` keeps working under a separate keychain credential, so the failure surfaces only at `gh pr merge` with a permission error that looks like branch protection | Assert `autonomous_delivery.automation_gh_account`, `gh auth switch --user <account>` if wrong — at Phase 0, again before the first push, and again before any merge |
 
 ---
 
@@ -576,7 +580,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A5.** NEVER write application code in `discovery` mode. It analyzes, proposes, and — only after the operator's explicit go-ahead given live in that session's chat — defines and creates the approved epic/stories via `/product-management`. Code is always another mode's job.
 - **A6.** NEVER defer the handoff to the end of the run. Write it as you go, or you will not write it.
 - **A7.** NEVER stop on a low budget with unpushed commits. Push first, then record, then stop.
-- **A8.** NEVER apply a destructive migration autonomously — no setting covers it, and clearing a local error is not a reason.
+- **A8.** NEVER apply a destructive migration under `confirm` or `autonomous` without approval — `unrestricted` is the only setting that covers it. And under EVERY setting, including `unrestricted`: never apply a migration, additive or destructive, merely to clear a local error — that is a finding, not a step.
 - **A9.** NEVER take a migration number from a local directory listing.
 - **A10.** NEVER commit generated output from a shared live instance without reading it first.
 - **A11.** NEVER rebase, force-push, amend, or otherwise rewrite pushed history, and never route around a denied operation by finding another path to the same effect. A denial is a signal to stop and name the exact permission needed, never a puzzle to solve.
@@ -605,7 +609,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - [ ] Scheduler's own "Worktree" option left unchecked; this run entered its own isolation via `EnterWorktree` in Phase 0a (if `isolation: worktree`)
 - [ ] `.env` and the whole `.session/` tree copied in from the home checkout immediately after entry; base VERIFIED against `origin/<integration-branch>` and realigned with `git checkout -B` only if the check failed (never `git reset --hard`)
 - [ ] Mode is one of `story` / `bug` / `discovery`, present in `autonomous_delivery.modes`, and `enabled: true`
-- [ ] Push identity verified as having write scope, before the first push rather than at it
+- [ ] Push identity asserted against `autonomous_delivery.automation_gh_account` (`gh auth switch --user <account>` if wrong) at Phase 0, again immediately before the first push, and again immediately before any merge — not merely observed once
 - [ ] Lock taken, reclaimed-with-a-logged-note, or the run exited cleanly on a live lock
 - [ ] Resume resolved deterministically per the unattended table; a missing remote branch escalated rather than redone
 - [ ] `git fetch` run before every ancestry and fast-forward check
@@ -619,7 +623,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - [ ] Cap respected (`story` 1, `bug` 3 sequential, `discovery` up to `discovery_definitions` new stories, never code, never created before the approval gate fires)
 - [ ] Claim written, file re-read, and the row conceded if contested
 - [ ] Dispatched agent given an isolated worktree, its environment file copied in, briefing component 7 carrying the migration gate + budget stop procedure, and an explicit `model` override (sonnet for execution, opus for a judge panel)
-- [ ] Migration gate honoured; live definition re-read and diffed after every apply
+- [ ] Migration gate honoured per the configured level (`confirm` / `autonomous` / `unrestricted`); live definition re-read and diffed after every apply; never applied merely to clear a local error
 - [ ] At least one assertion exercises a real production write path
 - [ ] Handoff appended at every phase boundary — never deferred
 - [ ] On low budget: branch pushed FIRST, resume state recorded, then stop
