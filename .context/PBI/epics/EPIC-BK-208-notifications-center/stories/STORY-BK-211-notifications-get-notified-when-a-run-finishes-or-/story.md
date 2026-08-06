@@ -3,7 +3,7 @@
 **Jira Key:** [BK-211](https://jira.upexgalaxy.com/browse/BK-211)
 **Epic:** [BK-208](https://jira.upexgalaxy.com/browse/BK-208) (Notifications Center)
 **Type:** Story
-**Status:** In Review
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 5
 
