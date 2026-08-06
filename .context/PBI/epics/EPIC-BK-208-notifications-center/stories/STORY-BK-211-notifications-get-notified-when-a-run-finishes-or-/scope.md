@@ -1,6 +1,6 @@
 # BK-211 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
 
 - Notification to the run starter when their run reaches a final verdict (passed or failed), including the verdict and the test name.
 - Notification to the run starter when their run is aborted, including the abort reason.

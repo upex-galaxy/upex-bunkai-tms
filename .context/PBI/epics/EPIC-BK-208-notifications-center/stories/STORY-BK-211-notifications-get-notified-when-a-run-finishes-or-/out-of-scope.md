@@ -1,6 +1,6 @@
 # BK-211 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-211)
 
 - Step-level events (a step marked pass, fail, or block) — noise at inbox granularity; only terminal run events notify.
 - Run-started events — the starter already knows; no other audience is defined yet.
