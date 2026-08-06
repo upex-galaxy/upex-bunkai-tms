@@ -46,6 +46,7 @@ The layer between a scheduler and `/sprint-development`. It exists because a pip
 - **Read regenerated output before committing it.** Types, clients, and API specs generated from a shared live instance silently absorb a concurrent sibling's unmerged schema. Diff it; strip foreign entries after proving zero consumers.
 - **Give every dispatched agent its own worktree.** A background subagent writes into its dispatcher's working directory by default, outlives its dispatcher, and keeps mutating shared state after the dispatcher is gone. Fixing this after `git status` looks wrong is too late.
 - **Never rebase a branch a subagent already pushed** — merge the base in instead (`git checkout -B <branch> origin/<branch> && git merge <integration-branch> --no-edit`). Rebasing forces a force-push, which is a history rewrite on pushed work.
+- **Never reach for a repo-wide destructive git command** — `git reset --hard`, `git restore .`, `git checkout -- .`, untargeted `git stash`, `git clean -f`. Critical Rule #13 forbids them because agent sessions share this working tree, and the permission layer DENIES them, so a run that reaches for one stalls rather than proceeding. To move a branch pointer use `git checkout -B <branch> <ref>`; to discard, name the exact paths YOU modified.
 - **Green tests are not evidence the feature works.** Fixtures that seed the column the code reads, rather than the column production writes, keep every test green over a dead data path. Require at least one assertion against a real production write path before calling an acceptance criterion covered.
 - **Editing a skill's rules does nothing until the registry is regenerated** (`bun run skills:registry`). The registry is what reaches a subagent briefing; a rule that never reached the briefing never reached any executor.
 - **Decide technical calls yourself, after searching the record.** Follow `agentic-dev-core/references/decision-protocol.md`: search -> follow if settled -> scored judge panel if genuinely novel -> escalate ONLY product, novel security posture, irreversible, and whatever the operator reserved. Record every autonomous decision where the NEXT run's Phase 1 will find it.
@@ -172,10 +173,12 @@ autonomous_delivery:
    |  - EnterWorktree (if isolation: |
    |    worktree in config)         |
    |  - copy in .env + .session/    |
-   |  - realign to origin/<integr.> |
-   |    (fresh worktree defaults to |
-   |    the DEFAULT branch, not the |
-   |    integration branch)         |
+   |  - CHECK base vs origin/<integr>|
+   |    (fresh worktree uses the    |
+   |    repo DEFAULT branch; today  |
+   |    that IS staging). Realign   |
+   |    only if needed, via         |
+   |    checkout -B, never reset    |
    +--------------------------------+
        |
        v
@@ -247,7 +250,20 @@ For `story` and `bug`:
 3. **Check whether you are already inside a worktree** (`pwd` under `.claude/worktrees/`, or the equivalent for this environment). If so, the scheduler's own "Worktree" option was left checked despite the Configuration note above — `EnterWorktree` errors when called from inside an existing worktree session, so do NOT call it. Instead: proceed in-place in this already-assigned worktree, note in the run report that the scheduler's Worktree checkbox needs to be unchecked for this routine, and flag that `ExitWorktree` will NOT be able to close this worktree at Phase 4 (Hazard 5.10) — a human will need to `git worktree remove` it manually afterward. This is a degraded-but-functional path, not a hard failure.
 4. **Otherwise, `EnterWorktree`** with no fixed `name` (let it auto-generate — a fixed per-mode name risks a collision with a stale worktree from a crashed prior run; the mode-lock already prevents same-mode overlap, so collision-avoidance here is pure hygiene, not a race guard).
 5. **Copy in what a fresh worktree does not carry**: `.env`, and the **whole `.session/` tree** from the home checkout (not just this mode's subfolder — `escalation-log.md` is shared across modes, and Phase 0b's resume table plus decision-protocol's "search the record first" both need it). Without this, the lock/progress/escalation history from every prior run is invisible and Phase 0b's resume table sees a false "fresh run" every single time. This copy is a point-in-time READ snapshot — `story` and `bug` runs may legitimately overlap (locks are per-mode), so treat anything outside your own mode's subfolder as read-only reference, not a value to write back verbatim (see Phase 4 step 3 for why).
-6. **Realign the base branch.** `EnterWorktree`'s default (`fresh`) branches from `origin/<the repo's default branch>` — for this repo that is `main`, NOT `staging` (`git_strategy.branches.integration`). Immediately: `git fetch origin && git reset --hard origin/<integration-branch>` (safe — nothing has been committed on this brand-new branch yet). Skipping this plants every commit this run makes on top of `main` instead of `staging`. See Hazard 5.10.
+6. **Verify the base branch, and realign it if it is wrong.** `EnterWorktree`'s default (`fresh`) branches from `origin/<the repo's default branch>` — whatever `refs/remotes/origin/HEAD` currently points at. **Check it, do not assume it in either direction.** As of 2026-08-06 this repo's default branch IS `staging` (GitHub `default_branch: staging`, local `origin/HEAD -> refs/remotes/origin/staging`), so a fresh worktree already lands on the integration branch and needs no realignment — verified empirically, not inferred. That can change the moment someone flips the default on the host, which is exactly why this is a check rather than a fixed instruction.
+
+   ```bash
+   git fetch origin
+   git merge-base --is-ancestor origin/<integration-branch> HEAD && echo "base OK" || echo "REALIGN NEEDED"
+   ```
+
+   If realignment IS needed:
+
+   ```bash
+   git checkout -B <this-worktree-branch> origin/<integration-branch>
+   ```
+
+   **Do NOT use `git reset --hard` here.** Critical Rule #13 forbids repo-wide destructive git commands because multiple agent sessions share this working tree, and the call is DENIED by the permission layer — a run that reaches for it stalls at Phase 0a instead of realigning. `git checkout -B` reaches the same state without a destructive discard, and is safe on a brand-new branch precisely because nothing has been committed on it yet. See Hazard 5.10.
 
 ### 0b. Lock
 
@@ -531,7 +547,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 | H14 | A tracker status flips to ready-for-dev with blocking refinement questions still open | Read the refinement trail in Phase 2, not the status field |
 | H15 | Session records die with the worktree that held them | Rescue before removal, Phase 4 step 3 |
 | H16 | The scheduler's own "Worktree" option assigns a worktree `ExitWorktree` cannot see or close (it only tracks worktrees THIS session entered via `EnterWorktree`) | Leave that option unchecked; the run enters and exits its own isolation explicitly, Phase 0a / Phase 4 step 8 |
-| H17 | A fresh `EnterWorktree` branches from the repo's default branch, not necessarily the integration branch this project actually works against | Fetch + realign to `origin/<integration-branch>` immediately after entry, Phase 0a step 5 |
+| H17 | A fresh `EnterWorktree` branches from the repo's default branch, which is not guaranteed to be the integration branch this project works against (today it IS — `origin/HEAD -> staging`) | Fetch + `git merge-base --is-ancestor` check after entry; realign with `git checkout -B`, NEVER `git reset --hard` (Rule #13 denies it), Phase 0a step 6 |
 | H18 | A dispatched agent's worktree is never auto-removed once it holds changes — that is deliberate on the Agent tool's part | Explicit `git worktree remove` per ticket, immediately, Phase 3.5 |
 | H19 | `discovery`'s synchronous approval gate re-proposes on top of an already-pending, unanswered recommendation, flooding the backlog | Read `pending-decision.md` FIRST; `awaiting_reply` re-surfaces the same recommendation verbatim, never a new one |
 
@@ -564,14 +580,14 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A23.** NEVER leave a dispatched agent's worktree on disk once its ticket is closed (merged, escalated-with-push, or gate-stopped-with-push). Remove it immediately in Phase 3.5, per ticket — never batch this at Phase 4.
 - **A24.** NEVER end a run without closing its OWN worktree (`ExitWorktree remove`) once the branch is pushed or there was nothing to push. A routine that finishes its work but abandons its own worktree has not finished cleanly.
 - **A25.** NEVER omit an explicit `model` override on a Phase 2 judge-panel or Phase 3 execution dispatch. An omitted model silently inherits the orchestrator's, which may be a stronger and pricier model than mechanical execution needs.
-- **A26.** NEVER trust a fresh `EnterWorktree`'s default base without checking it. It branches from the repo's default branch, which is not necessarily this project's integration branch — realign before any work lands on it.
+- **A26.** NEVER trust a fresh `EnterWorktree`'s default base without checking it, and never assume it is wrong either — verify with `git merge-base --is-ancestor origin/<integration-branch> HEAD` before realigning. When realignment IS needed, use `git checkout -B`; NEVER `git reset --hard`, which Critical Rule #13 forbids and the permission layer denies.
 
 ---
 
 ## Pre-flight checklist
 
 - [ ] Scheduler's own "Worktree" option left unchecked; this run entered its own isolation via `EnterWorktree` in Phase 0a (if `isolation: worktree`)
-- [ ] `.env` and the whole `.session/` tree copied in from the home checkout immediately after entry; base realigned to `origin/<integration-branch>`, not the repo's default branch
+- [ ] `.env` and the whole `.session/` tree copied in from the home checkout immediately after entry; base VERIFIED against `origin/<integration-branch>` and realigned with `git checkout -B` only if the check failed (never `git reset --hard`)
 - [ ] Mode is one of `story` / `bug` / `discovery`, present in `autonomous_delivery.modes`, and `enabled: true`
 - [ ] Push identity verified as having write scope, before the first push rather than at it
 - [ ] Lock taken, reclaimed-with-a-logged-note, or the run exited cleanly on a live lock
