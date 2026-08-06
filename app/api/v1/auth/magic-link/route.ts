@@ -34,20 +34,33 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const redirect = `${webUrl('/auth/callback')}?next=${encodeURIComponent(next)}`;
 
   const supabase = await createClient();
+  // BK-175: `shouldCreateUser` defaults to TRUE, which turned this login-only
+  // endpoint into a silent sign-up path. An address with no account was
+  // enrolled instead of rejected, so Supabase sent the `Confirm signup`
+  // template — a 6-digit code, not a magic link — while the caller sat on a
+  // "Check your inbox" screen waiting for a link that never arrives. Pinning
+  // it to false keeps the two flows apart: this route only ever mails a link
+  // to an address that already has an account; enrolment belongs to /signup.
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: redirect },
+    options: { emailRedirectTo: redirect, shouldCreateUser: false },
   });
 
   if (error) {
-    // Supabase rate-limit (HTTP 429) surfaces here. Phase F adds a real
-    // rate-limit middleware in front; for now we map the upstream verbatim.
     const status = error.status ?? 502;
-    throw new ApiError(
-      status === 429 ? 'rate_limited' : 'upstream_error',
-      error.message,
-      { status },
-    );
+    if (status === 429) {
+      throw new ApiError('rate_limited', error.message, { status });
+    }
+    // Anti-enumeration stance, mirroring `resend`/`signup`/`confirm`: a 4xx
+    // here means "no account for this address" (the only 4xx `signInWithOtp`
+    // raises once shouldCreateUser is false), and answering differently than
+    // for a known address would turn this endpoint into an account oracle.
+    // Report the same success the caller gets for a delivered link, and never
+    // echo the raw upstream message.
+    if (status >= 400 && status < 500) {
+      return jsonResponse({ ok: true });
+    }
+    throw new ApiError('upstream_error', 'Magic-link delivery is temporarily unavailable.');
   }
 
   // Best-effort audit row for replay correlation. Failures here must never
