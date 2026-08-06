@@ -374,6 +374,52 @@ paths:
       responses:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ATC' } } } }
 
+  /atcs/search:
+    get:
+      tags: [ATCs]
+      summary: Search ATCs by title and tags
+      description: >-
+        Bearer `atc:read` (or cookie session). Project-scoped full-text search over ATC
+        title + tags, ranked by relevance with a 7-day recency tie-break, optionally
+        narrowed by a module subtree and/or layer. Results are restricted to the caller's
+        active workspace memberships AND to the required `project_id`; a project outside
+        those memberships returns no rows. Zero matches return an empty `items` array
+        (never 404).
+      parameters:
+        - in: query
+          name: query
+          required: true
+          description: Free-text query matched against ATC title + tags. Single token is prefix-aware (autocomplete); multiple words use AND semantics.
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: project_id
+          required: true
+          description: Scopes the search to a single project; a project outside the caller's active workspaces returns no rows.
+          schema: { type: string, format: uuid }
+        - in: query
+          name: module_id
+          description: Narrow results to this module and its descendant subtree.
+          schema: { type: string, format: uuid }
+        - in: query
+          name: layer
+          schema: { type: string, enum: [UI, API, Unit] }
+        - in: query
+          name: limit
+          description: 1..50, default 20.
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Ranked matches (possibly empty).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/AtcSearchResult' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Validation failed (empty/missing query, missing/invalid project_id, bad limit, bad layer), content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+
   /tests:
     post:
       tags: [Tests]
@@ -1036,6 +1082,20 @@ components:
         version: { type: integer }
         affected_test_count: { type: integer }
 
+    AtcSearchResult:
+      type: object
+      description: >-
+        BK-20 — lightweight search-result row (a subset of the full ATC: enough to
+        render an autocomplete entry and link to the ATC). `status` is the Execution
+        Status enum (§2 domain-glossary), not an ATC lifecycle — see BK-187.
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        layer: { type: string, enum: [UI, API, Unit] }
+        status: { type: string, enum: [pass, fail, blocked, skipped, running, unrun] }
+        module_path: { type: string, description: Slash-separated module breadcrumb. }
+
     Test:
       type: object
       properties:
@@ -1181,7 +1241,7 @@ components:
               id: { type: string, format: uuid }
               name: { type: string }
               path: { type: string }
-              status_dot: { type: string, enum: [pass, fail, blocked, skipped, running] }
+              status_dot: { type: string, enum: [pass, fail, blocked, skipped, running, unrun] }
               children:
                 type: array
                 items: { type: object }

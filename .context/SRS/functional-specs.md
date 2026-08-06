@@ -99,7 +99,7 @@
 - **Relacionado a**: US 4.3
 - **Input**: `query` (string), optional `module_id`, optional `layer`, optional `limit` (default 20, max 50).
 - **Processing**: Postgres full-text search on `title` + `tags` (using `tsvector` indexed column); rank by `ts_rank` + recency (`updated_at` decay). Filter by module subtree if `module_id` set.
-- **Output**: 200 `{ items: [{ atc_id, slug, title, module_path, layer, status_dot }] }`.
+- **Output**: 200 `{ items: [{ id, slug, title, layer, status, module_path }] }`, where `status` is the Execution Status enum (`pass|fail|blocked|skipped|running|unrun`, default `unrun`) — not an ATC lifecycle.
 - **Validations**: query at least 1 char; result respects workspace scope.
 
 > Semantic search via pgvector + embeddings ships Phase 2 (separate FR).
