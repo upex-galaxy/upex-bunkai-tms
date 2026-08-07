@@ -109,6 +109,7 @@ autonomous_delivery:
     stop_at_remaining_pct: 20 # begin the clean-stop sequence at this much budget left.
   report_channel: null # null | tracker:<ISSUE-KEY> | file:<path>. A plain summary log for all three modes —
     # NOT a mailbox. Discovery's proposal approval is synchronous, in that routine's own chat, never a reply here.
+  escalation_channel: null # null | slack:<CHANNEL-ID>. ESCALATIONS ONLY — never summaries; those go to report_channel above.
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
 ```
 
