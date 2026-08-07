@@ -1,3 +1,4 @@
+import type { Principal } from '@lib/api/principal';
 import type { MemberRole } from '@lib/types';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
@@ -17,6 +18,34 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+// Resolve which workspace is "active" for the caller (BK-316). Extracted out
+// of the handler body — same reason and same isolation style as
+// `resolveRunWorkspaceId` in `runs/route.ts:24-44`: no dedicated
+// NextRequest/ctx test harness exists in this repo, so the branch that a
+// regression must pin down needs to be a plain, unit-testable function.
+// Pure (no DB, no `cookies()` call inside) rather than DB-parametrized like
+// `resolveRunWorkspaceId` — GET /api/v1/me always fetches the full
+// `workspaces` list for the response body regardless of auth method, so
+// there is no lazy-query case to model here; this only ever picks an id out
+// of the list the caller already has.
+export function resolveMeActiveWorkspaceId(
+  principal: Pick<Principal, 'workspaceId' | 'via'>,
+  cookieActive: string | null,
+  visibleWorkspaceIds: readonly string[],
+): string | null {
+  if (principal.via === 'cookie') {
+    return resolveActiveWorkspaceId(cookieActive, visibleWorkspaceIds);
+  }
+  // Bearer: surface the token-bound workspace_id if one was set at issuance
+  // (POST /api/v1/tokens with a workspace_id), else fall back to the oldest
+  // visible workspace. Tokens minted at POST /api/v1/auth/signin carry
+  // `workspace_id: null` (lib/api/pat.ts's `mintPat` — the documented,
+  // intended shape for a headless global token, migration
+  // 0008_access_tokens.sql), so this fallback is the common case for
+  // CLI/agent traffic, not a rare edge.
+  return principal.workspaceId ?? (visibleWorkspaceIds[0] ?? null);
+}
+
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
 
@@ -32,15 +61,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   // For cookie callers honour the bk_active_ws cookie; for bearer callers
   // surface the token-bound workspace_id if one was set at issuance, else
   // fall back to the oldest workspace.
-  let activeWorkspaceId: string | null;
-  if (principal.via === 'cookie') {
-    const cookieStore = await cookies();
-    const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-    activeWorkspaceId = resolveActiveWorkspaceId(cookieActive, workspaces.map(w => w.id));
-  }
-  else {
-    activeWorkspaceId = principal.workspaceId ?? (workspaces[0]?.id ?? null);
-  }
+  const cookieActive = principal.via === 'cookie'
+    ? ((await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null)
+    : null;
+  const activeWorkspaceId = resolveMeActiveWorkspaceId(principal, cookieActive, workspaces.map(w => w.id));
 
   // Resolve the caller's role in the active workspace (BK-86). One uniform
   // RLS-scoped read of the caller's OWN membership row — identical for cookie

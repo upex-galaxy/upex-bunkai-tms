@@ -29,7 +29,10 @@ registry.registerPath({
   responses: {
     200: { description: 'Cookie set.', content: { 'application/json': { schema: ResponseSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not a member of the target workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: {
+      description: 'Caller is not a member of the target workspace, or is a Personal Access Token — PATs have no switchable active workspace and must pass `workspace_id` explicitly per request (BK-316).',
+      content: { 'application/json': { schema: ErrorEnvelopeSchema } },
+    },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
