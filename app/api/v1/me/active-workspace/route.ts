@@ -6,7 +6,7 @@ import {
   ACTIVE_WORKSPACE_COOKIE_DEFAULTS,
 } from '@lib/api/workspace-cookie';
 import { z } from 'zod';
-import { buildActiveWorkspaceResponse } from './response';
+import { assertSessionOnly, buildActiveWorkspaceResponse } from './response';
 
 // POST /api/v1/me/active-workspace — rotate the caller's active workspace.
 // We DO NOT touch the Supabase JWT; we set an httpOnly cookie `bk_active_ws`
@@ -21,6 +21,7 @@ const BodySchema = z.object({
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
+  assertSessionOnly(principal);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
