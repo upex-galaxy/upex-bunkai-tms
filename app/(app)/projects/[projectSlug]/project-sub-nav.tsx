@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 import { cn } from '@lib/utils';
-import { BarChart3, Bug, Flag, Library, Play } from 'lucide-react';
+import { BarChart3, Bug, Flag, GitBranch, Library, Play } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,7 +14,14 @@ import { usePathname } from 'next/navigation';
 // route with no `href` anywhere until this story (AI Product Owner decision,
 // BK-205 — Critical Rule #14 makes the live UI the source of truth for
 // navigation, and this sub-nav is the exact home D18 ratified for this
-// decision shape).
+// decision shape). BK-45 adds a sixth, Traceability — the PO's own routing
+// decision (comment 12171, "A4 + V1") names this exact sub-nav as one of the
+// story's two required entry points ("the Traceability nav item... lands on
+// the screen with a story selector"); the other is deep links FROM the
+// Metrics dashboard, which is a separate follow-up wiring those specific
+// links, not this file's concern. Without a `?story=` param the destination
+// renders its own "select a user story" prompt (`TraceabilityChainView`) —
+// this entry does not attempt to pre-select one.
 //
 // It lives in the persistent project shell (project-shell.tsx), NOT in each
 // page, so it survives navigation across the project's detail routes — the
@@ -39,6 +46,7 @@ const ENTRIES: SubNavEntry[] = [
   { id: 'runs', label: 'Test Runs', icon: Play, segment: 'runs' },
   { id: 'bugs', label: 'Bug Reports', icon: Bug, segment: 'bugs' },
   { id: 'metrics', label: 'Metrics', icon: BarChart3, segment: 'metrics' },
+  { id: 'traceability', label: 'Traceability', icon: GitBranch, segment: 'traceability' },
   { id: 'milestones', label: 'Milestones', icon: Flag, segment: 'milestones' },
 ];
 

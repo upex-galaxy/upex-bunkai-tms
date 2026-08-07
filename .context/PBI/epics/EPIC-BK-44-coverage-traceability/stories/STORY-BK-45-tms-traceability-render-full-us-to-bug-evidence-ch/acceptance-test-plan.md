@@ -6,7 +6,7 @@
 
 ### Coverage Estimate
 
-| Type | Count |
+| ***Type**** | ****Count*** |
 | --- | --- |
 | Positive | 10 |
 | Negative | 6 |
@@ -36,7 +36,7 @@ The count is driven by the 5-layer chain depth. Each layer introduces at least o
 
 1. ***"No coverage" state renders correctly (Scenario 3 — existing AC-03)***
 
-1. ***Partial coverage******:****** mixed ACs (some covered, some not)***
+1. ***Partial coverage:**** ****mixed ACs (some covered, some not)***
 
 1. ***Viewer-role member can access the traceability view***
 
@@ -66,11 +66,11 @@ The count is driven by the 5-layer chain depth. Each layer introduces at least o
 
 #### Integration (4)
 
-1. ***AC → ATC join correctness******:****** ATC appears under its bound AC only***
+1. ***AC → ATC join correctness:**** ****ATC appears under its bound AC only***
 
-1. ***ATC → Test → Run join******:****** latest run selection accuracy***
+1. ***ATC → Test → Run join:**** ****latest run selection accuracy***
 
-1. ***Run → Defect join******:****** multiple defects on one run***
+1. ***Run → Defect join:**** ****multiple defects on one run***
 
 1. ***Full 5-layer chain consistency after ATC is rebound to a different AC***
 
@@ -78,11 +78,11 @@ The count is driven by the 5-layer chain depth. Each layer introduces at least o
 
 ## 5. Edge Cases — Extended Scan (HIGH Risk)
 
-| # | Edge Case | Criticality |
+| ***#**** | ****Edge Case**** | ****Criticality*** |
 | --- | --- | --- |
 | EC1 | Unauthenticated user accesses a valid traceability URL | CRITICAL — no auth = data leak risk |
 | EC2 | Authenticated cross-workspace user accesses traceability URL (RLS bypass potential) | CRITICAL — tenant isolation; admin Supabase client bypass pattern exists in codebase |
-| EC3 | ATC bound to AC in Story A, ATC is reused in a Test that also covers Story B — chain may show wrong story context | HIGH — shared ATC reuse across stories; BK-24 join logic unknown |
+| EC3 | ATC bound to AC in Story A, ATC is reused in a Test that also covers Story B — chain may show wrong story context | HIGH — shared ATC reuse across stories; [https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24](https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24) join logic unknown |
 | EC4 | All 3 upstream entities (Tests, Runs, Defects) are empty; chain must render gracefully without null pointer errors | HIGH — most probable state at sprint start; chain must not crash |
 | EC5 | Run status is running (in-flight) when traceability view is loaded | HIGH — misleading if shown as no-result; UI must handle intermediate state |
 | EC6 | Story with 50+ ATC rows (large coverage matrix) causes N+1 query per ATC | HIGH — without a purpose-built join endpoint, naive implementation will be O(N) DB calls per AC |
@@ -111,7 +111,7 @@ The count is driven by the 5-layer chain depth. Each layer introduces at least o
 
 1. ***(G6 + negative-14) — Archived User Story behavior***: If a QA Lead navigates to the traceability view for a soft-archived story, what should happen? 404, an "archived" banner, or full chain visible read-only?
 
-1. ***(SP Challenge) — Story Points***: BK-45 currently has no SP estimate. Given that the feature requires a 5-entity join endpoint that does not exist, a new UI view/component, and all 3 downstream entity types (Tests, Runs, Defects — BK-24, BK-30, BK-31) are in Planificacion with no schema yet, this story is not ready for sprint planning until its upstream dependencies deliver working schemas. Recommend SP = 5-8 once dependencies are unblocked, or split into:
+1. ***(SP Challenge) — Story Points***: [https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45](https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45) currently has no SP estimate. Given that the feature requires a 5-entity join endpoint that does not exist, a new UI view/component, and all 3 downstream entity types (Tests, Runs, Defects — [https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24](https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24), [https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30), [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31)) are in Planificacion with no schema yet, this story is not ready for sprint planning until its upstream dependencies deliver working schemas. Recommend SP = 5-8 once dependencies are unblocked, or split into:
 
 ### For Dev
 

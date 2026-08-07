@@ -792,3 +792,25 @@ export async function updateMilestone(supabase: Client, args: UpdateMilestoneArg
     p_description: args.description ?? '',
   });
 }
+
+// BK-45 — read a User Story's full AC -> ATC -> Test -> Run -> Defect
+// evidence chain in one round trip. Same explicit-actor contract as
+// reportProjectCoverage/reportProjectRecoveryCycles/reportProjectDefectHeatmap
+// (0068_story_traceability_report.sql); the SECURITY DEFINER RPC resolves
+// the story's Project via module_id (never the nullable
+// user_stories.project_id) and gates the actor's active workspace
+// membership (any role — a viewer reads, per the PO's role-gate ruling). No
+// pagination — one story's chain is small and bounded. Grain is the story,
+// not the project: `bunkai_report_project_coverage` and this RPC are
+// deliberately NOT interchangeable.
+export interface ReportStoryTraceabilityArgs {
+  actorUserId: string
+  userStoryId: string
+}
+
+export async function reportStoryTraceability(supabase: Client, args: ReportStoryTraceabilityArgs) {
+  return supabase.rpc('bunkai_report_story_traceability', {
+    p_actor_user_id: args.actorUserId,
+    p_user_story_id: args.userStoryId,
+  });
+}

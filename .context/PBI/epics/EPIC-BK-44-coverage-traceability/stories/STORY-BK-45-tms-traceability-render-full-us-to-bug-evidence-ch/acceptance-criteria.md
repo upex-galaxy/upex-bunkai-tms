@@ -1,12 +1,12 @@
 # BK-45 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-45)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-45)
 
 ## 3. Refined Acceptance Criteria
 
 ### Original AC-01 — Full chain display (covered story)
 
-```gherkin
+```
 Scenario: Open the evidence chain for a fully covered user story
   Given a workspace member with at least viewer role
   And a user story in an active module with:
@@ -26,7 +26,7 @@ Scenario: Open the evidence chain for a fully covered user story
 
 ### Original AC-02 — Partial coverage (ATCs exist, no run yet)
 
-```gherkin
+```
 Scenario: Open the traceability view for a partially covered user story
   Given a workspace member with at least viewer role
   And a user story with at least one AC that has ATCs bound but no Test runs recorded
@@ -42,7 +42,7 @@ NEEDS PO/DEV CONFIRMATION — "no data yet" must be confirmed as exact UI copy o
 
 ### Original AC-03 — No coverage
 
-```gherkin
+```
 Scenario: Open the traceability view for a user story with no ATCs linked
   Given a workspace member with at least viewer role
   And a user story whose acceptance criteria have no ATCs bound
@@ -56,7 +56,7 @@ NEEDS PO/DEV CONFIRMATION — exact empty-state copy must be defined.
 
 ### Added AC-04 — AC with no ATCs within a partially covered story
 
-```gherkin
+```
 Scenario: User story has some ACs covered and some ACs uncovered
   Given a user story with 2 or more active acceptance criteria
   And at least one AC has ATCs bound to it
@@ -71,7 +71,7 @@ NEEDS PO/DEV CONFIRMATION — exact "uncovered" indicator copy or component.
 
 ### Added AC-05 — Role-based access
 
-```gherkin
+```
 Scenario: Unauthenticated user attempts to access a traceability view
   Given a URL for a valid traceability view
   When an unauthenticated user navigates to that URL
@@ -79,7 +79,7 @@ Scenario: Unauthenticated user attempts to access a traceability view
   And no chain data is rendered before the redirect
 ```
 
-```gherkin
+```
 Scenario: Authenticated user from a different workspace attempts to access a traceability view
   Given a valid traceability view URL for Workspace A
   And an authenticated user who is a member only of Workspace B
@@ -90,7 +90,7 @@ Scenario: Authenticated user from a different workspace attempts to access a tra
 
 ### Added AC-06 — Archived entities excluded from chain
 
-```gherkin
+```
 Scenario: Traceability view excludes archived ACs and ATCs
   Given a user story with one active AC and one archived AC
   And the active AC has one active ATC and the archived AC has one archived ATC
@@ -102,7 +102,7 @@ Scenario: Traceability view excludes archived ACs and ATCs
 
 ### Added AC-07 — Story with zero ACs
 
-```gherkin
+```
 Scenario: Open the traceability view for a story with no acceptance criteria
   Given a user story in draft status with no acceptance criteria
   When the member navigates to the traceability view for that user story

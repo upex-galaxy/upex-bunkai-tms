@@ -4307,6 +4307,175 @@
           }
         },
         "required": ["event_type", "channel", "enabled"]
+      },
+      "StoryTraceabilityPayload": {
+        "type": "object",
+        "properties": {
+          "story": {
+            "$ref": "#/components/schemas/TraceabilityStory"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TraceabilityCriterion"
+            },
+            "description": "Every non-archived acceptance criterion of this User Story, ordered by position. Empty when the story has no acceptance criteria at all."
+          }
+        },
+        "required": ["story", "criteria"]
+      },
+      "TraceabilityStory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "ready_to_test"]
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "title", "status", "archived_at"]
+      },
+      "TraceabilityCriterion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "atcs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TraceabilityAtc"
+            },
+            "description": "Empty when this acceptance criterion has zero ATCs bound (renders the \"Uncovered\" strip)."
+          }
+        },
+        "required": ["id", "title", "atcs"]
+      },
+      "TraceabilityAtc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": ["UI", "API", "Unit"]
+          },
+          "test": {
+            "$ref": "#/components/schemas/TraceabilityTest"
+          },
+          "latest_run": {
+            "$ref": "#/components/schemas/TraceabilityLatestRun"
+          },
+          "defects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TraceabilityDefect"
+            },
+            "description": "Every defect whose provenance resolves to this ATC, not only the latest run's (\"None linked\" when empty)."
+          }
+        },
+        "required": ["id", "slug", "title", "layer", "test", "latest_run", "defects"]
+      },
+      "TraceabilityTest": {
+        "type": ["object", "null"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title"],
+        "description": "Null when no Test chains this ATC yet (\"No test written yet\")."
+      },
+      "TraceabilityLatestRun": {
+        "type": ["object", "null"],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_status": {
+            "type": "string",
+            "enum": ["running", "passed", "failed", "aborted"]
+          },
+          "atc_status": {
+            "type": "string",
+            "enum": ["pending", "passed", "failed", "blocked", "skipped"]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["in_flight", "aborted", "passed", "failed", "blocked", "skipped"],
+            "description": "Run-level `running` outranks any position verdict — an ATC inside a still-running Run always reads `in_flight`, never a stale prior verdict."
+          }
+        },
+        "required": ["run_id", "run_status", "atc_status", "started_at", "finished_at", "state"],
+        "description": "Null when a Test chains this ATC but it has never been run (\"No run recorded yet\")."
+      },
+      "TraceabilityDefect": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "closed"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "run_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "run_step_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["id", "title", "severity", "status", "created_at", "run_id", "run_step_id"]
       }
     },
     "parameters": {}
@@ -10891,6 +11060,85 @@
           },
           "422": {
             "description": "Invalid body — including an `event_type` of `mentions` (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/traceability": {
+      "get": {
+        "tags": ["Traceability"],
+        "summary": "Render a User Story's full acceptance-criteria-to-defect evidence chain in one read",
+        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_story_traceability`) resolves the User Story's Project via its Module (never the nullable `user_stories.project_id`) and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination: one story's own chain is small and bounded, and round trips never scale with AC/ATC/Test/Run counts. Archived acceptance criteria and ATCs (including under an archived ancestor Module) are excluded from the chain; an archived STORY itself still renders in full.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Project the User Story belongs to (URL-shape consistency only — not an additional scope boundary; see route.ts)."
+          },
+          {
+            "name": "story",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The User Story whose evidence chain to read."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The User Story's evidence chain.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryTraceabilityPayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed Project id or missing/malformed `story` query parameter (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User Story not found (also returned for a Story outside the caller's workspaces — no existence leak).",
             "content": {
               "application/json": {
                 "schema": {
