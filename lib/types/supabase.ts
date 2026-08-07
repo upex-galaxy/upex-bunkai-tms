@@ -1654,6 +1654,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_report_story_traceability: {
+        Args: { p_actor_user_id: string, p_user_story_id: string }
+        Returns: Json
+      }
       bunkai_resolve_activity_actors: {
         Args: { p_user_ids: string[], p_workspace_id: string }
         Returns: {
