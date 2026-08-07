@@ -59,6 +59,7 @@ external_consumers:
   - isolation # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
   - context_budget # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
   - report_channel # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
+  - escalation_channel # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Autonomy (clean-stop sequence, primary notification path) — never resolved through {{VAR}} templating
   - escalation_log # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
 
 # Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).
@@ -149,4 +150,9 @@ autonomous_delivery:
     tracker:BK-261 # plain run-summary log for all 3 routines. NOT a mailbox — no reply-parsing
     # protocol. Discovery's proposal approval happens synchronously in that routine's own chat session, never
     # via a comment reply here. See .context/orchestration/routines.md and SKILL.md's Autonomy section.
+  escalation_channel: slack:C0BNQQ7EUNM # #claude-routine-blockers (private, upexgalaxy.slack.com). ESCALATIONS
+  # ONLY — never run summaries; those stay on report_channel (BK-261) as before. Primary notification path in a
+  # story/bug run's clean-stop sequence (see SKILL.md Autonomy); PushNotification remains the secondary path.
+  # Posted via the Slack MCP tool (slack_send_message), which authenticates as the operator's own user, not a
+  # bot. Wired 2026-08-07 (operator decision, made live in session).
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
