@@ -102,7 +102,17 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
   const [exporting, setExporting] = useState(false);
 
   const inFlight = useRef<AbortController | null>(null);
-  useEffect(() => () => inFlight.current?.abort(), []);
+  // BK-50 — a SEPARATE ref from `inFlight`: Export is a background side-fetch
+  // for the download, distinct from Retry's visible re-population of
+  // `payload`. Sharing one ref would let an Export click abort an in-flight
+  // Retry (or vice versa). Both are aborted on unmount so a navigate-away
+  // mid-export never resolves into a `setExporting`/toast call on an
+  // unmounted component.
+  const exportInFlight = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    inFlight.current?.abort();
+    exportInFlight.current?.abort();
+  }, []);
 
   const retry = useCallback(async () => {
     if (!userStoryId) { return; }
@@ -140,10 +150,12 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
   // (AC1.2/E2 are the existing route's already-shipped 401/404 behavior).
   const handleExport = useCallback(async () => {
     if (!userStoryId || exporting) { return; }
+    const controller = new AbortController();
+    exportInFlight.current = controller;
     setExporting(true);
     try {
-      const controller = new AbortController();
       const result = await fetchChain(projectId, userStoryId, controller.signal);
+      if (controller.signal.aborted) { return; }
       if (!result.ok) {
         toast.error(result.message);
         return;
@@ -160,10 +172,13 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
       });
     }
     catch (err) {
+      if (controller.signal.aborted) { return; }
       toast.error(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
     }
     finally {
-      setExporting(false);
+      if (exportInFlight.current === controller) {
+        setExporting(false);
+      }
     }
   }, [projectId, userStoryId, workspaceName, projectName, exporting]);
 

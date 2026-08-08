@@ -64,7 +64,10 @@ function slugify(text: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
+    .slice(0, 60)
+    // The 60-char slice can land right after a hyphen, leaving a trailing
+    // one (and, chained into `trace-<slug>-<stamp>`, a stray double hyphen).
+    .replace(/-+$/, '');
   return slug.length > 0 ? slug : 'story';
 }
 

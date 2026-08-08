@@ -79,6 +79,16 @@ describe('buildSnapshotFilename', () => {
     expect(filename.length).toBeLessThan(100);
     expect(filename.startsWith('trace-aaaa')).toBe(true);
   });
+
+  test('never leaves a trailing/stray hyphen when the 60-char truncation lands on a hyphen boundary', () => {
+    // 59 "a"s + a hyphen-producing separator sits exactly on the truncation
+    // boundary — a naive slice(0, 60) would keep the trailing hyphen and
+    // produce "...a--20260808...html" once joined with the file stamp.
+    const boundaryTitle = `${'a'.repeat(59)} b`;
+    const filename = buildSnapshotFilename(boundaryTitle, T0);
+    expect(filename).not.toContain('--');
+    expect(filename.endsWith('-20260808-1532.html')).toBe(true);
+  });
 });
 
 describe('renderTraceabilitySnapshotHtml', () => {
