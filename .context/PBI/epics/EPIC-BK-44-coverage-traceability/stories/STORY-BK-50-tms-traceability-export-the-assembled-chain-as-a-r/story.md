@@ -3,9 +3,10 @@
 **Jira Key:** [BK-50](https://jira.upexgalaxy.com/browse/BK-50)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -21,6 +22,10 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -29,14 +34,14 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 
 ### Story (1)
 
-- [BK-45](https://jira.upexgalaxy.com/browse/BK-45): TMS-Traceability | Render full US to bug evidence chain in one read _(Ready For Dev)_
+- [BK-45](https://jira.upexgalaxy.com/browse/BK-45): TMS-Traceability | Render full US to bug evidence chain in one read _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/8/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** +shift-left-2026-07-09, +shift-left-reviewed, new-feature
