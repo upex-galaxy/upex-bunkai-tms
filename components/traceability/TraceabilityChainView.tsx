@@ -1,6 +1,7 @@
 'use client';
 
 import type { StoryTraceabilityPayload, TraceabilityAtc, TraceabilityCriterion } from '@lib/traceability/chain-view';
+import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import {
   CHAIN_PLACEHOLDER_COPY,
@@ -20,8 +21,14 @@ import {
   ZERO_COVERAGE_HEADING,
   zeroCoverageBody,
 } from '@lib/traceability/chain-view';
-import { AlertTriangle, Clock, FileText } from 'lucide-react';
+import {
+  buildSnapshotFilename,
+  formatSnapshotTimestamp,
+  renderTraceabilitySnapshotHtml,
+} from '@lib/traceability/export-snapshot';
+import { AlertTriangle, Clock, Download, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // BK-45 — the US -> AC -> ATC -> Test -> Run -> Defect evidence chain view.
 // Renders the mockup (`bk-44-metrics-coverage/traceability-chain.html`) with
@@ -30,22 +37,37 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // `ProjectRunsReportView`/`ProjectCoverageView` already established.
 //
 // Scope trim vs. the mockup (Critical Rule #15 — logged, not silent): omits
-// the filter bar (result/module/date-range), the active-filter-summary, and
-// the Export snapshot button — all BK-48/BK-50. Also omits the mockup's
-// hardcoded 4-story segmented picker: no AC in this story describes
-// browsing/switching stories from inside the view (every AC scenario begins
-// "navigates to the traceability view for THAT user story" — arrival is via
-// deep link). See the Stage 1 plan for the full rationale. Renders the 6
-// in-scope states: full chain, partial/mixed, zero-coverage banner, zero-AC,
-// loading skeleton, error+retry — plus the archived-story banner (AC-06,
-// PO-ratified, part of "full chain" rendering, not a separate top-level
-// state).
+// the filter bar (result/module/date-range) and the active-filter-summary —
+// both BK-48. Also omits the mockup's hardcoded 4-story segmented picker: no
+// AC in this story describes browsing/switching stories from inside the view
+// (every AC scenario begins "navigates to the traceability view for THAT
+// user story" — arrival is via deep link). See the Stage 1 plan for the
+// full rationale. Renders the 6 in-scope states: full chain, partial/mixed,
+// zero-coverage banner, zero-AC, loading skeleton, error+retry — plus the
+// archived-story banner (AC-06, PO-ratified, part of "full chain"
+// rendering, not a separate top-level state) and the Export snapshot button
+// (BK-50 — client-initiated download of a self-contained HTML document, see
+// `lib/traceability/export-snapshot.ts`).
 
 interface ApiErrorBody {
   error?: { code?: string, message?: string }
 }
 
 const FALLBACK_ERROR_MESSAGE = 'Could not load the evidence chain.';
+
+// BK-50 — client-side file download, no server route involved: a Blob +
+// object URL + a transient, never-mounted anchor (Tech Lead ruling's
+// "equivalent client-side Blob + object URL" clause). The object URL is
+// revoked synchronously after the click dispatch, so nothing lingers.
+function triggerHtmlDownload(html: string, filename: string): void {
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 async function fetchChain(
   projectId: string,
@@ -66,15 +88,31 @@ export interface TraceabilityChainViewProps {
   userStoryId: string | null
   initialPayload: StoryTraceabilityPayload | null
   initialError?: string | null
+  // BK-50 — carried down for the exported document's "workspace / project /
+  // story identity" line (PO ruling, comment 12239 §4). Resolved server-side
+  // by the page the same way it already resolves `projectId`.
+  projectName: string
+  workspaceName: string
 }
 
-export function TraceabilityChainView({ projectId, userStoryId, initialPayload, initialError = null }: TraceabilityChainViewProps) {
+export function TraceabilityChainView({ projectId, userStoryId, initialPayload, initialError = null, projectName, workspaceName }: TraceabilityChainViewProps) {
   const [payload, setPayload] = useState<StoryTraceabilityPayload | null>(initialPayload);
   const [error, setError] = useState<string | null>(initialError);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const inFlight = useRef<AbortController | null>(null);
-  useEffect(() => () => inFlight.current?.abort(), []);
+  // BK-50 — a SEPARATE ref from `inFlight`: Export is a background side-fetch
+  // for the download, distinct from Retry's visible re-population of
+  // `payload`. Sharing one ref would let an Export click abort an in-flight
+  // Retry (or vice versa). Both are aborted on unmount so a navigate-away
+  // mid-export never resolves into a `setExporting`/toast call on an
+  // unmounted component.
+  const exportInFlight = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    inFlight.current?.abort();
+    exportInFlight.current?.abort();
+  }, []);
 
   const retry = useCallback(async () => {
     if (!userStoryId) { return; }
@@ -102,6 +140,47 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
       }
     }
   }, [projectId, userStoryId]);
+
+  // BK-50 — a FRESH fetch at click time (never a re-use of the already
+  // rendered `payload` state): this is what makes AC2.1 (the snapshot
+  // freezes the chain AS OF THE EXPORT MOMENT, not as of whenever the page
+  // last loaded) and E3 (a chain-assembly failure surfaces as a clear error,
+  // never a corrupted download) correct. Goes through the SAME authenticated
+  // route the screen already uses — no new API surface, no widened exposure
+  // (AC1.2/E2 are the existing route's already-shipped 401/404 behavior).
+  const handleExport = useCallback(async () => {
+    if (!userStoryId || exporting) { return; }
+    const controller = new AbortController();
+    exportInFlight.current = controller;
+    setExporting(true);
+    try {
+      const result = await fetchChain(projectId, userStoryId, controller.signal);
+      if (controller.signal.aborted) { return; }
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      const exportedAt = new Date();
+      const html = renderTraceabilitySnapshotHtml(result.payload, {
+        exportedAt,
+        identity: { workspaceName, projectName },
+      });
+      const filename = buildSnapshotFilename(result.payload.story.title, exportedAt);
+      triggerHtmlDownload(html, filename);
+      toast.success('Snapshot exported', {
+        description: `Read-only capture of the ${result.payload.story.title} chain as of ${formatSnapshotTimestamp(exportedAt)}. Later changes to the live chain will not appear in this snapshot. Saved as ${filename}.`,
+      });
+    }
+    catch (err) {
+      if (controller.signal.aborted) { return; }
+      toast.error(err instanceof Error ? err.message : FALLBACK_ERROR_MESSAGE);
+    }
+    finally {
+      if (exportInFlight.current === controller) {
+        setExporting(false);
+      }
+    }
+  }, [projectId, userStoryId, workspaceName, projectName, exporting]);
 
   if (!userStoryId) {
     return (
@@ -150,7 +229,7 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
     <div data-testid="traceability-chain-view" className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-4">
         <div className="flex flex-col gap-4">
-          <StoryHead payload={payload} counts={counts} />
+          <StoryHead payload={payload} counts={counts} onExport={() => { void handleExport(); }} exporting={exporting} />
 
           {viewState === 'zero-ac' && (
             <Card>
@@ -186,7 +265,12 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
   );
 }
 
-function StoryHead({ payload, counts }: { payload: StoryTraceabilityPayload, counts: ReturnType<typeof storyRollupCounts> }) {
+function StoryHead({ payload, counts, onExport, exporting }: {
+  payload: StoryTraceabilityPayload
+  counts: ReturnType<typeof storyRollupCounts>
+  onExport: () => void
+  exporting: boolean
+}) {
   return (
     <Card>
       <div data-testid="traceability-story-head" className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -212,6 +296,19 @@ function StoryHead({ payload, counts }: { payload: StoryTraceabilityPayload, cou
           {' '}
           defects
         </span>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          data-testid="traceability-export-button"
+          onClick={onExport}
+          disabled={exporting}
+          aria-busy={exporting}
+          className="ml-auto"
+        >
+          <Download size={14} />
+          {exporting ? 'Exporting…' : 'Export snapshot'}
+        </Button>
       </div>
       {payload.story.archived_at !== null && (
         <div

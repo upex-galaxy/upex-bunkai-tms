@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-50)
 
-# Shift-Left Refinement: BK-50 — Export the assembled chain as a read-only snapshot
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-50#icft=BK-50](https://jira.upexgalaxy.com/browse/BK-50#icft=BK-50) — Export the assembled chain as a read-only snapshot
 
 ***Status***: Refined — Awaiting PO Estimation
 ***Refined on***: 2026-07-09
@@ -15,11 +15,11 @@ Primary persona: QA Lead. Secondary: external auditors/stakeholders. Business va
 
 ### Technical context
 
-Frontend: new export trigger + snapshot retrieval view. Backend: new export endpoint, no existing PDF/document-generation libraries installed. Depends on BK-45 chain assembly.
+Frontend: new export trigger + snapshot retrieval view. Backend: new export endpoint, no existing PDF/document-generation libraries installed. Depends on [https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45](https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45) chain assembly.
 
 ### Story complexity
 
-Business logic: Medium. Integration: Medium (depends on BK-45). Data validation: High (immutability concern). UI: Low-Medium.
+Business logic: Medium. Integration: Medium (depends on [https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45](https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45)). Data validation: High (immutability concern). UI: Low-Medium.
 
 ## Phase 2 — Story Quality Analysis
 
@@ -63,7 +63,7 @@ Scenario E3 (Negative, Medium): Should display clear error when chain assembly u
 
 ### Coverage estimate
 
-| Type | Count |
+| ***Type**** | ****Count*** |
 | --- | --- |
 | Positive | 3 |
 | Negative | 4 |
@@ -76,7 +76,7 @@ Scenario E3 (Negative, Medium): Should display clear error when chain assembly u
 Positive: export full chain, concurrent exports, empty chain no-coverage message.
 Negative: unauthorized story export, unauthorized snapshot view, chain unavailable error, deleted story export.
 Boundary: large chain (500+ entities), chain mutating mid-export.
-Integration: RLS/tenant-scoping enforcement, BK-45 format changes.
+Integration: RLS/tenant-scoping enforcement, [https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45](https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45) format changes.
 
 ## Phase 5 — Edge Cases (DRAFT)
 
@@ -96,7 +96,7 @@ Integration: RLS/tenant-scoping enforcement, BK-45 format changes.
 
 ## Data feasibility flags
 
-Confirmed DATA-FEASIBILITY-RISK: No chain assembly exists (BK-45 not implemented). No export tooling in codebase.
+Confirmed DATA-FEASIBILITY-RISK: No chain assembly exists ([https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45](https://jira.upexgalaxy.com/browse/BK-45#icft=BK-45) not implemented). No export tooling in codebase.
 
 ---
 _Synced from Jira by sync-jira-issues_

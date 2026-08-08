@@ -56,17 +56,36 @@ async function TraceabilitySection({ projectSlug, userStoryId }: { projectSlug: 
   );
   if (!activeWorkspaceId) { notFound(); }
 
+  // BK-50 — `name` added to both reads (previously `id`-only) so the
+  // exported snapshot's "workspace / project / story identity" line (PO
+  // ruling, comment 12239 §4) can be threaded down without a second
+  // round trip.
   const { data: project, error: projectErr } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, name')
     .eq('workspace_id', activeWorkspaceId)
     .eq('slug', projectSlug)
     .limit(1)
     .maybeSingle();
   if (projectErr || !project) { notFound(); }
 
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq('id', activeWorkspaceId)
+    .maybeSingle();
+  const workspaceName = workspace?.name ?? '';
+
   if (!userStoryId) {
-    return <TraceabilityChainView projectId={project.id} userStoryId={null} initialPayload={null} />;
+    return (
+      <TraceabilityChainView
+        projectId={project.id}
+        userStoryId={null}
+        initialPayload={null}
+        projectName={project.name}
+        workspaceName={workspaceName}
+      />
+    );
   }
 
   try {
@@ -88,6 +107,8 @@ async function TraceabilitySection({ projectSlug, userStoryId }: { projectSlug: 
         projectId={project.id}
         userStoryId={userStoryId}
         initialPayload={data as unknown as StoryTraceabilityPayload}
+        projectName={project.name}
+        workspaceName={workspaceName}
       />
     );
   }
@@ -98,6 +119,8 @@ async function TraceabilitySection({ projectSlug, userStoryId }: { projectSlug: 
         userStoryId={userStoryId}
         initialPayload={null}
         initialError="Could not load the evidence chain."
+        projectName={project.name}
+        workspaceName={workspaceName}
       />
     );
   }
