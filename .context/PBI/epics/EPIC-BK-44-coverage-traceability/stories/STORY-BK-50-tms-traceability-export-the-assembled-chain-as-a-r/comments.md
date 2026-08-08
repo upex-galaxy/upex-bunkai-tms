@@ -483,5 +483,38 @@ Do not re-derive any of the following. Refute the evidence or follow it.
 
 ---
 
+### Automation for Jira - 8/8/2026, 3:53:48 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 8/8/2026, 4:03:13 PM
+
+✅ Pull Request is successfully MERGED and DEPLOYED on QA. 
+It's Ready for Testing Phase! 
+Dev Task is Done.
+
+---
+
+### Ely - 8/8/2026, 4:04:53 PM
+
+## Ready for QA — BK-50 merged to staging
+
+Merged: [PR #145](https://github.com/upex-galaxy/upex-bunkai-tms/pull/145) → `staging` (merge commit `7b16c0cc4d744966e6a1fdff34bdcf2bf426f213`, verified an ancestor of `origin/staging`).
+
+***What shipped***: the Export snapshot button on the traceability screen (`/projects/{slug}/traceability?story={id}`). Click it and the browser downloads a self-contained HTML document (`trace-<story>-YYYYMMDD-HHMM.html`) containing the full evidence chain as of that moment, with a confirmation toast. Implements Option E from this ticket's own ruling (comments 12238/12239) — no migration, no new route, no storage, no anonymous access.
+
+***Suggested manual checks on staging*** (beyond the automated coverage in `lib/traceability/export-snapshot.test.ts`, 13 tests):
+
+- Export a story with a populated chain (mixed pass/fail ATCs) → open the downloaded file offline, confirm every AC/ATC/test/run/defect visible on screen is present.
+- Export a story with zero ACs → confirm the file states the story had no coverage as of the export timestamp (AC3.1), not an empty table.
+- Export twice in a row → confirm two independent files with different timestamps in the name.
+- Try reaching the export path signed out → confirm login redirect (browser) / 401 (API), same as the existing traceability screen.
+
+Design-plan divergence D26 (filename `.html` vs. the mockup's `.json`) is logged in `.context/design/master-design-plan.md` §5.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

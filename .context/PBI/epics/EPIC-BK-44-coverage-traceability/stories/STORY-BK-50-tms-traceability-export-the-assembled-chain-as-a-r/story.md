@@ -3,7 +3,7 @@
 **Jira Key:** [BK-50](https://jira.upexgalaxy.com/browse/BK-50)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** In Progress
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -43,7 +43,7 @@ As a QA Lead, I want to export a user story's assembled evidence chain as a shar
 - **Created:** 6/1/2026
 - **Updated:** 8/8/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Benjamin Segovia
 - **Labels:** +shift-left-2026-07-09, +shift-left-reviewed, new-feature
 
 ---
