@@ -52,25 +52,25 @@ const IDENTITY = { workspaceName: 'upex-galaxy', projectName: 'bunkai-core' };
 const T0 = new Date(2026, 7, 8, 15, 32); // Aug 8, 2026, 15:32 (local — matches the mockup's own stamp shape)
 
 describe('formatSnapshotTimestamp', () => {
-  test('renders a human-readable month/day/year/HH:MM stamp', () => {
-    expect(formatSnapshotTimestamp(T0)).toBe('Aug 8, 2026, 15:32');
+  test('renders a human-readable month/day/year/HH:MM:SS stamp', () => {
+    expect(formatSnapshotTimestamp(T0)).toBe('Aug 8, 2026, 15:32:00');
   });
 
-  test('pads single-digit hours and minutes', () => {
-    const early = new Date(2026, 0, 1, 3, 5);
-    expect(formatSnapshotTimestamp(early)).toBe('Jan 1, 2026, 03:05');
+  test('pads single-digit hours, minutes, and seconds', () => {
+    const early = new Date(2026, 0, 1, 3, 5, 9);
+    expect(formatSnapshotTimestamp(early)).toBe('Jan 1, 2026, 03:05:09');
   });
 });
 
 describe('buildSnapshotFilename', () => {
   test('slugifies the story title and appends a sortable file stamp with an .html extension (AC1.1)', () => {
     expect(buildSnapshotFilename('Checkout: Apply a Promo Code!', T0)).toBe(
-      'trace-checkout-apply-a-promo-code-20260808-1532.html',
+      'trace-checkout-apply-a-promo-code-20260808-153200.html',
     );
   });
 
   test('falls back to "story" when the title has no filename-safe characters', () => {
-    expect(buildSnapshotFilename('★★★', T0)).toBe('trace-story-20260808-1532.html');
+    expect(buildSnapshotFilename('★★★', T0)).toBe('trace-story-20260808-153200.html');
   });
 
   test('truncates very long titles instead of producing an unbounded filename', () => {
@@ -87,7 +87,34 @@ describe('buildSnapshotFilename', () => {
     const boundaryTitle = `${'a'.repeat(59)} b`;
     const filename = buildSnapshotFilename(boundaryTitle, T0);
     expect(filename).not.toContain('--');
-    expect(filename.endsWith('-20260808-1532.html')).toBe(true);
+    expect(filename.endsWith('-20260808-153200.html')).toBe(true);
+  });
+
+  // BK-330 — regression. AI Product Owner ruling, Jira BK-330 comment 12260,
+  // Option D: the CAPTURE INSTANT is minute-granular, not just the filename
+  // — `formatSnapshotTimestamp` and `fileStamp` both derive from the same
+  // `exportedAt` Date, so two exports seconds apart inside the same clock
+  // minute used to produce an identical filename AND byte-identical printed
+  // capture times everywhere that value renders (header, footer,
+  // zero-coverage stamp, toast) — an auditor could not tell the documents
+  // apart, or tell which was which. Exercises the real shipped functions
+  // (no reimplementation of the format string) so it proves something about
+  // what ships.
+  test('two exports seconds apart within the same clock minute produce different filenames AND different printed capture times (BK-330)', () => {
+    const firstCapture = new Date(2026, 7, 8, 15, 32, 7);
+    const secondCapture = new Date(2026, 7, 8, 15, 32, 47);
+
+    const firstFilename = buildSnapshotFilename('Checkout: Apply a Promo Code!', firstCapture);
+    const secondFilename = buildSnapshotFilename('Checkout: Apply a Promo Code!', secondCapture);
+    expect(firstFilename).not.toBe(secondFilename);
+    expect(firstFilename).toBe('trace-checkout-apply-a-promo-code-20260808-153207.html');
+    expect(secondFilename).toBe('trace-checkout-apply-a-promo-code-20260808-153247.html');
+
+    const firstStamp = formatSnapshotTimestamp(firstCapture);
+    const secondStamp = formatSnapshotTimestamp(secondCapture);
+    expect(firstStamp).not.toBe(secondStamp);
+    expect(firstStamp).toBe('Aug 8, 2026, 15:32:07');
+    expect(secondStamp).toBe('Aug 8, 2026, 15:32:47');
   });
 });
 
@@ -104,7 +131,7 @@ describe('renderTraceabilitySnapshotHtml', () => {
 
   test('zero-ac story renders prose stating no coverage as of the export timestamp, not an empty structure (AC3.1)', () => {
     const html = renderTraceabilitySnapshotHtml(payload({ criteria: [] }), { exportedAt: T0, identity: IDENTITY });
-    expect(html).toContain('This story had no coverage as of Aug 8, 2026, 15:32.');
+    expect(html).toContain('This story had no coverage as of Aug 8, 2026, 15:32:00.');
     expect(html).not.toContain('<table');
   });
 
@@ -171,6 +198,6 @@ describe('renderTraceabilitySnapshotHtml', () => {
   test('carries the workspace/project identity and export timestamp (PO ruling §4)', () => {
     const html = renderTraceabilitySnapshotHtml(payload(), { exportedAt: T0, identity: IDENTITY });
     expect(html).toContain('upex-galaxy / bunkai-core');
-    expect(html).toContain('Exported Aug 8, 2026, 15:32');
+    expect(html).toContain('Exported Aug 8, 2026, 15:32:00');
   });
 });

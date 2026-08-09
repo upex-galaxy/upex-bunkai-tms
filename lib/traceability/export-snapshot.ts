@@ -48,15 +48,22 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
-// "Aug 8, 2026, 15:32" — the human-readable export instant, embedded in the
-// document header/footer and the confirmation toast.
+// "Aug 8, 2026, 15:32:07" — the human-readable export instant, embedded in
+// the document header/footer and the confirmation toast. Second-granular
+// (BK-330, Jira comment 12260, Option D): this is the SAME capture instant
+// `fileStamp` below stamps into the filename — one `exportedAt` Date, one
+// precision, everywhere it renders. Never fork a coarser-grained variant for
+// any one surface (the toast included) — that was exactly the bug.
 export function formatSnapshotTimestamp(date: Date): string {
-  return `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}, ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  return `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}, ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
-// "20260808-1532" — sortable, filename-safe stamp.
+// "20260808-153207" — sortable, filename-safe stamp. Second-granular
+// (BK-330): two exports of the same story inside the same clock minute used
+// to collide on both the filename and the printed capture time above — see
+// that function's comment for why both moved together.
 function fileStamp(date: Date): string {
-  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
+  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
 }
 
 function slugify(text: string): string {
@@ -76,7 +83,9 @@ function slugify(text: string): string {
 // `.html` — logged as `master-design-plan.md` §5 divergence row D26, per
 // Critical Rule #15 and the PO ruling (comment 12239 §4): the consumer is a
 // human auditor and AC3.1 requires rendered prose for the empty-chain case,
-// not a data structure.
+// not a data structure. Stamp precision went second-granular (`HHMMSS`,
+// not `HHMM`) per BK-330 comment 12260 §4a — logged as divergence row D29,
+// which refines D26's precision without superseding it.
 export function buildSnapshotFilename(storyTitle: string, exportedAt: Date): string {
   return `trace-${slugify(storyTitle)}-${fileStamp(exportedAt)}.html`;
 }
