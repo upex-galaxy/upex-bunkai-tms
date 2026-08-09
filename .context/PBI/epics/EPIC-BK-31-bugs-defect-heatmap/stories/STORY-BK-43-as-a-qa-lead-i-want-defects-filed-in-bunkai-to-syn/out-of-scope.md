@@ -1,6 +1,6 @@
 # BK-43 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-43)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-43)
 
 - Two-way sync or pulling changes back from the external tracker into Bunkai
 - Configuring or connecting the external tracker integration itself

@@ -1,6 +1,6 @@
 # BK-43 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-43)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-43)
 
 1. Elena files a defect during or after a run while the external tracker integration is enabled.
 2. Bunkai saves the defect immediately and shows it in the list — she keeps working without waiting on the sync.
