@@ -88,6 +88,19 @@ async function TraceabilitySection({ projectSlug, userStoryId }: { projectSlug: 
     );
   }
 
+  // BK-329 — the URL asserts this Story belongs to `project` (resolved from
+  // `projectSlug` above). Verify it under the caller's own RLS before
+  // rendering the chain or threading `projectName` into BK-50's export
+  // header — a mismatch resolves to the SAME not-found this page already
+  // renders for an unknown slug (`route.ts` carries the API-side half of
+  // this same check, resolved the same way: module_id -> modules.project_id).
+  const { data: story } = await supabase
+    .from('user_stories')
+    .select('id, modules!user_stories_module_id_fkey(project_id)')
+    .eq('id', userStoryId)
+    .maybeSingle();
+  if (!story || story.modules?.project_id !== project.id) { notFound(); }
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {

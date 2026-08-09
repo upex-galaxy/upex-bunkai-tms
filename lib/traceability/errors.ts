@@ -18,12 +18,22 @@ import { ApiError } from '@lib/api/error-envelope';
 // made (no PO ruling names the exact status code) — flagged here per the
 // Stage 1 plan rather than left silent.
 export function mapTraceabilityRpcError(error: { code?: string, message: string }): never {
-  switch (error.code) {
-    case 'P0002':
-      throw new ApiError('not_found', 'User story not found.', {
-        details: { reason: 'not_found' },
-      });
-    default:
-      throw new ApiError('internal_error', error.message);
+  if (error.code === 'P0002') {
+    throwStoryNotFound();
   }
+  throw new ApiError('internal_error', error.message);
+}
+
+// BK-329 — the ONE non-disclosing 404 for "this User Story does not exist,
+// is outside the caller's workspaces, or does not belong to the {projectId}
+// the caller asserted in the URL". Shared by the RPC's P0002 mapping above
+// AND the route's own pre-check (route.ts) so the two paths can never drift
+// into distinguishable responses — a drift here would silently re-open the
+// disclosure channel BK-200 closed
+// (`0063_environment_cross_workspace_404.sql`). Never a 403 (see header
+// comment above for why).
+export function throwStoryNotFound(): never {
+  throw new ApiError('not_found', 'User story not found.', {
+    details: { reason: 'not_found' },
+  });
 }
