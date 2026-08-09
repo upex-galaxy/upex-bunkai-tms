@@ -5121,7 +5121,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the target workspace.",
+            "description": "Caller is not a member of the target workspace, or is a Personal Access Token — PATs have no switchable active workspace and must pass `workspace_id` explicitly per request (BK-316).",
             "content": {
               "application/json": {
                 "schema": {
@@ -11093,7 +11093,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "The Project the User Story belongs to (URL-shape consistency only — not an additional scope boundary; see route.ts)."
+            "description": "The Project the User Story belongs to. This is a consistency assertion on the URL itself, never the scope parameter: it is checked against the Story's real Project (resolved via module_id, under the caller's own RLS) and a mismatched pair is rejected — see the 404 response below and route.ts."
           },
           {
             "name": "story",
@@ -11138,7 +11138,7 @@
             }
           },
           "404": {
-            "description": "User Story not found (also returned for a Story outside the caller's workspaces — no existence leak).",
+            "description": "User Story not found. Also returned, byte-identical, for a Story outside the caller's workspaces, or for a Story that does not belong to the `{id}` Project asserted in the URL — no existence leak, never a 403.",
             "content": {
               "application/json": {
                 "schema": {

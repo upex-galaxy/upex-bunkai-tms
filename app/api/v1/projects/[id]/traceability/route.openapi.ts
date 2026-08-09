@@ -81,7 +81,7 @@ const IdParam = {
   in: 'path' as const,
   required: true,
   schema: { type: 'string' as const, format: 'uuid' as const },
-  description: 'The Project the User Story belongs to (URL-shape consistency only — not an additional scope boundary; see route.ts).',
+  description: 'The Project the User Story belongs to. This is a consistency assertion on the URL itself, never the scope parameter: it is checked against the Story\'s real Project (resolved via module_id, under the caller\'s own RLS) and a mismatched pair is rejected — see the 404 response below and route.ts.',
 };
 
 const StoryParam = {
@@ -104,7 +104,7 @@ registry.registerPath({
     200: { description: 'The User Story\'s evidence chain.', content: { 'application/json': { schema: StoryTraceabilityPayloadSchema } } },
     400: { description: 'Malformed Project id or missing/malformed `story` query parameter (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    404: { description: 'User Story not found (also returned for a Story outside the caller\'s workspaces — no existence leak).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'User Story not found. Also returned, byte-identical, for a Story outside the caller\'s workspaces, or for a Story that does not belong to the `{id}` Project asserted in the URL — no existence leak, never a 403.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
