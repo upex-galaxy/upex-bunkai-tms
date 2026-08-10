@@ -64,16 +64,17 @@
 - [BK-245](https://jira.upexgalaxy.com/browse/BK-245): BK-43-TDS12: Field mapping accuracy across severity levels _(In Automation)_
 - [BK-247](https://jira.upexgalaxy.com/browse/BK-247): BK-43-TDS14: Synced defect carries external link back to Bunkai _(In Automation)_
 
-### Story (1)
+### Storys (2)
 
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(Ready For QA)_
+- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(Shift-Left QA)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 8/5/2026
+- **Updated:** 8/10/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-07-03, shift-left-reviewed
