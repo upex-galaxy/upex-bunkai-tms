@@ -4,7 +4,7 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "55392ec9030034e0a5fe48e60d3f66213f3fe0e3",
+    "claude": "cc65f61c75bf498a69c05e07ea18a9048e545d58",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "5a18a188593ce189900e3c286f0813428b71f087",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -21,7 +21,7 @@
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "99c0a09342133fc47d676969a49a43c99a7c2723",
+      "lastSyncedSha": "949425b8c0820e209d51de092ebcedff19f79ad0",
       "appendedLines": [
         "dbhub.toml",
         ".claude/scheduled_tasks.lock",
@@ -30,7 +30,9 @@
         "*storageState*.json",
         "*.cookies",
         "cookies.txt",
-        "*.har"
+        "*.har",
+        ".template/upstream-sha/",
+        "/.agents/prompts/"
       ]
     },
     ".prettierignore": {
@@ -46,19 +48,27 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-01T21:31:17.937Z",
+  "lastSyncedAt": "2026-08-10T17:57:05.800Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
         "appliedKeys": [
           "jira:sync-link-types",
           "vars:env:check"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
+        "appliedKeys": []
+      },
+      "dependencies": {
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
+        "appliedKeys": []
+      },
+      "lint-staged": {
+        "lastSyncedSha": "5576092df6d3a6c89120242eec1aaecf73631482",
         "appliedKeys": []
       }
     }

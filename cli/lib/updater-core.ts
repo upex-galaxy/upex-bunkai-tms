@@ -1889,11 +1889,15 @@ export async function runUpdate(
   const templateDir = cfg.tempDir;
   try {
     // Sparse-checkout must include component paths, ignore-file paths AND
-    // package.json paths so Phase 4.5 / 4.5b can read them out of the partial clone.
+    // package.json paths so Phase 4.5 / 4.5b can read them out of the partial
+    // clone — plus any extra paths hooks need to read from upstream (e.g. the
+    // protected-file drift watchlist; without them the advisory silently
+    // skips every entry because the upstream copy "does not exist").
     const sparsePatterns = [
       ...buildSparseCheckoutPatterns(cfg.components),
       ...cfg.ignoreFiles.map(spec => spec.path),
       ...(cfg.packageJsonSpecs ?? []).map(spec => spec.path),
+      ...(cfg.sparseExtraPaths ?? []),
     ];
     await partialCloneTemplate(cfg.templateRepo, cfg.tempDir, sparsePatterns);
     fetchSpin.stop(`Template descargado (sparse-checkout): ${cfg.templateRepo}`);

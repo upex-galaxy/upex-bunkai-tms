@@ -36,8 +36,8 @@
     "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run vars:env:check && bun run skills:check && bun run skills:registry:check",
     "clean": "rm -rf node_modules dist .next",
     "prepare": "husky",
-    "claude": "bash -c 'set -a; . ./.env; set +a; exec claude \"$@\"' --",
-    "opencode": "bash -c 'set -a; . ./.env; set +a; exec opencode \"$@\"' --",
+    "claude": "dotenv -e .env -- claude",
+    "opencode": "dotenv -e .env -- opencode",
     "env": "set -a; source .env; set +a",
     "vars:env:check": "bun scripts/check-vars.ts"
   },
