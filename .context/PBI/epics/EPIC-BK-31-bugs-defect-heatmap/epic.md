@@ -3,7 +3,7 @@
 **Jira Key:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 0
+**Total Story Points:** 20
 
 ---
 
@@ -25,10 +25,15 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-40](https://jira.upexgalaxy.com/browse/BK-40) | TMS-Defect Filing | File a defect from a failing run step | - | Medium | Ready For QA |
-| [BK-41](https://jira.upexgalaxy.com/browse/BK-41) | TMS-Defect List | List and filter defects by module, status, severity | - | Medium | Ready For Dev |
-| [BK-42](https://jira.upexgalaxy.com/browse/BK-42) | TMS-Defect Heatmap | View count and week-over-week trend per module | - | Medium | Ready For Dev |
-| [BK-43](https://jira.upexgalaxy.com/browse/BK-43) | TMS-Defect Sync | Sync defects one-way to the external tracker | - | Medium | Ready For Dev |
+| [BK-40](https://jira.upexgalaxy.com/browse/BK-40) | TMS-Defect Filing | File a defect from a failing run step | 5 | Medium | QA Approved |
+| [BK-41](https://jira.upexgalaxy.com/browse/BK-41) | TMS-Defect List | List and filter defects by module, status, severity | 2 | Medium | In Test |
+| [BK-42](https://jira.upexgalaxy.com/browse/BK-42) | TMS-Defect Heatmap | View count and week-over-week trend per module | 3 | Medium | In Test |
+| [BK-43](https://jira.upexgalaxy.com/browse/BK-43) | TMS-Defect Sync | Sync defects one-way to the external tracker | 1 | Medium | ABORTED |
+| [BK-264](https://jira.upexgalaxy.com/browse/BK-264) | TMS-Defect Triage | Assign a defect to a workspace member and update its status | - | Medium | Ready For QA |
+| [BK-337](https://jira.upexgalaxy.com/browse/BK-337) | TMS-Defect Detail | Open a defect and read its full record | - | Medium | Shift-Left QA |
+| [BK-371](https://jira.upexgalaxy.com/browse/BK-371) | TMS-Defect Sync | Point a project at a Jira destination | 3 | Medium | Backlog |
+| [BK-372](https://jira.upexgalaxy.com/browse/BK-372) | TMS-Defect Sync | Send a newly filed defect to Jira | 3 | Medium | Backlog |
+| [BK-373](https://jira.upexgalaxy.com/browse/BK-373) | TMS-Defect Sync | Recover a failed sync and show its state | 3 | Medium | Backlog |
 
 ---
 
