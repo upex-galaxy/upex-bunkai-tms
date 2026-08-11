@@ -221,9 +221,12 @@ treatment rather than re-derive one.
 
 Build order note: BK-41 (list/filter + counts) and BK-42 (heatmap) both render `bug-reports-index.html`
 (the two views of one screen); BK-40 (file from failing step) continues to render into the
-Test Runner's Report-bug drawer, not this screen; BK-43 (sync) renders the sync-status states on
-`bug-detail.html`. **Priority: P1** — all 4 BK-31 stories are Ready For Dev and were blocked only by
-this mockup gate; that block is now lifted.
+Test Runner's Report-bug drawer, not this screen; BK-372 (sync, successor of ABORTED BK-43) renders
+the sync-status states on `bug-detail.html`. **Priority: P1** — this screen's mockup gate was lifted
+2026-07-30 and stays lifted. Status note (2026-08-11): the four original BK-31 stories are no longer
+Ready For Dev — BK-40 and BK-42 are QA Approved, BK-41 is In Test, and BK-43 is ABORTED in favour of
+BK-371/BK-372/BK-373, which sit in Backlog awaiting shift-left refinement. Nothing here is
+mockup-blocked except BK-371, which has no screen at all (see §8 and `.context/dev-roadmap.md` §5).
 
 ### 4.7 Metrics — ❌ build 0% · ✅ mockups ready (2026-07-30)
 Nav item, no badge. No data model — was previously "only implied", no mockup screen. **The 🔒
@@ -583,8 +586,11 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) · Bug Reports (read view) | `run.jsx` §4.5 · §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
 | | BK-42 Defect heatmap | **Bug Reports** (heatmap view, placement note §4.6) | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
-| | BK-43 Sync defects to Jira | Bug Reports (integration) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
+| | ~~BK-43 Sync defects to Jira~~ **ABORTED 2026-08-11** (ruling `12170` executed, PR #156) — replaced by BK-371/BK-372/BK-373 below | ~~Bug Reports (integration)~~ | ~~§4.6 · `bk-31-bug-reports/bug-detail.html`~~ |
 | | BK-337 Open a defect and read its full record | **Bug Reports** (read view) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
+| | BK-371 Point a project at a Jira destination | — no mockup screen yet (integration settings surface does not exist) | 🔒 mockup-gated, unratified — see `.context/dev-roadmap.md` §5 🔒 row |
+| | BK-372 Send a newly filed defect to Jira | Bug Reports (integration, sync-status states) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
+| | BK-373 Recover a failed sync and show its state | Bug Reports (integration, sync-failed state) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | **BK-44 Coverage & Traceability** | BK-45 US→bug evidence chain | **Traceability** | §4.7 · `bk-44-metrics-coverage/traceability-chain.html` |
 | | BK-46 Surface untested ACs/modules | **Metrics** · Home coverage card | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html`, `home.jsx` |
 | | BK-47 Time-to-green per US | **Metrics** | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html` |
