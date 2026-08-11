@@ -827,5 +827,53 @@ No commercial commitment, no legal commitment, no new external account and no ne
 
 ---
 
+### Ely - 8/11/2026, 6:05:08 AM
+
+## AI Product Owner — BK-43 superseded by BK-371 / BK-372 / BK-373
+
+> ***INFO:**** Posted by an automated run on 2026-08-11, executing ruling 12170 rather than making a new decision. Authored by the ****AI Product Owner / Business Analyst*** profile under CLAUDE.md Critical Rule #18. Not a human PO sign-off.
+
+### What happened
+
+Ruling 12170 (AI Product Owner) found this story oversized and not implementable at 1 SP, and sliced it three ways. Ruling 12177 (AI Tech Lead) partitioned all eight architecture decisions across those slices and closed with: "BK-43 as a single ticket is ***not*** implementable as written; it is implementable only once a, b and c exist as tickets... That is a ticket-administration action, not an engineering one."
+
+That action is now taken. The three successors exist:
+
+| Slice | Story | Points | Depends on |
+| --- | --- | --- | --- |
+| a | BK-371 — TMS-Defect Sync | Point a project at a Jira destination | 3 | nothing |
+| b | BK-372 — TMS-Defect Sync | Send a newly filed defect to Jira | 3 | BK-371, BK-40, BK-337 |
+| c | BK-373 — TMS-Defect Sync | Recover a failed sync and show its state | 3 | BK-372 |
+
+Each carries its own acceptance criteria, scope, out-of-scope, business rules, workflow and acceptance test plan, derived from this ticket's fields and narrowed by the rulings. Total 9 SP against the 1 SP recorded here, which is the sizing correction ruling 12170 called for.
+
+### Dependencies carried over
+
+Both of this ticket's Dependencies edges moved to ***BK-372***: BK-40 because that slice sends a newly filed defect, and BK-337 because AC-4's backlink needs a defect-detail route to point at. BK-373 inherits the BK-337 gate transitively through BK-372.
+
+### Acceptance test cases
+
+Twelve of the fourteen linked ATCs were re-parented per the coverage split in ruling 12170 — eight to BK-372, four to BK-373. Two stay on this ticket because the coverage split maps neither to a slice:
+
+| ATC | Why it stayed | Disposition already ruled |
+| --- | --- | --- |
+| BK-242 (TDS09) | Not listed in either slice's coverage | Ruling 12170 retired TDS09 outright: post-creation edits do not propagate. This ATC is ***invalid by decision*** and should be retired, not re-parented. |
+| BK-243 (TDS10) | Not listed in either slice's coverage | Ruling 12170 ratified the assumption: deletion never propagates. The outline survives as a guard test, but no slice claims it. ***Needs a QA call on which successor should own it*** — most plausibly BK-372, which owns the sending behaviour it guards. |
+
+Neither was moved, because guessing at an unassigned mapping is worse than leaving the gap visible.
+
+### Amendments applied while materializing
+
+Two corrections were flagged in ruling 12177 and never applied. They are applied in the successors rather than here:
+
+- ***AC-6's "workspace" now reads "project"*** — carried into BK-372's AC-6.
+- ***ATP outline TDS08*** no longer says retries stop on a count — carried into BK-373's acceptance test plan and its AC-2 and AC-3.
+
+### Status
+
+Transitioning this ticket to ABORTED. That is this workflow's only terminal non-success state and it means "will not be delivered" — accurate here, since the ticket will not be delivered ***as written***. The work is not cancelled; it is carried in full by BK-371, BK-372 and BK-373. Nothing was deleted: this ticket, its fields, its rulings and the two unmapped ATCs remain readable as the record of where the three successors came from.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
