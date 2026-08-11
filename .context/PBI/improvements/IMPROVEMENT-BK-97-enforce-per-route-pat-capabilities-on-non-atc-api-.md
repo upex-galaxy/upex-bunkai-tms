@@ -3,7 +3,7 @@
 **Jira Key:** [BK-97](https://jira.upexgalaxy.com/browse/BK-97)
 **Priority:** Medium
 **Status:** Open
-**Components:** None
+**Components:** Tenancy & Identity
 
 ---
 
@@ -11,7 +11,7 @@
 
 ## Context
 
-Follow-up to ***ADR-0001 — Unified API Authentication*** (shipped in PR #28, merged to `staging`). The unified gateway (`withApiHandler` + `Principal` + impersonating client) closed the BK-17 blocker: a Bearer PAT now authenticates on every `/api/v1` route with the same RLS-based authorization as a cookie session.
+Follow-up to ***ADR-0001 — Unified API Authentication*** (shipped in PR #28, merged to `staging`). The unified gateway (`withApiHandler` + `Principal` + impersonating client) closed the [https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17](https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17) blocker: a Bearer PAT now authenticates on every `/api/v1` route with the same RLS-based authorization as a cookie session.
 
 ## Problem
 
@@ -20,7 +20,7 @@ The migration deferred one piece: ***per-route capability (scope) enforcement on
 - ATC routes enforce a scope: `withApiHandler(handler, { requires: ['atc:write'] })` → a PAT lacking that scope gets `403`.
 - ***All other routes**** (imports, modules, projects, user-stories, acceptance-criteria, workspaces, invites) migrated with `requires: []` — they enforce ****authentication + RLS workspace membership only***, and do NOT check the PAT's scopes.
 
-***Implication******:*** a user who mints a narrowly-scoped PAT (e.g. `['atc:read']`, intending read-only) can still perform writes on every non-ATC route — invite members, create modules, trigger imports — because those routes do not gate on the token's scope.
+***Implication:*** a user who mints a narrowly-scoped PAT (e.g. `['atc:read']`, intending read-only) can still perform writes on every non-ATC route — invite members, create modules, trigger imports — because those routes do not gate on the token's scope.
 
 > ***INFO:**** This is NOT a cross-tenant data leak — RLS still confines the PAT to workspaces the user belongs to, and it can only do what the user themselves could do via the UI. The gap is that the ****per-token scope limit is not honored outside ATC***, so a leaked narrow-scope PAT is more powerful than its scope implies. Severity: medium.
 
@@ -30,7 +30,7 @@ Map each non-ATC route to a required capability so a PAT is gated by its scope *
 
 ## Implementation level — CODE (not DB)
 
-| Part | Level | Files |
+| ***Part**** | ****Level**** | ****Files*** |
 | --- | --- | --- |
 | Add `requires: [...]` per route | ***Code**** | `app/api/v1/***` (~18 route files) |
 | Capability type / constants | ***Code*** | `lib/api/pat.ts` (`AccessTokenScope`, `ALLOWED*PAT*SCOPES`), `lib/api/principal.ts` (`ALL_CAPABILITIES`) |
@@ -57,14 +57,23 @@ Define the capability vocabulary: reuse the current 4 scopes vs. introduce finer
 
 - ADR: `.context/ADR/ADR-0001-unified-api-authentication.md` (see "KNOWN LIMITATION" + Authorization model)
 - PR: #28 (unified auth gateway)
-- Origin: BK-17 (the blocker that surfaced the auth gap)
+- Origin: [https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17](https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17) (the blocker that surfaced the auth gap)
+
+---
+
+## Related Issues
+
+- is duplicated by: [BK-168](https://jira.upexgalaxy.com/browse/BK-168) - Audit and enforce capability scopes across non-ATC write endpoints
+- relates to: [BK-167](https://jira.upexgalaxy.com/browse/BK-167) - Enforce workspace:admin scope on admin endpoints (consumption-side)
+- relates to: [BK-135](https://jira.upexgalaxy.com/browse/BK-135) - POST /api/v1/tokens issues workspace:admin tokens to member-role users without 403 enforcement
+- relates to: [BK-262](https://jira.upexgalaxy.com/browse/BK-262) - PAT | Enforce capability scopes on every non-ATC route
 
 ---
 
 ## Metadata
 
 - **Created:** 6/8/2026
-- **Updated:** 6/8/2026
+- **Updated:** 8/6/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** adr-0001, auth, pat-scopes, security, tech-debt
