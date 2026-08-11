@@ -37,16 +37,17 @@ Mockup: `bug-detail.html` in `.context/designs/bunkai-test-management-tool/bk-31
 
 ## Traceability
 
-### Story (1)
+### Storys (2)
 
-- [BK-43](https://jira.upexgalaxy.com/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(Ready For Dev)_
+- [BK-43](https://jira.upexgalaxy.com/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(ABORTED)_
+- [BK-372](https://jira.upexgalaxy.com/browse/BK-372): TMS-Defect Sync | Send a newly filed defect to Jira _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 8/10/2026
-- **Updated:** 8/10/2026
+- **Updated:** 8/11/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

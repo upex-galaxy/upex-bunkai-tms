@@ -3,7 +3,7 @@
 **Jira Key:** [BK-264](https://jira.upexgalaxy.com/browse/BK-264)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
@@ -59,7 +59,7 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 
 ### Story (1)
 
-- [BK-212](https://jira.upexgalaxy.com/browse/BK-212): Notifications | Get notified on bug assignment and status changes _(In Progress)_
+- [BK-212](https://jira.upexgalaxy.com/browse/BK-212): Notifications | Get notified on bug assignment and status changes _(Ready For QA)_
 
 ---
 
