@@ -40,12 +40,21 @@ const TraceabilityDefectSchema = z
   })
   .openapi('TraceabilityDefect');
 
+// BK-48 — the Module this ATC belongs to. Added for the chain screen's
+// module filter (exact-match on `id`; `name` is display-only). The mockup's
+// fixture used a `MOD-XXX` code that has no equivalent column in the real
+// schema (`public.modules` has only id/name/path) — see 0069_story_traceability_module.sql.
+const TraceabilityModuleSchema = z
+  .object({ id: z.string().uuid(), name: z.string() })
+  .openapi('TraceabilityModule');
+
 const TraceabilityAtcSchema = z
   .object({
     id: z.string().uuid(),
     slug: z.string(),
     title: z.string(),
     layer: z.enum(['UI', 'API', 'Unit']),
+    module: TraceabilityModuleSchema.describe('The Module this ATC belongs to (BK-48 filter target). Always present — every ATC has a module_id.'),
     test: TraceabilityTestSchema.nullable().describe('Null when no Test chains this ATC yet ("No test written yet").'),
     latest_run: TraceabilityLatestRunSchema.nullable().describe('Null when a Test chains this ATC but it has never been run ("No run recorded yet").'),
     defects: z.array(TraceabilityDefectSchema).describe('Every defect whose provenance resolves to this ATC, not only the latest run\'s ("None linked" when empty).'),
@@ -114,6 +123,7 @@ export {
   TraceabilityCriterionSchema,
   TraceabilityDefectSchema,
   TraceabilityLatestRunSchema,
+  TraceabilityModuleSchema,
   TraceabilityStorySchema,
   TraceabilityTestSchema,
 };

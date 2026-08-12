@@ -56,6 +56,8 @@ interface TraceabilityAtcRow {
   slug: string
   title: string
   layer: string
+  // BK-48 — module: {id, name} added (0069_story_traceability_module.sql).
+  module: { id: string, name: string }
   test: { id: string, title: string } | null
   latest_run: { run_id: string, run_status: string, atc_status: string, state: string } | null
   defects: Array<{ id: string, title: string, run_id: string | null }>
@@ -86,6 +88,12 @@ interface Fixture {
   atcArchivedAncestorId: string
   atcSharedId: string
   foreignWorkspaceStoryId: string | null
+  // BK-48 — the "live" module's own id/name, so the module-identity test
+  // below can assert against the SAME row `atcs.module_id` (the real
+  // production write path — see `bunkai_create_atc`, 0007/0021) points at,
+  // not a value re-derived from the fixture's own bookkeeping.
+  moduleLiveId: string
+  moduleLiveName: string
 }
 
 let fixture: Fixture | null = null;
@@ -366,6 +374,8 @@ describeOrSkip('BK-45 — bunkai_report_story_traceability isolation + chain ass
       atcArchivedAncestorId: atcIdByKey.get('archivedAncestor')!,
       atcSharedId: atcIdByKey.get('shared')!,
       foreignWorkspaceStoryId: null,
+      moduleLiveId: moduleIds.live,
+      moduleLiveName: 'Live',
     };
 
     // Foreign-workspace probe: find (do not create) an existing story
@@ -560,6 +570,20 @@ describeOrSkip('BK-45 — bunkai_report_story_traceability isolation + chain ass
     expect(runAtc!.latest_run?.state).toBe('in_flight');
     expect(runAtc!.defects.length).toBe(1);
     expect(runAtc!.defects[0].title).toBe(`${PREFIX} bug on run atc`);
+  });
+
+  it('BK-48 — each ATC carries its REAL module identity ({id, name}), sourced from atcs.module_id (the column bunkai_create_atc/0021 actually writes)', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportTraceability(fixture.storyId, fixture.actorUserId);
+    const single = findCriterion(page, fixture.acSingleId);
+    const runAtc = single.atcs.find(a => a.id === fixture!.atcRunId);
+    expect(runAtc).toBeDefined();
+    // `moduleLiveId`/`moduleLiveName` came straight off the `modules` insert
+    // in beforeAll, which is the SAME row `atcs.module_id` (seeded via a
+    // direct `.insert()` above, mirroring the exact column
+    // `bunkai_create_atc`'s production write path sets) points at — this
+    // proves the RPC reads the real FK, not a fixture-only shortcut.
+    expect(runAtc!.module).toEqual({ id: fixture.moduleLiveId, name: fixture.moduleLiveName });
   });
 
   it('the "noTest" ATC has test: null (no Test chains it) — distinct from "noRun"', async () => {
