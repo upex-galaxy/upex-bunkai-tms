@@ -1,3 +1,4 @@
+import type { EmailOtpType } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import { OAUTH_STATE_COOKIE, stateMatches } from '@lib/auth/oauth-state';
 import { createClient } from '@lib/supabase/server';
@@ -6,8 +7,9 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 // Auth callback for BOTH rails:
-//   • magic-link OTP — Supabase redirects here with `?code=...` after the user
-//     clicks the email link (no `bkstate`).
+//   • magic-link — Supabase redirects here with `?token_hash=...&type=magiclink`
+//     after the user clicks the email link (no `bkstate`). Verified statelessly,
+//     so the link works from any device. See the BK-400 note below.
 //   • OAuth (BK-3) — the provider round-trips back here with `?code=...&bkstate=...`
 //     (or `?error=access_denied` on consent denial). The `bkstate` query param
 //     marks the OAuth branch and is validated against the `bk_oauth_state`
@@ -16,9 +18,28 @@ import { NextResponse } from 'next/server';
 // `next` is preserved through both initiation paths and defaults to `/projects`;
 // the existing redirect chain then sends a first-time user (no workspace) on to
 // `/onboarding`, and a returning user stays on `/projects`.
+
+// BK-400: email-link types we accept for stateless verification. Anything else
+// is refused rather than passed through to GoTrue, so a crafted `?type=` cannot
+// widen this route beyond the email rails it is meant to serve.
+const VERIFIABLE_OTP_TYPES = new Set<EmailOtpType>([
+  'magiclink',
+  'email',
+  'signup',
+  'invite',
+  'recovery',
+]);
+
+function asVerifiableOtpType(value: string | null): EmailOtpType | null {
+  return value !== null && VERIFIABLE_OTP_TYPES.has(value as EmailOtpType)
+    ? (value as EmailOtpType)
+    : null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const tokenHash = searchParams.get('token_hash');
   const safeNext = safeInternalPath(searchParams.get('next'));
 
   // --- OAuth-only signals -------------------------------------------------
@@ -41,6 +62,33 @@ export async function GET(request: NextRequest) {
     if (!stateMatches(issuedState, oauthState)) {
       return NextResponse.json({ code: 'OAUTH_STATE_MISMATCH' }, { status: 403 });
     }
+  }
+
+  // --- Magic-link rail (BK-400) -------------------------------------------
+  // Stateless verification: `verifyOtp` posts the hash straight to GoTrue and
+  // gets a session back, so nothing has to be remembered in this browser. That
+  // is what makes the emailed link work on a phone when it was requested on a
+  // laptop — the case the previous PKCE `exchangeCodeForSession` could never
+  // serve, because it needed a code verifier cookie only the requesting browser
+  // ever had.
+  if (tokenHash) {
+    const otpType = asVerifiableOtpType(searchParams.get('type'));
+    if (!otpType) {
+      return NextResponse.redirect(`${origin}/login?error=magic_link_invalid`);
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({ type: otpType, token_hash: tokenHash });
+
+    if (error) {
+      // Expired, already used, or tampered with. All three are indistinguishable
+      // to the user and all three mean "ask for a new link", so they share one
+      // code — and unlike the raw SDK message this route used to leak into the
+      // query string, this one is actually rendered (see `login-errors.ts`).
+      return NextResponse.redirect(`${origin}/login?error=magic_link_invalid`);
+    }
+
+    return NextResponse.redirect(`${origin}${safeNext}`);
   }
 
   if (!code) {

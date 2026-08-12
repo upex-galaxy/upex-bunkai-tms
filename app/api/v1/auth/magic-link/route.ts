@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
 import { createAdminClient } from '@lib/supabase/admin';
-import { createClient } from '@lib/supabase/server';
+import { createOtpSenderClient } from '@lib/supabase/otp-sender';
 import { webUrl } from '@lib/urls';
 import { z } from 'zod';
 
@@ -33,7 +33,11 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { email, next = '/projects' } = BodySchema.parse(body);
   const redirect = `${webUrl('/auth/callback')}?next=${encodeURIComponent(next)}`;
 
-  const supabase = await createClient();
+  // BK-400: send through a NON-PKCE client. The SSR server client hard-codes
+  // `flowType: 'pkce'`, which parked a code verifier in the requesting browser's
+  // cookies and made the emailed link unusable anywhere else. This client mints
+  // no verifier, so the link is completed statelessly in `/auth/callback`.
+  const supabase = createOtpSenderClient();
   // BK-175: `shouldCreateUser` defaults to TRUE, which turned this login-only
   // endpoint into a silent sign-up path. An address with no account was
   // enrolled instead of rejected, so Supabase sent the `Confirm signup`
