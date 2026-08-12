@@ -25,19 +25,20 @@
  * ENVIRONMENT SETUP
  * ============================================================================
  *
- * Required environment variables (credentials only):
+ * Required environment variables (credentials — env-only, never mirrored to yaml):
  *   ATLASSIAN_EMAIL=your-email@example.com
  *   ATLASSIAN_API_TOKEN=ATATT3x...
  *
- * Atlassian instance resolution (in precedence order):
- *   1. .agents/project.yaml -> issue_tracker.atlassian_url (default source-of-truth)
- *   2. ATLASSIAN_URL env var, ONLY when the yaml value is absent or null
- *   3. None set -> the script fails with an actionable message.
+ * Instance host resolution (in precedence order — NOTE the inversion vs. the
+ * project key below):
+ *   1. .agents/project.yaml -> issue_tracker.atlassian_url  (source of truth, versioned)
+ *   2. ATLASSIAN_URL env var                                (fallback only)
+ *   3. Neither set -> the script fails with an actionable message.
  *
- * The instance is anchored to the committed file rather than the environment on
- * purpose: a stale ATLASSIAN_URL is silently destructive here, because the sync
- * overwrites `.context/PBI/` with whatever the host returns. When the env var
- * disagrees with the yaml value, the yaml wins and the run warns.
+ *   The host is project identity, not a per-developer override, and it is the
+ *   value that goes stale after a site migration. This command OVERWRITES
+ *   `.context/PBI/`, so a stale host corrupts the cache with another site's
+ *   content while reporting success. Rationale: cli/lib/atlassian-instance.ts.
  *
  * Project key resolution (in precedence order):
  *   1. JIRA_PROJECT_KEY env var (override, e.g. JIRA_PROJECT_KEY=ACME bun run jira:sync-issues ...)
@@ -78,9 +79,16 @@
  * ============================================================================
  */
 
+import type { AtlassianUrlSource } from '../cli/lib/atlassian-instance';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+
 import { parse as parseYaml } from 'yaml';
+import {
+  formatInstanceMismatchWarning,
+  instanceSourceLabel,
+  resolveAtlassianInstance,
+} from '../cli/lib/atlassian-instance';
 
 // ============================================================================
 // CONSTANTS
@@ -381,14 +389,6 @@ function loadRegistry(): Registry {
 
 interface Config {
   baseUrl: string
-  /** Where `baseUrl` came from. Reported in the run banner. */
-  baseUrlSource: AtlassianUrlSource
-  /**
-   * Set when `ATLASSIAN_URL` disagrees with the project.yaml value that won.
-   * Surfaced as a warning so a stale ambient environment is visible rather than
-   * silently overridden.
-   */
-  baseUrlEnvDrift: string | null
   /**
    * Host-rewritten variant of `baseUrl` used ONLY for human-facing markdown
    * links (`/browse/...`). The REST API still uses `baseUrl`. See `toDisplayUrl`.
@@ -398,6 +398,14 @@ interface Config {
   apiToken: string
   project: string
   projectKeySource: ProjectKeySource
+  /** Where `baseUrl` came from — reported in the run banner. */
+  instanceSource: AtlassianUrlSource
+  /**
+   * Set when `.agents/project.yaml` and `ATLASSIAN_URL` name different hosts.
+   * The yaml wins, but the divergence is printed on every run: `acli` and the
+   * Atlassian MCP still read the env var directly.
+   */
+  instanceWarning: string | null
   outputDir: string
 }
 
@@ -755,95 +763,6 @@ function resolveProjectKey(): ResolvedProjectKey {
   );
 }
 
-type AtlassianUrlSource = 'project.yaml' | 'env';
-
-interface ResolvedAtlassianUrl {
-  url: string
-  source: AtlassianUrlSource
-  /**
-   * The env var's value when it disagrees with `.agents/project.yaml`. Non-null
-   * here means the ambient environment is stale; the run continues on the
-   * project.yaml value and warns loudly. See `resolveAtlassianUrl`.
-   */
-  envDrift: string | null
-}
-
-/**
- * Normalizes an Atlassian instance reference to a scheme-qualified origin with
- * no trailing slash. `.agents/project.yaml` stores a bare host (acli derives its
- * `--site` slug from it), while `ATLASSIAN_URL` conventionally carries the
- * scheme, so both shapes have to converge before they can be compared.
- */
-function normalizeAtlassianUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, '');
-  if (trimmed === '') { return ''; }
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-}
-
-/**
- * Reads `issue_tracker.atlassian_url` from `.agents/project.yaml`. Returns
- * `null` when the file is missing, the field is absent, or its value is `null` /
- * a blank string (the boilerplate ships with it unset on purpose).
- */
-function readAtlassianUrlFromYaml(): string | null {
-  if (!existsSync(PROJECT_YAML_PATH)) { return null; }
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(readFileSync(PROJECT_YAML_PATH, 'utf8'));
-  }
-  catch {
-    return null;
-  }
-  if (parsed === null || typeof parsed !== 'object') { return null; }
-  const tracker = (parsed as Record<string, unknown>).issue_tracker;
-  if (tracker === null || typeof tracker !== 'object') { return null; }
-  const raw = (tracker as Record<string, unknown>).atlassian_url;
-  if (typeof raw !== 'string') { return null; }
-  const normalized = normalizeAtlassianUrl(raw);
-  return normalized === '' ? null : normalized;
-}
-
-/**
- * Resolves the Atlassian instance this run writes against. Precedence:
- *   1. `.agents/project.yaml` → `issue_tracker.atlassian_url`.
- *   2. `ATLASSIAN_URL` env var, only when the yaml value is absent or null.
- *
- * NOTE the deliberate inversion versus `resolveProjectKey`, which lets the env
- * win. The instance host is not a per-developer override: it is versioned,
- * reviewable project identity, and it changes on site migrations. The env var is
- * the value that goes stale, and a stale one is silently destructive here —
- * the sync overwrites `.context/PBI/` with whatever the host returns, so
- * pointing at the wrong instance corrupts the cache with another site's data
- * while reporting success. Observed 2026-08-10: `ATLASSIAN_URL` in the ambient
- * process environment still named a pre-migration host, sourced from a cached
- * copy of `.env` that survived a full app restart, while `.env` on disk and
- * `project.yaml` both carried the correct one. Anchoring to the committed file
- * makes the repo the source of truth and downgrades ambient drift to a warning.
- *
- * Secrets (`ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`) stay env-only and are
- * deliberately NOT mirrored into project.yaml.
- */
-function resolveAtlassianUrl(): ResolvedAtlassianUrl {
-  const envUrl = normalizeAtlassianUrl(process.env.ATLASSIAN_URL ?? '');
-  const yamlUrl = readAtlassianUrlFromYaml();
-
-  if (yamlUrl) {
-    return {
-      url: yamlUrl,
-      source: 'project.yaml',
-      envDrift: envUrl !== '' && envUrl !== yamlUrl ? envUrl : null,
-    };
-  }
-  if (envUrl !== '') {
-    return { url: envUrl, source: 'env', envDrift: null };
-  }
-  throw new Error(
-    'sync-jira-issues: Atlassian instance is not set. '
-    + 'Either set `issue_tracker.atlassian_url` in `.agents/project.yaml` (preferred — '
-    + 'it is versioned with the repo) or export `ATLASSIAN_URL`.',
-  );
-}
-
 /**
  * Rewrite an upexgalaxy Atlassian host to its public vanity domain for
  * DISPLAY links only. The REST API must keep hitting the real
@@ -862,11 +781,17 @@ function toDisplayUrl(baseUrl: string): string {
 }
 
 function getConfig(): Config {
+  // The instance host is resolved from `.agents/project.yaml` FIRST and only
+  // falls back to `ATLASSIAN_URL`. This command overwrites `.context/PBI/` with
+  // whatever the host returns, so a stale env value corrupts the local cache
+  // with another site's content while reporting success. See the rationale in
+  // `cli/lib/atlassian-instance.ts`.
+  const instance = resolveAtlassianInstance();
+
   const email = process.env.ATLASSIAN_EMAIL;
   const apiToken = process.env.ATLASSIAN_API_TOKEN;
 
-  // Credentials are env-only by design; the instance host is not (see
-  // `resolveAtlassianUrl`, which throws its own actionable error).
+  // Credentials stay env-only — never mirrored into the versioned yaml.
   const missing: string[] = [];
   if (!email) { missing.push('ATLASSIAN_EMAIL'); }
   if (!apiToken) { missing.push('ATLASSIAN_API_TOKEN'); }
@@ -876,49 +801,36 @@ function getConfig(): Config {
   }
 
   const projectKey = resolveProjectKey();
-  const atlassianUrl = resolveAtlassianUrl();
 
   return {
-    baseUrl: atlassianUrl.url,
-    baseUrlSource: atlassianUrl.source,
-    baseUrlEnvDrift: atlassianUrl.envDrift,
-    displayUrl: toDisplayUrl(atlassianUrl.url),
+    baseUrl: instance.baseUrl,
+    displayUrl: toDisplayUrl(instance.baseUrl),
     email: email!,
     apiToken: apiToken!,
     project: projectKey.key,
     projectKeySource: projectKey.source,
+    instanceSource: instance.source,
+    instanceWarning: formatInstanceMismatchWarning(instance),
     outputDir: process.env.JIRA_SYNC_OUTPUT || DEFAULT_OUTPUT_DIR,
   };
 }
 
 /**
- * Prints "Using project=<KEY> (source: ...)" once per command run so the user
- * never has to guess which project the script is hitting. Skipped under
- * `--json` so machine-readable output stays clean.
+ * Prints "Using instance=<host> / project=<KEY> (source: ...)" once per command
+ * run so the user never has to guess which site or project the script is
+ * hitting. Skipped under `--json` so machine-readable output stays clean.
+ *
+ * A yaml/env instance divergence is ALWAYS printed as a warning, `--json` or
+ * not, because it means the rest of the toolchain is still misaimed.
  */
 function logProjectBanner(config: Config, options: { json?: boolean } = {}): void {
+  if (config.instanceWarning) { log.warn(config.instanceWarning); }
   if (options.json) { return; }
-  const sourceLabel = config.projectKeySource === 'env'
+  const keySourceLabel = config.projectKeySource === 'env'
     ? 'JIRA_PROJECT_KEY env override'
     : '.agents/project.yaml';
-  log.info(`Using project=${config.project} (source: ${sourceLabel})`);
-
-  const instanceLabel = config.baseUrlSource === 'project.yaml'
-    ? '.agents/project.yaml'
-    : 'ATLASSIAN_URL env fallback';
-  log.info(`Using instance=${config.baseUrl} (source: ${instanceLabel})`);
-
-  // A stale ambient ATLASSIAN_URL is silently destructive: the sync overwrites
-  // `.context/PBI/` with whatever the host returns, so the wrong instance
-  // corrupts the cache with another site's data while reporting success. The
-  // committed project.yaml value wins; the mismatch is reported, never hidden.
-  if (config.baseUrlEnvDrift !== null) {
-    log.warn(
-      `ATLASSIAN_URL is stale: it names ${config.baseUrlEnvDrift}, but `
-      + `.agents/project.yaml names ${config.baseUrl}. Using project.yaml. `
-      + 'Fix the env var so acli and the MCP servers, which read it directly, do not disagree with this script.',
-    );
-  }
+  log.info(`Using instance=${config.baseUrl} (source: ${instanceSourceLabel(config.instanceSource)})`);
+  log.info(`Using project=${config.project} (source: ${keySourceLabel})`);
 }
 
 // ============================================================================
@@ -3030,7 +2942,7 @@ async function cmdStatus(): Promise<void> {
   try {
     const config = getConfig();
 
-    log.success(`ATLASSIAN_URL: ${config.baseUrl}`);
+    log.success(`Instance: ${config.baseUrl}  (source: ${instanceSourceLabel(config.instanceSource)})`);
     log.success(`ATLASSIAN_EMAIL: ${config.email}`);
     log.success(`ATLASSIAN_API_TOKEN: ${'*'.repeat(20)}`);
     logProjectBanner(config);
@@ -3350,17 +3262,25 @@ ${colors.bold}EXAMPLES${colors.reset}
   bun run jira:sync-issues pull --include-comments --dry-run
 
 ${colors.bold}ENVIRONMENT VARIABLES${colors.reset}
+  ATLASSIAN_URL         Jira instance URL — FALLBACK ONLY (see INSTANCE RESOLUTION)
   ATLASSIAN_EMAIL       Your email (required)
   ATLASSIAN_API_TOKEN   API token (required)
-  ATLASSIAN_URL         Jira instance URL — FALLBACK ONLY. The instance is read from
-                        .agents/project.yaml (issue_tracker.atlassian_url); this var is
-                        used only when that is absent, and a mismatch is warned about.
   JIRA_PROJECT_KEY      Project key override (default: read from .agents/project.yaml)
   JIRA_SYNC_OUTPUT      Output directory (default: .context/PBI)
   JIRA_SYNC_SPRINTS     Default sprint selector for --sprint (same grammar)
   JIRA_SYNC_TYPES       Default csv of optional coverable work-type slugs for --types
   Precedence: flag > env var > default. --project beats JIRA_PROJECT_KEY beats
   .agents/project.yaml project_key.
+
+${colors.bold}INSTANCE RESOLUTION${colors.reset}
+  The Atlassian host is read from .agents/project.yaml -> issue_tracker.atlassian_url
+  FIRST; ATLASSIAN_URL is used only when that field is absent or null. This is the
+  INVERSE of the project-key precedence, on purpose: the host is project identity,
+  not a per-developer override, and it is the value that goes stale after a site
+  migration. A stale host here would silently overwrite .context/PBI/ with another
+  site's content. When both are set and disagree, the yaml wins and a warning names
+  both values — acli and the Atlassian MCP still read ATLASSIAN_URL directly, so the
+  divergence is a real problem you must fix in .env.
 
 ${colors.bold}OVERWRITE POLICY${colors.reset}
   Jira is the source of truth — NO files are protected. Every file the sync owns

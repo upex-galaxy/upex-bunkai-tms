@@ -283,10 +283,21 @@ export interface IgnoreDelta {
 
 /**
  * Sections of package.json that the append-only sync supports.
- * Deliberately limited to fields where additive merging is safe and well-defined.
- * Runtime `dependencies` are excluded (higher blast radius — separate decision).
+ * Limited to fields where additive merging is safe and well-defined.
+ *
+ * `dependencies` was previously excluded for blast radius. It is included now
+ * because the sync is append-only (upstream-only keys are added, divergent
+ * keys are reported FYI and never overwritten), so the real radius is "a
+ * package you may not use appears in your manifest" — whereas the cost of
+ * excluding it is that the `cli` component, which is synced wholesale and
+ * imports several packages declared only here, ships code without the package
+ * and leaves `bun run up` crashing on import in every downstream repo.
+ *
+ * `lint-staged` is included for the same reason: `.husky/pre-commit` is synced
+ * and shells out to `bunx lint-staged`, whose config lives in package.json and
+ * otherwise never travels with the hook that depends on it.
  */
-export type PackageJsonSection = 'scripts' | 'devDependencies';
+export type PackageJsonSection = 'scripts' | 'devDependencies' | 'dependencies' | 'lint-staged';
 
 export interface PackageJsonSpec {
   /** Repo-relative file path, e.g. 'package.json' */
@@ -464,6 +475,13 @@ export interface UpdaterConfig {
    * from the repo's own installed skill set, including local community skills).
    */
   excludePaths?: string[]
+  /**
+   * Extra repo-relative paths added to the sparse-checkout of the template
+   * clone. Not synced — they exist so afterApply hooks can READ the upstream
+   * copy (e.g. the protected-file drift watchlist). Without them the partial
+   * clone omits those files and upstream-comparison hooks silently no-op.
+   */
+  sparseExtraPaths?: string[]
   agentsFrameworkFiles?: string[]
   /**
    * Optional component name (e.g. `'cli'`) whose files contain the updater itself.
