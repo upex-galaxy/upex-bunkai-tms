@@ -26,6 +26,7 @@ import {
   isFilteringActive,
   parseFilterStateFromParams,
   resolveAtcRowState,
+  resolveKnownModuleId,
   resolveStoryChainViewState,
   RESULT_FILTER_VALUES,
   rowCountLabel,
@@ -395,11 +396,11 @@ describe('filterCriteria / isAcCardHidden / acNoteLabel (AC1.1/AC2.6)', () => {
     expect(isAcCardHidden(filtered, false)).toBe(false);
   });
 
-  test('a naturally-uncovered AC (0 ATCs) is only hidden while filtering is active — never by data alone', () => {
+  test('a naturally-uncovered AC (0 ATCs) is NEVER hidden by filtering — a coverage gap must stay visible regardless of the active filter (review correction, matches the mockup and BK-45\'s baseline)', () => {
     const p = payload([criterion({ id: 'ac-uncovered', atcs: [] })]);
     const [filtered] = filterCriteria(p, filterState({ results: ['fail'] }));
     expect(filtered.totalCount).toBe(0);
-    expect(isAcCardHidden(filtered, true)).toBe(true);
+    expect(isAcCardHidden(filtered, true)).toBe(false);
     expect(isAcCardHidden(filtered, false)).toBe(false);
   });
 
@@ -475,6 +476,26 @@ describe('activeFilterChips (AC4.1)', () => {
 
   test('no active filters -> no chips', () => {
     expect(activeFilterChips(EMPTY_FILTER_STATE, modules)).toEqual([]);
+  });
+});
+
+describe('resolveKnownModuleId (AC5.4 — module URL param validated against the real chain)', () => {
+  const modules = [{ id: 'mod-1', name: 'Authentication' }, { id: 'mod-2', name: 'Checkout' }];
+
+  test('a module id present in the chain resolves through unchanged', () => {
+    expect(resolveKnownModuleId('mod-1', modules)).toBe('mod-1');
+  });
+
+  test('a stale/unknown module id (e.g. a shared link to a since-archived module) drops to null, not a false zero-match', () => {
+    expect(resolveKnownModuleId('mod-does-not-exist', modules)).toBeNull();
+  });
+
+  test('null passes through as null', () => {
+    expect(resolveKnownModuleId(null, modules)).toBeNull();
+  });
+
+  test('an empty module set (e.g. payload still loading) rejects every id', () => {
+    expect(resolveKnownModuleId('mod-1', [])).toBeNull();
   });
 });
 

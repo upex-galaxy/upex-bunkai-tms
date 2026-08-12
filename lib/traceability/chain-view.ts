@@ -302,6 +302,18 @@ export function distinctModules(payload: StoryTraceabilityPayload): Traceability
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// AC5.4 — a `module` URL param has no static enum to check against (unlike
+// `result`, validated inside `parseFilterStateFromParams` itself): it can
+// only be validated once the real module set for THIS chain is known. A
+// stale or malformed id (e.g. from an old share link, or a module archived
+// since the link was shared) drops back to "all modules" — never a false
+// "Filters excluded everything". Review correction (Stage 3): an earlier
+// version passed a URL-supplied `moduleId` through unvalidated.
+export function resolveKnownModuleId(moduleId: string | null, modules: TraceabilityModule[]): string | null {
+  if (moduleId === null) { return null; }
+  return modules.some(m => m.id === moduleId) ? moduleId : null;
+}
+
 export interface FilteredCriterion {
   criterion: TraceabilityCriterion
   visibleAtcIds: Set<string>
@@ -321,13 +333,19 @@ export function filterCriteria(payload: StoryTraceabilityPayload, state: Traceab
 }
 
 // AC1.1 — "the AC card remains visible if it has at least one visible row;
-// hidden if zero visible rows". Applies uniformly to covered AND uncovered
-// cards while filtering is active: an uncovered AC (0 ATCs) can never match
-// a result/module/date predicate, so it is correctly excluded the same way
-// a covered-but-fully-filtered-out AC is. Never hidden while no filter is
-// active (an uncovered card's "Uncovered" strip keeps rendering as before).
+// hidden if zero visible rows". Scoped to ACs that HAVE rows to begin with
+// (`totalCount > 0`): a naturally-uncovered AC (0 ATCs bound) is NEVER
+// hidden by filtering alone, matching both the mockup's own `applyFilters()`
+// (`traceability-chain.html:939-949` — an empty `.ac-card` hides only in the
+// story-wide zero-match case, never per-filter) and BK-45's already-shipped
+// "Uncovered" strip, which renders unconditionally. Review correction
+// (Stage 3): an earlier version hid every zero-shown card uniformly,
+// including uncovered ones — that silently erased a real coverage gap from
+// view the moment ANY filter was active (e.g. toggling "Fail" would hide an
+// unrelated AC that simply has no ATCs), an unratified departure from both
+// the mockup and the shipped baseline (Critical Rule #15).
 export function isAcCardHidden(filtered: FilteredCriterion, filtering: boolean): boolean {
-  return filtering && filtered.shownCount === 0;
+  return filtering && filtered.totalCount > 0 && filtered.shownCount === 0;
 }
 
 export function acNoteLabel(filtered: FilteredCriterion, filtering: boolean): string {

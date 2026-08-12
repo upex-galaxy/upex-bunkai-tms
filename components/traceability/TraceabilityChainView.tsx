@@ -31,6 +31,7 @@ import {
   isFilteringActive,
   parseFilterStateFromParams,
   resolveAtcRowState,
+  resolveKnownModuleId,
   resolveStoryChainViewState,
   RESULT_FILTER_LABELS,
   RESULT_FILTER_VALUES,
@@ -144,12 +145,19 @@ const FilterBar = forwardRef<HTMLDivElement, {
           </span>
           <div
             role="group"
+            tabIndex={-1}
             aria-labelledby="traceability-filter-result-label"
             data-testid="traceability-filter-result"
             className="inline-flex overflow-hidden rounded-2 border border-stroke-2 bg-surface-2"
             onKeyDown={(e) => {
-              // AC1.5 — Escape exits the group.
-              if (e.key === 'Escape') { (document.activeElement as HTMLElement | null)?.blur(); }
+              // AC1.5 — Escape exits the group. Focus moves to the group
+              // CONTAINER (not a bare `.blur()`, which drops focus to
+              // `<body>` and restarts Tab order from the top of the
+              // document — an accessibility regression, review correction).
+              // `tabIndex={-1}` makes the container programmatically
+              // focusable without adding it to the normal Tab order, so the
+              // next Tab press continues naturally past the group.
+              if (e.key === 'Escape') { e.currentTarget.focus(); }
             }}
           >
             {RESULT_FILTER_VALUES.map(value => (
@@ -313,7 +321,16 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
 
   useEffect(() => {
     if (typeof window === 'undefined') { return; }
-    const hydrate = () => setFilterState(parseFilterStateFromParams(new URLSearchParams(window.location.search)));
+    const hydrate = () => {
+      const parsed = parseFilterStateFromParams(new URLSearchParams(window.location.search));
+      // `resolveKnownModuleId` (AC5.4) needs the real module set, which only
+      // exists once a payload has loaded. `payload` here is the mount-time
+      // value (this effect is intentionally mount-only, per the comment
+      // below) — sufficient since the module set for one userStoryId never
+      // changes across a `retry()`.
+      const moduleId = resolveKnownModuleId(parsed.moduleId, payload ? distinctModules(payload) : []);
+      setFilterState({ ...parsed, moduleId });
+    };
     hydrate();
     // AC5.3 — a real page navigation away and back re-mounts this component
     // (this effect re-runs), but a `popstate` WITHIN the mounted lifetime
