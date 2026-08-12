@@ -142,3 +142,7 @@ dbhub.toml
 *.cookies
 cookies.txt
 *.har
+
+# ----- 2026-08-12 (sync) -----
+.template/upstream-sha/
+/.agents/prompts/
