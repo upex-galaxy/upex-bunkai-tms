@@ -1,5 +1,6 @@
 import type { EmailOtpType } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
+import { providerErrorToCode } from '@lib/auth/login-errors';
 import { OAUTH_STATE_COOKIE, stateMatches } from '@lib/auth/oauth-state';
 import { createClient } from '@lib/supabase/server';
 import { safeInternalPath } from '@lib/urls';
@@ -19,16 +20,18 @@ import { NextResponse } from 'next/server';
 // the existing redirect chain then sends a first-time user (no workspace) on to
 // `/onboarding`, and a returning user stays on `/projects`.
 
-// BK-400: email-link types we accept for stateless verification. Anything else
-// is refused rather than passed through to GoTrue, so a crafted `?type=` cannot
-// widen this route beyond the email rails it is meant to serve.
-const VERIFIABLE_OTP_TYPES = new Set<EmailOtpType>([
-  'magiclink',
-  'email',
-  'signup',
-  'invite',
-  'recovery',
-]);
+// BK-400: email-link types this route will verify. Deliberately just the two
+// sign-in rails — anything else is refused rather than handed to GoTrue.
+//
+// `signup`, `invite` and `recovery` are NOT here even though they are valid
+// GoTrue types and their tokens only ever reach the mailbox owner. `signup`
+// would route around the verification-first gate in `/api/v1/auth/confirm`,
+// which deliberately keeps an account unusable until the caller confirms;
+// `recovery` would hand out a session with no password-reset step (the app has
+// no reset page, so it is pure unused surface). Neither belongs on the
+// magic-link callback, and an allow-list that grants them for free is exactly
+// the kind of quiet widening that is hard to notice later.
+const VERIFIABLE_OTP_TYPES = new Set<EmailOtpType>(['magiclink', 'email']);
 
 function asVerifiableOtpType(value: string | null): EmailOtpType | null {
   return value !== null && VERIFIABLE_OTP_TYPES.has(value as EmailOtpType)
@@ -47,10 +50,18 @@ export async function GET(request: NextRequest) {
   const providerError = searchParams.get('error');
 
   // Provider-side failure (consent denied, or provider error before any code).
-  // Checked first because a denied consent arrives with no `code`.
+  // Checked early because a denied consent arrives with no `code`.
+  //
+  // BK-400: gated on `bkstate` rather than firing for ANY inbound `?error=`.
+  // GoTrue appends its own `?error=...&error_code=otp_expired` to the redirect
+  // when an email link has expired, and unguarded this branch answered that with
+  // the OAuth copy — telling someone whose sign-in link timed out that they had
+  // denied a consent screen they never saw.
+  if (providerError && oauthState !== null) {
+    return NextResponse.redirect(`${origin}/login?error=${providerErrorToCode(providerError)}`);
+  }
   if (providerError) {
-    const code_ = providerError === 'access_denied' ? 'oauth_denied' : 'oauth_init_failed';
-    return NextResponse.redirect(`${origin}/login?error=${code_}`);
+    return NextResponse.redirect(`${origin}/login?error=magic_link_invalid`);
   }
 
   // OAuth branch: validate the CSRF state token before doing anything else.
@@ -101,12 +112,19 @@ export async function GET(request: NextRequest) {
   if (error) {
     // OAuth exchange failures surface a graceful init error (AC-9). Same-email
     // cross-provider sign-ins are NOT an error — Supabase auto-links them (AC-7).
-    // The magic-link rail keeps its original error flag.
+    //
+    // BK-400: the fallback below is now the OAuth-without-state case, NOT the
+    // magic-link rail — a magic link returns above and never reaches here once
+    // the email template links with `token_hash`. It is kept for PKCE links
+    // already in flight when this shipped, and its code is rendered now.
     if (oauthState !== null) {
       return NextResponse.redirect(`${origin}/login?error=oauth_init_failed`);
     }
-    const reason = encodeURIComponent(error.message);
-    return NextResponse.redirect(`${origin}/login?error=otp_exchange_failed&reason=${reason}`);
+    // The raw SDK message used to be appended as `&reason=`, which is how a
+    // 300-character PKCE stack-trace ended up in the user's address bar while
+    // the page itself said nothing. The code alone is enough: it now maps to
+    // copy a person can act on.
+    return NextResponse.redirect(`${origin}/login?error=otp_exchange_failed`);
   }
 
   return NextResponse.redirect(`${origin}${safeNext}`);

@@ -26,15 +26,17 @@ interface LoginToast {
 const MAGIC_LINK_ERROR_TOASTS: Record<MagicLinkErrorCode, LoginToast> = {
   magic_link_invalid: {
     title: 'That sign-in link no longer works',
-    description:
-      'Links expire quickly and can only be used once. Request a new one and open it from this device.',
+    // Deliberately does NOT say "open it on this device" — that instruction is
+    // the bug BK-400 removes, and telling someone whose link merely expired to
+    // switch devices sends them round the same loop again.
+    description: 'Links expire quickly and can only be used once. Request a new one.',
     variant: 'default',
   },
   // Retained so a link issued before the BK-400 fix — or any stray PKCE
   // round-trip — still explains itself instead of failing silently.
   otp_exchange_failed: {
     title: 'That sign-in link no longer works',
-    description: 'Request a new link and open it from this device.',
+    description: 'Request a new link — you can open it on any device.',
     variant: 'default',
   },
   missing_code: {
@@ -48,3 +50,12 @@ export const LOGIN_ERROR_TOASTS: Record<LoginErrorCode, LoginToast> = {
   ...OAUTH_ERROR_TOASTS,
   ...MAGIC_LINK_ERROR_TOASTS,
 };
+
+// Maps a provider's inbound `?error=` to the code /login renders. Lives here,
+// next to the copy, rather than inline in the callback route: a code computed
+// inside a template literal is invisible to the coverage test below this module,
+// which is precisely how `otp_exchange_failed` came to be emitted with no
+// message attached to it.
+export function providerErrorToCode(providerError: string): OAuthErrorCode {
+  return providerError === 'access_denied' ? 'oauth_denied' : 'oauth_init_failed';
+}
