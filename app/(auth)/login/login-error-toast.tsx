@@ -1,17 +1,17 @@
 'use client';
 
-import type { OAuthErrorCode } from '@lib/auth/oauth';
-import { OAUTH_ERROR_TOASTS } from '@lib/auth/oauth';
+import type { LoginErrorCode } from '@lib/auth/login-errors';
+import { LOGIN_ERROR_TOASTS } from '@lib/auth/login-errors';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
-// Surfaces OAuth failures that round-trip back to /login as `?error=<code>`
-// (BK-3, AC-4 / AC-7 / AC-9). Fires a Sonner toast once on mount, then strips
-// the param so a refresh does not replay it. Reads `useSearchParams()`, so the
-// page wraps it in <Suspense>.
-function isOAuthErrorCode(value: string | null): value is OAuthErrorCode {
-  return value !== null && value in OAUTH_ERROR_TOASTS;
+// Surfaces sign-in failures that round-trip back to /login as `?error=<code>` —
+// OAuth (BK-3, AC-4 / AC-7 / AC-9) and, since BK-400, the magic-link rail too.
+// Fires a Sonner toast once on mount, then strips the param so a refresh does
+// not replay it. Reads `useSearchParams()`, so the page wraps it in <Suspense>.
+function isLoginErrorCode(value: string | null): value is LoginErrorCode {
+  return value !== null && value in LOGIN_ERROR_TOASTS;
 }
 
 export function LoginErrorToast() {
@@ -23,12 +23,12 @@ export function LoginErrorToast() {
   const error = searchParams.get('error');
 
   useEffect(() => {
-    if (fired.current || !isOAuthErrorCode(error)) {
+    if (fired.current || !isLoginErrorCode(error)) {
       return;
     }
     fired.current = true;
 
-    const { title, description, variant } = OAUTH_ERROR_TOASTS[error];
+    const { title, description, variant } = LOGIN_ERROR_TOASTS[error];
     if (variant === 'destructive') {
       toast.error(title, { description });
     }

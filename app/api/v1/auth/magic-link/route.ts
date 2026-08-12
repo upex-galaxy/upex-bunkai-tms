@@ -33,6 +33,31 @@ export const POST = withApiHandler(async (request: NextRequest) => {
   const { email, next = '/projects' } = BodySchema.parse(body);
   const redirect = `${webUrl('/auth/callback')}?next=${encodeURIComponent(next)}`;
 
+  // BK-400 (staged): this still sends through the SSR client, which
+  // `@supabase/ssr` hard-codes to `flowType: 'pkce'` — so the emailed link is
+  // still a PKCE link and still only completes in the browser that asked for it.
+  // `/auth/callback` has grown a stateless `token_hash` rail that fixes the
+  // cross-device case, but ACTIVATING it takes two changes that must land
+  // together, because they are useless apart and harmful alone:
+  //
+  //   1. this client becomes non-PKCE (`flowType: 'implicit'`), so GoTrue stores
+  //      a plain token hash. Under PKCE the stored hash is literally prefixed
+  //      `pkce_` (verified in `auth.one_time_tokens`), and `verifyOtp` will not
+  //      take it — so the token_hash rail cannot work while this stays PKCE.
+  //   2. the Supabase magic-link email template stops using
+  //      `{{ .ConfirmationURL }}` and links to exactly:
+  //        {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink
+  //      `&`, not `?` — `emailRedirectTo` above already carries `?next=`, so a
+  //      `?` would fold the token into the `next` value. `.RedirectTo` rather
+  //      than `.SiteURL` because `site_url` is pinned to localhost while one
+  //      Supabase project backs local, staging and production.
+  //
+  // Flipping 1 without 2 breaks sign-in on EVERY device, not just other ones:
+  // an implicit-flow client under the default template makes GoTrue return the
+  // session in the URL *fragment*, which a server route can never read. Flipping
+  // 2 without 1 mails a `pkce_` hash that fails to verify. The template is shared
+  // by every environment, so 2 must not happen until this code is live in
+  // production.
   const supabase = await createClient();
   // BK-175: `shouldCreateUser` defaults to TRUE, which turned this login-only
   // endpoint into a silent sign-up path. An address with no account was
