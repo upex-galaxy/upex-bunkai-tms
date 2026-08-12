@@ -17,6 +17,8 @@ function atc(overrides: Partial<TraceabilityAtc> = {}): TraceabilityAtc {
     slug: 'mod/atc-1',
     title: 'An ATC',
     layer: 'UI',
+    // BK-48 — module became a required field (0069_story_traceability_module.sql).
+    module: { id: 'mod-1', name: 'A Module' },
     test: null,
     latest_run: null,
     defects: [],

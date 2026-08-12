@@ -4382,6 +4382,9 @@
             "type": "string",
             "enum": ["UI", "API", "Unit"]
           },
+          "module": {
+            "$ref": "#/components/schemas/TraceabilityModule"
+          },
           "test": {
             "$ref": "#/components/schemas/TraceabilityTest"
           },
@@ -4396,7 +4399,21 @@
             "description": "Every defect whose provenance resolves to this ATC, not only the latest run's (\"None linked\" when empty)."
           }
         },
-        "required": ["id", "slug", "title", "layer", "test", "latest_run", "defects"]
+        "required": ["id", "slug", "title", "layer", "module", "test", "latest_run", "defects"]
+      },
+      "TraceabilityModule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "description": "The Module this ATC belongs to (BK-48 filter target). Always present — every ATC has a module_id."
       },
       "TraceabilityTest": {
         "type": ["object", "null"],
