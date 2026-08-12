@@ -82,6 +82,54 @@ function randomAlphaToken(length = 12): string {
   return out;
 }
 
+interface ProbeAtcOptions {
+  projectId: string
+  moduleId: string
+  userStoryId: string
+  slugPrefix: string
+  titlePrefix: string
+}
+
+// Seeds a single-use probe ATC through the REAL write path — only title/tags
+// are supplied, exactly like `bunkai_create_atc`
+// (0065_atc_tags_cap_guard.sql:125-127); `tsv` is populated synchronously by
+// the `atcs_refresh_tsv` BEFORE INSERT trigger (0004_atcs.sql:83-88), never
+// written directly. Shared by the two BK-401 probe-based assertions below.
+async function seedProbeAtc(
+  db: ReturnType<typeof service>,
+  opts: ProbeAtcOptions,
+): Promise<{ id: string, token: string }> {
+  const token = randomAlphaToken();
+  const { data: created, error } = await db
+    .from('atcs')
+    .insert({
+      project_id: opts.projectId,
+      module_id: opts.moduleId,
+      user_story_id: opts.userStoryId,
+      slug: `${opts.slugPrefix}-${token}`,
+      title: `${opts.titlePrefix} ${token}`,
+      layer: 'UI',
+    })
+    .select('id')
+    .single();
+  if (error || !created) {
+    throw new Error(`[search-isolation] failed to seed probe ATC: ${error?.message}`);
+  }
+  return { id: created.id as string, token };
+}
+
+// Deletes a probe ATC seeded by seedProbeAtc. Logs rather than throws on
+// failure: this runs in a test's `finally` block, so a delete error must not
+// mask the test's own pass/fail outcome — but it is surfaced, not silently
+// swallowed, since an orphaned probe row is exactly the kind of stray-row
+// accumulation this file exists to stop (BK-401).
+async function cleanupProbeAtc(db: ReturnType<typeof service>, id: string): Promise<void> {
+  const { error } = await db.from('atcs').delete().eq('id', id);
+  if (error) {
+    console.warn(`[search-isolation] failed to delete probe ATC ${id}: ${error.message}`);
+  }
+}
+
 // Make a missing seed precondition VISIBLE on a DB-backed run: fail with a clear
 // reason instead of logging + passing (no silent green). On a no-DB run the
 // whole suite is already skipped, so this never fires there.
@@ -127,33 +175,21 @@ describeOrSkip('BK-20 — bunkai_search_atcs workspace + project isolation', () 
       'need an existing ATC anchoring a project/module/user_story in a workspace with an active member',
     );
 
-    // Seed the probe through the REAL write path: only title/tags are supplied,
-    // exactly like `bunkai_create_atc` (0065_atc_tags_cap_guard.sql:125-127) —
-    // `tsv` is populated synchronously by the `atcs_refresh_tsv` BEFORE INSERT
-    // trigger (0004_atcs.sql:83-88), never written directly. This is what makes
-    // the assertion below prove the production write path, not a fixture that
-    // pre-seeds a column the RPC reads while the app writes a different one.
-    const token = randomAlphaToken();
-    const { data: created, error: insertError } = await db
-      .from('atcs')
-      .insert({
-        project_id: seed.projectId,
-        module_id: seed.moduleId,
-        user_story_id: seed.userStoryId,
-        slug: `search-isolation-probe-${token}`,
-        title: `Isolation probe ${token}`,
-        layer: 'UI',
-      })
-      .select('id')
-      .single();
-    if (insertError || !created) {
-      throw new Error(`[search-isolation] failed to seed probe ATC: ${insertError?.message}`);
-    }
+    // This is what makes the assertion below prove the production write path,
+    // not a fixture that pre-seeds a column the RPC reads while the app writes
+    // a different one — see `seedProbeAtc`.
+    const probe = await seedProbeAtc(db, {
+      projectId: seed.projectId,
+      moduleId: seed.moduleId,
+      userStoryId: seed.userStoryId,
+      slugPrefix: 'search-isolation-probe',
+      titlePrefix: 'Isolation probe',
+    });
 
     try {
       const { data, error } = await db.rpc('bunkai_search_atcs', {
         p_actor_user_id: seed.actor,
-        p_query: token,
+        p_query: probe.token,
         p_project_id: seed.projectId,
         p_limit: 50,
       });
@@ -164,10 +200,10 @@ describeOrSkip('BK-20 — bunkai_search_atcs workspace + project isolation', () 
       // genuine isolation assertion (it fails if the RPC ever drops or
       // misfilters the actor's own ATC) but is immune to rank-crowding from
       // shared-table data drift because the token cannot collide with anything.
-      expect(items.some(i => i.id === created.id)).toBe(true);
+      expect(items.some(i => i.id === probe.id)).toBe(true);
     }
     finally {
-      await db.from('atcs').delete().eq('id', created.id);
+      await cleanupProbeAtc(db, probe.id);
     }
   });
 
@@ -258,46 +294,37 @@ describeOrSkip('BK-20 — bunkai_search_atcs workspace + project isolation', () 
       'need an ATC in a workspace with a second project the same active member can read',
     );
 
-    const token = randomAlphaToken();
-    const { data: created, error: insertError } = await db
-      .from('atcs')
-      .insert({
-        project_id: seed.ownProject,
-        module_id: seed.moduleId,
-        user_story_id: seed.userStoryId,
-        slug: `search-isolation-scope-probe-${token}`,
-        title: `Isolation scope probe ${token}`,
-        layer: 'UI',
-      })
-      .select('id')
-      .single();
-    if (insertError || !created) {
-      throw new Error(`[search-isolation] failed to seed probe ATC: ${insertError?.message}`);
-    }
+    const probe = await seedProbeAtc(db, {
+      projectId: seed.ownProject,
+      moduleId: seed.moduleId,
+      userStoryId: seed.userStoryId,
+      slugPrefix: 'search-isolation-scope-probe',
+      titlePrefix: 'Isolation scope probe',
+    });
 
     try {
       // Sanity: in its OWN project the ATC is found.
       const own = await db.rpc('bunkai_search_atcs', {
         p_actor_user_id: seed.actor,
-        p_query: token,
+        p_query: probe.token,
         p_project_id: seed.ownProject,
         p_limit: 50,
       });
       expect(own.error).toBeNull();
-      expect(((own.data ?? []) as SearchItem[]).some(i => i.id === created.id)).toBe(true);
+      expect(((own.data ?? []) as SearchItem[]).some(i => i.id === probe.id)).toBe(true);
 
       // In a DIFFERENT project it is gone — project scope is enforced.
       const other = await db.rpc('bunkai_search_atcs', {
         p_actor_user_id: seed.actor,
-        p_query: token,
+        p_query: probe.token,
         p_project_id: seed.otherProject,
         p_limit: 50,
       });
       expect(other.error).toBeNull();
-      expect(((other.data ?? []) as SearchItem[]).some(i => i.id === created.id)).toBe(false);
+      expect(((other.data ?? []) as SearchItem[]).some(i => i.id === probe.id)).toBe(false);
     }
     finally {
-      await db.from('atcs').delete().eq('id', created.id);
+      await cleanupProbeAtc(db, probe.id);
     }
   });
 
