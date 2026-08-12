@@ -1,14 +1,42 @@
 'use client';
 
-import type { StoryTraceabilityPayload, TraceabilityAtc, TraceabilityCriterion } from '@lib/traceability/chain-view';
+import type {
+  ActiveFilterChip,
+  FilteredCriterion,
+  StoryTraceabilityPayload,
+  TraceabilityAtc,
+  TraceabilityCriterion,
+  TraceabilityFilterState,
+  TraceabilityModule,
+} from '@lib/traceability/chain-view';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import {
+  acNoteLabel,
+  activeFilterChips,
   CHAIN_PLACEHOLDER_COPY,
+  DATE_RANGE_ERROR_MESSAGE,
   defectCellPlaceholder,
+  distinctModules,
+  EMPTY_FILTER_STATE,
+  filterCriteria,
+  FILTERED_EMPTY_TITLE,
+  filteredEmptyBody,
+  filterStateToParams,
+  filterTotals,
+  isAcCardHidden,
   isAcUncovered,
+  isDateRangeInverted,
+  isFilteredEmpty,
+  isFilteringActive,
+  parseFilterStateFromParams,
   resolveAtcRowState,
   resolveStoryChainViewState,
+  RESULT_FILTER_LABELS,
+  RESULT_FILTER_VALUES,
+  rowCountLabel,
+  rowFilterDate,
+  rowFilterStatus,
   runCellPlaceholder,
   runChipLabel,
   runChipTone,
@@ -26,8 +54,8 @@ import {
   formatSnapshotTimestamp,
   renderTraceabilitySnapshotHtml,
 } from '@lib/traceability/export-snapshot';
-import { AlertTriangle, Clock, Download, FileText } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Clock, Download, FileText, Filter, SearchX, X } from 'lucide-react';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // BK-45 — the US -> AC -> ATC -> Test -> Run -> Defect evidence chain view.
@@ -37,17 +65,18 @@ import { toast } from 'sonner';
 // `ProjectRunsReportView`/`ProjectCoverageView` already established.
 //
 // Scope trim vs. the mockup (Critical Rule #15 — logged, not silent): omits
-// the filter bar (result/module/date-range) and the active-filter-summary —
-// both BK-48. Also omits the mockup's hardcoded 4-story segmented picker: no
-// AC in this story describes browsing/switching stories from inside the view
-// (every AC scenario begins "navigates to the traceability view for THAT
-// user story" — arrival is via deep link). See the Stage 1 plan for the
-// full rationale. Renders the 6 in-scope states: full chain, partial/mixed,
-// zero-coverage banner, zero-AC, loading skeleton, error+retry — plus the
-// archived-story banner (AC-06, PO-ratified, part of "full chain"
-// rendering, not a separate top-level state) and the Export snapshot button
-// (BK-50 — client-initiated download of a self-contained HTML document, see
-// `lib/traceability/export-snapshot.ts`).
+// the mockup's hardcoded 4-story segmented picker — no AC in this story
+// describes browsing/switching stories from inside the view (every AC
+// scenario begins "navigates to the traceability view for THAT user story"
+// — arrival is via deep link). See the Stage 1 plan for the full rationale.
+// Renders the 6 in-scope states: full chain, partial/mixed, zero-coverage
+// banner, zero-AC, loading skeleton, error+retry — plus the archived-story
+// banner (AC-06, PO-ratified, part of "full chain" rendering, not a
+// separate top-level state), the Export snapshot button (BK-50 —
+// client-initiated download of a self-contained HTML document, see
+// `lib/traceability/export-snapshot.ts`), and the BK-48 filter bar
+// (result/module/date-range + active-filter summary + zero-match panel,
+// `FilterBar` below).
 
 interface ApiErrorBody {
   error?: { code?: string, message?: string }
@@ -83,6 +112,146 @@ async function fetchChain(
   return { ok: true, payload: (await response.json()) as StoryTraceabilityPayload };
 }
 
+// BK-48 — the filter bar (AC1/AC2/AC4). Reuses the LIVE result-toggle /
+// module-select pattern already shipped in `ProjectRunsReportView.tsx`
+// (BK-38) — same `aria-pressed` group + `bg-surface-5` active state, same
+// `<select>` styling — per Rule #14 (live UI is the fidelity source). The
+// six-value dot uses the SAME `.dot[data-status]` tokens the run chips
+// already use (`app/globals.css`), so no new color is introduced. Defined
+// ABOVE `TraceabilityChainView` (not below, like the other sub-components)
+// because it is a `forwardRef` `const`, which is not hoisted.
+const FilterBar = forwardRef<HTMLDivElement, {
+  state: TraceabilityFilterState
+  modules: TraceabilityModule[]
+  totals: { totalRows: number, visibleRows: number }
+  filtering: boolean
+  onToggleResult: (value: (typeof RESULT_FILTER_VALUES)[number]) => void
+  onModuleChange: (value: string) => void
+  onFromChange: (value: string) => void
+  onToChange: (value: string) => void
+  onClear: () => void
+}>(({ state, modules, totals, filtering, onToggleResult, onModuleChange, onFromChange, onToChange, onClear }, ref) => {
+  const dateInvalid = isDateRangeInverted(state.from, state.to);
+  const chips: ActiveFilterChip[] = activeFilterChips(state, modules);
+  const rowCount = rowCountLabel(totals, filtering);
+
+  return (
+    <Card ref={ref} data-testid="traceability-filter-bar">
+      <div className="flex flex-wrap items-end gap-4 p-3">
+        <div className="flex flex-col gap-1">
+          <span id="traceability-filter-result-label" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
+            Result
+          </span>
+          <div
+            role="group"
+            aria-labelledby="traceability-filter-result-label"
+            data-testid="traceability-filter-result"
+            className="inline-flex overflow-hidden rounded-2 border border-stroke-2 bg-surface-2"
+            onKeyDown={(e) => {
+              // AC1.5 — Escape exits the group.
+              if (e.key === 'Escape') { (document.activeElement as HTMLElement | null)?.blur(); }
+            }}
+          >
+            {RESULT_FILTER_VALUES.map(value => (
+              <button
+                key={value}
+                type="button"
+                data-testid={`traceability-filter-result-${value}`}
+                aria-pressed={state.results.includes(value)}
+                onClick={() => onToggleResult(value)}
+                className={`inline-flex h-6.5 items-center gap-1.5 border-r border-stroke-1 px-2.5 text-xs font-medium tracking-[0.02em] transition-colors duration-token ease-token last:border-r-0 ${
+                  state.results.includes(value)
+                    ? 'bg-surface-5 text-fg-0'
+                    : 'text-fg-2 hover:bg-surface-4 hover:text-fg-1'
+                }`}
+              >
+                <span aria-hidden="true" className="dot" data-status={value} />
+                {RESULT_FILTER_LABELS[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="traceability-filter-module" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
+            Module
+          </label>
+          <select
+            id="traceability-filter-module"
+            data-testid="traceability-filter-module"
+            value={state.moduleId ?? ''}
+            onChange={e => onModuleChange(e.target.value)}
+            className="flex h-8 w-[192px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 text-sm text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none"
+          >
+            <option value="">All modules</option>
+            {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span id="traceability-filter-dates-label" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
+            Latest run between
+          </span>
+          <div role="group" aria-labelledby="traceability-filter-dates-label" className="flex items-center gap-2">
+            <input
+              type="date"
+              aria-label="From date"
+              aria-invalid={dateInvalid}
+              data-testid="traceability-filter-from"
+              value={state.from ?? ''}
+              onChange={e => onFromChange(e.target.value)}
+              className="flex h-8 w-[142px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-xs text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none"
+            />
+            <span className="text-xs text-fg-4">to</span>
+            <input
+              type="date"
+              aria-label="To date"
+              aria-invalid={dateInvalid}
+              data-testid="traceability-filter-to"
+              value={state.to ?? ''}
+              onChange={e => onToChange(e.target.value)}
+              className="flex h-8 w-[142px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-xs text-fg-1 transition-colors duration-token ease-token hover:border-stroke-3 focus-visible:border-accent focus-visible:bg-surface-3 focus-visible:outline-none"
+            />
+          </div>
+          {dateInvalid && (
+            <div data-testid="traceability-filter-date-error" role="alert" className="flex items-center gap-1.5 text-xs text-signal-fail">
+              <AlertTriangle size={12} />
+              {DATE_RANGE_ERROR_MESSAGE}
+            </div>
+          )}
+        </div>
+
+        <span data-testid="traceability-row-count" aria-live="polite" className="ml-auto text-xs text-fg-3">
+          {rowCount}
+        </span>
+      </div>
+
+      {filtering && (
+        <div data-testid="traceability-active-summary" className="flex flex-wrap items-center gap-2 border-t border-stroke-2 px-3 py-2 text-xs text-fg-2">
+          <Filter size={12} className="shrink-0 text-fg-3" />
+          <span>Active filters:</span>
+          <span className="flex flex-wrap items-center gap-1.5">
+            {chips.map(chip => (
+              <span
+                key={chip.key}
+                data-testid={`traceability-filter-chip-${chip.key}`}
+                className="inline-flex items-center rounded-full border border-stroke-2 bg-surface-2 px-2 py-0.5 font-mono text-2xs text-fg-1"
+              >
+                {chip.label}
+              </span>
+            ))}
+          </span>
+          <Button type="button" variant="ghost" size="sm" data-testid="traceability-clear-filters" className="ml-auto" onClick={onClear}>
+            <X size={12} />
+            Clear all
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+});
+FilterBar.displayName = 'FilterBar';
+
 export interface TraceabilityChainViewProps {
   projectId: string
   userStoryId: string | null
@@ -113,6 +282,81 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
     inFlight.current?.abort();
     exportInFlight.current?.abort();
   }, []);
+
+  // BK-48 — filter state (result / module / date range, AC1-AC6). Starts
+  // EMPTY on first render (SSR-safe — `window` is unavailable during the
+  // server render pass) and is hydrated from the URL's query params in a
+  // mount-only effect (AC5.2 "restore from URL on load"). Every filter
+  // change re-serializes the FULL state back into the URL via
+  // `history.replaceState` — deliberately NOT `next/navigation`'s router,
+  // which would re-invoke this route's Server Component (a live DB
+  // re-fetch) on every toggle click and contradict "filtering is
+  // client-side over the already-fetched chain". `replaceState` (never
+  // `pushState`) keeps one history entry per PAGE VISIT rather than one per
+  // filter click; AC5.3's "navigate away, then Back" is satisfied by the
+  // real navigation's own history entry, not by filter-click entries.
+  const [filterState, setFilterState] = useState<TraceabilityFilterState>(EMPTY_FILTER_STATE);
+  const filterBarRef = useRef<HTMLDivElement | null>(null);
+
+  const syncFilterUrl = useCallback((next: TraceabilityFilterState) => {
+    if (typeof window === 'undefined') { return; }
+    const params = filterStateToParams(next);
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ''}`;
+    window.history.replaceState(null, '', url);
+  }, []);
+
+  const applyFilterState = useCallback((next: TraceabilityFilterState) => {
+    setFilterState(next);
+    syncFilterUrl(next);
+  }, [syncFilterUrl]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') { return; }
+    const hydrate = () => setFilterState(parseFilterStateFromParams(new URLSearchParams(window.location.search)));
+    hydrate();
+    // AC5.3 — a real page navigation away and back re-mounts this component
+    // (this effect re-runs), but a `popstate` WITHIN the mounted lifetime
+    // (e.g. the story-switch links this screen already renders elsewhere)
+    // should re-sync too.
+    window.addEventListener('popstate', hydrate);
+    return () => window.removeEventListener('popstate', hydrate);
+    // Mount-only hydration by design — a `userStoryId` change remounts via
+    // the `key` the page assigns, so this effect intentionally never
+    // re-runs on prop changes.
+  }, []);
+
+  const toggleResult = useCallback((value: TraceabilityFilterState['results'][number]) => {
+    applyFilterState({
+      ...filterState,
+      results: filterState.results.includes(value)
+        ? filterState.results.filter(v => v !== value)
+        : [...filterState.results, value],
+    });
+  }, [applyFilterState, filterState]);
+
+  const setModuleId = useCallback((value: string) => {
+    applyFilterState({ ...filterState, moduleId: value === '' ? null : value });
+  }, [applyFilterState, filterState]);
+
+  const setFrom = useCallback((value: string) => {
+    applyFilterState({ ...filterState, from: value === '' ? null : value });
+  }, [applyFilterState, filterState]);
+
+  const setTo = useCallback((value: string) => {
+    applyFilterState({ ...filterState, to: value === '' ? null : value });
+  }, [applyFilterState, filterState]);
+
+  // AC4.3 — focus returns to the first result toggle after Clear-all (the
+  // six toggles are always rendered, never conditionally hidden, so the
+  // "or module dropdown" fallback in the AC text never triggers here — kept
+  // anyway as a defensive fallback).
+  const clearFilters = useCallback(() => {
+    applyFilterState(EMPTY_FILTER_STATE);
+    const firstToggle = filterBarRef.current?.querySelector<HTMLElement>('[data-testid="traceability-filter-result-pass"]');
+    const moduleSelect = filterBarRef.current?.querySelector<HTMLElement>('[data-testid="traceability-filter-module"]');
+    (firstToggle ?? moduleSelect)?.focus();
+  }, [applyFilterState]);
 
   const retry = useCallback(async () => {
     if (!userStoryId) { return; }
@@ -225,6 +469,19 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
   const viewState = resolveStoryChainViewState(payload);
   const counts = storyRollupCounts(payload);
 
+  // BK-48 — derived filter view. Cheap to compute unconditionally (bounded
+  // by one story's own chain size, same reasoning as BK-45's no-pagination
+  // decision); only rendered when `viewState === 'has-chain'` (the
+  // zero-ac/zero-coverage states have nothing to filter — see `AcCard`
+  // calls below, which pass `filtering={false}` on the zero-coverage branch
+  // to keep that state's existing rendering exactly unchanged).
+  const modules = distinctModules(payload);
+  const filteredCriteria = filterCriteria(payload, filterState);
+  const filtering = isFilteringActive(filterState);
+  const totals = filterTotals(filteredCriteria);
+  const zeroMatch = isFilteredEmpty(totals, filtering);
+  const filteredById = new Map(filteredCriteria.map(f => [f.criterion.id, f]));
+
   return (
     <div data-testid="traceability-chain-view" className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-4">
@@ -254,11 +511,46 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
                   {zeroCoverageBody(payload.criteria.length)}
                 </div>
               </div>
-              {payload.criteria.map(ac => <AcCard key={ac.id} ac={ac} />)}
+              {payload.criteria.map(ac => (
+                <AcCard key={ac.id} ac={ac} filtered={filteredById.get(ac.id)!} filtering={false} />
+              ))}
             </>
           )}
 
-          {viewState === 'has-chain' && payload.criteria.map(ac => <AcCard key={ac.id} ac={ac} />)}
+          {viewState === 'has-chain' && (
+            <>
+              <FilterBar
+                ref={filterBarRef}
+                state={filterState}
+                modules={modules}
+                totals={totals}
+                filtering={filtering}
+                onToggleResult={toggleResult}
+                onModuleChange={setModuleId}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onClear={clearFilters}
+              />
+
+              {zeroMatch
+                ? (
+                    <Card>
+                      <div data-testid="traceability-filtered-empty" className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                        <SearchX size={18} className="text-fg-3" />
+                        <span className="text-md font-semibold text-fg-1">{FILTERED_EMPTY_TITLE}</span>
+                        <span className="max-w-[52ch] text-sm text-fg-3">{filteredEmptyBody(totals.totalRows, payload.story.title)}</span>
+                        <Button type="button" variant="ghost" size="sm" data-testid="traceability-filtered-empty-clear" onClick={clearFilters}>
+                          <X size={12} />
+                          Clear all filters
+                        </Button>
+                      </div>
+                    </Card>
+                  )
+                : payload.criteria.map(ac => (
+                    <AcCard key={ac.id} ac={ac} filtered={filteredById.get(ac.id)!} filtering={filtering} />
+                  ))}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -323,7 +615,12 @@ function StoryHead({ payload, counts, onExport, exporting }: {
   );
 }
 
-function AcCard({ ac }: { ac: TraceabilityCriterion }) {
+// BK-48 — `filtered`/`filtering` drive the "n of m shown" note and the
+// AC-card hide rule (AC1.1/AC2.6). `filtering={false}` (the zero-coverage
+// caller) keeps this identical to BK-45's pre-filter rendering.
+function AcCard({ ac, filtered, filtering }: { ac: TraceabilityCriterion, filtered: FilteredCriterion, filtering: boolean }) {
+  if (isAcCardHidden(filtered, filtering)) { return null; }
+
   if (isAcUncovered(ac)) {
     return (
       <Card data-testid={`traceability-ac-${ac.id}`}>
@@ -345,14 +642,19 @@ function AcCard({ ac }: { ac: TraceabilityCriterion }) {
     );
   }
 
+  const note = acNoteLabel(filtered, filtering);
+
   return (
     <Card data-testid={`traceability-ac-${ac.id}`} className="overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-stroke-2 px-4 py-2.5">
         <span className="text-sm font-medium text-fg-1">{ac.title}</span>
-        <span className="text-xs text-fg-3">
-          {ac.atcs.length}
-          {' '}
-          {ac.atcs.length === 1 ? 'ATC' : 'ATCs'}
+        <span className="flex items-center gap-1.5 text-xs text-fg-3">
+          {note && <span data-testid={`traceability-ac-note-${ac.id}`}>{note}</span>}
+          <span>
+            {ac.atcs.length}
+            {' '}
+            {ac.atcs.length === 1 ? 'ATC' : 'ATCs'}
+          </span>
         </span>
       </div>
       <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-stroke-2 bg-surface-1 px-4 py-1.5 text-2xs font-medium uppercase tracking-[0.06em] text-fg-3 md:grid">
@@ -362,22 +664,32 @@ function AcCard({ ac }: { ac: TraceabilityCriterion }) {
         <span>Defects</span>
       </div>
       <div className="divide-y divide-stroke-1">
-        {ac.atcs.map(row => <AtcRow key={row.id} atc={row} />)}
+        {ac.atcs.map(row => <AtcRow key={row.id} atc={row} visible={filtered.visibleAtcIds.has(row.id)} />)}
       </div>
     </Card>
   );
 }
 
-function AtcRow({ atc }: { atc: TraceabilityAtc }) {
+function AtcRow({ atc, visible }: { atc: TraceabilityAtc, visible: boolean }) {
   const rowState = resolveAtcRowState(atc);
   const testCopy = testCellCopy(rowState);
   const runPlaceholder = runCellPlaceholder(rowState);
   const defectPlaceholder = defectCellPlaceholder(rowState, atc.defects.length);
+  // BK-48 — the filter targets, mirroring the mockup's `.chain-row`
+  // attributes verbatim. Omitted (not empty-string) when absent, so
+  // `data-status`/`data-date` are genuinely MISSING for a no-run row
+  // (AC1.4/AC2.7/AC6.1), not present-but-blank.
+  const statusAttr = rowFilterStatus(atc);
+  const dateAttr = rowFilterDate(atc);
 
   return (
     <div
       data-testid={`traceability-atc-row-${atc.id}`}
-      className="grid grid-cols-1 gap-2 px-4 py-3 text-sm md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-3"
+      data-status={statusAttr ?? undefined}
+      data-module={atc.module.id}
+      data-date={dateAttr ?? undefined}
+      aria-hidden={!visible}
+      className={`grid grid-cols-1 gap-2 px-4 py-3 text-sm md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-3${visible ? '' : ' hidden'}`}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
