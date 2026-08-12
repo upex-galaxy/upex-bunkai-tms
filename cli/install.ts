@@ -381,6 +381,14 @@ async function verifyRepoRoot(): Promise<void> {
     }
   }
 
+  // No TTY to answer with: keep the conservative default (do not continue) and
+  // say why, rather than rendering a prompt that would never resolve.
+  if (NON_INTERACTIVE) {
+    log.error(`package.json name is "${pkg.name ?? '(unknown)'}" — this does not look like the repo root.`);
+    log.dim('Re-run from the correct directory with: bun run setup');
+    process.exit(1);
+  }
+
   const proceed = await tui.confirm({
     message: `package.json name is "${pkg.name ?? '(unknown)'}". Continue anyway?`,
     initialValue: false,
@@ -439,6 +447,14 @@ async function handleMissingGentleAi(): Promise<'show-and-exit' | 'skip'> {
   log.info('gentle-ai installs Engram persistent memory (--preset minimal) into your agent.');
   process.stdout.write('\n');
 
+  // No TTY: continuing without gentle-ai is the only answer that lets the rest
+  // of the install finish. Exiting would strand every unattended re-run here.
+  if (NON_INTERACTIVE) {
+    log.warn('  Skipped (no TTY). Continuing without gentle-ai — skills + engram will NOT be installed.');
+    log.dim('  To enable later: install gentle-ai (https://github.com/Gentleman-Programming/gentle-ai), then re-run: bun run setup');
+    return 'skip';
+  }
+
   const choiceRaw = await tui.confirm({
     message: 'Show install commands and exit so you can install it? (No = continue without gentle-ai)',
     initialValue: true,
@@ -483,13 +499,44 @@ async function detectAgents(): Promise<AgentDetection> {
   return { claudeCode: claude, opencode };
 }
 
+/**
+ * `INSTALL_AGENTS=claude-code,opencode` — non-interactive override for the
+ * agent selection prompt. Unknown entries are dropped.
+ */
+function parseAgentsEnv(): AgentId[] | null {
+  const raw = process.env.INSTALL_AGENTS;
+  if (!raw) { return null; }
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+  const valid: AgentId[] = [];
+  for (const p of parts) {
+    if (p === 'claude-code' || p === 'opencode') { valid.push(p); }
+  }
+  return valid;
+}
+
 async function promptAgentSelection(detected: AgentDetection): Promise<AgentId[]> {
+  // A validation, not a prompt — it must run in both modes. Skipping it in
+  // non-interactive mode would let the installer proceed with zero agents and
+  // silently configure nothing.
   if (!detected.claudeCode && !detected.opencode) {
     log.error('No agents detected. Install Claude Code (~/.claude/) or OpenCode (~/.config/opencode/) and rerun.');
     log.dim('  Claude Code : https://docs.claude.com/claude-code');
     log.dim('  OpenCode    : https://opencode.ai');
     log.dim('After installing one (or both), re-run: bun run setup');
     process.exit(1);
+  }
+
+  // main() calls this unconditionally, so without the guard a no-TTY run hangs
+  // here forever: clack and inquirer both render and never resolve when stdin
+  // is not a TTY. That covers CI, an AI agent piping stdin, and Git Bash on
+  // Windows, whose MSYS pty reports isTTY false.
+  if (NON_INTERACTIVE) {
+    const fromEnv = parseAgentsEnv();
+    if (fromEnv && fromEnv.length > 0) { return fromEnv; }
+    const out: AgentId[] = [];
+    if (detected.claudeCode) { out.push('claude-code'); }
+    if (detected.opencode) { out.push('opencode'); }
+    return out;
   }
 
   if (detected.claudeCode && !detected.opencode) {
@@ -561,9 +608,7 @@ async function installSkillsViaGentleAi(
   log.info(`This will run ${totalCalls} gentle-ai install command(s) — one call per agent.`);
   log.dim('  Each call: gentle-ai install --agent <agent> --preset minimal (installs Engram only)');
 
-  const proceedRaw = await tui.confirm({ message: 'Continue with Engram installation?', initialValue: true });
-  if (tui.isCancel(proceedRaw)) { throw Object.assign(new Error('Aborted by user.'), { name: 'ExitPromptError' }); }
-  const proceed = proceedRaw;
+  const proceed = await maybeConfirm('Continue with Engram installation?', true);
   if (!proceed) {
     log.warn('Skipping Engram installation.');
     for (const agent of agents) {
@@ -628,12 +673,7 @@ async function installCommunitySkills(
     return;
   }
 
-  const proceedRaw = await tui.confirm({
-    message: `Install ${label} community skills?`,
-    initialValue: true,
-  });
-  if (tui.isCancel(proceedRaw)) { throw Object.assign(new Error('Aborted by user.'), { name: 'ExitPromptError' }); }
-  const proceed = proceedRaw;
+  const proceed = await maybeConfirm(`Install ${label} community skills?`, true);
   if (!proceed) {
     log.warn(`Skipping ${label} community skills.`);
     for (const item of list) {
@@ -787,6 +827,11 @@ export async function appendVarsToEnv(vars: Record<string, string>): Promise<voi
 }
 
 async function promptForVar(name: string): Promise<string> {
+  // Callers are expected to gate on NON_INTERACTIVE, but this is the single
+  // choke point for every credential prompt — returning empty here means a
+  // missed guard downstream degrades to "left unset in .env" instead of a hang.
+  if (NON_INTERACTIVE) { return ''; }
+
   if (isSecretName(name)) {
     const entered = await password({
       message: `${name} (Enter to skip — fill later in .env):`,
@@ -1464,7 +1509,13 @@ function reloadDotEnv(): void {
       if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith('\'') && v.endsWith('\''))) {
         v = v.slice(1, -1);
       }
-      // Don't overwrite an already-populated value with an empty one from .env.
+      // The FILE WINS over an inherited process value. This is deliberate and must
+      // not be "corrected" to the usual non-override dotenv default: a stale value
+      // inherited from whatever spawned this process (an agent session, a parent
+      // shell) would otherwise shadow a corrected `.env` in silence and survive an
+      // application restart. `bun run vars:env:check` guards the same class
+      // repo-wide; see `cli/lib/atlassian-instance.ts` for the incident this comes
+      // from. Only an EMPTY file value defers to an already-populated process value.
       if (k && (v !== '' || !process.env[k])) { process.env[k] = v; }
     }
   }
@@ -1693,7 +1744,12 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
     ['jira', 'workitem', 'search', '--jql', 'created >= -1d', '--limit', '1', '--json'],
     { stdio: ['ignore', 'pipe', 'pipe'], timeout: 8000 },
   );
-  const acliManualHint = 'echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$ATLASSIAN_URL" --email "$ATLASSIAN_EMAIL" --token';
+  // The env syntax differs per shell, and PowerShell would expand
+  // `$ATLASSIAN_URL` as one of its own (undefined) variables, silently
+  // authenticating with an empty site and token — so match the platform.
+  const acliManualHint = process.platform === 'win32'
+    ? '$env:ATLASSIAN_API_TOKEN | acli jira auth login --site $env:ATLASSIAN_URL --email $env:ATLASSIAN_EMAIL --token'
+    : 'echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$ATLASSIAN_URL" --email "$ATLASSIAN_EMAIL" --token';
   const ATLASSIAN_VARS = ['ATLASSIAN_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
 
   if (state.postInstall.acliAuth === 'completed') {
@@ -1701,19 +1757,25 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
   }
   else if (AUTO_NON_INTERACTIVE) {
     // Non-interactive: vars must already be present (env or .env). If so, run
-    // probe + login non-interactively. If anything is missing, hard-fail —
-    // the user decision was: no silent skips when acli auth cannot complete.
+    // probe + login non-interactively.
+    //
+    // A miss is reported loudly but does NOT abort. AUTO_NON_INTERACTIVE fires
+    // for real interactive users on Git Bash, whose MSYS pty is a named pipe
+    // and reports isTTY false — aborting stranded every one of their re-runs
+    // at this step, before the later steps that write the Jira catalog
+    // placeholders the repo's own lint requires. The outcome is still recorded
+    // in state.postInstall.acliAuth and surfaced in the closing summary, so
+    // this is a visible skip, not a silent one.
     reloadDotEnv();
     const missing = ATLASSIAN_VARS.filter(v => !(process.env[v] && process.env[v].trim().length > 0));
     if (missing.length > 0) {
       state.postInstall.acliAuth = 'skipped-non-interactive';
-      process.stdout.write(`${tui.statusIcon('fail')} Missing ${missing.join(', ')} in environment / .env. Cannot authenticate acli non-interactively.\n`);
-      process.stdout.write(`  Re-run manually: ${acliManualHint}\n`);
+      process.stdout.write(`${tui.statusIcon('warn')} Missing ${missing.join(', ')} in environment / .env. Skipping acli authentication.\n`);
+      process.stdout.write('  Fill them in .env and re-run `bun run setup`, or authenticate manually:\n');
+      process.stdout.write(`  ${acliManualHint}\n`);
       await writeInstallState(state);
-      process.exit(1);
     }
-    const probe = acliProbe();
-    if (probe.status === 0) {
+    else if (acliProbe().status === 0) {
       state.postInstall.acliAuth = 'completed';
       process.stdout.write(`${tui.statusIcon('ok')} acli already authenticated (existing session detected).\n`);
     }
@@ -1728,11 +1790,12 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
         process.stdout.write(`${tui.statusIcon('ok')} acli session created.\n`);
       }
       else {
+        // Recorded as failed and reported in the closing summary; the install
+        // continues so the remaining steps still run.
         state.postInstall.acliAuth = 'failed';
         process.stdout.write(`${tui.statusIcon('fail')} acli auth login failed (exit ${loginRes.status}).\n`);
         process.stdout.write(`  Re-run manually: ${acliManualHint}\n`);
         await writeInstallState(state);
-        process.exit(1);
       }
     }
   }
@@ -2369,12 +2432,10 @@ async function main(): Promise<void> {
     runSkillInstall = true;
   }
   else if (gentleAi.status === 'incompatible') {
-    const contRaw = await tui.confirm({
-      message: 'gentle-ai is installed but version is older than required. Try anyway?',
-      initialValue: false,
-    });
-    if (tui.isCancel(contRaw)) { throw Object.assign(new Error('Aborted by user.'), { name: 'ExitPromptError' }); }
-    runSkillInstall = contRaw;
+    runSkillInstall = await maybeConfirm(
+      'gentle-ai is installed but version is older than required. Try anyway?',
+      false,
+    );
   }
   else {
     const decision = await handleMissingGentleAi();

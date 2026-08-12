@@ -30,7 +30,7 @@
  * on a malformed entry so a misconfigured manifest fails fast at startup.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 // ----------------------------------------------------------------------------
 // Types
@@ -477,6 +477,44 @@ export function parseDotEnvExampleKeys(path: string): string[] {
     keys.push(key);
   }
   return keys;
+}
+
+/**
+ * Parse a real `.env` file into KEY -> VALUE pairs.
+ *
+ * Deliberately NOT `parseDotEnvExampleKeys` with values bolted on: that function
+ * strips a leading `#` so a COMMENTED declaration still counts as documented,
+ * which is right for `.env.example` and wrong here. A commented line in `.env` is
+ * a variable that is not set, and treating it as set would produce phantom drift.
+ *
+ * Strips one layer of matching quotes; on an UNQUOTED value a trailing `#`
+ * comment is removed. That rule matters in practice: a template line like
+ * `SUPABASE_URL=# https://<project-ref>.supabase.co` carries no value at all, and
+ * reading the comment as the value would report phantom drift against whatever
+ * the process actually holds. A `#` only opens a comment when it starts the value
+ * or follows whitespace, so `pass#word` and `https://host/#anchor` survive intact,
+ * and a quoted value is never touched.
+ *
+ * Later definitions win, matching how both `bun` and `dotenv` load a file. Returns
+ * an empty map when the file does not exist — callers decide whether that is a
+ * skip or an error.
+ */
+export function parseDotEnvPairs(path: string): Map<string, string> {
+  const pairs = new Map<string, string>();
+  if (!existsSync(path)) { return pairs; }
+  const content = readFileSync(path, 'utf8');
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim().replace(/^export\s+/, '');
+    if (line.length === 0 || line.startsWith('#')) { continue; }
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)\s*=(.*)$/);
+    if (m === null) { continue; }
+    let value = m[2].trim();
+    const quoted = /^(['"])([\s\S]*)\1$/.exec(value);
+    if (quoted) { value = quoted[2]; }
+    else { value = value.replace(/(^|\s)#.*$/, '$1').trim(); }
+    pairs.set(m[1], value);
+  }
+  return pairs;
 }
 
 // ----------------------------------------------------------------------------

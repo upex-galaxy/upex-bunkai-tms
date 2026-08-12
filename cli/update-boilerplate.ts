@@ -7,9 +7,9 @@
  * rollback flag) live here; everything else lives in core.
  */
 
+import type { ProtectedWatchEntry } from './lib/updater-drift';
 import type { Component, DeprecatedFile, ReportSink, UpdaterConfig } from './lib/updater-types';
 import { execSync, spawnSync } from 'node:child_process';
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -18,6 +18,7 @@ import pc from 'picocolors';
 import { parseEnvFile } from './install';
 import * as tui from './lib/tui';
 import { cleanupTempDir, detectGitVersion, gitVersionMeetsMin, runUpdate } from './lib/updater-core';
+import { makeProtectedDriftHook } from './lib/updater-drift';
 import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifest';
 
 // --- CONFIGURATION ---
@@ -27,8 +28,11 @@ const TEMP_DIR = path.join(os.tmpdir(), 'aicode-template-update');
 const VERSION_FILE = '.template/boilerplate.lock.json';
 
 const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.gitattributes'];
-const AGENTS_FRAMEWORK_FILES = ['README.md', 'jira-required.yaml'];
-const AGENTS_BOOTSTRAP_FILES = ['project.yaml', 'jira-fields.json', 'jira-workflows.json', 'jira-link-types.json'];
+// `agentsFrameworkFiles` overrides bootstrapOnlyPaths for the `agents`
+// component: a basename listed here is synced even when the path also matches
+// a bootstrap-only entry. Keep it to files the boilerplate genuinely owns.
+const AGENTS_FRAMEWORK_FILES = ['README.md'];
+const AGENTS_BOOTSTRAP_FILES = ['project.yaml', 'jira-fields.json', 'jira-workflows.json', 'jira-link-types.json', 'jira-required.yaml'];
 const CLAUDE_CONFIG_FILES = ['settings.json'];
 
 const MCP_TEMPLATE_AGENTS = ['claude', 'opencode', 'codex', 'gemini'] as const;
@@ -535,100 +539,45 @@ async function upsertAutomationIdentityBlock(
   sink.step('Rellena `email_var` / `password_var` / `scope` con una cuenta DEDICADA de no-producción y define esas variables en `.env`.');
 }
 
-// --- CLAUDE.md UPSTREAM-DRIFT ADVISORY (afterApply hook) ---
+// --- PROTECTED-FILE DRIFT ADVISORY (afterApply hook) ---
 //
-// Root `CLAUDE.md` is a per-project file: heavily customized (project identity,
-// env URLs, Jira fields, custom rules) and deliberately NOT a synced component —
-// `bun up` never overwrites it. But the boilerplate's OWN `CLAUDE.md` keeps
-// evolving (doctrine, behavioral rules, workflow conventions), so a downstream
-// project would silently miss those improvements.
+// Watchlist of files the updater NEVER syncs because every downstream project
+// adapts them. When the boilerplate evolves one of them, the hook (in
+// `./lib/updater-drift.ts`) prints an advisory + a copy-paste AI prompt for a
+// surgical merge, and persists it to `.agents/prompts/` (gitignored). It never
+// edits any watched file.
 //
-// This advisory NEVER edits `CLAUDE.md`. It prints a copy-paste prompt the user
-// hands to their AI, which fetches the canonical `CLAUDE.md` and SEMANTICALLY
-// merges the upstream improvements while preserving every project-specific value.
+// Noise control: a local file ALWAYS differs from the generic upstream, so
+// "they differ" alone would fire every run. The hook fires ONLY when the
+// UPSTREAM content changed since the last advice, tracked per entry by a
+// content hash under `.template/upstream-sha/`. One nudge per upstream change,
+// never on dry-run (the whole afterApply hook is skipped there).
 //
-// Noise control: the local file ALWAYS differs from the generic upstream, so
-// "they differ" alone would fire every run. Instead we fire ONLY when the
-// upstream `CLAUDE.md` actually CHANGED since the last advice, tracked by a
-// content hash in `.template/claude-md.upstream.sha`. One nudge per upstream
-// change — never on dry-run (the whole afterApply hook is skipped there).
+// `CLAUDE.md` keeps its legacy marker path so repos that already received the
+// old single-file advisory are not re-nudged on the first run after this port.
 
-const CLAUDE_MD_SHA_MARKER = '.template/claude-md.upstream.sha';
+const PROTECTED_WATCHLIST: ProtectedWatchEntry[] = [
+  { path: 'CLAUDE.md', reason: 'per-project AI memory (identity, env URLs, custom rules)', markerPath: '.template/claude-md.upstream.sha' },
+  { path: '.agents/project.yaml', reason: 'per-project identity + env map, but upstream keeps ADDING structural blocks (e.g. git_strategy). A project scaffolded before a block existed never learns it should have one.' },
+  { path: '.agents/jira-required.yaml', reason: 'methodology manifest: upstream owns the baseline work_types + field slugs, the project owns its fallbacks and omissions. It is the INPUT to jira:sync-workflows, which catalogs only the work_types declared in it — a stale manifest silently regenerates a truncated jira-workflows.json and still exits 0.' },
+  { path: 'tsconfig.json', reason: 'path aliases are the contract every synced file imports through — a new upstream alias breaks synced code in a project whose tsconfig never learned it.' },
+  { path: 'eslint.config.js', reason: 'lint rules evolve upstream and .husky/pre-commit (which IS synced) runs eslint against this local config.' },
+  { path: '.mcp.json', reason: 'MCP registry with project-specific servers/vars' },
+  { path: 'opencode.jsonc', reason: 'OpenCode MCP registry (paired with .mcp.json)' },
+];
 
-/** Whitespace-insensitive normalization for the "already identical" short-circuit. */
-function normalizeForCompare(s: string): string {
-  return s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n+$/g, '\n');
-}
+// NOT on the watchlist, deliberately — do not "fix" this asymmetry:
+//
+//  - `.agents/jira-fields.json` / `jira-workflows.json` / `jira-link-types.json`
+//    are pure per-INSTANCE data. The upstream copies describe the boilerplate
+//    authors' own Jira workspace. Advising a downstream project to merge them
+//    would write field IDs from a workspace it has no relation to.
+//  - `.claude/skills/REGISTRY.md`, `bun.lock` are generated artefacts;
+//    upstream's copy carries no information for a downstream repo.
+//  - `CONTEXT.md` is a synced component (`context-engineering`), so it needs no
+//    advisory — it arrives on its own.
 
-/**
- * Detect that the upstream `CLAUDE.md` improved since we last advised, and emit a
- * copy-paste AI prompt to merge those improvements into the local (per-project)
- * `CLAUDE.md`. Mirrors `detectEnvVarDrift` (reads upstream from `templateDir`,
- * never mutates the consumer file). `templateRepo` builds the canonical raw URL.
- */
-async function detectClaudeMdDrift(
-  templateDir: string,
-  templateRepo: string,
-  sink: ReportSink,
-): Promise<void> {
-  const upstreamPath = path.join(templateDir, 'CLAUDE.md');
-  const localPath = path.join(process.cwd(), 'CLAUDE.md');
-  // Need BOTH the boilerplate's canonical copy and the project's own.
-  if (!fs.existsSync(upstreamPath) || !fs.existsSync(localPath)) { return; }
-
-  let upstreamContent: string;
-  let localContent: string;
-  try {
-    upstreamContent = fs.readFileSync(upstreamPath, 'utf8');
-    localContent = fs.readFileSync(localPath, 'utf8');
-  }
-  catch { return; }
-
-  // Project tracks the boilerplate verbatim → nothing to suggest.
-  if (normalizeForCompare(upstreamContent) === normalizeForCompare(localContent)) { return; }
-
-  // Fire only when the UPSTREAM file changed since our last advice.
-  const upstreamSha = crypto.createHash('sha256').update(upstreamContent, 'utf8').digest('hex');
-  const markerPath = path.join(process.cwd(), CLAUDE_MD_SHA_MARKER);
-  let lastSha = '';
-  try {
-    if (fs.existsSync(markerPath)) { lastSha = fs.readFileSync(markerPath, 'utf8').trim(); }
-  }
-  catch { /* unreadable marker — treat as first advice */ }
-
-  if (lastSha === upstreamSha) { return; } // no NEW upstream change since last nudge
-
-  // Persist the marker FIRST so this is one nudge per upstream change, even if the
-  // user ignores it (non-fatal if the write fails — worst case we advise again).
-  try {
-    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
-    fs.writeFileSync(markerPath, `${upstreamSha}\n`);
-  }
-  catch { /* non-fatal */ }
-
-  const rawUrl = `https://raw.githubusercontent.com/${templateRepo}/main/CLAUDE.md`;
-  const firstAdvice = lastSha === '';
-
-  sink.warn(firstAdvice
-    ? 'El `CLAUDE.md` del boilerplate trae mejoras que tu `CLAUDE.md` local podría no tener (es un archivo per-proyecto: el updater nunca lo sobrescribe).'
-    : 'El `CLAUDE.md` del boilerplate cambió desde la última vez. Tu `CLAUDE.md` local no se actualiza solo (es per-proyecto).');
-  sink.step('No tocamos tu `CLAUDE.md`. Copia el prompt de abajo y pégalo en tu IA para traer SOLO las mejoras, preservando lo específico de tu proyecto:');
-
-  const prompt = [
-    'Sync the local ./CLAUDE.md with the upstream boilerplate, pulling ONLY the improvements.',
-    '',
-    `1. Fetch the canonical boilerplate CLAUDE.md: ${rawUrl}`,
-    `   (use your web-fetch tool, or run: curl -fsSL ${rawUrl})`,
-    '2. Diff it against the local ./CLAUDE.md.',
-    '3. Merge in ONLY the upstream improvements: new or updated rules, doctrine, behavioral guidance, workflow conventions, and sections this project lacks.',
-    '4. PRESERVE every project-specific value verbatim — project identity, env URLs, Jira keys/fields, credential references, and any custom rule or section this project added. Never replace a local customization with a generic boilerplate placeholder.',
-    '5. On any genuine conflict (same rule, divergent intent), surface it for my decision instead of silently overwriting. Keep the rule numbering coherent after merging.',
-    '6. Show me a concise before/after diff of what you changed and why BEFORE writing the file.',
-  ].join('\n');
-
-  // Plain stdout (no log-prefix bullets) so the block copy-pastes cleanly.
-  process.stdout.write(`\n${pc.dim('────────  COPY PROMPT BELOW  ────────')}\n${prompt}\n${pc.dim('────────  COPY PROMPT ABOVE  ────────')}\n\n`);
-}
+const DRIFT_PROMPT_PATH = path.join('.agents', 'prompts', 'boilerplate-drift-prompt.md');
 
 // --- SINK ---
 function abortOnCancel<T>(v: T | symbol): T {
@@ -833,8 +782,15 @@ async function main(): Promise<void> {
     versionFile: VERSION_FILE,
     components,
     ignoreFiles: ['.gitignore', '.prettierignore'].map(p => ({ path: p, sentinel: '# ===== Synced from boilerplate' })),
+    // Append-only per section: upstream-only keys are added, same-key/
+    // different-value is reported FYI and NEVER overwritten. `dependencies` is
+    // here because the `cli` component is synced wholesale and imports
+    // packages declared only there — syncing the code without the package
+    // leaves `bun run up` crashing on import. `lint-staged` is here because
+    // `.husky/pre-commit` is synced and shells out to `bunx lint-staged`,
+    // which reads its config from this file.
     packageJsonSpecs: [
-      { path: 'package.json', sections: ['scripts', 'devDependencies'] },
+      { path: 'package.json', sections: ['scripts', 'devDependencies', 'dependencies', 'lint-staged'] },
     ],
     deprecatedFiles: DEPRECATED_FILES,
     bootstrapOnlyPaths: AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`),
@@ -843,6 +799,9 @@ async function main(): Promise<void> {
     // .claude/skills) — never synced; each repo rebuilds it from its own
     // installed skill set (regenerated in afterApply below).
     excludePaths: ['.claude/skills/REGISTRY.md'],
+    // Watchlist files are NOT synced — included in the sparse clone only so
+    // the protected-drift hook can read their upstream copies.
+    sparseExtraPaths: PROTECTED_WATCHLIST.map(e => e.path),
     selfUpdateComponent: 'cli',
     hooks: {
       // Runs after files land but before tempDir cleanup → upstream `.env.example`
@@ -864,7 +823,15 @@ async function main(): Promise<void> {
         await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
         await upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto);
         await upsertAutomationIdentityBlock(TEMP_DIR, sink, parsed.auto);
-        await detectClaudeMdDrift(TEMP_DIR, TEMPLATE_REPO, sink);
+        // Generalized successor to the old CLAUDE.md-only advisory: same
+        // one-nudge-per-upstream-change semantics, now across the whole
+        // PROTECTED_WATCHLIST. CLAUDE.md keeps its legacy sha marker.
+        await makeProtectedDriftHook({
+          entries: PROTECTED_WATCHLIST,
+          tempDir: TEMP_DIR,
+          templateRepo: TEMPLATE_REPO,
+          promptOutPath: path.join(process.cwd(), DRIFT_PROMPT_PATH),
+        }, sink)(summary);
       },
     },
   };
