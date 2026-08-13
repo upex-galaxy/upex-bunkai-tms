@@ -131,6 +131,14 @@ Example (same work, different register):
 
 **ERROR PROTOCOL**: Subagent error → STOP, report full context, NO fix without approval, offer retry/skip/abort.
 
+**RULE REACHABILITY**: subagent sees ONLY briefing + `REGISTRY.md` compact rules + files briefing names. Does NOT walk `references/`. Rule that must BIND executor (prohibition, fail-closed gate, credential contract, cleanup duty) MUST land in all three: owning `references/*.md` (full text) + owning `SKILL.md` `## Compact Rules` (so registry propagates it) + briefing component 6. Rule only in reference file = documentation, NOT constraint.
+
+**EPHEMERAL-ARTIFACT CONTRACT (secret hygiene)**: subagent materializing auth/session material to disk (cookie jar, `storageState.json`, token file, `.har` with `Authorization`/`Cookie`, session-bearing logs, DB dump) MUST: write ONLY to session scratch dir (never repo tree, not even ignored paths) → delete BEFORE reporting → disclose `secrets_materialized: none|<kinds>` + `cleaned: yes|no (<reason>)` in report. `cleaned: no` = BLOCKER surfaced to user. NEVER echo material into report/plan/commit/PR/tracker comment.
+
+**GATE DESIGN — FAIL-CLOSED**: gate keyed on value the gated agent itself writes is fail-open (agent disables own gate by emitting plausible value). Every gate MUST: require citation of decision procedure alongside value + treat missing/malformed citation AS the blocking value + name who may fill it (when decision belongs to another skill, gated agent may emit blocking value only).
+
+**VALUE PROVENANCE**: Rule #10 generalizes to ALL config. Any claim about project config cites the file it was read from, same turn. NEVER quote skill reference / template / worked example as project state — reference values are illustrative and routinely differ.
+
 **DEEP DETAIL** (subagent-cacheable) → `.claude/skills/agentic-dev-core/references/` (briefing-template, dispatch-patterns, orchestration-doctrine, skill-composition).
 
 ---
@@ -161,7 +169,7 @@ Example (same work, different register):
 - `.context/business/domain-glossary.md` — canonical domain terminology (ATC = Acceptance Test Case, KATA, IQL, TMS entities). Any domain term in Jira content, docs, or UI copy MUST match it; anti-glossary lists banned terms.
 - `.context/master-implementation-plan.md` — prioritized roadmap (EPIC/strategy; owned by `/master-implementation-plan`)
 - `.context/dev-roadmap.md` — ticket-level dependency execution roadmap (TICKET/sequence: which story unblocks which, in what execution sprint, gated by which mockup; owned by `/dev-roadmap`)
-- `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`. NOT for bug fixes, local refactors, or naming tweaks.
+- `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`; AI detection/authoring doctrine → `.claude/skills/agentic-dev-core/references/adr-doctrine.md`. NOT for bug fixes, local refactors, or naming tweaks.
 - `.context/reports/SPRINT-{N}-DEVELOPMENT.md` — cross-ticket dev tracker per sprint (generated/updated by `/sprint-development` batch mode)
 - `.context/PBI/` — Jira-synced cache (see §9). Epics/stories under `epics/`, plus `bugs/`, `tech-stories/`, `tests/`, `improvements/`, `epic-tree.md` index
 - `.agents/project.yaml` — `{{VAR}}` source-of-truth (load ONCE per session, cache)
@@ -196,7 +204,7 @@ Example (same work, different register):
 >
 > Layout: T1 repo skills → `.claude/skills/<slug>/` (committed). T3/T4 community skills via `bunx skills add` → `.agents/skills/<slug>/` (gitignored, default CLI behavior).
 
-### Slash commands (utilities, 6)
+### Slash commands (utilities, 7)
 
 | Command                       | Purpose                                                                                        |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -206,6 +214,7 @@ Example (same work, different register):
 | `/business-api-map`           | Refresh `.context/business/business-api-map.md` (auth model, endpoints, architecture).         |
 | `/master-implementation-plan` | Refresh `.context/master-implementation-plan.md` (prioritized feature roadmap — EPIC/strategy).|
 | `/dev-roadmap`                | Refresh `.context/dev-roadmap.md` (ticket-level dependency execution roadmap — TICKET/sequence). |
+| `/jira-instance-migration`    | Repoint the repo at a new Atlassian instance (`.env` + `.agents/project.yaml` + machine-global `acli` session) and regenerate the `.agents/` catalogs the migration invalidated. Takes source + target instance as args; asks for whatever is missing. |
 
 ### MCPs (configured in `.mcp.json`)
 
