@@ -572,6 +572,8 @@ Design cannot reach 100% fidelity on those screens until the models exist. Seque
 | | BK-147 App Shell — ATCs/Tests as tabs + persistent explorer | **Shell** (§3, D5) · **Projects** workbench (§4.3, D6) | `app.jsx` §3, `project.jsx` §4.3 |
 | | BK-148 Project Environments — list/add/rename/remove | **Projects** explorer rail — Environments group (D11, live-first; no Settings mockup) | `project-explorer.tsx` |
 | | BK-266 Projects index + dedicated create route | **Projects index** (`/projects`, spec-only — D19, no mockup) · **Create project** (`/projects/new`, form relocated unchanged) | §5 D19 · `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (structural precedent only) |
+| | BK-398 Command Palette — search and jump across the workspace | **Shell** — the ⌘K search/jump surface (§3 "Search ⌘K" row, currently a `CommandPalette` stub) | `app.jsx` §3 — the mockup draws the sidebar trigger ("Search or jump to…" + ⌘K `kbd`) but **not the overlay panel itself**; author the overlay before building it |
+| | BK-443 App Shell — save, name, and return to a filtered view | **Shell** — saved filtered views (cross-screen; no host surface picked yet) | 🔒 mockup-gated, unratified — no mockup in `.context/designs/bunkai-test-management-tool/` has a saved-view affordance. Do not infer one; see the BK-371 🔒 precedent below |
 | **BK-12 User Stories & AC** | BK-14 User Story CRUD | **Projects** explorer (story nodes) · ATC Editor anchoring | `project.jsx`, `editor.jsx` |
 | | BK-15 AC CRUD + reorder | **Projects** detail · **ATC Editor** AC chips | `editor.jsx` |
 | | BK-16 Markdown editor + render | ATC Editor · Story detail | `editor.jsx` |
@@ -585,6 +587,8 @@ Design cannot reach 100% fidelity on those screens until the models exist. Seque
 | | BK-439 Browse every ATC in the workspace from one index | **ATC Library** (global index, `/atcs`) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
 | | BK-440 Find an ATC by name as you type | **ATC Library** (global index, `/atcs` — name search) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
 | | BK-441 Narrow the index by Project, Module, layer and anchor | **ATC Library** (global index, `/atcs` — facet filters) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
+| | BK-315 Export a project's ATCs to CSV | **ATC Library** (project-scoped ATC list — export action) | 🔒 export control mockup-gated, unratified — `atc-library-global.html` (§4.9) draws no export affordance, and the export is project-scoped where that screen is workspace-scoped. Do not invent the control |
+| | BK-399 ATC classification by test-design technique and priority | **ATC Editor** (classification fields) · **ATC Library** (facet + filter surface) | 🔒 classification fields mockup-gated, unratified — `editor.jsx` (§4.4) has no technique or priority control, and no §4.9 facet covers them |
 | **BK-24 Tests (chains of ATCs)** | BK-27 Assemble test by chaining | **Projects** (Test nodes) · Tests builder | `project.jsx` |
 | | BK-28 Reorder ATCs in a test | Tests builder | `project.jsx` |
 | | BK-32 Open test, see every ATC | **Projects** detail (test view) | `project.jsx` |
@@ -595,6 +599,7 @@ Design cannot reach 100% fidelity on those screens until the models exist. Seque
 | | BK-37 View a test's past runs | **Test Runs** index (per-test history) | §4.8 · `bk-30-test-runs-index/test-run-history.html` |
 | | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | §4.8 · `bk-30-test-runs-index/test-runs-index.html` |
 | | BK-39 Finish a run with a final verdict | **Test Runner** (finish/verdict) | `run.jsx` §4.5 |
+| | BK-442 Compare a run against the previous run of the same test | **Test Runs** — per-test run history (comparison view, extends BK-37's surface) | 🔒 comparison view mockup-gated, unratified — `bk-30-test-runs-index/test-run-history.html` (§4.8) lists past runs but draws no run-to-run diff |
 | **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) · Bug Reports (read view) | `run.jsx` §4.5 · §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
 | | BK-42 Defect heatmap | **Bug Reports** (heatmap view, placement note §4.6) | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
