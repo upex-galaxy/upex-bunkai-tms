@@ -1,7 +1,7 @@
 # ADR-0007 — Password-Primary Auth & Mandatory Email-OTP Verification
 
-- **Status:** Proposed <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
-- **Date:** 2026-06-21 <!-- date the decision was made / last status change -->
+- **Status:** Accepted — Implemented
+- **Date:** 2026-06-21 (proposed) · 2026-08-13 (status synced — BK-166 shipped: `app/(auth)/login/email-first-form.tsx`, migration `0034_auth_email_status_rpc.sql`)
 - **Deciders:** Dev (drafted), Architect + PO (accept), QA-Lead (test gate)
 - **Tags:** authentication, auth-ux, security, cross-cutting-invariant
 - **Supersedes:** —
