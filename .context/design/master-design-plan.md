@@ -5,7 +5,7 @@
 >
 > **Design medium of record:** the Claude Design handoff mockups in `.context/designs/bunkai-test-management-tool/` (5 screens + `styles.css` token system). When mockup and implementation disagree, **the mockup wins** unless a divergence is explicitly ratified in §5.
 >
-> Last audit: 2026-06-09. Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
+> Last audit: 2026-08-13 (build-state re-verified route-by-route against `origin/staging`). Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
 
 ---
 
@@ -35,19 +35,21 @@ Every user story that touches UI MUST:
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | ATC Library (global promotion) | build 0% | ❌ Still project-scoped in impl (`projects/[slug]/atcs/*`) · ✅ mockup ready 2026-07-30 (§4.9) |
 | Home / Dashboard | ~90% | ✅ Built — epic BK-254 complete (banner + 5 widgets, BK-255..BK-260). Not built by ratified departure, not debt: the KPI deltas (unsourceable), the four-up grid, the sprint eyebrow and the header actions (§4.2, §5 D20/D21/D22/D23/D24) |
-| Test Runner | 0% | ❌ Missing |
-| Bug Reports (+ Defect Heatmap) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.6) |
-| Metrics | 0% | ❌ Missing (no data model) · ✅ mockups ready 2026-07-30 (§4.7) |
-| Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
-| Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
-| Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
+| Test Runner | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/[runId]/page.tsx` + `components/runs/RunnerView.tsx` (BK-34/35/36/39, all QA Approved or later). Mockup-fidelity pass against `run.jsx` not yet run (§4.5) |
+| Bug Reports (+ Defect Heatmap) | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/bugs/page.tsx` + `BugsListView` / `BugsHeatmapView` (BK-40/41/42/264). Shipped **project-scoped**, not the workspace-wide index the mockup draws. Still open: defect detail read view (BK-337) + Jira sync (BK-371/372/373) · mockups ready 2026-07-30 (§4.6) |
+| Metrics | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/metrics/page.tsx` + `metrics/RecoveryCycleSection`, `coverage/ProjectCoverageView`, `traceability/TraceabilityChainView` (BK-45/46/47/48/50). **The "no data model" blocker is gone** — migrations 0048/0049/0050/0068/0069 · mockups ready 2026-07-30 (§4.7) |
+| Test Runs | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/page.tsx` + `RunHistoryView` / `ProjectRunsReportView` (BK-37/38) · mockups ready 2026-07-30 (§4.8) |
+| Settings (5-screen suite) | built · fidelity un-audited | ✅ Built — all five routes ship (`settings/`, `/account`, `/notifications`, `/tokens`, `/workspaces`) with `SettingsNav` + `SettingsLayout` (BK-86/87/88/89/90, plus BK-213 for the notifications pane) · mockups ready 2026-07-30 (§4.10) |
+| Test Plans & Milestones (post-MVP, 3-screen set) | Milestones built · Test Plans 0% | ⚠️ Split — **Milestones shipped** (`projects/[projectSlug]/milestones/` + `/[milestoneId]`, BK-205, migration 0064); **Test Plans genuinely unbuilt** (BK-202/203/204/206/207 all Backlog, no plan entity in the schema) · mockups ready 2026-07-30 (§4.11) |
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
-| Notifications Center (post-MVP, 3-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.13) |
+| Notifications Center (post-MVP, 3-screen set) | inbox + preferences built · digest 0% | ⚠️ Partial — **and a route grep alone will miss it**: the inbox shipped as a **shell bell + `NotificationsPanel` overlay** mounted inside `components/layout/AppSidebar.tsx`, with **no dedicated route** (BK-209, the ratified D17 placement). Preferences ship at `settings/notifications` (BK-213); event producers ship (BK-211/212, migrations 0053/0056/0062/0066). Only the email digest (BK-214, Backlog) is unbuilt · mockups ready 2026-07-30 (§4.13) |
 | Team Chat (post-MVP, 4-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.14) |
 | Billing & Plans (post-MVP, 5-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.15) |
-| Activity (BK-49, standalone, spec-only — no mockup) | build 0% | ❌ Not built — BK-49 Ready For Dev · 🔒 DESIGN.md §2 tokens only, no mockup (D15, §5) |
+| Activity (BK-49, standalone, spec-only — no mockup) | built | ✅ Built — `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (BK-49, shipped 2026-08-03; migrations 0045/0047/0055) · 🔒 DESIGN.md §2 tokens only, no mockup (D15, §5) |
 
-Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
+Current build stage: the MVP nav domains are **built, not missing** — Runs, Runner, Bugs + heatmap, Metrics/Coverage/Traceability, Settings, Activity, Home and Milestones all ship on `origin/staging`. What remains is (a) **mockup-fidelity passes** over those shipped screens, (b) the **global ATC Library** promotion (`/atcs`, BK-439/440/441), (c) **Test Plans**, and (d) the post-MVP epics with no backend yet (Automation & CI, Team Chat, Billing) plus the notifications email digest.
+
+> **Reading rule for this table.** `built` means the route and its components exist and the story reached QA — it does **not** mean the screen was audited against its mockup. A `built · fidelity un-audited` row is an invitation to audit, never a licence to rebuild the screen from scratch. This scorecard sat on stale `0%` readings from 2026-06-09 through 2026-08-13, which is exactly the failure mode that invites a rebuild proposal for a screen that already ships.
 
 ---
 
@@ -535,14 +537,19 @@ Decision rule per divergence:
 
 ---
 
-## 7. Data models that gate design (not yet existing)
+## 7. Data models that gate design
 
-These domains have **no schema/API/UI** and block faithful screens:
-- **Runs** (Test Runs, Active runs, run-result banners, runner) → blocks Home, Test Runner, Projects detail.
-- **Bugs** (Bug Reports, Report-bug drawer, OPEN BUGS card) → blocks Home, Runner, Bug Reports.
-- **Coverage / Metrics** (COVERAGE card, progress bars, Metrics screen) → blocks Home, Metrics.
+**RESOLVED 2026-08-13 — the three domains this section used to list as missing all ship.** Runs (migrations 0031, 0036-0043), Bugs (0046, 0051-0052, 0054) and Coverage/Metrics (0048-0050, 0068-0069) exist end-to-end with schema, API and UI. They gate nothing now, and the Home cards, Runner, Test Runs, Bug Reports and Metrics screens they used to block are all built (§1).
 
-Design cannot reach 100% fidelity until these exist. Sequence backend domains alongside the P2/P3 screen work.
+Domains that still have **no schema/API** and therefore still gate their screens:
+
+- **Test Plans** (§4.11 plan index + plan detail) → blocks BK-202/203/204/206/207. Note the split: Milestones shipped (migration 0064), the plan entity did not.
+- **Chat messages** (§4.14, 4-screen set) → blocks BK-215..BK-220.
+- **Billing / plan / seat data** (§4.15, 5-screen set) → blocks BK-229..BK-233.
+- **CI ingestion** (§4.12 automated runs, results upload, automation status) → blocks BK-222/223/225/226/227/228.
+- **Saved views** (BK-443) and **ATC classification** — test-design technique + priority (BK-399). New fields with neither schema nor mockup; see their §8 rows.
+
+Design cannot reach 100% fidelity on those screens until the models exist. Sequence backend domains alongside the screen work.
 
 ---
 
