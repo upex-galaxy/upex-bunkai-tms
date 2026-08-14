@@ -22,6 +22,7 @@ import {
 } from '@lib/bugs/list-view';
 import { cn } from '@lib/utils';
 import { ArrowDown, ArrowRight, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -64,6 +65,11 @@ export interface BugsWorkspaceMemberOption {
 
 interface BugsListViewProps {
   projectId: string
+  // BK-337 — the project's slug, needed to build each row's link into the
+  // defect detail record (`/projects/{projectSlug}/bugs/{bugId}`). The list
+  // itself is keyed by `projectId` throughout (API calls, filters); the slug
+  // is ONLY for building these two hrefs.
+  projectSlug: string
   modules: BugsModuleOption[]
   // Same member+ (not-viewer) gate as ProjectLayout's own `canCreate` and
   // RunnerView's `canReportBug` — a viewer sees the list read-only, no "New
@@ -253,7 +259,7 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
 
 type BugsScreenView = 'list' | 'heatmap';
 
-export function BugsListView({ projectId, modules, canCreateBug, workspaceMembers, initialPage, initialError = null }: BugsListViewProps) {
+export function BugsListView({ projectId, projectSlug, modules, canCreateBug, workspaceMembers, initialPage, initialError = null }: BugsListViewProps) {
   // BK-264 — assign/status-transition are gated by the SAME member+
   // (not-viewer) permission `canCreateBug` already represents (both mutations
   // require the identical write-role RPCs a viewer always fails), so no
@@ -771,9 +777,15 @@ export function BugsListView({ projectId, modules, canCreateBug, workspaceMember
                                 className="transition-colors duration-token ease-token hover:bg-surface-3"
                               >
                                 <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                  <span className="font-mono text-xs font-medium text-fg-0" title={row.id}>
+                                  {/* BK-337 — the Bug cell opens the defect detail record. */}
+                                  <Link
+                                    href={`/projects/${projectSlug}/bugs/${row.id}`}
+                                    className="font-mono text-xs font-medium text-fg-0 underline decoration-transparent underline-offset-2 transition-colors duration-token ease-token hover:decoration-fg-0"
+                                    title={row.id}
+                                    data-testid={`bugs-list-row-${row.id}-bug-link`}
+                                  >
                                     {row.id.slice(0, 8)}
-                                  </span>
+                                  </Link>
                                 </td>
                                 <td className="max-w-[280px] truncate border-t border-stroke-1 px-3 py-1.5 text-sm text-fg-1">
                                   {row.title}
@@ -867,7 +879,23 @@ export function BugsListView({ projectId, modules, canCreateBug, workspaceMember
                                       )}
                                 </td>
                                 <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-                                  <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>
+                                  {/* BK-337 (2026-08-10 PO ruling) — the Run cell opens
+                                      the SAME defect detail record as the Bug cell, not
+                                      the run report page. The Origin panel inside that
+                                      record is the one place a reader continues on to
+                                      the actual run. A standalone bug (no run_id) has
+                                      nothing to link — its "—" stays plain text. */}
+                                  {item.run_id
+                                    ? (
+                                        <Link
+                                          href={`/projects/${projectSlug}/bugs/${row.id}`}
+                                          className="font-mono text-xs text-fg-2 underline decoration-transparent underline-offset-2 transition-colors duration-token ease-token hover:decoration-fg-2"
+                                          data-testid={`bugs-list-row-${row.id}-run-link`}
+                                        >
+                                          {row.runLinkLabel}
+                                        </Link>
+                                      )
+                                    : <span className="font-mono text-xs text-fg-2">{row.runLinkLabel}</span>}
                                 </td>
                               </tr>
                             );

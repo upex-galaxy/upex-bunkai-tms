@@ -4,16 +4,18 @@
 // on the BK-31 Bugs & Defect Heatmap implementation; Dev must define the
 // final bug route before this story reaches Ready For QA").
 //
-// BK-212 Slice 2 — there is no separate bug-detail page (BK-31 never shipped
-// one). scope.md's own wording ("Deep link lands on the bug with its
-// attached test and run context") maps naturally onto the EXISTING run-detail
-// page (`/projects/{projectSlug}/runs/{runId}`, already the "run context"
-// surface) rather than a new screen: a `bugId` query param deep-links into
-// that page, which highlights + scrolls to the specific bug's originating
-// step (RunnerView.tsx). A standalone bug (bugs.run_id null — 0046_bugs.sql)
-// has no run to land on and no fallback route is defined by business-rules.md/
-// scope.md for that case, so it resolves no route here (see the `bug` case
-// below), not a broken link.
+// BK-337 — repoints the `bug` case at the new defect detail record
+// (`/projects/{projectSlug}/bugs/{bugId}`), for a run-linked defect AND a
+// standalone one alike. This is the same question the 2026-08-10 Product
+// Owner decision on BK-337 already answered for the defects list's Run cell:
+// a bug reference opens the defect record, and the Origin panel inside that
+// record is the one route onward to the run itself — landing a notification
+// on the run page instead would answer "what does a bug reference open?" two
+// different ways on two surfaces. This also gives a standalone bug's
+// notification a working destination for the first time (previously `null`
+// — see the superseded BK-212 comment this replaced). Scope stays narrow:
+// the inbox UI, `entity_available`, and which events are produced remain
+// BK-212's; only this ONE switch case changes.
 //
 // The payload snapshot is the ONLY source for `project_slug` / `run_id` —
 // this inbox never joins live run/test/project/bug tables to render OR to
@@ -51,18 +53,12 @@ export function resolveNotificationHref(notification: NotificationEntityRef): st
     case 'test':
       return `/projects/${safeProjectSlug}/tests/${notification.entity_id}`;
     case 'bug': {
-      // Deep-links into the run-detail page (the "run context" scope.md
-      // asks for), highlighting this specific bug — see this file's header.
-      // A standalone bug (no run_id in the payload snapshot) has nothing to
-      // land on: no fallback route is defined for it, so it resolves `null`
-      // rather than guessing one.
-      const runId = notification.payload.run_id;
-      if (typeof runId !== 'string' || runId.length === 0) {
-        return null;
-      }
-      const safeRunId = encodeURIComponent(runId);
+      // BK-337 — the defect detail record, for a run-linked defect AND a
+      // standalone one alike (see this file's header). No `run_id` branch
+      // needed any more: the record itself carries the Origin panel that
+      // links onward to the run, when there is one.
       const safeBugId = encodeURIComponent(notification.entity_id);
-      return `/projects/${safeProjectSlug}/runs/${safeRunId}?bugId=${safeBugId}`;
+      return `/projects/${safeProjectSlug}/bugs/${safeBugId}`;
     }
     default:
       // Any future/unknown entity_type — no detail route to send the user

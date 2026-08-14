@@ -32,24 +32,24 @@ describe('resolveNotificationHref', () => {
     expect(href).toBeNull();
   });
 
-  test('a run-linked bug with entity_available + project_slug + run_id resolves the run route with a bugId deep link', () => {
+  test('a run-linked bug with entity_available + project_slug resolves the defect detail route, regardless of run_id in the payload', () => {
     const href = resolveNotificationHref({
       entity_type: 'bug',
       entity_id: 'bug-1',
       entity_available: true,
       payload: { project_slug: 'checkout-platform', run_id: 'run-1' },
     });
-    expect(href).toBe('/projects/checkout-platform/runs/run-1?bugId=bug-1');
+    expect(href).toBe('/projects/checkout-platform/bugs/bug-1');
   });
 
-  test('a standalone bug (no run_id in payload) resolves no route — no fallback route is defined for it', () => {
+  test('a standalone bug (no run_id in payload) ALSO resolves the defect detail route — BK-337 gives it a working destination for the first time', () => {
     const href = resolveNotificationHref({
       entity_type: 'bug',
       entity_id: 'bug-1',
       entity_available: true,
       payload: { project_slug: 'checkout-platform' },
     });
-    expect(href).toBeNull();
+    expect(href).toBe('/projects/checkout-platform/bugs/bug-1');
   });
 
   test('bug entity_available: false never resolves a route, regardless of run_id', () => {
@@ -70,7 +70,7 @@ describe('resolveNotificationHref', () => {
       entity_available: true,
       payload: { project_slug: 'checkout-platform', run_id: 'run-1' },
     });
-    expect(href).toBe(`/projects/checkout-platform/runs/run-1?bugId=${encodeURIComponent(maliciousBugId)}`);
+    expect(href).toBe(`/projects/checkout-platform/bugs/${encodeURIComponent(maliciousBugId)}`);
   });
 
   test('a missing project_slug in payload resolves no route (today\'s producers do not populate it yet)', () => {
