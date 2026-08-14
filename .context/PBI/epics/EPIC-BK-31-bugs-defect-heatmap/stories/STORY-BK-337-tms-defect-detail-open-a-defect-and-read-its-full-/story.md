@@ -97,10 +97,15 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 
 ## Traceability
 
-### Storys (2)
+### Bug (1)
+
+- [BK-466](https://jira.upexgalaxy.com/browse/BK-466): RunnerView evidence anchor renders unscoped URLs — javascript:/data: schemes accepted _(Open)_
+
+### Storys (3)
 
 - [BK-43](https://jira.upexgalaxy.com/browse/BK-43): TMS-Defect Sync | Sync defects one-way to the external tracker _(ABORTED)_
 - [BK-372](https://jira.upexgalaxy.com/browse/BK-372): TMS-Defect Sync | Send a newly filed defect to Jira _(Backlog)_
+- [BK-465](https://jira.upexgalaxy.com/browse/BK-465): TMS-Defect Filing | Capture expected and actual results at filing _(Backlog)_
 
 ---
 

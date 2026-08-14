@@ -1,8 +1,8 @@
 # BK-42 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
-```gherkin
+```
 @happy
 Scenario: Heatmap returns one active module cell per project module
   Given Mateo is an authorized QA Lead for project "Storefront"

@@ -2,11 +2,11 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
-## Acceptance Test Plan (ATP) Draft - BK-42
+## Acceptance Test Plan (ATP) Draft - [https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42](https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42)
 
 > ***WARNING:*** ATP DRAFT only. Formal Test Case creation belongs to /test-documentation.
 
-| ID | Priority | Category | Scenario outline | Precondition | Expected result | Automation hint |
+| ***ID**** | ****Priority**** | ****Category**** | ****Scenario outline**** | ****Precondition**** | ****Expected result**** | ****Automation hint*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | ATP-1 | P0 | Positive | Default heatmap returns active module cells | Authorized project with active modules | One cell per active module; default 30d shown | API + UI |
 | ATP-2 | P0 | Positive | Selected-window counts update for 7d/30d/90d | Defects distributed across dates | Counts match selected fixed window | API |
@@ -23,17 +23,17 @@
 | ATP-13 | P0 | Visual / a11y | Hotspot is not color-only | One module has max count | Count, label/icon, legend communicate hotspot | UI |
 | ATP-14 | P1 | Visual / a11y | Trend cue accessible | Trend indicators rendered | Accessible name/text exposes trend | UI |
 | ATP-15 | P1 | UX | Duplicate names disambiguated by path | Two nested modules share name | Full paths distinguish cells | UI |
-| ATP-16 | P0 | Integration | New defect updates heatmap count | BK-40 defect filing succeeds | Count increases within 5 seconds after stats read | API + integration |
+| ATP-16 | P0 | Integration | New defect updates heatmap count | [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) defect filing succeeds | Count increases within 5 seconds after stats read | API + integration |
 | ATP-17 | P1 | Integration | Freshness metadata updates | Stats refresh occurs | as*of/refreshed*at reflects current stats read | API |
 | ATP-18 | P0 | Security | Unauthenticated heatmap request | No valid token | 401, no heatmap data | API |
 | ATP-19 | P0 | Security | Cross-project unauthorized request | Valid user without membership | 403, no module/count data | API |
 | ATP-20 | P1 | Negative | Unsupported window rejected | Request uses 365d | 400 invalid window error | API |
 
-| Positive | Negative | Boundary | Integration | API | Total |
+| ***Positive**** | ****Negative**** | ****Boundary**** | ****Integration**** | ****API**** | ****Total*** |
 | --- | --- | --- | --- | --- | --- |
 | 5 | 3 | 5 | 2 | 15 | 20 |
 
-Rationale: BK-42 combines API stats, trend math, module hierarchy, visual heatmap behavior, freshness, and aggregate security. Coverage is intentionally heavier than BK-41 because BK-42 adds user-visible visualization and time-window/trend semantics on top of aggregate reads.
+Rationale: [https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42](https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42) combines API stats, trend math, module hierarchy, visual heatmap behavior, freshness, and aggregate security. Coverage is intentionally heavier than [https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41](https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41) because [https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42](https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42) adds user-visible visualization and time-window/trend semantics on top of aggregate reads.
 
 ---
 _Synced from Jira by sync-jira-issues_

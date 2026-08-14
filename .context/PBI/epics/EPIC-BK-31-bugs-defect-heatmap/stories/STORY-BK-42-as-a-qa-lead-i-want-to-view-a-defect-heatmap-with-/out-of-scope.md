@@ -1,6 +1,6 @@
 # BK-42 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
 - Filing or editing defects (BK-025)
 - Listing or filtering the underlying defects by status and severity (BK-026)

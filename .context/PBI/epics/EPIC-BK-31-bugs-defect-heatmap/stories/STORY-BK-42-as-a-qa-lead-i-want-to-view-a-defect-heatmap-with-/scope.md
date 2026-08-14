@@ -1,6 +1,6 @@
 # BK-42 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
 - A per-module defect heatmap for the chosen project
 - Defect count per module over a selectable window (for example 30 days)
