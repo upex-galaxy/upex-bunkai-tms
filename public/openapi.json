@@ -3607,7 +3607,7 @@
             "type": ["string", "null"],
             "maxLength": 2000,
             "format": "uri",
-            "description": "Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be a valid URL."
+            "description": "Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be an http:// or https:// URL — any other scheme (javascript:, data:, etc.) is rejected (BK-466)."
           }
         },
         "required": ["status"]
@@ -10278,7 +10278,7 @@
             }
           },
           "422": {
-            "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).",
+            "description": "Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not an http:// or https:// URL (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

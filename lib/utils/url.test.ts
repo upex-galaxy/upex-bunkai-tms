@@ -46,4 +46,22 @@ describe('isHttpUrl', () => {
   test('rejects an empty string', () => {
     expect(isHttpUrl('')).toBe(false);
   });
+
+  // BK-466 (code-review follow-up) — `new URL('http:example.com')` silently
+  // normalizes to 'http://example.com/', so a bare `new URL(...)` check
+  // would accept it. This function must reject it, to stay in agreement with
+  // the API-edge schema (z.url({ protocol: z.regexes.httpProtocol }), which
+  // has the identical `://`-presence guard built in).
+  test('rejects a scheme-only string with no "//" separator', () => {
+    expect(isHttpUrl('http:example.com')).toBe(false);
+    expect(isHttpUrl('https:example.com')).toBe(false);
+  });
+
+  test('rejects a single-slash URL', () => {
+    expect(isHttpUrl('https:/single-slash.com')).toBe(false);
+  });
+
+  test('accepts an uppercase scheme', () => {
+    expect(isHttpUrl('HTTP://example.com')).toBe(true);
+  });
 });

@@ -1,5 +1,5 @@
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
-import { isValidUrl } from '@lib/utils/url';
+import { isHttpUrl } from '@lib/utils/url';
 
 // BK-35 — Mark Step view-state logic: framework-agnostic, pure functions
 // only. All I/O (the POST .../mark call, the Realtime subscription) stays in
@@ -125,6 +125,22 @@ export function resolveAtcVerdictBadge(status: StepStatus): AtcVerdictBadge {
 }
 
 // ---------------------------------------------------------------------------
+// Evidence link render guard (BK-466)
+// ---------------------------------------------------------------------------
+
+// BK-466 — the render-time control the RunnerView step list uses to decide
+// anchor-vs-text for a step's evidence link. Mirrors the bugs domain's
+// `formatBugEvidenceRow`/`isOpenable` split (BK-337, lib/bugs/detail-view.ts):
+// only http/https renders as a clickable anchor. Any other scheme
+// (javascript:, data:, etc.) still renders — VISIBLE, never silently
+// dropped — just as inert text, because a row may predate this guard or
+// may have been planted by a caller that bypassed the write-time gates
+// below (RunStepMarkBodySchema, lib/runs/validation.ts).
+export function isEvidenceLinkOpenable(evidenceUrl: string): boolean {
+  return isHttpUrl(evidenceUrl);
+}
+
+// ---------------------------------------------------------------------------
 // Mark-form client-side field validation
 // ---------------------------------------------------------------------------
 
@@ -136,6 +152,20 @@ export function resolveAtcVerdictBadge(status: StepStatus): AtcVerdictBadge {
 // the two layers can never drift apart. Trims first, mirroring Q8's
 // empty-to-null normalization — a whitespace-only value never trips a bound
 // or the URL check.
+//
+// BK-466 — switched from `isValidUrl` (accepted ANY parseable scheme,
+// including javascript:/data:) to `isHttpUrl`, the same shared allowlist the
+// render guard above and the API-edge schema (`RunStepMarkBodySchema`,
+// lib/runs/validation.ts) use. This layer and that schema agree on every
+// input, INCLUDING scheme-only strings like `http:example.com` — `isHttpUrl`
+// (lib/utils/url.ts) explicitly requires the `://` separator for exactly
+// this reason (see its own comment); without that check this form would
+// accept a value the API then 422s with no field-specific message. The
+// error copy is left unchanged ("must be a valid URL") rather than
+// rewritten to name the scheme restriction — BugFormDialog.tsx made the
+// identical call when BK-337 tightened its own evidence-link guard, and
+// matching that precedent keeps the message consistent across both
+// evidence-link entry points in the app.
 export interface ValidateMarkStepFormParams {
   note: string
   evidenceUrl: string
@@ -154,7 +184,7 @@ export function validateMarkStepForm({ note, evidenceUrl }: ValidateMarkStepForm
   if (trimmedEvidence.length > RUN_STEP_EVIDENCE_URL_MAX) {
     return `Evidence link must be at most ${RUN_STEP_EVIDENCE_URL_MAX} characters.`;
   }
-  if (!isValidUrl(trimmedEvidence)) {
+  if (!isHttpUrl(trimmedEvidence)) {
     return 'Evidence link must be a valid URL.';
   }
   return null;

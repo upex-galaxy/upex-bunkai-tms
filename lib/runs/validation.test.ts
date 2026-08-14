@@ -132,6 +132,35 @@ describe('runStepMarkBodySchema', () => {
     expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'not-a-url' }).success).toBe(false);
   });
 
+  // BK-466 — this schema is the enforcement point of record for a direct
+  // bearer-token (`run:execute`) caller of POST .../mark, which never goes
+  // through RunnerView.tsx or lib/runs/mark-step-view.ts's client-side
+  // check. `javascript:`/`data:` both parse fine as a bare `new URL(...)`
+  // (the old `.url()` check, no protocol restriction, let them through); the
+  // scheme allowlist below must reject them here, at the API edge, since the
+  // RPC itself (0042_run_step_mark.sql) only trims/normalizes and never
+  // checks scheme.
+  test('BK-466 — rejects a javascript: evidence_url', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'javascript:alert(1)' }).success).toBe(false);
+  });
+
+  test('BK-466 — rejects a data: evidence_url', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'data:text/html,<script>alert(1)</script>' }).success).toBe(false);
+  });
+
+  // BK-466 (code-review follow-up) — asserts the layer-agreement claim in
+  // lib/runs/mark-step-view.ts's comment rather than leaving it as a bare
+  // assertion: `z.url({ protocol: z.regexes.httpProtocol })` explicitly
+  // requires the "://" separator (Zod's own guard against silently
+  // normalizing "http:example.com" to "http://example.com/"), and
+  // `isHttpUrl` (lib/utils/url.ts, used by both the render guard and
+  // validateMarkStepForm above) was tightened to require it too — this case
+  // is covered on both sides (see lib/runs/mark-step-view.test.ts and
+  // lib/utils/url.test.ts) so the agreement is verified, not just claimed.
+  test('BK-466 — rejects a scheme-only evidence_url with no "//" separator', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'http:example.com' }).success).toBe(false);
+  });
+
   test('rejects an evidence_url over the length cap', () => {
     const tooLong = `https://example.com/${'x'.repeat(RUN_STEP_EVIDENCE_URL_MAX)}`;
     expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: tooLong }).success).toBe(false);

@@ -6,6 +6,7 @@ import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-contex
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { Button } from '@components/ui/button';
 import {
+  isEvidenceLinkOpenable,
   resolveAtcVerdictBadge,
   resolveStatusDotToken,
   resolveStepMarkControlState,
@@ -808,14 +809,18 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
                                 >
                                   evidence:
                                   {' '}
-                                  <a
-                                    href={s.evidence_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="underline hover:text-fg-1"
-                                  >
-                                    {s.evidence_url}
-                                  </a>
+                                  {isEvidenceLinkOpenable(s.evidence_url)
+                                    ? (
+                                        <a
+                                          href={s.evidence_url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="underline hover:text-fg-1"
+                                        >
+                                          {s.evidence_url}
+                                        </a>
+                                      )
+                                    : s.evidence_url}
                                 </span>
                               )}
                             </div>
