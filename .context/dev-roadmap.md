@@ -228,6 +228,12 @@ BK-31 Bugs & Defect Heatmap (addendum, 2026-08-10):
     object — the exact shape **BK-48 shipped unattended two days earlier** (`0069`), under
     `migrations: unrestricted`. Sized by the cost lens at **5 SP** against BK-48 (5 SP = 9 files /
     1238 insertions) and BK-11 (3 SP = 556). **CLAIMED 2026-08-14.**
+    **SHIPPED 2026-08-14** — PR #169 (`feature/BK-337-defect-detail-read`) merged to `staging`,
+    merge commit `c6fd6a84`, ancestry independently verified (`git merge-base --is-ancestor`).
+    Migration `0070_bug_detail_composer.sql` applied (widens `bunkai_bug_json` in place — a
+    `create or replace`, no schema change), matching the sizing lens's own prediction. Jira
+    auto-transitioned `In Progress -> In Review -> Ready For QA`. BK-372's dependency edge below is
+    now genuinely satisfied — verify by git ancestry (done), not by BK-337's Jira status alone.
 
 BK-31 Bugs & Defect Heatmap (addendum, 2026-08-11 — BK-43 ABORTED, split executed):
   BK-371 TMS-Defect Sync | Point a project at a Jira destination ──> (no incoming edge)
@@ -240,9 +246,11 @@ BK-31 Bugs & Defect Heatmap (addendum, 2026-08-11 — BK-43 ABORTED, split execu
     prerequisites). BK-371 (destination config) has no incoming edge — it can start as soon as it
     clears shift-left. BK-373 (failure recovery) gates on BK-372, not on BK-371, because recovery UI
     needs a sync attempt to exist first. **All three are `Backlog` and none has been through
-    shift-left QA refinement** — do not treat "successor exists" as "successor is buildable." BK-372
-    stays unpickable until BK-337 both clears shift-left AND ships to staging — verify by git
-    ancestry, never by BK-337's Jira status (PR #152, `ff8b79b`, is docs-only — see §6 2026-08-10).
+    shift-left QA refinement** — do not treat "successor exists" as "successor is buildable."
+    **BK-337's half of BK-372's dependency edge cleared 2026-08-14** (PR #169, merge `c6fd6a84`,
+    ancestry-verified) — BK-372 still needs BK-40 ✅ (already clear) AND its own shift-left
+    refinement before it is pickable; do not treat "dependency edges clear" as "buildable" on its
+    own.
 
 BK-13 ATC Library (addendum, 2026-08-13 — BK-267 ABORTED, split executed):
   BK-439 TMS-ATC Library | Browse every ATC in the workspace from one index ──> (no incoming edge)

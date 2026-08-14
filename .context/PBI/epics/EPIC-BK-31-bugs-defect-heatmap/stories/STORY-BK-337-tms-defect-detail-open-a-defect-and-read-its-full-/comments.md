@@ -426,5 +426,49 @@ Product Owner · Bunkai TMS · 2026-08-11
 
 ---
 
+### Automation for Jira - 8/14/2026, 4:22:09 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 8/14/2026, 4:22:43 PM
+
+✅ Pull Request is successfully MERGED and DEPLOYED on QA. 
+It's Ready for Testing Phase! 
+Dev Task is Done.
+
+---
+
+### Ely - 8/14/2026, 4:24:46 PM
+
+## Ready for QA — BK-337 merged to staging
+
+PR: https://github.com/upex-galaxy/upex-bunkai-tms/pull/169 (merged, `c6fd6a8414d924c708e6123fbacfe0de38eeb52b`, ancestry verified against `origin/staging`)
+
+Branch: `feature/BK-337-defect-detail-read`
+
+### What shipped
+
+- `GET /api/v1/bugs/{id}` and `/projects/[projectSlug]/bugs/[bugId]` — the read-only defect detail record.
+- Migration `0070*bug*detail*composer.sql` widens `bunkai*bug*json` with a nested `origin` object and `module.archived*at`.
+- The defects list's Bug and Run cells both open the detail record (2026-08-10 PO ruling); the bug-notification deep link now lands on it too, for run-linked and standalone defects alike.
+- `evidenceUrlsSchema` tightened to http/https only (Scenario 3.4 / TQ5); non-http evidence renders as inert text, never an anchor.
+
+### Deliberately cut (do not re-open as bugs during QA)
+
+Per the ticket's own PO/Tech Lead rulings: no Expected/Actual panel, no `layer`/`environment` rows in Details, no in-list failing-step highlight, no invented `BUG-101`-style identifiers (the list's existing 8-char-prefix treatment is reused). See `implementation-plan.md` and the ticket comments for the full rationale.
+
+### Suggested QA focus
+
+- AC1.1-1.4, AC2.1 (standalone "Filed manually"), AC3.1-3.4 (evidence count + scheme), AC4.1 (no controls, check at admin role too — vacuous at member-only), AC5.1-5.3 (list links + notification), E-1..E-6 (negative/authorization criteria, especially E-3's project-slug mismatch and E-5's archived-module render).
+- A run-linked defect's Origin panel "Failed at step N" line — confirm it reads N = stored 0-based `run_steps.position` + 1.
+
+### Known pre-existing flake (unrelated)
+
+`lib/runs/start-run.test.ts`'s `BK-34 ATC-01` case failed in the full local suite during this run — zero diff overlap with BK-337, same class of shared-live-database fixture drift already fixed once for BK-401's search-isolation test. Not this ticket's regression.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

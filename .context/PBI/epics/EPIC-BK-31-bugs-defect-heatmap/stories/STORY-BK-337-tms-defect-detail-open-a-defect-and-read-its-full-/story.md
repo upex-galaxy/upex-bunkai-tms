@@ -3,7 +3,7 @@
 **Jira Key:** [BK-337](https://jira.upexgalaxy.com/browse/BK-337)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** In Progress
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
