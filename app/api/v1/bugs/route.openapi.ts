@@ -12,6 +12,35 @@ const BugModuleSchema = z
   })
   .openapi('BugModule');
 
+// BK-337 — the module shape `bunkai_bug_json` composes (POST /bugs, POST
+// /bugs/{id}/assign, POST /bugs/{id}/status, GET /bugs/{id} — every caller
+// that goes through the single-bug composer, migration 0070_bug_detail_
+// composer.sql). Distinct from `BugModuleSchema` above, which documents the
+// LIST endpoints' own inlined module object (`bunkai_list_bugs` /
+// `bunkai_list_project_bugs`) — those two RPCs do NOT carry `archived_at`,
+// so widening the shared schema would misdocument them.
+const BugDetailModuleSchema = BugModuleSchema
+  .extend({
+    archived_at: z.string().datetime().nullable().describe('Set when this defect\'s module was archived after filing. The single-bug read does NOT exclude archived-module defects the way the list endpoints do (PO ruling — render the record, tag the module, never 404 it).'),
+  })
+  .openapi('BugDetailModule');
+
+// BK-337 — nested provenance for a run-linked defect, null end-to-end for a
+// standalone one (no run_id/run_step_id/atc_id). `run_step_position` is the
+// STORED 0-based `run_steps.position` — the UI adds 1 before display
+// ("Failed at step N of {atc_title}"); this wire value is deliberately NOT
+// pre-incremented, so the one place that does the 0-to-1 conversion is the
+// view layer, not the API contract.
+const BugOriginSchema = z
+  .object({
+    run_id: z.string().uuid(),
+    run_step_position: z.number().int().nullable(),
+    atc_id: z.string().uuid().nullable(),
+    atc_title: z.string().nullable(),
+    atc_layer: z.enum(['UI', 'API', 'Unit']).nullable(),
+  })
+  .openapi('BugOrigin');
+
 const BugSchema = z
   .object({
     id: z.string().uuid(),
@@ -34,6 +63,23 @@ const BugSchema = z
     updated_at: z.string().datetime(),
   })
   .openapi('Bug');
+
+// BK-337 — the composed shape EVERY caller of `bunkai_bug_json` actually gets
+// back (POST /bugs, POST /bugs/{id}/assign, POST /bugs/{id}/status — all
+// three RETURN `bunkai_bug_json(...)` directly, 0046/0054 — and the new GET
+// /bugs/{id}). Widens `BugSchema`'s plain `module` to `BugDetailModuleSchema`
+// (adds `archived_at`) and adds the nullable `origin` object. Deliberately
+// NOT used by `BugListItemSchema` below — `bunkai_list_bugs` and `bunkai_
+// list_project_bugs` inline their OWN module object with no `archived_at`
+// and carry no `origin` at all (Tech Lead TQ2 — the composer is not shared
+// with the lists, extending it does not propagate to them).
+const BugDetailSchema = BugSchema
+  .omit({ module: true })
+  .extend({
+    module: BugDetailModuleSchema,
+    origin: BugOriginSchema.nullable().describe('Provenance for a run-linked defect (originating Run + failed step position + ATC), or null for a standalone one — the page reads null as "Filed manually" (PO ruling).'),
+  })
+  .openapi('BugDetail');
 
 // BK-264 (Slice 2) — GET /api/v1/bugs resolves assignee display info the SAME
 // way GET /api/v1/activity resolves actor display info (ADR-0011's
@@ -98,7 +144,7 @@ registry.registerPath({
     },
   },
   responses: {
-    201: { description: 'Bug filed.', content: { 'application/json': { schema: z.object({ bug: BugSchema }) } } },
+    201: { description: 'Bug filed.', content: { 'application/json': { schema: z.object({ bug: BugDetailSchema }) } } },
     400: { description: 'Malformed body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member with write access.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
@@ -201,4 +247,4 @@ registry.registerPath({
   },
 });
 
-export { BugModuleSchema, BugsAggregatesSchema, BugSchema, BugsListPageSchema };
+export { BugDetailSchema, BugModuleSchema, BugsAggregatesSchema, BugSchema, BugsListPageSchema };

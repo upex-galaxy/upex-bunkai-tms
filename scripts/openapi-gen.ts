@@ -130,6 +130,8 @@ import '../app/api/v1/runs/[id]/steps/[stepId]/mark/route.openapi';
 
 import '../app/api/v1/bugs/route.openapi';
 
+import '../app/api/v1/bugs/[id]/route.openapi';
+
 import '../app/api/v1/bugs/[id]/assign/route.openapi';
 
 import '../app/api/v1/bugs/[id]/status/route.openapi';

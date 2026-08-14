@@ -3612,7 +3612,7 @@
         },
         "required": ["status"]
       },
-      "Bug": {
+      "BugDetail": {
         "type": "object",
         "properties": {
           "id": {
@@ -3630,9 +3630,6 @@
           "module_id": {
             "type": "string",
             "format": "uuid"
-          },
-          "module": {
-            "$ref": "#/components/schemas/BugModule"
           },
           "run_id": {
             "type": ["string", "null"],
@@ -3691,6 +3688,12 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "module": {
+            "$ref": "#/components/schemas/BugDetailModule"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/BugOrigin"
           }
         },
         "required": [
@@ -3698,7 +3701,6 @@
           "workspace_id",
           "project_id",
           "module_id",
-          "module",
           "run_id",
           "run_step_id",
           "atc_id",
@@ -3711,7 +3713,27 @@
           "assignee_user_id",
           "created_by",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "module",
+          "origin"
+        ]
+      },
+      "BugDetailModule": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BugModule"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "archived_at": {
+                "type": ["string", "null"],
+                "format": "date-time",
+                "description": "Set when this defect's module was archived after filing. The single-bug read does NOT exclude archived-module defects the way the list endpoints do (PO ruling — render the record, tag the module, never 404 it)."
+              }
+            },
+            "required": ["archived_at"]
+          }
         ]
       },
       "BugModule": {
@@ -3729,6 +3751,31 @@
           }
         },
         "required": ["id", "name", "path"]
+      },
+      "BugOrigin": {
+        "type": ["object", "null"],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_step_position": {
+            "type": ["integer", "null"]
+          },
+          "atc_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "atc_title": {
+            "type": ["string", "null"]
+          },
+          "atc_layer": {
+            "type": ["string", "null"],
+            "enum": ["UI", "API", "Unit", null]
+          }
+        },
+        "required": ["run_id", "run_step_position", "atc_id", "atc_title", "atc_layer"],
+        "description": "Provenance for a run-linked defect (originating Run + failed step position + ATC), or null for a standalone one — the page reads null as \"Filed manually\" (PO ruling)."
       },
       "BugRunLinkedCreateBody": {
         "type": "object",
@@ -3851,6 +3898,108 @@
         },
         "required": ["user_id", "email"],
         "description": "Resolved display info for `assignee_user_id`, or null when unassigned."
+      },
+      "Bug": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module": {
+            "$ref": "#/components/schemas/BugModule"
+          },
+          "run_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source Run; null for a standalone bug."
+          },
+          "run_step_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source run step; null for a standalone bug."
+          },
+          "atc_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Provenance link to the source ATC; null for a standalone bug."
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3", "P4"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_progress", "resolved", "closed"],
+            "description": "BK-40 always creates `open`; the other states are the lifecycle this table already supports for later stories. BK-264 adds POST /api/v1/bugs/{id}/status to advance it one stage at a time."
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "steps_to_reproduce": {
+            "type": "string"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "maxItems": 10
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "BK-264 — the workspace member currently assigned to this bug, or null if unassigned. Always null immediately after creation (BK-40 never accepts an assignee at filing time). Set via POST /api/v1/bugs/{id}/assign."
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "module_id",
+          "module",
+          "run_id",
+          "run_step_id",
+          "atc_id",
+          "title",
+          "severity",
+          "status",
+          "description",
+          "steps_to_reproduce",
+          "evidence_urls",
+          "assignee_user_id",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
       },
       "BugsAggregates": {
         "type": "object",
@@ -10180,7 +10329,7 @@
                   "type": "object",
                   "properties": {
                     "bug": {
-                      "$ref": "#/components/schemas/Bug"
+                      "$ref": "#/components/schemas/BugDetail"
                     }
                   },
                   "required": ["bug"]
@@ -10357,6 +10506,80 @@
         }
       }
     },
+    "/api/v1/bugs/{id}": {
+      "get": {
+        "tags": ["Bugs"],
+        "summary": "Read a single defect's full record",
+        "description": "Cookie session or Bearer PAT; no scope requirement — any active workspace role, viewers included, may read (`bugs_select_workspace_member`, migration 0046). `bunkai_bug_json` is SECURITY INVOKER — it runs under the caller's own RLS, so a bug outside the caller's workspaces returns the same 404 as an unknown id (non-disclosing). A bug filed against a since-archived module still renders in full, with `module.archived_at` set — this read does NOT apply the archived-module exclusion the list endpoints use.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The defect's full record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bug": {
+                      "$ref": "#/components/schemas/BugDetail"
+                    }
+                  },
+                  "required": ["bug"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id — not a UUID (`bad_request`). Computed from the string alone, no database access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bug not found — also returned for a well-formed id in a workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/bugs/{id}/assign": {
       "post": {
         "tags": ["Bugs"],
@@ -10400,7 +10623,7 @@
                   "type": "object",
                   "properties": {
                     "bug": {
-                      "$ref": "#/components/schemas/Bug"
+                      "$ref": "#/components/schemas/BugDetail"
                     }
                   },
                   "required": ["bug"]
@@ -10504,7 +10727,7 @@
                   "type": "object",
                   "properties": {
                     "bug": {
-                      "$ref": "#/components/schemas/Bug"
+                      "$ref": "#/components/schemas/BugDetail"
                     }
                   },
                   "required": ["bug"]

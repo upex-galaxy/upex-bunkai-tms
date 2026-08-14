@@ -10,7 +10,7 @@ import {
   BUG_TITLE_MIN,
 } from '@lib/bugs/constants';
 import { BUG_TITLE_MESSAGE } from '@lib/bugs/validation';
-import { isValidUrl } from '@lib/utils/url';
+import { isHttpUrl } from '@lib/utils/url';
 import { Bug, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -99,7 +99,7 @@ export function BugFormDialog({
   const addEvidence = () => {
     const trimmed = evidenceDraft.trim();
     if (!trimmed || evidenceUrls.length >= BUG_EVIDENCE_MAX) { return; }
-    if (!isValidUrl(trimmed)) {
+    if (!isHttpUrl(trimmed)) {
       setError('Evidence link must be a valid URL.');
       return;
     }
