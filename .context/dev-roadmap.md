@@ -1,7 +1,9 @@
 # Dev Roadmap — Bunkai TMS (ticket-level dependency plan)
 
 > **What this is**: the single source of truth for the **execution order of the dev backlog, driven by dependencies** — at Jira-ticket granularity (BK-NN), across every epic.
-> **Last sync**: 2026-08-13 (autonomous-delivery `story` — **live pool was 2 (BK-267, BK-337), and neither is implementable by an unattended run this cycle — one because it was oversized and got split by published ruling, the other because its deferral reason is now itself due for an audit.** Audited against `origin/staging` tip `b9f3fc69`; `origin/main` verified an ancestor of `staging`, the release invariant holds. **Migration ledger high-water mark, queried directly against the live ledger: `0069_story_traceability_module`** (version `20260812182631`) — this corrects the 2026-08-12 entry below, whose "unchanged at `0068`" claim was already wrong at that entry's own audit timestamp; see the struck clause there. **BK-267** (`TMS-ATC Library | Browse, search, and filter ATCs across every project`, epic BK-13, recorded at **1 SP** while carrying **14 AC blocks / 19 Gherkin scenarios**) was found by an AI Product Owner ruling (Jira comment `12315`) and an independent AI Tech Lead ruling (comment `12316`) to be sized at **~10-11 SP**; both rulings mandated a three-way split, and comment `12317` closed it. **BK-267 is now `ABORTED`** (not deleted), replaced under epic BK-13 by **BK-439** (`Browse every ATC in the workspace from one index`, 5 SP, no incoming edge, independently shippable) **-> BK-440** (`Find an ATC by name as you type`, 3 SP) **-> BK-441** (`Narrow the index by Project, Module, layer and anchor`, 3 SP) — full edge detail in §3.1's new BK-13 addendum below. The global ATC Library mockup this cluster inherits already existed (`bk-13-atc-library-global/atc-library-global.html`, committed `927b62f1`, 2026-07-30) — **no new mockup gate opened**, unlike BK-371's §5 🔒 row. Canonical route ruled `/atcs` (workspace-level), already named in `BRIEF.md:50` and `master-design-plan.md:285`. `master-design-plan.md` §8 gained three US→Screen rows for the successors (BK-267 never had one — a genuine coverage gap, now closed) and §5 gained divergence **D31**, narrowing D18's `soon`/non-focusable rule so the "ATC Library" sidebar entry alone goes live once BK-439 ships; "Test Runs", "Bug Reports" and "Metrics" are unchanged. **BK-337 was deferred again — the SECOND consecutive run to drop it for the same reason** (unsized, Story Points still empty; still a whole new read surface). Per the codified BK-45 lesson — *"when a candidate is dropped for the same reason two runs running, audit the reason itself, not the ticket"* (BK-45 sat under a wrong deferral for three runs before a 4-lens panel overturned it) — **BK-337's deferral reason is now due for a fresh audit on the next run**, not a third inherited restatement.)
+> **Last sync**: 2026-08-14 (autonomous-delivery `story` — **live pool was 3, not the 2 this document predicted, and BK-337 was CLAIMED after its two-run deferral was OVERTURNED.** Audited against `origin/staging` tip `e10dcb3`; `origin/main` verified an ancestor of `staging` (staging 701 ahead), the release invariant holds. **Migration ledger high-water mark, queried live: `0069_story_traceability_module`** (`20260812182631`) — next free number `0070`; local `supabase/migrations/` agrees at the tip, but the **ledger carries a `0068_story_traceability_report_v2` entry with no file on disk** (recorded, not acted on). The 2026-08-13 entry mandated an AUDIT of BK-337's deferral reason rather than a third restatement; a 4-lens scored panel (`model: opus`) delivered it and returned **7 / 7 / 8 / 9 — unanimous claim**. Both premises failed: the "whole new read surface (route + handler + RPC)" claim was **never verified even once** (asserted 2026-08-12 with no code recon, inherited verbatim 2026-08-13) and is false on two of three legs — `bunkai_bug_json` already exists, is already granted, and the Tech Lead's own TQ2 says *"no new RPC is needed at all"*; and "Story Points empty" is a rule invented once for one ticket against a project-wide default where 60+ stories read `-` and where `.agents/jira-required.yaml` FORBIDS an unattended run from filling the field. Scope-growth: **one hit of six**, and that hit (`create or replace` on a live object) is the exact shape BK-48 shipped unattended two days earlier. Sized at **5 SP**. **Two candidates appeared that this document did not know existed**: **BK-262** (`Ready For Dev`, **21 SP**) — NOT claimable, a published 2026-08-13 ruling forbids it (*"Promoting it would hand `story` mode an unrefined, oversized ticket"*) and its promotion **contradicts that ruling**, flagged for the operator; and **BK-229** (`Ready For Dev`, 8 SP, epic BK-224 Billing) — NOT claimable, **shift-left refinement never ran** (no comment trail at all), and its epic is documented as *"deliberately parked Backlog, post-MVP"* at `master-design-plan.md:448`, which the live status contradicts. **BK-439/440/441 are all still `Backlog`** — shift-left has not run on any of them, exactly as the 2026-08-13 handoff predicted. Full evidence in §6's 2026-08-14 conclusion.)
+>
+> **Prior sync**: 2026-08-13 (autonomous-delivery `story` — **live pool was 2 (BK-267, BK-337), and neither is implementable by an unattended run this cycle — one because it was oversized and got split by published ruling, the other because its deferral reason is now itself due for an audit.** Audited against `origin/staging` tip `b9f3fc69`; `origin/main` verified an ancestor of `staging`, the release invariant holds. **Migration ledger high-water mark, queried directly against the live ledger: `0069_story_traceability_module`** (version `20260812182631`) — this corrects the 2026-08-12 entry below, whose "unchanged at `0068`" claim was already wrong at that entry's own audit timestamp; see the struck clause there. **BK-267** (`TMS-ATC Library | Browse, search, and filter ATCs across every project`, epic BK-13, recorded at **1 SP** while carrying **14 AC blocks / 19 Gherkin scenarios**) was found by an AI Product Owner ruling (Jira comment `12315`) and an independent AI Tech Lead ruling (comment `12316`) to be sized at **~10-11 SP**; both rulings mandated a three-way split, and comment `12317` closed it. **BK-267 is now `ABORTED`** (not deleted), replaced under epic BK-13 by **BK-439** (`Browse every ATC in the workspace from one index`, 5 SP, no incoming edge, independently shippable) **-> BK-440** (`Find an ATC by name as you type`, 3 SP) **-> BK-441** (`Narrow the index by Project, Module, layer and anchor`, 3 SP) — full edge detail in §3.1's new BK-13 addendum below. The global ATC Library mockup this cluster inherits already existed (`bk-13-atc-library-global/atc-library-global.html`, committed `927b62f1`, 2026-07-30) — **no new mockup gate opened**, unlike BK-371's §5 🔒 row. Canonical route ruled `/atcs` (workspace-level), already named in `BRIEF.md:50` and `master-design-plan.md:285`. `master-design-plan.md` §8 gained three US→Screen rows for the successors (BK-267 never had one — a genuine coverage gap, now closed) and §5 gained divergence **D31**, narrowing D18's `soon`/non-focusable rule so the "ATC Library" sidebar entry alone goes live once BK-439 ships; "Test Runs", "Bug Reports" and "Metrics" are unchanged. **BK-337 was deferred again — the SECOND consecutive run to drop it for the same reason** (unsized, Story Points still empty; still a whole new read surface). Per the codified BK-45 lesson — *"when a candidate is dropped for the same reason two runs running, audit the reason itself, not the ticket"* (BK-45 sat under a wrong deferral for three runs before a 4-lens panel overturned it) — **BK-337's deferral reason is now due for a fresh audit on the next run**, not a third inherited restatement.)
 >
 > **Prior sync**: 2026-08-12 (autonomous-delivery `story` — **the 2026-08-11 sync's "the pool is 0, not 1" claim was wrong. Live pool is 2, not 0, and this run claimed one of them, ending a three-run empty streak (2026-08-09 through 2026-08-11).** Audited against `origin/staging` tip `84e7409` and `origin/main` tip `e88512e`; `main` remains an ancestor of `staging`, the release invariant holds; migration ledger high-water mark ~~unchanged at `0068`~~ **corrected 2026-08-13 — the live ledger's actual high-water mark was already `0069_story_traceability_module` at this audit's own timestamp (BK-48's own migration, applied this same run); this entry undercounted by one migration, not caught until the next run queried the live ledger directly**, local `supabase/migrations/` files agree exactly, nothing applied this run. Live Ready-For-Dev pool: **BK-48** (`TMS-Traceability | Filter the chain by verdict, module, and date range`, epic BK-44 Coverage & Traceability, 5 SP) and **BK-337** (`TMS-Defect Detail | Open a defect and read its full record`, epic BK-31 Bugs & Defect Heatmap, Story Points empty). Full live distribution (95 stories, up from 93): Backlog 28, Ready For Release 24, Ready For QA 20, QA Approved 14, Shift-Left QA 3, Ready For Dev 2, Estimation 2, In Test 1, ABORTED 1. **BK-48 was CLAIMED and implemented this run** — the first pick since BK-50 on 2026-08-08. Its Jira `Dependencies` link onto **BK-30** (Epic, status `Planning`) was FOLLOWED as precedent, not re-derived: the 2026-08-05 sync already ruled the identical shape of claim for BK-211 — "BK-30's child stories are all shipped; the epic's `Planning` status is stale bookkeeping, not a functional gate" (line below) — and epic BK-44 itself currently reads `Planning` while its own children BK-45 and BK-50 are `QA Approved` and genuinely shipped. **BK-337 was DEFERRED, not blocked.** It sits at `Ready For Dev` with Story Points empty — transitioned without passing estimation — and it is a whole new read surface (route + handler + RPC, 17 AC scenarios). Unsized plus new-surface is a scope-growth signal this run declined to auto-claim; it needs an estimation pass or a human-present session. **BK-337 is still not shipped as code**: PR #152 (`ff8b79b`) remains docs-only by diff, so BK-372's inherited BK-337 dependency edge (§3.1) is still genuinely unsatisfied. **Two new stories surfaced, absent from this doc entirely**: BK-398 (`Command Palette | Search and jump across the workspace`, `Shift-Left QA`) and BK-399 (`TMS-ATC Classification | Classify by test-design technique and priority`, `Backlog`), both created 2026-08-12 by the discovery routine — neither has a `master-design-plan.md` §8 row yet; recorded in the edge-mapping TODO below. Full evidence in §6's 2026-08-12 conclusion.)
 >
@@ -190,7 +192,7 @@ BK-31 Bugs & Defect Heatmap (addendum, 2026-08-03):
   BK-264 TMS-Defect Triage (assign + status transition) ✅ dev-done (2026-08-03) — merged to staging via PR #114 (feat/BK-264-defect-triage); discovered mid-sprint as the missing prerequisite for BK-212 (bugs table had no assignee column and no status-transition write path). Linked as a Dependencies predecessor of BK-212 in Jira. Ready For QA.
 
 BK-31 Bugs & Defect Heatmap (addendum, 2026-08-10):
-  BK-337 TMS-Defect Detail (open a defect, read its full record) ──> (no incoming edge)   ~~[Shift-Left QA — refinement running, NOT yet buildable]~~ [Ready For Dev, Story Points empty — deferred, not blocked, as of 2026-08-12]
+  BK-337 TMS-Defect Detail (open a defect, read its full record) ──> (no incoming edge)   ~~[Shift-Left QA — refinement running, NOT yet buildable]~~ ~~[Ready For Dev, Story Points empty — deferred, not blocked, as of 2026-08-12]~~ [**CLAIMED 2026-08-14** — two-run deferral OVERTURNED by a 4-lens scored panel (7/7/8/9, unanimous); see the 2026-08-14 addendum below]
     BK-337 was created 2026-08-10 by the discovery routine, and its arrival closes a long-standing
     hole in this graph: the 2026-08-09 BK-43 judge panel found "no bug-detail route at all" as gap
     #5 of 5, which made AC-4's backlink *unaddressable* rather than merely unbuilt. That gap now
@@ -203,6 +205,29 @@ BK-31 Bugs & Defect Heatmap (addendum, 2026-08-10):
     pass or a human-present `/sprint-development` session (see §6). It is **still not shipped as
     code** — PR #152 (`ff8b79b`) remains docs-only by diff — so BK-372's dependency edge below is
     still genuinely unsatisfied.
+    **Update 2026-08-14 — the deferral above is OVERTURNED, and both of its premises failed audit.**
+    The 2026-08-13 entry mandated that this reason be audited rather than restated a third time; a
+    4-lens scored panel (`model: opus`) executed that audit and returned **7 / 7 / 8 / 9, unanimous
+    claim**. (1) *"A whole new read surface (route + handler + RPC)"* was **never verified even
+    once** — asserted 2026-08-12 with no code recon cited, then inherited verbatim on 2026-08-13 by a
+    run that says in its own words it "FOLLOWED, not re-derived". Two lenses established from code
+    that it is false on two of three legs: `bunkai_bug_json` **already exists**
+    (`0046_bugs.sql`), is already `language sql stable` INVOKER, is already granted to `authenticated`
+    (`0054:218-219`) and already appears in `lib/types/supabase.ts:1427` — the Tech Lead's own TQ2
+    says *"no new RPC is needed at all"*; and the handler is a `GET` sitting beside the shipped
+    `[id]/status` and `[id]/assign` routes at identical path grain. Only the page route is genuinely
+    new. (2) *"Story Points are empty"* is a rule invented once, for this one ticket: an empty points
+    field is this project's **deliberate default** (`product-management/SKILL.md:333` anti-pattern
+    I16; 60+ stories in `.context/PBI/` read `-`, including shipped ones), `.agents/jira-required.yaml`
+    marks the field PO/planning-owned and instructs prompts to *"read them, never author them"*, and
+    the CLI cannot distinguish "genuinely unset" from "merely unreturned" (logged 2026-08-12). The
+    same 2026-08-12 run that deferred BK-337 for lacking points also overrode BK-43's and BK-267's
+    *present* 1 SP values as meaningless — the field was treated as decisive in one direction and
+    worthless in the other, on neighbouring tickets, the same day. Scope-growth criteria
+    (`audit-and-selection.md:197-211`) score **one hit of six**: the `create or replace` of a live
+    object — the exact shape **BK-48 shipped unattended two days earlier** (`0069`), under
+    `migrations: unrestricted`. Sized by the cost lens at **5 SP** against BK-48 (5 SP = 9 files /
+    1238 insertions) and BK-11 (3 SP = 556). **CLAIMED 2026-08-14.**
 
 BK-31 Bugs & Defect Heatmap (addendum, 2026-08-11 — BK-43 ABORTED, split executed):
   BK-371 TMS-Defect Sync | Point a project at a Jira destination ──> (no incoming edge)
@@ -583,6 +608,62 @@ The shape all three share is worth naming: **every one is §4 or a §6 side-tabl
 **BK-337 was deferred for the SECOND consecutive run, on the same stated reason as 2026-08-12: unsized (Story Points still empty) plus a whole new read surface (route + handler + RPC, 17 AC scenarios).** Per the codified lesson from BK-45 — *"when a candidate is dropped for the same reason two runs running, audit the reason itself, not the ticket"* — BK-45 sat under a wrong deferral for three runs before a 4-lens scored panel overturned it on 2026-08-07 (see that entry above). **This run flags BK-337's deferral reason as due for that audit on the next run**, rather than allowing a third inherited restatement: the next run should re-verify, in code and in Jira, whether "unsized plus new-surface" still holds, rather than copying this entry's wording forward unexamined.
 
 **Roadmap defect corrected this run**: the 2026-08-12 header entry's migration-ledger clause ("unchanged at `0068`") was already wrong at the moment it was written — the live ledger carried `0069_story_traceability_module` from BK-48's own migration, applied that same run. Struck and corrected in place in the header above, per this document's append-only convention (not rewritten).
+
+---
+
+**2026-08-14 run conclusion**: **BK-337 CLAIMED — the empty-run streak breaks, and it breaks on an
+overturned deferral rather than on a newly-unblocked ticket.** Audited against `origin/staging` tip
+`e10dcb3`; `origin/main` an ancestor of `staging`, invariant holds. Live ledger high-water mark
+`0069_story_traceability_module`, next free `0070`.
+
+**The audit this document ordered was performed, and the reason did not survive it.** The 2026-08-13
+entry closed by instructing the next run to *"re-verify, in code and in Jira, whether 'unsized plus
+new-surface' still holds, rather than copying this entry's wording forward unexamined."* A 4-lens
+scored panel (`model: opus`, lenses: implementation cost / authorization risk / refinement readiness /
+precedent) returned **7 / 7 / 8 / 9 — unanimous claim, no lens below 7**. Detail in §3.1's BK-337
+2026-08-14 update. The single most useful finding for future runs: **the load-bearing half of the
+deferral was never verified even once**. It was asserted on 2026-08-12 with no code recon cited
+anywhere in the entry, and the 2026-08-13 run that inherited it says in its own words that it
+"FOLLOWED, not re-derived". This is the BK-45 failure mode exactly — BK-45 sat under a wrong deferral
+for three runs until a panel overturned it — and the distinguishing question the log already codified
+applies unchanged: *"was the last deferral verified, and has anything changed since?"* Here the answer
+was no, it never was.
+
+**Refinement was confirmed genuine, not self-ratified theatre**, which matters because this project
+has logged the opposite case. Both of BK-337's blocking data-model gaps were closed by **cutting**
+scope, not widening it. Four independent signals: the raiser and the closer are different role
+profiles; the rulings went AGAINST the raiser, and QA then **retracted its own findings and downgraded
+its own risk score HIGH -> MEDIUM**; the Product Owner **corrected itself unprompted**; and five
+spot-checked citations all hold verbatim against live code.
+
+**Spec-of-record defect found, and it blocks a correct build.** Only BK-337's Acceptance Criteria
+field was rewritten after the rulings. `scope.md`, `business-rules.md` and `workflow.md` still instruct
+a developer to build all three items the refinement CUT — Expected vs Actual, the layer/environment
+rows, and the in-list failing-step highlight — and `out-of-scope.md` still credits the sync panel to
+the ABORTED BK-43. **A developer building from Scope ships work that was deliberately cut.** The
+Product Owner already ordered this fixed (*"The Scope bullet is struck"*, and improvement 7 ACCEPTED
+with *"A decision a developer cannot see in a field they read is a decision that gets reverted as a
+bug"*) and nobody executed it. Neutralized for this run by naming all three cuts as hard prohibitions
+in the implementation briefing; the durable fix is a Jira field write plus a resync, since these are
+`[SYNC]` files the sync owns and no one may hand-edit.
+
+**Two discrepancies for the operator, neither corrected silently:**
+
+1. **BK-262 was promoted to `Ready For Dev` (21 SP) in contradiction of a published ruling.** The
+   2026-08-13 discovery run ruled: *"BK-262 was NOT transitioned to `Ready For Dev`, reversing this
+   run's own earlier proposal. Eleven days in `Shift-Left QA` means the refinement never completed;
+   the story touches 49 of 82 handlers."* Something promoted it anyway. The ruling is FOLLOWED here,
+   not re-derived — BK-262 was not claimable this run.
+2. **BK-229 is live at `Ready For Dev` while the design contract calls its whole epic parked.**
+   `master-design-plan.md:448`: *"none of BK-229-BK-233 are Ready For Dev - the whole epic is
+   deliberately parked Backlog, post-MVP"*. It also has **no shift-left refinement at all** — no
+   comment trail — which is the one genuine category of blocker an unattended run may not resolve
+   itself, since inventing the refinement is precisely what it must not do. Recorded for assignment.
+
+**A third, process-level defect worth naming**: the copy of this document in the shared home checkout
+was **18 commits stale** at the time of this run and contained zero mentions of BK-439/440/441. Any
+agent handed the literal home-checkout path — rather than a worktree at `origin/staging` — reads a
+roadmap that does not know the BK-267 split happened.
 
 ---
 
