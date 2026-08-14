@@ -27,9 +27,27 @@ export function isValidUrl(value: string): boolean {
 // schema (`lib/bugs/validation.ts`) and its dialog counterpart
 // (`BugFormDialog.tsx`) are tightened to use, so all three surfaces agree on
 // what counts as an openable link.
+//
+// BK-466 (code-review follow-up) — the explicit `://` check below closes a
+// real disagreement with the API-edge schema this function is meant to
+// agree with. Without it, `isHttpUrl('http:example.com')` returned `true`
+// (`new URL(...)` silently normalizes a scheme-only string to
+// `'http://example.com/'`), while `z.url({ protocol: z.regexes.
+// httpProtocol })` (lib/runs/validation.ts, lib/bugs/validation.ts) rejects
+// the same input — Zod added exactly this `://`-presence guard to its own
+// URL check for this reason ("When normalize is off, require :// for
+// http/https URLs", node_modules/zod/src/v4/core/schemas.ts). Verified by
+// exhaustive comparison against the Zod schema (case variants, missing
+// slash, `//evil.com`, `blob:`, `vbscript:`, tab/newline-split payloads,
+// whitespace-only, empty) — this function and the schema now agree on
+// every case tested.
 export function isHttpUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
   try {
-    const url = new URL(value);
+    const url = new URL(trimmed);
     return url.protocol === 'http:' || url.protocol === 'https:';
   }
   catch {

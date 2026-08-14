@@ -73,18 +73,29 @@ export type RunFinishBody = z.infer<typeof RunFinishBodySchema>;
 // backstop. No AC freezes copy for a malformed body here (unlike Q2's abort
 // reason), so the generic ZodError envelope (handler.ts) is fine.
 //
-// BK-466 — this schema, NOT lib/runs/mark-step-view.ts's client-side
-// convenience check, is the actual write-time enforcement point of record: a
-// bearer-token (`run:execute`) caller hits this route directly and never
-// goes through the React form. `evidence_url` below used to validate with a
-// bare `.url()` (any parseable scheme, including javascript:/data: — same
-// gap `isValidUrl`, lib/utils/url.ts, has), and the RPC itself
-// (0042_run_step_mark.sql) only trims/normalizes, it never checks scheme
-// either — so a direct API caller could plant a hostile evidence_url with
-// nothing downstream to stop it. Tightened to the same `isHttpUrl` allowlist
-// (protocol: z.regexes.httpProtocol) BK-337 already applies to
-// lib/bugs/validation.ts's evidenceUrlsSchema, so all three surfaces
-// (render, UI-form, API edge) agree on what counts as an openable link.
+// BK-466 — this schema closes the gap for callers that go through THIS
+// route (a bearer-token `run:execute` caller hits it directly and never
+// goes through lib/runs/mark-step-view.ts's client-side check), but it is
+// NOT the enforcement point of record for the evidence-link scheme rule —
+// nothing below the HTTP edge enforces it. `evidence_url` used to validate
+// with a bare `.url()` (any parseable scheme, including javascript:/data: —
+// same gap `isValidUrl`, lib/utils/url.ts, has); tightened to the same
+// `isHttpUrl` allowlist (protocol: z.regexes.httpProtocol) BK-337 already
+// applies to lib/bugs/validation.ts's evidenceUrlsSchema. But this schema
+// is trivially bypassable: `run_steps` has a member+ INSERT RLS policy
+// (0031_runs.sql) and no scheme CHECK on the `evidence_url` column, and the
+// Supabase anon key is public (lib/env.ts) — any workspace member can
+// `POST /rest/v1/run_steps` directly via PostgREST with a hostile
+// evidence_url and never touch this file. The RPC itself
+// (0042_run_step_mark.sql) only trims/normalizes evidence_url on UPDATE, it
+// never checks scheme either. The DATABASE ACCEPTS ANY SCHEME, unconditionally,
+// today — no migration lands here to close that (separate decision, out of
+// scope for this change). The actually load-bearing control across every
+// path a bad value can reach storage by is the RENDER guard
+// (`isEvidenceLinkOpenable`, lib/runs/mark-step-view.ts, consumed by
+// RunnerView.tsx) — it runs on read, so it protects a row regardless of how
+// it got written. This schema is defense-in-depth for the one write path it
+// actually gates, not the backstop.
 export const RUN_STEP_STATUSES = ['passed', 'failed', 'blocked'] as const;
 
 // Generic cap — no existing length-CHECK precedent in the Runs domain

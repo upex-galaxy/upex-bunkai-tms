@@ -155,11 +155,17 @@ export function isEvidenceLinkOpenable(evidenceUrl: string): boolean {
 //
 // BK-466 — switched from `isValidUrl` (accepted ANY parseable scheme,
 // including javascript:/data:) to `isHttpUrl`, the same shared allowlist the
-// render guard above and the API-edge schema now both use. The error copy is
-// left unchanged ("must be a valid URL") rather than rewritten to name the
-// scheme restriction — BugFormDialog.tsx made the identical call when BK-337
-// tightened its own evidence-link guard, and matching that precedent keeps
-// the message consistent across both evidence-link entry points in the app.
+// render guard above and the API-edge schema (`RunStepMarkBodySchema`,
+// lib/runs/validation.ts) use. This layer and that schema agree on every
+// input, INCLUDING scheme-only strings like `http:example.com` — `isHttpUrl`
+// (lib/utils/url.ts) explicitly requires the `://` separator for exactly
+// this reason (see its own comment); without that check this form would
+// accept a value the API then 422s with no field-specific message. The
+// error copy is left unchanged ("must be a valid URL") rather than
+// rewritten to name the scheme restriction — BugFormDialog.tsx made the
+// identical call when BK-337 tightened its own evidence-link guard, and
+// matching that precedent keeps the message consistent across both
+// evidence-link entry points in the app.
 export interface ValidateMarkStepFormParams {
   note: string
   evidenceUrl: string

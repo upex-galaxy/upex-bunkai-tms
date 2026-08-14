@@ -122,6 +122,13 @@ describe('isEvidenceLinkOpenable', () => {
   test('a data: URL is NOT openable', () => {
     expect(isEvidenceLinkOpenable('data:text/html,<script>alert(1)</script>')).toBe(false);
   });
+
+  // BK-466 (code-review follow-up) — a scheme-only string with no "//" must
+  // agree with RunStepMarkBodySchema (lib/runs/validation.test.ts asserts
+  // the schema side of this same case), not just with a bare `new URL(...)`.
+  test('a scheme-only string with no "//" separator is NOT openable', () => {
+    expect(isEvidenceLinkOpenable('http:example.com')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -166,6 +173,17 @@ describe('validateMarkStepForm', () => {
 
   test('a data: evidence URL is rejected, not accepted as "valid"', () => {
     expect(validateMarkStepForm({ note: '', evidenceUrl: 'data:text/html,<script>alert(1)</script>' }))
+      .toBe('Evidence link must be a valid URL.');
+  });
+
+  // BK-466 (code-review follow-up) — this is the case that used to disagree
+  // with the API edge: `new URL('http:example.com')` silently normalizes to
+  // 'http://example.com/', so a naive check would let the form accept it,
+  // the user submit, and the POST 422 with no field-specific message. Both
+  // layers must reject it at the form, matching
+  // lib/runs/validation.test.ts's schema-level assertion of the same input.
+  test('a scheme-only evidence URL with no "//" is rejected here too, agreeing with the API-edge schema', () => {
+    expect(validateMarkStepForm({ note: '', evidenceUrl: 'http:example.com' }))
       .toBe('Evidence link must be a valid URL.');
   });
 
