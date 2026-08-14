@@ -89,6 +89,16 @@ function service() {
 }
 
 let fixture: Fixture | null = null;
+// Set the instant the throwaway workspace row exists — independent of
+// whether the REST of `beforeAll` completes. Adversarial-review finding: the
+// original version gated cleanup entirely on `fixture` being fully assigned
+// at the END of `beforeAll`, so any insert failure partway through (module /
+// atc / environment / test / run / run_atcs / run_steps / bugs) threw before
+// `fixture` was ever set, and `afterAll`'s `if (!fixture) return` skipped
+// cleanup entirely — leaking the workspace (and everything cascaded under
+// it) into the shared database on every flaky or failing run. `afterAll`
+// below cleans up from THIS variable, never from `fixture`.
+let createdWorkspaceId: string | null = null;
 
 describeOrSkip('BK-337 — bunkai_bug_json (0070_bug_detail_composer.sql) isolation', () => {
   beforeAll(async () => {
@@ -120,6 +130,7 @@ describeOrSkip('BK-337 — bunkai_bug_json (0070_bug_detail_composer.sql) isolat
       .single();
     if (workspaceError) { throw workspaceError; }
     const workspaceId = workspace.id as string;
+    createdWorkspaceId = workspaceId;
 
     const { data: project, error: projectError } = await db
       .from('projects')
@@ -240,14 +251,24 @@ describeOrSkip('BK-337 — bunkai_bug_json (0070_bug_detail_composer.sql) isolat
   });
 
   afterAll(async () => {
-    if (!fixture) { return; }
+    // Gated on `createdWorkspaceId`, NOT `fixture` — the workspace (and
+    // therefore everything cascaded under it: project, modules, user_story,
+    // atc, environment, test, run, run_atcs, run_steps, bugs) is the one
+    // thing guaranteed to exist the moment this is non-null, regardless of
+    // whether a LATER insert in `beforeAll` threw. Deleting the workspace
+    // alone is sufficient (every child table cascades from it — verified
+    // against 0002/0003/0004/0024/0031/0046's own FK definitions); this
+    // still runs the same explicit per-table deletes list-isolation.test.ts
+    // uses, defensively, in case a future migration ever changes any of
+    // those FKs away from CASCADE.
+    if (!createdWorkspaceId) { return; }
     const db = service();
-    // Explicit deletes, dependency order first, defensively (mirrors
-    // list-isolation.test.ts) — workspace cascade should already cover this.
-    await db.from('bugs').delete().in('id', [fixture.bugStandaloneId, fixture.bugRunLinkedId, fixture.bugArchivedModuleId]);
-    await db.from('run_steps').delete().eq('id', fixture.runStepId);
-    await db.from('run_atcs').delete().eq('id', fixture.runAtcId);
-    await db.from('workspaces').delete().eq('id', fixture.workspaceId);
+    if (fixture) {
+      await db.from('bugs').delete().in('id', [fixture.bugStandaloneId, fixture.bugRunLinkedId, fixture.bugArchivedModuleId]);
+      await db.from('run_steps').delete().eq('id', fixture.runStepId);
+      await db.from('run_atcs').delete().eq('id', fixture.runAtcId);
+    }
+    await db.from('workspaces').delete().eq('id', createdWorkspaceId);
   });
 
   it('(a) a caller who is NOT a workspace member gets null — never another tenant\'s bug, never a distinguishable error', async () => {

@@ -201,9 +201,13 @@ export function BugDetailView({ bug, assigneeEmail, reporterEmail, projectSlug }
                           href={`/projects/${projectSlug}/runs/${origin.runId}`}
                           className="flex items-center justify-between gap-2 rounded-2 border border-stroke-2 px-3 py-2 text-sm text-fg-1 transition-colors duration-token ease-token hover:bg-surface-3"
                           data-testid="bug-detail-origin-run-link"
-                          title={origin.runId}
+                          title={`Run ${shortBugId(origin.runId)}`}
                         >
-                          <span className="font-mono text-xs">{shortBugId(origin.runId)}</span>
+                          <span>
+                            <span className="font-mono text-xs text-fg-2">{shortBugId(origin.runId)}</span>
+                            <br />
+                            Run
+                          </span>
                           <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
                         </Link>
                       )}
