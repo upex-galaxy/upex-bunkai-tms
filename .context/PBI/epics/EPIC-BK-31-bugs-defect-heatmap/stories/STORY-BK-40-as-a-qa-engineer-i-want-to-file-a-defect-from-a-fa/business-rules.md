@@ -1,6 +1,6 @@
 # BK-40 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-40)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-40)
 
 - Defect title must be between 5 and 200 characters
 - A module is mandatory on every defect, and the chosen module must belong to the current project

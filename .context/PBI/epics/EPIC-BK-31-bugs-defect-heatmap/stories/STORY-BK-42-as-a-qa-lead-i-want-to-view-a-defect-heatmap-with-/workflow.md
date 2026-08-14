@@ -1,6 +1,6 @@
 # BK-42 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
 1. Mateo opens the defect heatmap for his project and sets the window, for example to the last 30 days.
 2. He sees one cell per module showing the defect count for that window, with higher-count modules emphasized as hotspots.

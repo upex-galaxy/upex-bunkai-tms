@@ -3,7 +3,7 @@
 **Jira Key:** [BK-264](https://jira.upexgalaxy.com/browse/BK-264)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** -
 
@@ -52,6 +52,8 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Implementation Plan (Dev)](./implementation-plan.md)
+- [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -66,9 +68,9 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 ## Metadata
 
 - **Created:** 8/3/2026
-- **Updated:** 8/3/2026
+- **Updated:** 8/14/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Luis Eduardo Flores Villarroel
 
 ---
 
