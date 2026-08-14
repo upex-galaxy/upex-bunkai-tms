@@ -3,7 +3,7 @@
 **Jira Key:** [BK-337](https://jira.upexgalaxy.com/browse/BK-337)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** -
 
@@ -90,6 +90,7 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -106,7 +107,7 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 ## Metadata
 
 - **Created:** 8/10/2026
-- **Updated:** 8/11/2026
+- **Updated:** 8/14/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-08-11, shift-left-reviewed

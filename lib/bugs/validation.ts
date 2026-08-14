@@ -31,8 +31,17 @@ const titleSchema = z
 
 const severitySchema = z.enum(BUG_SEVERITY_VALUES);
 
+// BK-337 (TQ5) — tightened from `z.string().url()` (which accepts ANY
+// parseable scheme, including `javascript:`/`data:` — `z.array(z.string().
+// url())` applies zod 4.4.3's protocol check only when a protocol regex is
+// supplied) to an explicit http/https-only allowlist. `z.regexes.
+// httpProtocol` is `/^https?$/`; passing it also activates the `://`
+// requirement, so `http:example.com` is rejected too, not only bare
+// `javascript:`/`data:` payloads. This is the filing-time half of Scenario
+// 3.4 — the render-time allowlist (`isHttpUrl`, `lib/utils/url.ts`) stays the
+// load-bearing control for rows already stored before this tightened.
 const evidenceUrlsSchema = z
-  .array(z.string().url())
+  .array(z.url({ protocol: z.regexes.httpProtocol }))
   .max(BUG_EVIDENCE_MAX)
   .optional();
 

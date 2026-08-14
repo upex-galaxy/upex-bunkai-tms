@@ -33,9 +33,7 @@ export function mapBugRpcError(
       // caller isn't even a member of collapse into the SAME not_found —
       // never leak WHICH case caused it, either way.
       if (opts.notFoundEntity === 'bug') {
-        throw new ApiError('not_found', 'Bug not found.', {
-          details: { reason: 'not_found' },
-        });
+        throwBugNotFound();
       }
       throw new ApiError('not_found', 'Project or module not found.', {
         details: { reason: 'not_found' },
@@ -120,4 +118,17 @@ export function mapBugRpcError(
     default:
       throw new ApiError('internal_error', error.message);
   }
+}
+
+// BK-337 — the ONE non-disclosing 404 for "this Bug does not exist, or
+// exists but is outside a workspace the caller belongs to." Extracted so the
+// mapper's own P0002/'bug' case AND `GET /api/v1/bugs/{id}`'s null-composer
+// check (the new read route never gets a P0002 — `bunkai_bug_json` just
+// returns NULL, never an exception) share the exact same message and cannot
+// drift into distinguishable responses. Mirrors `lib/traceability/errors.ts`'s
+// `throwStoryNotFound`.
+export function throwBugNotFound(): never {
+  throw new ApiError('not_found', 'Bug not found.', {
+    details: { reason: 'not_found' },
+  });
 }

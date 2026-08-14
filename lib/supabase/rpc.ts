@@ -594,6 +594,17 @@ export async function createBug(supabase: Client, args: CreateBugArgs) {
   });
 }
 
+// BK-337 — read ONE bug's full composed record (`GET /api/v1/bugs/{id}`).
+// `bunkai_bug_json` (0046_bugs.sql, widened by 0070_bug_detail_composer.sql)
+// is `language sql stable`, no `security definer` — it runs as the caller
+// (INVOKER), so this MUST be called through the caller's own RLS-scoped
+// client (never `createAdminClient()`). Returns `null` (not an error) both
+// when the bug does not exist and when RLS hides it from this caller —
+// `throwBugNotFound()` is the route's job on either `null` result.
+export async function getBugJson(supabase: Client, bugId: string) {
+  return supabase.rpc('bunkai_bug_json', { p_bug_id: bugId });
+}
+
 // BK-40 — read a Project's bugs, newest first (bare list — BK-41 adds filters
 // and real pagination). Same explicit-actor contract as the other wrappers;
 // the SECURITY DEFINER RPC resolves the Project's workspace and gates the
