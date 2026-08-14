@@ -72,6 +72,19 @@ export type RunFinishBody = z.infer<typeof RunFinishBodySchema>;
 // rejected here, at the HTTP edge, before it would reach the RPC's own 45213
 // backstop. No AC freezes copy for a malformed body here (unlike Q2's abort
 // reason), so the generic ZodError envelope (handler.ts) is fine.
+//
+// BK-466 — this schema, NOT lib/runs/mark-step-view.ts's client-side
+// convenience check, is the actual write-time enforcement point of record: a
+// bearer-token (`run:execute`) caller hits this route directly and never
+// goes through the React form. `evidence_url` below used to validate with a
+// bare `.url()` (any parseable scheme, including javascript:/data: — same
+// gap `isValidUrl`, lib/utils/url.ts, has), and the RPC itself
+// (0042_run_step_mark.sql) only trims/normalizes, it never checks scheme
+// either — so a direct API caller could plant a hostile evidence_url with
+// nothing downstream to stop it. Tightened to the same `isHttpUrl` allowlist
+// (protocol: z.regexes.httpProtocol) BK-337 already applies to
+// lib/bugs/validation.ts's evidenceUrlsSchema, so all three surfaces
+// (render, UI-form, API edge) agree on what counts as an openable link.
 export const RUN_STEP_STATUSES = ['passed', 'failed', 'blocked'] as const;
 
 // Generic cap — no existing length-CHECK precedent in the Runs domain
@@ -97,7 +110,7 @@ export const RunStepMarkBodySchema = z.object({
   ),
   evidence_url: z.preprocess(
     emptyStringToNull,
-    z.string().trim().max(RUN_STEP_EVIDENCE_URL_MAX).url().nullable().optional(),
+    z.string().trim().max(RUN_STEP_EVIDENCE_URL_MAX).url({ protocol: z.regexes.httpProtocol }).nullable().optional(),
   ),
 });
 

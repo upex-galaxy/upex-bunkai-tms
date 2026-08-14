@@ -132,6 +132,22 @@ describe('runStepMarkBodySchema', () => {
     expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'not-a-url' }).success).toBe(false);
   });
 
+  // BK-466 — this schema is the enforcement point of record for a direct
+  // bearer-token (`run:execute`) caller of POST .../mark, which never goes
+  // through RunnerView.tsx or lib/runs/mark-step-view.ts's client-side
+  // check. `javascript:`/`data:` both parse fine as a bare `new URL(...)`
+  // (the old `.url()` check, no protocol restriction, let them through); the
+  // scheme allowlist below must reject them here, at the API edge, since the
+  // RPC itself (0042_run_step_mark.sql) only trims/normalizes and never
+  // checks scheme.
+  test('BK-466 — rejects a javascript: evidence_url', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'javascript:alert(1)' }).success).toBe(false);
+  });
+
+  test('BK-466 — rejects a data: evidence_url', () => {
+    expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: 'data:text/html,<script>alert(1)</script>' }).success).toBe(false);
+  });
+
   test('rejects an evidence_url over the length cap', () => {
     const tooLong = `https://example.com/${'x'.repeat(RUN_STEP_EVIDENCE_URL_MAX)}`;
     expect(RunStepMarkBodySchema.safeParse({ status: 'passed', evidence_url: tooLong }).success).toBe(false);

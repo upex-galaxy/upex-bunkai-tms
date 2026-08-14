@@ -1,4 +1,5 @@
 import {
+  isEvidenceLinkOpenable,
   resolveAtcVerdictBadge,
   resolveStatusDotToken,
   resolveStepMarkControlState,
@@ -99,6 +100,31 @@ describe('resolveAtcVerdictBadge', () => {
 });
 
 // ---------------------------------------------------------------------------
+// isEvidenceLinkOpenable (BK-466)
+// ---------------------------------------------------------------------------
+
+// BK-466 — this is the render guard RunnerView.tsx calls directly to decide
+// anchor-vs-text for a step's evidence link (the actual defect: the anchor
+// used to render `s.evidence_url` unconditionally, with no scheme check).
+describe('isEvidenceLinkOpenable', () => {
+  test('a well-formed https URL is openable', () => {
+    expect(isEvidenceLinkOpenable('https://example.com/evidence.png')).toBe(true);
+  });
+
+  test('a well-formed http URL is openable', () => {
+    expect(isEvidenceLinkOpenable('http://example.com')).toBe(true);
+  });
+
+  test('a javascript: URL is NOT openable', () => {
+    expect(isEvidenceLinkOpenable('javascript:alert(1)')).toBe(false);
+  });
+
+  test('a data: URL is NOT openable', () => {
+    expect(isEvidenceLinkOpenable('data:text/html,<script>alert(1)</script>')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // validateMarkStepForm
 // ---------------------------------------------------------------------------
 
@@ -126,6 +152,20 @@ describe('validateMarkStepForm', () => {
 
   test('a malformed evidence URL is rejected with a field-specific message', () => {
     expect(validateMarkStepForm({ note: '', evidenceUrl: 'not-a-url' }))
+      .toBe('Evidence link must be a valid URL.');
+  });
+
+  // BK-466 — a javascript:/data: evidence URL is well-formed enough for
+  // `new URL(...)` to parse (so the old `isValidUrl`-backed check let it
+  // through); it must still be rejected here now that the scheme allowlist
+  // (`isHttpUrl`) is the gate.
+  test('a javascript: evidence URL is rejected, not accepted as "valid"', () => {
+    expect(validateMarkStepForm({ note: '', evidenceUrl: 'javascript:alert(1)' }))
+      .toBe('Evidence link must be a valid URL.');
+  });
+
+  test('a data: evidence URL is rejected, not accepted as "valid"', () => {
+    expect(validateMarkStepForm({ note: '', evidenceUrl: 'data:text/html,<script>alert(1)</script>' }))
       .toBe('Evidence link must be a valid URL.');
   });
 
