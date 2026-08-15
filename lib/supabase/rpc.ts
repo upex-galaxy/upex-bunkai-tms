@@ -832,3 +832,27 @@ export async function reportStoryTraceability(supabase: Client, args: ReportStor
     p_user_story_id: args.userStoryId,
   });
 }
+
+// BK-398 — cross-entity Command Palette search. UNLIKE every other wrapper in
+// this file, this RPC is SECURITY INVOKER with NO actor parameter (Jira
+// comment 12406, AI Tech Lead ruling — follows the standing BK-267/BK-49
+// preference for INVOKER over a DEFINER + actor-bind guard). It runs AS the
+// caller, so each of its six UNION branches re-evaluates that table's own
+// workspace-member RLS SELECT policy against the REAL `auth.uid()`. The
+// `supabase` argument passed here MUST be the caller's own RLS-scoped client
+// (`getAuth(ctx).db`) — an admin/service-role client has no `auth.uid()` and
+// every branch's RLS policy silently empties, which defeats the feature
+// rather than leaking anything (fails closed), but is still wrong to ship.
+export interface SearchWorkspaceArgs {
+  query: string
+  workspaceId: string
+  limit?: number
+}
+
+export async function searchWorkspace(supabase: Client, args: SearchWorkspaceArgs) {
+  return supabase.rpc('bunkai_search_workspace', {
+    p_query: args.query,
+    p_workspace_id: args.workspaceId,
+    p_limit: args.limit ?? undefined,
+  });
+}

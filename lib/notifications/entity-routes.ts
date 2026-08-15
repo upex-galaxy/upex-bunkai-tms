@@ -17,11 +17,56 @@
 // the inbox UI, `entity_available`, and which events are produced remain
 // BK-212's; only this ONE switch case changes.
 //
+// BK-398 — extends the switch (atc, module, project added) so the Command
+// Palette reuses the SAME map rather than forking a second one (Jira comment
+// 12407, AI Product Owner ruling: "Extend the existing switch in that file
+// rather than forking a second mapper. It handles run, test and bug today;
+// add atc, module and project. One map, two callers."). `buildEntityHref` is
+// the shared core; `resolveNotificationHref` becomes a thin adapter over the
+// notification row's narrower shape (only run/test/bug ever appear there —
+// notifications are never produced for atc/module/project events).
+//
 // The payload snapshot is the ONLY source for `project_slug` / `run_id` —
 // this inbox never joins live run/test/project/bug tables to render OR to
 // route (migration 0053's design: "the inbox never has to join live runs/
 // tests/bugs to render a summary"), so a producer that omits either field
 // from its payload yields no route here, not a broken link.
+
+export type SearchEntityType = 'atc' | 'test' | 'project' | 'module' | 'bug' | 'run';
+
+// BK-398 final destination contract (Jira comment 12407, AI Product Owner
+// correction (b) over the shift-left refinement's original 6-row table):
+//   ATC     /projects/{slug}/atcs/{atcId}
+//   Test    /projects/{slug}/tests/{testId}
+//   Project /projects/{slug}                    (slug-keyed, the one exception)
+//   Module  /projects/{slug}?module={moduleId}   (id-keyed, NOT ?modulePath=)
+//   Bug     /projects/{slug}/bugs/{bugId}        (the defect record, not a filtered list)
+//   Run     /projects/{slug}/runs/{runId}
+// `slug` is ALWAYS encodeURIComponent-ed (mirrors this file's existing
+// `safeProjectSlug` treatment) — entity ids are not (they are UUIDs, never
+// producer-controlled free text).
+export function buildEntityHref(
+  entityType: SearchEntityType,
+  params: { projectSlug: string, entityId: string },
+): string {
+  const safeSlug = encodeURIComponent(params.projectSlug);
+  switch (entityType) {
+    case 'atc':
+      return `/projects/${safeSlug}/atcs/${params.entityId}`;
+    case 'test':
+      return `/projects/${safeSlug}/tests/${params.entityId}`;
+    case 'project':
+      return `/projects/${safeSlug}`;
+    case 'module':
+      return `/projects/${safeSlug}?module=${params.entityId}`;
+    case 'bug':
+      return `/projects/${safeSlug}/bugs/${params.entityId}`;
+    case 'run':
+      return `/projects/${safeSlug}/runs/${params.entityId}`;
+    default:
+      return `/projects/${safeSlug}`;
+  }
+}
 
 export interface NotificationEntityRef {
   entity_type: string
@@ -40,26 +85,17 @@ export function resolveNotificationHref(notification: NotificationEntityRef): st
     return null;
   }
 
-  // `projectSlug` is producer-controlled JSONB — nothing validates its shape
-  // at write time. Encode it before interpolating into the href so a
-  // malformed/adversarial payload (embedded `/`, `?`, `..`) degrades to a
-  // broken/escaped link instead of reshaping the route or injecting a query
-  // string.
-  const safeProjectSlug = encodeURIComponent(projectSlug);
-
+  // Only run/test/bug are ever produced into the notification inbox
+  // (BK-212's event set) — atc/module/project never reach here, so this
+  // stays a narrow subset of `buildEntityHref`'s switch, not a re-fork of it.
   switch (notification.entity_type) {
     case 'run':
-      return `/projects/${safeProjectSlug}/runs/${notification.entity_id}`;
     case 'test':
-      return `/projects/${safeProjectSlug}/tests/${notification.entity_id}`;
-    case 'bug': {
-      // BK-337 — the defect detail record, for a run-linked defect AND a
-      // standalone one alike (see this file's header). No `run_id` branch
-      // needed any more: the record itself carries the Origin panel that
-      // links onward to the run, when there is one.
-      const safeBugId = encodeURIComponent(notification.entity_id);
-      return `/projects/${safeProjectSlug}/bugs/${safeBugId}`;
-    }
+    case 'bug':
+      return buildEntityHref(notification.entity_type, {
+        projectSlug,
+        entityId: notification.entity_id,
+      });
     default:
       // Any future/unknown entity_type — no detail route to send the user
       // to yet.
