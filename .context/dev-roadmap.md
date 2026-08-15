@@ -292,6 +292,15 @@ BK-224 Billing & Plans:  (epic ──> epic BK-1)
   BK-229 View plan/usage ──> BK-87
   BK-230 Upgrade ──> BK-229    BK-232 Limit warnings ──> BK-229
   BK-231 Invoices ──> BK-230   BK-233 Downgrade/cancel ──> BK-230
+
+BK-7 Project & Module Hierarchy (addendum, 2026-08-15 — BK-398 shipped):
+  BK-398 TMS-Command Palette | Search and jump across the workspace ──> (no incoming edge)
+    Created 2026-08-12 by the discovery routine (see the edge-mapping TODO in §6, where it was
+    recorded as an outstanding item pending a §8 screen-map row). SHIPPED 2026-08-15 — PR #173
+    (`feature/BK-398-command-palette`) merged to `origin/staging`, merge commit `3f6816f`, ancestry
+    independently verified (`git merge-base --is-ancestor`) — this is also the current tip of
+    `origin/staging`. Migration `0071_workspace_search.sql` applied. Live status now `Ready For QA`.
+    No downstream dependents identified yet; add a §3 edge if one appears.
 ```
 
 ### 3.2 Home Dashboard cluster (BK-254) — seeded 2026-07-31
@@ -489,8 +498,13 @@ local cache alone without a live cross-check, and a follow-up ticket should inve
 - **BK-147** "persistent app shell + route-driven workbench tabs" — **found 2026-08-05, previously missing from this doc entirely (zero mentions).** ✅ SHIPPED — merged to `origin/staging` via PR #43 (2026-06-19), ancestor-verified. Notable as a coverage gap because it is the shell every later workbench-tab story renders into (ADR-0003), so it is an implicit upstream of much of §3 without ever appearing as an edge.
 - **BK-148** "Project Environments" — **found 2026-08-05, previously missing as its own entry.** ✅ SHIPPED — merged to `origin/staging` via PR #49 (2026-06-21), ancestor-verified. The doc referenced it only obliquely, inside BK-34's gate note at §4 ("env CRUD operates on the `project_environments` table"), and never gave it a shipped-status line of its own despite it being one of the earliest-shipped stories in the graph. Its `0032_project_environments_crud.sql` migration is now the reference precedent for per-project case-insensitive-unique-name CRUD (cited in BK-205's §6 row).
 - **BK-265** "reach Runs, Bugs and Metrics from a project sub-nav" — **found 2026-08-05, previously missing from this doc entirely (zero mentions).** ✅ SHIPPED — merged to `origin/staging` via PR #118 (2026-08-04), ancestor-verified. Owns `project-sub-nav.tsx`, so any future story adding a project-scoped section (e.g. BK-205 Milestones, BK-202 Test Plans) extends its nav array — worth an edge once one of those is claimed.
-- **BK-398** "Command Palette | Search and jump across the workspace" (epic BK-7 Project & Module Hierarchy) — **found 2026-08-12, created the same day by the discovery routine.** Live status `Shift-Left QA`. No `master-design-plan.md` §8 screen-map row exists for it yet — outstanding, not fixed by this pass (a concurrent agent may be writing its own §5 row to that same file this run). Add a §3 edge once its dependencies (if any) are refined; none identified yet.
-- **BK-399** "TMS-ATC Classification | Classify by test-design technique and priority" (epic BK-13 ATC Library) — **found 2026-08-12, created the same day by the discovery routine.** Live status `Backlog`. No `master-design-plan.md` §8 screen-map row yet — same outstanding item as BK-398. Add a §3 edge once refined; none identified yet.
+- **BK-398** "Command Palette | Search and jump across the workspace" (epic BK-7 Project & Module Hierarchy) — **found 2026-08-12, created the same day by the discovery routine.** ~~Live status `Shift-Left QA`. No `master-design-plan.md` §8 screen-map row exists for it yet — outstanding, not fixed by this pass (a concurrent agent may be writing its own §5 row to that same file this run).~~ **✅ SHIPPED 2026-08-15** — this edge-mapping gap is now closed, not merely tracked: merged to `origin/staging` via PR #173, merge commit `3f6816f`, ancestry-verified. Full addendum in §3.1's new BK-7 block above. No longer outstanding.
+- **BK-399** "TMS-ATC Classification | Classify by test-design technique and priority" (epic BK-13 ATC Library) — **found 2026-08-12, created the same day by the discovery routine.** Live status `Backlog`. No `master-design-plan.md` §8 screen-map row yet — same outstanding item as BK-398 originally was. Add a §3 edge once refined; none identified yet. **Still outstanding as of 2026-08-15** — not shipped, not re-verified this pass beyond the edge check below.
+- **BK-315** "TMS-ATC Library | Export a Project's ATCs to CSV" (epic BK-13 ATC Library) — **found 2026-08-15, previously missing from this doc entirely.** Live status `Backlog`, 1 SP. **Zero Jira issue links** (`acli jira workitem link list --key BK-315` → `issueLinks: []`) — no Dependencies/Relates edge exists to record. Its own `out-of-scope.md` explicitly disclaims the cross-project ATC Library index: *"the global ATC Library view... is ahead of this story's scope and belongs to a future story"* — so it does NOT depend on the BK-439/440/441 cluster. It reads the already-shipped per-project ATC library (BK-18/BK-19/BK-20, all `Ready For Release`/`QA Approved`). **No incoming edge identified** — genuinely unknown/absent, not omitted.
+- **BK-269** "TMS-Run Execution | Automatically abort abandoned runs after inactivity" (epic BK-30 Manual Execution & Runs) — **found 2026-08-15, previously missing from this doc entirely.** Live status `Backlog`, 1 SP. **Zero Jira issue links.** Its own `business-rules.md` states the recommended approach *"reuses the abort capability a QA Engineer already has today"* rather than a new Run status — a soft precedent on BK-36 (Abort a run in progress, ✅ shipped, `QA Approved`), not a hard Jira-linked gate; BK-36 being already dev-done means this is not a blocking edge in practice. Three PO questions remain genuinely open (inactivity threshold value, per-workspace/per-project configurability, owner notification) — a refinement gap, not a dependency gap. **No incoming edge identified.**
+- **BK-268** "TMS-Activity | Surface ATC edits with the Tests they affect" (epic BK-44 Coverage & Traceability) — **found 2026-08-15, previously missing from this doc entirely.** Live status `Backlog`, 1 SP. **Zero Jira issue links.** Its scope requires an ATC edit to appear in the workspace activity feed *"on the same terms as ATC creation... the feed already tracks"* — a soft dependency on BK-49 (TMS-Activity | Stream a read-side feed, ✅ shipped, `Ready For QA`), already satisfied by that ship. Its own "Dependency note" cites `ADR-0009` (ATC edit propagation contract, still `Proposed`) as context only, stating explicitly it *"does not ratify or modify that ADR."* Two PO questions remain open (whether an edit should also notify watchers; rendering when the affected-Tests count is large). **No incoming edge identified.**
+- **Epic BK-183** "QA Defect Management" — **found 2026-08-15, never named anywhere in this document despite being live since 2026-06-25.** Not a feature epic — its own `epic.md` calls it *"the default intake container for defect-shaped work items... it carries no coherent product scope, by design,"* spanning 40 children across unrelated features (auth, workspace switching, module creation, ATC builder, markdown editor, coverage/traceability, PAT issuance, staging-deploy issues). Its `epic.md` description text still names **BK-262** (`PAT | Enforce capability scopes on every non-ATC route`) as its one Story-type child, but the `epic-tree.md` refresh run in this same pass shows BK-183 at **0 Stories** and BK-262 now listed under **epic BK-1** (Tenancy & Identity) instead — a live re-parent this pass did not cause and cannot explain from local data; flagged for the operator as a discrepancy between BK-183's own (stale) description prose and its current live child set. BK-262 itself is `Ready For Dev`, 21 SP, still contradicting the 2026-08-13 published ruling that it must not be promoted (see the 2026-08-15 run conclusion below, discrepancy D2, unresolved) — that finding holds regardless of which epic currently parents it. No §3 edge applies to BK-183 either way — it is an administrative bucket, not a dependency node.
+- **Epic BK-70** "QA Test Repository" — **found 2026-08-15, never named anywhere in this document.** **Zero Stories** (`.context/PBI/epic-tree.md`: Stories 0, Points 0) — its own `epic.md` confirms it holds 116 children, all issue type `Test` (QA test cases), grouped by a summary-prefix convention against 11 feature stories (BK-6, BK-9, BK-28, BK-32, BK-33, BK-34, BK-38, BK-39, BK-40, BK-42, BK-50), not by product scope. Recorded here as an **empty epic** per this pass's instruction — no Story-level dependency edge applies; it is a Test-item repository, not a feature epic.
 
 ---
 
@@ -672,6 +686,54 @@ in the implementation briefing; the durable fix is a Jira field write plus a res
 was **18 commits stale** at the time of this run and contained zero mentions of BK-439/440/441. Any
 agent handed the literal home-checkout path — rather than a worktree at `origin/staging` — reads a
 roadmap that does not know the BK-267 split happened.
+
+---
+
+**2026-08-15 reconciliation (docs-only, not an autonomous-delivery `story`/`bug` run)**: **BK-398
+recorded as shipped, five edge-mapping gaps closed, no story claimed.** Audited against
+`origin/staging` tip `3f6816f` (this worktree's branch point). This pass did not run selection —
+it is a planning-surface correction so the next audit starts from truth, per the standing directive
+to keep §3/§6 reconciled against what has actually landed.
+
+**BK-398 shipped and recorded.** PR #173 (`feature/BK-398-command-palette`) merged to `origin/staging`,
+merge commit `3f6816f`, ancestry-verified — full detail in §3.1's new BK-7 addendum above and the
+edge-mapping TODO entry, both updated in place rather than left as a dangling "outstanding" item.
+BK-399 remains outstanding and unchanged: still `Backlog`, no §8 screen-map row, no edge identified.
+
+**Five edge-mapping gaps closed** — BK-315, BK-269, BK-268, and epics BK-183 and BK-70 existed in
+`.context/PBI/epic-tree.md` but had zero mentions anywhere in this document (verified: 0 grep hits
+each before this pass). Each was read live (`bun run jira:sync-issues get <KEY>` plus a direct
+`acli jira workitem link list` check for Jira-linked edges) before being recorded — see the
+edge-mapping TODO entries above for the evidence and reasoning per ticket. None of the five carries
+a genuine incoming dependency edge: BK-315, BK-269 and BK-268 each return zero Jira issue links, and
+where their own scope/business-rules text implies a soft precedent (BK-269 on BK-36, BK-268 on BK-49),
+that precedent is already shipped, so no blocking edge is recorded. Epic BK-183 is an administrative
+defect-intake bucket by its own description, not a feature epic — recorded as such rather than forced
+into the dependency graph. Epic BK-70 is recorded as an empty epic (0 Stories) per its own `epic.md`
+and `epic-tree.md`.
+
+**Two blockers carried forward from the 2026-08-14 conclusion, re-verified live and unchanged:**
+
+1. **BK-229 is blocked by a missing shift-left refinement — a QA-authoring gap, not a dependency
+   edge.** Re-verified live (`acli jira workitem view BK-229`): status is `Ready For Dev`, and no
+   comment trail exists on the ticket. This is the one genuine category of blocker an unattended
+   pass may not resolve itself (inventing the refinement is precisely what it must not do). Recorded
+   for assignment to whoever runs shift-left on it, per this doc's existing convention for that class
+   of gap — not re-derived, carried forward.
+2. **BK-219 is blocked by BK-215, and BK-215 has no branch and no merge commit in existence.**
+   Verified this pass: `git branch -a` and `git log --all --oneline` return zero hits for either key,
+   and `git log origin/staging --grep="BK-215"` / `--grep="BK-219"` are both empty. BK-215 (Team Chat |
+   Chat with workspace members in a real-time channel) is §3.1's named gate for the entire BK-210
+   cluster (`BK-215 ──> epic BK-1`), and BK-219 (Edit/delete my own messages) gates on BK-215 directly
+   — neither has any code, in any branch, anywhere in this repository's git history.
+
+**BK-262 still contradicts the published ruling that forbids its promotion — discrepancy D2,
+unresolved.** Re-verified live this pass (`acli jira workitem view BK-262`): status is `Ready For
+Dev`, unchanged from the 2026-08-14 finding. The 2026-08-13 discovery-run ruling that it must not be
+promoted (quoted in full in the 2026-08-14 conclusion above) still stands and is still not what the
+live ticket shows. Not corrected by this pass — Jira transitions are out of scope for a docs-only
+reconciliation; recorded again so it is not silently dropped between runs. This is the same
+discrepancy, not a new one; D2 is not renumbered.
 
 ---
 
