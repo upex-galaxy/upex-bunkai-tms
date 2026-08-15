@@ -320,13 +320,18 @@ export async function abortRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_reason: args.reason,
-    // `?? undefined` (not `?? null`): the regenerated Database types type
-    // `p_via` as an optional string with no `null` in the union (Supabase's
-    // codegen represents a `default null` SQL param as optional, not
-    // nullable). An omitted key serializes identically to an explicit
-    // `null` over PostgREST, so this is behavior-preserving — the RPC's own
-    // `p_via default null` still applies either way.
-    p_via: args.via ?? undefined,
+    // Deliberately `?? null`, NOT `?? undefined` — see this file's own
+    // `lib/supabase/rpc.test.ts` ("defaults p_via to null (not undefined)
+    // when via is omitted"): landing on an explicit `null` resolves the
+    // RPC's `p_via text default null` directly rather than depending on
+    // PostgREST's undefined-key handling. The regenerated Database types
+    // (BK-398 types regen, migration 0071) type `p_via` as merely optional
+    // with no `null` in the union — Supabase's codegen represents a SQL
+    // `default null` param that way regardless of whether the underlying
+    // column type is genuinely nullable, which it is here (`text`, no NOT
+    // NULL). The cast documents that codegen imprecision rather than
+    // silently reversing the deliberate `null` behavior the test locks in.
+    p_via: (args.via ?? null) as string | undefined,
   });
 }
 
@@ -347,8 +352,8 @@ export async function finishRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_verdict: args.verdict,
-    // See abortRun's comment above — `?? undefined`, not `?? null`.
-    p_via: args.via ?? undefined,
+    // Deliberately `?? null`, NOT `?? undefined` — see abortRun's comment above.
+    p_via: (args.via ?? null) as string | undefined,
   });
 }
 
