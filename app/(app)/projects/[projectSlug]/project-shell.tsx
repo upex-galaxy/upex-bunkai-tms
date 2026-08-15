@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
-import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
@@ -112,7 +111,6 @@ function ShellChrome({ children }: { children: ReactNode }) {
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
             <TestTagFilter />
-            <CommandPalette ownsHotkey={false} />
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
               className={buttonVariants({ size: 'sm' })}
