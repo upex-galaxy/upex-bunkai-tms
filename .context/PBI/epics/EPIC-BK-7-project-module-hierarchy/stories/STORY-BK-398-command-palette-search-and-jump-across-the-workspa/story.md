@@ -3,7 +3,7 @@
 **Jira Key:** [BK-398](https://jira.upexgalaxy.com/browse/BK-398)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** In Progress
 **Priority:** Medium
 **Story Points:** 5
 
@@ -97,6 +97,7 @@
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
 - [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
