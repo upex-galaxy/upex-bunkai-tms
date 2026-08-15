@@ -20,9 +20,11 @@ Scenario: Open the evidence chain for a fully covered user story
   And for each acceptance criterion the view shows: the AC title
   And for each ATC bound to that AC: the ATC title and layer (UI/API/Unit)
   And for each Test containing that ATC: the Test name
-  And for each Test: the single latest run result with its status (pass/fail/blocked/skipped)
+  And for each Test: the single latest run result with its status (pass/fail/blocked/skipped/aborted/running)
   And for each run result: any linked defect(s) with their ID, title, and current status
 ```
+
+Note: the run-status set above is the derived run state contract published in `route.openapi.ts` and the `runs.status` CHECK constraint; `aborted` is run-grain and `running` means in-flight, per the BK-45 ruling in comment 12171. Corrected under BK-317 (2026-08-08) — the original four-value list predated the ratified run-state vocabulary.
 
 ### Original AC-02 — Partial coverage (ATCs exist, no run yet)
 
