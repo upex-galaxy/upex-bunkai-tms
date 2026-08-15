@@ -50,19 +50,25 @@ export function buildEntityHref(
   params: { projectSlug: string, entityId: string },
 ): string {
   const safeSlug = encodeURIComponent(params.projectSlug);
+  // `entityId` is a UUID in every production write path, but this file's
+  // own prior `bug` case already encoded it defensively (the notification
+  // row's `entity_id` is producer-controlled JSONB, same as `project_slug`
+  // above) — this now applies that same defense uniformly across all six
+  // types rather than leaving five of them un-encoded by omission.
+  const safeId = encodeURIComponent(params.entityId);
   switch (entityType) {
     case 'atc':
-      return `/projects/${safeSlug}/atcs/${params.entityId}`;
+      return `/projects/${safeSlug}/atcs/${safeId}`;
     case 'test':
-      return `/projects/${safeSlug}/tests/${params.entityId}`;
+      return `/projects/${safeSlug}/tests/${safeId}`;
     case 'project':
       return `/projects/${safeSlug}`;
     case 'module':
-      return `/projects/${safeSlug}?module=${params.entityId}`;
+      return `/projects/${safeSlug}?module=${safeId}`;
     case 'bug':
-      return `/projects/${safeSlug}/bugs/${params.entityId}`;
+      return `/projects/${safeSlug}/bugs/${safeId}`;
     case 'run':
-      return `/projects/${safeSlug}/runs/${params.entityId}`;
+      return `/projects/${safeSlug}/runs/${safeId}`;
     default:
       return `/projects/${safeSlug}`;
   }
