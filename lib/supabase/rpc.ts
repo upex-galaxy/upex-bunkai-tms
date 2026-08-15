@@ -320,7 +320,13 @@ export async function abortRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_reason: args.reason,
-    p_via: args.via ?? null,
+    // `?? undefined` (not `?? null`): the regenerated Database types type
+    // `p_via` as an optional string with no `null` in the union (Supabase's
+    // codegen represents a `default null` SQL param as optional, not
+    // nullable). An omitted key serializes identically to an explicit
+    // `null` over PostgREST, so this is behavior-preserving — the RPC's own
+    // `p_via default null` still applies either way.
+    p_via: args.via ?? undefined,
   });
 }
 
@@ -341,7 +347,8 @@ export async function finishRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_verdict: args.verdict,
-    p_via: args.via ?? null,
+    // See abortRun's comment above — `?? undefined`, not `?? null`.
+    p_via: args.via ?? undefined,
   });
 }
 
