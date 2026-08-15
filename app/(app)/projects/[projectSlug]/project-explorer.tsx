@@ -8,7 +8,7 @@ import { moduleBreadcrumb } from '@lib/tree';
 import { cn } from '@lib/utils';
 import { ChevronDown, ChevronLeft, ChevronRight, DownloadCloud, GitBranch, MoreHorizontal, Pencil, Plus, Server, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AcceptanceCriteriaPanel } from './acceptance-criteria-panel';
@@ -131,6 +131,7 @@ export function ProjectExplorer({
   selectedTestId,
 }: ProjectExplorerProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   // BK-33 — when a tag filter is active, scope the Tests group to the matching
   // id set (an empty set ⇒ "No Tests carry this tag"). No filter ⇒ all Tests.
   const { testTagFilter, filteredTestIds } = useWorkbench();
@@ -244,6 +245,24 @@ export function ProjectExplorer({
 
   const deleteCounts = deleteTarget ? countSubtree(deleteTarget) : null;
   const flatModules = useMemo(() => flattenModules(tree), [tree]);
+
+  // BK-398 — Command Palette Module deep-link: `?module={moduleId}` selects
+  // that module here (comment 12407, final destination contract). The tree
+  // has no per-node collapse state — every module is always rendered, so
+  // there are no "ancestors" to separately expand; selecting is the whole
+  // contract. An unknown or stale id (the module was deleted between the
+  // search and the click) is simply never found in `flatModules`, so this
+  // silently falls back to the project root with nothing selected — no
+  // error, per the ruling. Runs once per mount, not on every `tree` refetch,
+  // so a later action inside this screen doesn't fight the URL back into a
+  // stale selection.
+  useEffect(() => {
+    const moduleParam = searchParams.get('module');
+    if (moduleParam && flatModules.some(m => m.id === moduleParam)) {
+      setSelectedModuleId(moduleParam);
+    }
+    // Deliberately mount-only — see the comment above.
+  }, []);
 
   const chain = useMemo(() => flattenChain(tree), [tree]);
   const breadcrumb = selectedModuleId

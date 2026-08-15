@@ -84,7 +84,20 @@ export function MarkdownEditor({
     const key = e.key.toLowerCase();
     if (key === 'b') { e.preventDefault(); apply(s => wrapSelection(s, '**', '**')); }
     else if (key === 'i') { e.preventDefault(); apply(s => wrapSelection(s, '*', '*')); }
-    else if (key === 'k') { e.preventDefault(); onLink(); }
+    else if (key === 'k') {
+      // BK-398 — Cmd/Ctrl+K is also the global Command Palette's chord
+      // (`CommandPalette.tsx`, `window`-level listener). This editor owns
+      // the chord locally for insert-link, so it must stop the keystroke
+      // from bubbling to `window`, or a member linking text here would get
+      // BOTH the link affordance and the palette on top of it (comment
+      // 12407 (f) — "a member writing a bug repro who presses Cmd+K for a
+      // link currently gets the link affordance AND the palette"). The
+      // scoped exception is implemented here, by the owning component, per
+      // the ruling — never as a hardcoded component list inside the palette.
+      e.preventDefault();
+      e.stopPropagation();
+      onLink();
+    }
   };
 
   const tools: { key: string, title: string, icon: React.ReactNode, run: () => void }[] = [

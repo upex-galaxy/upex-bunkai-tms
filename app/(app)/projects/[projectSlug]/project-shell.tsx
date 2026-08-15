@@ -2,13 +2,13 @@
 
 import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
-import { CommandPalette } from '@components/layout/CommandPalette';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
 import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
 import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 import { AtcSearchFilter } from './atc-search-filter';
 import { ProjectExplorer } from './project-explorer';
 import { ProjectSubNav, resolveProjectSectionLabel } from './project-sub-nav';
@@ -112,7 +112,6 @@ function ShellChrome({ children }: { children: ReactNode }) {
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
             <TestTagFilter />
-            <CommandPalette ownsHotkey={false} />
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
               className={buttonVariants({ size: 'sm' })}
@@ -137,17 +136,23 @@ function ShellChrome({ children }: { children: ReactNode }) {
       <ProjectSubNav projectSlug={projectSlug} />
       <div className="flex flex-1 overflow-hidden">
         {explorerVisible && (
-          <ProjectExplorer
-            projectId={projectId}
-            projectSlug={projectSlug}
-            projectName={projectName}
-            tree={tree}
-            tests={tests}
-            environments={environments}
-            canCreate={canCreate}
-            selectedAtcId={activeAtcId}
-            selectedTestId={activeTestId}
-          />
+          // BK-398 — ProjectExplorer reads `?module=` via `useSearchParams()`
+          // for the Command Palette's Module deep-link, which Next requires a
+          // Suspense boundary for (matches the existing convention at
+          // `app/(auth)/login/page.tsx`).
+          <Suspense fallback={null}>
+            <ProjectExplorer
+              projectId={projectId}
+              projectSlug={projectSlug}
+              projectName={projectName}
+              tree={tree}
+              tests={tests}
+              environments={environments}
+              canCreate={canCreate}
+              selectedAtcId={activeAtcId}
+              selectedTestId={activeTestId}
+            />
+          </Suspense>
         )}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-0">
           {openTabs.length > 0 && (

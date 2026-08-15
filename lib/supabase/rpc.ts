@@ -320,7 +320,18 @@ export async function abortRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_reason: args.reason,
-    p_via: args.via ?? null,
+    // Deliberately `?? null`, NOT `?? undefined` — see this file's own
+    // `lib/supabase/rpc.test.ts` ("defaults p_via to null (not undefined)
+    // when via is omitted"): landing on an explicit `null` resolves the
+    // RPC's `p_via text default null` directly rather than depending on
+    // PostgREST's undefined-key handling. The regenerated Database types
+    // (BK-398 types regen, migration 0071) type `p_via` as merely optional
+    // with no `null` in the union — Supabase's codegen represents a SQL
+    // `default null` param that way regardless of whether the underlying
+    // column type is genuinely nullable, which it is here (`text`, no NOT
+    // NULL). The cast documents that codegen imprecision rather than
+    // silently reversing the deliberate `null` behavior the test locks in.
+    p_via: (args.via ?? null) as string | undefined,
   });
 }
 
@@ -341,7 +352,8 @@ export async function finishRun(
     p_actor_user_id: args.actorUserId,
     p_run_id: args.runId,
     p_verdict: args.verdict,
-    p_via: args.via ?? null,
+    // Deliberately `?? null`, NOT `?? undefined` — see abortRun's comment above.
+    p_via: (args.via ?? null) as string | undefined,
   });
 }
 
@@ -823,5 +835,29 @@ export async function reportStoryTraceability(supabase: Client, args: ReportStor
   return supabase.rpc('bunkai_report_story_traceability', {
     p_actor_user_id: args.actorUserId,
     p_user_story_id: args.userStoryId,
+  });
+}
+
+// BK-398 — cross-entity Command Palette search. UNLIKE every other wrapper in
+// this file, this RPC is SECURITY INVOKER with NO actor parameter (Jira
+// comment 12406, AI Tech Lead ruling — follows the standing BK-267/BK-49
+// preference for INVOKER over a DEFINER + actor-bind guard). It runs AS the
+// caller, so each of its six UNION branches re-evaluates that table's own
+// workspace-member RLS SELECT policy against the REAL `auth.uid()`. The
+// `supabase` argument passed here MUST be the caller's own RLS-scoped client
+// (`getAuth(ctx).db`) — an admin/service-role client has no `auth.uid()` and
+// every branch's RLS policy silently empties, which defeats the feature
+// rather than leaking anything (fails closed), but is still wrong to ship.
+export interface SearchWorkspaceArgs {
+  query: string
+  workspaceId: string
+  limit?: number
+}
+
+export async function searchWorkspace(supabase: Client, args: SearchWorkspaceArgs) {
+  return supabase.rpc('bunkai_search_workspace', {
+    p_query: args.query,
+    p_workspace_id: args.workspaceId,
+    p_limit: args.limit ?? undefined,
   });
 }
