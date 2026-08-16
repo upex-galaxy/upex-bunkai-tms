@@ -1,6 +1,6 @@
 # BK-229 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
 
 - Billing sub-view inside the Settings hub, visible to workspace owner and admin
 - Current-plan card: tier name (Free / Team / Enterprise), per-seat price for paid plans, next renewal date

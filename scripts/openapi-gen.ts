@@ -68,6 +68,8 @@ import '../app/api/v1/workspaces/[id]/open-bugs/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/coverage/route.openapi';
 
+import '../app/api/v1/workspaces/[id]/billing/route.openapi';
+
 import '../app/api/v1/projects/[id]/modules/route.openapi';
 
 import '../app/api/v1/projects/[id]/environments/route.openapi';
