@@ -861,3 +861,20 @@ export async function searchWorkspace(supabase: Client, args: SearchWorkspaceArg
     p_limit: args.limit ?? undefined,
   });
 }
+
+// BK-229 — the Billing overview's raw read: plan key + live seat/project/
+// retention counts. SAME shape as `searchWorkspace` above — SECURITY INVOKER,
+// NO caller-supplied actor parameter (Jira comment 12414 TQ2, unchanged by
+// the later TQ1 reversal in 12417). The step-0 admin gate lives inside the
+// function itself (`bunkai_is_workspace_admin`, DEFINER, self-binds to
+// `auth.uid()`), so this MUST be called through the caller's own RLS-scoped
+// client (`getAuth(ctx).db`) — NEVER `createAdminClient()`, or `auth.uid()`
+// is NULL and the gate always returns false, silently breaking the feature.
+// Returns `null` (not an error) for a non-admin caller, an unknown
+// workspace, or a workspace the caller cannot see — the route's job is to
+// collapse that into a 404, never a 403.
+export async function getWorkspaceBillingOverview(supabase: Client, workspaceId: string) {
+  return supabase.rpc('bunkai_workspace_billing_overview', {
+    p_workspace_id: workspaceId,
+  });
+}
