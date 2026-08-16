@@ -1760,6 +1760,10 @@ export interface Database {
         Returns: Json
       }
       bunkai_user_id_by_email: { Args: { p_email: string }, Returns: string }
+      bunkai_workspace_billing_overview: {
+        Args: { p_workspace_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
