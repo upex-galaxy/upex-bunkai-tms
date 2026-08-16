@@ -18,11 +18,13 @@ export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   // BK-213 — Notifications ships, moved out of "coming soon" (master-design-
   // plan.md §4.13: "Notifications now LIVE in the nav").
   { id: 'notifications', label: 'Notifications', href: '/settings/notifications' },
+  // BK-229 — Billing ships, moved out of "coming soon" (master-design-
+  // plan.md §4.15: "Billing" now LIVE in the nav").
+  { id: 'billing', label: 'Billing', href: '/settings/billing' },
 ];
 
 export const SETTINGS_NAV_COMING_SOON: SettingsNavItem[] = [
   { id: 'members', label: 'Members', href: null },
-  { id: 'billing', label: 'Billing', href: null },
   { id: 'environments', label: 'Environments', href: null },
 ];
 
