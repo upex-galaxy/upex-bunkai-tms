@@ -102,9 +102,19 @@ export function meterLabel(used: number, limit: number | null, unit: string): st
 // Fill width for the bar primitive — clamped to 100% so an over-limit meter
 // (11 of 10) still renders a full, not overflowing, bar. Unlimited meters
 // render no bar at all (caller's responsibility to check `limit === null`).
+// A `limit <= 0` reads as "0 allowed" — any usage against it is already at
+// capacity, so the fill agrees with `meterState`'s 'limit-reached' verdict
+// (100%, not 0%) rather than showing an empty bar for a maxed-out resource.
+// No current `PLAN_TIERS` entry sets a limit to 0 (only positive or `null`),
+// so this branch is currently unreachable in the shipped product — kept
+// consistent with `meterState` regardless, since a future tier authoring a
+// 0-limit resource should not land on a silently mismatched bar.
 export function meterFillPercent(used: number, limit: number | null): number {
-  if (limit === null || limit <= 0) {
+  if (limit === null) {
     return 0;
+  }
+  if (limit <= 0) {
+    return used > 0 ? 100 : 0;
   }
   return Math.min(100, Math.round((used / limit) * 100));
 }

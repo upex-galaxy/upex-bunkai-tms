@@ -78,6 +78,15 @@ describe('meterState — 80%/100% boundaries (AC2, AC15, AC4, AC5, AC13)', () =>
     expect(meterState(1_000_000, null)).toBe('normal');
     expect(meterState(0, null)).toBe('normal');
   });
+
+  // No shipped tier sets a limit to 0 (only positive or `null`), but a
+  // 0-limit resource reads as "0 allowed" — any usage against it is already
+  // at capacity, matching `meterFillPercent`'s 100% verdict for the same
+  // input rather than the two disagreeing.
+  test('a zero limit with usage is limit-reached; with no usage it is normal', () => {
+    expect(meterState(1, 0)).toBe('limit-reached');
+    expect(meterState(0, 0)).toBe('normal');
+  });
 });
 
 describe('meterLabel — "N of limit unit" / unlimited rendering (AC1, AC13, AC6)', () => {
@@ -114,6 +123,11 @@ describe('meterFillPercent — bar width, clamped to 100 (AC13)', () => {
 
   test('a null (unlimited) limit has no fill — the caller omits the bar entirely', () => {
     expect(meterFillPercent(5, null)).toBe(0);
+  });
+
+  test('a zero limit fills 100% with usage, 0% with none — agrees with meterState', () => {
+    expect(meterFillPercent(1, 0)).toBe(100);
+    expect(meterFillPercent(0, 0)).toBe(0);
   });
 });
 

@@ -224,13 +224,26 @@ describeOrSkip('BK-229 — bunkai_workspace_billing_overview isolation (rpc-auth
     // Cascades from deleting the workspace cover members/runs (ON DELETE
     // CASCADE via workspace_id), but delete explicitly first for
     // defensiveness against the FK shape ever changing to RESTRICT — mirrors
-    // the activity-isolation precedent.
-    await db.from('runs').delete().eq('workspace_id', fixture.workspaceId);
-    await db.from('project_environments').delete().eq('project_id', fixture.projectAId);
-    await db.from('tests').delete().eq('workspace_id', fixture.workspaceId);
-    await db.from('projects').delete().in('id', [fixture.projectAId, fixture.projectBId]);
-    await db.from('workspace_members').delete().eq('workspace_id', fixture.workspaceId);
-    await db.from('workspaces').delete().eq('id', fixture.workspaceId);
+    // the activity-isolation precedent. Errors are surfaced (not thrown —
+    // the suite's assertions already ran and passed/failed by this point,
+    // and this is a SHARED live database, so a loud warning beats aborting
+    // the whole run over a cleanup hiccup) so an orphaned fixture is visible
+    // instead of silently leaking rows into shared infra.
+    const cleanups = [
+      () => db.from('runs').delete().eq('workspace_id', fixture!.workspaceId),
+      () => db.from('project_environments').delete().eq('project_id', fixture!.projectAId),
+      () => db.from('tests').delete().eq('workspace_id', fixture!.workspaceId),
+      () => db.from('projects').delete().in('id', [fixture!.projectAId, fixture!.projectBId]),
+      () => db.from('workspace_members').delete().eq('workspace_id', fixture!.workspaceId),
+      () => db.from('workspaces').delete().eq('id', fixture!.workspaceId),
+    ];
+    const tables = ['runs', 'project_environments', 'tests', 'projects', 'workspace_members', 'workspaces'];
+    for (const [i, cleanup] of cleanups.entries()) {
+      const { error } = await cleanup();
+      if (error) {
+        console.error(`[billing-overview-isolation] cleanup of "${tables[i]}" failed for workspace ${fixture.workspaceId}: ${error.message}`);
+      }
+    }
   });
 
   it('an owner sees the true plan, active-seat, project, and retention counts', async () => {

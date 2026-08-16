@@ -46,6 +46,10 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
 
     try {
       const response = await fetch(`/api/v1/workspaces/${workspaceId}/billing`, { signal: controller.signal });
+      // A superseded request (a newer `load()` call already aborted this
+      // one, or the component unmounted) must never overwrite state a later
+      // call already set — mirrors `ActivityView.tsx`'s abort guard.
+      if (controller.signal.aborted) { return; }
       if (response.status === 404) {
         setState('forbidden');
         return;
@@ -55,10 +59,12 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
         return;
       }
       const data = await response.json() as BillingOverview;
+      if (controller.signal.aborted) { return; }
       setOverview(data);
       setState('success');
     }
     catch {
+      if (controller.signal.aborted) { return; }
       setState('error');
     }
     finally {

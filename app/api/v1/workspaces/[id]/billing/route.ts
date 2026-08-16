@@ -46,20 +46,41 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('not_found', 'Workspace not found.');
   }
 
-  const overview = data as {
-    plan: string
-    active_seats: number
-    project_count: number
-    oldest_run_age_days: number | null
-  };
+  // `data` is typed `Json` by Postgrest — narrow it structurally rather than
+  // trusting an unchecked `as` cast, so a shape drift in the RPC fails loudly
+  // (500) instead of shipping `undefined` fields to the client.
+  if (!isBillingOverviewShape(data)) {
+    throw new ApiError('internal_error', 'The billing overview did not match the expected shape.');
+  }
 
   return jsonResponse({
-    plan: overview.plan,
-    active_seats: overview.active_seats,
-    project_count: overview.project_count,
-    oldest_run_age_days: overview.oldest_run_age_days,
+    plan: data.plan,
+    active_seats: data.active_seats,
+    project_count: data.project_count,
+    oldest_run_age_days: data.oldest_run_age_days,
   }, { status: 200 });
-}, { auth: 'required' });
+// Scope floor matches the sibling workspace-inventory reads (open-bugs,
+// coverage, recent-projects, active-runs) — `atc:read` gates Bearer PATs;
+// cookie sessions already hold the full capability set and are unaffected.
+}, { auth: 'required', requires: ['atc:read'] });
+
+interface BillingOverviewShape {
+  plan: string
+  active_seats: number
+  project_count: number
+  oldest_run_age_days: number | null
+}
+
+function isBillingOverviewShape(value: unknown): value is BillingOverviewShape {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return typeof v.plan === 'string'
+    && typeof v.active_seats === 'number'
+    && typeof v.project_count === 'number'
+    && (v.oldest_run_age_days === null || typeof v.oldest_run_age_days === 'number');
+}
 
 // The route is /api/v1/workspaces/{id}/billing — the workspace id is the
 // segment right after the literal "workspaces" (mirrors the sibling

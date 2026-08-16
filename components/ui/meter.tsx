@@ -34,7 +34,7 @@ export function Meter({ label, countLabel, used, limit, fillPercent, state, note
       {limit !== null && (
         <div
           role="meter"
-          aria-valuenow={used}
+          aria-valuenow={Math.min(used, limit)}
           aria-valuemin={0}
           aria-valuemax={limit}
           aria-label={`${label}: ${countLabel}`}
