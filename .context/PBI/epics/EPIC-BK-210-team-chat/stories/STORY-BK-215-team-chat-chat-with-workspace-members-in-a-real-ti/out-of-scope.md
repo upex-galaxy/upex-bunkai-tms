@@ -1,6 +1,6 @@
 # BK-215 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
 
 - Per-project channels — covered by their own Team Chat story
 - @-mentions, entity rich links, message edit/delete, and history search — covered by their own Team Chat stories

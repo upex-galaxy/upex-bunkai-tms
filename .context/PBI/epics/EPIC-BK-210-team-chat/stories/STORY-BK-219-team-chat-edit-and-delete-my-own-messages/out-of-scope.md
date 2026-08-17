@@ -1,6 +1,6 @@
 # BK-219 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
 
 - Edit history / viewing previous versions of an edited message — future iteration
 - Restoring a deleted message — out
