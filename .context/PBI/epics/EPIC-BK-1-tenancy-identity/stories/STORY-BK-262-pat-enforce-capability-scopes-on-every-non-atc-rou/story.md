@@ -3,7 +3,7 @@
 **Jira Key:** [BK-262](https://jira.upexgalaxy.com/browse/BK-262)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** ABORTED
 **Priority:** Medium
 **Story Points:** 21
 
@@ -77,6 +77,12 @@ Grouped into 2 PRs — Group 1 (Foundation + Authoring writes), Group 2 (Reporti
 - [BK-83](https://jira.upexgalaxy.com/browse/BK-83): WorkspaceSwitch: API: POST /api/v1/me/active-workspace response missing workspace fields (id, slug, name, role) _(Closed)_
 - [BK-135](https://jira.upexgalaxy.com/browse/BK-135): POST /api/v1/tokens issues workspace:admin tokens to member-role users without 403 enforcement _(Closed)_
 
+### Storys (3)
+
+- [BK-497](https://jira.upexgalaxy.com/browse/BK-497): PAT | Require every API route to declare its capability posture _(Ready For Dev)_
+- [BK-498](https://jira.upexgalaxy.com/browse/BK-498): PAT | Enforce capability scopes on the authoring domain _(Ready For Dev)_
+- [BK-499](https://jira.upexgalaxy.com/browse/BK-499): PAT | Enforce capability scopes on read, identity and notification routes _(Backlog)_
+
 ### Improvement (1)
 
 - [BK-97](https://jira.upexgalaxy.com/browse/BK-97): Enforce per-route PAT capabilities on non-ATC API routes (ADR-0001 follow-up) _(Duplicated)_
@@ -86,7 +92,7 @@ Grouped into 2 PRs — Group 1 (Foundation + Authoring writes), Group 2 (Reporti
 ## Metadata
 
 - **Created:** 8/2/2026
-- **Updated:** 8/14/2026
+- **Updated:** 8/17/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-08-14, shift-left-reviewed
