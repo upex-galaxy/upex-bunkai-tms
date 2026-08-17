@@ -1,8 +1,8 @@
 # BK-219 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
 
-```gherkin
+```
 Scenario: Edit an own message within the edit window
   Given Sara sent "deploy is done, staging is grene" 2 minutes ago
   When she edits the message to "deploy is done, staging is green"
@@ -10,7 +10,7 @@ Scenario: Edit an own message within the edit window
   And other members see the corrected text in real time
 ```
 
-```gherkin
+```
 Scenario: The edit window closes after 15 minutes
   Given Sara sent a message 16 minutes ago
   When she opens the actions for that message
@@ -18,7 +18,7 @@ Scenario: The edit window closes after 15 minutes
   And a hint explains that messages can be edited for 15 minutes after sending
 ```
 
-```gherkin
+```
 Scenario: Deleting an own message leaves a tombstone
   Given Sara sent a message with a wrong link in the "Payments API" channel
   When she deletes that message
@@ -26,14 +26,14 @@ Scenario: Deleting an own message leaves a tombstone
   And the original text is no longer visible to anyone in the channel
 ```
 
-```gherkin
+```
 Scenario: Members cannot edit or delete someone else's message
   Given Elena is a member of the workspace with the member role
   When she opens the actions for a message sent by Sara
   Then she sees no edit or delete action for that message
 ```
 
-```gherkin
+```
 Scenario: An admin can moderate any message
   Given Mateo has the admin role in the workspace
   And a message with sensitive credentials was posted by mistake

@@ -1,8 +1,8 @@
 # BK-215 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
 
-```gherkin
+```
 Scenario: A message reaches every member in real time
   Given Elena and Sara are both members of the workspace "Bunkai QA"
   And both have the workspace general channel open
@@ -11,7 +11,7 @@ Scenario: A message reaches every member in real time
   And the message shows Elena's name and the time it was sent
 ```
 
-```gherkin
+```
 Scenario: Message history persists across sessions
   Given the "Bunkai QA" general channel contains 20 messages
   When Elena signs out, signs back in, and opens the channel
@@ -19,7 +19,7 @@ Scenario: Message history persists across sessions
   And the oldest messages load as she scrolls up
 ```
 
-```gherkin
+```
 Scenario: The workspace roster is visible from the channel
   Given the workspace "Bunkai QA" has 3 members: Elena, Sara, and Mateo
   When Elena opens the channel roster
@@ -27,7 +27,7 @@ Scenario: The workspace roster is visible from the channel
   And she can tell which members are currently online
 ```
 
-```gherkin
+```
 Scenario: A viewer can read but not write
   Given Mateo's account in "Bunkai QA" has the viewer role
   When Mateo opens the workspace general channel
@@ -35,7 +35,7 @@ Scenario: A viewer can read but not write
   But the composer is disabled with a hint that viewers have read-only access
 ```
 
-```gherkin
+```
 Scenario: Reconnecting after a connection drop shows missed messages
   Given Elena has the channel open and her connection drops for 2 minutes
   And Sara sends 3 messages during that gap

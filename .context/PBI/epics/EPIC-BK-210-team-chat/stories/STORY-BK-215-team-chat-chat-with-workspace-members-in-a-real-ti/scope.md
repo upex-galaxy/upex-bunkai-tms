@@ -1,6 +1,6 @@
 # BK-215 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-215)
 
 - One general channel per Workspace, available to every Workspace member
 - Real-time delivery of new messages to every member with the channel open
