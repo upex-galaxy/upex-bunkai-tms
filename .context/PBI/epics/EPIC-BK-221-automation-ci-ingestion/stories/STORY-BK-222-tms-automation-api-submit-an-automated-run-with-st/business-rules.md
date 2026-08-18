@@ -1,6 +1,6 @@
 # BK-222 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
 
 - ***Authentication***: workspace-scoped Personal Access Token (managed in Settings, per the Manage Personal Access Tokens story). The token identifies both the acting identity and the workspace; runs land in the project the submission targets.
 - ***Role gate****: automated submissions require the token owner to hold the ****member role or higher*** in the workspace (roles: viewer < member < admin < owner). Viewer tokens are read-only.

@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
-## Acceptance Test Plan (ATP) — BK-3 OAuth Sign-up/Sign-in (GitHub/Google)
+## Acceptance Test Plan (ATP) — [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) OAuth Sign-up/Sign-in (GitHub/Google)
 
 > ***NOTE:**** ****Fresh ATP — supersedes the 2026-05-26 shift-left draft.**** That draft assumed the old `EMAIL*EXISTS` rejection design for AC-7. PO reversed that decision on 2026-06-24 (ADR-0008): Supabase automatic identity linking is now ON — same verified email across GitHub/Google/password auto-links to one account, no block, no toast. This ATP is scoped to the 10 ****current*** ACs in `customfield*10063` (Refined ACs section below), not the stale draft's 20 outlines.
 
@@ -12,10 +12,10 @@
 
 ### Test Analysis — Story Complexity
 
-| Axis | Rating | Notes |
+| ***Axis**** | ****Rating**** | ****Notes*** |
 | --- | --- | --- |
 | Business logic | High | Redirect-target decision depends on workspace state; identity-linking rule changed mid-cycle (ADR-0008); shared callback route branches OAuth vs magic-link on a single query param |
-| Integration complexity | High | Supabase Auth PKCE + `exchangeCodeForSession`, `workspace_members` lookup, provider consent screens (GitHub + Google), shared `app/auth/callback/route.ts` also serving BK-2 magic-link |
+| Integration complexity | High | Supabase Auth PKCE + `exchangeCodeForSession`, `workspace_members` lookup, provider consent screens (GitHub + Google), shared `app/auth/callback/route.ts` also serving [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2) magic-link |
 | Data validation | Medium | Verified-email matching drives auto-link; state-token / PKCE code validation is the CSRF boundary |
 | UI complexity | Low | Two buttons + a toast + an inline onboarding error card; no new design tokens per Design's comment |
 
@@ -41,7 +41,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-1 / AC-2 — First-time OAuth sign-up (GitHub / Google)
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-1 | Should complete first-time OAuth sign-up and land on `/onboarding` | Positive | High | EP | Yes — provider: GitHub / Google | Yes (AC-1, AC-2) |
 | TC-2 | Should upsert exactly one `auth.users` row with `provider` metadata set on first-time OAuth signup | Integration | Medium | EP | Yes — provider | Yes |
@@ -51,15 +51,15 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-3 — Returning OAuth user, no duplicate workspace
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-4 | Should sign in a returning OAuth user directly to `/projects` with the existing workspace, no duplicate created | Positive | High | EP + DT (rule: has\_workspace=Yes → `/projects`) | Yes — provider | Yes |
+| TC-4 | Should sign in a returning OAuth user directly to `/projects` with the existing workspace, no duplicate created | Positive | High | EP + DT (rule: has_workspace=Yes → `/projects`) | Yes — provider | Yes |
 | TC-5 | Should not create a second `workspace_members` row when the same returning user signs in via OAuth twice in a row (double sign-in / re-entrancy) | Boundary | Medium | ST (re-entrancy) | No | No |
 | TC-6 | Should route a user who originally signed up via GitHub to `/projects` (existing workspace) when they later sign in via linked Google | Integration | Medium | EP | No | No |
 
 #### AC-4 — OAuth consent denied
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-7 | Should redirect to `/login` with `OAUTH_DENIED` and surface the magic-link fallback CTA when the user denies consent ***in-browser**** on the provider screen | Negative | High | EP | Yes — provider | ****Focus*** — PO only checked the server-side shortcut, not the real in-browser deny flow |
 | TC-8 | Should create no session and no user row when OAuth consent is denied | Negative | Medium | EP | No | No |
@@ -67,7 +67,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-5 — OAuth state CSRF token mismatch
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-10 | Should reject the callback with `OAUTH*STATE*MISMATCH` (403) and create no session when the state token doesn't match the issued one | Negative | Critical | EP | No | Yes |
 | TC-11 | Should reject the callback with a distinct missing-state/missing-code error when the state param (or code) is absent entirely | Negative | High | EP | No | No |
@@ -76,7 +76,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-6 — Third-party-cookie restriction, 30s fallback
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-14 | Should surface the magic-link fallback with clear copy within 30s when the callback cookie fails to set in a third-party-cookie-blocked browser | Boundary | High | BVA (boundary) | No | ***Focus*** — not yet validated by anyone |
 | TC-15 | Should NOT surface the fallback prematurely before the 30s mark elapses | Boundary | Medium | BVA (min-1 equivalent) | No | ***Focus*** |
@@ -85,7 +85,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-7 — Cross-provider same verified email — automatic identity linking
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-18 | Should auto-link a new sign-in to an existing account sharing the same verified email, regardless of provider pairing, landing on `/projects` with the existing workspace | Positive | High | EP + PW (3 factors: new-method × existing-method, logged) | Yes — 3 rows: Google→existing-GitHub, GitHub→existing-Google, OAuth→existing-password | Partial — PO checked Google↔email only; GitHub↔Google and OAuth↔password rows are ***Focus*** |
 | TC-19 | Should result in exactly ONE `auth.users`/identities row (not two) after cross-provider auto-linking | Integration | Critical | EG (Principle 5 — risk beyond the AC's silence on row count) | No | No |
@@ -96,7 +96,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-8 — Workspace bootstrap failure
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-22 | Should keep the OAuth session persisted (no rollback) and show the inline error card with Retry when the workspace-creation RPC fails on onboarding-form submission | Negative | High | EP | No | ***Focus*** — AC-8 not in PO's validated list; ambiguity above also applies |
 | TC-23 | Should allow the user to successfully retry workspace creation after an initial failure, without restarting the OAuth flow | Positive | Medium | ST (failed → retry → success) | No | No |
@@ -104,23 +104,23 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 #### AC-9 — OAuth initiation failure
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-25 | Should surface a graceful error on `/login` with the magic-link fallback CTA and create no session when OAuth initiation fails before a session is established (provider 5xx) | Negative | High | EP | Yes — provider | Yes |
 | TC-26 | Should distinguish initiation-failure messaging (pre-session) from mid-callback-failure messaging | Negative | Medium | EG | No | No |
 
 #### AC-10 — OAuth UI buttons enabled + copy updated
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | TC-27 | Should render the GitHub and Google OAuth buttons enabled with working onClick handlers (no disabled/"soon" state) | Positive | High | EP | Yes — provider | Yes |
 | TC-28 | Should render updated login copy that no longer states OAuth ships next sprint (collapsed: trivially atomic, single string-presence check) | Positive | Low | EP | No | Yes |
 
 #### Cross-cutting risk-beyond-AC (Principle 5 + explicit PO "Focus for QA")
 
-| TC# | Title | Type | Priority | Technique | Param. | PO-val |
+| ***TC#**** | ****Title**** | ****Type**** | ****Priority**** | ****Technique**** | ****Param.**** | ****PO-val*** |
 | --- | --- | --- | --- | --- | --- | --- |
-| TC-29 | Should preserve BK-2 magic-link sign-in success alongside OAuth on the shared `app/auth/callback/route.ts` (no `state` param path) | Positive (regression) | Critical | EG | No | ***Focus*** — explicit PO ask |
+| TC-29 | Should preserve [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2) magic-link sign-in success alongside OAuth on the shared `app/auth/callback/route.ts` (no `state` param path) | Positive (regression) | Critical | EG | No | ***Focus*** — explicit PO ask |
 | TC-30 | Should preserve password sign-in success alongside OAuth on the shared callback route | Positive (regression) | Critical | EG | No | ***Focus*** — explicit PO ask |
 | TC-31 | Should reject a maliciously crafted `next` query param (e.g. `//evil.com`) on the OAuth callback path (open-redirect guard) | Boundary | High | EG (security) | No | No |
 | TC-32 | Should apply a rate-limit / lockout to repeated rapid state-mismatch attempts against the callback (CSRF/credential-stuffing probing — G7 from shift-left, never resolved with an explicit AC) | Boundary | Medium | EG | No | No — ***NEEDS PO/DEV CONFIRMATION*** whether a rate-limit policy exists; may resolve to Manual/exploratory charter if unimplemented |
@@ -129,7 +129,7 @@ The current `acceptance-criteria.md` (10 ACs, `customfield_10063`) is already we
 
 ### Coverage estimate
 
-| Type | Count |
+| ***Type**** | ****Count*** |
 | --- | --- |
 | Positive | 10 |
 | Negative | 8 |
@@ -141,7 +141,7 @@ Rationale: High business-logic + integration-complexity ratings (Test Analysis t
 
 ### Parametrization
 
-| Group | Artifact | Rows | Benefit |
+| ***Group**** | ****Artifact**** | ****Rows**** | ****Benefit*** |
 | --- | --- | --- | --- |
 | Provider happy/negative paths | TC-1, TC-4, TC-7, TC-25, TC-27 | 2 rows each (GitHub / Google) | Same precondition/action/outcome-shape; only the provider varies — 5 artifacts instead of 10 |
 | Identity-linking pairing | TC-18 | 3 rows (Google→GitHub, GitHub→Google, OAuth→password) | Pairwise-reduced; 1 artifact instead of 3 |
@@ -152,7 +152,7 @@ Total: 6 parametrized artifacts collapse 13 data-row executions that would other
 
 ### Edge cases identified (risk-beyond-AC)
 
-| Edge case | In original AC? | Outline | Priority |
+| ***Edge case**** | ****In original AC?**** | ****Outline**** | ****Priority*** |
 | --- | --- | --- | --- |
 | Replayed/reused authorization code | No | TC-12 | Critical |
 | Expired state-token TTL window | No | TC-13 | High |
@@ -164,7 +164,7 @@ Total: 6 parametrized artifacts collapse 13 data-row executions that would other
 
 ### Test data categories
 
-| Data type | Purpose | Examples |
+| ***Data type**** | ****Purpose**** | ****Examples*** |
 | --- | --- | --- |
 | Fresh never-used email, verified GitHub | AC-1 happy path | `faker.internet.email()` seeded GitHub test account |
 | Fresh never-used email, verified Google | AC-2 happy path | `faker.internet.email()` seeded Google test account |

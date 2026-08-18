@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -19,7 +20,7 @@ As a QA Engineer, I want to assign and replace the set of tags on a Test, using 
 
 ## Dependency
 
-BK-70 must define the Test Repository entity before BK-33 can be implemented. BK-33 should only implement tag assignment/replacement and tag-based filtering on the Test entity defined by BK-70.
+[https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) must define the Test Repository entity before [https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33](https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33) can be implemented. [https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33](https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33) should only implement tag assignment/replacement and tag-based filtering on the Test entity defined by [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70).
 
 ## Business Value
 
@@ -44,8 +45,8 @@ BK-70 must define the Test Repository entity before BK-33 can be implemented. BK
 
 ### Out of Scope
 
-- Test CRUD and base Test schema: BK-70.
-- Test run execution and suite execution: BK-34 to BK-39.
+- Test CRUD and base Test schema: [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70).
+- Test run execution and suite execution: [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) to [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39).
 - Tag analytics and usage reports: future story.
 - Global tag registry, tag colors, tag descriptions, or tag ownership: future story.
 - Tag-level permissions separate from Test edit permissions: future RBAC story.
@@ -86,8 +87,20 @@ Ready for Estimation after PO confirms the MVP reserved tag vocabulary and accep
 
 ## References
 
-- BK-70: Test Repository entity definition.
-- BK-33: Acceptance Test Plan field for full shift-left refinement.
+- [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70): Test Repository entity definition.
+- [https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33](https://jira.upexgalaxy.com/browse/BK-33#icft=BK-33): Acceptance Test Plan field for full shift-left refinement.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 
 ---
 

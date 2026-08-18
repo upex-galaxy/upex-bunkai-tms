@@ -1,6 +1,6 @@
 # BK-21 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
 
 ```
 Scenario: Editing an ATC updates every Test that chains it

@@ -1,6 +1,6 @@
 # BK-3 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
 ```
 Scenario: AC-1 GitHub OAuth first-time sign-up (happy path)

@@ -1,6 +1,6 @@
 # BK-147 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
 
 - Read access is unchanged: Elena only sees, and can only open, items in projects she already has access to.
 - Opening an item never mutates it — the workbench tabs are read-and-navigate surfaces; editing remains gated by its own stories.

@@ -2,32 +2,32 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-89)
 
-# ATP ACTIVE — BK-89: TMS-Workspace | View the workspaces I belong to
+# ATP ACTIVE — [https://jira.upexgalaxy.com/browse/BK-89#icft=BK-89](https://jira.upexgalaxy.com/browse/BK-89#icft=BK-89): TMS-Workspace | View the workspaces I belong to
 
-***Status******:*** ACTIVE (API-only partial phase — 2026-06-12)
-***Shift-Left******:*** Completed 2026-06-10 | Risk Level: HIGH (auth/RLS/multi-tenancy)
-***Story quality******:*** Needs Improvement — 2 story blockers, 6 open questions for PO/Dev
+***Status:*** ACTIVE (API-only partial phase — 2026-06-12)
+***Shift-Left:*** Completed 2026-06-10 | Risk Level: HIGH (auth/RLS/multi-tenancy)
+***Story quality:*** Needs Improvement — 2 story blockers, 6 open questions for PO/Dev
 
 ---
 
 ## Story Blockers (block QA sign-off)
 
-| # | Blocker | Severity | AC affected |
+| ***#**** | ****Blocker**** | ****Severity**** | ****AC affected*** |
 | --- | --- | --- | --- |
 | 1 | GET /api/v1/workspaces does not return `role` field | CRITICAL | AC 1, AC 4 |
 | 2 | "Active workspace" has no data contract (no DB column, no API field, no session spec) | MEDIUM | AC 1, AC 2 |
-| 3 | BK-87 Settings Hub not shipped — UI/navigation path unknown | LOW | All UI outlines |
+| 3 | [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) Settings Hub not shipped — UI/navigation path unknown | LOW | All UI outlines |
 
 ---
 
 ## API-Executable TCs (4 created — partial session)
 
-| TC | Jira key | Outline | Type |
+| ***TC**** | ****Jira key**** | ****Outline**** | ****Type*** |
 | --- | --- | --- | --- |
-| TC01 | BK-136 | GET /api/v1/workspaces returns HTTP 200 with correct workspace list shape | Positive |
-| TC02 | BK-139 | GET /api/v1/workspaces unauthenticated returns 401 | Negative |
-| TC03 | BK-140 | GET /api/v1/workspaces returns only active memberships — DB cross-validation | Integration |
-| TC04 | BK-141 | GET /api/v1/workspaces does not return role field — BLOCKER confirmed | Negative (known gap) |
+| TC01 | [https://jira.upexgalaxy.com/browse/BK-136#icft=BK-136](https://jira.upexgalaxy.com/browse/BK-136#icft=BK-136) | GET /api/v1/workspaces returns HTTP 200 with correct workspace list shape | Positive |
+| TC02 | [https://jira.upexgalaxy.com/browse/BK-139#icft=BK-139](https://jira.upexgalaxy.com/browse/BK-139#icft=BK-139) | GET /api/v1/workspaces unauthenticated returns 401 | Negative |
+| TC03 | [https://jira.upexgalaxy.com/browse/BK-140#icft=BK-140](https://jira.upexgalaxy.com/browse/BK-140#icft=BK-140) | GET /api/v1/workspaces returns only active memberships — DB cross-validation | Integration |
+| TC04 | [https://jira.upexgalaxy.com/browse/BK-141#icft=BK-141](https://jira.upexgalaxy.com/browse/BK-141#icft=BK-141) | GET /api/v1/workspaces does not return role field — BLOCKER confirmed | Negative (known gap) |
 
 ---
 
@@ -56,7 +56,7 @@
 
 - I-01: Cookie-session auth path returns correct workspace list
 
-### Blocked on BK-87 (UI dependency)
+### Blocked on [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) (UI dependency)
 
 - B-03: Loading state while API request is in flight
 - I-03: Navigation from Settings Hub to Workspaces section
@@ -65,12 +65,12 @@
 
 ## Open Questions for PO / Dev
 
-1. ***[******BLOCKER — AC 1]*** Will GET /api/v1/workspaces be extended to return a `role` field per workspace? Or a separate endpoint?
-2. ***[******BLOCKER — AC 1 + AC 2]*** What is the data contract for "active workspace"?
-3. ***[******DECISION — AC 2]*** Should role label be displayed for single-workspace view too?
-4. ***[******DECISION — AC 3]*** Should invited memberships show as "Pending" or be excluded entirely?
-5. ***[******DECISION — Empty state]*** What renders when user has zero active workspace memberships?
-6. ***[******DEPENDENCY]*** What is the confirmed route and navigation path for the Workspaces section (post BK-87)?
+1. ***[****BLOCKER — AC 1]*** Will GET /api/v1/workspaces be extended to return a `role` field per workspace? Or a separate endpoint?
+2. ***[****BLOCKER — AC 1 + AC 2]*** What is the data contract for "active workspace"?
+3. ***[****DECISION — AC 2]*** Should role label be displayed for single-workspace view too?
+4. ***[****DECISION — AC 3]*** Should invited memberships show as "Pending" or be excluded entirely?
+5. ***[****DECISION — Empty state]*** What renders when user has zero active workspace memberships?
+6. ***[****DEPENDENCY]*** What is the confirmed route and navigation path for the Workspaces section (post [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87))?
 
 ---
 _Synced from Jira by sync-jira-issues_

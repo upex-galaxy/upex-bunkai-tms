@@ -1,6 +1,6 @@
 # BK-21 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
 
 - Edit an ATC's title, steps, assertions, tags, layer, and its Module / Story / Acceptance Criteria anchors
 - Have every Test that chains the ATC reflect the change automatically — Tests reference the ATC, they do not copy it

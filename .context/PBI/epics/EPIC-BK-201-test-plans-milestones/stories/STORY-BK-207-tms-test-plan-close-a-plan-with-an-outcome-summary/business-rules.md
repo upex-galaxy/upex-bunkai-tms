@@ -1,6 +1,6 @@
 # BK-207 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
 
 - Closing is atomic: verdict, summary, closer identity, close time, and the progress snapshot are recorded together — never partially.
 - The verdict vocabulary is passed or failed, mirroring the final verdicts of Runs.

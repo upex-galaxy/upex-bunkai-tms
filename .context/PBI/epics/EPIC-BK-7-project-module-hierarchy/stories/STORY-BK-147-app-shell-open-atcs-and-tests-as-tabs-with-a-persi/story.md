@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Highest
-**Story Points:** -
+**Story Points:** 5
 
 ---
 
@@ -17,7 +17,7 @@ As a QA Engineer (Elena), I want the project explorer to stay visible while I op
 
 ## Context
 
-Surfaced during the BK-32 review as a design-level gap: detail views currently open as separate full pages that hide the explorer and the project toolbar, so the reviewer loses navigational context. This story materializes the documented design direction — the master design plan §3 (App Shell, flagged as the highest-priority gap) and divergence D6 (single-page workbench with tabs). It is a presentation-layer change only: it reuses the existing routed detail views (the ATC editor and the BK-32 Test detail view) as the content of workbench tabs, with no backend change.
+Surfaced during the [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32) review as a design-level gap: detail views currently open as separate full pages that hide the explorer and the project toolbar, so the reviewer loses navigational context. This story materializes the documented design direction — the master design plan §3 (App Shell, flagged as the highest-priority gap) and divergence D6 (single-page workbench with tabs). It is a presentation-layer change only: it reuses the existing routed detail views (the ATC editor and the [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32) Test detail view) as the content of workbench tabs, with no backend change.
 
 ---
 
@@ -25,7 +25,14 @@ Surfaced during the BK-32 review as a design-level gap: detail views currently o
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 

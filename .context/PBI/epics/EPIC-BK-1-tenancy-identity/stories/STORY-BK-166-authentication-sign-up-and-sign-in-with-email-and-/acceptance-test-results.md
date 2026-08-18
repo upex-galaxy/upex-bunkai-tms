@@ -1,13 +1,13 @@
 # BK-166 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-166)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-166)
 
-## BK-166 Test Results
+## [https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166](https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166) Test Results
 
-***Tested******:*** 2026-06-23
-***Environment******:*** Staging (`https://staging-upexbunkai.vercel.app`)
-***Tester******:*** QA — Stage 2/3
-***Result******:*** FAILED (0/42)
+***Tested:*** 2026-06-23
+***Environment:*** Staging (`https://staging-upexbunkai.vercel.app`)
+***Tester:*** QA — Stage 2/3
+***Result:*** FAILED (0/42)
 
 ### Summary
 
@@ -25,7 +25,7 @@ All 42 Stage-1 outlines closed `BLOCKED — smoke failure: feature not deployed`
 
 ### Bugs Found
 
-- ***BK-177*** (Critical) — Staging deployment missing email-first password sign-in UI and 2 of 4 BK-166 API routes
+- ***BK-177*** (Critical) — Staging deployment missing email-first password sign-in UI and 2 of 4 [https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166](https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166) API routes
 
 ### Observations
 

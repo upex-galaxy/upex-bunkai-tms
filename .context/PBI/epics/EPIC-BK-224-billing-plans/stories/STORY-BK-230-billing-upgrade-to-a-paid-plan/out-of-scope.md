@@ -1,6 +1,6 @@
 # BK-230 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-230)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-230)
 
 - Enterprise self-serve checkout — Enterprise stays sales-assisted (contact path only)
 - Purchase-order invoicing and contract negotiation

@@ -1,6 +1,6 @@
 # BK-231 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
 
 - Purchase-order invoicing and custom invoice formats (Enterprise, sales-assisted)
 - Tax edge-handling (VAT validation and regional tax logic) beyond what the standard checkout provides

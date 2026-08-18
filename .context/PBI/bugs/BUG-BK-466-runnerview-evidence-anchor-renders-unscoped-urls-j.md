@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-466](https://jira.upexgalaxy.com/browse/BK-466)
 **Priority:** High
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Severity:** Mayor
 **Error Type:** Security

@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
-## Acceptance Test Plan (ATP) — BK-15
+## Acceptance Test Plan (ATP) — [https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15](https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15)
 
 ***Full ATP in comments*** (field content limit exceeded — ATP split into 2 structured comments):
 
@@ -13,9 +13,9 @@
 
 ***Shift-Left Reference***: shift-left-refinement.md (2026-06-09)
 
-***Environment***: Staging — https://staging-upexbunkai.vercel.app
+***Environment***: Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/)
 
-***NEEDS******_******CONFIRMATION items***: TC-07, TC-09, TC-14, TC-15, TC-19, TC-26, TC-30 (blocked on BK-18), TC-34
+***NEEDS_CONFIRMATION items***: TC-07, TC-09, TC-14, TC-15, TC-19, TC-26, TC-30 (blocked on [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18)), TC-34
 
 ---
 _Synced from Jira by sync-jira-issues_

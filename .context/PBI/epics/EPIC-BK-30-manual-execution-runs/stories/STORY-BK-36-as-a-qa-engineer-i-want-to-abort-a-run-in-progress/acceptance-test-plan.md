@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
 
-# ATP DRAFT — Shift-Left: BK-36 Abort a run in progress
+# ATP DRAFT — Shift-Left: [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36) Abort a run in progress
 
 ***Status****: Refined — Awaiting PO Estimation | ****Refined****: 2026-06-23 | ****Modality***: Jira-native
 
@@ -15,15 +15,15 @@
 The `runs` and `run_steps` DB tables ***do not exist*** in the current schema (migrations 0001–0012). This story cannot be implemented or tested until:
 
 1. A DB migration creates `runs` + `run_steps`.
-2. BK-34 (Start a run) ships and creates `in_progress` run records.
+2. [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) (Start a run) ships and creates `in_progress` run records.
 
-***Hard dependency chain******:*** `runs` migration → BK-34 ships → BK-36 can be implemented.
+***Hard dependency chain:*** `runs` migration → [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) ships → [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36) can be implemented.
 
 ---
 
 ## Coverage Estimate (26 total outlines)
 
-| Type | Count |
+| ***Type**** | ****Count*** |
 | --- | --- |
 | Positive | 6 |
 | Negative | 6 |
@@ -58,10 +58,10 @@ The `runs` and `run_steps` DB tables ***do not exist*** in the current schema (m
 
 ## Technical Questions for Dev
 
-1. `runs`*** + ****`run_steps`**** migration PR*** — which PR, when does it land?
+1. `runs` ***+**** `run_steps` ****migration PR*** — which PR, when does it land?
 2. ***DB transaction*** — abort must wrap run status + N step updates atomically
 3. ***"Pending" definition*** — is it `run*steps.result = 'pending'` or missing `run*steps` row?
-4. `atcs.status`*** NOT modified on abort*** — confirm only `run_steps.result` is updated
+4. `atcs.status` ***NOT modified on abort*** — confirm only `run_steps.result` is updated
 5. ***Whitespace trimming*** — client, server, or DB level?
 6. ***Double-submit idempotency*** — first-wins (409) or no-op?
 
@@ -75,7 +75,7 @@ If Dev uses `atcs.status` instead of `run_steps.result` to mark steps as `skippe
 
 ## Story Quality
 
-| Dimension | Score |
+| ***Dimension**** | ****Score*** |
 | --- | --- |
 | Clarity | 3/5 |
 | Completeness | 2/5 |
@@ -83,7 +83,7 @@ If Dev uses `atcs.status` instead of `run_steps.result` to mark steps as `skippe
 | Feasibility | 1/5 — BLOCKED on migration |
 | Risk | HIGH |
 
-***Story is NOT ready for sprint entry*** until `runs` migration is committed and BK-34 is in a testable state.
+***Story is NOT ready for sprint entry*** until `runs` migration is committed and [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) is in a testable state.
 
 ---
 _Synced from Jira by sync-jira-issues_

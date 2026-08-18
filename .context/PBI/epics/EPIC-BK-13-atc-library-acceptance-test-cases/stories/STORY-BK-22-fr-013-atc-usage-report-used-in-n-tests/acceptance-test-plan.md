@@ -2,10 +2,10 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
 
-# BK-22 — Acceptance Test Plan (ATP)
+# [https://jira.upexgalaxy.com/browse/BK-22#icft=BK-22](https://jira.upexgalaxy.com/browse/BK-22#icft=BK-22) — Acceptance Test Plan (ATP)
 
-***Strategy******:*** API verification (read-only endpoint)
-***Shift-left ATP******:*** 15 outlines (refined by Andrés, 2 Jun)
+***Strategy:*** API verification (read-only endpoint)
+***Shift-left ATP:*** 15 outlines (refined by Andrés, 2 Jun)
 
 ## Test Cases
 

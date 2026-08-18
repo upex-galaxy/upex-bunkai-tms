@@ -1,6 +1,6 @@
 # BK-32 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
 
 ```
 Scenario: Open a populated Test and see every ATC expanded in chain order

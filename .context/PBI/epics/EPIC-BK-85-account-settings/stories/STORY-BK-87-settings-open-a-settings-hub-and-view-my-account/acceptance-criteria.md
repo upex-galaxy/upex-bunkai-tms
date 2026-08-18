@@ -1,6 +1,6 @@
 # BK-87 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-87)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-87)
 
 ## Phase 1 — Critical Analysis
 
@@ -9,7 +9,7 @@
 - ***Primary persona affected***: Full-Stack Developer (Sara Iglesias) — every signed-in user
 - ***Secondary personas (if any)***: Viewers (read-only), workspace owners (will need admin-level settings later)
 - ***Business value proposition***: Single predictable place to view identity, role, and workspace membership — reduces support burden from users who cannot find where they belong
-- ***KPI(s) influenced***: User autonomy (fewer "where is my account?" questions), workspace-switch adoption (enabler for BK-89, BK-90)
+- ***KPI(s) influenced***: User autonomy (fewer "where is my account?" questions), workspace-switch adoption (enabler for [https://jira.upexgalaxy.com/browse/BK-89#icft=BK-89](https://jira.upexgalaxy.com/browse/BK-89#icft=BK-89), [https://jira.upexgalaxy.com/browse/BK-90#icft=BK-90](https://jira.upexgalaxy.com/browse/BK-90#icft=BK-90))
 - ***User journey position***: Persistent chrome — accessible from any post-login page. Settings hub is the container; this Story delivers the Account section within it.
 
 ### Technical context
@@ -21,7 +21,7 @@
 
 ### Story complexity
 
-| Axis | Rating | Why |
+| ***Axis**** | ****Rating**** | ****Why*** |
 | --- | --- | --- |
 | Business logic | Low | Pure read-display of auth + membership. No mutations, no calculations. |
 | Integration | Low | Uses existing Supabase Auth + workspace_members query (already used in onboarding + projects pages) |
@@ -43,7 +43,7 @@
 
 ### Ambiguities
 
-| # | Location in Story | Question for PO/Dev | Impact on testing | Suggested clarification |
+| ***#**** | ****Location in Story**** | ****Question for PO/Dev**** | ****Impact on testing**** | ****Suggested clarification*** |
 | --- | --- | --- | --- | --- |
 | 1 | "Settings area with an Account section" | Is Account ONE section within a multi-section Settings hub (future sections: PATs, workspace), or is Account the entire MVP of Settings? | Test scope: if Settings is multi-section, need layout + nav between sections + empty states for not-yet-implemented sections | Clarify Settings hub roadmap: which sections ship with this Story vs later? |
 | 2 | "showing my identity" | What constitutes "identity" — email only? Name from `user_metadata`? Avatar? Created date? Last login? | Assertion complexity: each displayed field needs a test case | Specify identity fields: email (always), name (if available), role in current workspace |
@@ -52,17 +52,17 @@
 
 ### Gaps (missing info)
 
-| # | Type | Why critical | What to add | Risk if omitted |
+| ***#**** | ****Type**** | ****Why critical**** | ****What to add**** | ****Risk if omitted*** |
 | --- | --- | --- | --- | --- |
 | 1 | AC | Zero acceptance criteria defined — only a user story statement | Write ACs covering: view identity, view workspace list, access settings, sign out, empty state (no workspaces), error state (auth session expired) | Team cannot estimate or verify; feature ships with untested edge cases |
 | 2 | Technical detail | No specification for where Settings link lives in the UI | Define chrome location — Topbar user menu (gear icon or avatar dropdown) | Settings is unreachable; feature delivers no value |
 | 3 | Business rule | No mention of RLS/authorization — can any signed-in user access Settings? | Clarify: all authenticated users can view Settings. Workspace membership is NOT required (user may be mid-onboarding). | User with no workspace cannot see their identity — violates "one predictable place" |
-| 4 | AC | Sign-out action is mentioned only in sibling story BK-86 but BK-87 says "view my account" — does sign-out belong here or in BK-86? | Clarify boundary between BK-86 (Account - view identity, role, sign out) and BK-87 (Settings - open hub, view account). Is sign-out in both or only in BK-86? | Duplicate or missing sign-out implementation; BC test mismatch |
+| 4 | AC | Sign-out action is mentioned only in sibling story [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86) but [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) says "view my account" — does sign-out belong here or in BK-86? | Clarify boundary between [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86) (Account - view identity, role, sign out) and [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) (Settings - open hub, view account). Is sign-out in both or only in BK-86? | Duplicate or missing sign-out implementation; BC test mismatch |
 | 5 | AC | No mention of loading / error / empty states | Define loading skeleton, error toast (fetch failed), empty workspace list message | Flaky UX when data loads slowly or fails |
 
 ### Edge cases not in Story
 
-| # | Scenario | Expected behavior (best guess) | Criticality | Action |
+| ***#**** | ****Scenario**** | ****Expected behavior (best guess)**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | User signed in but has NO workspace membership (mid-onboarding) | Settings shows identity info + "You don't belong to any workspaces yet" message | High | Add to AC (NEEDS PO/DEV CONFIRMATION) |
 | 2 | User session expires while viewing Settings | Auto-redirect to `/login` OR show "Session expired — please sign in again" message | High | Add to AC (NEEDS PO/DEV CONFIRMATION) |
@@ -85,7 +85,7 @@ Issues:
 
 - "showing my identity" and "workspaces I belong to" have no field-level specification (which fields, what format)
 - No loading/error/empty state definitions
-- Sign-out boundary with BK-86 unclear
+- Sign-out boundary with [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86) unclear
 - No entry-point specification (how does user reach Settings?)
 - Once clarified: highly testable (read-only display, deterministic data from auth + workspace_members)
 
@@ -141,7 +141,7 @@ This story has zero original ACs. All scenarios below are inferred from the user
 
 ### Roles and permissions
 
-| Role | Can view Account section? | Can see identity? | Can see workspace list? |
+| ***Role**** | ****Can view Account section?**** | ****Can see identity?**** | ****Can see workspace list?*** |
 | --- | --- | --- | --- |
 | Owner | Yes | Yes | Yes (all workspaces) |
 | Admin | Yes | Yes | Yes |
@@ -154,7 +154,7 @@ This story has zero original ACs. All scenarios below are inferred from the user
 
 ### Coverage estimate
 
-| Type | Count | Notes |
+| ***Type**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 3 | Identity display, workspace list, settings navigation |
 | Negative | 3 | Unauthenticated access, session expiry, network failure |
@@ -192,7 +192,7 @@ This story has zero original ACs. All scenarios below are inferred from the user
 
 ## Phase 5 — Edge Cases (DRAFT)
 
-| # | Edge case | In original Story? | Criticality | Action |
+| ***#**** | ****Edge case**** | ****In original Story?**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | User with no workspace membership views Settings | No | High | Add to AC (PO confirm) |
 | 2 | Session expires while on Settings page | No | High | Add to AC (PO confirm) |
@@ -212,7 +212,7 @@ This story has zero original ACs. All scenarios below are inferred from the user
 ***Key findings***:
 
 - Zero acceptance criteria defined — only a user story statement
-- Boundary between BK-86 (Account — view/sign out) and BK-87 (Settings — open hub) is unclear around sign-out ownership
+- Boundary between [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86) (Account — view/sign out) and [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) (Settings — open hub) is unclear around sign-out ownership
 - No specification of Settings entry point in the global navigation/chrome
 - No loading, error, empty, or edge states described
 
@@ -232,18 +232,18 @@ This story has zero original ACs. All scenarios below are inferred from the user
 > These do not block PO but block implementation.
 
 1. ***How is the "current workspace" determined in the workspace list context?*** — The app currently uses single-workspace routing. Is there a `currentWorkspaceId` in the auth context or URL params? The workspace list in Settings needs to mark the current one.
-2. ***Does the workspace membership list need a new Supabase query or can it reuse existing patterns from ****`projects/page.tsx`****?*** — The projects page already queries `workspace_members` — can Settings reuse/extend this query, or does it need a separate endpoint?
-3. ***How should ****`user*metadata`**** be populated?*** — Supabase Auth `user*metadata` is empty by default. Is there a plan to let users set their display name, or is email always the primary identity label?
+2. ***Does the workspace membership list need a new Supabase query or can it reuse existing patterns from**** `projects/page.tsx`****?*** — The projects page already queries `workspace_members` — can Settings reuse/extend this query, or does it need a separate endpoint?
+3. ***How should**** `user*metadata` ****be populated?*** — Supabase Auth `user*metadata` is empty by default. Is there a plan to let users set their display name, or is email always the primary identity label?
 
 ---
 
 ## Suggested Story Improvements
 
-| # | Current state | Suggested change | Benefit |
+| ***#**** | ****Current state**** | ****Suggested change**** | ****Benefit*** |
 | --- | --- | --- | --- |
 | 1 | No ACs defined | Add 3 core ACs: view identity, list workspaces, access Settings from nav | Enables estimation, test design, and verification |
 | 2 | Settings entry point unspecified | Specify Topbar user menu (gear icon or avatar dropdown) as the entry point | Ensures feature is reachable and testable |
-| 3 | Sign-out ownership ambiguous | Clarify BK-86 delivers sign-out action; BK-87 shows identity only | Prevents duplicate work or gap |
+| 3 | Sign-out ownership ambiguous | Clarify [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86) delivers sign-out action; [https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) shows identity only | Prevents duplicate work or gap |
 | 4 | No error states | Define: session expired, network failure, empty workspace list | Covers real-world UX scenarios |
 
 ---
@@ -264,7 +264,7 @@ No data feasibility risks identified.
 
 - Confirm ACs with PO (critical questions above)
 - Finalize Settings entry point location in Topbar
-- Clarify BK-86/BK-87 boundary
+- Clarify [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86)/[https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) boundary
 
 ### During implementation
 
@@ -284,10 +284,10 @@ No data feasibility risks identified.
 
 ## Risks & mitigation
 
-| # | Risk | Likelihood | Impact | Mitigated by which outlines |
+| ***#**** | ****Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigated by which outlines*** |
 | --- | --- | --- | --- | --- |
 | 1 | Settings entry point late-bound (not decided until implementation starts) | Medium | High — feature unreachable | Positive #3 (navigation outline); requires PO answer before sprint |
-| 2 | BK-86/BK-87 overlap on sign-out | Medium | Medium — duplicate or missing feature | PO Critical Question #1; refined ACs clarify scope |
+| 2 | [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86)/[https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87](https://jira.upexgalaxy.com/browse/BK-87#icft=BK-87) overlap on sign-out | Medium | Medium — duplicate or missing feature | PO Critical Question #1; refined ACs clarify scope |
 | 3 | `user_metadata` empty for existing users | High | Low — email-only fallback works | Test-only edge case #6 |
 | 4 | Workspace list query does not scale (>50 workspaces) | Low | Low — MVP scale | Test-only edge case #3 |
 

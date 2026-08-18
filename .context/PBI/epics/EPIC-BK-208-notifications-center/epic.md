@@ -3,7 +3,7 @@
 **Jira Key:** [BK-208](https://jira.upexgalaxy.com/browse/BK-208)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 0
+**Total Story Points:** 29
 
 ---
 
@@ -15,18 +15,18 @@ Bunkai already records everything that matters — runs finish, bugs land on peo
 
 ## User Stories
 
-| # | Story | Persona |
+| ***#**** | ****Story**** | ****Persona*** |
 | --- | --- | --- |
-| BK-209 | Notifications | View an inbox of workspace events | Elena Vargas, Senior QA Engineer |
-| BK-211 | Notifications | Get notified when a run finishes or is aborted | Elena Vargas, Senior QA Engineer |
-| BK-212 | Notifications | Get notified on bug assignment and status changes | Sara Iglesias, Full-Stack Developer |
-| BK-213 | Notifications | Configure notification preferences per event type | Elena Vargas, Senior QA Engineer |
-| BK-214 | Notifications | Receive an email digest of unread notifications | Mateo Silva, QA Lead |
+| [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) | Notifications  | View an inbox of workspace events | Elena Vargas, Senior QA Engineer |
+| [https://jira.upexgalaxy.com/browse/BK-211#icft=BK-211](https://jira.upexgalaxy.com/browse/BK-211#icft=BK-211) | Notifications  | Get notified when a run finishes or is aborted | Elena Vargas, Senior QA Engineer |
+| [https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212](https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212) | Notifications  | Get notified on bug assignment and status changes | Sara Iglesias, Full-Stack Developer |
+| [https://jira.upexgalaxy.com/browse/BK-213#icft=BK-213](https://jira.upexgalaxy.com/browse/BK-213#icft=BK-213) | Notifications  | Configure notification preferences per event type | Elena Vargas, Senior QA Engineer |
+| [https://jira.upexgalaxy.com/browse/BK-214#icft=BK-214](https://jira.upexgalaxy.com/browse/BK-214#icft=BK-214) | Notifications  | Receive an email digest of unread notifications | Mateo Silva, QA Lead |
 
 ## Traceability
 
 - Consumes lifecycle events from epic ***BK-30 Manual Execution & Runs**** (final verdicts and aborts) and from epic ****BK-31 Bugs & Defect Heatmap*** (assignment and status changes).
-- Notification preferences live as a sub-view of the ***Settings hub delivered by BK-87*** (epic BK-85 Account & Settings).
+- Notification preferences live as a sub-view of the ***Settings hub delivered by BK-87*** (epic [https://jira.upexgalaxy.com/browse/BK-85#icft=BK-85](https://jira.upexgalaxy.com/browse/BK-85#icft=BK-85) Account & Settings).
 - Future ***Team Chat*** mentions are a declared event type from day one (visible but locked in preferences), so chat work later plugs into this inbox instead of building a second delivery surface.
 
 ---
@@ -35,10 +35,10 @@ Bunkai already records everything that matters — runs finish, bugs land on peo
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-209](https://jira.upexgalaxy.com/browse/BK-209) | Notifications | View an inbox of workspace events | - | Medium | Ready For Dev |
-| [BK-211](https://jira.upexgalaxy.com/browse/BK-211) | Notifications | Get notified when a run finishes or is aborted | - | Medium | Ready For Dev |
-| [BK-212](https://jira.upexgalaxy.com/browse/BK-212) | Notifications | Get notified on bug assignment and status changes | - | Medium | Ready For Dev |
-| [BK-213](https://jira.upexgalaxy.com/browse/BK-213) | Notifications | Configure notification preferences per event type | - | Medium | Ready For Dev |
+| [BK-209](https://jira.upexgalaxy.com/browse/BK-209) | Notifications | View an inbox of workspace events | 13 | Medium | Ready For QA |
+| [BK-211](https://jira.upexgalaxy.com/browse/BK-211) | Notifications | Get notified when a run finishes or is aborted | 5 | Medium | Ready For QA |
+| [BK-212](https://jira.upexgalaxy.com/browse/BK-212) | Notifications | Get notified on bug assignment and status changes | 8 | Medium | Ready For QA |
+| [BK-213](https://jira.upexgalaxy.com/browse/BK-213) | Notifications | Configure notification preferences per event type | 3 | Medium | Ready For QA |
 | [BK-214](https://jira.upexgalaxy.com/browse/BK-214) | Notifications | Receive an email digest of unread notifications | - | Medium | Backlog |
 
 ---

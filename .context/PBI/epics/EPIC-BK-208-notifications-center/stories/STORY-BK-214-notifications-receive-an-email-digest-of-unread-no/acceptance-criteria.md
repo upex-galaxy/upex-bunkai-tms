@@ -1,8 +1,8 @@
 # BK-214 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
 
-```gherkin
+```
 Scenario: Daily digest of unread notifications grouped by project
   Given Mateo has 5 unread notifications in the project "Bunkai Web" and 2 in the project "Mobile App"
   When the daily digest is sent
@@ -10,14 +10,14 @@ Scenario: Daily digest of unread notifications grouped by project
   And the items are grouped under "Bunkai Web" and "Mobile App" headings with per-project counts
 ```
 
-```gherkin
+```
 Scenario: No email when there is nothing unread
   Given Mateo has zero unread notifications when the daily digest time arrives
   When the digest cycle runs
   Then no digest email is sent to Mateo
 ```
 
-```gherkin
+```
 Scenario: Digest respects my channel preferences
   Given Mateo turned the email channel off for run lifecycle events
   And he has 3 unread run notifications and 1 unread bug notification
@@ -26,7 +26,7 @@ Scenario: Digest respects my channel preferences
   And the run items stay unread in his in-app inbox
 ```
 
-```gherkin
+```
 Scenario: One click from the email into the inbox
   Given Mateo received a digest email
   When he clicks the open-inbox action in the email
@@ -34,7 +34,7 @@ Scenario: One click from the email into the inbox
   And the summarized items are still there, still marked unread
 ```
 
-```gherkin
+```
 Scenario: Items read before the digest are excluded
   Given Mateo had 4 unread notifications this morning
   And he read all 4 in the app before the digest time

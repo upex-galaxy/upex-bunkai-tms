@@ -1,6 +1,6 @@
 # BK-15 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
 - Add one or more Acceptance Criteria to a User Story, each with a title and optional Markdown detail
 - Edit and remove individual Acceptance Criteria

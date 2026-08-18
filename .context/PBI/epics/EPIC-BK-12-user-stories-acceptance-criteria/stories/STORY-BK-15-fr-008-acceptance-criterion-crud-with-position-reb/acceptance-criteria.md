@@ -1,6 +1,6 @@
 # BK-15 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
 ```
 Scenario: Add an Acceptance Criterion to a User Story

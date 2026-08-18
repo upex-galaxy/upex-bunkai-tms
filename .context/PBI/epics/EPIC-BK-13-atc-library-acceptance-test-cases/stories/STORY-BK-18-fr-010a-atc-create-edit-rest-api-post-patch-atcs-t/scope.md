@@ -1,6 +1,6 @@
 # BK-18 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
 - Endpoint POST /atcs con validación completa del body (title, module*id, user*story_id, AC ids, layer, steps[], assertions[], tags[])
 - Endpoint PATCH /atcs/{id} con actualización parcial + reemplazo en cascada de steps/assertions

@@ -1,6 +1,6 @@
 # BK-2 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 - Email must be unique in auth.users (Supabase enforces).
 

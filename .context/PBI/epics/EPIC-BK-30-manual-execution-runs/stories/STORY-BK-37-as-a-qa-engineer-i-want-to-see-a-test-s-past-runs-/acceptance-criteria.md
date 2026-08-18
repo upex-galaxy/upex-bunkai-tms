@@ -1,6 +1,6 @@
 # BK-37 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
 
 ***Refined by Shift-Left QA — 2026-07-21.*** Original 5 scenarios exploded to 8 (1:N per outcome-enum + pagination boundary). All 3 inferred scenarios confirmed by PO — 2026-07-21 (see comments).
 

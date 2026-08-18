@@ -1,6 +1,6 @@
 # BK-27 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-27)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-27)
 
 ## Refined Acceptance Criteria
 

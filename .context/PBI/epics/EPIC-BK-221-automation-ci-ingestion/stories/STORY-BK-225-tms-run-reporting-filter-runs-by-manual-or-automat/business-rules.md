@@ -1,6 +1,6 @@
 # BK-225 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-225)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-225)
 
 - ***Mode is derived, never entered***: a run's execution mode comes from its executor — human executor means Manual; agent or CI executor means Automated. No one edits mode.
 - ***Mode is fixed at run creation*** and immutable afterwards, consistent with run-history immutability.

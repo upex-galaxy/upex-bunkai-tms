@@ -1,6 +1,6 @@
 # BK-33 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
 
 1. I open a Test such as "Checkout - Guest Purchase" and go to its tags.
 2. I type or pick tags — reserved suite tags like "smoke" or "regression" plus custom ones like "checkout-v2" — and save.

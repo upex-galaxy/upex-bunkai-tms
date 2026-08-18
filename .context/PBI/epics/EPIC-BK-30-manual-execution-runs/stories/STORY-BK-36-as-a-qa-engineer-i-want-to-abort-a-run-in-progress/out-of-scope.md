@@ -1,6 +1,6 @@
 # BK-36 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
 
 - Starting a run (covered by BK-019)
 - Reporting individual step results (covered by BK-020)

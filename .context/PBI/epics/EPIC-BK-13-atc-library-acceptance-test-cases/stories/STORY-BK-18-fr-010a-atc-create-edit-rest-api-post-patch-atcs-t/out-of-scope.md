@@ -1,6 +1,6 @@
 # BK-18 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
 - Formulario de UI para creación de ATC — Story FR-010b, ticket separado
 - Search y autocompletado de ATC — Story FR-011

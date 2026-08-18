@@ -1,6 +1,6 @@
 # BK-202 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
 
 - A Test Plan belongs to exactly one project and is visible to every workspace member of that project.
 - Plan names are unique per project, case-insensitive, compared after trimming spaces.

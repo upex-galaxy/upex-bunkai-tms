@@ -1,6 +1,6 @@
 # BK-15 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
 1. From a User Story, Elena chooses ***Add Acceptance Criterion***.
 2. She writes a title and optional detail and saves; it appears at the chosen spot in the ordered list.

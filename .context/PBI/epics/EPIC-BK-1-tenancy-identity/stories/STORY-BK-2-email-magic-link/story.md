@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -84,7 +85,7 @@ Full Gherkin in the comment + ATP field.
 - Magic-link TTL = 15 minutes (Supabase `auth.otp_exp = 900`) — enforced by GoTrue config, NOT codebase. Must be verified per environment before development starts.
 - First-sign-in default workspace = manual onboarding form (with pre-fill UX), NOT automatic background creation.
 - Open-redirect guard on `next` parameter retained (callback already validates root-relative path).
-- Pending-invite bypass branch belongs to BK-5, NOT BK-2. The onboarding-guard `eq('status', 'active')` already supports the future composition.
+- Pending-invite bypass branch belongs to [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5), NOT [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2). The onboarding-guard `eq('status', 'active')` already supports the future composition.
 - Resend-before-expiry: MVP keeps both tokens valid (Supabase default) + 60s UI cooldown to prevent accidental double-request. Security upgrade (invalidate-on-resend) deferred to a separate Story unless PO greenlights now.
 
 ### Open Questions for PO / Dev / Design
@@ -93,7 +94,7 @@ For PO (5):
 
 1. Confirm resend semantics: MVP both-valid + 60s cooldown? Or invalidate-on-resend now (+1-2 sprint days)?
 2. Workspace-name default pre-fill: acceptable? Or prefer empty field?
-3. UX scope cut: confirm IN BK-2 = 5.1 (cooldown) / 5.3 (error pages) / 5.5 (pre-fill) / 5.7 (a11y); deferred = 5.2 (provider deep-links) / 5.4 (email memory) / 5.6 (welcome toast) / 5.9 (branded email)?
+3. UX scope cut: confirm IN [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2) = 5.1 (cooldown) / 5.3 (error pages) / 5.5 (pre-fill) / 5.7 (a11y); deferred = 5.2 (provider deep-links) / 5.4 (email memory) / 5.6 (welcome toast) / 5.9 (branded email)?
 4. Confirm `/onboarding → /projects` chain replaces story's `/home`?
 5. Magic-link branded email template — separate ops Story?
 
@@ -102,14 +103,14 @@ For Dev (4):
 1. Exact Supabase v2 error codes for token-already-used vs token-expired (deterministic mapping needed before tests)?
 2. Where does `auth.otp_exp = 900` ops checklist live in repo (`supabase/config.toml`? `docs/ops-runbook.md`?)?
 3. Bootstrap RPC race on double-click: rely on `23505` UNIQUE-slug catch, or debounce client-side?
-4. `workspace_members.status` enum: what statuses exist beyond `active`? Affects BK-5 composition.
+4. `workspace_members.status` enum: what statuses exist beyond `active`? Affects [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5) composition.
 
 For Design (2):
 
 1. Mockups for contextual error banners on `/login` (`TOKEN*EXPIRED` / `TOKEN*USED` variants).
 2. Resend-cooldown UX spec (inline countdown? disabled button + timer? toast?).
 
-### Scope refinement — IN vs OUT of BK-2
+### Scope refinement — IN vs OUT of [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2)
 
 ***IN BK-2:***
 
@@ -123,8 +124,8 @@ For Design (2):
 
 ***OUT (delegated to other Stories):***
 
-- OAuth → BK-3
-- Invite acceptance + bypass branch → BK-5
+- OAuth → [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3)
+- Invite acceptance + bypass branch → [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5)
 - Workspace switching → [https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6)
 - UX 5.2, 5.4, 5.6, 5.9, branded email template → "Auth UX Polish" follow-up Story
 - Token-invalidation-on-resend → separate security Story (if PO greenlights)
@@ -139,7 +140,14 @@ For Design (2):
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 

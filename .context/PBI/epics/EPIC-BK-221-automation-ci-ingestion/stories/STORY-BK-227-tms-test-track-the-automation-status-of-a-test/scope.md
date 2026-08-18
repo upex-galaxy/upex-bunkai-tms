@@ -1,6 +1,6 @@
 # BK-227 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
 
 - Automation status on every Test with exactly three values: manual-only, automation candidate, automated
 - New Tests start as manual-only by default

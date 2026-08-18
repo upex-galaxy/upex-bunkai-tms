@@ -1,6 +1,6 @@
 # BK-214 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
 
 - Periodic (daily) email digest per user summarizing their unread notifications at send time.
 - Items grouped by project with per-project counts and one-line summaries.

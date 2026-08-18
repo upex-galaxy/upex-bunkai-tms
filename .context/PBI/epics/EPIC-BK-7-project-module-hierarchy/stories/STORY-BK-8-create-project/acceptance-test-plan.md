@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
 
-1. ATP DRAFT — BK-8: Create a Project inside a Workspace
+1. ATP DRAFT — [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8): Create a Project inside a Workspace
 
 Date: 2026-05-28 | Risk: HIGH (9/10) | Modality: Jira-native
 
@@ -56,7 +56,7 @@ Q2 RESOLVED: Path param = workspace UUID (confirmed by arch comment)
 Q3 BLOCKER: Auth mechanism — cookie session or PAT bearer? Which scope?
 Q4: Slug collision — 409 or auto-suffix?
 Q5: Unknown workspace — 404 or 403?
-Q6: UI form in BK-8 or Phase E?
+Q6: UI form in [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) or Phase E?
 Q7: Max slug length?
 Q8 NEW: Complete list of reserved slugs?
 

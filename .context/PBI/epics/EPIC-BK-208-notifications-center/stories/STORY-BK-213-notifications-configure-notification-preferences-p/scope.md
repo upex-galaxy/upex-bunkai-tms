@@ -1,6 +1,6 @@
 # BK-213 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-213)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-213)
 
 - Notifications sub-view inside the existing Settings hub navigation.
 - Preference grid: event types (run lifecycle, bug lifecycle, mentions) against channels (in-app, email) with per-cell toggles.

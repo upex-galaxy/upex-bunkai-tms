@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -23,7 +24,7 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ## Phase 5 - Edge Cases (DRAFT)
 
-| # | Edge case | In original Story? | Criticality | Action |
+| ***#**** | ****Edge case**** | ****In original Story?**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Same `created_at` for multiple rows causes unstable ordering | No | High | NEEDS PO/DEV CONFIRMATION - define tie-breaker. |
 | 2 | Cross-workspace rows accidentally appear | No | Critical | NEEDS PO/DEV CONFIRMATION - add security AC. |
@@ -42,7 +43,7 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ### Clarified Business Rules
 
-- BK-49 MVP remains read-side, paginated, newest-first, and workspace-scoped over existing activity_log rows.
+- [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) MVP remains read-side, paginated, newest-first, and workspace-scoped over existing activity_log rows.
 - No automatic realtime/polling is assumed for MVP unless PO/Dev explicitly changes scope.
 - Defect, Story/AC, import, and run-completion events remain out of MVP unless confirmed writers are added.
 - Confirmed silent cases should not create feed entries unless product changes writer behavior.
@@ -69,11 +70,11 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ## Technical Questions for Dev
 
-1. ***What read contract will power the feed******:****** API route, server action, or direct server component query?*** - Blocks API/UI test planning.
+1. ***What read contract will power the feed:**** ****API route, server action, or direct server component query?*** - Blocks API/UI test planning.
 2. ***What path/name will the read contract use if it is an API route?**** - Baseline found no `GET /api/v1/activity**` or workspace activity endpoint.
 3. ***What response shape will include actor, action, item, timestamp, cursor, and any links?*** - Blocks expected-results mapping.
 4. ***What page size and cursor format will be used?*** - Blocks pagination boundary tests.
-5. ***What stable tie-breaker should be used with ****`created_at desc`****?*** - Blocks duplicate/skip prevention tests.
+5. ***What stable tie-breaker should be used with**** `created_at desc`****?*** - Blocks duplicate/skip prevention tests.
 6. ***Will the feed resolve actor/item references live, join them server-side, or derive labels from payload only?*** - Blocks fallback and performance-risk testing.
 7. ***How should RLS/role failures map to UI errors?*** - Blocks auth/permission negative tests.
 8. ***Will a central event taxonomy file be added for labels and payload expectations?*** - Blocks objective label assertions.
@@ -87,6 +88,10 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -99,14 +104,18 @@ As a QA Lead, I want a live feed of what changed across the workspace — who cr
 
 ### Story (1)
 
-- [BK-260](https://jira.upexgalaxy.com/browse/BK-260): TMS-Home | Show a condensed recent activity feed _(Backlog)_
+- [BK-260](https://jira.upexgalaxy.com/browse/BK-260): TMS-Home | Show a condensed recent activity feed _(Ready For QA)_
+
+### Tech Debt (1)
+
+- [BK-263](https://jira.upexgalaxy.com/browse/BK-263): TECH-Security | Revoke direct authenticated SELECT on activity_log _(To Do)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/2/2026
 - **Reporter:** Ely
 - **Assignee:** José Andrés Lorca
 - **Labels:** implementation-plan-ready, new-feature, shift-left-2026-06-29, shift-left-reviewed

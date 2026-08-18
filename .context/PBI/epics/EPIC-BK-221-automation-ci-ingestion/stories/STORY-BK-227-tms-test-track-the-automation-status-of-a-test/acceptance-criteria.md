@@ -1,15 +1,15 @@
 # BK-227 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
 
-```gherkin
+```
 Scenario: Set the automation status of a test
   Given the Test "Checkout happy path" has the default status "Manual-only"
   When Elena sets its automation status to "Automation candidate"
   Then the test shows an "Automation candidate" badge in the test library and on the test view
 ```
 
-```gherkin
+```
 Scenario: Filter the test library by automation status
   Given the library contains 20 manual-only tests, 5 automation candidates, and 8 automated tests
   When Elena filters the library by status "Automated"
@@ -17,7 +17,7 @@ Scenario: Filter the test library by automation status
   And the library shows the count per status (20 / 5 / 8)
 ```
 
-```gherkin
+```
 Scenario: Status history is preserved
   Given the Test "Checkout happy path" was marked "Automation candidate" by Elena on 2026-07-01
   When Mateo changes its status to "Automated" on 2026-07-10
@@ -25,7 +25,7 @@ Scenario: Status history is preserved
   And earlier entries are never overwritten or lost
 ```
 
-```gherkin
+```
 Scenario: A viewer cannot change the status
   Given a teammate with the viewer role opens the Test "Checkout happy path"
   When they look at the automation status control

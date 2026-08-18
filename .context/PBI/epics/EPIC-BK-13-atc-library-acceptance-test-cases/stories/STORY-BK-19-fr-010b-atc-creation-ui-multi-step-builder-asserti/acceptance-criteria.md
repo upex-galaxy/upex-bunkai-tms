@@ -1,6 +1,6 @@
 # BK-19 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-19)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-19)
 
 ```
 Scenario: Create an ATC with steps and assertions through the builder

@@ -2,17 +2,17 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-14)
 
-# BK-14 — Acceptance Test Plan (ATP)
+# [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14) — Acceptance Test Plan (ATP)
 
-***Strategy******:*** Balanced (API depth + UI breadth)
-***Prior API automation******:*** 5 tests existing (all PASSED, 30 Jun)
+***Strategy:*** Balanced (API depth + UI breadth)
+***Prior API automation:*** 5 tests existing (all PASSED, 30 Jun)
 
 ## API Test Cases (8 new)
 
 ### API-01: Create with valid payload
 
 - POST /api/v1/modules/{moduleId}/user-stories
-- Body: `{ title: "Refund a paid order", description: "# Heading\n***bold***", external_id: "BK-42" }`
+- Body: {{{ title: "Refund a paid order", description: "# Heading\n****bold****", external_id: "BK-42" }}}
 - Expect: 201, response contains user*story with id, title, module*id, external_id normalized
 - Covers: AC1 (create), AC3 (Jira key link)
 

@@ -1,6 +1,6 @@
 # BK-218 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
 
 - Rich links for other entity types (User Stories, ACs, Modules, Bugs) — future iteration
 - Live-updating cards that refresh state in old messages while you watch — cards show current state on load; streaming updates are out

@@ -1,6 +1,6 @@
 # BK-231 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
 
 - Only the workspace owner can edit billing details or the payment method; admins can view the Billing section but not modify payment state.
 - Issued invoices are immutable; corrected details apply only to invoices issued afterward.

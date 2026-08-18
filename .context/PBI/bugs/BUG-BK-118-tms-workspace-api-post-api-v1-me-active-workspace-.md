@@ -4,6 +4,10 @@
 **Priority:** Low
 **Status:** Closed
 **Components:** Account & Settings, Project & Module Hierarchy
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -11,7 +15,7 @@
 
 ## Summary
 
-The fix for BK-83 added the required fields `{id, slug, name, role}` to the `POST /api/v1/me/active-workspace` response, but the legacy fields `ok: true` and `active*workspace*id` were not removed.
+The fix for [https://jira.upexgalaxy.com/browse/BK-83#icft=BK-83](https://jira.upexgalaxy.com/browse/BK-83#icft=BK-83) added the required fields `{id, slug, name, role`} to the `POST /api/v1/me/active-workspace` response, but the legacy fields `ok: true` and `active*workspace*id` were not removed.
 
 ---
 
@@ -59,20 +63,27 @@ Remove `ok: true` and `active*workspace*id` from the `jsonResponse` call.
 
 ## Related
 
-- BK-83 — original bug, now closed (fix verified on staging 2026-06-12)
+- [https://jira.upexgalaxy.com/browse/BK-83#icft=BK-83](https://jira.upexgalaxy.com/browse/BK-83#icft=BK-83) — original bug, now closed (fix verified on staging 2026-06-12)
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
 ## Related Issues
 
 - relates to: [BK-83](https://jira.upexgalaxy.com/browse/BK-83) - WorkspaceSwitch: API: POST /api/v1/me/active-workspace response missing workspace fields (id, slug, name, role)
+- relates to: [BK-262](https://jira.upexgalaxy.com/browse/BK-262) - PAT | Enforce capability scopes on every non-ATC route
 
 ---
 
 ## Metadata
 
 - **Created:** 6/11/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/2/2026
 - **Reporter:** Luis Eduardo Flores Villarroel
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** tech-debt

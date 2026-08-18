@@ -1,6 +1,6 @@
 # BK-5 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
 
 ```gherkin
 Scenario: Owner invites a member successfully

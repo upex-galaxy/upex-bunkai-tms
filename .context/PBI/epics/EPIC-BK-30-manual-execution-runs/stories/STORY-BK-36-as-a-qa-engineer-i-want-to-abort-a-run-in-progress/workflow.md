@@ -1,6 +1,6 @@
 # BK-36 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-36)
 
 1. Elena is part-way through a run when something blocks her — the environment is down, or test data is missing.
 2. She clicks "Abort Run" and types a short reason explaining why.

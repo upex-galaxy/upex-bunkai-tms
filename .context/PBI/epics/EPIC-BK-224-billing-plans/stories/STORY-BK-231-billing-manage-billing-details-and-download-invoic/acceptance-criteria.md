@@ -1,8 +1,8 @@
 # BK-231 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
 
-```gherkin
+```
 Scenario: Owner updates the company billing details
   Given Mateo is the owner of "Acme QA" on the Team plan
   When he edits the billing details to company "Acme Corp S.L.", billing email "finance@acme.example", and the Madrid office address
@@ -10,7 +10,7 @@ Scenario: Owner updates the company billing details
   And the next invoice issued carries the updated company details
 ```
 
-```gherkin
+```
 Scenario: Owner replaces the payment method
   Given the workspace has a card on file ending in 4242
   When Mateo replaces it with a new card and confirms
@@ -18,7 +18,7 @@ Scenario: Owner replaces the payment method
   And the next renewal charges the new card
 ```
 
-```gherkin
+```
 Scenario: Owner downloads a past invoice
   Given "Acme QA" has 6 invoices from six months of Team subscription
   When Mateo opens the invoice history and chooses the March invoice
@@ -26,7 +26,7 @@ Scenario: Owner downloads a past invoice
   And it carries the company billing details, the period, the seat count, and the amount
 ```
 
-```gherkin
+```
 Scenario: Failed renewal is visible and recoverable
   Given the renewal charge on the card on file was declined
   When Mateo opens the Billing section

@@ -4,6 +4,10 @@
 **Priority:** High
 **Status:** Closed
 **Components:** Project & Module Hierarchy
+**Severity:** Mayor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -15,7 +19,7 @@
 
 ## Environment
 
-Staging — https://staging-upexbunkai.vercel.app · API `/api/v1` · 2026-06-04 · cookie-session auth as `bunkai-staging-user`.
+Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/) · API `/api/v1` · 2026-06-04 · cookie-session auth as `bunkai-staging-user`.
 
 ## Severity / Type
 
@@ -24,8 +28,8 @@ Severity: ***Major**** · Error type: ****functional*** (latent routing-collisio
 ## Steps to Reproduce
 
 1. Authenticate as an active workspace member.
-2. `POST /api/v1/workspaces/{workspaceId}/projects` with body `{ "name": "api" }`.
-3. Repeat with `{ "name": "new" }`, `{ "name": "settings" }`, `{ "name": "admin" }`, `{ "name": "null" }`, `{ "name": "docs" }`.
+2. `POST /api/v1/workspaces/{workspaceId}/projects` with body {{{ "name": "api" }}}.
+3. Repeat with {{{ "name": "new" }}}, {{{ "name": "settings" }}}, {{{ "name": "admin" }}}, {{{ "name": "null" }}}, {{{ "name": "docs" }}}.
 
 ## Expected Result
 
@@ -46,6 +50,12 @@ Reserved slugs collide with Next.js route segments under `app/(app)/projects/[pr
 ## Evidence
 
 `.context/PBI/epics/EPIC-BK-7-project-module-hierarchy/stories/STORY-BK-8-create-a-project-inside-a-workspace/test-session-memory.md` (T09 row) + DB rows.
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

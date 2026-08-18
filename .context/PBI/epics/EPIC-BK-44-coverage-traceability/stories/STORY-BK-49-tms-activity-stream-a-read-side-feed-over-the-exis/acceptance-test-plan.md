@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-49)
 
-# Shift-Left Refinement: BK-49 - TMS Activity Stream
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) - TMS Activity Stream
 
 ***Status***: Refined - Awaiting PO Estimation
 ***Mode***: Shift-Left (pre-sprint)
@@ -27,7 +27,7 @@
 - ***Frontend***: No confirmed activity feed UI/page/component exists in the baseline.
 - ***Backend***: Existing write model is `public.activity_log`; no confirmed feed read route/API/server action exists.
 - ***Database***: `activity*log` stores `workspace*id`, `actor*user*id`, `entity*type`, `entity*id`, `action`, `payload`, and `created*at`; workspace-member RLS can read workspace rows; index exists on `(workspace*id, created_at desc)`.
-- ***External services***: Supabase Auth/Postgres/RLS are relevant because feed visibility depends on workspace membership. Jira, realtime, email, push, comments, reactions, and mentions are out of BK-49 scope unless separately added.
+- ***External services***: Supabase Auth/Postgres/RLS are relevant because feed visibility depends on workspace membership. Jira, realtime, email, push, comments, reactions, and mentions are out of [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) scope unless separately added.
 - ***Integration points specific to this Story***: Existing event writers for module, ATC, Test, tag, reorder, and Run start flows; future feed read model/UI contract.
 
 ### Evidence-confirmed facts
@@ -49,7 +49,7 @@
 
 ### Story complexity
 
-| Axis | Rating | Why |
+| ***Axis**** | ****Rating**** | ****Why*** |
 | --- | --- | --- |
 | Business logic | Medium | Feed is read-side, but expected labels, actor/item fallbacks, and silent cases need clear business decisions. |
 | Integration | High | Depends on existing event writers, workspace RLS, future read model/API/UI, and entity reference resolution. |
@@ -71,9 +71,9 @@
 
 ### Ambiguities
 
-| # | Location in Story | Question for PO/Dev | Impact on testing | Suggested clarification |
+| ***#**** | ****Location in Story**** | ****Question for PO/Dev**** | ****Impact on testing**** | ****Suggested clarification*** |
 | --- | --- | --- | --- | --- |
-| 1 | User story says "live feed" | Does "live" mean paginated read on open/scroll, polling, or realtime updates? | QA cannot decide whether to test automatic updates. | Confirm BK-49 MVP is read-side paginated only, with no automatic realtime. |
+| 1 | User story says "live feed" | Does "live" mean paginated read on open/scroll, polling, or realtime updates? | QA cannot decide whether to test automatic updates. | Confirm [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) MVP is read-side paginated only, with no automatic realtime. |
 | 2 | AC1 "opens the activity feed" | Where does the QA Lead open the feed: workspace page, project shell, global nav, dashboard, or another route? | UI entry-point tests cannot be scoped. | Specify target page/component and navigation entry. |
 | 3 | AC1 "each event" | Which event types are in MVP? | Expected-results mapping cannot be completed. | Use confirmed MVP set or explicitly list a subset. |
 | 4 | AC1 "who did it" | Should actor display use live profile, email, full name, fallback text, or stored snapshot? | Missing/deleted actor behavior is untestable. | Define actor label and fallback. |
@@ -85,7 +85,7 @@
 
 ### Gaps (missing info)
 
-| # | Type | Why critical | What to add | Risk if omitted |
+| ***#**** | ****Type**** | ****Why critical**** | ****What to add**** | ****Risk if omitted*** |
 | --- | --- | --- | --- | --- |
 | 1 | API/read model contract | No confirmed read route/server action exists. | Route/server action path, auth, response shape, pagination fields, error shape. | Implementation and QA invent different contracts. |
 | 2 | UI placement | No confirmed feed UI exists. | Page/component location and navigation affordance. | QA cannot verify AC1 entry point. |
@@ -98,7 +98,7 @@
 
 ### Edge cases not in Story
 
-| # | Scenario | Expected behavior (best guess) | Criticality | Action |
+| ***#**** | ****Scenario**** | ****Expected behavior (best guess)**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Two or more events share the same timestamp | Feed remains stable using confirmed tie-breaker. NEEDS PO/DEV CONFIRMATION | High | Add to AC or technical contract. |
 | 2 | Workspace has activity rows from silent cases expected by users, such as module create | Feed does not show non-persisted events. NEEDS PO/DEV CONFIRMATION | Medium | Explain in scope/taxonomy. |
@@ -217,7 +217,7 @@ Issues blocking full testability:
 
 ### New scenarios surfaced from Phase 2 edge cases - NEEDS PO/DEV CONFIRMATION
 
-#### Scenario E1: Should keep BK-49 read-side only with no automatic realtime behavior (Type: Edge, Priority: High)
+#### Scenario E1: Should keep [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) read-side only with no automatic realtime behavior (Type: Edge, Priority: High)
 
 - ***NEEDS PO/DEV CONFIRMATION***: Story says "live feed" but MVP baseline says no automatic realtime.
 - ***Given***: New activity is recorded after the user has opened the feed.
@@ -244,7 +244,7 @@ Issues blocking full testability:
 
 ### Coverage estimate
 
-| Type | Count | Notes |
+| ***Type**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 5 | Core feed load, event fields, MVP taxonomy, pagination, empty state. |
 | Negative | 5 | Cross-workspace isolation, silent cases, unsupported defect events, read failure, forbidden/unauthenticated access. |
@@ -253,7 +253,7 @@ Issues blocking full testability:
 | API | 4 | Future read route/server action contract, cursor, auth errors, response shape. |
 | ***Total**** | ****24*** | High count is driven by missing feed contract plus pagination and workspace isolation risk. |
 
-***Rationale***: BK-49 appears UI-simple, but the ACs depend on a missing read model, event taxonomy, stable pagination, and workspace visibility rules. Shift-left should keep outlines broad and named only until PO/Dev confirm the contract.
+***Rationale***: [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) appears UI-simple, but the ACs depend on a missing read model, event taxonomy, stable pagination, and workspace visibility rules. Shift-left should keep outlines broad and named only until PO/Dev confirm the contract.
 
 ### Outline list (NAMES ONLY - preconditions in 1 line, expected in 1 line)
 
@@ -300,7 +300,7 @@ Issues blocking full testability:
 
 ## Phase 5 - Edge Cases (DRAFT)
 
-| # | Edge case | In original Story? | Criticality | Action |
+| ***#**** | ****Edge case**** | ****In original Story?**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Same `created_at` for multiple rows causes unstable ordering | No | High | NEEDS PO/DEV CONFIRMATION - define tie-breaker. |
 | 2 | Cross-workspace rows accidentally appear | No | Critical | NEEDS PO/DEV CONFIRMATION - add security AC. |
@@ -353,11 +353,11 @@ Issues blocking full testability:
 
 ## Technical Questions for Dev
 
-1. ***What read contract will power the feed******:****** API route, server action, or direct server component query?*** - Blocks API/UI test planning.
+1. ***What read contract will power the feed:**** ****API route, server action, or direct server component query?*** - Blocks API/UI test planning.
 2. ***What path/name will the read contract use if it is an API route?**** - Baseline found no `GET /api/v1/activity**` or workspace activity endpoint.
 3. ***What response shape will include actor, action, item, timestamp, cursor, and any links?*** - Blocks expected-results mapping.
-4. ***What page size and cursor format will be used, and will the response expose an explicit next cursor plus ****`has*next*page`****/****`has_more`****?*** - Blocks pagination boundary tests and final-page automation.
-5. ***What stable tie-breaker should be used with ****`created_at desc`****?*** - Blocks duplicate/skip prevention tests.
+4. ***What page size and cursor format will be used, and will the response expose an explicit next cursor plus**** `has*next*page`****/****`has_more`****?*** - Blocks pagination boundary tests and final-page automation.
+5. ***What stable tie-breaker should be used with**** `created_at desc`****?*** - Blocks duplicate/skip prevention tests.
 6. ***Will the feed resolve actor/item references live, join them server-side, or derive labels from payload only?*** - Blocks fallback and performance-risk testing.
 7. ***How should RLS/role failures map to UI errors?*** - Blocks auth/permission negative tests.
 8. ***Will a single maintainable event taxonomy contract be added for labels and payload expectations, ideally as a TypeScript type/constant or equivalent source of truth?*** - Blocks objective label assertions and final QA Expected Results until centralized.
@@ -367,7 +367,7 @@ Issues blocking full testability:
 
 ## Suggested Story Improvements
 
-| # | Current state | Suggested change | Benefit |
+| ***#**** | ****Current state**** | ****Suggested change**** | ****Benefit*** |
 | --- | --- | --- | --- |
 | 1 | "live feed" | "paginated workspace activity feed" for MVP | Removes realtime ambiguity. |
 | 2 | "opens the activity feed" | Name exact UI location/navigation entry | Makes AC1 executable. |
@@ -393,7 +393,7 @@ Issues blocking full testability:
 
 ### Pre-implementation
 
-- Confirm BK-49 scope as read-side, paginated, newest-first over existing `activity_log`, no automatic realtime.
+- Confirm [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) scope as read-side, paginated, newest-first over existing `activity_log`, no automatic realtime.
 - Finalize route/server action/UI placement, page size, cursor, tie-breaker, role policy, and taxonomy-to-label mapping.
 - Mark defect, Story/AC, import, run-completion, comments, reactions, mentions, email, push, and new event generation out of MVP unless explicitly added.
 
@@ -413,7 +413,7 @@ Issues blocking full testability:
 
 ## Risks & mitigation
 
-| # | Risk | Likelihood | Impact | Mitigated by which outlines |
+| ***#**** | ****Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigated by which outlines*** |
 | --- | --- | --- | --- | --- |
 | 1 | Realtime is accidentally expected or implemented | Medium | High | Negative #3, Critical PO #1 |
 | 2 | Cross-workspace activity leaks | Medium | Critical | Negative #1, Integration #1, API #2 |

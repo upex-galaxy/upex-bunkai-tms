@@ -1,6 +1,6 @@
 # BK-3 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
 - OAuth provider: GitHub
 - OAuth provider: Google

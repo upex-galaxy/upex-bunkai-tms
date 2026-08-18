@@ -1,6 +1,6 @@
 # BK-227 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
 
 - Automatic status changes driven by run ingestion (e.g. auto-flipping to automated when an agent submits a run) — future refinement; status stays an explicit human decision
 - ROI scoring or automation-candidate recommendations — methodology tooling, out of this story

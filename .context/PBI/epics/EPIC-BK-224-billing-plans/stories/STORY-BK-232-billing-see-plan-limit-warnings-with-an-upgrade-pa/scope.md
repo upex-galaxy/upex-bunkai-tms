@@ -1,6 +1,6 @@
 # BK-232 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
 
 - Non-blocking, dismissible warning when a plan-limited resource crosses the approaching-limit threshold
 - Friendly block when a creation would exceed the plan limit: what happened, which limit, and the path forward

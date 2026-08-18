@@ -1,6 +1,6 @@
 # BK-39 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-39)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-39)
 
 1. Elena reaches the end of her execution and clicks "Finish Run".
 2. She chooses the final verdict — passed or failed.

@@ -1,6 +1,6 @@
 # BK-222 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
 
 - Single-call submission of a ***completed*** automated execution of an existing Test: per-step results (pass / fail / block), final verdict (passed / failed), total duration, target Project Environment, and evidence references (URLs)
 - Idempotency-key support: retrying the same submission returns the original run instead of creating a duplicate

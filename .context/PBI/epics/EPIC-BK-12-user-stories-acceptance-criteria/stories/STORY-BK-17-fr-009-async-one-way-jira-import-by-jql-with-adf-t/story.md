@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -46,7 +47,7 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 
 ### Refined Acceptance Criteria (Given/When/Then, specific data)
 
-***AC1 — Start + poll (fresh import)***: Given a member of "BK-9 QA Testing" on project "BK-9 Module Test Project" (`ae10a3bd-574f-4caf-8076-f19a8e80f5a6`) with no prior `import*jobs` history, when they `POST /api/v1/imports` with `{ project*id: "ae10a3bd-...", jql: "key in (BK-8, BK-9)" }`, then the API returns 202 `{ import*job*id, status: "queued" }` and polling shows `queued → running → completed` with `imported*count = 2`, `created*count = 2`, `updated_count = 0`, `errors = []`.
+***AC1 — Start + poll (fresh import)***: Given a member of "BK-9 QA Testing" on project "BK-9 Module Test Project" (`ae10a3bd-574f-4caf-8076-f19a8e80f5a6`) with no prior `import*jobs` history, when they `POST /api/v1/imports` with {{{ project*id: "ae10a3bd-...", jql: "key in ([https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8), [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9))" }}}, then the API returns 202 {{{ import*job*id, status: "queued" }}} and polling shows `queued → running → completed` with `imported*count = 2`, `created*count = 2`, `updated_count = 0`, `errors = []`.
 
 ***AC2 — Idempotent re-run (additive-only)***: Given the AC1 job has completed, when the same payload is submitted again, then the new job completes with `created*count = 0`, `updated*count = 2`, zero duplicate `user*stories` rows (DB-verified `external*id IN ('BK-8','BK-9')`), and module placement / status survive the re-import untouched (only `title`/`description` refresh).
 
@@ -54,17 +55,17 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 
 ***AC4 — Inbox fallback****: Given an issue carries no component (or an unmatched one), when the import completes, then an "Inbox" Module is auto-created at root level (`parent*module*id: null`) if absent, the story routes there, and ****no*** `errors[]` entry is recorded.
 
-***AC5 — Chunking (>100 issues)****: Given a JQL returns more than 100 issues (Jira Cloud page-size ceiling = 100), when the import runs, then the worker pages in ≤100-issue chunks and the final `imported_count` equals the total. ****Feasibility: UNKNOWN — depends on whether a >100-issue JQL is reachable on the real ****`upexgalaxy`**** corpus; to be probed live in Stage 2, may be DEFERRED if infeasible.***
+***AC5 — Chunking (>100 issues)****: Given a JQL returns more than 100 issues (Jira Cloud page-size ceiling = 100), when the import runs, then the worker pages in ≤100-issue chunks and the final `imported_count` equals the total. ****Feasibility: UNKNOWN — depends on whether a >100-issue JQL is reachable on the real**** `upexgalaxy` ****corpus; to be probed live in Stage 2, may be DEFERRED if infeasible.***
 
-***AC6 — Bad credentials****: Given `ATLASSIAN*URL`/`ATLASSIAN*EMAIL`/`ATLASSIAN*API*TOKEN` are missing or invalid, when the worker calls Jira `/search`, then `errors[].code = "jira_unauthorized"` and `status = "failed"` (confirmed at `client.ts:120-122,143-145` and `import-runner.ts:122-124`). ****Feasibility: LIKELY UNTESTABLE LIVE — staging creds are confirmed live & working (existing completed job ****`b4b8e74c-...`**** proves it); forcing this path requires disrupting shared staging config. Recommended verdict path: VERIFIED-BY-CODE-INSPECTION.***
+***AC6 — Bad credentials****: Given `ATLASSIAN*URL`/`ATLASSIAN*EMAIL`/`ATLASSIAN*API*TOKEN` are missing or invalid, when the worker calls Jira `/search`, then `errors[].code = "jira_unauthorized"` and `status = "failed"` (confirmed at `client.ts:120-122,143-145` and `import-runner.ts:122-124`). ****Feasibility: LIKELY UNTESTABLE LIVE — staging creds are confirmed live & working (existing completed job**** `b4b8e74c-...` ****proves it); forcing this path requires disrupting shared staging config. Recommended verdict path: VERIFIED-BY-CODE-INSPECTION.***
 
 ### Edge Cases Identified
 
-- ***Concurrent import 409*** (shift-left Gap #5, now CLOSED): a second `POST /api/v1/imports` for a project with an active (`queued`/`running`) job returns 409 `{ reason: "import*in*progress" }`, enforced at the DB layer by the partial UNIQUE index `import*jobs*one*active*per_project` (migration `0020`) — race-proof, not just app-level.
+- ***Concurrent import 409*** (shift-left Gap #5, now CLOSED): a second `POST /api/v1/imports` for a project with an active (`queued`/`running`) job returns 409 {{{ reason: "import*in*progress" }}}, enforced at the DB layer by the partial UNIQUE index `import*jobs*one*active*per_project` (migration `0020`) — race-proof, not just app-level.
 - ***Crash recovery / stuck-****`running` (shift-left Gap #1, partially open): re-run is the chosen crash-recovery strategy (Option A, confirmed by Ely) and is safe/idempotent. However `next*page*token` is persisted but never read back on restart, and ****no timeout sweeper exists**** — a worker that dies mid-job leaves the row stuck `running` forever, permanently blocking new imports on that project. This is a ****documented residual structural risk***, not exercisable live (cannot force a mid-job crash safely).
 - ***Unsupported ADF nodes degrade silently***: tables, panels, emoji/expand macros flatten to text content — nothing throws, no `errors[]` entry (graceful degradation, not "document what strips/converts/errors" per the original shift-left ask, but confirmed safe).
 - ***Custom-field ACs import as 0***: confirmed expected — Acceptance Criteria are extracted from the description body only; issues keeping ACs in a Jira custom field correctly import zero ACs.
-- ***429 backoff exhaustion surfaces as generic ***`job*failed`: the backoff schedule (1s/2s/4s/8s/16s, max 5 retries) matches the architect's spec, but exhaustion produces a generic `job*failed` code rather than a distinguishable rate-limit code — minor observability gap, not an AC violation.
+- ***429 backoff exhaustion surfaces as generic*** `job*failed`: the backoff schedule (1s/2s/4s/8s/16s, max 5 retries) matches the architect's spec, but exhaustion produces a generic `job*failed` code rather than a distinguishable rate-limit code — minor observability gap, not an AC violation.
 
 ### Clarified Business Rules
 
@@ -77,7 +78,20 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 
 ---
 
-**QA Acceptance Test Plan posted as a 4-part comment series (jira-native modality — **`Acceptance Test Plan (ATP)`** custom field not configured on this instance). Test Results placeholder posted; full ATR to follow at Stage 3.**
+**QA Acceptance Test Plan posted as a 4-part comment series (jira-native modality —** `Acceptance Test Plan (ATP)` **custom field not configured on this instance). Test Results placeholder posted; full ATR to follow at Stage 3.**
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
@@ -86,21 +100,21 @@ The user opens Project settings, picks ***Import from Jira***, enters a JQL, and
 ### Tests (6)
 
 - [BK-169](https://jira.upexgalaxy.com/browse/BK-169): BK-17: TC01: Validate fresh Jira import completes with accurate counts and correct API envelope _(Candidate)_
+- [BK-173](https://jira.upexgalaxy.com/browse/BK-173): BK-17: TC05: Validate input validation rejects invalid JQL and project_id _(Candidate)_
 - [BK-170](https://jira.upexgalaxy.com/browse/BK-170): BK-17: TC02: Validate idempotent re-import updates without duplicating stories _(Candidate)_
 - [BK-171](https://jira.upexgalaxy.com/browse/BK-171): BK-17: TC03: Validate concurrent import returns 409 import_in_progress _(Candidate)_
 - [BK-172](https://jira.upexgalaxy.com/browse/BK-172): BK-17: TC04: Validate chunked pagination across >100 issues with accurate final count _(Candidate)_
-- [BK-173](https://jira.upexgalaxy.com/browse/BK-173): BK-17: TC05: Validate input validation rejects invalid JQL and project_id _(Candidate)_
 - [BK-174](https://jira.upexgalaxy.com/browse/BK-174): BK-17: TC06: Validate RLS non-disclosure on non-member and inaccessible resources _(MANUAL)_
 
 ### Bugs (2)
 
-- [BK-84](https://jira.upexgalaxy.com/browse/BK-84): [Staging] PAT bearer auth rejected on member/owned-resource routes (Imports, Projects, Modules, Tokens) — requireAuth middleware regression _(Closed)_
 - [BK-142](https://jira.upexgalaxy.com/browse/BK-142): [BK-17] Staging Jira import fails instantly with jira_unauthorized — ATLASSIAN_* credentials not configured in staging deployment _(Closed)_
+- [BK-84](https://jira.upexgalaxy.com/browse/BK-84): [Staging] PAT bearer auth rejected on member/owned-resource routes (Imports, Projects, Modules, Tokens) — requireAuth middleware regression _(Closed)_
 
 ### Storys (2)
 
-- [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(QA Approved)_
 - [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For Release)_
+- [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(QA Approved)_
 
 ---
 

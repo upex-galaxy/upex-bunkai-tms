@@ -1,6 +1,6 @@
 # BK-6 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
 
 - User MUST be an active member of the target workspace (status = "active"); suspended / removed members get 403.
 

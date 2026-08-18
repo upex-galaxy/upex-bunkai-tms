@@ -1,8 +1,8 @@
 # BK-233 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
 
-```gherkin
+```
 Scenario: Downgrade preview spells out over-limit consequences
   Given "Acme QA" is on the Team plan with 12 projects, and the Free plan allows 10
   When Mateo starts a downgrade to the Free plan
@@ -11,7 +11,7 @@ Scenario: Downgrade preview spells out over-limit consequences
   And the preview shows which resources are affected
 ```
 
-```gherkin
+```
 Scenario: Downgrading while over the target plan's limits keeps data safe
   Given Mateo confirms the downgrade from Team to Free with 12 projects
   Then the workspace is on the Free plan
@@ -19,7 +19,7 @@ Scenario: Downgrading while over the target plan's limits keeps data safe
   And read-only projects remain fully viewable, including their run history
 ```
 
-```gherkin
+```
 Scenario: Cancelling keeps paid access until the period ends
   Given "Acme QA" is on the Team plan, paid until March 31
   When Mateo cancels the subscription on March 10
@@ -28,7 +28,7 @@ Scenario: Cancelling keeps paid access until the period ends
   And on April 1 the workspace is on the Free plan with over-limit resources read-only
 ```
 
-```gherkin
+```
 Scenario: Resubscribing before the period ends reverts the cancellation
   Given Mateo cancelled on March 10 with paid access until March 31
   When he resubscribes to the Team plan on March 20
@@ -36,7 +36,7 @@ Scenario: Resubscribing before the period ends reverts the cancellation
   And no second charge is made for the already-paid period
 ```
 
-```gherkin
+```
 Scenario: Only the owner can downgrade or cancel
   Given an admin of "Acme QA" who is not the workspace owner
   When the admin opens the Billing section

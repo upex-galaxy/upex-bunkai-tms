@@ -3,7 +3,7 @@
 **Jira Key:** [BK-266](https://jira.upexgalaxy.com/browse/BK-266)
 **Epic:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7) (Project & Module Hierarchy)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** High
 **Story Points:** -
 

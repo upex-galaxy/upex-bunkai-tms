@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-86)
 
-# Acceptance Test Plan (ATP) — BK-86
+# Acceptance Test Plan (ATP) — [https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86](https://jira.upexgalaxy.com/browse/BK-86#icft=BK-86)
 
 > Story: Account | View my identity, role, and sign out
 Sprint: In-Sprint QA | Env: Staging | Modality: jira-native
@@ -10,7 +10,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ## Test Analysis
 
-| Axis | Rating | Rationale |
+| ***Axis**** | ****Rating**** | ****Rationale*** |
 | --- | --- | --- |
 | Business logic | Medium | Identity display + session lifecycle + RBAC role resolution |
 | Integration | Medium | Supabase auth + `/api/v1/me` + workspace_members join |
@@ -23,7 +23,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 > ***ERROR:*** Pre-execution code exploration found significant gaps between ACs and current implementation. These will be verified in Stage 2 — TCs are authored against the SPEC, not the code.
 
-| Gap | Impact | ACs affected |
+| ***Gap**** | ****Impact**** | ****ACs affected*** |
 | --- | --- | --- |
 | `/api/v1/me` does NOT return `role` field | Role cannot be displayed in UI | Sc1, ScA, ScB |
 | UI shows "Signed in" hardcoded, not workspace role | Role display is absent | Sc1, ScA |
@@ -35,7 +35,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ## Data Feasibility
 
-| Precondition | Pattern | Notes |
+| ***Precondition**** | ****Pattern**** | ****Notes*** |
 | --- | --- | --- |
 | User with admin role in workspace | Discover | Staging test user (from `.env`) |
 | User with viewer role | Generate | Need second workspace membership or test account |
@@ -45,7 +45,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ## Technique Annotations
 
-| AC / Scenario | Techniques applied |
+| ***AC / Scenario**** | ****Techniques applied*** |
 | --- | --- |
 | Sc1 (identity visible) | EP (email formats), BVA (local-part length), Pairwise (page × role) |
 | Sc2 (sign-out) | State-Transition (session lifecycle), EP (post-signout access methods) |
@@ -61,7 +61,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ### Group 1 — Identity and Role Display
 
-***TC-01******:****** Should display account affordance with user initials on every authenticated page***
+***TC-01:**** ****Should display account affordance with user initials on every authenticated page***
 
 - Related: Scenario 1
 - Type: Positive | Priority: P0 | Level: UI
@@ -70,7 +70,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Expected: Initials chip visible on every `(app)` route, derived from email local-part
 - Parametrization:
 
-| Email | Expected Initial | Page |
+| ***Email**** | ****Expected Initial**** | ****Page*** |
 | --- | --- | --- |
 | elena@bunkai.io | E | /projects |
 | elena@bunkai.io | E | /onboarding |
@@ -78,7 +78,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 | 123test@bunkai.io | 1 | /projects |
 | a@b.co | A | /projects |
 
-***TC-02******:****** Should reveal exact email and active-workspace role label when affordance is opened***
+***TC-02:**** ****Should reveal exact email and active-workspace role label when affordance is opened***
 
 - Related: Scenario 1
 - Type: Positive | Priority: P0 | Level: UI + API
@@ -87,14 +87,14 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Expected: Email exact match, role = capitalized enum value
 - Parametrization (EP on role values):
 
-| Role (DB) | Expected Label | Workspace |
+| ***Role (DB)**** | ****Expected Label**** | ****Workspace*** |
 | --- | --- | --- |
 | admin | Admin | upex-team |
 | owner | Owner | upex-team |
 | member | Member | upex-team |
 | viewer | Viewer | qa-guild |
 
-***TC-03******:****** Should never display another user's identity or role***
+***TC-03:**** ****Should never display another user's identity or role***
 
 - Related: Scenario 1 (multi-tenant isolation)
 - Type: Positive (isolation guard) | Priority: P1 | Level: UI
@@ -102,7 +102,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Steps:
 - Expected: Complete session isolation — no cross-user data leakage
 
-***TC-04******:****** Should update displayed role immediately after switching active workspace***
+***TC-04:**** ****Should update displayed role immediately after switching active workspace***
 
 - Related: New Scenario A
 - Type: Integration | Priority: P1 | Level: UI + API
@@ -111,12 +111,12 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Expected: Role updates synchronously with workspace switch
 - Parametrization (Decision Table: source → target):
 
-| From Workspace | From Role | To Workspace | To Role | Expected Label |
+| ***From Workspace**** | ****From Role**** | ****To Workspace**** | ****To Role**** | ****Expected Label*** |
 | --- | --- | --- | --- | --- |
 | upex-team | admin | qa-guild | viewer | Viewer |
 | qa-guild | viewer | upex-team | admin | Admin |
 
-***TC-05******:****** Should show empty-state placeholder for role when user has no active workspace***
+***TC-05:**** ****Should show empty-state placeholder for role when user has no active workspace***
 
 - Related: New Scenario B
 - Type: Boundary | Priority: P1 | Level: UI
@@ -126,7 +126,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ### Group 2 — Sign-out Effect
 
-***TC-06******:****** Should invalidate session server-side, redirect to sign-in, and block back-navigation***
+***TC-06:**** ****Should invalidate session server-side, redirect to sign-in, and block back-navigation***
 
 - Related: Scenario 2
 - Type: Positive | Priority: P0 | Level: E2E (UI + API)
@@ -135,14 +135,14 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Expected: Full session invalidation — client-side redirect + server-side cookie rejection
 - Parametrization (EP on post-signout access methods):
 
-| Access Method | Expected |
+| ***Access Method**** | ****Expected*** |
 | --- | --- |
 | Browser back button | Redirect to /login |
 | Direct URL entry (/projects) | Redirect to /login |
 | Direct URL entry (/workspaces/[id]) | Redirect to /login |
 | API call with old session cookie | 401 Unauthorized |
 
-***TC-07******:****** Should surface visible error and preserve session when sign-out fails***
+***TC-07:**** ****Should surface visible error and preserve session when sign-out fails***
 
 - Related: New Scenario C
 - Type: Negative | Priority: P1 | Level: UI
@@ -150,7 +150,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Steps:
 - Expected: Visible error, no silent failure, no partial state
 
-***TC-08******:****** Should terminate session in all open tabs when signed out from one***
+***TC-08:**** ****Should terminate session in all open tabs when signed out from one***
 
 - Related: New Scenario D
 - Type: Integration | Priority: P1 | Level: E2E
@@ -158,7 +158,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Steps:
 - Expected: Cross-tab session termination — no orphaned live sessions
 
-***TC-09******:****** Should not duplicate sign-out flow on rapid repeated triggers***
+***TC-09:**** ****Should not duplicate sign-out flow on rapid repeated triggers***
 
 - Related: Error Guessing (EC-4)
 - Type: Edge | Priority: P2 | Level: UI
@@ -168,7 +168,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ### Group 3 — Account Menu Accessibility
 
-***TC-10******:****** Should open via keyboard, close on Escape, and return focus to affordance***
+***TC-10:**** ****Should open via keyboard, close on Escape, and return focus to affordance***
 
 - Related: Scenario 3
 - Type: Positive | Priority: P1 | Level: UI
@@ -176,7 +176,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Steps:
 - Expected: Full keyboard open/close cycle with focus management
 
-***TC-11******:****** Should trap keyboard focus within open menu (no escape into background)***
+***TC-11:**** ****Should trap keyboard focus within open menu (no escape into background)***
 
 - Related: EC-6
 - Type: Integration | Priority: P1 | Level: UI
@@ -184,7 +184,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 - Steps:
 - Expected: Focus trap — Tab/Shift+Tab cycle within menu boundaries
 
-***TC-12******:****** Should expose correct ARIA semantics to assistive technology***
+***TC-12:**** ****Should expose correct ARIA semantics to assistive technology***
 
 - Related: EC-7
 - Type: Integration | Priority: P1 | Level: UI (a11y inspection)
@@ -196,7 +196,7 @@ Shift-Left: 2026-06-08 (short-circuit — Phases 1-3 done pre-sprint)
 
 ## Coverage Estimate
 
-| Type | Count | Outlines |
+| ***Type**** | ****Count**** | ****Outlines*** |
 | --- | --- | --- |
 | Positive | 5 | TC-01, TC-02, TC-06, TC-10 + TC-03 (isolation guard) |
 | Negative | 1 | TC-07 |
@@ -224,7 +224,7 @@ Coverage = AC-conformance (floor: 7/7 scenarios covered) + risk-beyond-AC (bound
 
 ## Test Data Strategy
 
-| Data | Source | Generation |
+| ***Data**** | ****Source**** | ****Generation*** |
 | --- | --- | --- |
 | Primary test user (admin) | `.env` STAGING*USER*EMAIL/PASSWORD | Discover |
 | Role enum values | DB `workspace_members.role` | Discover (viewer, member, admin, owner) |

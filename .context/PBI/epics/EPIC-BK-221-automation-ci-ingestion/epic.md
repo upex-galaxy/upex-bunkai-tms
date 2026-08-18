@@ -21,18 +21,18 @@ Close the loop between automated test execution and the TMS. Today every Run in 
 
 ## Stories
 
-| Key | Story | Persona |
+| ***Key**** | ****Story**** | ****Persona*** |
 | --- | --- | --- |
-| BK-222 | TMS-Automation API | Submit an automated run with step results | Karim (AI Test Agent) |
-| BK-223 | TMS-Automation API | Stream step results during an automated run | Karim (AI Test Agent) |
-| BK-225 | TMS-Run Reporting | Filter runs by manual or automated execution mode | Elena Vargas |
-| BK-226 | CI Integration | Upload a CI results file to create a run | Sara Iglesias |
-| BK-227 | TMS-Test | Track the automation status of a test | Elena Vargas |
-| BK-228 | CI Integration | See CI-triggered runs linked to a commit and branch | Sara Iglesias |
+| [https://jira.upexgalaxy.com/browse/BK-222#icft=BK-222](https://jira.upexgalaxy.com/browse/BK-222#icft=BK-222) | TMS-Automation API  | Submit an automated run with step results | Karim (AI Test Agent) |
+| [https://jira.upexgalaxy.com/browse/BK-223#icft=BK-223](https://jira.upexgalaxy.com/browse/BK-223#icft=BK-223) | TMS-Automation API  | Stream step results during an automated run | Karim (AI Test Agent) |
+| [https://jira.upexgalaxy.com/browse/BK-225#icft=BK-225](https://jira.upexgalaxy.com/browse/BK-225#icft=BK-225) | TMS-Run Reporting  | Filter runs by manual or automated execution mode | Elena Vargas |
+| [https://jira.upexgalaxy.com/browse/BK-226#icft=BK-226](https://jira.upexgalaxy.com/browse/BK-226#icft=BK-226) | CI Integration  | Upload a CI results file to create a run | Sara Iglesias |
+| [https://jira.upexgalaxy.com/browse/BK-227#icft=BK-227](https://jira.upexgalaxy.com/browse/BK-227#icft=BK-227) | TMS-Test  | Track the automation status of a test | Elena Vargas |
+| [https://jira.upexgalaxy.com/browse/BK-228#icft=BK-228](https://jira.upexgalaxy.com/browse/BK-228#icft=BK-228) | CI Integration  | See CI-triggered runs linked to a commit and branch | Sara Iglesias |
 
 ## Traceability
 
-Builds directly on ***BK-30 Manual Execution & Runs**** (run lifecycle: start, per-step pass/fail/block, finish with passed/failed verdict, abort), ****BK-24 Tests**** (the executable chains of ATCs that runs execute), and ****BK-85 Account & Settings / BK-88 Personal Access Tokens*** (the authentication surface for agents and pipelines). Execution-mode reporting extends the runs views established by BK-37/BK-38.
+Builds directly on ***BK-30 Manual Execution & Runs**** (run lifecycle: start, per-step pass/fail/block, finish with passed/failed verdict, abort), ****BK-24 Tests**** (the executable chains of ATCs that runs execute), and ****BK-85 Account & Settings / BK-88 Personal Access Tokens*** (the authentication surface for agents and pipelines). Execution-mode reporting extends the runs views established by [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37)/[https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38).
 
 ---
 

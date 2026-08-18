@@ -1,6 +1,6 @@
 # BK-228 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-228)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-228)
 
 - Two-way repository-host integration (PR status checks, PR comments, check runs) — future Integrations work
 - Fetching commit details (message, author, diff) from the repository host — Bunkai stores and links the reference, it does not call out

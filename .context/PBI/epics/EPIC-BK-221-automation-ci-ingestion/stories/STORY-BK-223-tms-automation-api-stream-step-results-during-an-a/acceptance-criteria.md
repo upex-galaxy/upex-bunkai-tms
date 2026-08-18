@@ -1,8 +1,8 @@
 # BK-223 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-223)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-223)
 
-```gherkin
+```
 Scenario: Start a run and stream step results
   Given Karim holds a valid workspace Personal Access Token with the member role
   And the Test "Checkout happy path" exists with 4 chained ATC steps
@@ -12,14 +12,14 @@ Scenario: Start a run and stream step results
   And the run remains in progress until Karim finishes it
 ```
 
-```gherkin
+```
 Scenario: A human watches progress live
   Given Elena has the run detail open in her browser while Karim's run is in progress
   When Karim reports step 2 as "fail"
   Then Elena sees step 2 flip to failed within a few seconds without reloading the page
 ```
 
-```gherkin
+```
 Scenario: Finish the streamed run with a verdict
   Given Karim has reported a result for every step of the run
   When Karim finishes the run with verdict "failed" and total duration 145 seconds
@@ -27,7 +27,7 @@ Scenario: Finish the streamed run with a verdict
   And it appears in the project runs view like any other finished run
 ```
 
-```gherkin
+```
 Scenario: Retried step report is idempotent
   Given Karim reported step 3 as "fail" with idempotency key "step3-attempt-1"
   When the connection drops and Karim retries the same report with the same key
@@ -35,7 +35,7 @@ Scenario: Retried step report is idempotent
   And the retry response matches the original response
 ```
 
-```gherkin
+```
 Scenario: A crashed runner leaves an aborted run, not a zombie
   Given Karim's runner crashes after reporting 2 of 4 steps
   When Karim (or Elena from the run view) aborts the run with reason "runner crashed"

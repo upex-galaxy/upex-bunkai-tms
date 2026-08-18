@@ -23,20 +23,33 @@ This story activates when its dependencies are live: it extends the project runs
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Storys (3)
 
 - [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
 - [BK-227](https://jira.upexgalaxy.com/browse/BK-227): TMS-Test | Track the automation status of a test _(Backlog)_
-- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Ready For QA)_
+- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(QA Approved)_
 
 ---
 
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/17/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 

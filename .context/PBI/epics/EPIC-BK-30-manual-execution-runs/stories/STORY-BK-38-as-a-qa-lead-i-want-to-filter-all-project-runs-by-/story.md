@@ -3,9 +3,10 @@
 **Jira Key:** [BK-38](https://jira.upexgalaxy.com/browse/BK-38)
 **Epic:** [BK-30](https://jira.upexgalaxy.com/browse/BK-30) (Manual Execution & Runs)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 3
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -13,21 +14,19 @@
 
 # TMS-Run Reporting | Filter project runs with pass/fail totals
 
+ ***Shift-Left Reviewed*** — expert panel applied · ready for estimation
+
+> ***SUCCESS:**** This Story has been refined through the shift-left workflow with the expert-panel decisions below applied. Expert story point recommendation: ****3 points***.
+
 ## Source
 
-Source spec: BK-023
-Parent/module: BK-70 Test Repository / Run Reporting
-Dependencies: BK-34 Start manual run; BK-39 final run verdict semantics
+- ***Source spec******:*** [BK-023](https://jira.upexgalaxy.com/browse/BK-023)
+- ***Parent/module******:*** [BK-70](https://jira.upexgalaxy.com/browse/BK-70) — Test Repository / Run Reporting
+- ***Dependencies******:*** [BK-34](https://jira.upexgalaxy.com/browse/BK-34) Start manual run; [BK-39](https://jira.upexgalaxy.com/browse/BK-39) final run verdict semantics
 
 ## User Story
 
 As a QA Lead, I want to filter and review all Runs across the Project by date range, module, status, and executor type, with pass and fail totals, so that I can answer "what did we execute and how did it go?" in under a minute.
-
-## Shift-Left Review Status
-
-This Story has been reviewed through the shift-left workflow and is ready for estimation with the expert-panel decisions below applied.
-
-Expert story point recommendation: 3 points.
 
 ## Key Contract Decisions
 
@@ -37,8 +36,8 @@ Expert story point recommendation: 3 points.
 | Reporting endpoint | `GET /api/v1/projects/{projectId}/runs/report` returns rows, totals, applied filters, and pagination from the same query contract. |
 | Date filter | Filter by `started_at`. Date range is inclusive for start and end dates. Store timestamps in UTC; interpret date inputs in the Project timezone. |
 | Module filter | Each Run stores a `module_id` snapshot at creation time for reporting. This avoids ambiguous reports when a Test chain spans multiple ATC modules or changes later. |
-| Status / outcome model | Run status supports at least `running`, `passed`, `failed`, `blocked`, `skipped`, and `aborted`. Pass/fail totals count only final `passed` and `failed` Runs. |
-| Executor type | Executor type enum is `human`, `agent`, `ci`, aligned with BK-34. |
+| Status / outcome model | Run status supports at least `running`, `passed`, `failed`, `blocked`, `skipped`, and `aborted`. Pass/fail totals count only final passed and failed Runs. |
+| Executor type | Executor type enum is `human`, `agent`, `ci`, aligned with [BK-34](https://jira.upexgalaxy.com/browse/BK-34). |
 | Empty states | No Runs and no matching filters use distinct empty states, both with pass and fail totals set to 0. |
 | Access | Active members with Project access may read the report. Future PAT/API access requires `run:read` or equivalent read scope. |
 
@@ -56,11 +55,11 @@ Expert story point recommendation: 3 points.
 
 ### Out of Scope
 
-- Starting a Run; covered by BK-34.
+- Starting a Run; covered by [BK-34](https://jira.upexgalaxy.com/browse/BK-34).
 - Updating step results; covered by the Run execution/update story.
-- Aborting or cancelling Runs; covered outside BK-38.
-- Final run verdict rules beyond consuming final `passed` or `failed`; covered by BK-39.
-- Defect filing, listing, heatmap, or sync; covered by BK-40 through BK-43.
+- Aborting or cancelling Runs; covered outside [BK-38](https://jira.upexgalaxy.com/browse/BK-38).
+- Final run verdict rules beyond consuming final passed or failed; covered by [BK-39](https://jira.upexgalaxy.com/browse/BK-39).
+- Defect filing, listing, heatmap, or sync; covered by [BK-40](https://jira.upexgalaxy.com/browse/BK-40) through [BK-43](https://jira.upexgalaxy.com/browse/BK-43).
 - Exports, charts, dashboards, saved report views, or formal Jira/Xray test cases.
 
 ## Acceptance Criteria
@@ -126,7 +125,7 @@ Scenario: Unauthorized or cross-project Runs are not exposed
 - Reporting scope is one Project.
 - Rows and totals are calculated from the same filtered query.
 - Date range filters Run `started_at` inclusively; timestamps are stored in UTC and interpreted from Project timezone date inputs.
-- Pass/fail totals count only final `passed` and `failed` Runs.
+- Pass/fail totals count only final passed and failed Runs.
 - `running`, `blocked`, `skipped`, and `aborted` Runs may appear in rows/status filters but are excluded from pass/fail totals.
 - Each Run stores a `module_id` snapshot at creation time for reporting.
 - Executor type enum is `human`, `agent`, `ci`.
@@ -140,7 +139,7 @@ Scenario: Unauthorized or cross-project Runs are not exposed
 | BK-38-ATC-01 | Happy | View all project Runs with row details and totals | Project report baseline | High | UI/API/DB |
 | BK-38-ATC-02 | Integration | Combined filters narrow rows and recompute totals | Filter contract | High | UI/API/DB |
 | BK-38-ATC-03 | Negative | Empty filter result shows zero rows and zero totals | Empty state and stale totals | High | UI/API |
-| BK-38-ATC-04 | Boundary | started_at date range includes start/end dates and excludes outside dates | Date semantics | Medium | API/DB |
+| BK-38-ATC-04 | Boundary | `started_at` date range includes start/end dates and excludes outside dates | Date semantics | Medium | API/DB |
 | BK-38-ATC-05 | Happy | Clear filters restores full list and totals | Reset behavior | Medium | UI/API |
 | BK-38-ATC-06 | Negative | Project with no Runs shows first-use empty state | No-runs state | Medium | UI |
 | BK-38-ATC-07 | Security | Cross-project Runs are excluded from rows and totals | Data isolation | High | API/DB |
@@ -159,31 +158,52 @@ Scenario: Unauthorized or cross-project Runs are not exposed
 
 ## Publication Notes
 
-AC, ATP, and Business Rules are included in this description because the Jira custom-field REST edit path returned 404 in this session while `acli` edits succeeded. If REST access is fixed later, these sections can be copied into their dedicated custom fields without changing the contract.
+AC, ATP, and Business Rules are included in this description because the Jira custom-field REST edit path returned 404 in this session while acli edits succeeded. If REST access is fixed later, these sections can be copied into their dedicated custom fields without changing the contract.
 
 ## References
 
-- BK-34 Start manual run: creates the Run source this report consumes.
-- BK-70 Test Repository: Test foundation; current repo has `tests` and `test_steps` but not Run reporting tables yet.
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34) Start manual run: creates the Run source this report consumes.
+- [BK-70](https://jira.upexgalaxy.com/browse/BK-70) Test Repository: Test foundation; current repo has tests and test_steps but not Run reporting tables yet.
 - Repo evidence: `supabase/migrations/0024_tests.sql`, `app/api/v1/tests/route.ts`.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
 ## Traceability
 
+### Test Execution (1)
+
+- [BK-319](https://jira.upexgalaxy.com/browse/BK-319): [ATR] BK-38 — TMS-Run Reporting | Filter project runs with pass/fail totals _(Close)_
+
 ### Storys (2)
 
-- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Release)_
 - [BK-225](https://jira.upexgalaxy.com/browse/BK-225): TMS-Run Reporting | Filter runs by manual or automated execution mode _(Backlog)_
+- [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Release)_
+
+### Test Plan (1)
+
+- [BK-318](https://jira.upexgalaxy.com/browse/BK-318): [ATP] BK-38 — TMS-Run Reporting | Filter project runs with pass/fail totals _(READY)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/9/2026
 - **Reporter:** Ely
-- **Assignee:** jesusgpythondev
+- **Assignee:** Ely
 - **Labels:** implementation-plan-ready, shift-left-2026-06-15, shift-left-reviewed
 
 ---

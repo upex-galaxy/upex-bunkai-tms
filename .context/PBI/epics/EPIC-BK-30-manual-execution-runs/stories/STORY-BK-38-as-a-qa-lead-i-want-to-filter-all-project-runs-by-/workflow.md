@@ -1,6 +1,6 @@
 # BK-38 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-38)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-38)
 
 1. Mateo opens the Project's run review to answer "what did we execute this sprint and how did it go?".
 2. He sets a date range and, if he wants to narrow further, picks a module, a status, and an executor type — the filters combine.

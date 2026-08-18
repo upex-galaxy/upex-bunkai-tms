@@ -11,13 +11,13 @@
 
 ## Overview
 
-***Source spec******:*** FR-001
+***Source spec:*** FR-001
 
 ## User story
 
 As a Full-Stack Developer (Sara Iglesias), I want to sign up and sign in with my email and a password through a single email-first screen so that I can get into Bunkai with the login method I already use everywhere, without waiting for a magic-link email or depending on a third-party identity provider.
 
-This adds password as the ***third*** sign-in method on the login screen, alongside the email magic-link (BK-2) and OAuth (BK-3). Password is the primary method on the screen; magic-link stays visible as a secondary fallback; OAuth buttons remain below. The same account can also be used from automation: an API/CLI consumer (Karim) signs in over the API and receives a personal access token, while a browser session keeps its own cookie — the two coexist without revoking each other.
+This adds password as the ***third*** sign-in method on the login screen, alongside the email magic-link ([https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2)) and OAuth ([https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3)). Password is the primary method on the screen; magic-link stays visible as a secondary fallback; OAuth buttons remain below. The same account can also be used from automation: an API/CLI consumer (Karim) signs in over the API and receives a personal access token, while a browser session keeps its own cookie — the two coexist without revoking each other.
 
 ## Definition of done
 
@@ -32,9 +32,9 @@ This adds password as the ***third*** sign-in method on the login screen, alongs
 
 > Full Given/When/Then detail with concrete data lives in the ATP (`customfield_10067`, Phase 3). Summary below for description-level traceability.
 
-| AC | Refined with concrete data | Status |
+| ***AC**** | ****Refined with concrete data**** | ****Status*** |
 | --- | --- | --- |
-| AC1 | Existing confirmed email (`{{STAGING*USER*EMAIL}}`) routes to password step, never offers account creation | Verifiable |
+| AC1 | Existing confirmed email (`{{STAGING*USER*EMAIL`}}) routes to password step, never offers account creation | Verifiable |
 | AC1b (new) | Same routing is case-insensitive (`SARA@EXAMPLE.COM` routes identically to lowercase) | Verifiable — added in refinement |
 | AC2 | Unregistered `faker.internet.email()` address routes to the create-account step | Verifiable |
 | AC3 | Correct credentials sign in and redirect to `/projects` (NEEDS PO/DEV CONFIRMATION whether AC's "Workspace home" phrasing maps 1:1 to `/projects`) | Verifiable |
@@ -59,11 +59,11 @@ This adds password as the ***third*** sign-in method on the login screen, alongs
 
 ### Clarified Business Rules (Phase 2)
 
-- ***No enumeration on ***`signin`: always a uniform 401 regardless of which credential is wrong. Enumeration is intentionally confined to `check-email` only (ADR-0007 tradeoff) — by design, not a gap.
+- ***No enumeration on*** `signin`: always a uniform 401 regardless of which credential is wrong. Enumeration is intentionally confined to `check-email` only (ADR-0007 tradeoff) — by design, not a gap.
 - ***Asymmetric password minimums***: sign-up/confirm enforce `min(8)`; sign-in keeps `min(6)` so pre-policy legacy passwords continue to authenticate (explicit code comment, BK-166-specific).
 - ***Verification-first signup***: `signup` never returns a session or PAT — only `confirm` (after a correct OTP) does. No auto-confirm backdoor.
 - ***PAT default scopes***: headless signin/signup/confirm mint `atc:read`, `atc:write`, `run:execute` by default; `workspace:admin` is rejected outright from headless auth (ADR-0005) — that scope requires `POST /api/v1/tokens` against a specific workspace where the caller is admin/owner.
-- ***No app-level rate limiting exists today*** for any of the 4 BK-166 routes — all 429 handling is a pass-through of upstream Supabase/PostgREST throttling. AC8 tests Supabase's behavior, not a Bunkai feature; this is confirmed via code search, not inferred.
+- ***No app-level rate limiting exists today*** for any of the 4 [https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166](https://jira.upexgalaxy.com/browse/BK-166#icft=BK-166) routes — all 429 handling is a pass-through of upstream Supabase/PostgREST throttling. AC8 tests Supabase's behavior, not a Bunkai feature; this is confirmed via code search, not inferred.
 
 > Full outline-by-outline detail (42 derived test outlines across EP / BVA / State-Transition / Decision Table / Error-Guessing techniques) lives in the Acceptance Test Plan field (`customfield_10067`).
 
@@ -73,7 +73,14 @@ This adds password as the ***third*** sign-in method on the login screen, alongs
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
