@@ -4,7 +4,7 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "ea626f984fc4fbb1c11c334c78b7fa295725286f",
+    "claude": "1f523a9cefd2996d748cb1dde556c68929f0975a",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "5a18a188593ce189900e3c286f0813428b71f087",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
@@ -48,7 +48,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-12T08:09:50.688Z",
+  "lastSyncedAt": "2026-08-17T19:20:52.157Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

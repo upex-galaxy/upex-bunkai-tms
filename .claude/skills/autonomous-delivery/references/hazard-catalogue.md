@@ -305,6 +305,7 @@ against whatever branch is actually current.
 **Check.** Check it out under a different local name tracking the same remote:
 `git checkout -B <local-name> origin/<branch>`. Pushes still land on the remote branch.
 
+
 ### 5.10 A scheduler-assigned worktree cannot be closed by this session's own tools
 
 **Trigger.** The scheduling app's own "Worktree" option is checked, so the session starts already inside a
@@ -327,9 +328,13 @@ default branch is typically `main` (production) while work is meant to branch fr
 not an old commit on the right one. Every commit this run makes lands on top of `main` instead of `staging`,
 which either fails to merge cleanly against the real integration branch or, worse, opens a pull request
 against the wrong target without anyone noticing until review.
-**Check.** Immediately after `EnterWorktree` returns, before any other work: `git fetch origin && git reset
---hard origin/<integration-branch>`. Safe because nothing has been committed on the brand-new branch yet.
-Never assume `fresh` means "based on the branch I actually work against."
+**Check.** Immediately after `EnterWorktree` returns, before any other work:
+`git fetch origin && git merge-base --is-ancestor origin/<integration-branch> HEAD`. If that reports the base
+is wrong, realign with `git checkout -B <this-worktree-branch> origin/<integration-branch>` — safe because
+nothing has been committed on the brand-new branch yet. **Not `git reset --hard`**: Critical Rule #13 forbids
+repo-wide destructive git commands (a shared working tree may hold another session's uncommitted work), and a
+project that enforces it will have the call denied by the permission layer, stalling the run instead of
+realigning it. Never assume `fresh` means "based on the branch I actually work against."
 
 ### 5.12 A dispatched agent's worktree is never auto-removed once it holds changes
 
@@ -427,19 +432,6 @@ the ruling be recorded where the next reader will look.
 **Trigger.** A sync command that mutates sibling caches and bumps timestamps.
 **Symptom.** The working tree shows unrelated drift; a blanket add would commit it.
 **Check.** Restore with explicit paths only. Never blanket-restore, never stage everything.
-
-### 7.7 A synchronous approval gate must not re-propose while one answer is still pending
-
-**Trigger.** `discovery` mode's approval gate is the one place this system deliberately waits on a human,
-across however many days it takes — a scoped exception to every other mode's clean-stop-never-wait rule.
-**Symptom.** Without a persisted marker, each daily fire re-analyzes from scratch and proposes something new
-on top of an already-pending, unanswered recommendation — exactly the backlog flooding the exception exists
-to prevent, and worse, it splits the operator's attention across several similar-looking asks instead of one.
-**Check.** `.session/autonomous-delivery/discovery/pending-decision.md` is read FIRST, before any fresh
-analysis. `status: awaiting_reply` means re-state the SAME recommendation verbatim and stop; only `resolved`
-(or the file's absence) permits a new analysis. The mode lock is released the moment the question is asked —
-a pending answer is not "in progress" in the sense the lock protects, and holding it would only block the
-next fire from even checking this file.
 
 ---
 

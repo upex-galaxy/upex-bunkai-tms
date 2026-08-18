@@ -49,6 +49,8 @@ external_consumers:
   - default_env # consumed implicitly by the AI variable resolver (sets active env for {{WEB_URL}} / {{API_URL}} / ...) AND by scripts/agents-setup.ts via process.env.DEFAULT_ENV in --non-interactive mode
   - design_md_path # read by `yq '.design_md_path'` inside bash code fences of .claude/skills/{design-system/references/getdesign-matcher.md, project-bootstrap/references/frontend-setup.md}
   - automation_identity # structured block (not a flat {{VAR}}), resolved by name per .claude/skills/sprint-development/references/live-ui-identity.md — email_var/password_var point at .env, never referenced via {{AUTOMATION_IDENTITY}} templating
+  - decision_authority # key of the structured `decision_authority:` block, read directly by .claude/skills/agentic-dev-core/references/decision-protocol.md §5.1 — never resolved through {{VAR}} templating
+  - product # key of the structured `decision_authority:` block, read directly by .claude/skills/agentic-dev-core/references/decision-protocol.md §5.1 — never resolved through {{VAR}} templating
   - autonomous_delivery # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
   - enabled # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
   - modes # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
@@ -117,6 +119,19 @@ git_strategy:
     created: 2026-06-24 # YYYY-MM-DD stamped by Strategy Setup
     policy_verified: 2026-08-01 # YYYY-MM-DD of the last reconciliation of `policy:` against the host (git-flow-master Step 1b). null = never verified. Per-project — this file is a template; a fresh project starts unverified
     policy_source: verified # verified | declared — `declared` means `policy:` records team INTENT and has never been checked against the remote. Never state what the remote requires from a `declared` reading
+
+# WHO decides what, when a question has no settled answer. Read by every skill that
+# routes a decision, via agentic-dev-core/references/decision-protocol.md §5.1.
+# `decide` here is the config form of CLAUDE.md Critical Rule #18: Bunkai TMS is
+# specified and built end-to-end by AI with no human PO in the loop, so an open
+# product/business/functional question is work to do, not a blocker. It used to live
+# as a ~240-line fork across three synced skill files, which `bun run up` overwrote
+# on every sync; the boilerplate now gates the same behaviour on this key, and this
+# file is bootstrapOnly so the updater never touches it.
+# Categories 2-4 (novel security posture, irreversible actions, operator-reserved)
+# still escalate — those are NOT configurable.
+decision_authority:
+  product: decide # escalate | decide. See decision-protocol.md §5.1.
 
 autonomous_delivery:
   enabled: true # master switch. false -> every mode exits in Phase 0 with a report.
