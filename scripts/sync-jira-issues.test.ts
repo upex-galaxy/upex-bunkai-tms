@@ -94,7 +94,10 @@ beforeAll(() => {
         });
       }
 
-      // Coverage discovery (defect control case) issues a JQL search.
+      // Coverage discovery (defect control case) issues a JQL search. These tests run
+      // with `noDefects: true`, so the empty result is a deliberate no-op stub — it is
+      // NOT a fixture for coverage discovery. Anything asserting on ATP/ATR/defect
+      // nesting must serve real issues here instead of trusting this branch.
       if (pathname === '/rest/api/3/search/jql') {
         return Response.json({ issues: [], isLast: true });
       }
