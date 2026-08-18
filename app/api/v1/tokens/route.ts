@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { ALL_CAPABILITIES } from '@lib/api/capabilities';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { assertTokenIssuanceAuthorized } from '@lib/api/pat';
@@ -20,7 +21,9 @@ import { z } from 'zod';
 const TOKEN_FAMILY_PREFIX = 'bk_pat_';
 const TOKEN_PREFIX_LENGTH = 12;
 const SECRET_BYTES = 32;
-const ALLOWED_SCOPES = ['atc:read', 'atc:write', 'run:execute', 'workspace:admin'] as const;
+// Single vocabulary — see `@lib/api/capabilities`. A local literal here is the
+// fourth copy of the same four strings and drifts the moment one of them moves.
+const ALLOWED_SCOPES = ALL_CAPABILITIES;
 
 const CreateBodySchema = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -31,11 +34,6 @@ const CreateBodySchema = z.object({
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
-  // A PAT must not mint another PAT — privilege escalation / persistence risk.
-  // Token issuance is a browser-session-only operation (ADR-0001 exception).
-  if (principal.via === 'bearer') {
-    throw new ApiError('forbidden', 'Personal access tokens cannot issue tokens. Use a browser session.');
-  }
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -104,7 +102,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     },
     { status: 201 },
   );
-}, { auth: 'required' });
+  // A PAT must not mint another PAT — privilege escalation / persistence risk.
+  // Token issuance is a browser-session-only operation (ADR-0001 exception),
+  // enforced by the gateway before the handler body runs.
+}, { auth: 'cookie-only', why: 'Personal access tokens cannot issue tokens. Use a browser session.' });
 
 // Listing is read-only and RLS-scoped to the caller's own tokens, so it is safe
 // over either auth method (cookie or PAT).
@@ -125,7 +126,10 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ tokens: data ?? [] });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Listing is read-only and RLS-scoped to the caller\'s own tokens.',
+});
 
 function generateSecret(bytes: number): string {
   const buf = new Uint8Array(bytes);

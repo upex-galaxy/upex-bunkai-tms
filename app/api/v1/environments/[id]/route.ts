@@ -42,7 +42,10 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ environment: data }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-498 pending — authoring domain (project sub-resources).',
+});
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const environmentId = extractEnvironmentId(request);
@@ -62,7 +65,10 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ deleted: data }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-498 pending — authoring domain (project sub-resources).',
+});
 
 function extractEnvironmentId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

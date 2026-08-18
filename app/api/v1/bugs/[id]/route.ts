@@ -52,7 +52,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const bug = await performBugDetailRead(db, bugId);
 
   return jsonResponse({ bug }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — reporting reads.',
+});
 
 // The route is /api/v1/bugs/{id} — the bug id is the last segment.
 function extractBugId(request: NextRequest): string {

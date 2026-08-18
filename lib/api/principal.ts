@@ -1,6 +1,7 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
+import { ALL_CAPABILITIES } from '@lib/api/capabilities';
 import { ApiError } from '@lib/api/error-envelope';
 import { requireBearerToken } from '@lib/api/middleware/bearer';
 import { mintUserJwt } from '@lib/api/user-jwt';
@@ -26,9 +27,12 @@ import 'server-only';
 
 // Every capability a UI (cookie) session implicitly holds. A browser user is the
 // principal and the UI already gates writes; a PAT carries an explicit subset in
-// `access_tokens.scopes`. Keep in sync with the scopes CHECK in
-// migration 0008_access_tokens.sql.
-export const ALL_CAPABILITIES = ['atc:read', 'atc:write', 'run:execute', 'workspace:admin'] as const;
+// `access_tokens.scopes`.
+//
+// Re-exported from `@lib/api/capabilities`, which owns the single definition —
+// this module imports `server-only`, so the vocabulary cannot live here without
+// shutting client components out of it.
+export { ALL_CAPABILITIES };
 
 export interface Principal {
   userId: string

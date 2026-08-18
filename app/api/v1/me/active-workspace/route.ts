@@ -61,4 +61,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }));
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace_id, ACTIVE_WORKSPACE_COOKIE_DEFAULTS);
   return response;
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — identity and notifications.',
+});

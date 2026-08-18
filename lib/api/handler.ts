@@ -1,3 +1,4 @@
+import type { Capability } from '@lib/api/capabilities';
 import type { Principal } from '@lib/api/principal';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -37,16 +38,28 @@ export type ApiHandler = (
   ctx: ApiHandlerContext,
 ) => Promise<Response> | Response;
 
-export interface WithApiHandlerOptions {
-  // 'required' (DEFAULT) → resolve identity + inject principal/db before the
-  //              handler. Secure by default: a route is authenticated unless it
-  //              explicitly opts out.
-  // 'public'   → no auth resolution. Must be set EXPLICITLY (health, openapi,
-  //              the API index, sign-in/sign-up/magic-link).
-  auth?: 'required' | 'public'
-  // Capabilities the caller must hold (enforced only when auth is required).
-  requires?: string[]
-}
+// A `requires` list that the compiler refuses to leave empty. Without this,
+// `requires: []` type-checks and silently performs zero capability checks —
+// the same fail-open the mandatory posture exists to close.
+type NonEmpty<T> = readonly [T, ...T[]];
+
+// EVERY route states its posture. There is no default, so a new route handler
+// cannot compile without choosing one of these four — which is the durable part
+// of this contract: forgetting a capability is a red `types:check` locally, not
+// a permissive endpoint in production.
+export type WithApiHandlerOptions
+  // No auth resolution at all. Health, the API index, sign-in/sign-up/magic-link.
+  = | { auth: 'public' }
+  // Authenticated, and a Bearer PAT is structurally rejected by the gateway.
+  // For operations a token must never perform on its own behalf — chiefly token
+  // issuance and revocation (ADR-0001's "a PAT must not mint a PAT" exception).
+  // `why` is surfaced to the caller as the 403 message.
+    | { auth: 'cookie-only', why: string }
+  // Authenticated, no capability required. The escape hatch — deliberately
+  // costs a sentence, so the no-capability set stays greppable and enumerable.
+    | { auth: 'authenticated', why: string }
+  // Authenticated, and the caller must hold every listed capability.
+    | { auth: 'required', requires: NonEmpty<Capability> };
 
 // Read the authenticated context from a handler that opted into `auth:
 // 'required'`. Throws if called from a route that did not — a programming error,
@@ -60,7 +73,7 @@ export function getAuth(ctx: ApiHandlerContext): { principal: Principal, db: Sup
 
 export function withApiHandler(
   handler: ApiHandler,
-  options: WithApiHandlerOptions = {},
+  options: WithApiHandlerOptions,
 ): (request: NextRequest) => Promise<Response> {
   return async (request: NextRequest): Promise<Response> => {
     const requestId = getRequestId(request.headers);
@@ -74,8 +87,13 @@ export function withApiHandler(
       // requires an authenticated principal.
       if (options.auth !== 'public') {
         const principal = await resolveIdentity(request);
-        for (const capability of options.requires ?? []) {
-          requireCapability(principal, capability);
+        if (options.auth === 'cookie-only' && principal.via === 'bearer') {
+          throw new ApiError('forbidden', options.why);
+        }
+        if (options.auth === 'required') {
+          for (const capability of options.requires) {
+            requireCapability(principal, capability);
+          }
         }
         ctx.principal = principal;
         ctx.db = principal.db;

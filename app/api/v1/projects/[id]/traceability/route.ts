@@ -71,7 +71,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse(data, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — reporting reads.',
+});
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/traceability`, so the id is the second-to-last segment.

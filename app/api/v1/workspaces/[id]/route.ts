@@ -36,7 +36,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspace: data });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — workspaces and membership.',
+});
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);

@@ -1,5 +1,7 @@
+import type { Capability } from '@lib/api/capabilities';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ALL_CAPABILITIES } from '@lib/api/capabilities';
 import { ApiError } from '@lib/api/error-envelope';
 
 // Shared PAT minting helper. Used by POST /api/v1/tokens (session-issued),
@@ -9,19 +11,15 @@ const TOKEN_FAMILY_PREFIX = 'bk_pat_';
 const TOKEN_PREFIX_LENGTH = 12;
 const SECRET_BYTES = 32;
 
-export type AccessTokenScope = 'atc:read' | 'atc:write' | 'run:execute' | 'workspace:admin';
-
-export const ALLOWED_PAT_SCOPES: readonly AccessTokenScope[] = [
-  'atc:read',
-  'atc:write',
-  'run:execute',
-  'workspace:admin',
-] as const;
+// The scopes a PAT may be minted with. Derived from the single capability
+// vocabulary in `@lib/api/capabilities` rather than restated — a second literal
+// list here is exactly the drift that let `requires` and `scopes` disagree.
+export const ALLOWED_PAT_SCOPES: readonly Capability[] = ALL_CAPABILITIES;
 
 // Default scopes for headless bootstrap (sign-in / sign-up). Deliberately
 // EXCLUDES workspace:admin — an admin-scoped token must be minted explicitly
 // against a specific workspace via POST /api/v1/tokens. See ADR-0005 / BK-135.
-export const DEFAULT_PAT_SCOPES: readonly AccessTokenScope[] = [
+export const DEFAULT_PAT_SCOPES: readonly Capability[] = [
   'atc:read',
   'atc:write',
   'run:execute',
@@ -30,7 +28,7 @@ export const DEFAULT_PAT_SCOPES: readonly AccessTokenScope[] = [
 // Headless auth flows take no workspace_id, so they can never satisfy the
 // workspace:admin issuance rule (a specific workspace + admin/owner role).
 // Reject the scope outright there. See ADR-0005.
-export function assertNoGlobalAdminScope(scopes: AccessTokenScope[]): void {
+export function assertNoGlobalAdminScope(scopes: Capability[]): void {
   if (scopes.includes('workspace:admin')) {
     throw new ApiError(
       'forbidden',
@@ -42,7 +40,7 @@ export function assertNoGlobalAdminScope(scopes: AccessTokenScope[]): void {
 export interface AssertTokenIssuanceArgs {
   db: SupabaseClient<Database>
   userId: string
-  scopes: AccessTokenScope[]
+  scopes: Capability[]
   workspaceId: string | null
 }
 
@@ -93,7 +91,7 @@ export interface MintPatArgs {
   userId: string
   name?: string | null
   workspaceId?: string | null
-  scopes: AccessTokenScope[]
+  scopes: Capability[]
   expiresInDays?: number | null
 }
 
@@ -101,7 +99,7 @@ export interface MintedPat {
   id: string
   token: string
   name: string | null
-  scopes: AccessTokenScope[]
+  scopes: Capability[]
   workspace_id: string | null
   expires_at: string | null
   created_at: string
@@ -145,7 +143,7 @@ export async function mintPat(args: MintPatArgs): Promise<MintedPat> {
     id: inserted.id,
     token: `${TOKEN_FAMILY_PREFIX}${tokenPrefix}.${secret.slice(TOKEN_PREFIX_LENGTH)}`,
     name: inserted.name,
-    scopes: inserted.scopes as AccessTokenScope[],
+    scopes: inserted.scopes as Capability[],
     workspace_id: inserted.workspace_id,
     expires_at: inserted.expires_at,
     created_at: inserted.created_at,
