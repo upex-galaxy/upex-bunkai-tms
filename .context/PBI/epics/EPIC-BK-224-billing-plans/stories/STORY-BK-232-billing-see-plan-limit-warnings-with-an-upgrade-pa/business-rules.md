@@ -1,6 +1,6 @@
 # BK-232 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
 
 - The approaching-limit threshold is 80% of a plan-limited resource's cap; at 100% the action that would exceed the cap is blocked.
 - Approaching-limit warnings never block or interrupt the action that triggered them, and are dismissible.

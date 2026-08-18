@@ -3,7 +3,7 @@
 **Jira Key:** [BK-257](https://jira.upexgalaxy.com/browse/BK-257)
 **Epic:** [BK-254](https://jira.upexgalaxy.com/browse/BK-254) (Home Dashboard)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
@@ -26,10 +26,20 @@ Renders into `home.jsx` (master-design-plan.md §4.2), the "Recent projects" sec
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+
+---
+
 ## Metadata
 
 - **Created:** 7/31/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/4/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** p2

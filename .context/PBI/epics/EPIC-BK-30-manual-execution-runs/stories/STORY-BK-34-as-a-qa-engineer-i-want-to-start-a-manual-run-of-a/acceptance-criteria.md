@@ -1,6 +1,6 @@
 # BK-34 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-34)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-34)
 
 ```
 Scenario: Start a run with every step pending

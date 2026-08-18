@@ -1,6 +1,6 @@
 # BK-206 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
 
 - Attach existing test plans to a milestone and detach them, from the milestone detail view.
 - Readiness view: overall aggregate across attached plans plus a per-plan breakdown row.

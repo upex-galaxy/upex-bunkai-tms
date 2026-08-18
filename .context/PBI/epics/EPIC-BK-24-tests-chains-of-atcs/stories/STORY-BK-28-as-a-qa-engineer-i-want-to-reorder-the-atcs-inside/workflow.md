@@ -1,6 +1,6 @@
 # BK-28 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-28)
 
 ## User flow
 

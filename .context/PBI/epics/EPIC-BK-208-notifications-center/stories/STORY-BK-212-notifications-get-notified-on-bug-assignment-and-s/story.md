@@ -3,9 +3,9 @@
 **Jira Key:** [BK-212](https://jira.upexgalaxy.com/browse/BK-212)
 **Epic:** [BK-208](https://jira.upexgalaxy.com/browse/BK-208) (Notifications Center)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
 
 ---
 
@@ -17,7 +17,7 @@ As Sara Iglesias, Full-Stack Developer, I want to be notified when a bug is assi
 
 ## Context
 
-Bugs in Bunkai arrive with their test and run context attached — but Sara still has to notice them. This story subscribes her to the two bug moments she cares about: a bug landing on her, and movement on bugs she is involved in (as reporter or assignee). Notifications deliver into the inbox from the sibling inbox story. This story explicitly activates once epic BK-31 Bugs & Defect Heatmap ships the bug entity and its lifecycle; until then there is no event source to subscribe to.
+Bugs in Bunkai arrive with their test and run context attached — but Sara still has to notice them. This story subscribes her to the two bug moments she cares about: a bug landing on her, and movement on bugs she is involved in (as reporter or assignee). Notifications deliver into the inbox from the sibling inbox story. This story explicitly activates once epic [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) Bugs & Defect Heatmap ships the bug entity and its lifecycle; until then there is no event source to subscribe to.
 
 ---
 
@@ -27,7 +27,7 @@ Refined Acceptance Criteria live in the Acceptance Criteria field. Full ATP DRAF
 
 ### Edge Cases Identified
 
-| Edge case | Decision |
+| ***Edge case**** | ****Decision*** |
 | --- | --- |
 | Reporter and assignee are the same recipient | Create exactly one notification. |
 | Actor is reporter or assignee | Suppress self-notification. |
@@ -38,21 +38,21 @@ Refined Acceptance Criteria live in the Acceptance Criteria field. Full ATP DRAF
 
 ### Clarified Business Rules
 
-- BK-212 is dependency-gated by BK-31 bug lifecycle and BK-209 inbox substrate.
+- [https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212](https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212) is dependency-gated by [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) bug lifecycle and [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) inbox substrate.
 - Recipient set is unique per event; reporter and assignee duplication collapses to one notification.
 - Visibility is enforced at inbox read/deep-link time, not only at notification creation.
-- Bug status copy uses BK-31 vocabulary; BK-212 does not define its own statuses.
+- Bug status copy uses [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) vocabulary; [https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212](https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212) does not define its own statuses.
 
 ### Critical Questions Answered
 
-- PO: BK-212 can be estimated now, but implementation starts only after BK-31 exposes bug assignment/status-change events.
+- PO: [https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212](https://jira.upexgalaxy.com/browse/BK-212#icft=BK-212) can be estimated now, but implementation starts only after [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) exposes bug assignment/status-change events.
 - Dev: consume `bug.assigned` and `bug.status_changed` with actor, reporter, assignee, status, workspace/project, bug, and run/test context payload.
-- Design: row uses bug icon, bug title, assignment/status copy, status transition when available, and BK-31 severity chip style.
+- Design: row uses bug icon, bug title, assignment/status copy, status transition when available, and [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) severity chip style.
 
 ### Estimate
 
 - Story Points: 8.
-- Rationale: event-recipient logic + dedupe + RBAC visibility + deep-link integration; assumes BK-31 and BK-209 deliver their foundations.
+- Rationale: event-recipient logic + dedupe + RBAC visibility + deep-link integration; assumes [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) and [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) deliver their foundations.
 
 ---
 
@@ -60,15 +60,23 @@ Refined Acceptance Criteria live in the Acceptance Criteria field. Full ATP DRAF
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
 ## Traceability
 
-### Story (1)
+### Storys (2)
 
-- [BK-209](https://jira.upexgalaxy.com/browse/BK-209): Notifications | View an inbox of workspace events _(Ready For Dev)_
+- [BK-209](https://jira.upexgalaxy.com/browse/BK-209): Notifications | View an inbox of workspace events _(Ready For QA)_
+- [BK-264](https://jira.upexgalaxy.com/browse/BK-264): TMS-Defect Triage | Assign a defect to a workspace member and update its status _(QA Approved)_
 
 ### Epic (1)
 
@@ -79,9 +87,9 @@ Refined Acceptance Criteria live in the Acceptance Criteria field. Full ATP DRAF
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/14/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** yxsinell acosta zambrano
 - **Labels:** new-feature, post-mvp, shift-left-2026-07-19, shift-left-reviewed
 
 ---

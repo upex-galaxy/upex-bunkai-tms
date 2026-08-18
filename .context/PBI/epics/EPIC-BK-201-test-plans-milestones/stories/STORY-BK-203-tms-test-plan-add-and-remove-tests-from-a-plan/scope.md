@@ -1,6 +1,6 @@
 # BK-203 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-203)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-203)
 
 - Add-tests picker on the plan detail view: search the project's test library by name and tag, multi-select, confirm.
 - Remove a test from a plan from its row in the plan's test table.

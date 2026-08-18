@@ -47,10 +47,9 @@
 
 ## Traceability
 
-### Tests (2)
+### Test (1)
 
-- [BK-243](https://jira.upexgalaxy.com/browse/BK-243): BK-43-TDS10: Deleting synced defect does not remove external item _(In Automation)_
-- [BK-242](https://jira.upexgalaxy.com/browse/BK-242): BK-43-TDS09: Synced defect update triggers re-sync _(In Automation)_
+- [BK-242](https://jira.upexgalaxy.com/browse/BK-242): BK-43-TDS09: Synced defect update triggers re-sync _(DEPRECATED)_
 
 ### Storys (2)
 
@@ -62,7 +61,7 @@
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 8/11/2026
+- **Updated:** 8/14/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-07-03, shift-left-reviewed

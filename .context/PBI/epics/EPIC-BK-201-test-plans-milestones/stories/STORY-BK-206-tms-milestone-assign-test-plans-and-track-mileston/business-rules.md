@@ -1,6 +1,6 @@
 # BK-206 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
 
 - Attaching references the plan; detaching never deletes or alters the plan or its progress.
 - A milestone aggregates only plans from its own project; a plan may serve several milestones.

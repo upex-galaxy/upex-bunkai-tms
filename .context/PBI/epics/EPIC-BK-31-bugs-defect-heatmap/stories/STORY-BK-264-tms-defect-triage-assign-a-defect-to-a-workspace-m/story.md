@@ -59,6 +59,23 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 
 ## Traceability
 
+### Tests (14)
+
+- [BK-477](https://jira.upexgalaxy.com/browse/BK-477): BK-264: TC1: should set assignee when assigning an open bug to an eligible member _(AUTOMATED)_
+- [BK-478](https://jira.upexgalaxy.com/browse/BK-478): BK-264: TC10: should reject a status change that skips a lifecycle stage _(AUTOMATED)_
+- [BK-479](https://jira.upexgalaxy.com/browse/BK-479): BK-264: TC9: should advance status given a legal forward transition _(AUTOMATED)_
+- [BK-480](https://jira.upexgalaxy.com/browse/BK-480): BK-264: TC2: should reject assignment given the target is not a workspace member _(AUTOMATED)_
+- [BK-481](https://jira.upexgalaxy.com/browse/BK-481): BK-264: TC3: should reject assignment given the target is a Viewer-role member _(AUTOMATED)_
+- [BK-482](https://jira.upexgalaxy.com/browse/BK-482): BK-264: TC11: should reject a status change given it moves backward or repeats the current status _(AUTOMATED)_
+- [BK-483](https://jira.upexgalaxy.com/browse/BK-483): BK-264: TC4: should update the assignee when reassigning to a different member _(AUTOMATED)_
+- [BK-484](https://jira.upexgalaxy.com/browse/BK-484): BK-264: TC12: should keep assignee and status changes independent of each other _(AUTOMATED)_
+- [BK-485](https://jira.upexgalaxy.com/browse/BK-485): BK-264: TC6: should clear the assignee when unassigning _(AUTOMATED)_
+- [BK-486](https://jira.upexgalaxy.com/browse/BK-486): BK-264: TC7: should reject a write action given the actor is a Viewer-role member _(AUTOMATED)_
+- [BK-487](https://jira.upexgalaxy.com/browse/BK-487): BK-264: TC13: should attribute an action to the actual calling actor, not the bug's assignee _(Candidate)_
+- [BK-488](https://jira.upexgalaxy.com/browse/BK-488): BK-264: TC8: should return a non-disclosing 404 given the bug does not exist or is outside the caller's workspace _(AUTOMATED)_
+- [BK-489](https://jira.upexgalaxy.com/browse/BK-489): BK-264: TC14: should write a notifications row given a bug is assigned _(AUTOMATED)_
+- [BK-490](https://jira.upexgalaxy.com/browse/BK-490): BK-264: TC15: should exclude Viewer-role members from the assignee picker _(MANUAL)_
+
 ### Story (1)
 
 - [BK-212](https://jira.upexgalaxy.com/browse/BK-212): Notifications | Get notified on bug assignment and status changes _(Ready For QA)_
@@ -68,7 +85,7 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 ## Metadata
 
 - **Created:** 8/3/2026
-- **Updated:** 8/14/2026
+- **Updated:** 8/15/2026
 - **Reporter:** Ely
 - **Assignee:** Luis Eduardo Flores Villarroel
 

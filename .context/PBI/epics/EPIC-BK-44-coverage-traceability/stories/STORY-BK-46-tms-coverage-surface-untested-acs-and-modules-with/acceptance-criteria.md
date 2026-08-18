@@ -1,6 +1,6 @@
 # BK-46 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-46)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-46)
 
 ```
 Scenario: List acceptance criteria with no ATC

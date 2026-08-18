@@ -1,8 +1,8 @@
 # BK-213 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-213)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-213)
 
-```gherkin
+```
 Scenario: View my notification preferences in the Settings hub
   Given Elena opens the Settings hub and selects the Notifications section
   When the preferences view loads
@@ -10,7 +10,7 @@ Scenario: View my notification preferences in the Settings hub
   And run lifecycle and bug lifecycle show their current values with both channels on by default
 ```
 
-```gherkin
+```
 Scenario: Turn off in-app notifications for run lifecycle
   Given Elena has in-app notifications enabled for run lifecycle
   When she turns off the in-app toggle for run lifecycle
@@ -19,7 +19,7 @@ Scenario: Turn off in-app notifications for run lifecycle
   And her bell badge count does not change
 ```
 
-```gherkin
+```
 Scenario: Turn off the email channel for bug lifecycle
   Given Elena has the email channel enabled for bug lifecycle
   When she turns off the email toggle for bug lifecycle
@@ -27,7 +27,7 @@ Scenario: Turn off the email channel for bug lifecycle
   And her in-app bug notifications keep arriving unchanged
 ```
 
-```gherkin
+```
 Scenario: Preferences persist across sessions
   Given Elena turned off in-app run lifecycle notifications
   When she signs out and signs back in
@@ -35,7 +35,7 @@ Scenario: Preferences persist across sessions
   And run events still do not reach her inbox
 ```
 
-```gherkin
+```
 Scenario: Mentions event type is visible but locked
   Given Elena is viewing the notification preferences grid
   When she looks at the mentions row

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-229](https://jira.upexgalaxy.com/browse/BK-229)
 **Epic:** [BK-224](https://jira.upexgalaxy.com/browse/BK-224) (Billing & Plans)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** High
 **Story Points:** 8
 **Web Link:** https://staging-upexbunkai.vercel.app/settings/account
@@ -125,7 +125,7 @@
 
 ### Storys (3)
 
-- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Shift-Left QA)_
+- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Estimation)_
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 - [BK-232](https://jira.upexgalaxy.com/browse/BK-232): Billing | See plan-limit warnings with an upgrade path _(Backlog)_
 
@@ -136,7 +136,7 @@
 - **Created:** 7/11/2026
 - **Updated:** 8/16/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** pinto.lucas.nahuel
 - **Labels:** shift-left-2026-08-13, shift-left-reviewed
 
 ---

@@ -99,7 +99,7 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 
 ### Bug (1)
 
-- [BK-466](https://jira.upexgalaxy.com/browse/BK-466): RunnerView evidence anchor renders unscoped URLs — javascript:/data: schemes accepted _(Open)_
+- [BK-466](https://jira.upexgalaxy.com/browse/BK-466): RunnerView evidence anchor renders unscoped URLs — javascript:/data: schemes accepted _(Ready For QA)_
 
 ### Storys (3)
 

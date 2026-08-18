@@ -1,8 +1,8 @@
 # BK-2 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
-## Acceptance Test Results — BK-2 (condensed mirror)
+## Acceptance Test Results — [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2) (condensed mirror)
 
 ***Story:**** Sign up and sign in with email (magic-link). ****Result:**** PASS (GO-with-debt). ****Tested:**** 2026-05-28 on [https://upexbunkai.vercel.app](https://upexbunkai.vercel.app/) (session override — staging-upexbunkai.vercel.app returned 404). ****Modality:**** jira-native. ****Tester:*** Sprint Testing (orchestration, Stage 3).
 

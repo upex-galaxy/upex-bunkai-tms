@@ -1,6 +1,6 @@
 # BK-39 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-39)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-39)
 
 - Only a run that is still in progress can be finished; already-closed runs are rejected
 - Finishing requires a final verdict of passed or failed

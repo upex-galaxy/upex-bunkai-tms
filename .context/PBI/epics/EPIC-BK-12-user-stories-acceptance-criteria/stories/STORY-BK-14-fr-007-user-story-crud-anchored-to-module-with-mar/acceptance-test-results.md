@@ -1,26 +1,26 @@
 # BK-14 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-14)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-14)
 
-# BK-14 — Acceptance Test Results (ATR)
+# [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14) — Acceptance Test Results (ATR)
 
-***Date******:*** 2026-07-06
-***Tester******:*** Nahuel Gomez
-***Environment******:*** Staging (staging-upexbunkai.vercel.app)
-***Strategy******:*** Balanced (API depth + UI breadth)
-***Prior automation******:*** 5 tests (PASSED, 30 Jun)
-***Sprint******:*** Bunkai (70) Sprint 3
+***Date:*** 2026-07-06
+***Tester:*** Nahuel Gomez
+***Environment:*** Staging (staging-upexbunkai.vercel.app)
+***Strategy:*** Balanced (API depth + UI breadth)
+***Prior automation:*** 5 tests (PASSED, 30 Jun)
+***Sprint:*** Bunkai (70) Sprint 3
 
 ## API Test Results — 8/9 PASSED
 
-| # | Test | Status | Notes |
+| ***#**** | ****Test**** | ****Status**** | ****Notes*** |
 | --- | --- | --- | --- |
 | API-01 | Create with valid payload (title + description + external*id) | ✅ PASS | 201, story created with correct title and external*id=BK-42 |
 | API-02 | Title too short ("Re", 2 chars) | ✅ PASS | 422 validation_failed |
 | API-03 | Title too long (201 chars) | ✅ PASS | 422 validation_failed |
 | API-04 | Description > 50KB | ⏭️ SKIPPED | Requires binary payload >51200 bytes — deferred |
 | API-05 | Malformed Jira key ("not a key") | ✅ PASS | 422 validation_failed |
-| API-06 | Duplicate Jira key (BK-42 already used) | ✅ PASS | 409 "This Jira issue is already linked" |
+| API-06 | Duplicate Jira key ([https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42](https://jira.upexgalaxy.com/browse/BK-42#icft=BK-42) already used) | ✅ PASS | 409 "This Jira issue is already linked" |
 | API-07 | PATCH external_id immutable after set | ✅ PASS | 409 on second PATCH |
 | API-08a | Soft-delete (DELETE) | ✅ PASS | 200 |
 | API-08b | GET after soft-delete shows deleted*at | ❌ FAIL | 404 (story not found) instead of 200 with deleted*at |
@@ -29,9 +29,9 @@
 
 ## UI Test Results — 3/3 PASSED
 
-| # | Test | Status | Notes |
+| ***#**** | ****Test**** | ****Status**** | ****Notes*** |
 | --- | --- | --- | --- |
-| UI-01 | Edit story form renders with Markdown editor | ✅ PASS | BK-16 editor present with toolbar (bold, italic, code, link, lists, headings, preview) |
+| UI-01 | Edit story form renders with Markdown editor | ✅ PASS | [https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16](https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16) editor present with toolbar (bold, italic, code, link, lists, headings, preview) |
 | UI-02 | Title field editable, Cancel returns to module | ✅ PASS | Form interaction works |
 | UI-03 | Jira key field visible with placeholder | ✅ PASS | "BK-42" placeholder shown |
 | UI-04 | Remove story not tested directly | 🟡 NOTED | Remove button visible in tree — functional test via API-08a/c confirmed soft-delete works |
@@ -50,7 +50,7 @@ The Tree view shows stories under modules but no obvious "New User Story" button
 
 ### AC Coverage
 
-| AC | Status | Tests |
+| ***AC**** | ****Status**** | ****Tests*** |
 | --- | --- | --- |
 | AC1: Create story with title + Markdown description | ✅ PASS | API-01, UI-01 |
 | AC2: Title < 3 chars rejected | ✅ PASS | API-02, UI-02 |

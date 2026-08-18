@@ -1,6 +1,6 @@
 # BK-49 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-49)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-49)
 
 ## Phase 3 - Refined Acceptance Criteria
 
@@ -88,7 +88,7 @@
 
 ### New scenarios surfaced from Phase 2 edge cases - NEEDS PO/DEV CONFIRMATION
 
-#### Scenario E1: Should keep BK-49 read-side only with no automatic realtime behavior (Type: Edge, Priority: High)
+#### Scenario E1: Should keep [https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49) read-side only with no automatic realtime behavior (Type: Edge, Priority: High)
 
 - ***NEEDS PO/DEV CONFIRMATION***: Story says "live feed" but MVP baseline says no automatic realtime.
 - ***Given***: New activity is recorded after the user has opened the feed.

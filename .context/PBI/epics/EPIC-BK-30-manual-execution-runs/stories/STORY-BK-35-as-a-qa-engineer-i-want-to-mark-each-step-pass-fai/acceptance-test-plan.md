@@ -2,11 +2,11 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
 
-## ATP DRAFT — BK-35: TMS-Run Execution | Mark each step pass, fail, or block
+## ATP DRAFT — [https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35](https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35): TMS-Run Execution | Mark each step pass, fail, or block
 
 ### Coverage Summary
 
-| Type | Count |
+| ***Type**** | ****Count*** |
 | --- | --- |
 | Positive | 10 |
 | Negative | 6 |

@@ -1,8 +1,8 @@
 # BK-10 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
 
-- Moving a Module to a different parent (covered by BK-11)
+- Moving a Module to a different parent (covered by [https://jira.upexgalaxy.com/browse/BK-11#icft=BK-11](https://jira.upexgalaxy.com/browse/BK-11#icft=BK-11))
 - Permanent / hard delete and purge of data
 - Restoring (un-deleting) an archived Module
 - Renaming or deleting many Modules at once (bulk edit)

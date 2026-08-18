@@ -1,6 +1,6 @@
 # BK-202 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
 
 - Create a Test Plan inside a project with a name, an optional description, and an optional target goal or release label.
 - Test Plans list per project showing name, goal, status, test count, and creator.

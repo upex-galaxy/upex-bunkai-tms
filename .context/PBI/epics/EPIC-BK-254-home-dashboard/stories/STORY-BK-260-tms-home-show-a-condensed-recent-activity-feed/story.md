@@ -3,7 +3,7 @@
 **Jira Key:** [BK-260](https://jira.upexgalaxy.com/browse/BK-260)
 **Epic:** [BK-254](https://jira.upexgalaxy.com/browse/BK-254) (Home Dashboard)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
@@ -22,7 +22,17 @@ As a Senior QA Engineer, I want to see a condensed feed of recent workspace acti
 
 ## Technical notes
 
-Renders into `home.jsx` (master-design-plan.md §4.2), the "Recent activity" section. A thin presentation layer over the activity stream already built for TMS-Activity (BK-49) — this story does not duplicate that backend, it reuses it with a small page size and no pagination controls.
+Renders into `home.jsx` (master-design-plan.md §4.2), the "Recent activity" section. A thin presentation layer over the activity stream already built for TMS-Activity ([https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49](https://jira.upexgalaxy.com/browse/BK-49#icft=BK-49)) — this story does not duplicate that backend, it reuses it with a small page size and no pagination controls.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 
 ---
 
@@ -37,7 +47,7 @@ Renders into `home.jsx` (master-design-plan.md §4.2), the "Recent activity" sec
 ## Metadata
 
 - **Created:** 7/31/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/4/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** p2

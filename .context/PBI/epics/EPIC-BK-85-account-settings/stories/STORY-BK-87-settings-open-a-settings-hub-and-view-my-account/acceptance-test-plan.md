@@ -4,7 +4,7 @@
 
 ## Coverage
 
-| ID | Priority | Type | Status |
+| ***ID**** | ****Priority**** | ****Type**** | ****Status*** |
 | --- | --- | --- | --- |
 | TC-AC1 | Critical | Positive | Ready |
 | TC-AC2 | Critical | Positive | Ready |
@@ -18,7 +18,7 @@
 
 ### TC-AC1: Account section muestra identidad del usuario
 
-```gherkin
+```
 Feature: Settings - Account section
 
   @positive @critical
@@ -36,12 +36,11 @@ Feature: Settings - Account section
     When they navigate to Settings → Account
     Then the identity card shows email "sara@example.com"
     But the identity card does not display a display name field
-
 ```
 
 ### TC-AC2: Workspace list con roles e indicador del actual
 
-```gherkin
+```
 Feature: Settings - Workspace list
 
   @positive @critical
@@ -58,12 +57,11 @@ Feature: Settings - Workspace list
     Given user belongs to 12 workspaces
     When they navigate to Settings → Account
     Then the workspace list container is scrollable
-
 ```
 
 ### TC-AC3: Settings accesible desde navegación global
 
-```gherkin
+```
 Feature: Settings - Navigation
 
   @positive @high
@@ -80,12 +78,11 @@ Feature: Settings - Navigation
     When they navigate directly to "/settings"
     Then the Account section loads
     And the final URL is "/settings"
-
 ```
 
 ### TC-AC4: Acceso no autenticado redirige a login
 
-```gherkin
+```
 Feature: Settings - Auth guard
 
   @negative @critical
@@ -94,12 +91,11 @@ Feature: Settings - Auth guard
     When they navigate to "/settings"
     Then they are redirected to "/login"
     And the login URL includes returnUrl="/settings"
-
 ```
 
 ### TC-AC5: Sesión expirada en Settings
 
-```gherkin
+```
 Feature: Settings - Session expiry
 
   @negative @high
@@ -109,12 +105,11 @@ Feature: Settings - Session expiry
     Then either they are redirected to "/login"
     Or a "Session expired" message is displayed
     And no crash, backend error toast, or blank page occurs
-
 ```
 
 ### TC-AC6: Estado vacío — usuario sin workspaces
 
-```gherkin
+```
 Feature: Settings - Empty state
 
   @boundary @high
@@ -125,12 +120,11 @@ Feature: Settings - Empty state
     Then the identity card is visible with their email
     And they see a message "You don't belong to any workspaces yet"
     And a call-to-action button is displayed
-
 ```
 
 ### TC-AC7: Error en workspace_members
 
-```gherkin
+```
 Feature: Settings - Error handling
 
   @negative @medium

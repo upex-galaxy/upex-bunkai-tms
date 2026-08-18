@@ -1,12 +1,12 @@
 # BK-89 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-89)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-89)
 
 ## Phase 3 — Refined Acceptance Criteria
 
 ### AC 1 (Refined) — Multi-workspace user sees list with roles
 
-```gherkin
+```
 Scenario: Workspaces section lists all active memberships with roles
   Given Mateo is authenticated
     And he holds an active membership in "Acme QA" with role "admin"
@@ -20,15 +20,15 @@ Scenario: Workspaces section lists all active memberships with roles
     And "Acme QA" does not carry the active workspace indicator
 ```
 
-> ***NEEDS PO/DEV CONFIRMATION******:*** What API field or client-side mechanism identifies the active workspace? Is it a field in the `GET /api/v1/workspaces` response, a separate endpoint, localStorage, or session cookie?
+> ***NEEDS PO/DEV CONFIRMATION:*** What API field or client-side mechanism identifies the active workspace? Is it a field in the `GET /api/v1/workspaces` response, a separate endpoint, localStorage, or session cookie?
 
-> ***NEEDS PO/DEV CONFIRMATION******:*** Will `GET /api/v1/workspaces` be extended to return the `role` field per workspace, or will a separate endpoint/join be introduced? The current response does not include `role`.
+> ***NEEDS PO/DEV CONFIRMATION:*** Will `GET /api/v1/workspaces` be extended to return the `role` field per workspace, or will a separate endpoint/join be introduced? The current response does not include `role`.
 
 ---
 
 ### AC 2 (Refined) — Single-workspace user sees their workspace as active
 
-```gherkin
+```
 Scenario: Single-workspace user sees a clean, unambiguous state
   Given Mateo is authenticated
     And he holds exactly one active membership, in "Acme QA" with role "admin"
@@ -40,13 +40,13 @@ Scenario: Single-workspace user sees a clean, unambiguous state
     And no "leave workspace" or "add workspace" controls are visible
 ```
 
-> ***NEEDS PO/DEV CONFIRMATION******:*** Should the role label ("Admin") also be displayed for the single-workspace view, consistent with AC 1? The original AC 2 omits it.
+> ***NEEDS PO/DEV CONFIRMATION:*** Should the role label ("Admin") also be displayed for the single-workspace view, consistent with AC 1? The original AC 2 omits it.
 
 ---
 
 ### AC 3 (Inferred) — Suspended or invited memberships are excluded
 
-```gherkin
+```
 Scenario: Workspaces with non-active membership status are not shown
   Given Mateo has an active membership in "Acme QA"
     And he has a suspended membership in "Old Corp"
@@ -57,13 +57,13 @@ Scenario: Workspaces with non-active membership status are not shown
     And "Startup Inc" does not appear in the list
 ```
 
-> ***NEEDS PO/DEV CONFIRMATION******:*** Should invited memberships be shown with a distinct "Pending" state, or excluded entirely? FR-010 excludes them at the API level, but the UX decision is not documented.
+> ***NEEDS PO/DEV CONFIRMATION:*** Should invited memberships be shown with a distinct "Pending" state, or excluded entirely? FR-010 excludes them at the API level, but the UX decision is not documented.
 
 ---
 
 ### AC 4 (Inferred) — Owner role resolves correctly from owner*user*id
 
-```gherkin
+```
 Scenario: Workspace owner sees "Owner" role label
   Given Mateo is authenticated
     And he is the owner (owner*user*id == Mateo's user ID) of "Acme QA"
@@ -71,7 +71,7 @@ Scenario: Workspace owner sees "Owner" role label
   Then "Acme QA" displays the role label "Owner"
 ```
 
-> ***NEEDS PO/DEV CONFIRMATION******:*** Confirm that "Owner" is the displayed label for the owner role. Also confirm whether owner status is derived client-side from `owner*user*id` comparison or returned from the API as a role field.
+> ***NEEDS PO/DEV CONFIRMATION:*** Confirm that "Owner" is the displayed label for the owner role. Also confirm whether owner status is derived client-side from `owner*user*id` comparison or returned from the API as a role field.
 
 ---
 _Synced from Jira by sync-jira-issues_

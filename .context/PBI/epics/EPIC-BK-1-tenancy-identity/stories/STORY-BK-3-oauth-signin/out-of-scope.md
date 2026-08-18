@@ -1,6 +1,6 @@
 # BK-3 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
 - Other OAuth providers (GitLab, Apple, Microsoft) — backlog post-MVP
 - SSO / SAML — Phase 3 Enterprise

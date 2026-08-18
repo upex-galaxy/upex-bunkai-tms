@@ -1,8 +1,8 @@
 # BK-218 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
 
-```gherkin
+```
 Scenario: Pasting a Run reference renders a rich card
   Given a finished Run of the Test "Checkout happy path" exists with the verdict PASS
   When Elena pastes that Run's link into the "Payments API" project channel
@@ -10,7 +10,7 @@ Scenario: Pasting a Run reference renders a rich card
   And clicking the card opens that Run
 ```
 
-```gherkin
+```
 Scenario: Sharing an ATC shows its title and workflow status
   Given the ATC "Validate successful login with valid credentials" has the workflow status Ready
   When Sara inserts a reference to that ATC in the channel
@@ -18,7 +18,7 @@ Scenario: Sharing an ATC shows its title and workflow status
   And clicking the card opens the ATC
 ```
 
-```gherkin
+```
 Scenario: A rich card respects the reader's permissions
   Given Mateo has no access to the project "Payments API"
   And a rich link to a Test from that project is posted in the workspace general channel
@@ -27,7 +27,7 @@ Scenario: A rich card respects the reader's permissions
   And clicking it does not reveal the entity
 ```
 
-```gherkin
+```
 Scenario: A rich link to a deleted entity degrades gracefully
   Given a rich link to the ATC "Validate successful login with valid credentials" exists in the channel history
   When that ATC is deleted

@@ -1,6 +1,6 @@
 # BK-23 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
 
 1. Elena opens an ATC she wants to vary.
 2. She chooses ***Duplicate***, optionally typing a new title.

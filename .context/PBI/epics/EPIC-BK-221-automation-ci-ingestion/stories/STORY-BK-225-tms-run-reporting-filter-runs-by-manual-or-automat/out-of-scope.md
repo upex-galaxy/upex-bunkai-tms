@@ -1,6 +1,6 @@
 # BK-225 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-225)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-225)
 
 - Ingesting automated runs — sibling stories (API submission, streaming, CI upload) own the ingestion
 - The automation status of a Test (manual-only / candidate / automated) — sibling story; that is a property of the Test, not of a run

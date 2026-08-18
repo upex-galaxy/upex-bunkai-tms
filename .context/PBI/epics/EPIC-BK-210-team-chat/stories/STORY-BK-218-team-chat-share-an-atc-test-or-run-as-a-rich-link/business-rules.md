@@ -1,6 +1,6 @@
 # BK-218 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-218)
 
 - ***Supported entities***: ATC, Test, and Run references render as rich cards; anything else stays a plain link.
 - ***State shown = current state***: a card shows the entity's state as of when the message is rendered, not a frozen snapshot — a Run card shows its verdict (PASS, FAIL, ABORTED, BLOCKED), an ATC or Test card shows its workflow status.

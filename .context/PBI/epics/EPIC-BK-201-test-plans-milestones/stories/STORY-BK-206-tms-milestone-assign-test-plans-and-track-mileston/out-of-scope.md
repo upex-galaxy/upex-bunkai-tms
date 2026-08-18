@@ -1,6 +1,6 @@
 # BK-206 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-206)
 
 - Creating plans or editing plan membership from the milestone view — owned by the plan stories.
 - Automatic milestone completion or state changes when readiness reaches 100 percent.

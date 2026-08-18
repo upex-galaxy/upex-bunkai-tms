@@ -1,6 +1,6 @@
 # BK-6 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
 
 1. User clicks the workspace switcher in the header.
 

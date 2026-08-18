@@ -5,19 +5,20 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 3
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
 ## Overview
 
-# BK-32: TMS-Test View | View a test with all chained ATCs expanded
+# [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32): TMS-Test View | View a test with all chained ATCs expanded
 
 ## Source
 
 - Source spec: BK-017
-- Parent epic: BK-24 Tests (chains of ATCs)
-- Formal dependency: BK-27 Test assembly and canonical chain order
+- Parent epic: [https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24](https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24) Tests (chains of ATCs)
+- Formal dependency: [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) Test assembly and canonical chain order
 
 ## User Story
 
@@ -31,19 +32,19 @@ As a QA Engineer, I want to open a Test and see all of its chained ATCs expanded
 
 ## Key Contract Decisions
 
-| Decision | Contract |
+| ***Decision**** | ****Contract*** |
 | --- | --- |
-| Expanded read | Default refinement route is `/api/v1/tests/{id}?expand=atcs.steps,atcs.assertions`; `/tests/{id}` remains source-spec shorthand until Dev confirms final routing. |
+| Expanded read | Default refinement route is `/api/v1/tests/{id}?expand=atcs.steps,atcs.assertions`; `/tests/{id`} remains source-spec shorthand until Dev confirms final routing. |
 | Read model | Expanded Test view shows the Test header plus ordered ATC chain, steps, and assertions in one read. |
 | Order source | Display order must come from the saved Test chain order, not client-side sorting. |
 | Content freshness | Expanded view should show live/latest saved ATC content. Snapshot behavior belongs to Run/history/audit, not this Test definition view. |
 | Read-only UX | No edit, reorder, add, or remove controls are in scope. |
 | Permissions | Viewer/member/admin/owner may read inside their workspace unless Dev/Security defines stricter rules; cross-workspace access must not leak Test or ATC details. |
-| Empty state | Zero-ATC empty state is conditional and needs PO/Dev confirmation because BK-27 says a Test must contain at least one ATC. |
+| Empty state | Zero-ATC empty state is conditional and needs PO/Dev confirmation because [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) says a Test must contain at least one ATC. |
 
 ## Refined Acceptance Criteria
 
-```gherkin
+```
 Background:
   Given Elena is signed in to workspace "Acme QA"
     And Elena has read access to the project
@@ -100,10 +101,10 @@ Scenario: Expanded read returns full chain in one round trip
 
 ## Open Confirmations
 
-| Owner | Question | Expert recommendation |
+| ***Owner**** | ****Question**** | ****Expert recommendation*** |
 | --- | --- | --- |
-| PO/Dev | Should zero-ATC Tests exist for BK-32? | Do not accept zero-ATC Test as default. Keep the empty state only if BK-32 targets draft/legacy/deleted-chain recovery. |
-| Dev | What is the final route? | Use `/api/v1/tests/{id}?expand=atcs.steps,atcs.assertions` unless Dev confirms bare `/tests/{id}`. |
+| PO/Dev | Should zero-ATC Tests exist for BK-32? | Do not accept zero-ATC Test as default. Keep the empty state only if [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32) targets draft/legacy/deleted-chain recovery. |
+| Dev | What is the final route? | Use `/api/v1/tests/{id}?expand=atcs.steps,atcs.assertions` unless Dev confirms bare `/tests/{id`}. |
 
 ## Out of Scope
 
@@ -119,6 +120,19 @@ Scenario: Expanded read returns full chain in one round trip
 - Comments should complement this field, not duplicate it.
 - Current comments include QA handoff mirror `11583` and full pre-publication package `11584`.
 - Do not move to Estimation until PO/Dev confirmations are resolved.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 

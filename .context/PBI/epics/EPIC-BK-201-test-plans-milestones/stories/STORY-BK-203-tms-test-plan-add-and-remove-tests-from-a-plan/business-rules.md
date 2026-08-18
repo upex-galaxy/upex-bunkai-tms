@@ -1,6 +1,6 @@
 # BK-203 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-203)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-203)
 
 - Plan membership rows reference Tests; removing a membership never deletes or alters the Test.
 - A Test may belong to any number of plans in its project; a plan holds a given Test at most once.

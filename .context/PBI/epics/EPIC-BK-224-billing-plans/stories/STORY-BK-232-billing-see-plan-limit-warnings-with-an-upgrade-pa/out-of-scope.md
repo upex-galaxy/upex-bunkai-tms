@@ -1,6 +1,6 @@
 # BK-232 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
 
 - The upgrade checkout itself (separate story)
 - An in-app "notify the owner" message or notification mechanism — the block names the owner; sending requests is unsourced (gap)

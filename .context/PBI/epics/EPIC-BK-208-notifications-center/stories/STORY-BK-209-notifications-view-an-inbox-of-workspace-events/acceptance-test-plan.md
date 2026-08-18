@@ -2,12 +2,12 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-209)
 
-# Shift-Left Refinement: BK-209 - Notifications | View an inbox of workspace events
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) - Notifications | View an inbox of workspace events
 
 ***Status***: Refined - Open questions answered  
 ***Mode***: Shift-Left Phase 2, local artifact only  
 ***Refined on***: 2026-07-15  
-***Parent epic***: BK-208 - Notifications Center  
+***Parent epic***: [https://jira.upexgalaxy.com/browse/BK-208#icft=BK-208](https://jira.upexgalaxy.com/browse/BK-208#icft=BK-208) - Notifications Center  
 ***Story status***: Estimation  
 ***Priority***: Medium  
 ***Risk level***: HIGH  
@@ -35,12 +35,12 @@
 
 - ***Frontend***: story asks for a bell in the top bar, but current shell evidence shows a persistent left sidebar and account menu block (`app/(app)/layout.tsx`, `components/layout/AppSidebar.tsx`). This is a Design/PO alignment risk, not a QA rewrite.
 - ***Backend / data substrate***: no implemented notifications module was found in provided evidence. Existing `activity_log` records workspace-scoped audit events and is readable by workspace members; it may be a substrate, but personal notification copies and read-state require a separate model or explicit projection.
-- ***Event sources***: run finish and abort already emit `activity_log` actions (`run.finished`, `run.aborted`) in migrations `0036` and `0037`. Event generation for notifications belongs to sibling stories and is out of BK-209 scope.
+- ***Event sources***: run finish and abort already emit `activity_log` actions (`run.finished`, `run.aborted`) in migrations `0036` and `0037`. Event generation for notifications belongs to sibling stories and is out of [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) scope.
 - ***Security substrate***: workspace membership and RLS are central to all protected flows. Notification visibility must follow the same workspace/entity access rules.
 
 ### Story complexity
 
-| Axis | Rating | Why |
+| ***Axis**** | ****Rating**** | ****Why*** |
 | --- | --- | --- |
 | Business logic | Medium | Read/unread state, badge count, retention, self-notification exclusion, entity fallback. |
 | Integration | High | Depends on workspace membership, entity visibility, run/bug/test links, and later sibling event producers. |
@@ -53,14 +53,14 @@
 ### Epic-level inheritance
 
 - Notifications Center depends on sibling stories for event generation, preferences, digest email, and future chat mentions.
-- BK-209 should define the inbox surface and read-state behavior only.
+- [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) should define the inbox surface and read-state behavior only.
 - Workspace isolation, RLS, and non-disclosure are inherited from the master test plan as release-critical risks.
 
 ---
 
 ## Critical Findings
 
-- BK-209 is a valid Story for extended Shift-Left refinement because it is user-facing, dynamic, workspace-scoped, and security-sensitive.
+- [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) is a valid Story for extended Shift-Left refinement because it is user-facing, dynamic, workspace-scoped, and security-sensitive.
 - The story has a clear MVP boundary: inbox display, badge, read-state, deep links, deleted-entity fallback, empty state.
 - Main risk is not rendering rows. Main risk is leaking notification existence or entity metadata after workspace/entity access changes.
 - Current code evidence does not show a notifications module. Treat `activity_log`, workspace membership, and run audit events as likely substrate only, not as implementation contract.
@@ -72,7 +72,7 @@
 
 ### Ambiguities
 
-| # | Location in Story | Question for PO/Dev | Impact on testing | Suggested clarification |
+| ***#**** | ****Location in Story**** | ****Question for PO/Dev**** | ****Impact on testing**** | ****Suggested clarification*** |
 | --- | --- | --- | --- | --- |
 | A1 | Context / Business Rules / Mockup | Should the notification entry point stay in a top bar, or adapt to the current sidebar/account-menu shell? | UI locators, responsive behavior, and acceptance screenshots differ. | Design/PO confirm final placement before sprint. |
 | A2 | AC1 / Business Rules | Is the badge count workspace-specific for the active workspace only, or global across all Elena's workspaces? | Badge count and panel contents differ after workspace switching. | Use active workspace only unless PO wants cross-workspace inbox. |
@@ -83,14 +83,14 @@
 
 ### Gaps (missing info)
 
-| # | Type | Why critical | What to add | Risk if omitted |
+| ***#**** | ****Type**** | ****Why critical**** | ****What to add**** | ****Risk if omitted*** |
 | --- | --- | --- | --- | --- |
 | G1 | AC / Security | Notifications can reveal inaccessible run/bug/test metadata. | Add AC for workspace/entity visibility, including loss of access. | Cross-tenant or stale-access data leak. |
 | G2 | AC / Business rule | Own actions never notify self, but no AC covers it. | Add AC or explicit non-functional rule validation. | Users see noisy/self-generated inbox items. |
 | G3 | AC / Boundary | Badge cap 99+ is ratified but absent from ACs. | Add boundary AC for 0, 99, 100 unread. | Badge overflows or misleads users. |
 | G4 | AC / Retention | 90-day retention is ratified but absent from ACs. | Add boundary AC for 89/90/91 days or define purge timing. | Old notifications remain visible or purge too early. |
 | G5 | Technical detail | No notification persistence/read-state model is specified. | Dev confirms whether to create notifications table or project from `activity_log`. | Read-state cannot be personal or durable. |
-| G6 | Integration | Sibling event producers are out of scope but BK-209 needs test data. | Define seed/API fixture path for notifications before QA. | In-sprint QA cannot create meaningful inbox states. |
+| G6 | Integration | Sibling event producers are out of scope but [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) needs test data. | Define seed/API fixture path for notifications before QA. | In-sprint QA cannot create meaningful inbox states. |
 
 ### Contradictions
 
@@ -113,7 +113,7 @@
 
 ### Original AC1 - Open the inbox from the bell
 
-```gherkin
+```
 Scenario: Show unread badge and open the notification panel for the active workspace
   Given Elena is signed in and her active workspace is "UPEX Galaxy"
   And Elena has 3 unread notifications and 2 read notifications visible in that workspace
@@ -126,7 +126,7 @@ Scenario: Show unread badge and open the notification panel for the active works
   And notifications are grouped by day as Today, Yesterday, then calendar dates
 ```
 
-```gherkin
+```
 Scenario: Keep notification inbox scoped to the active workspace - NEEDS PO/DEV CONFIRMATION
   Given Elena belongs to workspaces "UPEX Galaxy" and "Bunkai Labs"
   And each workspace has unread notifications for Elena
@@ -136,7 +136,7 @@ Scenario: Keep notification inbox scoped to the active workspace - NEEDS PO/DEV 
   Then the badge and panel refresh to notifications visible in "Bunkai Labs"
 ```
 
-```gherkin
+```
 Scenario: Show empty state when the inbox has no notifications
   Given Elena is signed in to workspace "UPEX Galaxy"
   And Elena has no visible notifications in that workspace
@@ -148,7 +148,7 @@ Scenario: Show empty state when the inbox has no notifications
 
 ### Original AC2 - Mark a single notification as read
 
-```gherkin
+```
 Scenario: Mark one unread notification as read
   Given Elena's inbox shows an unread notification "Run finished: Login regression chain - passed"
   And the unread badge count is "3"
@@ -158,7 +158,7 @@ Scenario: Mark one unread notification as read
   And other unread notifications remain unread
 ```
 
-```gherkin
+```
 Scenario: Keep read state personal per recipient
   Given Elena and Mateo can both access workspace "UPEX Galaxy"
   And both received separate copies of the same run notification
@@ -169,7 +169,7 @@ Scenario: Keep read state personal per recipient
 
 ### Original AC3 - Mark all notifications as read
 
-```gherkin
+```
 Scenario: Mark all visible notifications as read
   Given Elena has 12 unread notifications visible in workspace "UPEX Galaxy"
   When Elena uses the mark-all-as-read control in the panel header
@@ -177,7 +177,7 @@ Scenario: Mark all visible notifications as read
   And the unread badge disappears
 ```
 
-```gherkin
+```
 Scenario: Mark-all affects only the active workspace - NEEDS PO/DEV CONFIRMATION
   Given Elena has unread notifications in workspaces "UPEX Galaxy" and "Bunkai Labs"
   And Elena's active workspace is "UPEX Galaxy"
@@ -188,7 +188,7 @@ Scenario: Mark-all affects only the active workspace - NEEDS PO/DEV CONFIRMATION
 
 ### Original AC4 - A notification deep-links to its entity
 
-```gherkin
+```
 Scenario: Deep-link to an accessible run and mark the notification as read
   Given Elena has an unread notification about the run of test "Login regression chain"
   And Elena still has access to that run's workspace and project
@@ -198,7 +198,7 @@ Scenario: Deep-link to an accessible run and mark the notification as read
   And the badge count decreases by 1
 ```
 
-```gherkin
+```
 Scenario: Prevent deep-link navigation to an entity Elena can no longer access
   Given Elena has a notification about a run she could previously access
   And Elena later loses access to that run's workspace or project
@@ -209,7 +209,7 @@ Scenario: Prevent deep-link navigation to an entity Elena can no longer access
 
 ### Original AC5 - Notification for an entity that no longer exists
 
-```gherkin
+```
 Scenario: Deleted target stays in inbox with graceful fallback
   Given Elena has an unread notification about a test that was deleted after notification creation
   When Elena clicks the notification
@@ -221,14 +221,14 @@ Scenario: Deleted target stays in inbox with graceful fallback
 
 ### New business-rule scenarios - NEEDS PO/DEV CONFIRMATION where inferred
 
-```gherkin
+```
 Scenario: Do not notify a user about their own action
   Given Elena starts or finishes a run in workspace "UPEX Galaxy"
   When notification generation for that event is processed by a sibling story
   Then Elena does not receive a notification copy for her own action
 ```
 
-```gherkin
+```
 Scenario: Display unread badge boundary values
   Given Elena has unread notifications in the active workspace
   When the unread count is 0
@@ -239,7 +239,7 @@ Scenario: Display unread badge boundary values
   Then the badge shows "99+"
 ```
 
-```gherkin
+```
 Scenario: Exclude notifications outside the 90-day retention window
   Given Elena has notifications created 89, 90, and 91 days ago
   When the retention purge or visibility filter is applied
@@ -253,7 +253,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ### PO
 
-1. Should BK-209 count and display notifications for the active workspace only, or across all workspaces?
+1. Should [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) count and display notifications for the active workspace only, or across all workspaces?
 2. Should loss of access hide old notifications entirely, or keep redacted rows with no entity metadata?
 3. What exact copy should appear for deleted or unavailable target entities?
 4. Should retention purge run exactly after 90 days, or can notifications on day 90 remain until the next scheduled cleanup? NEEDS PO/DEV CONFIRMATION
@@ -261,7 +261,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ### Dev
 
-1. Will BK-209 create a dedicated notifications table with per-recipient read state, or derive notifications from `activity_log` plus user-specific state?
+1. Will [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) create a dedicated notifications table with per-recipient read state, or derive notifications from `activity_log` plus user-specific state?
 2. Which endpoint(s) will support list, mark-one-read, and mark-all-read?
 3. What is the route map for deep links by entity type: run, bug, test?
 4. How will sibling event producers seed notification test data before they are fully implemented?
@@ -279,7 +279,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ## Edge Cases Identified
 
-| # | Technique | Edge case | Expected behavior | Criticality | Action |
+| ***#**** | ****Technique**** | ****Edge case**** | ****Expected behavior**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- | --- |
 | E1 | EP | User has no notifications | Empty state, no badge, no misleading loading state. | Medium | Add to AC. |
 | E2 | EP | User has read-only notifications | Panel lists rows in read style; no badge. | Medium | Test only. |
@@ -303,7 +303,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ### Coverage Estimate Counts
 
-| Group | Count | Notes |
+| ***Group**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 7 | Core inbox, read, mark-all, deep-link, empty state, grouping. |
 | Negative | 6 | Missing access, deleted target, no self-notification, unavailable route, failed update, hidden data. |
@@ -371,7 +371,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ## Coverage Estimate Counts
 
-| Coverage axis | Count |
+| ***Coverage axis**** | ****Count*** |
 | --- | --- |
 | Original ACs covered | 5 / 5 |
 | Refined Gherkin scenarios | 13 |
@@ -386,7 +386,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 
 ## Traceability Map Back to Original ACs and Business Rules
 
-| Source | Refined scenarios / outlines | Notes |
+| ***Source**** | ****Refined scenarios / outlines**** | ****Notes*** |
 | --- | --- | --- |
 | Original AC1 - Open inbox from bell | Active workspace panel, newest-first, unread style, day grouping, empty state, workspace scope | Preserves original intent; entry-point placement remains Design/PO question. |
 | Original AC2 - Mark single read | Mark-one-read, personal per-recipient state, idempotent already-read | Adds personal read-state validation from business rules. |
@@ -398,7 +398,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 | Business rule - 90-day retention | Retention boundary 89/90/91 days | Ratified in comments; exact purge timing still needs Dev/PO. |
 | Business rule - badge cap 99+ | Badge 0/1/99/100+ | Ratified in comments; added boundary outlines. |
 | Design intent - day grouping / empty state | Day grouping, empty state, visual read/unread | Needs final asset/copy confirmation. |
-| Out of scope - event generation/preferences/email/chat | No event-producer implementation required in BK-209 | Sibling stories own producers/channels. |
+| Out of scope - event generation/preferences/email/chat | No event-producer implementation required in [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) | Sibling stories own producers/channels. |
 
 ---
 
@@ -431,7 +431,7 @@ Scenario: Exclude notifications outside the 90-day retention window
 - Notification inbox is scoped to active workspace only. NEEDS PO/DEV CONFIRMATION.
 - `activity_log` is a possible event substrate, not the final notification storage contract. NEEDS PO/DEV CONFIRMATION.
 - Read-state is stored per recipient, not inferred globally from the event. Supported by business rule.
-- Sibling stories will generate run/bug/test events; BK-209 only displays and manages inbox state.
+- Sibling stories will generate run/bug/test events; [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) only displays and manages inbox state.
 
 ### Blockers
 
@@ -470,69 +470,69 @@ These answers were prepared from the current business, technical, and design con
 
 ### PO Answers
 
-- Original Question: Should BK-209 count and display notifications for the active workspace only, or across all workspaces?
+- Original Question: Should [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) count and display notifications for the active workspace only, or across all workspaces?
 
-  Answer: Active workspace only. Bunkai already uses active workspace as the operating context; mixing workspaces in one inbox increases confusion and data-leak risk.
+Answer: Active workspace only. Bunkai already uses active workspace as the operating context; mixing workspaces in one inbox increases confusion and data-leak risk.
 
 - Original Question: Should loss of access hide old notifications entirely, or keep redacted rows with no entity metadata?
 
-  Answer: Hide them entirely. If the user no longer has access, the product should not reveal that an entity or event exists.
+Answer: Hide them entirely. If the user no longer has access, the product should not reveal that an entity or event exists.
 
 - Original Question: What exact copy should appear for deleted or unavailable target entities?
 
-  Answer: Use: "This item is no longer available." If the target is inaccessible, do not show entity-specific metadata. If it was deleted but still belongs to an accessible context, the original notification summary may remain.
+Answer: Use: "This item is no longer available." If the target is inaccessible, do not show entity-specific metadata. If it was deleted but still belongs to an accessible context, the original notification summary may remain.
 
 - Original Question: Should retention purge run exactly after 90 days, or can notifications on day 90 remain until the next scheduled cleanup?
 
-  Answer: Day 90 remains visible; day 91 is outside retention. The purge can run asynchronously, but UI/API visibility must apply the 90-day filter.
+Answer: Day 90 remains visible; day 91 is outside retention. The purge can run asynchronously, but UI/API visibility must apply the 90-day filter.
 
 - Original Question: Is mark-all-as-read scoped to active workspace only?
 
-  Answer: Yes. Mark-all affects only visible notifications in the active workspace. Hidden or inaccessible notifications must not be mutated by that action.
+Answer: Yes. Mark-all affects only visible notifications in the active workspace. Hidden or inaccessible notifications must not be mutated by that action.
 
 ### Dev Answers
 
-- Original Question: Will BK-209 create a dedicated notifications table with per-recipient read state, or derive notifications from activity_log plus user-specific state?
+- Original Question: Will [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) create a dedicated notifications table with per-recipient read state, or derive notifications from activity_log plus user-specific state?
 
-  Answer: Create dedicated notification storage for recipient delivery and read-state. activity_log can feed events, but it should not be the only source because it does not model personal delivery, read/unread state, retention visibility, or per-recipient copies cleanly.
+Answer: Create dedicated notification storage for recipient delivery and read-state. activity_log can feed events, but it should not be the only source because it does not model personal delivery, read/unread state, retention visibility, or per-recipient copies cleanly.
 
 - Original Question: Which endpoint(s) will support list, mark-one-read, and mark-all-read?
 
-  Answer: Use GET /api/v1/workspaces/{id}/notifications, POST /api/v1/notifications/{id}/read, and POST /api/v1/workspaces/{id}/notifications/read-all. All must be RBAC/RLS-safe and non-disclosing.
+Answer: Use GET /api/v1/workspaces/{id}/notifications, POST /api/v1/notifications/{id}/read, and POST /api/v1/workspaces/{id}/notifications/read-all. All must be RBAC/RLS-safe and non-disclosing.
 
 - Original Question: What is the route map for deep links by entity type: run, bug, test?
 
-  Answer: Run: /projects/{projectSlug}/runs/{runId}. Test: /projects/{projectSlug}/tests/{testId}. Bug: route depends on the BK-31 Bugs & Defect Heatmap implementation; Dev must define the final bug route before this story reaches Ready For QA.
+Answer: Run: /projects/{projectSlug}/runs/{runId}. Test: /projects/{projectSlug}/tests/{testId}. Bug: route depends on the [https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31](https://jira.upexgalaxy.com/browse/BK-31#icft=BK-31) Bugs & Defect Heatmap implementation; Dev must define the final bug route before this story reaches Ready For QA.
 
 - Original Question: How will sibling event producers seed notification test data before they are fully implemented?
 
-  Answer: Provide a seed/factory path that creates notifications directly for QA and automated tests. BK-209 should not be blocked by sibling event producers being unfinished.
+Answer: Provide a seed/factory path that creates notifications directly for QA and automated tests. [https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209](https://jira.upexgalaxy.com/browse/BK-209#icft=BK-209) should not be blocked by sibling event producers being unfinished.
 
 - Original Question: How will retention be implemented: scheduled purge, query filter, or both?
 
-  Answer: Both. API queries must filter out notifications older than 90 days, and an async purge can physically remove old rows later. Security and product correctness must not depend on the purge job running exactly on time.
+Answer: Both. API queries must filter out notifications older than 90 days, and an async purge can physically remove old rows later. Security and product correctness must not depend on the purge job running exactly on time.
 
 ### Design Answers
 
 - Original Question: Does the bell belong in a top bar as written, or should the current sidebar/account-menu shell be updated?
 
-  Answer: Adapt to the current shell: place the notification entry point in the persistent sidebar near the account/user area or another global sidebar affordance. A top bar would be a broader shell change and should be estimated separately if desired.
+Answer: Adapt to the current shell: place the notification entry point in the persistent sidebar near the account/user area or another global sidebar affordance. A top bar would be a broader shell change and should be estimated separately if desired.
 
 - Original Question: What are the visual differences for read vs unread rows?
 
-  Answer: Unread rows should use a small unread dot, stronger text weight, and subtle surface emphasis. Read rows should remove the dot and use normal text weight/lower emphasis. Do not rely on color alone.
+Answer: Unread rows should use a small unread dot, stronger text weight, and subtle surface emphasis. Read rows should remove the dot and use normal text weight/lower emphasis. Do not rely on color alone.
 
 - Original Question: What are the approved empty-state illustration and copy?
 
-  Answer: Copy: "No notifications yet. Important workspace events will appear here." Illustration is optional for MVP and should match existing empty-state style if available.
+Answer: Copy: "No notifications yet. Important workspace events will appear here." Illustration is optional for MVP and should match existing empty-state style if available.
 
 - Original Question: How should a 400px anchored panel behave on narrow/mobile viewports?
 
-  Answer: Desktop uses the anchored panel. Narrow/mobile should use a full-screen sheet/drawer so content remains readable and touch-friendly.
+Answer: Desktop uses the anchored panel. Narrow/mobile should use a full-screen sheet/drawer so content remains readable and touch-friendly.
 
 - Original Question: Should the panel close after row click, mark-one-read, or mark-all-read?
 
-  Answer: Row click closes because it navigates. Mark-one-read does not close. Mark-all-read does not close; it should update the panel state in place.
+Answer: Row click closes because it navigates. Mark-one-read does not close. Mark-all-read does not close; it should update the panel state in place.
 
 ---
 _Synced from Jira by sync-jira-issues_

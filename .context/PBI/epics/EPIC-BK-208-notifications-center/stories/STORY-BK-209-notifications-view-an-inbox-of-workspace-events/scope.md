@@ -1,6 +1,6 @@
 # BK-209 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-209)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-209)
 
 - Bell entry point in the top bar with an unread-count badge.
 - Notification panel (anchored to the bell) listing the user's notifications newest-first, with read/unread visual states.

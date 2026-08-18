@@ -1,6 +1,6 @@
 # BK-5 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
 
 # [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5) Acceptance Test Results (ATR)
 

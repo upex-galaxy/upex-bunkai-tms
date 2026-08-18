@@ -1,10 +1,10 @@
 # BK-86 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-86)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-86)
 
 ## Scenario 1 — Signed-in identity is visible from any screen
 
-```gherkin
+```
 Scenario: Signed-in identity is visible from any screen
   Given Elena is signed in with email "elena@bunkai.io" and an active membership
         with role "admin" in her active workspace
@@ -21,7 +21,7 @@ Scenario: Signed-in identity is visible from any screen
 
 ## Scenario 2 — Sign out ends the session and returns to sign-in
 
-```gherkin
+```
 Scenario: Sign out ends the session and returns to sign-in
   Given Elena has the account menu open
    When she selects "Sign out"
@@ -36,7 +36,7 @@ Scenario: Sign out ends the session and returns to sign-in
 
 ## Scenario 3 — Account menu is keyboard accessible and dismissible
 
-```gherkin
+```
 Scenario: Account menu is keyboard accessible and dismissible
   Given Elena has focused the account affordance
    When she opens the menu with the keyboard and presses Escape
@@ -46,7 +46,7 @@ Scenario: Account menu is keyboard accessible and dismissible
 
 ## New Scenario A — Role display reflects the active workspace, including on switch
 
-```gherkin
+```
 Scenario: Role display updates when Elena switches her active workspace
   Given Elena belongs to two workspaces — "upex-team" (role "admin")
         and "qa-guild" (role "viewer") — with "upex-team" currently active
@@ -59,7 +59,7 @@ Scenario: Role display updates when Elena switches her active workspace
 
 ## New Scenario B — Identity/role surface for a user with no active workspace
 
-```gherkin
+```
 Scenario: Account affordance handles a user with no workspace membership
   Given Elena has just signed in for the first time and has no workspace
         memberships yet (no active workspace resolved)
@@ -69,11 +69,11 @@ Scenario: Account affordance handles a user with no workspace membership
         or equivalent) rather than a blank, "undefined", or broken value
 ```
 
-***NEEDS PO/DEV CONFIRMATION*** — neither existing scenario states what the affordance shows when `active*workspace*id` is null (a real, reachable state per `/api/v1/me`'s own response shape — e.g., immediately post-signup, before onboarding). This scenario proposes QA's best-guess default; it needs PO confirmation both on the exact empty-state copy and on whether the affordance is even reachable pre-onboarding (if "global chrome" excludes the onboarding route per SQ-2, this scenario may not apply there).
+***NEEDS PO/DEV CONFIRMATION*** — neither existing scenario states what the affordance shows when `active*workspace*id` is null (a real, reachable state per `/api/v1/me`'s own response shape — e.g., immediately post-signup, before onboarding). This scenario proposes QA's best-guess default; it needs PO confirmation both on the exact empty-state copy and on whether the affordance is even reachable pre-onboarding (if "global chrome" excludes the onboarding route per [https://jira.upexgalaxy.com/browse/SQ-2#icft=SQ-2](https://jira.upexgalaxy.com/browse/SQ-2#icft=SQ-2), this scenario may not apply there).
 
 ## New Scenario C — Sign-out failure is surfaced, not silent
 
-```gherkin
+```
 Scenario: Sign-out failure is surfaced and the session is preserved
   Given Elena selects "Sign out" while the network is unavailable
         or the auth provider returns an error
@@ -83,11 +83,11 @@ Scenario: Sign-out failure is surfaced and the session is preserved
     And no partial sign-out state (half-redirected, half-authenticated) occurs
 ```
 
-***NEEDS PO/DEV CONFIRMATION*** — none of the 3 existing scenarios mention a failure path; Scenario 2 only covers the happy path. `AuthProvider.signOut()` already returns `{ error }` from `supabase.auth.signOut()`, so a failure path is technically reachable, but the story is silent on what Elena should see when it happens. This scenario names QA's expected behavior (visible error, no silent failure, no partial state); exact copy/presentation (toast vs inline) is a Dev/Design decision to confirm.
+***NEEDS PO/DEV CONFIRMATION*** — none of the 3 existing scenarios mention a failure path; Scenario 2 only covers the happy path. `AuthProvider.signOut()` already returns {{{ error }}} from `supabase.auth.signOut()`, so a failure path is technically reachable, but the story is silent on what Elena should see when it happens. This scenario names QA's expected behavior (visible error, no silent failure, no partial state); exact copy/presentation (toast vs inline) is a Dev/Design decision to confirm.
 
 ## New Scenario D — Sign-out terminates the session across other open tabs
 
-```gherkin
+```
 Scenario: Signing out in one tab ends the session everywhere
   Given Elena is signed in to the same account in two browser tabs
    When she signs out from the account menu in the first tab

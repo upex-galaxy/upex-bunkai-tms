@@ -2,14 +2,14 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-47)
 
-# Shift-Left Refinement — BK-47
+# Shift-Left Refinement — [https://jira.upexgalaxy.com/browse/BK-47#icft=BK-47](https://jira.upexgalaxy.com/browse/BK-47#icft=BK-47)
 
 ## TMS-Coverage | Compute time-to-green per user story from run and bug history
 
-***Date******:*** 2026-07-24
-***Refined by******:*** QA — Juan Ignacio Marmo
-***Prior refinement******:*** Nahuel Gomez, 2026-06-29 (reference: comments.md)
-***Status******:*** Phase 2 complete — awaiting Phase 3 Jira handoff
+***Date:*** 2026-07-24
+***Refined by:*** QA — Juan Ignacio Marmo
+***Prior refinement:*** Nahuel Gomez, 2026-06-29 (reference: comments.md)
+***Status:*** Phase 2 complete — awaiting Phase 3 Jira handoff
 
 ---
 
@@ -61,15 +61,15 @@ For the metric to be computable, the following must pre-exist:
 5. At least one `runs` row linked to that test, with `status = 'failed'` — this marks clock start (`created*at` or a `started*at` field on `runs`)
 6. A `runs` row (same or later) where all `run_atcs` for the story's ATCs have passing outcomes — this marks clock stop
 
-***Additional dependency (Business Rule 2)******:**** The story must have a resolved defect linked to the failing run before a subsequent all-passing run counts as "recovered." The `runs` entity does not have a confirmed defect-link FK in the data map — this dependency mechanism is a ****NEEDS PO/DEV CONFIRMATION*** item (see AC-4 and open questions).
+***Additional dependency (Business Rule 2):**** The story must have a resolved defect linked to the failing run before a subsequent all-passing run counts as "recovered." The `runs` entity does not have a confirmed defect-link FK in the data map — this dependency mechanism is a ****NEEDS PO/DEV CONFIRMATION*** item (see AC-4 and open questions).
 
-***Clock granularity dependency******:**** The time computation relies on timestamps stored on `runs`. The data map confirms `runs` has `created*at` (immutable), but a `started*at` field is not confirmed — this affects precision of the "clock start" event. ****NEEDS DEV CONFIRMATION.***
+***Clock granularity dependency:**** The time computation relies on timestamps stored on `runs`. The data map confirms `runs` has `created*at` (immutable), but a `started*at` field is not confirmed — this affects precision of the "clock start" event. ****NEEDS DEV CONFIRMATION.***
 
 ### 1.4 Feasibility assessment
 
-***Current blockers (as of 2026-07-24)******:***
+***Current blockers (as of 2026-07-24):***
 
-| Blocker | Severity | Detail |
+| ***Blocker**** | ****Severity**** | ****Detail*** |
 | --- | --- | --- |
 | No confirmed RPC for cycle-time computation | HIGH | No `bunkai*compute*time*to*green` or equivalent found in DB RPC inventory. This story depends on a new DB function being authored. |
 | Run REST routes not confirmed in code scan | HIGH | `POST /api/v1/runs`, finish, abort, step-recording routes are documented in data map (Flow 5) but route files not found. The cycle-time metric requires runs to exist — if the run execution flow is not yet testable via REST, seeding test data requires direct DB manipulation via `qa*inspector*rw`. |
@@ -77,7 +77,7 @@ For the metric to be computable, the following must pre-exist:
 | Defect-to-run link mechanism unconfirmed | MEDIUM | Business Rule 2 ("a resolved defect must exist") references a relationship between `runs` and defects that has no confirmed FK or bridge table in the current schema. |
 | Run timestamp precision unconfirmed | LOW | Whether the clock uses `runs.created_at` (creation time) or a separate start timestamp is not stated in the ACs or business rules. |
 
-***Verdict******:*** This story is NOT independently testable end-to-end today. The RPC, REST endpoint, and UI surface are all unconfirmed. Testing can begin only at the DB-seeding + RPC-call layer once the computation function is implemented. Full E2E testing is gated on the UI route being built and the run REST routes being confirmed.
+***Verdict:*** This story is NOT independently testable end-to-end today. The RPC, REST endpoint, and UI surface are all unconfirmed. Testing can begin only at the DB-seeding + RPC-call layer once the computation function is implemented. Full E2E testing is gated on the UI route being built and the run REST routes being confirmed.
 
 ### 1.5 Test approach
 
@@ -104,7 +104,7 @@ For negative cases (never failed, still failing), seed only the relevant subset 
 
 ### 2.1 Prior gaps — resolution status
 
-| # | Gap (Nahuel, 2026-06-29) | Severity | Resolution | Evidence |
+| ***#**** | ****Gap (Nahuel, 2026-06-29)**** | ****Severity**** | ****Resolution**** | ****Evidence*** |
 | --- | --- | --- | --- | --- |
 | 1 | No ACs exist | HIGH | RESOLVED | `acceptance-criteria.md` now contains 3 Gherkin scenarios |
 | 2 | No DoD | HIGH | PARTIALLY RESOLVED | Business rules define the recovery condition (resolved defect + all-passing run), but no explicit DoD checklist or "done" criteria for the UI display format or data freshness SLA exist |
@@ -116,15 +116,15 @@ For negative cases (never failed, still failing), seed only the relevant subset 
 | 8 | Never-passing scenario | MEDIUM | RESOLVED | AC-2 explicitly covers "story still failing" with "not yet green" + elapsed time so far |
 | 9 | Only-passing scenario | MEDIUM | RESOLVED | AC-3 explicitly covers "story never failed" with "no cycle to measure" |
 
-***Summary******:*** 3 RESOLVED, 2 PARTIALLY RESOLVED (with new sub-gaps), 2 STILL OPEN, 2 NEW gaps introduced by the current ACs.
+***Summary:*** 3 RESOLVED, 2 PARTIALLY RESOLVED (with new sub-gaps), 2 STILL OPEN, 2 NEW gaps introduced by the current ACs.
 
 ### 2.2 Open questions — current status
 
 #### For PO:
 
-| # | Original Question (Nahuel) | Status | Answer / Still open |
+| ***#**** | ****Original Question (Nahuel)**** | ****Status**** | ****Answer / Still open*** |
 | --- | --- | --- | --- |
-| 1 | Failing boundary: run status=failed OR any run where at least one ATC failed? | PARTIALLY ANSWERED | Business rules say "first failing run" — implies `runs.status = 'failed'` (run-level verdict). However, whether a run where some ATCs pass and some fail counts as "failing" is still ambiguous. The run verdict (`passed`/`failed`) is set at finish time by the caller, not auto-derived from step outcomes. ***Still open******:****** does a run finished with ****`verdict=failed`**** qualify even if only one of ten ATCs failed?*** |
+| 1 | Failing boundary: run status=failed OR any run where at least one ATC failed? | PARTIALLY ANSWERED | Business rules say "first failing run" — implies `runs.status = 'failed'` (run-level verdict). However, whether a run where some ATCs pass and some fail counts as "failing" is still ambiguous. The run verdict (`passed`/`failed`) is set at finish time by the caller, not auto-derived from step outcomes. ***Still open:**** ****does a run finished with**** `verdict=failed` ****qualify even if only one of ten ATCs failed?*** |
 | 2 | Bug reopening: does re-opening a bug after a "passing" run reset the clock? | STILL OPEN | Not addressed in any current artifact. Business Rule 2 requires "a resolved defect" before recovery counts — but the inverse (a reopened defect invalidating a prior recovery) is undefined. |
 | 3 | Multi-Test consolidation: union (earliest fail → latest pass) or per-Test rollup? | STILL OPEN | Not addressed. Covered in new gap analysis in §2.3. |
 | 4 | Blocked steps: do blocked run*steps count as "failing" for the metric? | STILL OPEN | Not addressed. AC-1 says "all of the story's test coverage passes" — whether `blocked` run*atcs satisfy "passing" is undefined. |
@@ -132,7 +132,7 @@ For negative cases (never failed, still failing), seed only the relevant subset 
 
 #### For Dev:
 
-| # | Original Question (Nahuel) | Status | Answer / Still open |
+| ***#**** | ****Original Question (Nahuel)**** | ****Status**** | ****Answer / Still open*** |
 | --- | --- | --- | --- |
 | 1 | Query path: US→ATC→test*steps→runs, or add a direct FK (run.user*story*id)? | STILL OPEN | No confirmed RPC or schema change in the data map. The indirect path through `test*steps` is the only confirmed route. A direct FK would require a schema change. |
 | 2 | Materialized view or live computation? | STILL OPEN | Not addressed. Has significant testability implications: materialized view requires a refresh trigger to be tested; live computation needs performance testing at scale. |
@@ -146,7 +146,7 @@ The following gaps were identified through State-Transition, BVA, Decision Table
 
 The `runs` state machine has terminal states `passed`, `failed`, and `aborted`. The current ACs only reason about `passed` and `failed`. The `aborted` state creates an unmodeled scenario:
 
-| Gap | Technique | Severity | Outline derived |
+| ***Gap**** | ****Technique**** | ****Severity**** | ****Outline derived*** |
 | --- | --- | --- | --- |
 | Aborted run between first failure and eventual pass — should it be ignored, counted as in-progress time, or reset the clock? | State-Transition | HIGH | TTC-16 |
 | A run that starts as `running` and is never closed (permanent `running` state — no auto-timeout confirmed in data map) — should the metric treat it as in-progress? | State-Transition | MEDIUM | TTC-17 |
@@ -155,14 +155,14 @@ The `runs` state machine has terminal states `passed`, `failed`, and `aborted`. 
 
 The `user*stories` state machine has states `draft`, `ready*to*test`, and `archived`. The AC only tests a story in `ready*to_test` state. New gaps:
 
-| Gap | Technique | Severity | Outline derived |
+| ***Gap**** | ****Technique**** | ****Severity**** | ****Outline derived*** |
 | --- | --- | --- | --- |
 | A story archived after it accumulated run history — does the cycle-time view still show its historical metric, or is it excluded? | State-Transition | MEDIUM | TTC-18 |
 | A story in `draft` status that somehow has run history (ATCs ran before the story was marked `ready*to*test`) — is this possible given schema constraints, and what does the metric show? | State-Transition | LOW | (edge case — may be architecturally impossible; flag for Dev) |
 
 #### BVA on the time computation
 
-| Gap | Technique | Severity | Outline derived |
+| ***Gap**** | ****Technique**** | ****Severity**** | ****Outline derived*** |
 | --- | --- | --- | --- |
 | First failing run and first all-passing run have identical `created_at` timestamps (e.g., clock resolution is coarse, or a test fixture created both runs in the same transaction) — what does elapsed time display? Zero? An error? | BVA | MEDIUM | TTC-12 |
 | Story with exactly one run that both fails and is the "recovery" run simultaneously (impossible by business rule — requires a resolved defect AND an all-passing run — but worth confirming the RPC rejects this) | BVA | LOW | TTC-13 |
@@ -172,7 +172,7 @@ The `user*stories` state machine has states `draft`, `ready*to*test`, and `archi
 
 The three ACs define three branches: recovered / still failing / never failed. But there are additional combinations not modeled:
 
-| Condition set | AC-1 (recovered) | AC-2 (still failing) | AC-3 (never failed) | Modeled? |
+| ***Condition set**** | ****AC-1 (recovered)**** | ****AC-2 (still failing)**** | ****AC-3 (never failed)**** | ****Modeled?*** |
 | --- | --- | --- | --- | --- |
 | Has fail runs + has pass runs + defect resolved | YES | NO | NO | YES (AC-1) |
 | Has fail runs + no pass runs | NO | YES | NO | YES (AC-2) |
@@ -182,7 +182,7 @@ The three ACs define three branches: recovered / still failing / never failed. B
 | Has fail runs + has pass runs + no defect linked at all | NO | NO | NO | ***NO — GAP*** |
 | Has fail runs + has ONLY aborted runs (no pass, no fail subsequent) | NO | NO | NO | ***NO — GAP*** |
 
-| Gap | Technique | Severity | Outline derived |
+| ***Gap**** | ****Technique**** | ****Severity**** | ****Outline derived*** |
 | --- | --- | --- | --- |
 | Story with ATCs but zero runs executed — what state is shown? | Decision Table | MEDIUM | TTC-14 |
 | Story has a failing run + a subsequent passing run BUT no resolved defect — does it show "recovered" or "not yet green"? | Decision Table | HIGH | TTC-15 |
@@ -190,7 +190,7 @@ The three ACs define three branches: recovered / still failing / never failed. B
 
 #### Error Guessing — DB-layer computation
 
-| Gap | Technique | Severity | Outline derived |
+| ***Gap**** | ****Technique**** | ****Severity**** | ****Outline derived*** |
 | --- | --- | --- | --- |
 | RPC / computation function returns null for a story that should have cycle time (e.g., data linkage gap in the ATC→test→run chain) — does the UI gracefully degrade or show an error? | Error Guessing | HIGH | TTC-20 |
 | All runs for the story exist in a different workspace (data isolation bug) — does the metric leak cross-workspace data? | Error Guessing | HIGH | TTC10 (existing; maps to workspace isolation) |
@@ -285,7 +285,7 @@ Then the view shows the story as "Not yet green"
 
 ### Coverage summary
 
-| Category | Count |
+| ***Category**** | ****Count*** |
 | --- | --- |
 | Positive | 8 |
 | Negative | 7 |
@@ -354,7 +354,7 @@ Then the view shows the story as "Not yet green"
 
 1. ***Bug reopening resets clock**** — If a previously resolved defect is reopened after the story showed "Recovered", does the story revert to "Not yet green"? Does the clock restart or resume? **(impacts AC-2, outline TTC08, still open from Nahuel's Q2)*
 
-1. ***Blocked / skipped run*************atcs and "all passing"**** — Do run*atcs with outcome `blocked` or `skipped` satisfy the "all passing" condition, or must they be `pass`? **(impacts AC-1 recovery condition, outlines TTC01, TTC16, still open from Nahuel's Q4)*
+1. ***Blocked / skipped run*atcs and "all passing"**** — Do run*atcs with outcome `blocked` or `skipped` satisfy the "all passing" condition, or must they be `pass`? **(impacts AC-1 recovery condition, outlines TTC01, TTC16, still open from Nahuel's Q4)*
 
 1. ***Calendar vs. business hours**** — Is the elapsed time computed in wall-clock calendar time or business hours only? **(impacts AC-1, AC-2, still open from Nahuel's Q5)*
 
@@ -378,7 +378,7 @@ Then the view shows the story as "Not yet green"
 
 ## 7. Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
+| ***Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigation*** |
 | --- | --- | --- | --- |
 | New `bunkai_*` RPC not yet implemented — story cannot be tested until DB function exists | HIGH | HIGH | Block story from entering dev until RPC design is confirmed with Dev. Add a tech-story for RPC authoring if not already created. |
 | Run REST routes unconfirmed — test data seeding requires direct DB access | HIGH | MEDIUM | Use `qa*inspector*rw` DB role for test seeding; document seeding scripts in the test plan |
@@ -394,7 +394,7 @@ Then the view shows the story as "Not yet green"
 
 ## 8. Recommendation
 
-***Status******:****** NOT READY FOR ESTIMATION. Block on 3 items before moving to Estimation.***
+***Status:**** ****NOT READY FOR ESTIMATION. Block on 3 items before moving to Estimation.***
 
 This story received significant improvement since Nahuel's 2026-06-29 refinement — the three ACs and three business rules address 3 of 9 original gaps and eliminate the two most critical "undefined" gaps (never-failed and only-passing scenarios). However, the story cannot safely enter Estimation because three blockers remain that would force the dev team to make product decisions mid-sprint:
 
@@ -404,7 +404,7 @@ This story received significant improvement since Nahuel's 2026-06-29 refinement
 
 1. ***Three new ACs (AC-4, AC-5, AC-6)*** were derived from gap analysis and are not yet in Jira. They must be reviewed and either accepted or rejected by PO before the story's scope is stable enough to estimate.
 
-***Recommended next step******:*** Route PO questions 1, 4, 5, 6, and 7 to the PO and Dev questions 1, 3, 4, and 5 to the Dev team. Add AC-4, AC-5, AC-6 to Jira as proposed ACs for PO review. Once all blocking questions are answered, this story is straightforward to estimate at medium complexity (new RPC + new UI view + 22 test outlines).
+***Recommended next step:*** Route PO questions 1, 4, 5, 6, and 7 to the PO and Dev questions 1, 3, 4, and 5 to the Dev team. Add AC-4, AC-5, AC-6 to Jira as proposed ACs for PO review. Once all blocking questions are answered, this story is straightforward to estimate at medium complexity (new RPC + new UI view + 22 test outlines).
 
 ---
 _Synced from Jira by sync-jira-issues_

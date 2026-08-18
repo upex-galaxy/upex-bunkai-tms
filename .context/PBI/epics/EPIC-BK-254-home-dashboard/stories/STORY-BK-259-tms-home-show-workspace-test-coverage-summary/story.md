@@ -3,7 +3,7 @@
 **Jira Key:** [BK-259](https://jira.upexgalaxy.com/browse/BK-259)
 **Epic:** [BK-254](https://jira.upexgalaxy.com/browse/BK-254) (Home Dashboard)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
@@ -22,7 +22,17 @@ As a QA Lead, I want to see the workspace's overall test coverage percentage and
 
 ## Technical notes
 
-Renders into `home.jsx` (master-design-plan.md §4.2), the "Coverage" KPI card. Blocked by the Coverage domain (BK-44, Coverage & Traceability) — see this story's Jira links for the specific gating ticket.
+Renders into `home.jsx` (master-design-plan.md §4.2), the "Coverage" KPI card. Blocked by the Coverage domain ([https://jira.upexgalaxy.com/browse/BK-44#icft=BK-44](https://jira.upexgalaxy.com/browse/BK-44#icft=BK-44), Coverage & Traceability) — see this story's Jira links for the specific gating ticket.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 
 ---
 
@@ -37,7 +47,7 @@ Renders into `home.jsx` (master-design-plan.md §4.2), the "Coverage" KPI card. 
 ## Metadata
 
 - **Created:** 7/31/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/4/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** blocked, p2

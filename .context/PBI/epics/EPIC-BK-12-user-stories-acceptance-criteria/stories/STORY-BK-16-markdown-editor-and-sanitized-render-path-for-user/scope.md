@@ -1,6 +1,6 @@
 # BK-16 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
 - A lightweight Markdown editor for User Story and Acceptance Criterion descriptions, with a live preview
 - Support for common formatting:

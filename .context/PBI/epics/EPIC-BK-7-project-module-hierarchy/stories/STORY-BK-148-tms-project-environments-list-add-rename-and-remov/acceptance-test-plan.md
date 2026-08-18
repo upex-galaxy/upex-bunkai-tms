@@ -2,9 +2,9 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
 
-## Acceptance Test Plan — BK-148: TMS-Project Environments CRUD
+## Acceptance Test Plan — [https://jira.upexgalaxy.com/browse/BK-148#icft=BK-148](https://jira.upexgalaxy.com/browse/BK-148#icft=BK-148): TMS-Project Environments CRUD
 
-***Modality******:**** jira-native (ATP on Story field) · ****Environment******:**** staging · ****Overall risk******:*** 125 CRITICAL
+***Modality:**** jira-native (ATP on Story field) · ****Environment:**** staging · ****Overall risk:*** 125 CRITICAL
 
 ### Feature summary
 
@@ -20,7 +20,7 @@ Project members manage the list of run-target environments (list, add, rename, r
 
 ### Business rules (source-validated against ../upex-bunkai-tms)
 
-| # | Rule | Code evidence |
+| ***#**** | ****Rule**** | ****Code evidence*** |
 | --- | --- | --- |
 | 1 | Name 1–50 chars after trim | `lib/environments/validation.ts:14-22` (Zod), RPC backstop `0032:115-118` |
 | 2 | Trimming server-side (`btrim`) | `0032:115,175`; Zod `.trim()` |
@@ -33,7 +33,7 @@ Project members manage the list of run-target environments (list, add, rename, r
 
 25 candidate scenarios derived by technique (EP, BVA, State-Transition, Decision-Table). Data-variant siblings are folded into one parameterized Test (`Examples`). Persisted regression Tests: ***8 Candidate + 2 Manual***. The remaining 15 are Deferred (not created in TMS) — documented below.
 
-| Test | ACs | Folds | Type | Verdict |
+| ***Test**** | ****ACs**** | ****Folds**** | ****Type**** | ****Verdict*** |
 | --- | --- | --- | --- | --- |
 | T1 — RLS list isolation | 1 | TC#1 | API | Candidate |
 | T2 — write-gate rejects non-authorized actor (403) | 2 | TC#2, TC#3 | API | Candidate |
@@ -56,7 +56,7 @@ Project members manage the list of run-target environments (list, add, rename, r
 3. ***Empty-name 422 unreachable via UI*** — submit is `disabled` while `trimmedName.length < 1`. M1 reframed as a disabled-button assertion. (`create-environment-form.tsx:67,151`)
 4. ***Cross-workspace PATCH/DELETE on an EXISTING env → 403, not 404.**** RPCs are `SECURITY DEFINER` and `project*environments` lacks `FORCE ROW LEVEL SECURITY`, so the RPC reads the foreign row (bypassing RLS), resolves its project, then the write-gate rejects the non-member → 42501 → 403 `forbidden`/`not*a_member`. 404 fires only for a genuinely nonexistent id. The prior rpc test only exercised a random UUID, never the real cross-workspace path. ****T2 documents the actual 403.*** Existence-disclosure gap → filed as Improvement (no AC required non-disclosure).
 5. ***Delete guard wording.*** BR "≥1 active run" is imprecise — code counts runs of ANY status. T6 asserts the all-status count.
-6. ***DELETE success body is double-nested******:*** `{"deleted":{"deleted":true,"id":...}}`, not `{"deleted":true}`. T6 asserts the real shape.
+6. ***DELETE success body is double-nested:*** `{"deleted":{"deleted":true,"id":...`}}, not `{"deleted":true`}. T6 asserts the real shape.
 
 ### Pass criteria
 

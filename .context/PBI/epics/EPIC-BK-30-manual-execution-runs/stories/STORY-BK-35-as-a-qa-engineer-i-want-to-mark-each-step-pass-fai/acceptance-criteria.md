@@ -1,30 +1,30 @@
 # BK-35 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
 
-## Refined Acceptance Criteria — BK-35
+## Refined Acceptance Criteria — [https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35](https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35)
 
 ### AC1 — Mark a pending step as passed, failed, or blocked
 
-***Scenario 1.1******:****** Should mark a pending step as passed with optional note and evidence link***
+***Scenario 1.1:**** ****Should mark a pending step as passed with optional note and evidence link***
 
 - ***Given***: An authenticated QA Engineer with project access is viewing an active (in-progress) Run
 - ***When***: The engineer marks step #1 as `passed`, with note `"Login redirects correctly"`, and evidence link `"https://s3.example.com/evidence/screenshot-001.png"`
 - ***Then***:
 
-***Scenario 1.2******:****** Should mark a pending step as passed with no note or evidence***
+***Scenario 1.2:**** ****Should mark a pending step as passed with no note or evidence***
 
 - ***Given***: An active Run with a step in `pending` status
 - ***When***: The engineer marks step #1 as `passed` without providing a note or evidence link
 - ***Then***: The step result is recorded as `passed`; note and evidence link fields are null/empty; no validation error is raised
 
-***Scenario 1.3******:****** Should mark a pending step as failed***
+***Scenario 1.3:**** ****Should mark a pending step as failed***
 
 - ***Given***: An active Run with step #2 in `pending` status
 - ***When***: The engineer marks step #2 as `failed`
 - ***Then***: Step result is `failed`; parent ATC verdict updates to `failed`
 
-***Scenario 1.4******:****** Should mark a pending step as blocked***
+***Scenario 1.4:**** ****Should mark a pending step as blocked***
 
 - ***Given***: An active Run with all steps in `pending` status
 - ***When***: The engineer marks step #1 as `blocked`
@@ -34,7 +34,7 @@
 
 ### AC2 — ATC verdict derivation (8 combinations for a 2-step ATC)
 
-| Step 1 | Step 2 | Expected ATC verdict |
+| ***Step 1**** | ****Step 2**** | ****Expected ATC verdict*** |
 | --- | --- | --- |
 | passed | passed | `passed` |
 | failed | failed | `failed` |
@@ -62,7 +62,7 @@
 
 ***Scenario 3.2***: Progress reaches exactly 100% when the last pending step is marked
 
-> ***WARNING:**** Whether 100% progress auto-triggers BK-39 finish or remains manual — ****NEEDS PO CONFIRMATION***
+> ***WARNING:**** Whether 100% progress auto-triggers [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) finish or remains manual — ****NEEDS PO CONFIRMATION***
 
 ---
 
@@ -96,7 +96,7 @@
 
 - ***Q1*** — ATC verdict while steps remain `pending` (partial resolution)
 - ***Q2*** — Exact error message text for finished/aborted run guard
-- ***Q3*** — Does 100% progress auto-trigger BK-39 finish, or is it manual?
+- ***Q3*** — Does 100% progress auto-trigger [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) finish, or is it manual?
 - ***Q4*** — Authorization: who can mark steps (any member or only the Run executor)?
 - ***Q5*** — Real-time transport mechanism and latency SLA
 - ***Q6*** — Step result endpoint shape (URL + method + request/response schema)

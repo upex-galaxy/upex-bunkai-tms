@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-401](https://jira.upexgalaxy.com/browse/BK-401)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Fix Type:** Bugfix
 

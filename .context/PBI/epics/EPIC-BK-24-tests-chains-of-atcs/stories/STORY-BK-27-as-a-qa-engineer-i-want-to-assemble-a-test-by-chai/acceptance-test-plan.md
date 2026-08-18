@@ -2,12 +2,12 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-27)
 
-# Acceptance Test Plan: BK-27 — TMS-Test Builder | Assemble a Test by chaining ATCs
+# Acceptance Test Plan: [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) — TMS-Test Builder | Assemble a Test by chaining ATCs
 
-********Status*****:*** In-Sprint ATP (Stage 1) — supersedes shift-left DRAFT
-********Mode*********:***** Shift-left short-circuit — Phases 1-3 skipped, refined ACs validated unchanged
-****Planned*********: 2026-06-15 | *********Modality*****:*** Jira-native
-********Implementation****: REAL, merged to `staging` — PR #40 (`54749ba`), route `/projects/{slug}/tests/new`, `POST /api/v1/tests`
+******Status*****:** **In-Sprint ATP (Stage 1) — supersedes shift-left DRAFT**
+**********Mode********:**** ****Shift-left short-circuit — Phases 1-3 skipped, refined ACs validated unchanged***
+**Planned*****: 2026-06-15 | *******Modality*****:** **Jira-native**
+**********Implementation*****: REAL, merged to `staging` — PR #40 (`54749ba`), route `/projects/{slug}/tests/new`, `POST /api/v1/tests`
 
 ---
 
@@ -15,7 +15,7 @@
 
 No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. All 8 PO/Dev questions answered + implemented per the 2026-06-12 Ready-For-QA handoff. NEEDS PO/DEV CONFIRMATION flags resolved:
 
-| Flag | Resolution |
+| ***Flag**** | ****Resolution*** |
 | --- | --- |
 | AC1.1 activity*log audit (Gap #4) | ***BUILT.*** Writer absorbed into `bunkai*create_test` RPC; row asserted per successful creation. Now a hard expectation (I2). |
 | AC2.1 verbatim copy + server enforcement | `A Test must include at least one ATC.` Enforced via SQLSTATE 45120 -> `chain_empty` (422). |
@@ -43,7 +43,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ### Coverage estimate (FINAL)
 
-| Type | Count | Notes |
+| ***Type**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 3 | 3-ATC chain order, duplicate-ATC chain, single-ATC minimum. |
 | Negative | 5 | Empty chain (API), foreign-workspace ATC, nonexistent ATC id, viewer via API, archived ATC. |
@@ -58,7 +58,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ***Group A — Title boundary*** (covers Scenarios 2.2/2.3 + trim edge case, B1-B3 below):
 
-| Title | Expected |
+| ***Title**** | ****Expected*** |
 | --- | --- |
 | 200x"A" | 201 Created |
 | 201x"A" | 422 `validation_failed`, `Title must be 200 characters or fewer.` |
@@ -67,7 +67,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ***Group B — Non-disclosure 404 parity*** (N3-N5, INV-3):
 
-| ATC reference | Expected |
+| ***ATC reference**** | ****Expected*** |
 | --- | --- |
 | Foreign-workspace ATC | 404 `not_found`, `One or more selected ATCs are not available in this workspace.` |
 | Nonexistent ATC id (random UUID) | byte-identical to above |
@@ -85,7 +85,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 - ***Pre***: member+ of `qa-bk8-1780533325`, >=3 selectable ATCs (ATC-1/2/3).
 - ***Steps***: 1) Open `/projects/{slug}/tests/new`, verify heading "New Test" + helper text. 2) Title `"Add to Cart from Empty State"`. 3) Select ATC-1, ATC-2, ATC-3 in order. 4) Save -> redirect/appears in Tests list with title. 5) Open Test -> chain shows ATC-1,2,3 in order.
 - ***Expected***: 1 `tests` row (workspace=qa-bk8-1780533325, title as above, created*by=actor); 3 `test*steps` rows positions 1-2-3 -> ATC-1/2/3; 1 `activity_log` row (actor, "test created", target=Test, now()).
-- ***Test data***: `{"title":"Add to Cart from Empty State","atc_ids":["<ATC-1>","<ATC-2>","<ATC-3>"]}`
+- ***Test data***: `{"title":"Add to Cart from Empty State","atc_ids":["<ATC-1>","<ATC-2>","<ATC-3>"]`}
 - ***Post***: row persists as fixture for I3/I4.
 
 #### P2 — Should persist a chain that references the same ATC twice
@@ -94,14 +94,14 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 - ***Pre***: same as P1; ATC-1 available.
 - ***Steps***: 1) Title `"Duplicate ATC Chain"`. 2) Chain `[ATC-1, ATC-2, ATC-1]`. 3) Save -> created, no de-dup warning. 4) Open -> chain shows ATC-1, ATC-2, ATC-1 (3 entries).
 - ***Expected***: `test*steps` has 3 rows: pos1->ATC-1, pos2->ATC-2, pos3->ATC-1 (no `unique(test*id,atc_id)`).
-- ***Test data***: `{"title":"Duplicate ATC Chain","atc_ids":["<ATC-1>","<ATC-2>","<ATC-1>"]}`
+- ***Test data***: `{"title":"Duplicate ATC Chain","atc_ids":["<ATC-1>","<ATC-2>","<ATC-1>"]`}
 - ***Post***: `test*steps` count for this test*id == 3.
 
 #### P3 — Should accept a single-ATC chain (minimum valid)
 
 - Derived (chain >=1 boundary) | Positive | Medium | API | Not parametrized
 - ***Pre***: member+, >=1 ATC.
-- ***Steps***: `POST /api/v1/tests` `{"title":"Single ATC Test","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"}` + `Idempotency-Key: p3-single-<uuid>` -> 201, body `{"test":{...}}` chain length 1.
+- ***Steps***: `POST /api/v1/tests` `{"title":"Single ATC Test","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"`} + `Idempotency-Key: p3-single-<uuid>` -> 201, body `{"test":{...`}} chain length 1.
 - ***Expected***: 1 `tests` row, 1 `test_steps` row at position 1.
 - ***Post***: none required.
 
@@ -111,36 +111,36 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 - ***Pre***: member+, "New Test" open, valid title, 0 ATCs.
 - ***Steps***: 1) Title `"Add to Cart from Empty State"`, 0 ATCs. 2) Click Save -> blocked, message `A Test must include at least one ATC.`, form stays open.
 - ***Expected***: no `tests` row (row count unchanged).
-- ***Test data***: `{"title":"Add to Cart from Empty State","atc_ids":[]}`
+- ***Test data***: `{"title":"Add to Cart from Empty State","atc_ids":[]`}
 
 #### N2 — Should re-validate empty chain server-side
 
 - AC2/2.1 (server) | Negative | High | API | Not parametrized
 - ***Pre***: member+ PAT, `atc:write`.
-- ***Steps***: `POST /api/v1/tests` `{"title":"Add to Cart from Empty State","atc*ids":[],"workspace*id":"<ws>"}` + `Idempotency-Key: n2-empty-<uuid>` -> expect 422 `{"error":{"code":"chain_empty","message":"A Test must include at least one ATC."}}`.
+- ***Steps***: `POST /api/v1/tests` `{"title":"Add to Cart from Empty State","atc*ids":[],"workspace*id":"<ws>"`} + `Idempotency-Key: n2-empty-<uuid>` -> expect 422 `{"error":{"code":"chain_empty","message":"A Test must include at least one ATC."`}}.
 - ***Expected***: SQLSTATE 45120 -> `chain_empty`/422; no `tests` row.
 - > [!WARNING]
-- > `TestCreateBodySchema.atc*ids` is `z.array(...).min(1)` — Zod likely rejects `[]` BEFORE the RPC, yielding `400 bad*request`/Zod-default rather than `422`/`chain_empty`. ***Stage 2******:****** confirm actual response*** and update expected result.
+- > `TestCreateBodySchema.atc*ids` is `z.array(...).min(1)` — Zod likely rejects `[]` BEFORE the RPC, yielding `400 bad*request`/Zod-default rather than `422`/`chain_empty`. ***Stage 2:**** ****confirm actual response*** and update expected result.
 
 #### N3 — Should reject a chain referencing a foreign-workspace ATC without disclosing existence
 
 - AC4/4.1 (Group B row 1) | Negative/Security | Critical | API+UI | Parametrized
 - ***Pre***: member+ of `qa-bk8-1780533325`; ATC-X exists in `qa-bk8b-1780534540` (foreign).
-- ***Steps***: `POST /api/v1/tests` `{"title":"Foreign ATC Test","atc*ids":["<ATC-X>"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"}` + `Idempotency-Key: n3-foreign-<uuid>` -> 404 `{"error":{"code":"not_found","message":"One or more selected ATCs are not available in this workspace."}}`, no id echoed.
+- ***Steps***: `POST /api/v1/tests` `{"title":"Foreign ATC Test","atc*ids":["<ATC-X>"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"`} + `Idempotency-Key: n3-foreign-<uuid>` -> 404 `{"error":{"code":"not_found","message":"One or more selected ATCs are not available in this workspace."`}}, no id echoed.
 - ***Expected***: SQLSTATE 45122 -> uniform 404; no `tests` row in qa-bk8-1780533325; body byte-identical to N4/N5.
 
 #### N4 — Should reject a chain referencing a wholly-nonexistent ATC id (byte-identical to N3)
 
 - AC4/4.1 parity (Group B row 2) | Negative/Security | Critical | API | Parametrized
 - ***Pre***: member+ of qa-bk8-1780533325.
-- ***Steps***: `POST /api/v1/tests` `{"title":"Nonexistent ATC Test","atc*ids":["00000000-0000-0000-0000-000000000000"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"}` + `Idempotency-Key: n4-nonexistent-<uuid>` -> 404, diff body vs N3 -> byte-identical.
+- ***Steps***: `POST /api/v1/tests` `{"title":"Nonexistent ATC Test","atc*ids":["00000000-0000-0000-0000-000000000000"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"`} + `Idempotency-Key: n4-nonexistent-<uuid>` -> 404, diff body vs N3 -> byte-identical.
 - ***Expected***: proves RLS `.maybeSingle()` collapse, no app-level existence branch.
 
 #### N5 — Should reject a chain referencing an archived ATC in the same workspace (byte-identical to N3/N4)
 
 - AC4 parity, RLS `test*steps*insert` `a.archived_at is null` (Group B row 3) | Negative/Security | High | API | Parametrized
 - ***Pre***: an ATC in qa-bk8-1780533325 with `archived_at IS NOT NULL` (seed/archive ATC-3).
-- ***Steps***: `POST /api/v1/tests` `{"title":"Archived ATC Test","atc*ids":["<archived-ATC>"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"}` + `Idempotency-Key: n5-archived-<uuid>` -> 404, diff vs N3/N4 -> byte-identical.
+- ***Steps***: `POST /api/v1/tests` `{"title":"Archived ATC Test","atc*ids":["<archived-ATC>"],"workspace*id":"bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe"`} + `Idempotency-Key: n5-archived-<uuid>` -> 404, diff vs N3/N4 -> byte-identical.
 - ***Expected***: archived ATCs filtered at RLS `test*steps*insert`, collapsing into same non-disclosure response.
 - > [!NOTE]
 - > Staging has 0 archived ATCs today — seed/archive 1 ATC before execution (Phase 5).
@@ -149,7 +149,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 - E1 (Group C, viewer row) | Negative/Security | High | API | Group C (only viewer row executed)
 - ***Pre***: a `role='viewer'`, `status='active'` member of qa-bk8-1780533325, valid PAT.
-- ***Steps***: `POST /api/v1/tests` as viewer, valid payload + `Idempotency-Key: n6-viewer-<uuid>` -> 403 `{"error":{"code":"forbidden","message":"You must be a member of this workspace with write access.","details":{"reason":"not*a*member"}}}`.
+- ***Steps***: `POST /api/v1/tests` as viewer, valid payload + `Idempotency-Key: n6-viewer-<uuid>` -> 403 `{"error":{"code":"forbidden","message":"You must be a member of this workspace with write access.","details":{"reason":"not*a*member"`}}}.
 - ***Expected***: SQLSTATE 42501 -> 403; no `tests` row.
 - > [!NOTE]
 - > Staging reports all 72 workspaces single-member (owner-only) — provision a `viewer` member before execution (Phase 5).
@@ -158,7 +158,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 - AC2/2.3 (Group A rows 1-2) | Boundary | Medium | API | Parametrized (Group A)
 - ***Pre***: member+, >=1 ATC.
-- ***Steps***: `POST /api/v1/tests` per Group A row 1 (200xA) + unique `Idempotency-Key` -> 201, `test.title` = 200-char string. Row 2 (201xA) -> 422 `{"error":{"code":"validation_failed","message":"Title must be 200 characters or fewer."}}`.
+- ***Steps***: `POST /api/v1/tests` per Group A row 1 (200xA) + unique `Idempotency-Key` -> 201, `test.title` = 200-char string. Row 2 (201xA) -> 422 `{"error":{"code":"validation_failed","message":"Title must be 200 characters or fewer."`}}.
 - ***Expected***: 200-char persists verbatim; 201-char rejected pre-DB-write.
 - > [!NOTE]
 - > Stage 2: confirm 422 message matches `lib/tests/errors.ts` 45121 copy vs Zod-default (Zod runs first).
@@ -167,21 +167,21 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 - AC2/2.2 (Group A row 3) | Boundary/Negative | High | API+UI | Parametrized (Group A)
 - ***Pre***: member+, >=1 ATC, title `"   "`.
-- ***Steps***: UI — enter `"   "`, select ATC, Save -> validation error, form stays open. API — `POST /api/v1/tests` `{"title":"   ","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"}` + `Idempotency-Key: b2-whitespace-<uuid>` -> 422, message indicates title required (expect `Title is required.` post-trim per Zod `.trim().min(1)`).
+- ***Steps***: UI — enter `"   "`, select ATC, Save ~~> validation error, form stays open. API — ~~`POST /api/v1/tests`~~ ~~`{"title":"   ","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"`~~} + {{Idempotency-Key: b2-whitespace~~<uuid>}} -> 422, message indicates title required (expect `Title is required.` post-trim per Zod `.trim().min(1)`).
 - ***Expected***: no `tests` row either path. Stage 2: confirm exact verbatim message.
 
 #### B3 — Should trim leading/trailing whitespace around a valid title
 
 - Derived edge case, resolved by `z.string().trim()` (Group A row 4) | Boundary | Medium | API | Parametrized (Group A)
 - ***Pre***: member+, >=1 ATC.
-- ***Steps***: `POST /api/v1/tests` `{"title":"  Add to Cart  ","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"}` + `Idempotency-Key: b3-trim-<uuid>` -> 201, `test.title` == `"Add to Cart"` (trimmed) in response and DB.
+- ***Steps***: `POST /api/v1/tests` `{"title":"  Add to Cart  ","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"`} + `Idempotency-Key: b3-trim-<uuid>` -> 201, `test.title` == `"Add to Cart"` (trimmed) in response and DB.
 - ***Expected***: confirms `z.string().trim()` + DB check `title = btrim(title)`.
 
 #### B4 — Should reject `POST /api/v1/tests` when `Idempotency-Key` header is missing
 
 - Derived (`lib/api/idempotency.ts` readKey, header REQUIRED) | Boundary | Medium | API | Not parametrized
 - ***Pre***: member+ PAT, valid payload.
-- ***Steps****: `POST /api/v1/tests` valid body, ****omit*** `Idempotency-Key` -> 400 `{"error":{"code":"idempotency*key*required","message":"Missing idempotency-key header."}}`.
+- ***Steps****: `POST /api/v1/tests` valid body, ****omit*** `Idempotency-Key` -> 400 `{"error":{"code":"idempotency*key*required","message":"Missing idempotency-key header."`}}.
 - ***Expected***: `readKey()` throws before RPC; no `tests` row.
 
 #### I1 — Should isolate Tests across workspaces (RLS SELECT)
@@ -225,15 +225,15 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 - AC3/3.2 (TC-16/17, dev QA-focus #3) | API | High | API | Not parametrized
 - ***Pre***: member+ PAT, `atc:write`, valid payload.
-- ***Steps***: 1) `POST /api/v1/tests` `{"title":"Agent Retry Test","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"}` + `Idempotency-Key: a2-agent-retry-001` -> 201, capture `test.id`. 2) Repeat EXACT same request+key -> same 201, body identical (same `test.id`). 3) Query `tests` for title -> exactly 1 row.
+- ***Steps***: 1) `POST /api/v1/tests` `{"title":"Agent Retry Test","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"`} + `Idempotency-Key: a2-agent-retry-001` -> 201, capture `test.id`. 2) Repeat EXACT same request+key -> same 201, body identical (same `test.id`). 3) Query `tests` for title -> exactly 1 row.
 - ***Expected***: 2nd call hits `isReplay=true` (same user/endpoint/key/hash) -> returns snapshot without re-invoking RPC.
 
 #### A3 — Should reject `Idempotency-Key` reuse with a different payload, OR require `workspace_id` for token-authenticated calls
 
 - Derived (`lib/api/idempotency.ts` 409 on hash mismatch) + dev QA-focus #3 (TC-16/17 `workspace_id` 422) | API | Medium/High | API | Not parametrized (2 sub-cases)
 - ***Pre***: member+ PAT.
-- ***Sub-case A (409)***: 1) `POST /api/v1/tests` `{"title":"Conflict Test A","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"}` + `Idempotency-Key: a3-conflict-001` -> 201. 2) `POST /api/v1/tests` DIFFERENT body (`{"title":"Conflict Test B","atc*ids":["<ATC-2>"],"workspace*id":"<ws>"}`), SAME key -> 409 `{"error":{"code":"conflict","message":"Idempotency-Key reused with a different request payload."}}`. Only "Conflict Test A" exists.
-- ***Sub-case B (422, omit workspace*************id)***: `POST /api/v1/tests` `{"title":"No Workspace Id","atc*ids":["<ATC-1>"]}` (no `workspace*id`) + `Idempotency-Key: a4-no-ws-<uuid>` -> 422 `{"error":{"code":"validation*failed","message":"workspace*id is required for token-authenticated calls."}}`. No `tests` or `idempotency*keys` row (fails before `beginIdempotentRequest`).
+- ***Sub-case A (409)***: 1) `POST /api/v1/tests` `{"title":"Conflict Test A","atc*ids":["<ATC-1>"],"workspace*id":"<ws>"`} + `Idempotency-Key: a3-conflict-001` -> 201. 2) `POST /api/v1/tests` DIFFERENT body (`{"title":"Conflict Test B","atc*ids":["<ATC-2>"],"workspace*id":"<ws>"`}), SAME key -> 409 `{"error":{"code":"conflict","message":"Idempotency-Key reused with a different request payload."`}}. Only "Conflict Test A" exists.
+- ***Sub-case B (422, omit workspace*id)***: `POST /api/v1/tests` `{"title":"No Workspace Id","atc*ids":["<ATC-1>"]`} (no `workspace*id`) + `Idempotency-Key: a4-no-ws-<uuid>` -> 422 `{"error":{"code":"validation*failed","message":"workspace*id is required for token-authenticated calls."`}}. No `tests` or `idempotency*keys` row (fails before `beginIdempotentRequest`).
 - ***Expected***: both sub-cases verified independently; no DB change for sub-case B.
 
 ---
@@ -242,7 +242,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ### Edge case table
 
-| Edge case | In Story? | Outline | Priority |
+| ***Edge case**** | ****In Story?**** | ****Outline**** | ****Priority*** |
 | --- | --- | --- | --- |
 | Viewer via headless API | No -> E1 | N6 | High |
 | Same ATC twice in chain | Yes (business-rules) | P2 | High |
@@ -260,7 +260,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ### Test-data categories
 
-| Type | Count | Purpose | Examples |
+| ***Type**** | ****Count**** | ****Purpose**** | ****Examples*** |
 | --- | --- | --- | --- |
 | Valid (same WS) | 3 ATCs in qa-bk8-1780533325 | P1/P2/I3 | ATC-1/2/3 (1 = existing "ATC Example") |
 | Valid (cross-WS) | >=1 ATC in qa-bk8b-1780534540 | N3, I4 | ATC-X |
@@ -272,11 +272,11 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ### Data generation strategy
 
-| Source | Use | Recipe |
+| ***Source**** | ****Use**** | ****Recipe*** |
 | --- | --- | --- |
 | Static | verbatim copy, title boundaries | `"A".repeat(200/201)`, generated once, reused |
 | Faker | non-assertion titles (P1-P3,I3,A1-A3) | `faker.lorem.words({min:2,max:4})` |
-| Faker | N4 id + Idempotency-Key suffixes | `faker.string.uuid()`,  `${outlineId}-${faker.string.uuid()}`  |
+| Faker | N4 id + Idempotency-Key suffixes | `faker.string.uuid()`,  `${outlineId}-${faker.string.uuid()`} |
 | Faker | 2nd auth user for N6 | `faker.internet.email()` |
 | Seeded fixtures | ATC-1/2/3, ATC-X, archived-ATC | seeded once pre-Stage 2, read-only reuse |
 | Cleanup | none — no delete path in scope | isolation via unique titles/keys per run |
@@ -285,7 +285,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 > ***WARNING:**** Staging has only ****1 ATC total*** ("ATC Example", id `11655bea-f8e4-4d23-8bda-44a463118eae`, workspace `qa-bk8-1780533325`, status `unrun`, not archived). Blocks 6/19 outlines.
 
-| Requirement | Workspace | Current | Needed | Blocks |
+| ***Requirement**** | ****Workspace**** | ****Current**** | ****Needed**** | ****Blocks*** |
 | --- | --- | --- | --- | --- |
 | >=3 selectable ATCs | qa-bk8-1780533325 (`bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe`) | 1 | 3 | P1, P2, I3 |
 | >=1 archived ATC | qa-bk8-1780533325 | 0 | 1 | N5 |
@@ -308,7 +308,7 @@ No drift — 2026-06-06 refined ACs (AC1-AC4 + E1/E2) match the current Story. A
 
 ***Risks & mitigation***:
 
-| Risk | Likelihood | Impact | Mitigated by |
+| ***Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigated by*** |
 | --- | --- | --- | --- |
 | Staging ATC scarcity blocks 6/19 outlines | High (confirmed) | Medium | Phase 5 seeding plan, run before Stage 2 |
 | INV-3 regression on new entity | Low (unit-tested) | Critical | N3-N5 byte-identical check |

@@ -4,6 +4,10 @@
 **Priority:** High
 **Status:** Closed
 **Components:** User Stories & Acceptance Criteria
+**Severity:** Mayor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -13,7 +17,7 @@ A 51,000-byte description was submitted and saved to the database without any er
 
 ## Steps to Reproduce
 
-1. Log in to Bunkai TMS staging (https://staging-upexbunkai.vercel.app)
+1. Log in to Bunkai TMS staging ([https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/))
 2. Open any project and hover over a module row to reveal "New user story"
 3. Click "New user story" to open the story creation form
 4. In the Description field, inject 51,000 characters via JavaScript: `const el = document.querySelector('textarea[placeholder="Describe the story in Markdown."]'); const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(el, 'A'.repeat(51000)); el.dispatchEvent(new Event('input', { bubbles: true }))`
@@ -45,6 +49,12 @@ Missing client-side submit guard: the counter color changes to text-signal-block
 - tc-06-after-reload.png: Story reopened with 51,000 chars still loaded
 
 ***Fix***: bugfix
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

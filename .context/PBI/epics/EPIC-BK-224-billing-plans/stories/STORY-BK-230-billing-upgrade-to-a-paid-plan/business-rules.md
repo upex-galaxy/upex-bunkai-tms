@@ -1,6 +1,6 @@
 # BK-230 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-230)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-230)
 
 - Only the workspace owner can complete a purchase; admins can view the comparison but not confirm.
 - A declined payment changes nothing: the workspace keeps its current plan and no partial state is left behind.

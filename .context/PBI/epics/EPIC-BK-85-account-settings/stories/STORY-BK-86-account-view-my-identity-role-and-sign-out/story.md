@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 3
 
 ---
 
@@ -39,6 +39,9 @@ Re-validation of the codebase against the real ACs' "global chrome" / "account a
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---

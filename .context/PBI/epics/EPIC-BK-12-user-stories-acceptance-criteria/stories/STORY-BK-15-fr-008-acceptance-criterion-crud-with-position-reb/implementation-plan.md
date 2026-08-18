@@ -1,8 +1,8 @@
 # BK-15 — Implementation Plan (Dev)
 
-> Jira field: `customfield_10095` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10165` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
-## Spec Implementation Plan (Dev) — BK-15
+## Spec Implementation Plan (Dev) — [https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15](https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15)
 
 Manage Acceptance Criteria under a User Story: AC CRUD with stable, gap-free ordering plus a ready-to-test gate. Three confirmed design decisions: add `user_stories.status`, atomic SECURITY DEFINER rebalance functions with a partial unique index, and up/down arrow reordering.
 
@@ -21,9 +21,9 @@ Manage Acceptance Criteria under a User Story: AC CRUD with stable, gap-free ord
 - Drop the FULL unique `acceptance*criteria*user*story*id*position*key`; create a PARTIAL unique index on (user*story*id, position) WHERE archived*at IS NULL, plus an active-list index on (user*story*id) WHERE archived*at IS NULL.
 - Three SECURITY DEFINER plpgsql functions, all `set search*path = ''`, workspace-gated through `bunkai*can*write*workspace` (resolves workspace from user*stories.project*id -> projects.workspace_id), each ending with `revoke execute ... from public, anon`:
 
-  - `bunkai*insert*acceptance*criterion(p*user*story*id, p*title, p*description default null, p_position default null)` returns jsonb.
-  - `bunkai*move*acceptance*criterion(p*id, p*new*position)` returns jsonb.
-  - `bunkai*archive*acceptance*criterion(p*id)` returns jsonb (criterion plus user*story*reverted flag).
+- `bunkai*insert*acceptance*criterion(p*user*story*id, p*title, p*description default null, p_position default null)` returns jsonb.
+- `bunkai*move*acceptance*criterion(p*id, p*new*position)` returns jsonb.
+- `bunkai*archive*acceptance*criterion(p*id)` returns jsonb (criterion plus user*story*reverted flag).
 
 - Rebalance is collision-free via negative-parking: park shifting active rows to negative positions, then restore to the final positive slots, so the partial unique index never sees a transient duplicate.
 - Advisor lint 0029 on these DEFINER functions is the accepted project posture.
@@ -34,11 +34,11 @@ Manage Acceptance Criteria under a User Story: AC CRUD with stable, gap-free ord
 - `lib/acceptance-criteria/validation.ts`: `criterionTitleError` (min 3, max 200), `MAX*AC*DESCRIPTION_BYTES` = 50 KB, mirroring the user-story helpers. Framework-agnostic, unit-tested.
 - `lib/acceptance-criteria/errors.ts`: `mapCriterionRpcError` mapping 42501 -> 403 not*a*member, P0002 -> 404, default -> 500; plus a `titleMessage` table.
 
-### Slice 3 — API routes (mirror the BK-14 scoped-create / flat-mutate split)
+### Slice 3 — API routes (mirror the [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14) scoped-create / flat-mutate split)
 
 - `app/api/v1/user-stories/[id]/acceptance-criteria/route.ts`: POST creates via the insert function (title required, optional Markdown detail sanitized on save, optional position); GET lists active ACs ordered by position ascending.
 - `app/api/v1/acceptance-criteria/[id]/route.ts`: GET reads one active AC; PATCH updates title/description through an RLS update and/or position through the move function; DELETE archives through the archive function.
-- Hybrid error model: house `code` plus granular `details.reason`. 50 KB byte-cap guard on description (server side), mirroring BK-14.
+- Hybrid error model: house `code` plus granular `details.reason`. 50 KB byte-cap guard on description (server side), mirroring [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14).
 - Conditional RPC args object omits nulls (Supabase typegen types text params as non-nullable).
 
 ### Slice 4 — Ready-to-test gate on the User Story route
@@ -63,13 +63,13 @@ Manage Acceptance Criteria under a User Story: AC CRUD with stable, gap-free ord
 
 ### Out of scope
 
-- Authoring the parent User Story (BK-14), the Markdown editor itself (BK-16), linking ATCs to ACs (ATC epic), and AC change history.
+- Authoring the parent User Story ([https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14)), the Markdown editor itself ([https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16](https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16)), linking ATCs to ACs (ATC epic), and AC change history.
 
 ## Review Workload Forecast
 
 Estimated: ~900 additions + ~40 deletions = ~940 total lines
 400-line budget risk: High
-Chain strategy: size-exception (single cohesive story; solo-owner admin merge; matches BK-10 ~1435 and BK-14 ~900 precedent shipped as single PRs)
+Chain strategy: size-exception (single cohesive story; solo-owner admin merge; matches [https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10) ~1435 and [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14) ~900 precedent shipped as single PRs)
 Decision needed before apply: No
 
 ---

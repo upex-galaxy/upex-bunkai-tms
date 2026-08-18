@@ -23,13 +23,26 @@ This story activates when its dependencies are live: it builds on the run ingest
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Storys (3)
 
 - [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
-- [BK-228](https://jira.upexgalaxy.com/browse/BK-228): CI Integration | See CI-triggered runs linked to a commit and branch _(Backlog)_
 - [BK-88](https://jira.upexgalaxy.com/browse/BK-88): Settings | Manage Personal Access Tokens _(Ready For QA)_
+- [BK-228](https://jira.upexgalaxy.com/browse/BK-228): CI Integration | See CI-triggered runs linked to a commit and branch _(Backlog)_
 
 ---
 
