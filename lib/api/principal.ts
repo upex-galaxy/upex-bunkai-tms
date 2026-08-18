@@ -1,3 +1,4 @@
+import type { Capability } from '@lib/api/capabilities';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
@@ -80,7 +81,7 @@ export async function resolveIdentity(request: NextRequest): Promise<Principal> 
 // Throws 403 unless the principal holds the capability. Cookie sessions hold the
 // full set (see ALL_CAPABILITIES), so this only constrains PAT callers in
 // practice — but it is enforced uniformly for both.
-export function requireCapability(principal: Principal, capability: string): void {
+export function requireCapability(principal: Principal, capability: Capability): void {
   if (!principal.capabilities.includes(capability)) {
     throw new ApiError('forbidden', `Missing required capability: ${capability}`);
   }

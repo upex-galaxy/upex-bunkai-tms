@@ -39,6 +39,6 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return new NextResponse(null, { status: 204 });
-  // A PAT must not revoke tokens — token management is a browser-session-only
-  // operation (ADR-0001 exception), enforced by the gateway before the body.
+// A PAT must not revoke tokens — token management is a browser-session-only
+// operation (ADR-0001 exception), enforced by the gateway before the body.
 }, { auth: 'cookie-only', why: 'Personal access tokens cannot revoke tokens. Use a browser session.' });

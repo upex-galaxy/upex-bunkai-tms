@@ -7,22 +7,26 @@
   {
     "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
     "method": "DELETE",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/activity/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/atcs/[id]/duplicate/route.ts",
@@ -87,7 +91,8 @@
   {
     "file": "app/api/v1/bugs/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/bugs/[id]/status/route.ts",
@@ -97,7 +102,8 @@
   {
     "file": "app/api/v1/bugs/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/bugs/route.ts",
@@ -107,12 +113,14 @@
   {
     "file": "app/api/v1/environments/[id]/route.ts",
     "method": "DELETE",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/environments/[id]/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/health/route.ts",
@@ -122,122 +130,146 @@
   {
     "file": "app/api/v1/imports/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/imports/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/invites/accept/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "Deferred debt carried from BK-262 shift-left: the caller is not yet a member of the workspace when accepting an invite, so no capability-in-that-workspace check can apply."
   },
   {
     "file": "app/api/v1/me/active-workspace/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/me/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/milestones/[id]/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/modules/[id]/route.ts",
     "method": "DELETE",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/modules/[id]/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/modules/[id]/user-stories/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/modules/[id]/user-stories/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/notification-preferences/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/notification-preferences/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/notifications/[id]/read/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/projects/[id]/bugs/heatmap/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/projects/[id]/bugs/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/projects/[id]/coverage/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/projects/[id]/environments/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/projects/[id]/environments/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/projects/[id]/metrics/recovery-cycles/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/projects/[id]/milestones/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/projects/[id]/milestones/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (project sub-resources)."
   },
   {
     "file": "app/api/v1/projects/[id]/modules/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/projects/[id]/runs/report/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/projects/[id]/traceability/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — reporting reads."
   },
   {
     "file": "app/api/v1/route.ts",
@@ -262,7 +294,8 @@
   {
     "file": "app/api/v1/runs/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — runs and tests reads."
   },
   {
     "file": "app/api/v1/runs/[id]/steps/[stepId]/mark/route.ts",
@@ -287,12 +320,14 @@
   {
     "file": "app/api/v1/tests/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — runs and tests reads."
   },
   {
     "file": "app/api/v1/tests/[id]/runs/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — runs and tests reads."
   },
   {
     "file": "app/api/v1/tests/[id]/tags/route.ts",
@@ -312,42 +347,50 @@
   {
     "file": "app/api/v1/tokens/[id]/route.ts",
     "method": "DELETE",
-    "posture": "cookie-only"
+    "posture": "cookie-only",
+    "why": "Personal access tokens cannot revoke tokens. Use a browser session."
   },
   {
     "file": "app/api/v1/tokens/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "Listing is read-only and RLS-scoped to the caller's own tokens."
   },
   {
     "file": "app/api/v1/tokens/route.ts",
     "method": "POST",
-    "posture": "cookie-only"
+    "posture": "cookie-only",
+    "why": "Personal access tokens cannot issue tokens. Use a browser session."
   },
   {
     "file": "app/api/v1/user-stories/[id]/acceptance-criteria/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/user-stories/[id]/acceptance-criteria/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/user-stories/[id]/route.ts",
     "method": "DELETE",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/user-stories/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/user-stories/[id]/route.ts",
     "method": "PATCH",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-498 pending — authoring domain (modules / user stories / acceptance criteria)."
   },
   {
     "file": "app/api/v1/workspaces/[id]/active-runs/route.ts",
@@ -387,17 +430,20 @@
   {
     "file": "app/api/v1/workspaces/[id]/membership/route.ts",
     "method": "DELETE",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — workspaces and membership."
   },
   {
     "file": "app/api/v1/workspaces/[id]/notifications/read-all/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/workspaces/[id]/notifications/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — identity and notifications."
   },
   {
     "file": "app/api/v1/workspaces/[id]/open-bugs/route.ts",
@@ -407,7 +453,8 @@
   {
     "file": "app/api/v1/workspaces/[id]/projects/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — workspaces and membership."
   },
   {
     "file": "app/api/v1/workspaces/[id]/recent-projects/route.ts",
@@ -417,7 +464,8 @@
   {
     "file": "app/api/v1/workspaces/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — workspaces and membership."
   },
   {
     "file": "app/api/v1/workspaces/[id]/route.ts",
@@ -427,11 +475,13 @@
   {
     "file": "app/api/v1/workspaces/route.ts",
     "method": "GET",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — workspaces and membership."
   },
   {
     "file": "app/api/v1/workspaces/route.ts",
     "method": "POST",
-    "posture": "authenticated"
+    "posture": "authenticated",
+    "why": "BK-499 pending — workspaces and membership."
   }
 ]

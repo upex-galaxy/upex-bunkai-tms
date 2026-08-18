@@ -102,9 +102,9 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     },
     { status: 201 },
   );
-  // A PAT must not mint another PAT — privilege escalation / persistence risk.
-  // Token issuance is a browser-session-only operation (ADR-0001 exception),
-  // enforced by the gateway before the handler body runs.
+// A PAT must not mint another PAT — privilege escalation / persistence risk.
+// Token issuance is a browser-session-only operation (ADR-0001 exception),
+// enforced by the gateway before the handler body runs.
 }, { auth: 'cookie-only', why: 'Personal access tokens cannot issue tokens. Use a browser session.' });
 
 // Listing is read-only and RLS-scoped to the caller's own tokens, so it is safe

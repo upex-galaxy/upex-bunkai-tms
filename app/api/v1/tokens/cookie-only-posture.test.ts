@@ -124,11 +124,14 @@ describeOrSkip('BK-497 — cookie-only posture rejects a Bearer PAT at the gatew
       'Personal access tokens cannot issue tokens. Use a browser session.',
     );
 
-    // Side-effect proof: the gate ran BEFORE any state change.
+    // Side-effect proof: the gate ran BEFORE any state change. The count is
+    // asserted non-null first — a failed head query returns null for both, and
+    // `null === null` would pass this vacuously over a broken assertion.
     const after = await service()
       .from('access_tokens')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', uid);
+    expect(typeof before.count).toBe('number');
     expect(after.count).toBe(before.count);
   });
 
@@ -154,6 +157,9 @@ describeOrSkip('BK-497 — cookie-only posture rejects a Bearer PAT at the gatew
       .select('revoked_at')
       .eq('id', victim.id)
       .single();
+    // Assert the row was actually found before reading it — `row?.revoked_at`
+    // is also null when the row is missing, which would pass vacuously.
+    expect(row).toBeTruthy();
     expect(row?.revoked_at).toBeNull();
   });
 

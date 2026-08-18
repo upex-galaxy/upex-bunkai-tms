@@ -1,7 +1,7 @@
 import type { RouteHandlerPosture } from '@lib/api/route-posture-scan';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { BYPASS_POSTURE, scanRoutePostures } from '@lib/api/route-posture-scan';
+import { BYPASS_POSTURE, INDIRECT_EXPORT_POSTURE, scanRoutePostures } from '@lib/api/route-posture-scan';
 import { describe, expect, it } from 'bun:test';
 
 // BK-497 — the DETECT half of the capability-posture contract.
@@ -19,8 +19,16 @@ import { describe, expect, it } from 'bun:test';
 //      without this test.
 //   2. A posture can be silently downgraded — `required` traded for
 //      `authenticated` — which compiles fine and removes a real gate.
-//   3. The 50 handlers currently carrying a placeholder `why` need to be
-//      enumerable so the two successor Stories can find them.
+//   3. The 46 handlers currently carrying a BK-498 / BK-499 placeholder `why`
+//      need to be enumerable so the two successor Stories can find them.
+//
+// SCOPE: `app/api` only, which is what BK-497 ratified. Route handlers exist
+// elsewhere under `app/` — `app/auth/callback/route.ts` and
+// `app/auth/oauth/[provider]/route.ts` are bare `export async function GET`
+// OAuth callbacks that never touch the gateway. They are NOT covered here and
+// are NOT counted among the two bypassers below. Widening the walk to all of
+// `app/` is a real improvement and is recorded for BK-499 rather than taken
+// now, since it would pull handlers outside this Story's stated scope.
 //
 // The snapshot is also the single file a reviewer reads to see every handler and
 // its posture at once, which is the one genuine advantage the rejected
@@ -39,11 +47,11 @@ const REPO_ROOT = join(import.meta.dir, '..', '..');
 const API_ROOT = join(REPO_ROOT, 'app', 'api');
 const SNAPSHOT_PATH = join(import.meta.dir, 'route-capability-coverage.snapshot.json');
 
-// Handlers that deliberately never reach the gateway. Named here as well as in
-// the snapshot: the snapshot proves the set did not change, and this constant
-// says WHY each one is allowed to be in it. A coverage check that quietly
-// skipped ungated handlers would claim a completeness it does not have — the
-// same fail-open shape the posture union closes.
+// Handlers under `app/api` that deliberately never reach the gateway. Named
+// here as well as in the snapshot: the snapshot proves the set did not change,
+// and this constant says WHY each one is allowed to be in it. A coverage check
+// that quietly skipped ungated handlers would claim a completeness it does not
+// have — the same fail-open shape the posture union closes.
 const KNOWN_GATEWAY_BYPASSERS: Record<string, string> = {
   'app/api/openapi/route.ts::GET': 'Serves the static public/openapi.json. `force-static` prerender '
     + 'invokes GET with a stub NextRequest, and the wrapper\'s access of request.url/headers/method '
@@ -86,17 +94,25 @@ describe('BK-497 — every API route handler declares a capability posture', () 
     expect(undeclared).toEqual([]);
   });
 
-  it('records a justification for every no-capability posture', () => {
+  it('resolves no handler through an indirect export', () => {
+    // `export { impl as GET }` is invisible to BOTH halves of the contract: the
+    // type union never sees a call site, and the scan cannot follow the binding
+    // to find one. It is reported rather than resolved, so it lands here.
+    const indirect = actual.filter(r => r.posture === INDIRECT_EXPORT_POSTURE);
+    expect(indirect).toEqual([]);
+  });
+
+  it('records a per-handler justification for every no-capability posture', () => {
     // `authenticated` and `cookie-only` both carry a mandatory `why` in the
-    // type. This asserts the runtime consequence: the set of handlers running
-    // without a capability check is enumerable rather than merely absent.
+    // type. Asserted per handler off the parsed options object — a file-level
+    // substring check would pass on a multi-handler file where only one sibling
+    // carries a justification.
     const noCapability = actual.filter(
       r => r.posture === 'authenticated' || r.posture === 'cookie-only',
     );
     expect(noCapability.length).toBeGreaterThan(0);
     for (const row of noCapability) {
-      const source = readFileSync(join(REPO_ROOT, row.file), 'utf8');
-      expect(source).toContain('why:');
+      expect(row.why ?? '').not.toBe('');
     }
   });
 
