@@ -1,7 +1,7 @@
 # ADR-0009 — ATC edit propagation contract: no layer-policy gate, immutable anchors, reference-based cascade
 
-- **Status:** Proposed
-- **Date:** 2026-06-25
+- **Status:** Accepted — Implemented
+- **Date:** 2026-06-25 (proposed) · 2026-08-13 (status synced — BK-21 shipped: migration `0035_atc_update_propagation.sql`)
 - **Deciders:** Ely (PO/tech-lead, acting), BK-21 shift-left by Ramiro Majdalani (QA)
 - **Tags:** api, atc, propagation, data-model, contract
 - **Supersedes:** —

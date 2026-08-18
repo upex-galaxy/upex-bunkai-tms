@@ -1,7 +1,7 @@
 # ADR-0010 — Real-time transport for live run/step updates: Supabase Realtime
 
-- **Status:** Proposed
-- **Date:** 2026-07-31
+- **Status:** Accepted — Implemented
+- **Date:** 2026-07-31 (proposed) · 2026-08-13 (status synced — BK-35 shipped: migration `0043_run_realtime_replication.sql`)
 - **Deciders:** Product owner (delegated technical judgment to AI advisor for this decision, explicit, 2026-07-31 — see BK-35 Jira comment)
 - **Tags:** real-time, runs, cross-cutting-invariant, infrastructure
 - **Supersedes:** —
