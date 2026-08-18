@@ -7,10 +7,23 @@
  *   - LOCAL  : upsert every `destinations ∋ 'local'` var into `.env` (idempotent,
  *              skip already-set unless `--force`). Backs `.env` up to `.backups/`
  *              before mutating (D5).
- *   - REMOTE : push every `destinations ∋ 'vercel'` var with a non-empty `.env`
- *              value into Vercel env, per declared scope. Gated behind auth +
+ *   - REMOTE : push every `destinations ∋ 'vercel'` var with a resolvable value
+ *              into Vercel env, per declared scope. Gated behind auth +
  *              project-link + an explicit confirm (or `--yes`); HARD-REFUSED in
  *              non-interactive / CI / `--auto` unless `--yes` is passed (D3).
+ *
+ * NOT EVERY VALUE LIVES IN `.env`. A spec may declare a `valueSource`, and
+ * `ATLASSIAN_URL` does: it is read from (and written to) `.agents/project.yaml`
+ * -> `issue_tracker.atlassian_url`, never `.env`. It was pulled out because a
+ * stale copy in the process environment shadowed the file in silence and made
+ * `jira:sync-issues` rebuild the PBI cache from a dead Jira site. Consequences
+ * this module has to honour, each of which is a silent-corruption bug if missed:
+ *   - `currentValueOf()` is the ONLY way to read a var's value. Reading `.env`
+ *     directly makes a yaml-sourced var look unset, so it gets skipped.
+ *   - the local walk uses `localWriteVars()`, not `varsFor('local')`, or the
+ *     installer quietly stops asking for the host.
+ *   - the Vercel PULL refuses yaml-sourced vars, or it re-creates the local
+ *     copy from whatever the deploy scope holds.
  *
  * Security (D3, non-negotiable):
  *   - Every secret value is piped via **stdin** (`spawnSync({ input })`), NEVER on
@@ -45,10 +58,16 @@ import {
   ensureEnvFileExists,
   parseEnvFile,
 } from '../install.ts';
+import {
+  formatInstanceMismatchWarning,
+  resolveAtlassianInstance,
+  writeAtlassianUrlToYaml,
+} from './atlassian-instance.ts';
 import * as tui from './tui.ts';
 import {
   criticalVars,
   DEPRECATED_VARS,
+  valueSourceOf,
   VAR_MANIFEST,
 
   varsFor,
@@ -128,6 +147,51 @@ function scopesForSpec(spec: VarSpec): VarScope[] {
 }
 
 /** Read `.env` into a plain `{ KEY: value }` map (empty if `.env` is absent). */
+/**
+ * The current value of a manifest var, from whatever source its spec declares.
+ *
+ * `.env` is the source for almost everything, but not for all of it: a var with
+ * `valueSource: 'atlassian-instance'` is read from `.agents/project.yaml` via
+ * the canonical resolver. Every consumer that needs "the value of this var"
+ * must go through here, or a yaml-sourced var silently reads as unset and gets
+ * skipped — the failure would look exactly like "not configured yet".
+ *
+ * Returns `null` when the value is unset or unresolvable.
+ */
+function currentValueOf(spec: VarSpec, env: Record<string, string>): string | null {
+  if (valueSourceOf(spec) === 'atlassian-instance') {
+    try {
+      return resolveAtlassianInstance().baseUrl;
+    }
+    catch {
+      return null;
+    }
+  }
+  const raw = env[spec.name];
+  return raw !== undefined && raw.trim().length > 0 ? raw : null;
+}
+
+/** Human label for where a var's value is read from, used in prompts + reports. */
+function sourceLabelOf(spec: VarSpec): string {
+  return valueSourceOf(spec) === 'atlassian-instance'
+    ? '.agents/project.yaml'
+    : '.env';
+}
+
+/**
+ * Vars written on THIS machine — `.env` plus the yaml-sourced ones.
+ *
+ * Deliberately wider than `varsFor('local')`: a var can be written locally
+ * without being written to `.env`. Filtering the interactive walk by
+ * destination alone would silently drop ATLASSIAN_URL from every prompt, and
+ * "the installer stopped asking" is a bug users report as "it forgot my Jira".
+ */
+function localWriteVars(): VarSpec[] {
+  return VAR_MANIFEST.filter(
+    spec => spec.destinations.includes('local') || valueSourceOf(spec) !== 'env-file',
+  );
+}
+
 async function readEnvValues(): Promise<Record<string, string>> {
   if (!existsSync(ENV_PATH)) { return {}; }
   return parseEnvFile(await readFile(ENV_PATH, 'utf8'));
@@ -200,7 +264,9 @@ async function runLocal(
   }
 
   // --- Interactive: prompt each var (QA parity). Skip already-set unless --force. ---
-  await promptVarsInto(localVars, opts, results, false);
+  // Wider set than the routing loop above: a yaml-sourced var has nothing to
+  // "route" from `.env`, but it is still a local write and must still be asked.
+  await promptVarsInto(localWriteVars(), opts, results, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -228,8 +294,7 @@ async function promptVarsInto(
   const toWrite: Record<string, string> = {};
 
   for (const spec of specs) {
-    const current = (env[spec.name] ?? '').trim();
-    const alreadySet = current.length > 0;
+    const alreadySet = currentValueOf(spec, env) !== null;
 
     if (alreadySet && !opts.force) {
       if (!confirmOverwrite) {
@@ -238,7 +303,7 @@ async function promptVarsInto(
         continue;
       }
       const overwrite = await tui.confirm({
-        message: `${spec.name} is already set. Overwrite it?`,
+        message: `${spec.name} is already set (${sourceLabelOf(spec)}). Overwrite it?`,
         initialValue: false,
       });
       if (tui.isCancel(overwrite) || !overwrite) {
@@ -262,6 +327,26 @@ async function promptVarsInto(
       if (results) { results[spec.name] = 'skipped'; }
       continue;
     }
+
+    // A yaml-sourced var is written to its own file immediately — batching it
+    // into `toWrite` would put it back in `.env`, which is the whole point of
+    // the split. A write failure is reported and does NOT abort the walk: the
+    // remaining credentials are still worth collecting.
+    if (valueSourceOf(spec) === 'atlassian-instance') {
+      try {
+        const written = writeAtlassianUrlToYaml(value);
+        process.stdout.write(
+          `  ${tui.statusIcon('ok')} ${spec.name} → .agents/project.yaml (${written})\n`,
+        );
+        if (results) { results[spec.name] = 'set'; }
+      }
+      catch (err) {
+        tui.log.warn(`${spec.name}: ${(err as Error).message}`);
+        if (results) { results[spec.name] = 'failed'; }
+      }
+      continue;
+    }
+
     toWrite[spec.name] = value;
     if (results) { results[spec.name] = 'set'; }
   }
@@ -385,18 +470,29 @@ async function runRemote(
     if (!linked) { return; }
   }
 
-  // --- Collect candidate vars (non-empty .env value). ---
+  // --- Collect candidate vars (resolvable value, per the spec's source). ---
+  // NOT every Vercel-bound var lives in `.env`: ATLASSIAN_URL is read from
+  // `.agents/project.yaml`, so the yaml is the single origin for both the local
+  // tooling and the deploy scope and the two cannot drift apart.
   const env = await readEnvValues();
-  const candidates: VarSpec[] = [];
+  const values = new Map<string, string>();
   for (const spec of varsFor('vercel')) {
-    const value = env[spec.name];
-    if (value !== undefined && value.trim().length > 0) {
-      candidates.push(spec);
-    }
+    const value = currentValueOf(spec, env);
+    if (value !== null) { values.set(spec.name, value); }
   }
+  const candidates: VarSpec[] = varsFor('vercel').filter(s => values.has(s.name));
   if (candidates.length === 0) {
-    tui.log.info('No Vercel-bound vars have a value in .env yet — nothing to push.');
+    tui.log.info('No Vercel-bound vars have a value yet — nothing to push.');
     return;
+  }
+
+  // Surface a yaml/env divergence before writing it to a deploy scope: pushing
+  // the wrong host to production is exactly the failure being defended against.
+  const mismatchWarning = candidates.some(s => valueSourceOf(s) === 'atlassian-instance')
+    ? formatInstanceMismatchWarning(resolveAtlassianInstance())
+    : null;
+  if (mismatchWarning !== null) {
+    tui.log.warn(mismatchWarning);
   }
 
   // --- Dry-run: print plan (names + scopes), execute nothing. ---
@@ -429,7 +525,7 @@ async function runRemote(
 
   // --- Execute (stdin-only per var+scope). ---
   for (const spec of candidates) {
-    const value = env[spec.name];
+    const value = values.get(spec.name)!;
     for (const scope of scopesForSpec(spec)) {
       const key = `${spec.name} [${scope}]`;
       const result = pushVercelEnvVar(spec.name, value, scope);
@@ -553,7 +649,15 @@ async function pullVercelEnv(opts: VariablesFlowOptions): Promise<void> {
     await rm(tmpFile, { force: true });
   }
 
-  const routedNames = new Set(varsFor('vercel').map(s => s.name));
+  // Pull only vars that BELONG in `.env`. A var sourced from
+  // `.agents/project.yaml` must never be adopted back from Vercel: that would
+  // recreate the local copy this design removed, and seed it with whatever the
+  // deploy scope happens to hold — which is the stalest source of the three.
+  const routedNames = new Set(
+    varsFor('vercel')
+      .filter(s => valueSourceOf(s) === 'env-file')
+      .map(s => s.name),
+  );
   const adopt: Record<string, string> = {};
   for (const [name, value] of Object.entries(pulled)) {
     if (routedNames.has(name) && value.trim().length > 0) {
@@ -624,10 +728,14 @@ function printResultsTable(
   tui.section('RESULTS');
 
   if (mode !== 'remote') {
+    // "Local" means written on this machine, which is not the same as written
+    // to `.env`: a yaml-sourced var lands in `.agents/project.yaml` and still
+    // belongs in this table. Naming the file per row keeps that visible instead
+    // of leaving the operator to guess which one moved.
     const localRows = VAR_MANIFEST
-      .filter(spec => spec.destinations.includes('local'))
-      .map(spec => [spec.name, localResults[spec.name] ?? 'skipped']);
-    process.stdout.write(`${tui.table(['Var (local)', 'Result'], localRows)}\n`);
+      .filter(spec => spec.destinations.includes('local') || valueSourceOf(spec) !== 'env-file')
+      .map(spec => [spec.name, sourceLabelOf(spec), localResults[spec.name] ?? 'skipped']);
+    process.stdout.write(`${tui.table(['Var (local)', 'Written to', 'Result'], localRows)}\n`);
   }
 
   if (mode !== 'local') {
@@ -687,7 +795,7 @@ async function runMenu(
     case 'walk':
       if (!opts.dryRun) { await backupEnv(); }
       tui.section('WALK — set every local var one by one');
-      await promptVarsInto(varsFor('local'), opts, localResults);
+      await promptVarsInto(localWriteVars(), opts, localResults);
       break;
     case 'critical':
       if (!opts.dryRun) { await backupEnv(); }

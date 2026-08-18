@@ -561,10 +561,14 @@ The TMS works alongside the Automation Framework's reporting:
 | `XRAY_CLIENT_ID`     | API client ID (Cloud)             | Yes (Cloud)  |
 | `XRAY_CLIENT_SECRET` | API client secret (Cloud)         | Yes (Cloud)  |
 | `XRAY_TOKEN`         | Personal Access Token (Server/DC) | Yes (Server) |
-| `ATLASSIAN_URL`      | Atlassian instance URL            | Yes          |
 | `JIRA_PROJECT_KEY`   | Default project key               | Optional     |
 | `XRAY_TEST_PLAN_KEY` | Default test plan                 | Optional     |
 | `XRAY_ENVIRONMENT`   | Default test environment          | Optional     |
+
+The Atlassian **instance URL** is not an environment variable. It lives in
+`.agents/project.yaml` -> `issue_tracker.atlassian_url` and is resolved by
+`cli/lib/atlassian-instance.ts`; print it with `bun run --silent jira:url`
+(add `--slug` for the bare host `acli --site` expects).
 
 ---
 

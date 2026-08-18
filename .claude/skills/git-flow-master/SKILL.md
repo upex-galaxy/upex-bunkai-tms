@@ -47,6 +47,7 @@ If the user is asking about feature implementation, test design, product backlog
 
 - **Read the repo state first (Step 1).** Never assume branch, upstream, or cleanliness.
 - **The strategy comes from `.agents/project.yaml` → `git_strategy`**, read per invocation. Never infer it from a skill example or from another project.
+- **`strategy: solo-main` is the shipped DEFAULT, not evidence of a decision.** `meta.strategy_source` is what tells them apart: `inherited` means nobody chose. On a repo whose `project.project_name` is set and whose `strategy_source` is still `inherited`, OFFER Strategy Setup and say what the default costs (no integration branch, no promotion path, no review gate). Strategy Setup stamps `chosen`; nothing else may.
 - **`policy:` records INTENT, not enforcement.** Reconcile it by RUNNING `bun run git:policy verify` (Step 1b) at the first push / PR / merge intent, then `--stamp` when clean. Never perform the protection queries by hand and never state what the remote requires from a `declared` reading — say "declared, not verified".
 - **Query BOTH GitHub protection mechanisms.** `branches/{b}/protection` (classic) AND `rules/branches/{b}` (rulesets); `git:policy verify` does both. A `404` on the classic endpoint does NOT mean unprotected — rulesets enforce PR requirements invisibly to it. A push that succeeds is not proof a rule is absent: admins bypass rulesets while the rule still binds everyone else.
 - **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice. Writing the HOST needs it too: `git:policy apply` is a dry run until `--yes`, and refuses outright to remove a guard, lower the approval bar, turn off code-owner review, or widen the merge methods unless `--allow-loosening` is passed for that specific give-up.
@@ -393,7 +394,12 @@ The first five operations *adapt to* a strategy that already exists. Strategy Se
 **When it runs**
 
 - **Explicit**: the user asks — "set up our git strategy", "bootstrap branching", "configura el flujo de git", "materialize the flow".
-- **Bootstrap offer** (see "Bootstrap trigger" below): a git intent arrives and EITHER `git_strategy.strategy` is null (or the block is absent) with a fresh-looking repo, OR `git_strategy.strategy` is non-null but `project.project_name` is null (inherited template — not onboarded). The skill OFFERS to run setup. It never auto-runs.
+- **Bootstrap offer** (see "Bootstrap trigger" below): a git intent arrives and ANY of these holds. The skill OFFERS to run setup; it never auto-runs.
+  - `git_strategy.strategy` is null, or the block is absent, on a fresh-looking repo.
+  - `git_strategy.strategy` is non-null but `project.project_name` is null — the unonboarded template itself.
+  - **`git_strategy.meta.strategy_source: inherited` AND `project.project_name` is set** — a real project that onboarded and never chose a strategy. It is running the shipped default, and the two conditions above both miss it: the strategy is not null, and the project name is filled.
+
+  That third case is the one worth naming out loud when it fires. The shipped default is `solo-main`: one branch, no integration branch, no promotion path, no review gate of its own. That is right for a template with a single maintainer and thin for a product with a team, a staging environment, or anything that ships on a cadence. Say which of those the repo looks like, and let the user decide — a default nobody picked is not a decision, but it is also not automatically wrong.
 
 **Six-step flow** (mechanics live in `references/strategy-setup.md` — do not inline them here):
 
