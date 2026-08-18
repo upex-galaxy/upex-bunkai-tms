@@ -134,6 +134,7 @@ Once branches are materialized and decisions captured, persist in this order:
    - `branch_prefixes:` — `precedence` + naming patterns (carry the defaults unless the user overrides).
    - `description:` — the one-paragraph human summary of the flow for this repo.
    - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema. Leave `meta.policy_verified: null` and `meta.policy_source: declared` — only a successful `bun run git:policy verify --stamp` may flip them (Section 4.5).
+   - `meta.strategy_source: chosen` — **stamp this whenever the questionnaire actually ran.** It ships `inherited`, and that is the ONLY thing separating "this project picked `solo-main`" from "this project never chose and kept the default". `strategy:` itself is never null, so it cannot carry that distinction. Forgetting the stamp means the bootstrap offer keeps proposing a setup the user already completed.
    Per-strategy field values: `references/branching-strategies.md` → "git_strategy field rules (per strategy)".
 2. **Set up local tracking** for any newly-ensured branch (`git branch --set-upstream-to=origin/<branch> <branch>` or `git checkout -b <branch> origin/<branch>`), so later operations don't re-detect.
 
@@ -194,7 +195,7 @@ Host ruleset:
   - verify: <in parity | N drift(s) reported> | not run
   - apply:  <written (ruleset <name>) | dry run shown, not written | declined | n/a>
 
-Definition: .agents/project.yaml (git_strategy block, <N> fields populated)
+Definition: .agents/project.yaml (git_strategy block, <N> fields populated, strategy_source: chosen)
 
 Next: branch off <work-branch-base> to start work; the Branch operation will use this strategy automatically.
 ```

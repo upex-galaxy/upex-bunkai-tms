@@ -157,7 +157,7 @@ Place these in `.env` before running anything that talks to a real environment:
 | `QA_E2E_USER_EMAIL` / `QA_E2E_USER_PASSWORD`   | **Automation identity** — the account live-UI validation and authenticated probes log in as. Declare the names in `.agents/project.yaml` → `testing.automation_identity`. Must be a DEDICATED non-production account; a missing slot STOPS the sprint instead of improvising a login. See `sprint-development/references/live-ui-identity.md` |
 | `LOCAL_USER_EMAIL` / `LOCAL_USER_PASSWORD`     | Local dev login (manual / ad-hoc)      |
 | `STAGING_USER_EMAIL` / `STAGING_USER_PASSWORD` | Staging smoke tests, manual login      |
-| `ATLASSIAN_URL` / `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` | `acli` Jira CLI, MCP atlassian, scripts/sync-jira-* |
+| `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` | `acli` Jira CLI, MCP atlassian, scripts/sync-jira-* (the site HOST is not here — it lives in `.agents/project.yaml` -> `issue_tracker.atlassian_url`; read it with `bun run --silent jira:url`) |
 | `TAVILY_API_KEY`                               | Tavily MCP                             |
 | `SUPABASE_URL` / `SUPABASE_*_KEY`              | Supabase MCP + runtime                 |
 

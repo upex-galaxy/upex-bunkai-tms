@@ -146,3 +146,6 @@ cookies.txt
 # ----- 2026-08-12 (sync) -----
 .template/upstream-sha/
 /.agents/prompts/
+
+# ----- 2026-08-18 (sync) -----
+.claude/worktrees/

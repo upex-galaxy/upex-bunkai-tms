@@ -114,8 +114,8 @@ When you clone this boilerplate into a new project:
 
 1. Copy `.env.example` to `.env` and fill in:
    - `LOCAL_USER_EMAIL` / `STAGING_USER_EMAIL` and the matching passwords (test users).
-   - `ATLASSIAN_URL` / `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` (get a token at <https://id.atlassian.com/manage-profile/security/api-tokens>).
-2. Edit `.agents/project.yaml` by hand. Replace every `null` with the real value (the inline `# TODO:` comment shows the expected format). Make sure `testing.default_env` matches one of the keys under `environments:`.
+   - `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` (get a token at <https://id.atlassian.com/manage-profile/security/api-tokens>). The Atlassian **site URL** does not go here — see step 2.
+2. Edit `.agents/project.yaml` by hand. Replace every `null` with the real value (the inline `# TODO:` comment shows the expected format). Make sure `testing.default_env` matches one of the keys under `environments:`. `issue_tracker.atlassian_url` is the **source of truth** for the Atlassian host — it is not in `.env` at all, because a stale copy there silently shadowed the real value and pointed `jira:sync-*` at a dead instance. Confirm it resolves with `bun run --silent jira:url`.
 3. Run `bun run jira:sync-fields` to discover your Jira workspace's custom fields. Writes `.agents/jira-fields.json` (~100-150 fields typical). Resolves slug collisions deterministically — see `--allow-collisions` if you hit one.
 4. Run `bun run jira:check` to validate your Jira against the methodology's required-fields **and** required-`work_types` manifest. Address any output:
    - **❌ MISSING** — for a custom field: create the field in Jira admin (Settings → Issues → Custom fields) with the suggested name, type, and options. Re-run `bun run jira:sync-fields --force` then `bun run jira:check`. For a `work_type` / status / transition: amend the workflow in Jira admin so it exposes the required status / transition, then re-run `bun run jira:sync-workflows --force` then `bun run jira:check`.

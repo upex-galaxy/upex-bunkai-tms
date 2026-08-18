@@ -353,8 +353,11 @@ curl -H "Authorization: Bearer YOUR_PAT" \
 Create or update your `.env` file:
 
 ```bash
-# Atlassian credentials — single source of truth for Jira + acli + MCP atlassian
-ATLASSIAN_URL=https://your-company.atlassian.net
+# Atlassian credentials — one family for Jira + acli + MCP atlassian.
+# NOTE: the site URL is NOT here. It lives in .agents/project.yaml ->
+# issue_tracker.atlassian_url (set it with `bun run agents:setup`, read it with
+# `bun run --silent jira:url`). Keeping a second copy in .env is what let a
+# stale value shadow the real one and rebuild the PBI cache from a dead site.
 ATLASSIAN_EMAIL=your.email@example.com
 ATLASSIAN_API_TOKEN=your_api_token
 
