@@ -159,6 +159,8 @@ describe('sync-jira-issues --include-comments (BK-502)', () => {
     const md = readFlatFile('bugs', 'BUG', 'BK-9001');
     expect(md.trimEnd().endsWith('_Synced from Jira by sync-jira-issues_')).toBe(true);
     expect(md.indexOf('## Comments')).toBeGreaterThan(md.indexOf('## Metadata'));
+    // A comment already closes with its own `---`; the section must not add a second.
+    expect(md).not.toContain('---\n\n---');
   });
 
   it('control: a Defect (coverable: true) still gets its own comments.md', async () => {

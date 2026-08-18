@@ -1575,19 +1575,15 @@ function generateCommentsMarkdown(
  * in the exact file every routine already reads. See BK-502.
  */
 function embedCommentsSection(content: string, comments: JiraComment[]): string {
-  const section = [
-    '## Comments',
-    '',
-    renderCommentEntries(comments).join('\n').trimEnd(),
-    '',
-    '---',
-    '',
-  ].join('\n');
+  // Every rendered comment already closes with a `---` separator; the empty case
+  // does not, so only then is a closing rule added before the footer.
+  const entries = renderCommentEntries(comments).join('\n').trimEnd();
+  const section = `## Comments\n\n${entries.endsWith('---') ? entries : `${entries}\n\n---`}\n\n`;
 
   const footerAt = content.lastIndexOf(SYNC_FOOTER);
   if (footerAt === -1) { return `${content.trimEnd()}\n\n---\n\n${section}`; }
 
-  return `${content.slice(0, footerAt)}${section}\n${content.slice(footerAt)}`;
+  return `${content.slice(0, footerAt)}${section}${content.slice(footerAt)}`;
 }
 
 /**
