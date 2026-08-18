@@ -4,11 +4,11 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "1f523a9cefd2996d748cb1dde556c68929f0975a",
+    "claude": "3b815c24bf760df9cb29ca8a3996b333ad599799",
     "claude-config": "acb6d5bd50f9d72a43345936ea53b099744fc2c0",
     "agents": "5a18a188593ce189900e3c286f0813428b71f087",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "ea626f984fc4fbb1c11c334c78b7fa295725286f",
+    "scripts": "3b815c24bf760df9cb29ca8a3996b333ad599799",
     "docs": "f07612e4531bc6a48d8cd631c27887659732dd20",
     "context": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
     "context-engineering": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
@@ -48,19 +48,28 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-17T19:20:52.157Z",
+  "lastSyncedAt": "2026-08-18T05:05:21.765Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
+        "lastSyncedSha": "637c8728bc7b76036351efdc25dba908fb17a313",
         "appliedKeys": [
           "jira:sync-link-types",
-          "vars:env:check"
+          "vars:env:check",
+          "git:policy"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "a7f3f1aa4014faa3a59a9a5122a1bd666c3a7047",
+        "lastSyncedSha": "637c8728bc7b76036351efdc25dba908fb17a313",
+        "appliedKeys": []
+      },
+      "dependencies": {
+        "lastSyncedSha": "637c8728bc7b76036351efdc25dba908fb17a313",
+        "appliedKeys": []
+      },
+      "lint-staged": {
+        "lastSyncedSha": "637c8728bc7b76036351efdc25dba908fb17a313",
         "appliedKeys": []
       }
     }
