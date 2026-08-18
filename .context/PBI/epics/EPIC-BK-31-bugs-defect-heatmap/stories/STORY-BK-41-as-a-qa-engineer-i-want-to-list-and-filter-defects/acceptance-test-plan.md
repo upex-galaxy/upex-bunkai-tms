@@ -2,11 +2,11 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-41)
 
-## Acceptance Test Plan (ATP) Draft - BK-41
+## Acceptance Test Plan (ATP) Draft - [https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41](https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41)
 
 > ***INFO:*** ATP DRAFT only. Formal test cases belong to `/test-documentation`; automation code belongs to `/test-automation`.
 
-| ID | Scenario | Precondition | Expected result | Type | Priority | Automation hint |
+| ***ID**** | ****Scenario**** | ****Precondition**** | ****Expected result**** | ****Type**** | ****Priority**** | ****Automation hint*** |
 | --- | --- | --- | --- | --- | --- | --- |
 | ATP-1 | List defects for chosen module | Bug filed against module M in project P | 200, data + aggregates are correct | Positive | P0 | API `DefectApi.list` |
 | ATP-2 | Module subtree nested depth 1-6 | M/M2/M3 with bugs across descendants | Includes descendants, excludes siblings | Positive | P0 | API parametrized |
@@ -22,28 +22,28 @@
 | ATP-12 | Invalid status | status=in-progress | 400 validation*failed; wire value is in*progress | Negative | P2 | API |
 | ATP-13 | Missing required project*id | No project*id query param | 400 validation_failed | Negative | P1 | API |
 | ATP-14 | Limit/cursor boundary | limit > 100 or invalid before cursor | 400 or normalized max-limit behavior per API convention | Boundary | P2 | API |
-| ATP-15 | Defect newly filed by BK-40 appears | BK-40 POST /bugs creates one defect | GET /bugs includes the defect immediately | Integration | P1 | API cross-story |
+| ATP-15 | Defect newly filed by [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) appears | [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) POST /bugs creates one defect | GET /bugs includes the defect immediately | Integration | P1 | API cross-story |
 | ATP-16 | Archived module default | Bugs exist under archived/soft-deleted module | Hidden by default; future include_archived=true may opt in | Integration | P2 | API |
 
 ### Coverage Estimate
 
-| Positive | Negative | Boundary | Integration | API | Total |
+| ***Positive**** | ****Negative**** | ****Boundary**** | ****Integration**** | ****API**** | ****Total*** |
 | --- | --- | --- | --- | --- | --- |
 | 6 | 5 | 4 | 2 | 16 | 16 |
 
 ### Risk Coverage
 
-| Risk | Severity | Coverage |
+| ***Risk**** | ****Severity**** | ****Coverage*** |
 | --- | --- | --- |
 | Subtree traversal correctness at depth 6 | :red_circle: High | AC-2, ATP-2 |
 | Aggregates drift with pagination | :large*orange*circle: Medium | AC-6, ATP-7 |
 | IDOR via cross-project aggregates | :large*orange*circle: Medium | ATP-9 |
-| BK-40 schema dependency not shipped | :large*orange*circle: Medium | Readiness gate |
+| [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) schema dependency not shipped | :large*orange*circle: Medium | Readiness gate |
 | Empty filters indistinguishable from forbidden data | :large*orange*circle: Medium | ATP-8, ATP-9 |
 
 ### Rationale
 
-BK-41 is a read-only list/filter Story, but it carries real contract risk in subtree traversal, aggregates, and RLS/IDOR behavior. ATP remains outline-level and intentionally excludes test-data recipes, parametrization tables, implementation steps, and automation code.
+[https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41](https://jira.upexgalaxy.com/browse/BK-41#icft=BK-41) is a read-only list/filter Story, but it carries real contract risk in subtree traversal, aggregates, and RLS/IDOR behavior. ATP remains outline-level and intentionally excludes test-data recipes, parametrization tables, implementation steps, and automation code.
 
 ---
 _Synced from Jira by sync-jira-issues_

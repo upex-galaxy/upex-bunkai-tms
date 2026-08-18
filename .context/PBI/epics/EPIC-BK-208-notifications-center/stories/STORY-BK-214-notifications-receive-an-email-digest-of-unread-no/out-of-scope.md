@@ -1,6 +1,6 @@
 # BK-214 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
 
 - Immediate per-event emails — the digest is the only email delivery in this epic.
 - Configurable digest frequency or send time — daily cadence is fixed in this story; scheduling options are future refinement.

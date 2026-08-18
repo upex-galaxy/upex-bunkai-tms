@@ -1,6 +1,6 @@
 # BK-227 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-227)
 
 - ***Role gate***: changing the automation status requires the member role or higher (roles: viewer < member < admin < owner); viewers see it read-only.
 - ***Default***: every new Test starts as manual-only.

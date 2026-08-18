@@ -5,17 +5,9 @@
 > runs the work.
 
 **Default posture: a technical decision is the agent's to make.** Stopping to ask is the exception, and
-it is reserved for the categories named in §5. An agent that escalates a technical call it was equipped
+it is reserved for four categories named in §5. An agent that escalates a technical call it was equipped
 to settle has not been careful — it has moved its own work onto the human's queue and stalled everything
 downstream of it.
-
-> **⚠️ REPO OVERRIDE — `CLAUDE.md` Critical Rule #18 (AI-LED DECISION AUTHORITY).** In THIS repo the
-> autonomy grant is wider than the generic doctrine below: **product, business and functional calls are
-> ALSO the agent's to make**, because Bunkai TMS is designed, specified and built end-to-end by AI and
-> there is no human PO in the loop by default. §5 category 1 does NOT fire here — it is replaced by a
-> dispatched decision subagent (see §5.1). Everything else in this file — search-first, scored panels,
-> write-it-down — applies unchanged and is what makes the wider grant safe. If you are reading this file
-> inside a different project, ignore this box and use §5 as written.
 
 But autonomy is not the same as improvisation. Deciding well means deciding **in the order below**, and
 the order is the entire point of this file.
@@ -38,22 +30,6 @@ the order is the entire point of this file.
          ▼                              ▼
      6. WRITE IT DOWN  <───────────────┘
 ```
-
-**In THIS repo (Rule #18), step 3's "product" branch does not lead to step 5.** It leads to a dispatched
-`AI Product Owner / Business Analyst` subagent that runs the same step-4 scored method and publishes an
-attributed ruling to the ticket:
-
-```
-  3. Is it product / business / functional?
-         │
-         │ yes
-         ▼
-  4b. DISPATCH DECISION SUBAGENT  ──> scored scenarios ──> 6. WRITE IT DOWN + publish to the ticket
-      (AI PO/BA, or AI Tech Lead,
-       or both when the call is joint)
-```
-
-Only security-novel, irreversible, and operator-reserved calls still reach step 5.
 
 Reversing steps 1 and 4 is the failure this protocol exists to prevent. A scoring panel run as the FIRST
 step reasons well from scratch and produces a confident, well-argued answer that **overwrites a decision
@@ -160,9 +136,6 @@ Four categories, and they are exhaustive. Everything outside them is yours.
    correct for the user, scope changes, priority calls. **Product ambiguity in a requirement or an
    acceptance criterion stops** — an AI-improvised answer to "what should this do" is a guess wearing a
    decision's clothes. *Technical* ambiguity about how to build an agreed behaviour is §4 work, not this.
-   > **NOT IN EFFECT IN THIS REPO.** `CLAUDE.md` Rule #18 replaces this category with §5.1 below. It is
-   > kept here verbatim because this file is shared doctrine and the category is correct for a project
-   > that HAS a human PO. Bunkai TMS does not.
 2. **Security-relevant judgment calls not already covered by an existing rule.** Applying an established,
    ratified security pattern to new code is implementation, not a decision — do it. Deciding a *new*
    security posture, or accepting a risk nobody has accepted before, escalates.
@@ -176,46 +149,40 @@ Four categories, and they are exhaustive. Everything outside them is yours.
 scoring if you ran a panel, and your recommendation. Never ask a bare open question — that is how a human
 gets pulled into re-deciding something they already decided.
 
----
+### 5.1 Category 1 is configurable — but only by explicit opt-in
 
-## 5.1 Product and business calls in THIS repo — decide them, attributed
+Everything above is the default and is correct for any project with a human product owner. **Read
+`decision_authority.product` in `.agents/project.yaml`. If it is absent or `escalate`, §5 applies exactly
+as written and you can stop reading this subsection.**
 
-`CLAUDE.md` Rule #18 governs. An open product, business, functional, scope, UX-copy or design-intent
-question on a ticket is **NOT a blocker and NEVER waits for the human by default**. The moment a workflow
-hits one, dispatch a decision subagent — do not park the ticket, do not escalate, do not end a run over it.
+A project may set `decision_authority.product: decide`. That declares there is **no human PO in the loop**
+— the product is specified and built end to end by AI — and it replaces category 1 only. Categories 2, 3
+and 4 still escalate, unchanged. Under `decide`:
 
-**Two role profiles.** Dispatch the one that fits; dispatch both when the question is joint.
+- An open product, business, functional, scope, UX-copy or design-intent question on a ticket is **work to
+  do, not a blocker**. It never waits for a human by default.
+- Search the record first, exactly as §2 requires. A published ruling that already governs the question is
+  followed and cited, never re-derived.
+- If it is genuinely unsettled, **dispatch a decision subagent** rather than escalating. Two profiles;
+  dispatch the one that fits, or both when the call is joint:
 
-| Profile | Owns | MUST read before deciding |
-| --- | --- | --- |
-| `AI Product Owner / Business Analyst` | product, business, functional, scope, UX-copy, design-intent | `.context/PRD/`, `.context/SRS/`, `.context/business/` (incl. `domain-glossary.md`), `.context/design/master-design-plan.md`, the epic's sibling stories, and the ticket's own PBI folder |
-| `AI Tech Lead` | schema, index, API contract, auth/RLS, performance, migration shape, integration architecture | the relevant ADRs, existing migrations, and the live code precedent |
+  | Profile | Owns | Must read before deciding |
+  | --- | --- | --- |
+  | `AI Product Owner / Business Analyst` | product, business, functional, scope, UX copy, design intent | the product-definition context (PRD / SRS / business docs, domain glossary), the design plan, the epic's sibling tickets, the ticket's own folder |
+  | `AI Tech Lead` | schema, index, API contract, auth model, performance, migration shape, integration architecture | the relevant ADRs, existing migrations, and the live code precedent |
 
-**The method is mandatory — scored scenarios, never a bare opinion.** Enumerate 2-4 concrete candidate
-answers, score them against explicit criteria (product value, consistency with existing precedent,
-implementation cost, reversibility, risk), and pick the highest scorer with the reasoning written out.
-A decision without alternatives considered and a score is not a decision, it is a guess. Everything in
-§4 about weighting, near-ties and honest axes applies here unchanged — the wider grant is only safe
-because the method is the same.
+- The subagent runs the **same scored method as §4** — 2 to 4 concrete candidate answers, scored against
+  explicit criteria, highest scorer wins, reasoning written out. A bare opinion is not a decision.
+- **Publish the ruling to the ticket under a heading that names the deciding profile**, e.g.
+  `## AI Product Owner — Decision: <question>`, then resync the tracker cache. Never style an AI ruling as
+  human sign-off and never leave one unattributed: a future run must be able to tell at a glance that the
+  answer came from the AI team, not from an undisclosed human.
+- **A published ruling that names concrete follow-on work is executed, not re-escalated.** Materializing a
+  decision someone already made is data entry against a settled question; asking who should do it is the
+  same failure as re-asking the question.
 
-**Publish to the ticket, attributed.** Post the ruling as a tracker comment whose heading names the
-deciding profile: `## AI Product Owner — Decision: <question>` or `## AI Tech Lead — Decision: <question>`,
-plus the alternatives scored and the rationale. Then resync the cache. A future agent MUST be able to tell
-at a glance that the answer came from this same AI team. **Never post an AI decision styled as human PO
-sign-off** — that ambiguity is exactly what Rule #18 exists to end, and it is the failure this repo has
-already logged repeatedly (a non-human account closing its own blocker and moving the ticket to
-Ready For Dev minutes later).
-
-**The only legitimate blockers that remain**, after this section:
-
-1. **A genuine dependency** — story B must ship before story A is buildable. Verified by git ancestry,
-   never by a tracker status.
-2. **Missing shift-left refinement** — the story never went through the shift-left process at all. That is
-   a QA-authoring gap, not a question: record it for assignment to whoever (human or their agent) runs
-   shift-left. Do NOT invent the refinement yourself.
-
-Unchanged and NOT overridden by this section: irreversible/destructive actions, credentials, and pushes to
-protected branches still follow §5 categories 2-4 and Critical Rules #4, #5 and #13.
+The wider grant is only safe because the rest of this file still applies in full: search first, score the
+alternatives, write it down. Do not read `decide` as permission to skip any of those.
 
 ---
 

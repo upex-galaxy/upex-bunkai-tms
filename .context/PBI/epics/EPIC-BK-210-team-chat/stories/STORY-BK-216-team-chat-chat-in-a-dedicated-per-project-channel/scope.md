@@ -1,6 +1,6 @@
 # BK-216 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-216)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-216)
 
 - One dedicated channel per Project, created automatically with the Project
 - Channel visibility and history access follow project access

@@ -1,6 +1,6 @@
 # BK-35 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
 
 - A step result can only be reported while the run is still in progress; closed runs reject further results
 - A step can be marked passed, failed, or blocked; note and evidence link are optional

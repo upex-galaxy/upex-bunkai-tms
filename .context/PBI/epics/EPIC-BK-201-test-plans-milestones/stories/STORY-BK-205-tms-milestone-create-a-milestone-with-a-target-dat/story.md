@@ -3,7 +3,7 @@
 **Jira Key:** [BK-205](https://jira.upexgalaxy.com/browse/BK-205)
 **Epic:** [BK-201](https://jira.upexgalaxy.com/browse/BK-201) (Test Plans & Milestones)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 8
 
@@ -184,7 +184,7 @@ Backend ≈5, Frontend ≈5, Design = small non-blocking spike — converged tea
 - **Created:** 7/11/2026
 - **Updated:** 8/5/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Carlos Alcala
 - **Labels:** new-feature, post-mvp, shift-left-2026-07-22, shift-left-2026-08-04, shift-left-reviewed
 
 ---

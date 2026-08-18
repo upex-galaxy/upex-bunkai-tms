@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -25,7 +26,7 @@ Source spec: BK-016
 
 This Story has been reviewed through the shift-left workflow with expert-development-team-analysis and is ready for estimation.
 
-Note: BK-28 is blocked-by BK-27 (Test assembly). The tests and test_steps tables do not exist yet. BK-27 must land first or in the same sprint with BK-27 scheduled before BK-28.
+Note: [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) is blocked-by [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) (Test assembly). The tests and test_steps tables do not exist yet. [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) must land first or in the same sprint with [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) scheduled before [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28).
 
 ## Scope
 
@@ -42,14 +43,14 @@ Note: BK-28 is blocked-by BK-27 (Test assembly). The tests and test_steps tables
 
 ### Out Of Scope
 
-- Adding or removing ATCs from a Test; covered by BK-27 (Test assembly).
+- Adding or removing ATCs from a Test; covered by [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) (Test assembly).
 - Test creation or editing of Test metadata.
-- Run execution or step result updates; covered by BK-34 through BK-39.
+- Run execution or step result updates; covered by [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) through [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39).
 - Activity log viewing UI; this Story only creates the event.
 
 ## Acceptance Criteria
 
-```gherkin
+```
 Background:
   Given an authenticated workspace member with role member or higher
     And a Project exists in the active workspace
@@ -147,7 +148,7 @@ Scenario: Retry-safe double-click returns no-op
 - API endpoint: PATCH /api/v1/tests/{id}/reorder — dedicated sub-resource, body is the complete new order (not a diff).
 - No-op detection: JSON.stringify comparison of ordered arrays. Exact match = no version bump, no event, no updated_at change.
 - Chain validation: set equality + uniqueness check before DB write. Zod superRefine for duplicates.
-- Version field: tests table needs version int (BK-27 should include it; if not, BK-28 adds migration).
+- Version field: tests table needs version int ([https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) should include it; if not, [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) adds migration).
 - DB operation: UPDATE test_steps positions in a single transaction — atomic, no partial state.
 - Idempotency: not needed as a separate mechanism — optimistic locking + no-op detection make retries inherently safe.
 
@@ -165,15 +166,15 @@ Pending confirmation: PO confirms lenient mode is acceptable for MVP.
 
 Question: Should the activity log store full before/after chains or just a summary?
 
-Expert recommendation: Full chains in event payload. Debugging needs before/after, not just "someone reordered". Event consumers (future activity-log UI, BK-30 Runs) can filter or aggregate as needed.
+Expert recommendation: Full chains in event payload. Debugging needs before/after, not just "someone reordered". Event consumers (future activity-log UI, [https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30) Runs) can filter or aggregate as needed.
 
 Pending confirmation: PO confirms full-chain storage is the right level of detail.
 
 ### Architect: Version field migration ownership
 
-Question: Should BK-27 (Test assembly) include the version column, or should BK-28 add its own migration?
+Question: Should [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) (Test assembly) include the version column, or should [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) add its own migration?
 
-Expert recommendation: BK-27 should include version int on the tests table. If BK-27 ships without it, BK-28 adds ALTER TABLE tests ADD COLUMN version int not null default 1 — same pattern as atcs.version in migration 0004.
+Expert recommendation: [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) should include version int on the tests table. If [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) ships without it, [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) adds ALTER TABLE tests ADD COLUMN version int not null default 1 — same pattern as atcs.version in migration 0004.
 
 Pending confirmation: Architect confirms which Story owns the migration.
 
@@ -187,19 +188,19 @@ Pending confirmation: Design confirms modal layout and copy.
 
 ### QA Lead: Minimum ATP coverage gate
 
-Question: What must be tested before BK-28 can be QA-approved?
+Question: What must be tested before [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) can be QA-approved?
 
 Expert recommendation: Cover successful reorder, persistence, no-op same order, single-ATC no-op, unauthenticated rejection, viewer forbidden, version conflict, chain mismatch, duplicate ids, empty chain, activity log, and retry-safe double-click. 12 scenarios total.
 
 Pending confirmation: QA Lead confirms these remain the minimum ATP coverage for sprint testing.
 
-### Delivery: BK-27 dependency readiness
+### Delivery: [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) dependency readiness
 
-Question: Can BK-28 move forward while BK-27 (Test assembly) is not yet complete?
+Question: Can [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) move forward while [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) (Test assembly) is not yet complete?
 
-Expert recommendation: BK-28 can stay in Estimation for sizing, but should not move to Ready For Dev until BK-27 has landed and the tests/test_steps tables exist. If both are in the same sprint, BK-27 must be scheduled before BK-28.
+Expert recommendation: [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) can stay in Estimation for sizing, but should not move to Ready For Dev until [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) has landed and the tests/test_steps tables exist. If both are in the same sprint, [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) must be scheduled before [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28).
 
-Pending confirmation: Delivery/PO confirms whether BK-28 is estimated now or held until BK-27 is ready.
+Pending confirmation: Delivery/PO confirms whether [https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28](https://jira.upexgalaxy.com/browse/BK-28#icft=BK-28) is estimated now or held until [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27) is ready.
 
 ## Definition of Done
 
@@ -215,6 +216,19 @@ Pending confirmation: Delivery/PO confirms whether BK-28 is estimated now or hel
 - ATP Draft and scenario matrix are documented in the shift-left handoff comment.
 - Labels: shift-left-reviewed, shift-left-2026-06-09.
 - Previous analysis (v2, 2026-06-04) was restructured into this format; all senior decisions preserved inline above.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 

@@ -1,8 +1,8 @@
 # BK-220 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
 
-```gherkin
+```
 Scenario: Find a message by its text
   Given the "Payments API" channel contains a message "descoping the refund Test until the API stabilizes"
   When Mateo searches the chat for "refund Test"
@@ -10,14 +10,14 @@ Scenario: Find a message by its text
   And a highlighted snippet shows where the match occurred
 ```
 
-```gherkin
+```
 Scenario: Filter results by channel, author, and date
   Given Mateo's search for "staging" returns 40 results across 3 channels
   When he filters to the channel "Payments API", the author Elena, and the last 7 days
   Then only messages matching all three filters remain in the results
 ```
 
-```gherkin
+```
 Scenario: Jump to a result in its conversation
   Given Mateo found the message "descoping the refund Test until the API stabilizes"
   When he selects that result
@@ -25,7 +25,7 @@ Scenario: Jump to a result in its conversation
   And the message is briefly highlighted so he can spot it
 ```
 
-```gherkin
+```
 Scenario: Search never returns channels the member cannot access
   Given Mateo has no access to the project "Mobile App"
   And its channel contains messages matching "staging"
@@ -34,7 +34,7 @@ Scenario: Search never returns channels the member cannot access
   And nothing indicates that hidden matches exist
 ```
 
-```gherkin
+```
 Scenario: A search with no matches shows a helpful empty state
   Given no message in Mateo's accessible channels contains "chaos monkey"
   When he searches for "chaos monkey"

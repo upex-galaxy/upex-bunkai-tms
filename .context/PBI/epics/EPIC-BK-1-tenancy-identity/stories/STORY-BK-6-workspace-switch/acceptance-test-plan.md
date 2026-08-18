@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
 
-## Acceptance Test Plan (ATP) — BK-6
+## Acceptance Test Plan (ATP) — [https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6)
 
 ***Stage 1 Planning completed:*** 2026-06-06
 ***Risk Score:*** 13/15 — HIGH
@@ -20,7 +20,7 @@ Score 13/15 — HIGH. Veto override: auth + data integrity → Full ATP mandator
 
 ***Top risks:***
 
-1. ***DEF-001 (to file in Stage 2):*** API response schema mismatch — spec requires `{ id, slug, name, role }` but implementation returns `{ ok: true, active*workspace*id }`. TC1 will fail this assertion.
+1. ***DEF-001 (to file in Stage 2):*** API response schema mismatch — spec requires {{{ id, slug, name, role }}} but implementation returns {{{ ok: true, active*workspace*id }}}. TC1 will fail this assertion.
 2. ***DISC-003 (test and report):*** AC3 suspended error code may not be `MEMBERSHIP_SUSPENDED` — RLS-based rejection may return generic code. TC3 captures actual code.
 3. ***Session data leak risk:*** If tenancy scoping fails, data from the wrong workspace could leak. TC1 verifies scoping post-switch.
 
@@ -32,12 +32,13 @@ Score 13/15 — HIGH. Veto override: auth + data integrity → Full ATP mandator
 
 ### TC Outlines
 
-| TC | AC | Type | Priority | Test Data |
-|----|----|------|----------|-----------|
-| TC1 | AC1 | Positive — API + DB | Critical | FROM: Bünkāï QA → TO: Extra Test |
-| TC2 | AC2 | Negative — API | Critical | Non-member workspace `bd947203` |
-| TC3 | AC3 | Negative — API + DB | Critical | Suspended membership `c828d131` (BK5 Test Workspace) |
-| TC4 | AC4 | Positive — UI + Integration | High | Switcher + reload persistence |
+| TC  | AC  | Type  | Priority  | Test Data  |
+| --- | --- | --- | --- | --- |
+| ---- | ---- | ------ | ---------- | ----------- |
+| TC1  | AC1  | Positive — API + DB  | Critical  | FROM: Bünkāï QA → TO: Extra Test  |
+| TC2  | AC2  | Negative — API  | Critical  | Non-member workspace `bd947203`  |
+| TC3  | AC3  | Negative — API + DB  | Critical  | Suspended membership `c828d131` (BK5 Test Workspace)  |
+| TC4  | AC4  | Positive — UI + Integration  | High  | Switcher + reload persistence  |
 
 ---
 

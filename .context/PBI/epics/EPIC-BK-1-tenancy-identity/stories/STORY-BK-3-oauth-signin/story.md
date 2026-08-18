@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** QA Approved
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -70,7 +71,7 @@ Implements ***FR-001**** partially — OAuth side only. Email magic-link is cove
 
 ### Critical Implementation Gap
 
-***OAuth buttons in**** `login/page.tsx` ****are hardcoded as*** `disabled` (label "soon", `cursor-not-allowed`, `opacity-60`). BK-3 cannot be tested until these buttons are enabled as part of this story's implementation scope.
+***OAuth buttons in**** `login/page.tsx` ****are hardcoded as*** `disabled` (label "soon", `cursor-not-allowed`, `opacity-60`). [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) cannot be tested until these buttons are enabled as part of this story's implementation scope.
 
 ---
 
@@ -108,7 +109,7 @@ Implements ***FR-001**** partially — OAuth side only. Email magic-link is cove
 | --- |
 | --- | --- |
 | C1  | Story workflow says redirect to `/home`; callback route code defaults to `/projects`. Must reconcile before Dev implements.  |
-| C2  | `login/page.tsx` comment says "OAuth ships next sprint" — if BK-3 is the OAuth ticket, UI copy AND button enable are in-scope.  |
+| C2  | `login/page.tsx` comment says "OAuth ships next sprint" — if [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3) is the OAuth ticket, UI copy AND button enable are in-scope.  |
 
 ---
 
@@ -134,8 +135,14 @@ See comment "Shift-Left Refinement Mirror" on this issue for the full refined AC
 
 > Each rich-text field is a separate file in this folder.
 
-- [Mockup](./mockup.md)
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 

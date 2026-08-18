@@ -1,6 +1,6 @@
 # BK-40 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-40)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-40)
 
 1. Elena is executing a test run and marks a step as failed.
 2. A "Report defect" action appears next to the failed step.

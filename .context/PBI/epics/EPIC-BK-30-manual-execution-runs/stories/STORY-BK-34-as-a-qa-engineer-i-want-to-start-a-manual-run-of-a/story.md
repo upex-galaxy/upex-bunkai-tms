@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -25,7 +26,7 @@ Source spec: BK-019
 
 This Story has been reviewed through the shift-left workflow and is ready for estimation.
 
-Note: BK-70 was intentionally ignored as a dependency for this provisional pass by product instruction. If BK-70 changes the Test Repository contract later, this Story should be refreshed before development starts.
+Note: [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) was intentionally ignored as a dependency for this provisional pass by product instruction. If [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) changes the Test Repository contract later, this Story should be refreshed before development starts.
 
 ## Scope
 
@@ -43,17 +44,17 @@ Note: BK-70 was intentionally ignored as a dependency for this provisional pass 
 
 ### Out Of Scope
 
-- Updating step results; covered by BK-35.
-- Aborting a run; covered by BK-36.
-- Full run history filtering; covered by BK-37.
-- Run reporting totals; covered by BK-38.
-- Final run verdict; covered by BK-39.
-- Defect filing, listing, heatmap, or sync; covered by BK-40 through BK-43.
+- Updating step results; covered by [https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35](https://jira.upexgalaxy.com/browse/BK-35#icft=BK-35).
+- Aborting a run; covered by [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36).
+- Full run history filtering; covered by [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37).
+- Run reporting totals; covered by [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38).
+- Final run verdict; covered by [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39).
+- Defect filing, listing, heatmap, or sync; covered by [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43).
 - Creating or editing the underlying Test definition.
 
 ## Acceptance Criteria
 
-```gherkin
+```
 Background:
   Given an authenticated workspace member with role member or higher
     And a Project exists in the active workspace
@@ -140,7 +141,7 @@ Pending confirmation: PO confirms the product message for expired tokens.
 
 Question: Should a Test with manual steps but no ATCs be executable?
 
-Expert recommendation: Yes, if the Test has executable steps. BK-34 should block only a Test with zero executable steps, not a Test with zero ATC links. This keeps manual-only Tests possible and avoids forcing every manual Test to map to an ATC.
+Expert recommendation: Yes, if the Test has executable steps. [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) should block only a Test with zero executable steps, not a Test with zero ATC links. This keeps manual-only Tests possible and avoids forcing every manual Test to map to an ATC.
 
 Pending confirmation: PO confirms that executable steps, not ATC count, are the start-run gate.
 
@@ -170,7 +171,7 @@ Pending confirmation: Dev confirms final storage shape and whether enforcement i
 
 ### QA Lead: Minimum coverage gate
 
-Question: What must be tested before BK-34 can be QA-approved?
+Question: What must be tested before [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) can be QA-approved?
 
 Expert recommendation: Cover successful start, no executable steps, invalid environment, same-token retry, different-token new run, executor mode, authorization, and run-history visibility.
 
@@ -178,11 +179,11 @@ Pending confirmation: QA Lead confirms these remain the minimum ATP coverage for
 
 ### Delivery: Readiness dependency
 
-Question: Can BK-34 move forward while BK-70 is ignored for this provisional pass?
+Question: Can [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) move forward while [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) is ignored for this provisional pass?
 
 Expert recommendation: It can stay in Estimation for sizing, but should not move to Ready For Dev until the Test Repository contract is stable or explicitly accepted as a dependency risk.
 
-Pending confirmation: Delivery/PO confirms whether BK-34 is estimated now or held until BK-70 is ready.
+Pending confirmation: Delivery/PO confirms whether [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) is estimated now or held until [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) is ready.
 
 ## References
 
@@ -195,7 +196,11 @@ Pending confirmation: Delivery/PO confirms whether BK-34 is estimated now or hel
 
 > Each rich-text field is a separate file in this folder.
 
-- [Mockup](./mockup.md)
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 
 ---
 
@@ -203,13 +208,13 @@ Pending confirmation: Delivery/PO confirms whether BK-34 is estimated now or hel
 
 ### Storys (9)
 
-- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Release)_
-- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(Ready For QA)_
 - [BK-37](https://jira.upexgalaxy.com/browse/BK-37): TMS-Run History | View a test's past runs, filterable by outcome _(Ready For QA)_
-- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(Ready For QA)_
-- [BK-39](https://jira.upexgalaxy.com/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Ready For Release)_
 - [BK-36](https://jira.upexgalaxy.com/browse/BK-36): TMS-Run Execution | Abort a run in progress with a reason _(QA Approved)_
+- [BK-39](https://jira.upexgalaxy.com/browse/BK-39): TMS-Run Execution | Finish a run with a final verdict _(Ready For Release)_
 - [BK-148](https://jira.upexgalaxy.com/browse/BK-148): TMS-Project Environments | List, add, rename and remove environments _(Ready For Release)_
+- [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Release)_
+- [BK-38](https://jira.upexgalaxy.com/browse/BK-38): TMS-Run Reporting | Filter project runs with pass/fail totals _(QA Approved)_
+- [BK-35](https://jira.upexgalaxy.com/browse/BK-35): TMS-Run Execution | Mark each step pass, fail, or block _(QA Approved)_
 - [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
 - [BK-223](https://jira.upexgalaxy.com/browse/BK-223): TMS-Automation API | Stream step results during an automated run _(Backlog)_
 
@@ -218,7 +223,7 @@ Pending confirmation: Delivery/PO confirms whether BK-34 is estimated now or hel
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/24/2026
+- **Updated:** 8/8/2026
 - **Reporter:** Ely
 - **Assignee:** jesusgpythondev
 - **Labels:** shift-left-2026-06-08, shift-left-reviewed

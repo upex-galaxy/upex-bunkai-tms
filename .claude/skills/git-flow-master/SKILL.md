@@ -47,9 +47,11 @@ If the user is asking about feature implementation, test design, product backlog
 
 - **Read the repo state first (Step 1).** Never assume branch, upstream, or cleanliness.
 - **The strategy comes from `.agents/project.yaml` → `git_strategy`**, read per invocation. Never infer it from a skill example or from another project.
-- **`policy:` records INTENT, not enforcement.** Reconcile it against the host once per session at the first push / PR / merge intent (Step 1b), then stamp `meta.policy_verified` / `meta.policy_source`. Never state what the remote requires from a `declared` reading — say "declared, not verified".
-- **Query BOTH GitHub protection mechanisms.** `branches/{b}/protection` (classic) AND `rules/branches/{b}` (rulesets). A `404` on the classic endpoint does NOT mean unprotected — rulesets enforce PR requirements invisibly to it. A push that succeeds is not proof a rule is absent: admins bypass rulesets while the rule still binds everyone else.
-- **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice.
+- **`strategy: solo-main` is the shipped DEFAULT, not evidence of a decision.** `meta.strategy_source` is what tells them apart: `inherited` means nobody chose. On a repo whose `project.project_name` is set and whose `strategy_source` is still `inherited`, OFFER Strategy Setup and say what the default costs (no integration branch, no promotion path, no review gate). Strategy Setup stamps `chosen`; nothing else may.
+- **`policy:` records INTENT, not enforcement.** Reconcile it by RUNNING `bun run git:policy verify` (Step 1b) at the first push / PR / merge intent, then `--stamp` when clean. Never perform the protection queries by hand and never state what the remote requires from a `declared` reading — say "declared, not verified".
+- **Query BOTH GitHub protection mechanisms.** `branches/{b}/protection` (classic) AND `rules/branches/{b}` (rulesets); `git:policy verify` does both. A `404` on the classic endpoint does NOT mean unprotected — rulesets enforce PR requirements invisibly to it. A push that succeeds is not proof a rule is absent: admins bypass rulesets while the rule still binds everyone else.
+- **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice. Writing the HOST needs it too: `git:policy apply` is a dry run until `--yes`, and refuses outright to remove a guard, lower the approval bar, turn off code-owner review, or widen the merge methods unless `--allow-loosening` is passed for that specific give-up.
+- **`require_code_owner_review: true` with no `CODEOWNERS` file is unsatisfiable, not strict.** Nobody outside the bypass list can clear it, so every merge becomes a bypass. Treat that combination as drift with a named remedy: add the file, or turn the flag off.
 - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
 - **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
 - **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
@@ -110,22 +112,24 @@ This summary is cheap, prevents 90% of mistakes, and is the input to every subse
 
 Run this ONCE per session, at the first push / PR / merge intent (not on read-only operations), and cache the result for the rest of the session.
 
-GitHub has **two independent** protection mechanisms, and querying only one produces a false "unprotected" reading. Check BOTH, per protected branch named in `git_strategy.branches` / `protected`:
+**Run the tool; do not perform the queries by hand:**
 
 ```bash
-# (1) Classic branch protection — legacy, per-branch
-gh api "repos/{owner}/{repo}/branches/{branch}/protection" 2>/dev/null
-
-# (2) Rulesets — the modern mechanism. Returns the rules that actually apply
-#     to this branch, whatever ruleset they came from. NEVER skip this one.
-gh api "repos/{owner}/{repo}/rules/branches/{branch}" 2>/dev/null
+bun run git:policy verify          # read-only; exit 1 on drift
+bun run git:policy verify --stamp  # same, and records the reconciliation when clean
 ```
 
-**A `404` from (1) does NOT mean the branch is unprotected.** A repository configured with rulesets returns `404` on the classic endpoint while enforcing PR requirements, required approvals, signed commits, and non-fast-forward bans through (2). Stopping at (1) therefore produces a confident "unprotected" reading on a branch that requires a reviewed pull request — a wrong `verified` stamp, which is worse than never verifying.
+It queries BOTH GitHub protection mechanisms for every branch in `git_strategy.branches` / `protected`, compares the union against the declared policy, and prints each divergence as `declared` vs `enforced`. Full contract, the strategy-to-ruleset mapping, and what it deliberately does not manage: `references/ruleset-parity.md`.
 
-Both outcomes are normal and neither is the default: plenty of projects run with no protection at all, plenty enforce rulesets, some still use classic protection. Report what THIS repository returns; never carry an expectation over from another project.
+**Why the tool rather than the steps.** This reconciliation was specified here in prose for a long time and kept not happening — the boilerplate itself shipped `require_pr_reviews: 0` against a host demanding one approval plus a code-owner review, and it surfaced as a refused merge months later. A script performs every query on every run; a procedure performs the ones the reader remembered.
 
-Read from (1): required approving review count, whether reviews are required, required status checks, `enforce_admins`, restrictions. Read from (2): each entry's `type` (`pull_request`, `required_signatures`, `non_fast_forward`, `deletion`, `creation`, `required_status_checks`) and, for `pull_request`, its `parameters.required_approving_review_count`, `require_code_owner_review`, `require_last_push_approval`, `allowed_merge_methods`. Compare the union against `require_pr_reviews`, `direct_push_to_protected`, `admin_bypass`, and the `protected:` list.
+**The facts the tool encodes, which still bind you when reading its output:**
+
+- **A `404` from the classic endpoint does NOT mean the branch is unprotected.** A repo governed by rulesets returns `404` on `branches/{b}/protection` while enforcing PR requirements, approvals, signed commits, and non-fast-forward bans through `rules/branches/{b}`. Stopping at the classic endpoint produces a confident "unprotected" reading on a branch that requires a reviewed pull request — a wrong `verified` stamp, which is worse than never verifying.
+- **A push that succeeds is not evidence of an absent rule.** Org owners and anyone on the ruleset bypass list push through while the rule still binds everyone else. When a push prints `Changes must be made through a pull request`, the operation was a BYPASS: report it as one, never as permission.
+- **`require_code_owner_review: true` with no `CODEOWNERS` file is unsatisfiable**, not strict. Nobody outside the bypass list can ever clear it, so every merge becomes a bypass. The tool reports that combination as drift with a named remedy.
+
+**Host adapters.** The check is host-shaped, not GitHub-only; other hosts expose the same facts elsewhere (GitLab protected-branches API, Bitbucket branch restrictions). When no host CLI is available, record which case applies and continue — never block a git operation because verification was impossible. Record `verified` only when every mechanism the host offers was actually queried, which is what `--stamp` gates on.
 
 **A push that succeeds is not evidence of an absent rule.** Org owners and users covered by a ruleset bypass list push through while the rule still applies to everyone else. When a push prints a remote message such as `Changes must be made through a pull request`, the operation was a BYPASS: report it as drift, never as permission.
 
@@ -390,7 +394,12 @@ The first five operations *adapt to* a strategy that already exists. Strategy Se
 **When it runs**
 
 - **Explicit**: the user asks — "set up our git strategy", "bootstrap branching", "configura el flujo de git", "materialize the flow".
-- **Bootstrap offer** (see "Bootstrap trigger" below): a git intent arrives and EITHER `git_strategy.strategy` is null (or the block is absent) with a fresh-looking repo, OR `git_strategy.strategy` is non-null but `project.project_name` is null (inherited template — not onboarded). The skill OFFERS to run setup. It never auto-runs.
+- **Bootstrap offer** (see "Bootstrap trigger" below): a git intent arrives and ANY of these holds. The skill OFFERS to run setup; it never auto-runs.
+  - `git_strategy.strategy` is null, or the block is absent, on a fresh-looking repo.
+  - `git_strategy.strategy` is non-null but `project.project_name` is null — the unonboarded template itself.
+  - **`git_strategy.meta.strategy_source: inherited` AND `project.project_name` is set** — a real project that onboarded and never chose a strategy. It is running the shipped default, and the two conditions above both miss it: the strategy is not null, and the project name is filled.
+
+  That third case is the one worth naming out loud when it fires. The shipped default is `solo-main`: one branch, no integration branch, no promotion path, no review gate of its own. That is right for a template with a single maintainer and thin for a product with a team, a staging environment, or anything that ships on a cadence. Say which of those the repo looks like, and let the user decide — a default nobody picked is not a decision, but it is also not automatically wrong.
 
 **Six-step flow** (mechanics live in `references/strategy-setup.md` — do not inline them here):
 

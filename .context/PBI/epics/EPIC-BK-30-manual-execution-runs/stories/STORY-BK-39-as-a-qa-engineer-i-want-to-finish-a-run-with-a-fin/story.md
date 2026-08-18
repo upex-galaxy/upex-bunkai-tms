@@ -5,17 +5,18 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
 ## Overview
 
-# BK-39: TMS-Run Execution | Finish a run with a final verdict
+# [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39): TMS-Run Execution | Finish a run with a final verdict
 
 ## Metadata Snapshot
 
-- Jira key: BK-39
+- Jira key: [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39)
 - Status: Estimation
 - Priority / points: Medium / not set
 - Reporter / assignee: unknown / jesusgpythondev
@@ -30,19 +31,19 @@ As a QA Engineer, I want to finish a Run when the work is done, recording a fina
 
 - Source spec: BK-024
 - Parent epic/module: BK Test Repository / TMS Run Execution
-- Evidence used: BK-39 Jira fields, BK-39 previous shift-left package, BK-39 dependency link, BK-34 shift-left refinement, BK-70 Test Repository context, expert-panel-review findings.
+- Evidence used: [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira fields, [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) previous shift-left package, [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) dependency link, [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) shift-left refinement, [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) Test Repository context, expert-panel-review findings.
 - Evidence labels used: Jira, Repo, Engram, Inference.
 
 ## Shift-Left Review Status
 
 - Verdict: Ready for estimation
-- Summary: BK-39 is a focused terminal-state Story for closing an already-started Run. It is ready for estimation because the user-visible outcome, state transitions, skip handling, and dependency on BK-34 are testable. PO/Dev should still confirm concurrency, state model, and authorization details before development starts.
+- Summary: [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) is a focused terminal-state Story for closing an already-started Run. It is ready for estimation because the user-visible outcome, state transitions, skip handling, and dependency on [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) are testable. PO/Dev should still confirm concurrency, state model, and authorization details before development starts.
 
 ## Expert Review Summary
 
-| Role | Finding | Recommendation | Confirmation |
+| ***Role**** | ****Finding**** | ****Recommendation**** | ****Confirmation*** |
 | --- | --- | --- | --- |
-| PO | The business outcome is closure with a clear final result. | Keep final verdict limited to `passed` and `failed` for BK-39. | Needs PO confirmation |
+| PO | The business outcome is closure with a clear final result. | Keep final verdict limited to `passed` and `failed` for [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39). | Needs PO confirmation |
 | Dev | Finish changes Run state and step-result state together. | Treat finish as an atomic operation: verdict, finish time, and pending-to-skipped updates must not partially apply. | Needs Dev confirmation |
 | QA | The test surface is mostly state transition and regression protection. | Cover happy path, mixed step states, terminal-state blocking, missing verdict, concurrency, and human/AI/CI parity. | Confirmed |
 | UX | Pending steps become skipped, which is a terminal user action. | Show a confirmation when pending steps exist and show final verdict/finish time afterward. | Needs UX/PO confirmation |
@@ -60,15 +61,15 @@ As a QA Engineer, I want to finish a Run when the work is done, recording a fina
 - Block finish attempts for Runs that are already finished or aborted.
 - Apply the same observable finish handling for human, AI Test Agent, and CI pipeline callers.
 - Show the Run's final verdict and finish time after completion.
-- Keep the Run linked to its original Test, environment, executor mode, and step-result history from BK-34.
+- Keep the Run linked to its original Test, environment, executor mode, and step-result history from [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34).
 
 ### Out of Scope
 
-- Starting a Run; covered by BK-34.
+- Starting a Run; covered by [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34).
 - Updating individual step results before finish; covered by run execution step-result Stories.
-- Aborting a Run; covered by BK-36.
-- Run history filtering and reporting totals; covered by BK-37 and BK-38.
-- Defect filing, listing, heatmap, or Jira sync; covered by BK-40 through BK-43.
+- Aborting a Run; covered by [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36).
+- Run history filtering and reporting totals; covered by [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) and [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38).
+- Defect filing, listing, heatmap, or Jira sync; covered by [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43).
 - Reopening or amending a finished Run.
 - Creating or editing the underlying Test definition.
 
@@ -80,45 +81,45 @@ As a QA Engineer, I want to finish a Run when the work is done, recording a fina
 
 ## Dependency Map
 
-| Dependency | Type | Impact | Owner | Status |
+| ***Dependency**** | ****Type**** | ****Impact**** | ****Owner**** | ****Status*** |
 | --- | --- | --- | --- | --- |
-| BK-34 Start a manual Run | Formal Jira dependency | BK-39 assumes a Run already exists with initialized step results, environment, executor mode, and history visibility. | Dev / QA | Ready For Dev |
-| BK-70 Test Repository | Functional model dependency | Defines Test, Run, Run step results, defects, workspace access, and separation between Test definition and execution instance. | Dev / PO | Backlog context, already refined |
-| BK-36 Abort Run | Scope boundary | Abort is another terminal action and must not be mixed with finish behavior. | PO / Dev | Separate Story |
-| BK-37 / BK-38 Run history and reports | Scope boundary | BK-39 only shows final verdict and finish time after finish; reporting totals remain outside scope. | PO / QA | Separate Stories |
-| BK-40 through BK-43 Defects | Deferred dependency | Failed verdict does not require defect lifecycle in BK-39 unless PO changes scope. | PO / QA | Separate Stories |
+| [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) Start a manual Run | Formal Jira dependency | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) assumes a Run already exists with initialized step results, environment, executor mode, and history visibility. | Dev / QA | Ready For Dev |
+| [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) Test Repository | Functional model dependency | Defines Test, Run, Run step results, defects, workspace access, and separation between Test definition and execution instance. | Dev / PO | Backlog context, already refined |
+| [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36) Abort Run | Scope boundary | Abort is another terminal action and must not be mixed with finish behavior. | PO / Dev | Separate Story |
+| [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) / [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38) Run history and reports | Scope boundary | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) only shows final verdict and finish time after finish; reporting totals remain outside scope. | PO / QA | Separate Stories |
+| [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43) Defects | Deferred dependency | Failed verdict does not require defect lifecycle in [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) unless PO changes scope. | PO / QA | Separate Stories |
 
 ## Key Contract Decisions
 
-| Decision | Rationale | Source | Confirmation |
+| ***Decision**** | ****Rationale**** | ****Source**** | ****Confirmation*** |
 | --- | --- | --- | --- |
 | Finish applies only to an in-progress, non-terminal Run. | Current Story explicitly blocks already finished or aborted Runs. | Jira | Confirmed |
-| Final verdict values for BK-39 are `passed` and `failed`. | Current Story requires choosing final verdict passed or failed; extra values would expand scope. | Jira | Needs PO confirmation |
+| Final verdict values for [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) are `passed` and `failed`. | Current Story requires choosing final verdict passed or failed; extra values would expand scope. | Jira | Needs PO confirmation |
 | Pending steps become `skipped` at finish. | Current Story says still-pending steps are marked skipped. | Jira | Confirmed |
 | Already-executed step results remain unchanged. | Current Story requires preserving executed results. | Jira | Confirmed |
 | Finish must be atomic across Run final state, final verdict, finish time, and pending-step updates. | Partial state would create a finished Run with open pending steps. | Inference | Needs Dev confirmation |
 | First terminal action wins when finish conflicts with finish, abort, or step update. | Prevents race conditions and terminal-state drift. | Inference | Needs PO/Dev confirmation |
 | Human, AI Agent, and CI finish use the same observable rules. | Current Story requires same verdict and skipped-step handling for AI/CI and humans. | Jira | Confirmed |
-| AI Agent and CI must not bypass Project/workspace authorization. | BK-70 access model implies mutations follow workspace/project access. | Repo / Inference | Needs Security/Dev confirmation |
-| Failed verdict does not require defect linkage in BK-39. | Defect lifecycle is delegated to BK-40 through BK-43. | Repo / Inference | Needs PO confirmation |
+| AI Agent and CI must not bypass Project/workspace authorization. | [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) access model implies mutations follow workspace/project access. | Repo / Inference | Needs Security/Dev confirmation |
+| Failed verdict does not require defect linkage in [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39). | Defect lifecycle is delegated to [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43). | Repo / Inference | Needs PO confirmation |
 
 ## AC Reconciliation
 
-| Original AC / source claim | Evidence | Refined outcome | Reason | Owner |
+| ***Original AC / source claim**** | ****Evidence**** | ****Refined outcome**** | ****Reason**** | ****Owner*** |
 | --- | --- | --- | --- | --- |
-| Engineer can finish a Run that is in progress. | BK-39 Jira description. | Kept and expanded into happy path AC. | Core user outcome. | PO / QA |
-| Finishing requires final verdict passed or failed. | BK-39 Jira description. | Kept with allowed values in business rules. | Prevents ambiguous terminal outcomes. | PO |
-| Pending steps are marked skipped. | BK-39 Jira description. | Kept and made separate state-transition AC. | High-risk behavior needs direct coverage. | QA |
-| Already-executed results are preserved. | BK-39 Jira description. | Kept and made separate regression AC. | Prevents evidence loss. | QA / Dev |
-| Final verdict and finish time are shown afterward. | BK-39 Jira description. | Kept in happy path and UI rules. | Observable user feedback. | UX / QA |
-| Already finished or aborted Run is blocked. | BK-39 Jira description; BK-36 owns abort. | Kept as terminal-state guard AC. | Prevents duplicate or invalid terminal mutations. | Dev / QA |
-| AI Agent or CI finished Run records same verdict and skip handling. | BK-39 Jira description; BK-34 stores executor mode. | Kept as parity AC. | Avoids automation drift from human behavior. | Dev / QA |
-| Final verdict is excluded from BK-34 and owned by BK-39. | BK-34 Out Of Scope says final run verdict is BK-39. | Added as dependency/scope rule. | Prevents BK-39 from redefining Run creation. | PO / Dev |
-| Defect creation on failed verdict. | BK-40 through BK-43 cover defects. | Deferred unless PO requires it. | Keeps BK-39 focused and estimable. | PO |
+| Engineer can finish a Run that is in progress. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description. | Kept and expanded into happy path AC. | Core user outcome. | PO / QA |
+| Finishing requires final verdict passed or failed. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description. | Kept with allowed values in business rules. | Prevents ambiguous terminal outcomes. | PO |
+| Pending steps are marked skipped. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description. | Kept and made separate state-transition AC. | High-risk behavior needs direct coverage. | QA |
+| Already-executed results are preserved. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description. | Kept and made separate regression AC. | Prevents evidence loss. | QA / Dev |
+| Final verdict and finish time are shown afterward. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description. | Kept in happy path and UI rules. | Observable user feedback. | UX / QA |
+| Already finished or aborted Run is blocked. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description; [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36) owns abort. | Kept as terminal-state guard AC. | Prevents duplicate or invalid terminal mutations. | Dev / QA |
+| AI Agent or CI finished Run records same verdict and skip handling. | [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) Jira description; [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) stores executor mode. | Kept as parity AC. | Avoids automation drift from human behavior. | Dev / QA |
+| Final verdict is excluded from [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) and owned by [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39). | [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) Out Of Scope says final run verdict is [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39). | Added as dependency/scope rule. | Prevents [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) from redefining Run creation. | PO / Dev |
+| Defect creation on failed verdict. | [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43) cover defects. | Deferred unless PO requires it. | Keeps [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) focused and estimable. | PO |
 
 ## Refined Acceptance Criteria
 
-```gherkin
+```
 Background:
   Given an authenticated workspace member with access to the Project
     And a Test exists in that Project
@@ -192,7 +193,7 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 
 ## Business Rules
 
-- BK-39 operates on a Run execution instance, not on the Test definition.
+- [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) operates on a Run execution instance, not on the Test definition.
 - A Run can be finished only from an in-progress, non-terminal state.
 - Allowed final verdicts for this Story are `passed` and `failed`.
 - Pending step results become `skipped` when the Run is finished.
@@ -201,11 +202,11 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 - Once a Run is finished or aborted, another finish attempt must not mutate it.
 - Human, AI Agent, and CI callers must produce the same observable final state.
 - Run visibility and mutation permissions follow the existing Project/workspace access model.
-- Defect creation is not required for failed verdict in BK-39 unless PO changes scope.
+- Defect creation is not required for failed verdict in [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) unless PO changes scope.
 
 ## Edge Cases & Risk Matrix
 
-| Severity | Edge case | Expected behavior | Mitigation | Coverage |
+| ***Severity**** | ****Edge case**** | ****Expected behavior**** | ****Mitigation**** | ****Coverage*** |
 | --- | --- | --- | --- | --- |
 | High | Finish with missing verdict | Block action; no Run or step-result mutation. | Require explicit `passed` or `failed`. | AC missing verdict / ATP-04 |
 | High | Run has mixed executed and pending steps | Executed results preserved; only pending steps become skipped. | Apply status update only to pending step results. | AC preservation / ATP-02, ATP-03 |
@@ -213,14 +214,14 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 | High | Concurrent finish attempts | Only one terminal mutation wins; no partial state. | Conditional update or transaction. | AC concurrency / ATP-06 |
 | High | AI/CI finishes without normal permissions | Reject unauthorized caller; no data mutation. | Same Project/workspace authorization as human execution. | ATP-07 |
 | Medium | Run has all steps already executed | Finish records verdict/time without changing step results. | Pending-to-skipped update affects zero rows safely. | ATP-03 |
-| Medium | Failed verdict without defect | Finish allowed unless PO requires defect linkage. | Keep defect lifecycle in BK-40..BK-43. | Open clarification |
+| Medium | Failed verdict without defect | Finish allowed unless PO requires defect linkage. | Keep defect lifecycle in [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40)..[https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43). | Open clarification |
 | Medium | User finishes with pending steps accidentally | Confirmation should warn pending steps will become skipped. | UX confirmation when pending steps exist. | Open clarification / ATP-08 |
 | Medium | Finish time differs between client and server clocks | Persist server-side finish time. | Server timestamp as source of truth. | Open clarification |
 | Low | Final result display does not refresh | User should see final verdict and finish time after completion. | Redirect/refresh Run detail after finish. | AC happy path / ATP-01 |
 
 ## ATP Draft Matrix
 
-| ID | Type | Scenario | Coverage target | Priority | Automation hint |
+| ***ID**** | ****Type**** | ****Scenario**** | ****Coverage target**** | ****Priority**** | ****Automation hint*** |
 | --- | --- | --- | --- | --- | --- |
 | BK-39-ATC-01 | Happy | Finish in-progress Run with `passed` verdict | Final verdict + finish time visible | High | UI + API + DB |
 | BK-39-ATC-02 | State transition | Finish Run with pending steps | Pending steps become `skipped` | High | API + DB |
@@ -243,7 +244,7 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 ### Dev - Atomic Finish Operation
 
 - Question: How will the system guarantee that final verdict, finish time, and pending-step skip updates are applied together?
-- Expert recommendation: Apply the finish operation transactionally or through an equivalent conditional update so BK-39 cannot leave a Run finished with pending steps still open.
+- Expert recommendation: Apply the finish operation transactionally or through an equivalent conditional update so [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) cannot leave a Run finished with pending steps still open.
 - Pending confirmation: Dev
 
 ### PO/Dev - Double Finish And Concurrency
@@ -267,7 +268,7 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 ### PO - Failed Verdict Without Defect
 
 - Question: Can a Run be finished as `failed` without creating or linking a defect?
-- Expert recommendation: Yes for BK-39. Defect lifecycle belongs to BK-40 through BK-43; BK-39 should not require defect creation unless PO explicitly changes the scope.
+- Expert recommendation: Yes for [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39). Defect lifecycle belongs to [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through BK-43; [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) should not require defect creation unless PO explicitly changes the scope.
 - Pending confirmation: PO
 
 ### UX/PO - Confirmation Before Skipping Pending Steps
@@ -278,12 +279,12 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 
 ## Implementation Readiness Gates
 
-| Gate | Status | Evidence | Blocker / Next action |
+| ***Gate**** | ****Status**** | ****Evidence**** | ****Blocker / Next action*** |
 | --- | --- | --- | --- |
 | PO contract | Needs | Final verdict values and failed-without-defect scope need PO confirmation. | Confirm verdict values and defect independence. |
 | Dev feasibility | Needs | Atomic finish, terminal-state model, and concurrency contract need implementation decision. | Confirm transaction/conditional update approach. |
 | QA testability | Pass | ACs and ATP rows cover happy, negative, state transition, boundary, and integration paths. | None. |
-| Data/API | Needs | BK-70 defines Runs and step results, but BK-39 physical state fields are not confirmed. | Confirm persisted lifecycle/verdict/finish-time fields. |
+| Data/API | Needs | [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70) defines Runs and step results, but [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) physical state fields are not confirmed. | Confirm persisted lifecycle/verdict/finish-time fields. |
 | UX | Needs | Final verdict display is explicit; confirmation before skipping pending steps is recommended. | Confirm confirmation UX and message strategy. |
 | Security/Ops | Needs | Human/AI/CI parity is explicit; actor identity/authorization model needs confirmation. | Confirm automation identity and permission checks. |
 
@@ -307,13 +308,26 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 
 ## References
 
-- BK-34: TMS-Run Execution | Start a manual run in a chosen environment
-- BK-70: BK Test Repository entity definition
-- BK-36: Abort Run scope boundary
-- BK-37 / BK-38: Run history and reporting scope boundaries
-- BK-40 through BK-43: Defect lifecycle scope boundary
-- Formal Jira dependency: BK-39 depends on BK-34
+- [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34): TMS-Run Execution | Start a manual run in a chosen environment
+- [https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70](https://jira.upexgalaxy.com/browse/BK-70#icft=BK-70): BK Test Repository entity definition
+- [https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36](https://jira.upexgalaxy.com/browse/BK-36#icft=BK-36): Abort Run scope boundary
+- [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) / [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38): Run history and reporting scope boundaries
+- [https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40](https://jira.upexgalaxy.com/browse/BK-40#icft=BK-40) through [https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43](https://jira.upexgalaxy.com/browse/BK-43#icft=BK-43): Defect lifecycle scope boundary
+- Formal Jira dependency: [https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39](https://jira.upexgalaxy.com/browse/BK-39#icft=BK-39) depends on [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34)
 - Expert-panel-review applied before re-publication
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
@@ -326,16 +340,16 @@ Scenario: Human, AI Agent, and CI finish handling are consistent
 ### Storys (4)
 
 - [BK-34](https://jira.upexgalaxy.com/browse/BK-34): TMS-Run Execution | Start a manual run in a chosen environment _(Ready For Release)_
+- [BK-211](https://jira.upexgalaxy.com/browse/BK-211): Notifications | Get notified when a run finishes or is aborted _(Ready For QA)_
 - [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
 - [BK-223](https://jira.upexgalaxy.com/browse/BK-223): TMS-Automation API | Stream step results during an automated run _(Backlog)_
-- [BK-211](https://jira.upexgalaxy.com/browse/BK-211): Notifications | Get notified when a run finishes or is aborted _(Ready For Dev)_
 
 ---
 
 ## Metadata
 
 - **Created:** 5/28/2026
-- **Updated:** 7/24/2026
+- **Updated:** 8/8/2026
 - **Reporter:** Ely
 - **Assignee:** jesusgpythondev
 - **Labels:** shift-left-2026-06-13, shift-left-reviewed

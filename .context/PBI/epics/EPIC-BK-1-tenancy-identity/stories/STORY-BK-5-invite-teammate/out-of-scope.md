@@ -1,6 +1,6 @@
 # BK-5 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
 
 - Invite revocation / resend — post-MVP (design partners will request this)
 - Bulk invite (CSV upload) — Phase 2

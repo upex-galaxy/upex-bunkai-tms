@@ -1,10 +1,10 @@
 # BK-22 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
 
-# BK-22 — Acceptance Test Results (ATR)
+# [https://jira.upexgalaxy.com/browse/BK-22#icft=BK-22](https://jira.upexgalaxy.com/browse/BK-22#icft=BK-22) — Acceptance Test Results (ATR)
 
-***Date******:**** 2026-07-06 | ****Tester******:**** Nahuel Gomez | ****Staging***
+***Date:**** 2026-07-06 | ****Tester:**** Nahuel Gomez | ****Staging***
 
 ## Results
 

@@ -1,6 +1,6 @@
 # BK-34 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-34)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-34)
 
 - Start a manual run of a Test against an environment configured for the Project
 - Generate a fresh checklist with every ATC step in a pending state, in chain order

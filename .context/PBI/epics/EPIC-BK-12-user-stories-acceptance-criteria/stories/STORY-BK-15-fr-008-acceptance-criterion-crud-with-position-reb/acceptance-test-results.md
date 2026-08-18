@@ -1,21 +1,21 @@
 # BK-15 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-15)
 
-# Acceptance Test Results — BK-15
+# Acceptance Test Results — [https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15](https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15)
 
 ***Story***: TMS-AC | Manage criteria under a user story
-***Environment***: Staging — https://staging-upexbunkai.vercel.app
+***Environment***: Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/)
 ***Date***: 2026-06-18
 ***QA Engineer***: Maibeth
 
 ## Executive Summary
 
-28/36 TCs PASSED (77.8%). 1 TC FAILED (BUG-1: byte cap decimal vs binary). 1 SKIPPED (TC-30, blocked on BK-18). 3 NEEDS_CONFIRMATION resolved as expected behavior. Feature is stable and meets all Critical and High AC requirements.
+28/36 TCs PASSED (77.8%). 1 TC FAILED (BUG-1: byte cap decimal vs binary). 1 SKIPPED (TC-30, blocked on [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18)). 3 NEEDS_CONFIRMATION resolved as expected behavior. Feature is stable and meets all Critical and High AC requirements.
 
 ## Result Matrix
 
-| Category | Total | Passed | Failed | Obs | Skip |
+| ***Category**** | ****Total**** | ****Passed**** | ****Failed**** | ****Obs**** | ****Skip*** |
 | --- | --- | --- | --- | --- | --- |
 | Positive | 9 | 9 | 0 | 0 | 0 |
 | Negative | 10 | 9 | 0 | 1 | 0 |
@@ -28,7 +28,7 @@ Observations: TC-07 (edit works as designed), TC-09 (add to ready*to*test does n
 
 ## Critical AC Coverage
 
-| AC | Scenario | Result |
+| ***AC**** | ****Scenario**** | ****Result*** |
 | --- | --- | --- |
 | AC1 | Add first AC — position 1 | PASSED |
 | AC2 | Insert preserves order, contiguous | PASSED |

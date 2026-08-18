@@ -51,7 +51,7 @@ Run after the strategy slug is resolved (Step 2). Ask the questions in order. Fo
 - **Three sub-decisions** (present the default first for each):
   1. **`direct_push_to_protected`** — how the Push operation (SKILL.md 3.3) treats a direct push to a protected branch: `confirm` (default — always ask) / `forbidden` (refuse the direct push, route through a PR) / `allowed` (proceed after one confirmation). For `solo-main` the sensible default is `allowed`; for every multi-branch / PR-gated strategy the default is `forbidden`.
   2. **`admin_bypass`** — `false` (default) / `true`. A team POLICY (intent) declaring whether a repo admin may bypass the gate for urgent changes. It is NOT enforcement — real capability still depends on the GitHub user's role. When `true`, the skill may OFFER a bypass but only after re-confirming at runtime that (a) the operator is actually an admin (ASK — the skill can't know the GitHub role) and (b) the specific irreversible action. When `false`, the skill NEVER offers a bypass.
-  3. **`require_pr_reviews`** — `null` (default — unspecified) / `0` / `N`. Minimum approvals before a merge to a protected branch. This records the team's EXPECTATION; the skill does not configure host branch protection. What the host actually enforces is discovered by the Step 1b reconciliation (SKILL.md), which stamps `meta.policy_source: verified` when it succeeds.
+  3. **`require_pr_reviews`** — `null` (default — unspecified) / `0` / `N`. Minimum approvals before a merge to a protected branch. This records the team's EXPECTATION. Since these answers can now be MATERIALIZED onto the host (Section 4.5), the gap between expectation and enforcement is closable in the same run rather than left to drift; what the host actually enforces is still confirmed by `bun run git:policy verify`, which is what stamps `meta.policy_source: verified`.
 - **Persisted as**: `git_strategy.policy.direct_push_to_protected` + `git_strategy.policy.admin_bypass` + `git_strategy.policy.require_pr_reviews`, plus `git_strategy.meta.policy_verified` / `meta.policy_source` (written by Step 1b, not by this questionnaire — Setup always leaves `policy_source: declared`).
 - **Drives**: the strictness of the Push gate (SKILL.md 3.3) and whether an admin bypass may ever be offered.
 - **Drift warning to surface at the end of Q4**: these three answers describe intent. Until Step 1b reconciles them against the host, never tell the user what the remote requires — a `require_pr_reviews: 0` sitting next to a remote that demands an approval is the drift that ambushes a merge mid-flight.
@@ -133,11 +133,40 @@ Once branches are materialized and decisions captured, persist in this order:
    - `policy:` — `direct_push_to_protected` / `admin_bypass` / `require_pr_reviews`, captured from Q4 (applies to every strategy).
    - `branch_prefixes:` — `precedence` + naming patterns (carry the defaults unless the user overrides).
    - `description:` — the one-paragraph human summary of the flow for this repo.
-   - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema. Leave `meta.policy_verified: null` and `meta.policy_source: declared` — only the Step 1b host reconciliation may flip them.
+   - `meta.created:` — today's date; bump `meta.setup_version` on a re-run that changes the schema. Leave `meta.policy_verified: null` and `meta.policy_source: declared` — only a successful `bun run git:policy verify --stamp` may flip them (Section 4.5).
+   - `meta.strategy_source: chosen` — **stamp this whenever the questionnaire actually ran.** It ships `inherited`, and that is the ONLY thing separating "this project picked `solo-main`" from "this project never chose and kept the default". `strategy:` itself is never null, so it cannot carry that distinction. Forgetting the stamp means the bootstrap offer keeps proposing a setup the user already completed.
    Per-strategy field values: `references/branching-strategies.md` → "git_strategy field rules (per strategy)".
 2. **Set up local tracking** for any newly-ensured branch (`git branch --set-upstream-to=origin/<branch> <branch>` or `git checkout -b <branch> origin/<branch>`), so later operations don't re-detect.
 
 CLAUDE.md's `## Git Strategy` section is a shipped pointer to this block — NEVER write strategy policy there. The `git_strategy:` block is the source of truth; its `description:` field is the human summary. A later Strategy Setup re-run re-reads the block and only fills the `git_strategy.decisions.*` fields still at `n/a`.
+
+---
+
+## 4.5 Materialize the policy onto the host (offer, never automatic)
+
+The questionnaire has just captured the branch policy. The same answers describe a GitHub ruleset, so Setup can close the gap between intent and enforcement instead of leaving a `declared` block to drift. This is where the pairing earns its keep: one questionnaire, two artifacts.
+
+**Always start read-only**, because an existing repo usually already has protection:
+
+```bash
+bun run git:policy verify   # what the host enforces today vs what was just captured
+```
+
+- **No drift** → say so, stamp it (`--stamp`), done. Nothing to write.
+- **Drift** → show it, then OFFER the write. Never perform it unasked; a ruleset governs who can merge, and the operator has to choose.
+
+```bash
+bun run git:policy apply         # dry run — prints the exact payload
+bun run git:policy apply --yes   # writes it
+```
+
+Three rules for this step:
+
+1. **Show the dry run before proposing the write.** The payload is the proposal; a described change is not a reviewed one.
+2. **A refusal to loosen is a result, not an obstacle.** `apply` blocks any change that removes a guard, lowers the approval bar, turns off code-owner review, or widens the allowed merge methods. If `--allow-loosening` is needed, say exactly which guard is being given up and get an explicit yes for that specific thing.
+3. **Drift has three resolutions, and the host is only one of them.** The yaml may be the wrong side. Or the divergence may be intended, in which case it belongs in the project's own `CLAUDE.md` → `## Git Strategy` so a later session stops re-raising it.
+
+Mapping table, the derived fields, and what the tool deliberately does not manage (`bypass_actors`, `CODEOWNERS`, org-level rulesets): `references/ruleset-parity.md`.
 
 ---
 
@@ -162,7 +191,11 @@ Policy captured (INTENT — not yet verified against the host):
   - require_pr_reviews: <null | 0 | N>
   - policy_source: declared  (Step 1b reconciles this against the host on the first push / PR intent)
 
-Definition: .agents/project.yaml (git_strategy block, <N> fields populated)
+Host ruleset:
+  - verify: <in parity | N drift(s) reported> | not run
+  - apply:  <written (ruleset <name>) | dry run shown, not written | declined | n/a>
+
+Definition: .agents/project.yaml (git_strategy block, <N> fields populated, strategy_source: chosen)
 
 Next: branch off <work-branch-base> to start work; the Branch operation will use this strategy automatically.
 ```

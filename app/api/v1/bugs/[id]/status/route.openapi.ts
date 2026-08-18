@@ -1,8 +1,11 @@
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
-import { BugSchema } from '../../route.openapi';
+import { BugDetailSchema } from '../../route.openapi';
 
 // BK-264 (Slice 2) — advance a bug's status one lifecycle stage at a time.
-// Reuses the composed Bug shape from POST /bugs.
+// Reuses the composed Bug shape from POST /bugs. BK-337 widens the response
+// to `BugDetailSchema` — `bunkai_transition_bug_status` RETURNS `bunkai_
+// bug_json(...)` directly (0054), so this response now also carries `origin`
+// + `module.archived_at`, exactly like POST /bugs and GET /bugs/{id}.
 
 const IdParam = {
   name: 'id',
@@ -27,7 +30,7 @@ registry.registerPath({
   parameters: [IdParam],
   request: { body: { required: true, content: { 'application/json': { schema: StatusTransitionBodySchema } } } },
   responses: {
-    200: { description: 'Bug status updated. Returns the updated Bug.', content: { 'application/json': { schema: z.object({ bug: BugSchema }) } } },
+    200: { description: 'Bug status updated. Returns the updated Bug.', content: { 'application/json': { schema: z.object({ bug: BugDetailSchema }) } } },
     400: { description: 'Malformed id (not a UUID) or malformed JSON body (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or a workspace member without write access (`forbidden`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

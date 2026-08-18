@@ -107,4 +107,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       scopes: principal.capabilities,
     },
   });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — identity and notifications.',
+});

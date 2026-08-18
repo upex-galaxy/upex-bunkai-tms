@@ -1,6 +1,6 @@
 # BK-32 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-32)
 
 1. From the list of Tests, I pick a Test such as "Checkout - Guest Purchase" and open it.
 2. The Test opens in an expanded view with a header showing its name and a count like "3 ATCs".

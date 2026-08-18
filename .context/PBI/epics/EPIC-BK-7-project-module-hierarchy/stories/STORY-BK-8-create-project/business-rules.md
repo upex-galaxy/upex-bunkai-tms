@@ -1,6 +1,6 @@
 # BK-8 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
 
 - Caller MUST have an active membership in the target workspace.
 - Slug uniqueness scope is per-workspace (two workspaces can each have project "checkout-v2").

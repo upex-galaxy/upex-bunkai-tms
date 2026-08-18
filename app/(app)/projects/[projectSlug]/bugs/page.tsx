@@ -161,6 +161,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
     return (
       <BugsListView
         projectId={project.id}
+        projectSlug={projectSlug}
         modules={modules}
         canCreateBug={canCreateBug}
         workspaceMembers={workspaceMembers}
@@ -172,6 +173,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
     return (
       <BugsListView
         projectId={project.id}
+        projectSlug={projectSlug}
         modules={modules}
         canCreateBug={canCreateBug}
         workspaceMembers={workspaceMembers}

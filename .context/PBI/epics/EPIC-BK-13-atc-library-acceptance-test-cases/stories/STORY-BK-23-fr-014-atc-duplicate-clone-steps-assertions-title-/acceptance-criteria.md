@@ -1,6 +1,6 @@
 # BK-23 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-23)
 
 ```
 Scenario: Duplicate an ATC with all its steps and assertions

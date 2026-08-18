@@ -1,6 +1,6 @@
 # BK-216 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-216)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-216)
 
 - Ad-hoc custom channels (topic channels not tied to a Workspace or Project) — future iteration
 - Per-module or per-run channels — out

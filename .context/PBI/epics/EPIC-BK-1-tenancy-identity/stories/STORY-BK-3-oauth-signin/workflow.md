@@ -1,6 +1,6 @@
 # BK-3 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
 1. Visitor clicks "Continue with GitHub" (or Google).
 

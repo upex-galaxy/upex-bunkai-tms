@@ -1,8 +1,8 @@
 # BK-207 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
 
-```gherkin
+```
 Scenario: Close a plan with a verdict and summary
   Given the open plan "Release 2.4 regression" shows 11 of 12 tests passed
   When Mateo closes it with the verdict passed and the summary "One known flaky test, accepted by the release manager"
@@ -10,7 +10,7 @@ Scenario: Close a plan with a verdict and summary
   And the plan shows the verdict, the summary, who closed it, when, and the progress at close time
 ```
 
-```gherkin
+```
 Scenario: Closing warns when tests were never run
   Given the open plan "Smoke pass" has 2 member tests that were never run
   When Mateo starts the close action
@@ -18,7 +18,7 @@ Scenario: Closing warns when tests were never run
   And the plan is closed only after he confirms
 ```
 
-```gherkin
+```
 Scenario: A closed plan is read-only
   Given the plan "Release 2.3 regression" is Closed
   When Elena opens it
@@ -26,14 +26,14 @@ Scenario: A closed plan is read-only
   And the actions to add tests, remove tests, edit details, or close again are not available
 ```
 
-```gherkin
+```
 Scenario: Closing requires a verdict
   Given Mateo is closing the plan "Release 2.4 regression"
   When he tries to confirm without choosing a verdict
   Then the plan stays open and he sees a message that a verdict is required
 ```
 
-```gherkin
+```
 Scenario: A member who is not the creator cannot close the plan
   Given Elena has the member role and did not create the plan "Release 2.4 regression"
   When she opens the plan

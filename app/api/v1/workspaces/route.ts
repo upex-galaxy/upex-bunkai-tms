@@ -88,7 +88,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspace }, { status: 201 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — workspaces and membership.',
+});
 
 // RLS filters to workspaces the caller is an active member of, so the same
 // query serves cookie and Bearer-PAT callers — no per-method branching.
@@ -115,4 +118,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspaces: mergeWorkspaceRoles(data ?? [], memberships ?? []) });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — workspaces and membership.',
+});

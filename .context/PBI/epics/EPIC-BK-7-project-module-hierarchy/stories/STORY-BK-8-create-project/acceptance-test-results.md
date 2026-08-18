@@ -1,8 +1,8 @@
 # BK-8 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-8)
 
-## Acceptance Test Results (ATR) — BK-8
+## Acceptance Test Results (ATR) — [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8)
 
 ***Verdict: FAILED — NO-GO.*** Date: 2026-06-04 · Env: staging · Modality: Jira-native · Tester: QA (automated session).
 
@@ -10,28 +10,29 @@ Core input validation, auth, membership, duplicate handling, description-size, s
 
 ### Coverage
 
-| Area | Result |
-|------|--------|
-| Happy path 201 + slug | PASS |
-| Name validation (min 3 / max 80 / alphanumeric / boundaries) | PASS (422 validation_failed) |
-| Duplicate slug same workspace | PASS (409 conflict) |
-| Same slug different workspace | PASS (201) |
-| Non-member / ghost workspace | PASS (403 forbidden, enumeration-safe) |
-| Unauthenticated / bad UUID / invalid JSON | PASS (401 / 400 / 400) |
-| Description size (5120 ok / 5121 rejected) | PASS (byte-exact) |
-| Slug derivation (accents, punctuation, emoji, 40-char truncation) | PASS |
-| DB integrity (per-workspace uniqueness) | PASS |
-| Create UI + live slug preview + list refresh | PASS |
-| Reserved slugs (AC-11) | ***FAIL*** |
-| Detail route workspace scoping (Workflow AC step 9) | ***FAIL*** |
-| i18n names | ***FAIL (minor)*** |
-| Viewer role 403 | DEFERRED (no viewer user; verified by code + RLS) |
+| Area  | Result  |
+| --- | --- |
+| ------ | -------- |
+| Happy path 201 + slug  | PASS  |
+| Name validation (min 3 / max 80 / alphanumeric / boundaries)  | PASS (422 validation_failed)  |
+| Duplicate slug same workspace  | PASS (409 conflict)  |
+| Same slug different workspace  | PASS (201)  |
+| Non-member / ghost workspace  | PASS (403 forbidden, enumeration-safe)  |
+| Unauthenticated / bad UUID / invalid JSON  | PASS (401 / 400 / 400)  |
+| Description size (5120 ok / 5121 rejected)  | PASS (byte-exact)  |
+| Slug derivation (accents, punctuation, emoji, 40-char truncation)  | PASS  |
+| DB integrity (per-workspace uniqueness)  | PASS  |
+| Create UI + live slug preview + list refresh  | PASS  |
+| Reserved slugs (AC-11)  | ***FAIL***  |
+| Detail route workspace scoping (Workflow AC step 9)  | ***FAIL***  |
+| i18n names  | ***FAIL (minor)***  |
+| Viewer role 403  | DEFERRED (no viewer user; verified by code + RLS)  |
 
 ### Defects raised
 
-- BK-54 — Reserved project slugs are not rejected (AC-11) — created with HTTP 201
-- BK-55 — Project detail route /projects/{slug} is not workspace-scoped
-- BK-56 — Non-Latin (CJK/Cyrillic) project names rejected as name*no*alphanumeric
+- [https://jira.upexgalaxy.com/browse/BK-54#icft=BK-54](https://jira.upexgalaxy.com/browse/BK-54#icft=BK-54) — Reserved project slugs are not rejected (AC-11) — created with HTTP 201
+- [https://jira.upexgalaxy.com/browse/BK-55#icft=BK-55](https://jira.upexgalaxy.com/browse/BK-55#icft=BK-55) — Project detail route /projects/{slug} is not workspace-scoped
+- [https://jira.upexgalaxy.com/browse/BK-56#icft=BK-56](https://jira.upexgalaxy.com/browse/BK-56#icft=BK-56) — Non-Latin (CJK/Cyrillic) project names rejected as name*no*alphanumeric
 
 ### Notes
 

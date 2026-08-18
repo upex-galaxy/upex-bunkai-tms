@@ -5,13 +5,13 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 1
 
 ---
 
 ## Overview
 
-***Source spec******:*** FR-005
+***Source spec:*** FR-005
 
 ## User story
 
@@ -31,7 +31,13 @@ As a Senior QA Engineer, I want to manage the list of environments for a project
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -56,7 +62,7 @@ As a Senior QA Engineer, I want to manage the list of environments for a project
 
 ### Improvement (1)
 
-- [BK-200](https://jira.upexgalaxy.com/browse/BK-200): Cross-workspace environment PATCH/DELETE discloses existence via 403 instead of non-disclosing 404 _(Open)_
+- [BK-200](https://jira.upexgalaxy.com/browse/BK-200): Cross-workspace environment PATCH/DELETE discloses existence via 403 instead of non-disclosing 404 _(Ready For QA)_
 
 ---
 

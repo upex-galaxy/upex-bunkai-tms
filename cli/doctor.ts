@@ -26,12 +26,17 @@
  * Side effects: none. This script never edits files or installs anything.
  */
 
+import type { AtlassianUrlSource } from './lib/atlassian-instance.ts';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
 
+import { join, resolve } from 'node:path';
+import {
+  formatInstanceMismatchWarning,
+  resolveAtlassianInstance,
+} from './lib/atlassian-instance.ts';
 import { DEPRECATED_VARS, varsFor } from './lib/variables-manifest.ts';
 
 // `tui` pulls third-party deps (boxen/cli-table3/figures/picocolors). It is
@@ -72,10 +77,14 @@ const MIN_BUN: readonly [number, number, number] = [1, 0, 0];
 // intentionally NOT listed — `.mcp.json` / `opencode.jsonc` map the new-style
 // SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY into the legacy names the
 // Supabase MCP server reads internally.
+//
+// ATLASSIAN_URL is deliberately absent: it is not a `.env` variable at all. The
+// host lives in `.agents/project.yaml` -> `issue_tracker.atlassian_url` and is
+// checked separately (see the Atlassian-host block in `buildReport`). Listing it
+// here would report `missing` forever on a correctly configured repo.
 const DAY_ZERO_VARS = [
   'TAVILY_API_KEY',
   'RESEND_API_KEY',
-  'ATLASSIAN_URL',
   'ATLASSIAN_EMAIL',
   'ATLASSIAN_API_TOKEN',
   'SUPABASE_ACCESS_TOKEN',
@@ -113,10 +122,6 @@ const VAR_HINTS: Record<string, { hint: string, where: string }> = {
   RESEND_API_KEY: {
     hint: 'Resend API key (transactional email + resend CLI auth)',
     where: 'https://resend.com/api-keys  (docs: https://resend.com/docs/api-reference/introduction)',
-  },
-  ATLASSIAN_URL: {
-    hint: 'Atlassian credentials (canonical) — see .env.example',
-    where: 'e.g. https://yourorg.atlassian.net',
   },
   ATLASSIAN_EMAIL: {
     hint: 'Atlassian credentials (canonical) — see .env.example',
@@ -209,6 +214,17 @@ interface DirenvState {
   rc_file?: string
 }
 
+/**
+ * Resolution state of the Atlassian site host. `source` distinguishes the
+ * versioned yaml (the intended answer) from the transitional `ATLASSIAN_URL`
+ * env fallback, which is worth nudging off of.
+ */
+interface AtlassianHostState {
+  status: 'set' | 'missing'
+  value?: string
+  source?: AtlassianUrlSource
+}
+
 interface DoctorReport {
   status: 'ok' | 'needs-action'
   repo_root: string
@@ -217,6 +233,11 @@ interface DoctorReport {
   is_tty: boolean
   env_file_exists: boolean
   env_vars: Record<string, 'set' | 'missing'>
+  /**
+   * The Atlassian site host, resolved from `.agents/project.yaml`. Reported
+   * apart from `env_vars` because it is NOT an env var — see `DAY_ZERO_VARS`.
+   */
+  atlassian_host: AtlassianHostState
   legacy_jira_cred_keys: string[]
   mcp_json_exists: boolean
   opencode_jsonc_exists: boolean
@@ -355,6 +376,7 @@ async function runDoctor(): Promise<DoctorReport> {
     is_tty: Boolean(process.stdin.isTTY),
     env_file_exists: existsSync(ENV_PATH),
     env_vars: {},
+    atlassian_host: { status: 'missing' },
     legacy_jira_cred_keys: [],
     mcp_json_exists: existsSync(MCP_PATH),
     opencode_jsonc_exists: existsSync(OPENCODE_PATH),
@@ -388,6 +410,42 @@ async function runDoctor(): Promise<DoctorReport> {
         where: VAR_HINTS[v]?.where,
       });
     }
+  }
+
+  // Atlassian host — a yaml field, NOT an env var. Checking `process.env` here
+  // would be worse than useless: the variable's absence is the desired state,
+  // and its PRESENCE is the bug (a stale copy inherited from the parent shell is
+  // exactly what silently pointed `jira:sync-issues` at a dead site).
+  try {
+    const instance = resolveAtlassianInstance();
+    report.atlassian_host = { status: 'set', value: instance.baseUrl, source: instance.source };
+    const warning = formatInstanceMismatchWarning(instance);
+    if (warning !== null) {
+      report.pending_actions.push({
+        type: 'shell_command',
+        target: 'unset ATLASSIAN_URL',
+        hint: warning,
+      });
+    }
+    else if (instance.source === 'env') {
+      report.pending_actions.push({
+        type: 'shell_command',
+        target: 'bun run agents:setup',
+        hint: 'Atlassian host is coming from an ATLASSIAN_URL env var, not from '
+          + '.agents/project.yaml. That fallback exists for a repo that has not been set up '
+          + 'yet; write the host to the yaml so it is versioned and cannot go stale.',
+      });
+    }
+  }
+  catch {
+    report.atlassian_host = { status: 'missing' };
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun run agents:setup',
+      hint: 'Atlassian host not set. Fill `issue_tracker.atlassian_url` in '
+        + '.agents/project.yaml — it is the source of truth for every jira:sync-* script '
+        + 'and for `acli --site`. Read it back with `bun run --silent jira:url`.',
+    });
   }
 
   // Legacy detection: ATLASSIAN_* is now the single credential family. Any
@@ -507,6 +565,18 @@ function printHuman(report: DoctorReport): void {
     checks.push(['  .envrc allowed', report.direnv.envrc_allowed ? tui.statusIcon('ok') : tui.statusIcon('fail')]);
     checks.push([`  shell hook${report.direnv.rc_file ? ` (in ${report.direnv.rc_file})` : ''}`, report.direnv.hook_in_rc ? tui.statusIcon('ok') : tui.statusIcon('warn')]);
   }
+  // The host is shown by VALUE, not as a set/missing tick. Reading which site
+  // the repo is about to write to is the entire point — a green check that says
+  // "configured" is exactly what let a dead instance go unnoticed.
+  const hostRow = ((): string => {
+    const host = report.atlassian_host;
+    if (host.status !== 'set') { return tui.statusIcon('fail'); }
+    const fromYaml = host.source === 'project.yaml';
+    const icon = tui.statusIcon(fromYaml ? 'ok' : 'warn');
+    const note = fromYaml ? '' : ' (from ATLASSIAN_URL env — not versioned)';
+    return `${icon} ${host.value}${note}`;
+  })();
+  checks.push(['Atlassian host (.agents/project.yaml)', hostRow]);
   process.stdout.write(`${tui.table(['Check', 'Status'], checks)}\n`);
 
   // Env vars as a table

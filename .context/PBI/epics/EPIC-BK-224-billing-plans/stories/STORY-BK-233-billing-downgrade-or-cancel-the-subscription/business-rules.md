@@ -1,6 +1,6 @@
 # BK-233 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
 
 - Only the workspace owner can downgrade, cancel, or resubscribe.
 - Downgrade never deletes data: resources beyond the target plan's limits become read-only, selected oldest first, and become editable again on re-upgrade.

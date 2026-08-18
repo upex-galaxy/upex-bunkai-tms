@@ -1,6 +1,6 @@
 # BK-212 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-212)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-212)
 
 - Notification to the new assignee when a bug is assigned (or reassigned) to them.
 - Notification to the bug's reporter and current assignee when the bug's status changes, excluding the actor.

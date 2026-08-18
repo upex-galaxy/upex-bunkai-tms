@@ -41,7 +41,8 @@ Common `{{VAR}}` placeholders found in templates:
 
 - `{{API_BEARER_TOKEN}}` — your API bearer token
 - `{{POSTMAN_API_KEY}}` — your Postman API key
-- `{{ATLASSIAN_URL}}` / `{{ATLASSIAN_EMAIL}}` / `{{ATLASSIAN_API_TOKEN}}` — Atlassian credentials (single family for Jira + Confluence + acli)
+- `{{ATLASSIAN_EMAIL}}` / `{{ATLASSIAN_API_TOKEN}}` — Atlassian credentials (one family for Jira + Confluence + acli)
+- `{{ATLASSIAN_URL}}` — the Atlassian site host. **Not a `.env` variable**: it lives in `.agents/project.yaml` -> `issue_tracker.atlassian_url`. An MCP config cannot run a command, so paste the literal host here; print it with `bun run --silent jira:url`
 - `{{TAVILY_API_KEY}}`, `{{SUPABASE_ACCESS_TOKEN}}`, `{{GEMINI_API_KEY}}`, `{{SLACK_MCP_XOXP_TOKEN}}`, `{{DB_USER}}`, `{{DB_PASSWORD}}`
 
 Non-sensitive values (URLs, paths) use real examples from the SoloQ project.
@@ -173,8 +174,16 @@ The Atlassian MCP server is **not enabled by default**. By default the boilerpla
    - Gemini CLI: `gemini.template.json`
    - Codex CLI: `codex.template.toml`
 2. Copy the `atlassian` block into your active config (`.mcp.json` for Claude Code, `opencode.jsonc` for OpenCode, etc.).
-3. Confirm `ATLASSIAN_URL`, `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN` are set in `.env` (the installer already collects these during `bun run setup`).
-4. Restart your agent so the new MCP server is picked up.
+3. Confirm `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` are set in `.env` (the installer collects both during `bun run setup`).
+4. Replace `{{ATLASSIAN_URL}}` in the block you pasted with the literal site host. Print it with:
+
+   ```bash
+   bun run --silent jira:url
+   ```
+
+   It is not read from `.env` — an MCP config cannot invoke a command, so this one value is pasted rather than referenced. After a site migration, update `.agents/project.yaml` first, then re-paste here; `bun run setup:doctor` will not catch a stale value inside an MCP config.
+
+5. Restart your agent so the new MCP server is picked up.
 
 ## Documentation
 

@@ -1,17 +1,17 @@
 # BK-19 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-19)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-19)
 
-## Sprint Testing Results — BK-19: TMS-ATC Builder
+## Sprint Testing Results — [https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19): TMS-ATC Builder
 
-***Tester******:*** maibethvega
-***Environment******:*** staging (https://staging-upexbunkai.vercel.app)
-***Date******:*** 2026-06-18
-***Overall Result******:*** PARTIAL PASS
+***Tester:*** maibethvega
+***Environment:*** staging ([https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/))
+***Date:*** 2026-06-18
+***Overall Result:*** PARTIAL PASS
 
 ### Summary
 
-| Status | Count |
+| ***Status**** | ****Count*** |
 | --- | --- |
 | PASSED | 35 |
 | BLOCKED | 8 |
@@ -28,7 +28,7 @@ All three CRITICAL TCs passed:
 
 ### Full ATR Table
 
-| TC | Description | Result | Notes |
+| ***TC**** | ****Description**** | ****Result**** | ****Notes*** |
 | --- | --- | --- | --- |
 | TC-01 | Happy path ATC creation + redirect | PASSED | Smoke |
 | TC-02 | AC linkage in DB after save | PASSED | `acceptance*criterion*ids` non-empty confirmed via API |

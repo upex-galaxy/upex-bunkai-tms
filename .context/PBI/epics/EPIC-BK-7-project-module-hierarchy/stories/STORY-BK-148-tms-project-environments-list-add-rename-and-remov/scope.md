@@ -1,6 +1,6 @@
 # BK-148 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
 
 - List every environment configured for the current project, in a stable order.
 - Add a new environment to a project by giving it a name.

@@ -65,6 +65,12 @@ export function WorkspaceSwitcher({ workspace, project, className }: WorkspaceSw
       }
       toast.success('Workspace switched.');
       setOpen(false);
+      // BK-398 AC-08 8.3 — the Command Palette must abort any in-flight
+      // search and clear to guidance the instant the active workspace
+      // changes. `bk_active_ws` is httpOnly (`lib/api/workspace-cookie.ts`),
+      // so the palette cannot detect the switch by reading the cookie
+      // client-side; this event is the signal it listens for instead.
+      window.dispatchEvent(new CustomEvent('bk:workspace-changed'));
       router.replace('/projects');
       router.refresh();
     }

@@ -1,8 +1,8 @@
 # BK-226 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
 
-```gherkin
+```
 Scenario: Upload a JUnit XML report and create a run
   Given Sara opens "Upload CI results" from the project runs view
   And selects the Test "Checkout happy path" and the environment "Staging"
@@ -11,7 +11,7 @@ Scenario: Upload a JUnit XML report and create a run
   And after she confirms, a finished automated run is created with per-step results and a verdict derived from the results
 ```
 
-```gherkin
+```
 Scenario: Unmapped report entries are surfaced, never dropped
   Given the uploaded report contains 6 entries and only 4 of them map to the Test's steps
   When Sara reviews the mapping preview
@@ -20,7 +20,7 @@ Scenario: Unmapped report entries are surfaced, never dropped
   And the created run records that 2 report entries were left unmapped
 ```
 
-```gherkin
+```
 Scenario: Steps missing from the report are made visible
   Given the uploaded report covers only 2 of the Test's 4 steps
   When Sara reviews the mapping preview
@@ -28,7 +28,7 @@ Scenario: Steps missing from the report are made visible
   And on confirmation they are recorded as blocked so the coverage gap stays visible in the run
 ```
 
-```gherkin
+```
 Scenario: Unsupported or oversized file is rejected with guidance
   Given Sara selects a 40 MB PDF instead of a results report
   When she attempts the upload
@@ -36,7 +36,7 @@ Scenario: Unsupported or oversized file is rejected with guidance
   And no run is created
 ```
 
-```gherkin
+```
 Scenario: A failing entry drives the verdict
   Given the uploaded report maps fully onto the Test's steps and one entry is a failure
   When Sara confirms the mapping

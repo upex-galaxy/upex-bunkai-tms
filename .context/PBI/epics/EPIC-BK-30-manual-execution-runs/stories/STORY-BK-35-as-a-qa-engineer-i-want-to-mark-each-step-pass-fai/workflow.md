@@ -1,6 +1,6 @@
 # BK-35 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-35)
 
 1. Elena works down the run's checklist one step at a time.
 2. For each step she marks passed, failed, or blocked, optionally adding a note and an evidence link.

@@ -1,6 +1,6 @@
 # BK-4 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-4)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-4)
 
 - name MUST be 3-60 chars, contain ≥1 alphanumeric.
 

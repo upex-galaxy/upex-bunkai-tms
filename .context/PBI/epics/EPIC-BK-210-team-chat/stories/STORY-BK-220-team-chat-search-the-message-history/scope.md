@@ -1,6 +1,6 @@
 # BK-220 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
 
 - Full-text search across the message history of every channel the member can access
 - Filters: channel, author, and date range — combinable

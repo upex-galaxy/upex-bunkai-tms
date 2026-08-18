@@ -1,14 +1,14 @@
 # BK-10 — Implementation Plan (Dev)
 
-> Jira field: `customfield_10095` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
+> Jira field: `customfield_10165` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
 
 ## Summary
 
-Rename and soft-delete a Module. Adds an `archived*at` soft-delete column to the four existing entity tables in a module subtree (modules, user*stories, acceptance*criteria, atcs) and two `SECURITY DEFINER` plpgsql functions that run the rename (with materialized-path rebuild across descendants) and the cascade archive atomically in a single transaction. A new flat `PATCH`/`DELETE /api/v1/modules/{id}` route fronts them with the BK-9 hybrid error model. The active-tree query gains an `archived*at IS NULL` filter so archived branches disappear. Per-node rename and delete affordances are added to the existing tree UI, mirroring the BK-9 create-module form.
+Rename and soft-delete a Module. Adds an `archived*at` soft-delete column to the four existing entity tables in a module subtree (modules, user*stories, acceptance*criteria, atcs) and two `SECURITY DEFINER` plpgsql functions that run the rename (with materialized-path rebuild across descendants) and the cascade archive atomically in a single transaction. A new flat `PATCH`/`DELETE /api/v1/modules/{id`} route fronts them with the [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9) hybrid error model. The active-tree query gains an `archived*at IS NULL` filter so archived branches disappear. Per-node rename and delete affordances are added to the existing tree UI, mirroring the [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9) create-module form.
 
 ## Resolved decisions (confirmed with PO)
 
-- Route shape: flat `/api/v1/modules/{id}` (matches the Architect Annotation + ATP; module id is a global UUID). The BK-9 create stays scoped under `/projects/{id}/modules`.
+- Route shape: flat `/api/v1/modules/{id`} (matches the Architect Annotation + ATP; module id is a global UUID). The [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9) create stays scoped under `/projects/{id}/modules`.
 - Rename rebuilds the materialized `path`: recompute the module slug, rewrite the `path` of the module AND every descendant in one transaction; a sibling slug collision returns 409. Honors the Architect DoD ("path rebuild verified") and the PO-confirmed "sibling uniqueness -> 409".
 - Cascade scope: archive modules + user*stories + acceptance*criteria + atcs (every FK-linked table that exists today). The `tests` and `bugs` tables do not exist yet (Part 2 epics) — they are deferred and the cascade function is extended when those tables land.
 - Soft-delete column name: `archived*at timestamptz null` (Business Rule says "archived, never destroyed"; Architect Annotation specifies `archived*at`).
@@ -16,9 +16,9 @@ Rename and soft-delete a Module. Adds an `archived*at` soft-delete column to the
 
 ## As-built observable contract (QA reference)
 
-PATCH /api/v1/modules/{id} — rename and/or edit description. Body: `{ name?: string, description?: string | null }`, at least one field.
+PATCH /api/v1/modules/{id} — rename and/or edit description. Body: {{{ name?: string, description?: string | null }}}, at least one field.
 
-- Success: 200 `{ module: { id, project*id, parent*module*id, path, name, position, description, created*at, archived_at } }`. When `name` changes, `path` (and all descendant paths) reflect the new slug.
+- Success: 200 {{{ module: { id, project*id, parent*module*id, path, name, position, description, created*at, archived_at } }}}. When `name` changes, `path` (and all descendant paths) reflect the new slug.
 - name < 2 chars: 422 `validation*failed` + `details.reason=name*too_short`.
 - name empty or whitespace-only (server trims): 422 `validation*failed` + `details.reason=name*required`.
 - name > 80 chars: 422 `validation*failed` + `details.reason=name*too_long`.
@@ -31,7 +31,7 @@ PATCH /api/v1/modules/{id} — rename and/or edit description. Body: `{ name?: s
 
 DELETE /api/v1/modules/{id} — soft-delete (archive) the module and its subtree + linked work.
 
-- Success: 200 `{ archived: { modules, user*stories, acceptance*criteria, atcs } }` (per-table counts).
+- Success: 200 {{{ archived: { modules, user*stories, acceptance*criteria, atcs } }}} (per-table counts).
 - Module not found: 404 `not_found`.
 - Module already archived: 409 `conflict` + `details.reason=already_archived` (no double-archive).
 - Caller is a viewer / non-member: 403 `forbidden` + `details.reason=not*a*member`.
@@ -51,7 +51,7 @@ Slice 5 — Verification. `bun test`, `bun run types:check`, `bun run lint:check
 
 ## Out of scope
 
-Moving a module to a different parent (BK-11), hard delete / purge, un-archiving / restore, bulk rename or delete, archiving `tests` / `bugs` (those tables ship with their own epics), the rich Markdown editor (BK-16), activity_log writes, Realtime.
+Moving a module to a different parent ([https://jira.upexgalaxy.com/browse/BK-11#icft=BK-11](https://jira.upexgalaxy.com/browse/BK-11#icft=BK-11)), hard delete / purge, un-archiving / restore, bulk rename or delete, archiving `tests` / `bugs` (those tables ship with their own epics), the rich Markdown editor ([https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16](https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16)), activity_log writes, Realtime.
 
 ## Review Workload Forecast
 

@@ -34,11 +34,11 @@ const MarkBodySchema = z
       .describe('Optional free-text note. An empty or whitespace-only string normalizes to null rather than being rejected.'),
     evidence_url: z
       .string()
-      .url()
+      .url({ protocol: z.regexes.httpProtocol })
       .max(2000)
       .nullable()
       .optional()
-      .describe('Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be a valid URL.'),
+      .describe('Optional evidence link. An empty or whitespace-only string normalizes to null rather than being rejected; a non-empty value must be an http:// or https:// URL — any other scheme (javascript:, data:, etc.) is rejected (BK-466).'),
   })
   .openapi('RunStepMarkBody');
 
@@ -58,6 +58,6 @@ registry.registerPath({
     403: { description: 'Missing run:execute scope or not a workspace member with write access (non-disclosing — also returned for a Run/step the caller cannot see).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Run step not found — missing, or belonging to a different run than {id} (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The run is already closed and cannot accept new step results (`conflict`, reason `run_step_marking_closed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not a valid URL (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed — status is not one of passed, failed, or blocked, note/evidence_url exceed 2000 characters, or evidence_url is not an http:// or https:// URL (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

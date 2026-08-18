@@ -50,7 +50,7 @@ The command shapes live in `acli/SKILL.md` §Quick Start. The DEV flow uses the 
 
 | DEV step | Action (see `acli/SKILL.md`) | DEV-specific substitutions |
 |---|---|---|
-| Auth | `jira auth login` | `--site "${ATLASSIAN_URL#https://}"` (slug derived from `ATLASSIAN_URL`), `--email "$ATLASSIAN_EMAIL"`, token piped from `$ATLASSIAN_API_TOKEN` (all from `.env`) |
+| Auth | `jira auth login` | `--site "$(bun run --silent jira:url --slug)"` (host from `.agents/project.yaml`, NOT an env var), `--email "$ATLASSIAN_EMAIL"`, token piped from `$ATLASSIAN_API_TOKEN` (both from `.env`) |
 | Verify auth | `jira auth status` | None (same as generic). MUST run before every `bun run jira:sync-*` and before any bulk mutation — see D1 + D6 below. |
 | Fetch story you are about to implement DETAIL (impl-plan input) | **NOT acli** → `bun run jira:sync-issues get <KEY> --include-comments` | `<KEY>` = `{{PROJECT_KEY}}-NNN`. Reads ACs + Scope from the synced `.md` — `acli` `view` returns null for custom fields. See "Reads vs writes" above. |
 | Move into In Progress (Stage 1 start) | `jira workitem transition --key <KEY> --status <STATUS>` | `<STATUS>` = `{{jira.status.story.in_progress}}` |

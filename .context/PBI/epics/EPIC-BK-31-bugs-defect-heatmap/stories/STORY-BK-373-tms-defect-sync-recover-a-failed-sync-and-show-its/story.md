@@ -59,10 +59,10 @@ Materialized from BK-43 (ruling 12170, AI Product Owner slicing decision), const
 
 ### Tests (4)
 
-- [BK-236](https://jira.upexgalaxy.com/browse/BK-236): BK-43-TDS03: Failed sync auto-retries and eventually succeeds _(In Automation)_
-- [BK-237](https://jira.upexgalaxy.com/browse/BK-237): BK-43-TDS04: Sync-failed state after persistent failure _(In Automation)_
-- [BK-241](https://jira.upexgalaxy.com/browse/BK-241): BK-43-TDS08: Permanent auth failure stops retries _(In Automation)_
-- [BK-244](https://jira.upexgalaxy.com/browse/BK-244): BK-43-TDS11: Rate limit backoff recovers and syncs _(In Automation)_
+- [BK-236](https://jira.upexgalaxy.com/browse/BK-236): BK-373-TDS03: Failed sync auto-retries and eventually succeeds _(In Automation)_
+- [BK-237](https://jira.upexgalaxy.com/browse/BK-237): BK-373-TDS04: Sync-failed state after persistent failure _(In Automation)_
+- [BK-241](https://jira.upexgalaxy.com/browse/BK-241): BK-373-TDS08: Permanent auth failure stops retries _(In Automation)_
+- [BK-244](https://jira.upexgalaxy.com/browse/BK-244): BK-373-TDS11: Rate limit backoff recovers and syncs _(In Automation)_
 
 ### Story (1)
 

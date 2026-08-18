@@ -3,9 +3,9 @@
 **Jira Key:** [BK-219](https://jira.upexgalaxy.com/browse/BK-219)
 **Epic:** [BK-210](https://jira.upexgalaxy.com/browse/BK-210) (Team Chat)
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
 
 ---
 
@@ -21,18 +21,31 @@ Real conversations include wrong URLs, typos, and messages sent to the wrong cha
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Story (1)
 
-- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Backlog)_
+- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Estimation)_
 
 ---
 
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 7/30/2026
+- **Updated:** 8/14/2026
 - **Reporter:** Ely
 - **Assignee:** Janetzi Jackiewicz
 - **Labels:** shift-left-2026-07-16, shift-left-reviewed

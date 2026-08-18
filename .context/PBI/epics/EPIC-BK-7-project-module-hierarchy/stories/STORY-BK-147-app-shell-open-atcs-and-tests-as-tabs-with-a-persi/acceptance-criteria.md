@@ -1,8 +1,8 @@
 # BK-147 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
 
-```gherkin
+```
 Scenario: The application shell stays visible after sign-in
   Given Elena has signed in
   When she moves between a project, an open ATC, and an open Test
@@ -10,7 +10,7 @@ Scenario: The application shell stays visible after sign-in
     And the account block shows her own signed-in identity, never a placeholder
 ```
 
-```gherkin
+```
 Scenario: Explorer stays visible when opening an item
   Given Elena is in a project with modules, ATCs and Tests
   When she clicks an ATC or a Test in the explorer
@@ -19,7 +19,7 @@ Scenario: Explorer stays visible when opening an item
     And the opened item is highlighted in the tree
 ```
 
-```gherkin
+```
 Scenario: Multiple tabs open at once
   Given Elena has one item open
   When she opens a second and a third item
@@ -27,14 +27,14 @@ Scenario: Multiple tabs open at once
     And she can switch between tabs without losing the others
 ```
 
-```gherkin
+```
 Scenario: Re-opening a focused item does not duplicate the tab
   Given an ATC is already open in a tab
   When Elena clicks that same ATC in the explorer
   Then its existing tab is focused instead of opening a duplicate
 ```
 
-```gherkin
+```
 Scenario: Closing a tab
   Given Elena has several tabs open
   When she closes the active tab
@@ -42,7 +42,7 @@ Scenario: Closing a tab
     And the explorer stays visible
 ```
 
-```gherkin
+```
 Scenario: Closing the last tab returns to the workbench index
   Given Elena has exactly one tab open
   When she closes it
@@ -50,14 +50,14 @@ Scenario: Closing the last tab returns to the workbench index
     And the explorer stays visible
 ```
 
-```gherkin
+```
 Scenario: The project toolbar is reachable from any open tab
   Given Elena has a Test open in a tab
   When she looks for project actions
   Then New ATC, New Test, the view switch, and search are reachable without closing the tab
 ```
 
-```gherkin
+```
 Scenario: Deep link opens directly as a tab
   Given Elena pastes a direct link to a Test
   When the page loads
@@ -65,7 +65,7 @@ Scenario: Deep link opens directly as a tab
     And the Test is highlighted in the explorer
 ```
 
-```gherkin
+```
 Scenario: Opening an item that is no longer available
   Given Elena follows a link to an ATC or Test that was deleted or that she cannot see
   When the workbench tries to open it
@@ -73,7 +73,7 @@ Scenario: Opening an item that is no longer available
     And the explorer and navigation stay visible, with no broken full-page error
 ```
 
-```gherkin
+```
 Scenario: Switching projects does not carry tabs across
   Given Elena has tabs open in one project
   When she opens a different project from the navigation

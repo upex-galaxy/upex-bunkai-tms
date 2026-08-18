@@ -35,6 +35,13 @@ describe('SETTINGS_NAV_AVAILABLE / SETTINGS_NAV_COMING_SOON', () => {
     expect(SETTINGS_NAV_AVAILABLE.find(item => item.id === 'notifications')?.href).toBe('/settings/notifications');
     expect(SETTINGS_NAV_COMING_SOON.some(item => item.id === 'notifications')).toBe(false);
   });
+
+  // BK-229 — Billing moved from "coming soon" to "available"
+  // (master-design-plan.md §4.15: "Billing" now LIVE in the nav).
+  test('billing is now available, not coming soon', () => {
+    expect(SETTINGS_NAV_AVAILABLE.find(item => item.id === 'billing')?.href).toBe('/settings/billing');
+    expect(SETTINGS_NAV_COMING_SOON.some(item => item.id === 'billing')).toBe(false);
+  });
 });
 
 describe('isSettingsNavItemActive', () => {

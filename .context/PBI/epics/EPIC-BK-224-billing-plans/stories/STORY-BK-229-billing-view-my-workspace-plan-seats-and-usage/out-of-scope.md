@@ -1,6 +1,6 @@
 # BK-229 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
 
 - Upgrading and payment entry (separate story: upgrade to a paid plan)
 - Billing details, payment method management, and invoices (separate story)

@@ -1,6 +1,6 @@
 # BK-226 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
 
 - "Upload CI results" flow in the project runs view: choose an existing Test and a Project Environment, upload a JUnit XML report
 - Mapping preview before anything is created: report entries matched to the Test's steps, with unmapped entries and uncovered steps highlighted

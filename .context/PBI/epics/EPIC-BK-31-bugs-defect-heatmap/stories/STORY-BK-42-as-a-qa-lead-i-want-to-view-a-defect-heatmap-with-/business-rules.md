@@ -1,6 +1,6 @@
 # BK-42 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-42)
 
 - The heatmap rolls defects up by module, which is the single axis for the count
 - The defect count for a cell covers only the chosen window

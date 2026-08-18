@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-16)
 
-# Acceptance Test Plan — BK-16: Markdown Editor | Write and Preview Markdown Safely
+# Acceptance Test Plan — [https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16](https://jira.upexgalaxy.com/browse/BK-16#icft=BK-16): Markdown Editor | Write and Preview Markdown Safely
 
 ## Triage Result
 
@@ -26,7 +26,7 @@ Full ATP required. No veto applies (user-facing feature with explicit security A
 
 ## Phase 1 — Critical Analysis
 
-***Business context:*** Senior QA Engineers author User Stories and Acceptance Criteria inside Bunkai. The Markdown editor gives them rich formatting (headings, tables, code blocks) while keeping the stored content safe for downstream AI agents (BK-17 Jira import) and other consumers. Without sanitization, a malicious paste or injection could embed executable scripts into the TMS content, compromising every agent that reads it.
+***Business context:*** Senior QA Engineers author User Stories and Acceptance Criteria inside Bunkai. The Markdown editor gives them rich formatting (headings, tables, code blocks) while keeping the stored content safe for downstream AI agents ([https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17](https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17) Jira import) and other consumers. Without sanitization, a malicious paste or injection could embed executable scripts into the TMS content, compromising every agent that reads it.
 
 ***Technical context:***
 
@@ -51,7 +51,7 @@ Full ATP required. No veto applies (user-facing feature with explicit security A
 ***Ambiguities identified:***
 
 - The story does not state whether the Markdown editor is already deployed to staging. A smoke test must confirm the editor surface is accessible before full AC execution.
-- AC1 does not specify which type of record opens the editor (User Story vs. Acceptance Criteria form). Both should surface the same component per the architect annotation referencing BK-14 and BK-15.
+- AC1 does not specify which type of record opens the editor (User Story vs. Acceptance Criteria form). Both should surface the same component per the architect annotation referencing [https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14](https://jira.upexgalaxy.com/browse/BK-14#icft=BK-14) and [https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15](https://jira.upexgalaxy.com/browse/BK-15#icft=BK-15).
 - The story does not define behavior for an empty description save (zero-length body). Is an empty description permitted?
 - AC3 specifies "surrounding text preserved" but does not clarify multi-vector payloads (multiple script tags in one body).
 - AC4 specifies two link types (mailto, javascript:slight*smile: but does not address other unsafe schemes (data:, vbscript:, ftp:slight*smile:. The architect annotation confirms only http/https/mailto are kept; all others are dropped — this should be verified.

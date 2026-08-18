@@ -1,8 +1,8 @@
 # BK-217 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
 
-```gherkin
+```
 Scenario: Autocomplete suggests workspace members
   Given Sara is writing a message in the "Bunkai QA" general channel
   When she types "@El"
@@ -10,7 +10,7 @@ Scenario: Autocomplete suggests workspace members
   And selecting her inserts a highlighted mention into the message
 ```
 
-```gherkin
+```
 Scenario: A mentioned member gets a notification in their inbox
   Given Elena is a member of the workspace "Bunkai QA"
   When Sara sends "Hey @Elena Vargas — the checkout fix is deployed, rerun when ready"
@@ -18,7 +18,7 @@ Scenario: A mentioned member gets a notification in their inbox
   And opening the notification takes her to that message in the channel
 ```
 
-```gherkin
+```
 Scenario: Mentions render highlighted for everyone
   Given a message containing a mention of Elena exists in the channel
   When any member reads the channel
@@ -26,7 +26,7 @@ Scenario: Mentions render highlighted for everyone
   And it stands out from the surrounding text
 ```
 
-```gherkin
+```
 Scenario: A member who left the workspace cannot be mentioned
   Given Mateo left the workspace "Bunkai QA" yesterday
   When Sara types "@Ma" in the composer
@@ -34,7 +34,7 @@ Scenario: A member who left the workspace cannot be mentioned
   And older messages that mention Mateo still render, marked as a former member, without breaking
 ```
 
-```gherkin
+```
 Scenario: Mentioning in a project channel only offers members with project access
   Given the project "Payments API" channel is open
   And Mateo has no access to that project

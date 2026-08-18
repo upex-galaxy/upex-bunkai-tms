@@ -1,6 +1,6 @@
 # BK-22 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
 
 ## Scenario 1.1: Should show "Used in N tests" count for ATC referenced in multiple Tests (Type: Positive, Priority: Critical)
 
@@ -103,7 +103,7 @@
 - ***NEEDS PO/DEV CONFIRMATION***: no AC specifies auth behavior for this endpoint. Inferred from BK-13's global pattern that all ATC endpoints require active workspace membership.
 - ***Given***: no session cookie and no Authorization header
 - ***When***: GET /atcs/{id}/usage is called
-- ***Then***: HTTP 401 — consistent with all other protected BK-13 endpoints
+- ***Then***: HTTP 401 — consistent with all other protected [https://jira.upexgalaxy.com/browse/BK-13#icft=BK-13](https://jira.upexgalaxy.com/browse/BK-13#icft=BK-13) endpoints
 
 ## Scenario (design fidelity): "Used by N tests" surface in the Projects screen
 

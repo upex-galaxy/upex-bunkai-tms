@@ -1388,7 +1388,12 @@ export interface Database {
         }[]
       }
       bunkai_abort_run: {
-        Args: { p_actor_user_id: string, p_reason: string, p_run_id: string }
+        Args: {
+          p_actor_user_id: string
+          p_reason: string
+          p_run_id: string
+          p_via?: string
+        }
         Returns: Json
       }
       bunkai_archive_acceptance_criterion: {
@@ -1505,7 +1510,12 @@ export interface Database {
         Returns: Json
       }
       bunkai_finish_run: {
-        Args: { p_actor_user_id: string, p_run_id: string, p_verdict: string }
+        Args: {
+          p_actor_user_id: string
+          p_run_id: string
+          p_verdict: string
+          p_via?: string
+        }
         Returns: Json
       }
       bunkai_get_atc: {
@@ -1690,6 +1700,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_search_workspace: {
+        Args: { p_limit?: number, p_query: string, p_workspace_id: string }
+        Returns: Json
+      }
       bunkai_set_test_tags: {
         Args: {
           p_actor_user_id: string
@@ -1746,6 +1760,10 @@ export interface Database {
         Returns: Json
       }
       bunkai_user_id_by_email: { Args: { p_email: string }, Returns: string }
+      bunkai_workspace_billing_overview: {
+        Args: { p_workspace_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

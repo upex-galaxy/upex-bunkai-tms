@@ -1,6 +1,6 @@
 # BK-226 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
 
 - Result formats beyond JUnit XML (TAP, Allure, JSON reporters) — future format adapters
 - Direct API submission and streaming — sibling stories own those paths

@@ -1,6 +1,6 @@
 # BK-229 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-229)
 
 - Only the workspace owner and admins can open the Billing section; only the owner can change plan or payment state (enforced in the write stories).
 - Seat counting = active members only. Pending invitations do not consume a seat until accepted.

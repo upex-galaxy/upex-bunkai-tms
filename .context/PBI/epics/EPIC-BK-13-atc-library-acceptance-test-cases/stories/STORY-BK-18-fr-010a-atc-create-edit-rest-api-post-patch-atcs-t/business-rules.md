@@ -1,6 +1,6 @@
 # BK-18 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-18)
 
 - acceptance*criterion*ids[] deben pertenecer todos al user*story*id provisto (cross-entity check)
 - module_id debe ser igual al module de la user story O ser un module descendiente dentro del mismo project (subtree check)

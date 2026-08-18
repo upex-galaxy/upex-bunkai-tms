@@ -1,6 +1,6 @@
 # BK-219 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-219)
 
 - ***Ownership***: a member can edit and delete only their own messages.
 - ***Edit window***: editing is allowed for 15 minutes after sending; after that the message is immutable (deletion stays available). Every edited message carries a permanent edited indicator.

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-48](https://jira.upexgalaxy.com/browse/BK-48)
 **Epic:** [BK-44](https://jira.upexgalaxy.com/browse/BK-44) (Coverage & Traceability)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -109,6 +109,7 @@ As a Senior QA Engineer, I want to filter the evidence chain by result, module a
 - [Acceptance Criteria](./acceptance-criteria.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -124,9 +125,9 @@ As a Senior QA Engineer, I want to filter the evidence chain by result, module a
 ## Metadata
 
 - **Created:** 6/1/2026
-- **Updated:** 8/11/2026
+- **Updated:** 8/12/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** pinto.lucas.nahuel
 - **Labels:** +shift-left-2026-08-10, new-feature, shift-left-2026-06-16, shift-left-reviewed, sprint-planning-estimated
 
 ---

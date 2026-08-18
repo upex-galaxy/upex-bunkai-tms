@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
 
-# ATP DRAFT — BK-9: TMS-Module | Create modules with nested sub-modules
+# ATP DRAFT — [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9): TMS-Module | Create modules with nested sub-modules
 
 ***Status***: DRAFT — Shift-Left pre-sprint refinement
 ***Refined on***: 2026-06-02

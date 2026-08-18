@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -37,7 +38,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 - G3: Name > 80 chars not tested (Scope: 3-80 chars)
 - G4: Description > 5KB not tested (Business Rule defined)
 - G5: Unknown workspace UUID behavior undefined (404 vs 403)
-- G6: UI form scope unclear — BK-8 or Phase E?
+- G6: UI form scope unclear — [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) or Phase E?
 
 ### Open Questions
 
@@ -46,7 +47,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 - Q3 (BLOCKER): Auth mechanism + PAT scope?
 - Q4: Slug collision — 409 immediate or auto-suffix (-2, -3)?
 - Q5: Unknown workspace — 404 or 403?
-- Q6: UI form in BK-8 scope or Phase E?
+- Q6: UI form in [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) scope or Phase E?
 - Q7: Max slug length (DNS label = 63 chars)?
 
 ---
@@ -55,7 +56,14 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -64,13 +72,13 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ### Bugs (3)
 
 - [BK-54](https://jira.upexgalaxy.com/browse/BK-54): BK-8: Reserved project slugs are not rejected (AC-11) — created with HTTP 201 _(Duplicated)_
-- [BK-55](https://jira.upexgalaxy.com/browse/BK-55): BK-8: Project detail route /projects/{slug} is not workspace-scoped _(Duplicated)_
 - [BK-56](https://jira.upexgalaxy.com/browse/BK-56): BK-8: Non-Latin (CJK/Cyrillic) project names rejected as name_no_alphanumeric _(Duplicated)_
+- [BK-55](https://jira.upexgalaxy.com/browse/BK-55): BK-8: Project detail route /projects/{slug} is not workspace-scoped _(Duplicated)_
 
 ### Storys (2)
 
-- [BK-4](https://jira.upexgalaxy.com/browse/BK-4): TMS-Workspace | Create a workspace _(Ready For Release)_
 - [BK-9](https://jira.upexgalaxy.com/browse/BK-9): TMS-Module | Create modules with nested sub-modules _(Ready For Release)_
+- [BK-4](https://jira.upexgalaxy.com/browse/BK-4): TMS-Workspace | Create a workspace _(Ready For Release)_
 
 ---
 

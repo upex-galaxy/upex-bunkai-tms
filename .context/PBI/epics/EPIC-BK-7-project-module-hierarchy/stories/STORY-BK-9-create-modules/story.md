@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 13
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -71,6 +72,12 @@
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -79,8 +86,8 @@
 
 ### Bugs (2)
 
-- [BK-67](https://jira.upexgalaxy.com/browse/BK-67): [BK-9] Module creation at depth ≥5: success toast suppressed — only deep-nesting warning shown _(Closed)_
 - [BK-68](https://jira.upexgalaxy.com/browse/BK-68): [BK-9] Create Module form allows submitting 1-char names — no client-side min-length validation _(Closed)_
+- [BK-67](https://jira.upexgalaxy.com/browse/BK-67): [BK-9] Module creation at depth ≥5: success toast suppressed — only deep-nesting warning shown _(Closed)_
 
 ### Storys (4)
 

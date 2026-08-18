@@ -47,7 +47,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const report = buildRecoveryCycleReport(raw, Date.now());
 
   return jsonResponse(report, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — reporting reads.',
+});
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/metrics/recovery-cycles`, so the id is the

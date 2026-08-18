@@ -1,6 +1,6 @@
 # BK-214 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-214)
 
 - At most one digest email per user per day, sent only when at least one eligible unread notification exists at send time.
 - Eligibility: the item is unread AND its event type has the email channel enabled in the user's preferences.

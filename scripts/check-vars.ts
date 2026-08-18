@@ -32,9 +32,11 @@ import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
   DEPRECATED_VARS,
+  envFileVars,
   parseDotEnvExampleKeys,
   parseDotEnvPairs,
   validateVarManifest,
+  valueSourceOf,
   VAR_MANIFEST,
   VarManifestError,
 } from '../cli/lib/variables-manifest.ts';
@@ -71,9 +73,10 @@ function display(spec: VarSpec | undefined, value: string): string {
  *
  * That is not hypothetical: a stale `ATLASSIAN_URL` made `jira:sync-issues`
  * overwrite `.context/PBI/` with content from a pre-migration Atlassian site
- * while reporting success. Identity values are anchored to `.agents/project.yaml`
- * now (see `cli/lib/atlassian-instance.ts`), but that fixes one variable. This
- * rule attacks the whole class.
+ * while reporting success. That ONE variable was removed from `.env` entirely
+ * and anchored to `.agents/project.yaml` (see `cli/lib/atlassian-instance.ts`),
+ * which is the only real cure — there is no second copy left to go stale. Every
+ * other var still lives in `.env`, so this rule attacks the rest of the class.
  *
  * SEVERITY IS CALLER-CONTROLLED. Rules 1-4 describe the REPOSITORY and are always
  * fatal. Drift describes the DEVELOPER'S MACHINE, so making it fatal everywhere
@@ -89,7 +92,11 @@ function collectEnvDrift(): { findings: string[], status: 'checked' | 'skipped' 
 
   const findings: string[] = [];
   const filePairs = parseDotEnvPairs(ENV_FILE);
-  const specByName = new Map(VAR_MANIFEST.map(s => [s.name, s]));
+  // Scoped to vars actually READ from `.env`. For an externally-sourced var a
+  // process⇄file disagreement is not drift — neither side is consulted — and
+  // reporting it here would bury the STALE_IN_ENV_FILE warning that says the
+  // real thing: delete the line.
+  const specByName = new Map(envFileVars().map(s => [s.name, s]));
 
   for (const [name, fileValue] of filePairs) {
     // Only manifest vars are in scope; an unknown key is another rule's job.
@@ -156,8 +163,30 @@ function main(): void {
   const manifestNames = VAR_MANIFEST.map(s => s.name);
   const manifestSet = new Set(manifestNames);
 
+  // Only vars whose value LIVES in `.env` are `.env.example`'s business. A var
+  // sourced elsewhere (`valueSource`, e.g. ATLASSIAN_URL from
+  // `.agents/project.yaml`) has no `.env` line, so demanding one would force
+  // back the exact duplicate copy that design removed.
+  const envFileNames = envFileVars().map(s => s.name);
+  const externallySourced = VAR_MANIFEST.filter(s => valueSourceOf(s) !== 'env-file');
+
   // ERROR: a manifest var that is NOT documented in `.env.example`.
-  const missingFromExample = manifestNames.filter(n => !exampleSet.has(n));
+  const missingFromExample = envFileNames.filter(n => !exampleSet.has(n));
+
+  // ERROR: an externally-sourced var re-declared in `.env.example`. Documenting
+  // it there invites a second copy that can go stale and shadow the real source.
+  const externallySourcedInExample = externallySourced
+    .filter(s => exampleSet.has(s.name))
+    .map(s => s.name);
+
+  // WARNING: an externally-sourced var still sitting in a real `.env`. Nothing
+  // reads it from there anymore, but leaving it is how a stale host survives a
+  // migration — so consumers pulling this change get told to delete the line.
+  const staleInEnvFile = existsSync(ENV_FILE)
+    ? externallySourced
+        .filter(s => (parseDotEnvPairs(ENV_FILE).get(s.name) ?? '').trim().length > 0)
+        .map(s => s.name)
+    : [];
 
   // ERROR: a deprecated var still present in `.env.example`.
   const deprecatedStillPresent = DEPRECATED_VARS
@@ -174,7 +203,10 @@ function main(): void {
   const driftErrors = driftSoft ? [] : drift.findings;
   const driftWarnings = driftSoft ? drift.findings : [];
 
-  const totalErrors = missingFromExample.length + deprecatedStillPresent.length + driftErrors.length;
+  const totalErrors = missingFromExample.length
+    + externallySourcedInExample.length
+    + deprecatedStillPresent.length
+    + driftErrors.length;
 
   // ----- output -----
   console.log('Variable Manifest Parity Report');
@@ -186,6 +218,18 @@ function main(): void {
     `Process env ⇄ .env:   ${drift.status === 'skipped' ? 'skipped (no .env)' : driftSoft ? 'checked (warn-only)' : 'checked'}`,
   );
   console.log('');
+
+  if (staleInEnvFile.length > 0) {
+    console.log(`WARNINGS (${staleInEnvFile.length}) — reported, not blocking:`);
+    for (const name of staleInEnvFile) {
+      console.log(
+        `  - STALE_IN_ENV_FILE: '${name}' still has a value in .env, but nothing reads it from there `
+        + 'anymore. Delete the line — a leftover copy is exactly what goes stale after a migration.',
+      );
+    }
+    console.log('  Source of truth: .agents/project.yaml (read it with `bun run --silent jira:url`).');
+    console.log('');
+  }
 
   if (driftWarnings.length > 0) {
     console.log(`WARNINGS (${driftWarnings.length}) — reported, not blocking:`);
@@ -204,6 +248,12 @@ function main(): void {
   else {
     for (const name of missingFromExample) {
       console.log(`  - MISSING_FROM_ENV_EXAMPLE: ${name}  (in VAR_MANIFEST but not documented in .env.example — add it)`);
+    }
+    for (const name of externallySourcedInExample) {
+      console.log(
+        `  - EXTERNALLY_SOURCED_IN_ENV_EXAMPLE: ${name}  (its value comes from .agents/project.yaml, `
+        + 'not .env — remove the declaration so no second copy can shadow the real source)',
+      );
     }
     for (const name of deprecatedStillPresent) {
       console.log(`  - DEPRECATED_STILL_PRESENT: ${name}  (in DEPRECATED_VARS but still declared in .env.example — remove it)`);

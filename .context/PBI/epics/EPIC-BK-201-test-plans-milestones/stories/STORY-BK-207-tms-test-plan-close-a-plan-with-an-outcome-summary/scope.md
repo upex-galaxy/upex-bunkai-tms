@@ -1,6 +1,6 @@
 # BK-207 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
 
 - Close action on an open plan capturing a required verdict (passed or failed) and an optional outcome summary.
 - Confirmation step showing the count of not-run tests before closing.

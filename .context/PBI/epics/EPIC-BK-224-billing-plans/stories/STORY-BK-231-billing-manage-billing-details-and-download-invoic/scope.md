@@ -1,6 +1,6 @@
 # BK-231 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-231)
 
 - Billing details form: company name, billing email, billing address — reflected on subsequently issued invoices
 - Payment method display and replacement

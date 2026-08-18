@@ -1,6 +1,6 @@
 # BK-9 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-9)
 
 1. Elena opens a Project and views its Module tree.
 2. She picks ***New Module**** at the Project root, or ****Add sub-module*** on an existing Module.
