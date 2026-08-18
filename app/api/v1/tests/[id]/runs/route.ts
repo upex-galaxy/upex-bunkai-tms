@@ -84,7 +84,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       ? null
       : encodeRunCursor({ startedAt: payload.next_cursor.started_at, id: payload.next_cursor.id }),
   }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — runs and tests reads.',
+});
 
 function extractTestId(request: NextRequest): string {
   // Path ends in `/{id}/runs`, so the id is the second-to-last segment.

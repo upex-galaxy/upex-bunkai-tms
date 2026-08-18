@@ -1,6 +1,6 @@
 'use client';
 
-import type { AccessTokenScope } from '@lib/api/pat';
+import type { Capability } from '@lib/api/capabilities';
 import type { WorkspaceOption } from '@lib/tokens/view-state';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
@@ -43,7 +43,7 @@ interface ApiErrorBody {
   }
 }
 
-const SCOPE_DESCRIPTIONS: Record<AccessTokenScope, string> = {
+const SCOPE_DESCRIPTIONS: Record<Capability, string> = {
   'atc:read': 'Read test cases, modules and their history.',
   'atc:write': 'Create and edit test cases and modules.',
   'run:execute': 'Trigger runs and report step results.',
@@ -71,7 +71,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
   const containerRef = useRef<HTMLDivElement>(null);
   const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [name, setName] = useState('');
-  const [scopes, setScopes] = useState<AccessTokenScope[]>([]);
+  const [scopes, setScopes] = useState<Capability[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
   const [expiryChoice, setExpiryChoice] = useState(DEFAULT_EXPIRY_CHOICE);
   const [submitting, setSubmitting] = useState(false);
@@ -113,7 +113,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
     return null;
   }
 
-  const toggleScope = (scope: AccessTokenScope) => {
+  const toggleScope = (scope: Capability) => {
     setScopes(prev => (prev.includes(scope) ? prev.filter(s => s !== scope) : [...prev, scope]));
   };
 
@@ -124,7 +124,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
     setSubmitting(true);
 
     try {
-      const body: { name: string, scopes: AccessTokenScope[], workspace_id?: string, expires_in_days?: number } = {
+      const body: { name: string, scopes: Capability[], workspace_id?: string, expires_in_days?: number } = {
         // Mirrors the mockup's `issue-create` handler (settings-tokens.html)
         // -- the input stays raw as the user types it; only the submitted
         // value is normalized to the machine-name convention shown in the

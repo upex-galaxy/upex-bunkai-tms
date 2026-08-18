@@ -1,4 +1,4 @@
-import type { AccessTokenScope } from '@lib/api/pat';
+import type { Capability } from '@lib/api/capabilities';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
@@ -42,8 +42,8 @@ async function expectForbidden(promise: Promise<unknown>, match: RegExp): Promis
   }
 }
 
-const ADMIN_SCOPES: AccessTokenScope[] = ['atc:read', 'workspace:admin'];
-const READ_SCOPES: AccessTokenScope[] = ['atc:read', 'atc:write'];
+const ADMIN_SCOPES: Capability[] = ['atc:read', 'workspace:admin'];
+const READ_SCOPES: Capability[] = ['atc:read', 'atc:write'];
 const WS = '11111111-1111-1111-1111-111111111111';
 const USER = '22222222-2222-2222-2222-222222222222';
 

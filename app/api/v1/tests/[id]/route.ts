@@ -30,7 +30,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ test: data }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — runs and tests reads.',
+});
 
 function extractTestId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

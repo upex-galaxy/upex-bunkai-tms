@@ -53,7 +53,10 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
     response.cookies.delete(ACTIVE_WORKSPACE_COOKIE);
   }
   return response;
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — workspaces and membership.',
+});
 
 function extractWorkspaceId(request: NextRequest): string {
   // App Router exposes route params via context, but withApiHandler is generic

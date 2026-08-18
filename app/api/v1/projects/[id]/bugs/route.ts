@@ -44,7 +44,10 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const payload = data as unknown as { items: unknown[] };
   return jsonResponse({ items: payload.items }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — reporting reads.',
+});
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/bugs`, so the id is the second-to-last segment.

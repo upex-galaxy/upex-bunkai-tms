@@ -97,7 +97,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ project: data }, { status: 201 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'BK-499 pending — workspaces and membership.',
+});
 
 function extractWorkspaceId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');
