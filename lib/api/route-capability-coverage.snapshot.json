@@ -1,0 +1,437 @@
+[
+  {
+    "file": "app/api/openapi/route.ts",
+    "method": "GET",
+    "posture": "bypass"
+  },
+  {
+    "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/acceptance-criteria/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/activity/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/atcs/[id]/duplicate/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/atcs/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/atcs/[id]/usage/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/atcs/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/atcs/search/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/auth/check-email/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/auth/confirm/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/auth/magic-link/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/auth/resend/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/auth/signin/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/auth/signup/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/bugs/[id]/assign/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/bugs/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/bugs/[id]/status/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/bugs/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/bugs/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/environments/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/environments/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/health/route.ts",
+    "method": "GET",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/imports/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/imports/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/invites/accept/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/me/active-workspace/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/me/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/milestones/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/modules/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/modules/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/modules/[id]/user-stories/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/modules/[id]/user-stories/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/notification-preferences/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/notification-preferences/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/notifications/[id]/read/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/bugs/heatmap/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/bugs/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/coverage/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/environments/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/environments/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/metrics/recovery-cycles/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/milestones/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/milestones/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/modules/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/runs/report/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/traceability/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/route.ts",
+    "method": "GET",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/route.ts",
+    "method": "OPTIONS",
+    "posture": "bypass"
+  },
+  {
+    "file": "app/api/v1/runs/[id]/abort/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
+    "file": "app/api/v1/runs/[id]/finish/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
+    "file": "app/api/v1/runs/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/runs/[id]/steps/[stepId]/mark/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
+    "file": "app/api/v1/runs/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
+    "file": "app/api/v1/search/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/tests/[id]/reorder/route.ts",
+    "method": "PATCH",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/tests/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/tests/[id]/runs/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/tests/[id]/tags/route.ts",
+    "method": "PUT",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/tests/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/tests/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/tokens/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "cookie-only"
+  },
+  {
+    "file": "app/api/v1/tokens/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/tokens/route.ts",
+    "method": "POST",
+    "posture": "cookie-only"
+  },
+  {
+    "file": "app/api/v1/user-stories/[id]/acceptance-criteria/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/user-stories/[id]/acceptance-criteria/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/user-stories/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/user-stories/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/user-stories/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/active-runs/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/coverage/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/invites/[inviteId]/route.ts",
+    "method": "DELETE",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/invites/[inviteId]/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/invites/route.ts",
+    "method": "GET",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/invites/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/membership/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/notifications/read-all/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/notifications/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/open-bugs/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/projects/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/recent-projects/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/route.ts",
+    "method": "GET",
+    "posture": "authenticated"
+  },
+  {
+    "file": "app/api/v1/workspaces/route.ts",
+    "method": "POST",
+    "posture": "authenticated"
+  }
+]
