@@ -1285,6 +1285,30 @@
         ],
         "description": "A workspace-wide coverage rollup. THE ROLL-UP RULE: every acceptance criterion in the workspace counts exactly once, whichever project it belongs to (`sum(ac_bound) / sum(ac_total)` over the projects) — NOT the average of the per-project percentages, which would weight a 3-criteria project the same as a 300-criteria one. Both percentages are derived from the counts in the same payload, so a caller can recompute them instead of trusting them."
       },
+      "WorkspaceBillingOverview": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["community", "cloud", "enterprise"],
+            "description": "The workspace's `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it."
+          },
+          "active_seats": {
+            "type": "integer",
+            "description": "Workspace members with `status = 'active'` only. Pending invitations and suspended members never count toward this figure."
+          },
+          "project_count": {
+            "type": "integer",
+            "description": "Every project in the workspace. `projects` carries no soft-delete column, so this is an exact, unfiltered count."
+          },
+          "oldest_run_age_days": {
+            "type": ["integer", "null"],
+            "description": "Age in days of the workspace's oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan's retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion."
+          }
+        },
+        "required": ["plan", "active_seats", "project_count", "oldest_run_age_days"],
+        "description": "A workspace's live billing-relevant counts, admin/owner only."
+      },
       "ModuleCreateResponse": {
         "type": "object",
         "properties": {
@@ -6375,6 +6399,94 @@
         }
       }
     },
+    "/api/v1/workspaces/{id}/billing": {
+      "get": {
+        "tags": ["Workspaces"],
+        "summary": "Read a workspace's plan, seats, and usage overview",
+        "description": "Bearer `atc:read` (or cookie session) — owner/admin only. Same scope floor as the sibling workspace-inventory reads (`/coverage`, `/open-bugs`, `/recent-projects`, `/active-runs`); cookie sessions hold the full capability set, so this constrains PATs only. `bunkai_workspace_billing_overview` is SECURITY INVOKER with no caller-supplied actor parameter; its own step-0 gate (`bunkai_is_workspace_admin`) restricts the read, and this route calls it through the caller's own RLS-scoped client, never a service-role client. A non-admin caller, an unknown workspace id, and a workspace the caller cannot see all collapse into the SAME `404 not_found` — never `403`, so the response never discloses more than the workspace's existence. The tier ladder (limits, price, display name) is NOT part of this payload; look it up client-side in `lib/billing/plan-tiers.ts` keyed by the returned `plan`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's billing overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceBillingOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The workspace id in the path is not a UUID (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — returned uniformly for a non-admin caller, an unknown workspace, and a workspace the caller cannot see (`not_found`, never `403`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{id}/modules": {
       "post": {
         "tags": ["Modules"],
@@ -6441,7 +6553,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6527,6 +6639,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       },
@@ -6595,7 +6717,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6693,7 +6815,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6789,7 +6911,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6875,6 +6997,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       },
@@ -6943,7 +7075,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project's workspace.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7041,7 +7173,7 @@
             }
           },
           "403": {
-            "description": "Caller is a member but holds only the viewer role.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7149,7 +7281,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7245,7 +7377,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the project.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7281,7 +7413,7 @@
       "post": {
         "tags": ["User Stories"],
         "summary": "Create a user story under a module",
-        "description": "Member-only. Anchors the story to the module, validates the title (3–200) and optional Jira key, sanitizes the Markdown description. Duplicate Jira key in the project returns 409.",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Anchors the story to the module, validates the title (3–200) and optional Jira key, sanitizes the Markdown description. Duplicate Jira key in the project returns 409.",
         "security": [
           {
             "cookieAuth": []
@@ -7349,7 +7481,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7393,7 +7525,7 @@
       "get": {
         "tags": ["User Stories"],
         "summary": "List a module's active user stories",
-        "description": "Member-only. Returns active (non-archived) stories, newest first.",
+        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) stories, newest first.",
         "security": [
           {
             "cookieAuth": []
@@ -7435,6 +7567,16 @@
           },
           "401": {
             "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7496,6 +7638,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found.",
             "content": {
@@ -7511,7 +7663,7 @@
       "patch": {
         "tags": ["User Stories"],
         "summary": "Edit a user story",
-        "description": "Member-only. Title / description / Jira key. The Jira key is immutable once set (409 on change).",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Title / description / Jira key. The Jira key is immutable once set (409 on change).",
         "security": [
           {
             "cookieAuth": []
@@ -7579,7 +7731,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7670,7 +7822,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7706,7 +7858,7 @@
       "post": {
         "tags": ["Acceptance Criteria"],
         "summary": "Add an acceptance criterion to a user story",
-        "description": "Member-only. Inserts at the given position (or the tail), atomically shifting active siblings down so positions stay gap-free.",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Inserts at the given position (or the tail), atomically shifting active siblings down so positions stay gap-free.",
         "security": [
           {
             "cookieAuth": []
@@ -7774,7 +7926,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7808,7 +7960,7 @@
       "get": {
         "tags": ["Acceptance Criteria"],
         "summary": "List a story's active acceptance criteria",
-        "description": "Member-only. Returns active (non-archived) criteria in position order.",
+        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns active (non-archived) criteria in position order.",
         "security": [
           {
             "cookieAuth": []
@@ -7850,6 +8002,16 @@
           },
           "401": {
             "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7911,6 +8073,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found.",
             "content": {
@@ -7926,7 +8098,7 @@
       "patch": {
         "tags": ["Acceptance Criteria"],
         "summary": "Edit or reorder an acceptance criterion",
-        "description": "Member-only. Edits title/detail (direct update) and/or moves position (atomic, gap-free re-number).",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Edits title/detail (direct update) and/or moves position (atomic, gap-free re-number).",
         "security": [
           {
             "cookieAuth": []
@@ -7994,7 +8166,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8028,7 +8200,7 @@
       "delete": {
         "tags": ["Acceptance Criteria"],
         "summary": "Soft-delete (archive) an acceptance criterion",
-        "description": "Member-only. Archives the criterion, closes the position gap, and drops the parent story out of ready_to_test when it was the last active criterion (user_story_reverted).",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Archives the criterion, closes the position gap, and drops the parent story out of ready_to_test when it was the last active criterion (user_story_reverted).",
         "security": [
           {
             "cookieAuth": []
@@ -8079,7 +8251,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8115,7 +8287,7 @@
       "post": {
         "tags": ["Imports"],
         "summary": "Start an async Jira import",
-        "description": "Member-only. Enqueues a one-way Jira import for the project and processes it in the background; idempotent on re-run. At most one active import per project (409). Returns immediately with the job id.",
+        "description": "Bearer `atc:write` (or cookie session). Member-only. Enqueues a one-way Jira import for the project and processes it in the background; idempotent on re-run. At most one active import per project (409). Returns immediately with the job id.",
         "security": [
           {
             "cookieAuth": []
@@ -8176,7 +8348,7 @@
             }
           },
           "403": {
-            "description": "Not a member.",
+            "description": "Missing atc:write scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8212,7 +8384,7 @@
       "get": {
         "tags": ["Imports"],
         "summary": "Poll an import job",
-        "description": "Member-only. Returns the job status (queued | running | completed | failed) plus per-run counts and per-issue errors.",
+        "description": "Bearer `atc:read` (or cookie session). Member-only. Returns the job status (queued | running | completed | failed) plus per-run counts and per-issue errors.",
         "security": [
           {
             "cookieAuth": []
@@ -8251,6 +8423,16 @@
           },
           "401": {
             "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope or not a member.",
             "content": {
               "application/json": {
                 "schema": {
