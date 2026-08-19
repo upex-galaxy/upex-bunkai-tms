@@ -3,7 +3,7 @@
 **Jira Key:** [BK-315](https://jira.upexgalaxy.com/browse/BK-315)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
 **Story Points:** 1
 
@@ -76,7 +76,7 @@ No export capability exists anywhere in the product today. The existing Jira imp
 ## Metadata
 
 - **Created:** 8/6/2026
-- **Updated:** 8/17/2026
+- **Updated:** 8/19/2026
 - **Reporter:** Ely
 - **Assignee:** Alfonso Hernandez
 - **Labels:** atc, csv-export, mvp, shift-left-2026-08-16, shift-left-reviewed

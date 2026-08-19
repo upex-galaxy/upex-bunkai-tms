@@ -79,7 +79,7 @@ Grouped into 2 PRs — Group 1 (Foundation + Authoring writes), Group 2 (Reporti
 
 ### Storys (3)
 
-- [BK-497](https://jira.upexgalaxy.com/browse/BK-497): PAT | Require every API route to declare its capability posture _(Ready For Dev)_
+- [BK-497](https://jira.upexgalaxy.com/browse/BK-497): PAT | Require every API route to declare its capability posture _(In Test)_
 - [BK-498](https://jira.upexgalaxy.com/browse/BK-498): PAT | Enforce capability scopes on the authoring domain _(Ready For Dev)_
 - [BK-499](https://jira.upexgalaxy.com/browse/BK-499): PAT | Enforce capability scopes on read, identity and notification routes _(Backlog)_
 

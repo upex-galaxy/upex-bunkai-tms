@@ -3,9 +3,9 @@
 **Jira Key:** [BK-202](https://jira.upexgalaxy.com/browse/BK-202)
 **Epic:** [BK-201](https://jira.upexgalaxy.com/browse/BK-201) (Test Plans & Milestones)
 **Type:** Story
-**Status:** Estimation
+**Status:** Ready For Dev
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 3
 
 ---
 
@@ -108,7 +108,7 @@ Bunkai teams already assemble Tests and execute them through manual Runs. A Test
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 8/15/2026
+- **Updated:** 8/19/2026
 - **Reporter:** Ely
 - **Assignee:** Alfonso Hernandez
 - **Labels:** new-feature, post-mvp, shift-left-2026-08-14, shift-left-reviewed
