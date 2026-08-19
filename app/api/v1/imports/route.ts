@@ -82,7 +82,4 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   after(async () => runImportJob(data.id));
 
   return jsonResponse({ import_job_id: data.id, status: data.status }, { status: 202 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (project sub-resources).',
-});
+}, { auth: 'required', requires: ['atc:write'] });

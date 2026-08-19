@@ -48,10 +48,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ user_story: data }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (modules / user stories / acceptance criteria).',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const storyId = extractStoryId(request);
@@ -198,10 +195,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ user_story: resultRow }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (modules / user stories / acceptance criteria).',
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const storyId = extractStoryId(request);
@@ -245,10 +239,7 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ user_story: data }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (modules / user stories / acceptance criteria).',
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractStoryId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

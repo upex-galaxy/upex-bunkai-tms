@@ -64,7 +64,7 @@ registry.registerPath({
     },
     400: { description: 'Malformed project id or invalid JSON body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not a member of the project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'A module with this name already exists under the same parent.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (name, description, depth, or parent).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

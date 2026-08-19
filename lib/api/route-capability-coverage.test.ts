@@ -19,8 +19,10 @@ import { describe, expect, it } from 'bun:test';
 //      without this test.
 //   2. A posture can be silently downgraded — `required` traded for
 //      `authenticated` — which compiles fine and removes a real gate.
-//   3. The 46 handlers currently carrying a BK-498 / BK-499 placeholder `why`
-//      need to be enumerable so the two successor Stories can find them.
+//   3. The handlers still carrying a BK-499 placeholder `why` need to be
+//      enumerable so the remaining successor Story can find them. BK-497 left
+//      46 such handlers; BK-498 resolved its 22 (authoring domain), so 24
+//      remain, all of them BK-499's.
 //
 // SCOPE: `app/api` only, which is what BK-497 ratified. Route handlers exist
 // elsewhere under `app/` — `app/auth/callback/route.ts` and
@@ -123,6 +125,42 @@ describe('BK-497 — every API route handler declares a capability posture', () 
       // `NonEmpty<Capability>` makes this a compile error, so this asserts the
       // scanner agrees with the compiler rather than re-proving the type.
       expect(caps.length).toBeGreaterThan(0);
+    }
+  });
+
+  // BK-498 — the verb invariant for the authoring domain.
+  //
+  // The snapshot above is regenerated FROM the source it checks, so on its own
+  // it is a change-detector, not a correctness check: flipping a PATCH to
+  // `atc:read` and regenerating would be recorded, not rejected. This test is
+  // the correctness half. It encodes the ratified mapping directly, so all 22
+  // authoring handlers are held to it — not just the two that the DB-integration
+  // suite (`capability-enforcement.test.ts`) can afford to execute for real.
+  it('holds every authoring-domain handler to the ratified verb mapping', () => {
+    const AUTHORING = [
+      'app/api/v1/acceptance-criteria/[id]/route.ts',
+      'app/api/v1/environments/[id]/route.ts',
+      'app/api/v1/imports/route.ts',
+      'app/api/v1/imports/[id]/route.ts',
+      'app/api/v1/milestones/[id]/route.ts',
+      'app/api/v1/modules/[id]/route.ts',
+      'app/api/v1/modules/[id]/user-stories/route.ts',
+      'app/api/v1/projects/[id]/environments/route.ts',
+      'app/api/v1/projects/[id]/milestones/route.ts',
+      'app/api/v1/projects/[id]/modules/route.ts',
+      'app/api/v1/user-stories/[id]/route.ts',
+      'app/api/v1/user-stories/[id]/acceptance-criteria/route.ts',
+    ];
+
+    const rows = actual.filter(r => AUTHORING.includes(r.file));
+    // Guard the guard: a rename that silently emptied this set would otherwise
+    // make every assertion below vacuously true.
+    expect(rows).toHaveLength(22);
+
+    for (const row of rows) {
+      const expected = row.method === 'GET' ? 'required:atc:read' : 'required:atc:write';
+      expect(`${row.file}::${row.method} -> ${row.posture}`)
+        .toBe(`${row.file}::${row.method} -> ${expected}`);
     }
   });
 });

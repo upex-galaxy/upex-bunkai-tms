@@ -53,6 +53,7 @@ registry.registerPath({
     },
     400: { description: 'Malformed project id.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
@@ -78,7 +79,7 @@ registry.registerPath({
     },
     400: { description: 'Malformed project id or invalid JSON body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not a member of the project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'An environment with this name already exists.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (name empty or > 50 chars).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
