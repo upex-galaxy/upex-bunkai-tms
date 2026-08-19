@@ -41,10 +41,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ milestones: data ?? [] }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (project sub-resources).',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const projectId = extractProjectId(request);
@@ -77,10 +74,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ milestone: data }, { status: 201 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (project sub-resources).',
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractProjectId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

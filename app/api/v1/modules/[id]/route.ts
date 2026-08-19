@@ -145,10 +145,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ module: result }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (modules / user stories / acceptance criteria).',
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const moduleId = extractModuleId(request);
@@ -185,10 +182,7 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ archived: data }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-498 pending — authoring domain (modules / user stories / acceptance criteria).',
-});
+}, { auth: 'required', requires: ['atc:write'] });
 
 // Reads the module by id (RLS-scoped, active only) and throws 404 when absent.
 async function assertActiveModule(

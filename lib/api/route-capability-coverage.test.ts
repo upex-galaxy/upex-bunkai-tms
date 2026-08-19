@@ -19,8 +19,10 @@ import { describe, expect, it } from 'bun:test';
 //      without this test.
 //   2. A posture can be silently downgraded — `required` traded for
 //      `authenticated` — which compiles fine and removes a real gate.
-//   3. The 46 handlers currently carrying a BK-498 / BK-499 placeholder `why`
-//      need to be enumerable so the two successor Stories can find them.
+//   3. The handlers still carrying a BK-499 placeholder `why` need to be
+//      enumerable so the remaining successor Story can find them. BK-497 left
+//      46 such handlers; BK-498 resolved its 22 (authoring domain), so 24
+//      remain, all of them BK-499's.
 //
 // SCOPE: `app/api` only, which is what BK-497 ratified. Route handlers exist
 // elsewhere under `app/` — `app/auth/callback/route.ts` and
