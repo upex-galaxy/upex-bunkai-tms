@@ -127,4 +127,40 @@ describe('BK-497 — every API route handler declares a capability posture', () 
       expect(caps.length).toBeGreaterThan(0);
     }
   });
+
+  // BK-498 — the verb invariant for the authoring domain.
+  //
+  // The snapshot above is regenerated FROM the source it checks, so on its own
+  // it is a change-detector, not a correctness check: flipping a PATCH to
+  // `atc:read` and regenerating would be recorded, not rejected. This test is
+  // the correctness half. It encodes the ratified mapping directly, so all 22
+  // authoring handlers are held to it — not just the two that the DB-integration
+  // suite (`capability-enforcement.test.ts`) can afford to execute for real.
+  it('holds every authoring-domain handler to the ratified verb mapping', () => {
+    const AUTHORING = [
+      'app/api/v1/acceptance-criteria/[id]/route.ts',
+      'app/api/v1/environments/[id]/route.ts',
+      'app/api/v1/imports/route.ts',
+      'app/api/v1/imports/[id]/route.ts',
+      'app/api/v1/milestones/[id]/route.ts',
+      'app/api/v1/modules/[id]/route.ts',
+      'app/api/v1/modules/[id]/user-stories/route.ts',
+      'app/api/v1/projects/[id]/environments/route.ts',
+      'app/api/v1/projects/[id]/milestones/route.ts',
+      'app/api/v1/projects/[id]/modules/route.ts',
+      'app/api/v1/user-stories/[id]/route.ts',
+      'app/api/v1/user-stories/[id]/acceptance-criteria/route.ts',
+    ];
+
+    const rows = actual.filter(r => AUTHORING.includes(r.file));
+    // Guard the guard: a rename that silently emptied this set would otherwise
+    // make every assertion below vacuously true.
+    expect(rows).toHaveLength(22);
+
+    for (const row of rows) {
+      const expected = row.method === 'GET' ? 'required:atc:read' : 'required:atc:write';
+      expect(`${row.file}::${row.method} -> ${row.posture}`)
+        .toBe(`${row.file}::${row.method} -> ${expected}`);
+    }
+  });
 });

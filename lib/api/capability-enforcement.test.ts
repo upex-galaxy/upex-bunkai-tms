@@ -48,18 +48,22 @@ function service(): Db {
   return createClient<Database>(url!, serviceKey!, { auth: { persistSession: false } });
 }
 
-// Reuse an existing active member rather than seeding a workspace: the write
-// under test goes through `bunkai_create_module`, which role-gates on real
-// workspace membership. A synthetic user with no membership would be rejected
-// by the ROLE gate and never reach the CAPABILITY gate — the suite would then
-// pass for the wrong reason.
+// Reuse an existing active member rather than seeding a workspace: the module
+// insert at `app/api/v1/projects/[id]/modules/route.ts` is RLS-scoped through
+// the caller's impersonating client, and a Postgres 42501 is mapped to a 403.
+// A synthetic user with no membership would be stopped by that RLS policy and
+// never reach the CAPABILITY gate — the suite would then pass for the wrong
+// reason, proving only that a stranger cannot write.
 async function findWritableMember(db: Db): Promise<MemberRow | null> {
-  const { data: members } = await db
+  const { data: members, error } = await db
     .from('workspace_members')
-    .select('user_id, workspace_id, role, status');
-  return (members as MemberRow[] | null)?.find(
-    m => m.status === 'active' && ['member', 'admin', 'owner'].includes(m.role),
-  ) ?? null;
+    .select('user_id, workspace_id, role, status')
+    .eq('status', 'active')
+    .in('role', ['member', 'admin', 'owner'])
+    .order('user_id')
+    .limit(1);
+  if (error) { throw error; }
+  return (members as MemberRow[] | null)?.[0] ?? null;
 }
 
 function createModuleRequest(projectId: string, token: string, name: string): NextRequest {
@@ -95,11 +99,17 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
     moduleId: string
     writeToken: string
     readToken: string
+    userId: string
+    workspaceId: string
+    prefix: string
   } | null = null;
   let skipReason: string | null = null;
 
+  // `expiresInDays: 1`, never null. These are real, working credentials for a
+  // real account in a SHARED database. If a run is killed before `afterAll`,
+  // a non-expiring token would survive indefinitely; a 1-day token cannot.
   async function mintFor(db: Db, userId: string, name: string, scopes: Capability[]) {
-    const pat = await mintPat({ admin: db, userId, name, scopes, expiresInDays: null });
+    const pat = await mintPat({ admin: db, userId, name, scopes, expiresInDays: 1 });
     createdTokenIds.push(pat.id);
     return pat;
   }
@@ -141,6 +151,9 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
       moduleId: seedModule.id,
       writeToken: writePat.token,
       readToken: readPat.token,
+      userId: writer.user_id,
+      workspaceId: writer.workspace_id,
+      prefix,
     };
   });
 
@@ -149,12 +162,20 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
     const db = service();
     // Projects cascade to modules / user_stories (migrations 0002/0003), the
     // same teardown posture as the traceability regression suite.
+    //
+    // Every delete is error-checked and THROWS. A silent failure here would
+    // leave live credentials for a real account in a shared database, which is
+    // exactly the residue this teardown exists to prevent — so a failed cleanup
+    // must be loud, not swallowed.
     if (createdProjectIds.length > 0) {
-      await db.from('projects').delete().in('id', createdProjectIds);
+      const { error } = await db.from('projects').delete().in('id', createdProjectIds);
+      if (error) { throw error; }
     }
     for (const id of createdTokenIds) {
-      await db.from('access_token_secrets').delete().eq('token_id', id);
-      await db.from('access_tokens').delete().eq('id', id);
+      const { error: secretError } = await db.from('access_token_secrets').delete().eq('token_id', id);
+      if (secretError) { throw secretError; }
+      const { error: tokenError } = await db.from('access_tokens').delete().eq('id', id);
+      if (tokenError) { throw tokenError; }
     }
   });
 
@@ -181,7 +202,8 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
   // AC-01 — the positive control. Without it, the assertion above is satisfied
   // by any breakage at all and proves nothing about the capability gate.
   // THIS is the real production write path: the exported handler, a real PAT,
-  // the real `bunkai_create_module` RPC, and a row read back from the database.
+  // the real RLS-scoped insert the route performs through the caller's
+  // impersonating client, and the row read back by an independent client.
   it('allows a POST /projects/{id}/modules from a PAT scoped exactly atc:write', async () => {
     if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
     const db = service();
@@ -211,20 +233,50 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
     if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
     const db = service();
 
-    // Prove the precondition rather than assume mintPat's default.
-    const { data: tokenRows } = await db
+    // Prove the precondition rather than assume mintPat's default. Asserting
+    // the exact row count first — a partial result would let the loop below
+    // "pass" while silently checking only some of the tokens.
+    const { data: tokenRows, error } = await db
       .from('access_tokens')
       .select('id, workspace_id')
       .in('id', createdTokenIds);
-    expect((tokenRows ?? []).length).toBeGreaterThan(0);
+    if (error) { throw error; }
+    expect(tokenRows).toHaveLength(createdTokenIds.length);
     for (const row of tokenRows ?? []) {
       expect(row.workspace_id).toBeNull();
     }
 
-    const response = await createModule(
+    const unboundResponse = await createModule(
       createModuleRequest(fixture.projectId, fixture.writeToken, 'bk498 unbound module'),
     );
-    expect(response.status).toBe(201);
+    expect(unboundResponse.status).toBe(201);
+
+    // The contrast that makes this test about BINDING rather than a rerun of
+    // AC-01: a second atc:write PAT that IS bound to the target workspace must
+    // reach the same 201. Capability and workspace binding are independent —
+    // gating authoring on `atc:write` must neither start requiring a binding
+    // nor start rejecting one.
+    const boundPat = await mintPat({
+      admin: db,
+      userId: fixture.userId,
+      name: `${fixture.prefix}-bound`,
+      scopes: ['atc:write'],
+      workspaceId: fixture.workspaceId,
+      expiresInDays: 1,
+    });
+    createdTokenIds.push(boundPat.id);
+
+    const { data: boundRow } = await db
+      .from('access_tokens')
+      .select('workspace_id')
+      .eq('id', boundPat.id)
+      .single();
+    expect(boundRow?.workspace_id).toBe(fixture.workspaceId);
+
+    const boundResponse = await createModule(
+      createModuleRequest(fixture.projectId, boundPat.token, 'bk498 bound module'),
+    );
+    expect(boundResponse.status).toBe(201);
   });
 
   // AC-08a — the read side of the same domain. A read-scoped token must still
