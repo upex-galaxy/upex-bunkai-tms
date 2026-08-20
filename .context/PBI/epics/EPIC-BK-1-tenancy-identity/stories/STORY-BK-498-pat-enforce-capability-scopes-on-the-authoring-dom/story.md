@@ -3,7 +3,7 @@
 **Jira Key:** [BK-498](https://jira.upexgalaxy.com/browse/BK-498)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 8
 
@@ -37,6 +37,7 @@ This Story is one of three successors split from ***BK-262*** ("PAT | Enforce ca
 - [Business Rules](./business-rules.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
@@ -44,7 +45,7 @@ This Story is one of three successors split from ***BK-262*** ("PAT | Enforce ca
 
 ### Storys (2)
 
-- [BK-497](https://jira.upexgalaxy.com/browse/BK-497): PAT | Require every API route to declare its capability posture _(In Test)_
+- [BK-497](https://jira.upexgalaxy.com/browse/BK-497): PAT | Require every API route to declare its capability posture _(QA Approved)_
 - [BK-262](https://jira.upexgalaxy.com/browse/BK-262): PAT | Enforce capability scopes on every non-ATC route _(ABORTED)_
 
 ---
@@ -52,9 +53,9 @@ This Story is one of three successors split from ***BK-262*** ("PAT | Enforce ca
 ## Metadata
 
 - **Created:** 8/17/2026
-- **Updated:** 8/17/2026
+- **Updated:** 8/19/2026
 - **Reporter:** Ely
-- **Assignee:** Unassigned
+- **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** shift-left-2026-08-14, shift-left-reviewed
 
 ---
