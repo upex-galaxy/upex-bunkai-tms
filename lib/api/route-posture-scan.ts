@@ -31,12 +31,24 @@ export const BYPASS_POSTURE = 'bypass';
 // prevent, since neither the type union nor the scan would see the handler.
 export const INDIRECT_EXPORT_POSTURE = 'indirect-export';
 
+// A handler routed through `withApiHandler` whose options argument declares no
+// `auth` at all. The `WithApiHandlerOptions` union makes that a compile error,
+// so the ordinary path cannot produce it — but `bun test` does not type-check,
+// so any run that reaches this scan without `types:check` first (a reordered
+// CI, a bypassed pre-commit hook, a cast) can. Reported as a row rather than
+// thrown so the offending handler is NAMED by
+// `it('leaves no handler without a posture')` instead of taking down every
+// assertion in the file with an unhandled error (BK-542). Deliberately falsy:
+// that assertion filters on `!row.posture`, and the scan is the producer that
+// assertion was written for.
+export const UNDECLARED_POSTURE = '';
+
 export interface RouteHandlerPosture {
   // Repo-relative, forward-slashed, e.g. `app/api/v1/atcs/route.ts`.
   file: string
   method: string
   // `public` | `cookie-only` | `authenticated` | `required:<cap>,<cap>`
-  // | `bypass` | `indirect-export`
+  // | `bypass` | `indirect-export` | `''` (undeclared)
   posture: string
   // The mandatory justification on the no-capability postures, so the test can
   // assert per handler instead of grepping the whole file.
@@ -141,9 +153,12 @@ function postureAt(source: string, exportStart: number): { posture: string, why?
 
   const auth = /\bauth\s*:\s*'([a-z-]+)'/.exec(options);
   if (!auth) {
-    // Only reachable if the union were widened or bypassed with a cast; the
-    // type makes the ordinary path impossible.
-    throw new Error(`withApiHandler call at offset ${exportStart} declares no auth posture`);
+    // Reachable whenever the scan runs on source the compiler has not seen —
+    // `bun test` does not type-check, so a reordered CI or a bypassed hook is
+    // enough. Report the handler as undeclared instead of throwing: a throw
+    // here propagates out of the `describe` body and kills every assertion in
+    // the coverage suite at once, hiding both this route and every other one.
+    return { posture: UNDECLARED_POSTURE };
   }
 
   const whyMatch = /\bwhy\s*:\s*(['"])((?:\\.|(?!\1).)*)\1/.exec(options);
@@ -155,7 +170,12 @@ function postureAt(source: string, exportStart: number): { posture: string, why?
 
   const requires = /\brequires\s*:\s*\[([^\]]*)\]/.exec(options);
   if (!requires) {
-    throw new Error(`auth: 'required' at offset ${exportStart} declares no requires list`);
+    // Same class as the missing `auth` above, and the same reason not to throw:
+    // `NonEmpty<Capability>` makes it a compile error, and the scan can still
+    // meet it on un-type-checked source. `required:` with no capabilities lands
+    // on `it('declares at least one capability wherever the posture is
+    // required')`, which names the handler.
+    return { posture: 'required:' };
   }
   const caps = [...requires[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
   return { posture: `required:${caps.join(',')}` };
