@@ -32,10 +32,13 @@
 --      with no app-layer TOCTOU window. Self-exclusion on rename is
 --      automatic: updating a row to a value it already holds does not violate
 --      the index, because it is the same row.
---   4. No DELETE policy and no delete RPC. Ratified T4, epic-wide: there is
---      no Delete for a Test Plan, ever — Close (sibling story BK-207) is the
---      sole exit from Open. Same default-deny-on-writes precedent
---      `0031_runs.sql` set for `project_environments` and `0064` repeated.
+--   4. NO write policy of any kind — no INSERT, no UPDATE, no DELETE. The two
+--      DEFINER RPCs are the only path that creates or changes a row, so the
+--      table is default-deny on writes (the `0031_runs.sql` /
+--      `project_environments` precedent). Section 2 records the measurement
+--      that made this table decline 0064's member+ write policies, and why
+--      Delete is absent permanently (ratified T4: Close, sibling story
+--      BK-207, is the sole exit from Open).
 --   5. `created_by` is stored for audit/display ONLY and is never read as an
 --      authorization input. Ratified: any project member with role >= member
 --      may edit any plan, not only its creator (a plan is a team-shared
@@ -126,21 +129,44 @@ create policy test_plans_select_workspace_member
   on public.test_plans for select
   using ( public.bunkai_is_workspace_member(workspace_id) );
 
--- Writes are member+. Defense in depth: the RPCs are DEFINER and are the
--- enforcement point of record, but the policy surface stays consistent with
--- the milestone/module/environment precedent.
+-- NO INSERT, UPDATE or DELETE policy. This table is DEFAULT-DENY on every
+-- direct write, and the two DEFINER RPCs below are the only way a row is
+-- created or changed.
+--
+-- 0064_milestones.sql carries member+ INSERT/UPDATE policies and calls them
+-- "defense in depth". Measured on this project (2026-08-20,
+-- information_schema.role_table_grants), that description is wrong: Supabase's
+-- default privileges grant INSERT and UPDATE on every public table to
+-- `authenticated`, so such a policy is not a second lock behind the RPC — it
+-- is a live PostgREST write path BESIDE it. Three consequences made this
+-- table decline to inherit the shape:
+--   a. `status` would be directly settable, so any member+ could
+--      `PATCH /rest/v1/test_plans {"status":"closed"}` and close a plan
+--      without the verdict and summary BK-207 exists to capture — silently
+--      contradicting this file's own claim that nothing here writes 'closed'.
+--   b. Every direct write skips the activity_log rows the RPCs emit, so the
+--      audit trail would have holes precisely where someone bypassed the
+--      intended path.
+--   c. `with check (bunkai_can_write_workspace(workspace_id))` never relates
+--      `project_id` to `workspace_id`. A member of workspace A could insert
+--      `workspace_id = A` with a `project_id` belonging to workspace B: a row
+--      invisible to B under the SELECT policy, yet occupying that name in
+--      test_plans_project_name_idx and denying it to B's own members with a
+--      conflict for a plan they cannot see.
+-- Dropping the policies costs nothing — a DEFINER function bypasses RLS
+-- (FORCE ROW LEVEL SECURITY is set nowhere in this schema, per ADR-0012), so
+-- both RPCs keep working unchanged. This is the same default-deny-on-writes
+-- posture 0031_runs.sql set for project_environments, which this file's
+-- header already cites as the precedent for withholding DELETE.
+--
+-- The `drop policy if exists` statements are retained deliberately so a
+-- re-apply removes the policies from any environment where an earlier draft
+-- of this migration created them.
 drop policy if exists test_plans_insert_workspace_role_member_plus on public.test_plans;
-create policy test_plans_insert_workspace_role_member_plus
-  on public.test_plans for insert
-  with check ( public.bunkai_can_write_workspace(workspace_id) );
-
 drop policy if exists test_plans_update_workspace_role_member_plus on public.test_plans;
-create policy test_plans_update_workspace_role_member_plus
-  on public.test_plans for update
-  using      ( public.bunkai_can_write_workspace(workspace_id) )
-  with check ( public.bunkai_can_write_workspace(workspace_id) );
+drop policy if exists test_plans_delete_workspace_role_member_plus on public.test_plans;
 
--- No DELETE policy and no delete RPC — ratified T4 (2026-08-14), epic-wide:
+-- On DELETE specifically — ratified T4 (2026-08-14), epic-wide:
 -- Close is the only exit from Open and Delete is permanently out of scope for
 -- Test Plans. Shipping an unreachable delete path is an unrequested,
 -- unreviewed capability with its own cascade/audit design questions answered

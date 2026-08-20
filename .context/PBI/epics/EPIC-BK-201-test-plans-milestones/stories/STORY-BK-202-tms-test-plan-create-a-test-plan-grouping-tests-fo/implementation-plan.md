@@ -95,7 +95,29 @@ as the sole exit epic-wide, so the value domain is already decided; pinning the 
 value domain, not a capability — the "ship nothing unrequested" precedent applies to
 capabilities (the missing DELETE path), and no capability to close a plan ships here.
 
-### 3.4 Edit-while-open guard
+### 3.4 No write policies — a deliberate departure from the milestones precedent
+
+`0064_milestones.sql` ships member+ INSERT/UPDATE RLS policies and calls them
+"defense in depth". Measured on this project (`information_schema.role_table_grants`,
+2026-08-20), that framing is wrong: Supabase's default privileges grant INSERT, UPDATE
+and DELETE on every `public` table to `authenticated`, so such a policy is not a lock
+behind the RPC — it is a second, unaudited write path beside it. On this table that would
+have meant a member+ could `PATCH /rest/v1/test_plans {"status":"closed"}` with no verdict
+and no `activity_log` row, and could insert a row whose `project_id` belongs to a workspace
+they cannot see, silently occupying a name in `test_plans_project_name_idx`.
+
+`test_plans` therefore ships **SELECT-only RLS**: default-deny on every direct write, with
+the two DEFINER RPCs as the sole write path. Costs nothing — a DEFINER function bypasses RLS
+(`FORCE ROW LEVEL SECURITY` is set nowhere in this schema, per ADR-0012). This is the same
+default-deny-on-writes posture `0031_runs.sql` set for `project_environments`. Proven by
+case (l) of the isolation suite, which attempts all three direct writes as a real member+
+session and asserts the stored row is unchanged.
+
+The equivalent gap on `milestones` is **not** retrofitted here — that is an untested security
+change smuggled into a diff nobody planned for it, exactly what ADR-0012's own "22 unbound
+functions" note refuses. It is flagged for its own ticket.
+
+### 3.5 Edit-while-open guard
 
 `scope.md` says "Edit a plan's name, description, and goal **while the plan is open**".
 `bunkai_update_test_plan` enforces it structurally (`45603`). It is unreachable through any
@@ -103,14 +125,14 @@ shipped write path today, but it is **provable**: the isolation test seeds a clo
 through the service-role client and asserts the edit is rejected — the same technique
 `milestone-rpc-isolation.test.ts` case (h) uses for a past-dated milestone.
 
-### 3.5 List ordering / index
+### 3.6 List ordering / index
 
 Default sort `created_at desc, id desc` (newest cycle first — a plan has no date axis the way
 a milestone does). Index `test_plans_project_created_at_id_idx on (project_id, created_at, id)`
 — the Dev ruling's own recommendation; a plain ascending btree serves the descending scan and
 `id` is the stable tie-break / future keyset seek column.
 
-### 3.6 No ADR needed
+### 3.7 No ADR needed
 
 Nothing here is architectural-and-hard-to-reverse: every shape is a copy of a ratified
 precedent (ADR-0012 by parameter removal, ADR-0001 Path B reads, the milestones table/index/

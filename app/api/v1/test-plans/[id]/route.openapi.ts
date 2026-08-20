@@ -32,7 +32,7 @@ registry.registerPath({
   tags: ['Test Plans'],
   summary: 'Edit a test plan',
   description:
-    'Member-only (role >= member), re-checked live server-side on every call. Same normalize/length rules as create, applied unconditionally to every field — renaming into an existing name in the same project returns 409 under the identical case-insensitive, whitespace-normalized rule that governs create; renaming a plan to the name it already holds is not a conflict. Editing is NOT restricted to the plan\'s creator: any member of the workspace may edit any plan in it. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403. A plan that is no longer open cannot be edited.',
+    'Member-only (role >= member), re-checked live server-side on every call. Same normalize/length rules as create, applied unconditionally to every field — renaming into an existing name in the same project returns 409 under the identical case-insensitive, whitespace-normalized rule that governs create; renaming a plan to the name it already holds is not a conflict. Editing is NOT restricted to the plan\'s creator: any member of the workspace may edit any plan in it. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403. A plan that is no longer open cannot be edited.\n\nThis is a FULL REPLACE, not a partial patch: `description` and `goal` default to empty when omitted, so a body carrying only `name` clears both. Send all three fields.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: {

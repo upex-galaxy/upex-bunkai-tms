@@ -126,28 +126,39 @@ describe('mapTestPlanRpcError', () => {
 
   for (const testCase of cases) {
     test(`maps ${testCase.code} to ${testCase.status} with reason ${testCase.reason}`, () => {
+      // The guard sits OUTSIDE the try: raising it inside would be caught by
+      // the same `catch`, so a mapper that silently returned would fall into
+      // the assertions instead of reporting the real problem.
+      let thrown: unknown;
+      let returned = false;
       try {
         mapTestPlanRpcError({ code: testCase.code, message: 'raw' });
-        throw new Error('mapTestPlanRpcError did not throw');
+        returned = true;
       }
       catch (raw) {
-        const error = raw as { status?: number, message: string, details?: { reason?: string } };
-        expect(error.status).toBe(testCase.status);
-        expect(error.message).toBe(testCase.message);
-        expect(error.details?.reason).toBe(testCase.reason);
+        thrown = raw;
       }
+      expect(returned).toBe(false);
+      const error = thrown as { status?: number, message: string, details?: { reason?: string } };
+      expect(error.status).toBe(testCase.status);
+      expect(error.message).toBe(testCase.message);
+      expect(error.details?.reason).toBe(testCase.reason);
     });
   }
 
   test('falls through to internal_error for an unrecognised code', () => {
+    let thrown: unknown;
+    let returned = false;
     try {
       mapTestPlanRpcError({ code: '99999', message: 'something went sideways' });
-      throw new Error('mapTestPlanRpcError did not throw');
+      returned = true;
     }
     catch (raw) {
-      const error = raw as { status?: number, message: string };
-      expect(error.status).toBe(500);
-      expect(error.message).toBe('something went sideways');
+      thrown = raw;
     }
+    expect(returned).toBe(false);
+    const error = thrown as { status?: number, message: string };
+    expect(error.status).toBe(500);
+    expect(error.message).toBe('something went sideways');
   });
 });

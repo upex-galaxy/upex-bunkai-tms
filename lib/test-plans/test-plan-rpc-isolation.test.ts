@@ -172,10 +172,17 @@ describeOrSkip('BK-202 — test plan RPC isolation (real auth write path, authz,
     // Is the RPC deployed? A nonexistent project always resolves to P0002
     // regardless of the caller's membership anywhere, so this is a safe probe
     // before any fixture exists.
+    // A missing RPC is a DEPLOY defect, not a seed-state hiccup, so it FAILS
+    // here rather than joining the soft-skip path. Letting it skip is exactly
+    // the failure mode ADR-0012 §5 exists to close: the authorization gate
+    // would report green against a database where the function it guards does
+    // not exist.
     const probe = await anon.rpc(CREATE_RPC, { p_project_id: ZERO_UUID, p_name: 'probe' });
     if (probe.error && probe.error.code !== 'P0002') {
-      skipReason = `${CREATE_RPC} is not deployed yet (${probe.error.code ?? 'unknown'}). Apply migration 0073_test_plans.sql.`;
-      return;
+      throw new Error(
+        `${CREATE_RPC} is not deployed (${probe.error.code ?? 'unknown'}: ${probe.error.message}). `
+        + 'Apply migration 0073_test_plans.sql before running this suite.',
+      );
     }
 
     // A real, valid user id, borrowed purely as the workspace's owner_user_id
@@ -302,10 +309,14 @@ describeOrSkip('BK-202 — test plan RPC isolation (real auth write path, authz,
       expect(data).toBeNull();
 
       // And nothing was written — the gate is not merely a returned error.
+      // Scoped to the attempted NAME, not to the whole project: a
+      // project-wide count would turn any earlier test's cleanup failure into
+      // a misleading failure here.
       const { count } = await db
         .from('test_plans')
         .select('id', { count: 'exact', head: true })
-        .eq('project_id', fixture!.projectId);
+        .eq('project_id', fixture!.projectId)
+        .eq('name', `${PREFIX}-viewer-blocked`);
       expect(count ?? 0).toBe(0);
     });
   });
@@ -567,10 +578,84 @@ describeOrSkip('BK-202 — test plan RPC isolation (real auth write path, authz,
 
     await db.from('test_plans').delete().eq('id', planId);
   });
+  it('(k) RLS scopes the READ: a non-member\'s own session sees none of the project\'s plans, while a member sees them', async () => {
+    if (!fixture || !anon) { return warn(); }
+    const db = service();
+
+    let planId = '';
+    await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
+      const created = await create(anon!, { projectId: fixture!.projectId, name: `${PREFIX}-read-scope` });
+      expect(created.error).toBeNull();
+      planId = (created.data as unknown as TestPlanJson).id;
+
+      // A member DOES see it through their own RLS-scoped session — without
+      // this half, the non-member assertion below would also pass against a
+      // table that is simply empty or unreadable by everyone.
+      const visible = await anon!.from('test_plans').select('id').eq('project_id', fixture!.projectId);
+      expect(visible.error).toBeNull();
+      expect((visible.data ?? []).map(r => r.id)).toContain(planId);
+    });
+
+    // Same session, no longer a member of that workspace: the rows vanish.
+    const hidden = await anon.from('test_plans').select('id').eq('project_id', fixture.projectId);
+    expect(hidden.error).toBeNull();
+    expect(hidden.data ?? []).toHaveLength(0);
+
+    await db.from('test_plans').delete().eq('id', planId);
+  });
+
+  it('(l) the table is default-deny on DIRECT writes: a member+ cannot INSERT, UPDATE or DELETE through PostgREST, only through the RPCs', async () => {
+    if (!fixture || !anon) { return warn(); }
+    const db = service();
+
+    let planId = '';
+    await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
+      const created = await create(anon!, { projectId: fixture!.projectId, name: `${PREFIX}-direct-write` });
+      expect(created.error).toBeNull();
+      planId = (created.data as unknown as TestPlanJson).id;
+
+      // `authenticated` holds INSERT/UPDATE/DELETE grants on every public
+      // table by Supabase default, so the ONLY thing standing between a
+      // member and a direct write is the absence of a write policy. That is
+      // the property this case pins: without it, a member could set
+      // status='closed' with no verdict and no activity_log row, and could
+      // plant a row whose project_id belongs to a workspace they cannot see.
+      const directInsert = await anon!.from('test_plans').insert({
+        workspace_id: fixture!.workspaceId,
+        project_id: fixture!.projectId,
+        name: `${PREFIX}-direct-insert`,
+      });
+      expect(directInsert.error).not.toBeNull();
+
+      const directClose = await anon!.from('test_plans').update({ status: 'closed' }).eq('id', planId);
+      // PostgREST reports an RLS-filtered UPDATE as a no-op rather than an
+      // error, so the assertion is on the STORED value, not on the response.
+      expect(directClose.error).toBeNull();
+
+      const directDelete = await anon!.from('test_plans').delete().eq('id', planId);
+      expect(directDelete.error).toBeNull();
+
+      const { data: after } = await db
+        .from('test_plans')
+        .select('id, status')
+        .eq('id', planId)
+        .maybeSingle();
+      expect(after).not.toBeNull();
+      expect(after?.status).toBe('open');
+
+      const { count: plantedCount } = await db
+        .from('test_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('name', `${PREFIX}-direct-insert`);
+      expect(plantedCount ?? 0).toBe(0);
+    });
+
+    await db.from('test_plans').delete().eq('id', planId);
+  });
 });
 
-// The suite never fails on missing migration / seed state / login — it says
-// why and passes.
+// The suite never fails on seed state / login — it says why and passes. A
+// MISSING MIGRATION is the deliberate exception and throws (see beforeAll).
 function warn() {
   console.warn(`[test-plan-rpc-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
 }

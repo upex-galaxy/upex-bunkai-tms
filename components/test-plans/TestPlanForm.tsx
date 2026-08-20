@@ -136,6 +136,10 @@ export function TestPlanForm({
       else {
         toast.success('Test plan details updated');
       }
+      // Reset before handing control back. Both current hosts unmount the form
+      // in `onSaved`, so this is not observable today — but a host that keeps
+      // it mounted would otherwise inherit a permanently disabled submit.
+      setSubmitting(false);
       // Refresh the Server Component so the list / detail picks up the write.
       router.refresh();
       onSaved?.();

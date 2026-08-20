@@ -19,14 +19,23 @@ export const TEST_PLAN_NAME_MAX = 100;
 export const TEST_PLAN_DESCRIPTION_MAX = 500;
 export const TEST_PLAN_GOAL_MAX = 100;
 
-// Collapse THEN trim — see the RPC's own comment on operand order. A
-// single-argument `.trim()` strips ASCII whitespace including tabs/newlines,
-// so this mirrors the RPC's `btrim(regexp_replace(..., '\s+', ' ', 'g'))`
-// closely enough for a client-side pre-check; the RPC remains authoritative.
-// Neither side treats U+00A0 as whitespace — a deliberate scope match with
-// the milestones precedent (BK-202 Technical Question 2), not an oversight.
+// Collapse THEN trim — see the RPC's own comment on operand order. This is an
+// EXACT mirror of the RPC's `btrim(regexp_replace(..., '\s+', ' ', 'g'))`, and
+// the character class is spelled out rather than written `\s` on purpose:
+// JavaScript's `\s` matches U+00A0 (and the rest of Unicode Zs) while
+// Postgres's POSIX `\s` does not. Using `\s` + `.trim()` here would silently
+// normalize a non-breaking space that the database would have stored as-is,
+// so the same name would round-trip differently through the HTTP route than
+// through a direct RPC call — with the table CHECK, not this module, deciding
+// who was right.
+//
+// NOT covering U+00A0 is the ratified scope (BK-202 Technical Question 2:
+// match the milestones precedent, do not widen it unasked). Making both sides
+// agree on that answer is the point of the explicit class.
+const PG_WHITESPACE = /[\t\n\v\f\r ]+/g;
+
 export function normalizeTestPlanText(value: string): string {
-  return value.replaceAll(/\s+/g, ' ').trim();
+  return value.replace(PG_WHITESPACE, ' ').replace(/^ +| +$/g, '');
 }
 
 export const TestPlanNameSchema = z
