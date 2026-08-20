@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 import { cn } from '@lib/utils';
-import { BarChart3, Bug, Flag, GitBranch, Library, Play } from 'lucide-react';
+import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, Play } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -22,6 +22,11 @@ import { usePathname } from 'next/navigation';
 // links, not this file's concern. Without a `?story=` param the destination
 // renders its own "select a user story" prompt (`TraceabilityChainView`) —
 // this entry does not attempt to pre-select one.
+//
+// BK-202 adds a seventh, Test Plans — extending this same array rather than
+// inventing new navigation, which is what Critical Rule #14 requires of a new
+// project-scoped surface. The segment is `plans`, the route
+// master-design-plan §4.11 names for the screen.
 //
 // It lives in the persistent project shell (project-shell.tsx), NOT in each
 // page, so it survives navigation across the project's detail routes — the
@@ -48,6 +53,7 @@ const ENTRIES: SubNavEntry[] = [
   { id: 'metrics', label: 'Metrics', icon: BarChart3, segment: 'metrics' },
   { id: 'traceability', label: 'Traceability', icon: GitBranch, segment: 'traceability' },
   { id: 'milestones', label: 'Milestones', icon: Flag, segment: 'milestones' },
+  { id: 'plans', label: 'Test Plans', icon: ClipboardList, segment: 'plans' },
 ];
 
 function entryHref(projectSlug: string, segment: string | null): string {
