@@ -878,3 +878,46 @@ export async function getWorkspaceBillingOverview(supabase: Client, workspaceId:
     p_workspace_id: workspaceId,
   });
 }
+
+// BK-202 — create / edit a Test Plan via the SECURITY DEFINER RPCs (migration
+// 0073_test_plans.sql). Same contract as the Milestone pair: NO
+// p_actor_user_id — they read auth.uid() directly (ADR-0012 satisfied by
+// parameter removal, not by a guard). The `supabase` argument passed here
+// MUST therefore be the caller's own RLS-scoped client (`getAuth(ctx).db`) —
+// NEVER `createAdminClient()`, whose auth.uid() is NULL and would fail the
+// write-role gate on every call.
+//
+// There is deliberately no `deleteTestPlan`: ratified T4 (2026-08-14) makes
+// Close the sole exit from Open, epic-wide, and the migration ships no DELETE
+// policy and no delete RPC to back one.
+export interface CreateTestPlanArgs {
+  projectId: string
+  name: string
+  description?: string
+  goal?: string
+}
+
+export async function createTestPlan(supabase: Client, args: CreateTestPlanArgs) {
+  return supabase.rpc('bunkai_create_test_plan', {
+    p_project_id: args.projectId,
+    p_name: args.name,
+    p_description: args.description ?? '',
+    p_goal: args.goal ?? '',
+  });
+}
+
+export interface UpdateTestPlanArgs {
+  testPlanId: string
+  name: string
+  description?: string
+  goal?: string
+}
+
+export async function updateTestPlan(supabase: Client, args: UpdateTestPlanArgs) {
+  return supabase.rpc('bunkai_update_test_plan', {
+    p_test_plan_id: args.testPlanId,
+    p_name: args.name,
+    p_description: args.description ?? '',
+    p_goal: args.goal ?? '',
+  });
+}
