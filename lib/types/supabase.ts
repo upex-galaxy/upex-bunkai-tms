@@ -1083,6 +1083,60 @@ export interface Database {
           },
         ]
       }
+      test_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          goal: string
+          id: string
+          name: string
+          project_id: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          goal?: string
+          id?: string
+          name: string
+          project_id: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          goal?: string
+          id?: string
+          name?: string
+          project_id?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'test_plans_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'test_plans_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       test_steps: {
         Row: {
           atc_id: string
@@ -1493,6 +1547,15 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_create_test_plan: {
+        Args: {
+          p_description?: string
+          p_goal?: string
+          p_name: string
+          p_project_id: string
+        }
+        Returns: Json
+      }
       bunkai_delete_environment: {
         Args: { p_actor_user_id: string, p_environment_id: string }
         Returns: Json
@@ -1756,6 +1819,15 @@ export interface Database {
           p_name?: string
           p_new_slug?: string
           p_update_description?: boolean
+        }
+        Returns: Json
+      }
+      bunkai_update_test_plan: {
+        Args: {
+          p_description?: string
+          p_goal?: string
+          p_name: string
+          p_test_plan_id: string
         }
         Returns: Json
       }

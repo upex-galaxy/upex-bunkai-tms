@@ -1603,6 +1603,121 @@
         },
         "required": ["name", "target_date"]
       },
+      "TestPlanListResponse": {
+        "type": "object",
+        "properties": {
+          "test_plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestPlan"
+            },
+            "description": "Ordered by created_at descending, id descending."
+          }
+        },
+        "required": ["test_plans"]
+      },
+      "TestPlan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize (internal whitespace collapsed, then trimmed). Unique per project, case-insensitive."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars."
+          },
+          "goal": {
+            "type": "string",
+            "description": "0–100 chars after normalize. Optional short target/release label, e.g. \"Release 2.4\"."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "closed"],
+            "description": "A new plan is always \"open\". Closing is a separate capability and is not exposed by this API."
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "description",
+          "goal",
+          "status",
+          "created_by",
+          "created_at"
+        ]
+      },
+      "TestPlanCreateResponse": {
+        "type": "object",
+        "properties": {
+          "test_plan": {
+            "$ref": "#/components/schemas/TestPlan"
+          }
+        },
+        "required": ["test_plan"]
+      },
+      "TestPlanCreateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize. Unique per project, case-insensitive."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars. Defaults to empty."
+          },
+          "goal": {
+            "type": "string",
+            "description": "0–100 chars after normalize. Defaults to empty."
+          }
+        },
+        "required": ["name"]
+      },
+      "TestPlanUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "test_plan": {
+            "$ref": "#/components/schemas/TestPlan"
+          }
+        },
+        "required": ["test_plan"]
+      },
+      "TestPlanUpdateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–100 chars after normalize. Unique per project, case-insensitive — re-validated on rename by the same database index that guards create."
+          },
+          "description": {
+            "type": "string",
+            "description": "0–500 chars. Defaults to empty."
+          },
+          "goal": {
+            "type": "string",
+            "description": "0–100 chars after normalize. Defaults to empty."
+          }
+        },
+        "required": ["name"]
+      },
       "ModuleUpdateResponse": {
         "type": "object",
         "properties": {
@@ -7204,6 +7319,288 @@
           },
           "422": {
             "description": "Validation failed (name/description length, or target date out of bounds when changed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/test-plans": {
+      "get": {
+        "tags": ["Test Plans"],
+        "summary": "List a project's test plans",
+        "description": "Lists the project's test plans newest first (created_at descending, id descending as the tie-break). Visible to any workspace member including viewers; a non-member receives an empty list.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test plans listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Test Plans"],
+        "summary": "Create a test plan in a project",
+        "description": "Member-only (role >= member), re-checked live server-side on every call — a viewer calling this endpoint directly receives 403 regardless of what the client believes its role to be. Normalizes the name (collapses internal whitespace, then trims) and enforces 1–100 chars; description is capped at 500 chars and goal at 100. The name is unique per project (case-insensitive, whitespace-normalized) via a database unique index, so two concurrent creates of the same name resolve to exactly one success and one 409. The new plan is always created with status \"open\" and no member tests.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Test plan created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer / not a member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A test plan with this name already exists in the project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name, description or goal length).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-plans/{id}": {
+      "patch": {
+        "tags": ["Test Plans"],
+        "summary": "Edit a test plan",
+        "description": "Member-only (role >= member), re-checked live server-side on every call. Same normalize/length rules as create, applied unconditionally to every field — renaming into an existing name in the same project returns 409 under the identical case-insensitive, whitespace-normalized rule that governs create; renaming a plan to the name it already holds is not a conflict. Editing is NOT restricted to the plan's creator: any member of the workspace may edit any plan in it. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403. A plan that is no longer open cannot be edited.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanUpdateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test plan updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A test plan with this name already exists in the project, or the plan is no longer open.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name, description or goal length).",
             "content": {
               "application/json": {
                 "schema": {
