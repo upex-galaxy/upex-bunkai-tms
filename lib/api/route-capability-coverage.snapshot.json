@@ -249,6 +249,16 @@
     "why": "BK-499 pending — reporting reads."
   },
   {
+    "file": "app/api/v1/projects/[id]/test-plans/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/test-plans/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/projects/[id]/traceability/route.ts",
     "method": "GET",
     "posture": "authenticated",
@@ -294,6 +304,11 @@
     "file": "app/api/v1/search/route.ts",
     "method": "GET",
     "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/test-plans/[id]/route.ts",
+    "method": "PATCH",
+    "posture": "required:atc:write"
   },
   {
     "file": "app/api/v1/tests/[id]/reorder/route.ts",
