@@ -54,10 +54,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const report = buildDefectHeatmapReport(raw);
 
   return jsonResponse(report, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/bugs/heatmap`, so the id is the third-to-last segment.

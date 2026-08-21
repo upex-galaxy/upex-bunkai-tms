@@ -5554,7 +5554,7 @@
       "get": {
         "tags": ["Workspaces"],
         "summary": "List workspaces the caller belongs to",
-        "description": "RLS-filtered list of every workspace where the caller has an active membership.",
+        "description": "Bearer `atc:read` (or cookie session). RLS-filtered list of every workspace where the caller has an active membership.",
         "security": [
           {
             "cookieAuth": []
@@ -5583,6 +5583,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -5591,6 +5601,7 @@
       "get": {
         "tags": ["Workspaces"],
         "summary": "Get a single workspace",
+        "description": "Bearer `atc:read` (or cookie session).",
         "security": [
           {
             "cookieAuth": []
@@ -5623,6 +5634,16 @@
           },
           "401": {
             "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6064,7 +6085,7 @@
       "post": {
         "tags": ["Projects"],
         "summary": "Create a project in a workspace",
-        "description": "Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.",
+        "description": "Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.",
         "security": [
           {
             "cookieAuth": []
@@ -6126,7 +6147,7 @@
             }
           },
           "403": {
-            "description": "Caller is not a member of the workspace.",
+            "description": "Missing atc:write scope, or caller is not a member of the workspace.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7508,7 +7529,7 @@
       "patch": {
         "tags": ["Test Plans"],
         "summary": "Edit a test plan",
-        "description": "Member-only (role >= member), re-checked live server-side on every call. Same normalize/length rules as create, applied unconditionally to every field — renaming into an existing name in the same project returns 409 under the identical case-insensitive, whitespace-normalized rule that governs create; renaming a plan to the name it already holds is not a conflict. Editing is NOT restricted to the plan's creator: any member of the workspace may edit any plan in it. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403. A plan that is no longer open cannot be edited.",
+        "description": "Member-only (role >= member), re-checked live server-side on every call. Same normalize/length rules as create, applied unconditionally to every field — renaming into an existing name in the same project returns 409 under the identical case-insensitive, whitespace-normalized rule that governs create; renaming a plan to the name it already holds is not a conflict. Editing is NOT restricted to the plan's creator: any member of the workspace may edit any plan in it. Non-members receive a non-disclosing 404; a member with only the viewer role receives 403. A plan that is no longer open cannot be edited.\n\nThis is a FULL REPLACE, not a partial patch: `description` and `goal` default to empty when omitted, so a body carrying only `name` clears both. Send all three fields.",
         "security": [
           {
             "cookieAuth": []
@@ -9595,7 +9616,7 @@
       "get": {
         "tags": ["Tests"],
         "summary": "Read a Test with its chain of ATCs fully expanded",
-        "description": "Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Test header plus the ordered chain of ATCs, each expanded inline with its ordered steps and assertions, in one round trip. Live content (references, not snapshots). Non-disclosing: missing, not-visible, and foreign-workspace Tests all return an identical 404 — never 403, never an existence echo.",
+        "description": "Bearer `atc:read` (or cookie session). Viewer role suffices; no write scope required. Returns the Test header plus the ordered chain of ATCs, each expanded inline with its ordered steps and assertions, in one round trip. Live content (references, not snapshots). Non-disclosing: missing, not-visible, and foreign-workspace Tests all return an identical 404 — never 403, never an existence echo.",
         "security": [
           {
             "cookieAuth": []
@@ -9653,6 +9674,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9918,7 +9949,7 @@
       "get": {
         "tags": ["Runs"],
         "summary": "List a Test's past Runs, newest first, filterable by outcome",
-        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/runs/{id}` — the PAT scope catalog has no run-read scope). One SECURITY DEFINER RPC resolves the Test's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Returns TERMINAL Runs only (`passed` / `failed` / `aborted`) ordered `started_at desc, id desc` — an in-progress Run is neither listed nor counted. Pagination is KEYSET, not offset: `next_cursor` encodes the `(started_at, id)` of the last row, so a Run landing mid-scroll can neither skip nor duplicate a row, and the `id` tie-break keeps runs sharing a `started_at` in a stable total order. The `outcome` filter composes with pagination server-side — page 2 of a filtered history contains only that outcome. `totals` is all-time and filter-invariant. A Test with no terminal Runs returns an empty `items` with zeroed `totals` (never a 404).",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/runs/{id}`; the PAT scope catalog has no run-read scope, so run history reuses the read scope. One SECURITY DEFINER RPC resolves the Test's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Returns TERMINAL Runs only (`passed` / `failed` / `aborted`) ordered `started_at desc, id desc` — an in-progress Run is neither listed nor counted. Pagination is KEYSET, not offset: `next_cursor` encodes the `(started_at, id)` of the last row, so a Run landing mid-scroll can neither skip nor duplicate a row, and the `id` tie-break keeps runs sharing a `started_at` in a stable total order. The `outcome` filter composes with pagination server-side — page 2 of a filtered history contains only that outcome. `totals` is all-time and filter-invariant. A Test with no terminal Runs returns an empty `items` with zeroed `totals` (never a 404).",
         "security": [
           {
             "cookieAuth": []
@@ -10001,6 +10032,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Test not found (also returned for a Test outside the caller's workspaces — no existence leak).",
             "content": {
@@ -10028,7 +10069,7 @@
       "get": {
         "tags": ["Runs"],
         "summary": "Filter a Project's Runs by date range, module, status and executor, with matching pass/fail totals",
-        "description": "Cookie session or Bearer PAT; no scope requirement yet (Key Contract Decision: a future `run:read`-equivalent PAT scope is out of scope for this story). One SECURITY DEFINER RPC (`bunkai_report_project_runs`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Every filter is AND-composed and every filter composes with pagination server-side. Unlike `GET /api/v1/tests/{id}/runs`, rows are NOT restricted to terminal statuses — a currently-`running` Run is a legitimate row — and `totals` is recomputed from the SAME filtered set as the rows (not all-time), so the numbers change as filters narrow (Business Rule #3 / Technical Decision D2). Pagination is KEYSET on `(started_at desc, id desc)`, reusing the same opaque cursor contract as the run-history endpoint. A Project with no matching Runs returns an empty `items` with zeroed `totals` (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "description": "Bearer `atc:read` (or cookie session). The PAT scope catalog has no run-read scope, so run reporting reuses the read scope rather than minting a fifth one (BK-499, superseding this story Key Contract Decision that deferred the question). One SECURITY DEFINER RPC (`bunkai_report_project_runs`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. Every filter is AND-composed and every filter composes with pagination server-side. Unlike `GET /api/v1/tests/{id}/runs`, rows are NOT restricted to terminal statuses — a currently-`running` Run is a legitimate row — and `totals` is recomputed from the SAME filtered set as the rows (not all-time), so the numbers change as filters narrow (Business Rule #3 / Technical Decision D2). Pagination is KEYSET on `(started_at desc, id desc)`, reusing the same opaque cursor contract as the run-history endpoint. A Project with no matching Runs returns an empty `items` with zeroed `totals` (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
         "security": [
           {
             "cookieAuth": []
@@ -10161,6 +10202,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
             "content": {
@@ -10188,7 +10239,7 @@
       "get": {
         "tags": ["Metrics"],
         "summary": "Compute per-user-story recovery-cycle time (first failing run -> first all-passing run)",
-        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_project_recovery_cycles`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or query parameters: the whole-project rollup is small and bounded. Computed entirely from Run history (`runs`/`run_atcs`) — no Bugs-domain read (Decision 1). A Project with zero Runs returns an empty `items` with `median_recovery_seconds: null` and zeroed counts (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_project_recovery_cycles`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or query parameters: the whole-project rollup is small and bounded. Computed entirely from Run history (`runs`/`run_atcs`) — no Bugs-domain read (Decision 1). A Project with zero Runs returns an empty `items` with `median_recovery_seconds: null` and zeroed counts (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
         "security": [
           {
             "cookieAuth": []
@@ -10232,6 +10283,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10378,7 +10439,7 @@
       "get": {
         "tags": ["Runs"],
         "summary": "Read a Run with its snapshot chain fully expanded",
-        "description": "Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Run header plus the ordered run_atcs, each with its ordered run_steps — the immutable snapshot taken at start. Non-disclosing: missing, not-visible, and foreign-workspace Runs all return an identical 404 — never 403, never an existence echo.",
+        "description": "Bearer `atc:read` (or cookie session). Viewer role suffices; no write scope required. Returns the Run header plus the ordered run_atcs, each with its ordered run_steps — the immutable snapshot taken at start. Non-disclosing: missing, not-visible, and foreign-workspace Runs all return an identical 404 — never 403, never an existence echo.",
         "security": [
           {
             "cookieAuth": []
@@ -10427,6 +10488,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10660,7 +10731,7 @@
       "get": {
         "tags": ["Activity"],
         "summary": "List the workspace activity feed, newest first",
-        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/tests/{id}/runs`). `bunkai_list_activity` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member workspace_id silently returns an empty page rather than leaking existence. Read-only, MVP-allowlisted event set only (8 of 12 write-site actions); no realtime, no defect activity. Pagination is KEYSET on `(created_at desc, id desc)`. An empty `items` is always a valid 200 — this endpoint never answers 404.",
+        "description": "Bearer `atc:read` (or cookie session). The whole workspace shared feed, which is why it takes the read scope while a personal notification inbox does not (mirrors `GET /api/v1/tests/{id}/runs`). `bunkai_list_activity` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member workspace_id silently returns an empty page rather than leaking existence. Read-only, MVP-allowlisted event set only (8 of 12 write-site actions); no realtime, no defect activity. Pagination is KEYSET on `(created_at desc, id desc)`. An empty `items` is always a valid 200 — this endpoint never answers 404.",
         "security": [
           {
             "cookieAuth": []
@@ -10725,6 +10796,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10971,7 +11052,7 @@
       "get": {
         "tags": ["Bugs"],
         "summary": "List and filter defects for a project, with aggregates",
-        "description": "Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`). `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`. `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller's own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).",
         "security": [
           {
             "cookieAuth": []
@@ -11072,6 +11153,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation failed — missing/invalid `project_id`, an unrecognized `status`/`severity` value, `limit` outside 1..50, or `module_id` outside `project_id` (`module_not_in_project`, disclosed only once `project_id` is confirmed visible).",
             "content": {
@@ -11089,7 +11180,7 @@
       "get": {
         "tags": ["Bugs"],
         "summary": "Read a single defect's full record",
-        "description": "Cookie session or Bearer PAT; no scope requirement — any active workspace role, viewers included, may read (`bugs_select_workspace_member`, migration 0046). `bunkai_bug_json` is SECURITY INVOKER — it runs under the caller's own RLS, so a bug outside the caller's workspaces returns the same 404 as an unknown id (non-disclosing). A bug filed against a since-archived module still renders in full, with `module.archived_at` set — this read does NOT apply the archived-module exclusion the list endpoints use.",
+        "description": "Bearer `atc:read` (or cookie session). Any active workspace role, viewers included, may read (`bugs_select_workspace_member`, migration 0046). `bunkai_bug_json` is SECURITY INVOKER — it runs under the caller's own RLS, so a bug outside the caller's workspaces returns the same 404 as an unknown id (non-disclosing). A bug filed against a since-archived module still renders in full, with `module.archived_at` set — this read does NOT apply the archived-module exclusion the list endpoints use.",
         "security": [
           {
             "cookieAuth": []
@@ -11138,6 +11229,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11371,7 +11472,7 @@
       "get": {
         "tags": ["Bugs"],
         "summary": "List a project's bugs, newest first",
-        "description": "Bare, unfiltered list (no query params yet — BK-41/BK-42 extend this route additively). Visible to any active workspace member (viewers included). Non-disclosure: a missing, non-visible, or foreign-workspace Project all return the same 404.",
+        "description": "Bearer `atc:read` (or cookie session). Bare, unfiltered list (no query params yet — BK-41/BK-42 extend this route additively). Visible to any active workspace member (viewers included). Non-disclosure: a missing, non-visible, or foreign-workspace Project all return the same 404.",
         "security": [
           {
             "cookieAuth": []
@@ -11422,6 +11523,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Project not found (non-disclosing).",
             "content": {
@@ -11439,7 +11550,7 @@
       "get": {
         "tags": ["Coverage"],
         "summary": "Surface a Project's untested acceptance criteria and modules, with a never-run indicator",
-        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/runs/report`. One SECURITY DEFINER RPC (`bunkai_report_project_coverage`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included (PO decision Q5 — this is not a privileged QA-only screen). No pagination or query parameters: the whole-project rollup is small and bounded, and the UI filters the returned payload client-side. A Project with zero acceptance criteria returns zeroed `kpis` and empty arrays (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/runs/report`. One SECURITY DEFINER RPC (`bunkai_report_project_coverage`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included (PO decision Q5 — this is not a privileged QA-only screen). No pagination or query parameters: the whole-project rollup is small and bounded, and the UI filters the returned payload client-side. A Project with zero acceptance criteria returns zeroed `kpis` and empty arrays (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
         "security": [
           {
             "cookieAuth": []
@@ -11491,6 +11602,16 @@
               }
             }
           },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Project not found (also returned for a Project outside the caller's workspaces — no existence leak).",
             "content": {
@@ -11508,7 +11629,7 @@
       "get": {
         "tags": ["Bugs"],
         "summary": "Compute a per-module defect heatmap (count + week-over-week trend) for a chosen window",
-        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors GET /api/v1/projects/{id}/metrics/recovery-cycles. One SECURITY DEFINER RPC (`bunkai_report_project_defect_heatmap`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or filters: the whole-project rollup is small and bounded. Each module's defect_count rolls up its full descendant subtree (path-prefix match); archived modules are excluded from the heatmap by default but a filed defect against a since-archived descendant still counts toward an active ancestor. A Project with zero bugs returns every active module at Clean/0 (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors GET /api/v1/projects/{id}/metrics/recovery-cycles. One SECURITY DEFINER RPC (`bunkai_report_project_defect_heatmap`) resolves the Project's workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or filters: the whole-project rollup is small and bounded. Each module's defect_count rolls up its full descendant subtree (path-prefix match); archived modules are excluded from the heatmap by default but a filed defect against a since-archived descendant still counts toward an active ancestor. A Project with zero bugs returns every active module at Clean/0 (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.",
         "security": [
           {
             "cookieAuth": []
@@ -11563,6 +11684,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11894,7 +12025,7 @@
       "get": {
         "tags": ["Traceability"],
         "summary": "Render a User Story's full acceptance-criteria-to-defect evidence chain in one read",
-        "description": "Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_story_traceability`) resolves the User Story's Project via its Module (never the nullable `user_stories.project_id`) and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination: one story's own chain is small and bounded, and round trips never scale with AC/ATC/Test/Run counts. Archived acceptance criteria and ATCs (including under an archived ancestor Module) are excluded from the chain; an archived STORY itself still renders in full.",
+        "description": "Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_story_traceability`) resolves the User Story's Project via its Module (never the nullable `user_stories.project_id`) and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination: one story's own chain is small and bounded, and round trips never scale with AC/ATC/Test/Run counts. Archived acceptance criteria and ATCs (including under an archived ancestor Module) are excluded from the chain; an archived STORY itself still renders in full.",
         "security": [
           {
             "cookieAuth": []
@@ -11948,6 +12079,16 @@
           },
           "401": {
             "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
             "content": {
               "application/json": {
                 "schema": {

@@ -622,8 +622,8 @@ export const qaConfig: QaConfig = {
     ],
     apiRequests,
     patScopes: [
-      { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC. (DEFAULT)' },
-      { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs. (DEFAULT)' },
+      { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC — y, desde BK-499, TODA lectura de datos compartidos del workspace: reportes (coverage, traceability, runs report, heatmap, recovery cycles), bugs, runs, tests, activity y workspaces. NO cubre la bandeja personal (notificaciones, preferencias, /me), que no pide scope. (DEFAULT)' },
+      { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs — y, desde BK-499, crear projects dentro de un workspace existente. (DEFAULT)' },
       { scope: 'run:execute', purpose: 'Iniciar runs + postear resultados de steps (Sprint 2). (DEFAULT)' },
       { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace. NO es default — signin/confirm lo rechazan (ADR-0005); se mintea sólo vía POST /tokens con un workspace_id donde seas admin/owner.' },
     ],

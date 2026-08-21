@@ -106,13 +106,14 @@ registry.registerPath({
   path: '/api/v1/projects/{id}/traceability',
   tags: ['Traceability'],
   summary: 'Render a User Story\'s full acceptance-criteria-to-defect evidence chain in one read',
-  description: 'Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_story_traceability`) resolves the User Story\'s Project via its Module (never the nullable `user_stories.project_id`) and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination: one story\'s own chain is small and bounded, and round trips never scale with AC/ATC/Test/Run counts. Archived acceptance criteria and ATCs (including under an archived ancestor Module) are excluded from the chain; an archived STORY itself still renders in full.',
+  description: 'Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_story_traceability`) resolves the User Story\'s Project via its Module (never the nullable `user_stories.project_id`) and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination: one story\'s own chain is small and bounded, and round trips never scale with AC/ATC/Test/Run counts. Archived acceptance criteria and ATCs (including under an archived ancestor Module) are excluded from the chain; an archived STORY itself still renders in full.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, StoryParam],
   responses: {
     200: { description: 'The User Story\'s evidence chain.', content: { 'application/json': { schema: StoryTraceabilityPayloadSchema } } },
     400: { description: 'Malformed Project id or missing/malformed `story` query parameter (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'User Story not found. Also returned, byte-identical, for a Story outside the caller\'s workspaces, or for a Story that does not belong to the `{id}` Project asserted in the URL — no existence leak, never a 403.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

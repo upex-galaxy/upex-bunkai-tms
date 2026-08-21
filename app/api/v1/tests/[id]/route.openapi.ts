@@ -69,13 +69,14 @@ registry.registerPath({
   path: '/api/v1/tests/{id}',
   tags: ['Tests'],
   summary: 'Read a Test with its chain of ATCs fully expanded',
-  description: 'Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Test header plus the ordered chain of ATCs, each expanded inline with its ordered steps and assertions, in one round trip. Live content (references, not snapshots). Non-disclosing: missing, not-visible, and foreign-workspace Tests all return an identical 404 — never 403, never an existence echo.',
+  description: 'Bearer `atc:read` (or cookie session). Viewer role suffices; no write scope required. Returns the Test header plus the ordered chain of ATCs, each expanded inline with its ordered steps and assertions, in one round trip. Live content (references, not snapshots). Non-disclosing: missing, not-visible, and foreign-workspace Tests all return an identical 404 — never 403, never an existence echo.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, ExpandParam],
   responses: {
     200: { description: 'The expanded Test.', content: { 'application/json': { schema: z.object({ test: ExpandedTestSchema }) } } },
     400: { description: 'Malformed id (not a UUID).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Test not found (missing, not visible, or foreign workspace — non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

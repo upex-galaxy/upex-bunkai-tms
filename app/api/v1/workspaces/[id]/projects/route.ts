@@ -97,10 +97,12 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ project: data }, { status: 201 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — workspaces and membership.',
-});
+// Routine content creation inside an ALREADY-EXISTING workspace, so it reuses
+// `atc:write` rather than minting a new scope. The gateway evaluates the
+// capability before this body runs, so a PAT without `atc:write` never reaches
+// the RLS-gated insert above; a PAT that holds it but whose caller is not a
+// member still fails there on 42501.
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractWorkspaceId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

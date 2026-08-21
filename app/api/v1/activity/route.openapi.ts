@@ -124,13 +124,14 @@ registry.registerPath({
   path: '/api/v1/activity',
   tags: ['Activity'],
   summary: 'List the workspace activity feed, newest first',
-  description: 'Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/tests/{id}/runs`). `bunkai_list_activity` is SECURITY INVOKER — it runs under the caller\'s own RLS, so a non-member workspace_id silently returns an empty page rather than leaking existence. Read-only, MVP-allowlisted event set only (8 of 12 write-site actions); no realtime, no defect activity. Pagination is KEYSET on `(created_at desc, id desc)`. An empty `items` is always a valid 200 — this endpoint never answers 404.',
+  description: 'Bearer `atc:read` (or cookie session). The whole workspace shared feed, which is why it takes the read scope while a personal notification inbox does not (mirrors `GET /api/v1/tests/{id}/runs`). `bunkai_list_activity` is SECURITY INVOKER — it runs under the caller\'s own RLS, so a non-member workspace_id silently returns an empty page rather than leaking existence. Read-only, MVP-allowlisted event set only (8 of 12 write-site actions); no realtime, no defect activity. Pagination is KEYSET on `(created_at desc, id desc)`. An empty `items` is always a valid 200 — this endpoint never answers 404.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [WorkspaceIdParam, LimitParam, CursorParam],
   responses: {
     200: { description: 'One page of the activity feed (possibly empty).', content: { 'application/json': { schema: ActivityPageSchema } } },
     400: { description: 'An undecodable `cursor` (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — `workspace_id` missing for a Bearer/PAT caller, or `limit` outside 1..50 (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

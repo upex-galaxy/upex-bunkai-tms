@@ -10,7 +10,9 @@ import { fetchActivityPage, resolveActivityWorkspaceId } from './response';
 // read-only, paginated view over the existing `activity_log` table (no new
 // event writers, no realtime/polling, no defect activity — see the
 // implementation plan's "7 decided items"). Auth: cookie session or Bearer
-// PAT, no scope requirement (mirrors GET /api/v1/tests/{id}/runs).
+// PAT, requires `atc:read` (BK-499 — this is the WHOLE workspace's shared
+// feed, which is what separates it from a personal inbox like
+// GET /api/v1/workspaces/{id}/notifications; mirrors GET /api/v1/tests/{id}/runs).
 //
 //   ?workspace_id=<uuid>  Cookie sessions: optional, falls back to the
 //                         bk_active_ws cookie via resolveActiveWorkspaceId.
@@ -75,7 +77,4 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   });
 
   return jsonResponse(page, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });

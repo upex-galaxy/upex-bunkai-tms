@@ -33,7 +33,7 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   return jsonResponse({ preferences });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Own account state — the caller reads only their own notification preferences.',
 });
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
@@ -48,5 +48,5 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   return jsonResponse({ preference });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Own account state — the caller writes only their own notification preferences.',
 });

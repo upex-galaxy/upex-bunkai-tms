@@ -7,7 +7,7 @@ import { mapTraceabilityRpcError, throwStoryNotFound } from '@lib/traceability/e
 
 // GET /api/v1/projects/{id}/traceability?story={userStoryId} — a User
 // Story's full AC -> ATC -> Test -> Run -> Defect evidence chain, one round
-// trip (BK-45). Read auth only, no scope requirement — mirrors the Coverage
+// trip (BK-45). Read auth requiring `atc:read` (BK-499) — mirrors the Coverage
 // and Recovery-Cycle report routes: any active workspace role, viewers
 // included, passes the SECURITY DEFINER RPC's own membership check (PO
 // decision: "Viewer+, any authenticated member... No additional gate").
@@ -71,10 +71,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse(data, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/traceability`, so the id is the second-to-last segment.

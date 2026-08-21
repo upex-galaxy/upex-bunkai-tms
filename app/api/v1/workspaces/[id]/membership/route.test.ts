@@ -2,7 +2,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it } from 'bun:test';
-import { assertSessionOnly, mapLeaveWorkspaceError, resolveNewActiveWorkspace } from './response';
+import { mapLeaveWorkspaceError, resolveNewActiveWorkspace } from './response';
 
 // BK-90 (Slice A) — DELETE /api/v1/workspaces/{id}/membership. The route
 // itself is a thin `withApiHandler` wrapper (no dedicated test harness for
@@ -46,25 +46,13 @@ function fakeDb(memberships: MembershipsResult, workspaceName?: WorkspaceNameRes
   } as unknown as SupabaseClient<Database>;
 }
 
-describe('assertSessionOnly (BK-90)', () => {
-  it('403s a Personal Access Token (bearer) caller', () => {
-    expect(() => assertSessionOnly({ via: 'bearer' })).toThrow(ApiError);
-    try {
-      assertSessionOnly({ via: 'bearer' });
-      throw new Error('expected to throw');
-    }
-    catch (err) {
-      expect(err).toBeInstanceOf(ApiError);
-      expect((err as ApiError).code).toBe('forbidden');
-      expect((err as ApiError).status).toBe(403);
-      expect((err as ApiError).message).toMatch(/cannot leave a workspace/i);
-    }
-  });
-
-  it('allows a cookie (browser session) caller', () => {
-    expect(() => assertSessionOnly({ via: 'cookie' })).not.toThrow();
-  });
-});
+// BK-90's bearer-rejection guard used to be unit-tested here against the
+// `assertSessionOnly` helper. BK-499 lifted it into the route's
+// `auth: 'cookie-only'` posture, so it is covered where it is now enforced:
+// the exact 403 message is pinned per handler in
+// `lib/api/route-capability-coverage.test.ts`, and the rejection is driven
+// through the real exported DELETE with a real minted PAT in
+// `lib/api/capability-enforcement.test.ts`.
 
 describe('mapLeaveWorkspaceError (BK-90)', () => {
   it('maps not_authenticated (42501) to 401 unauthorized', () => {

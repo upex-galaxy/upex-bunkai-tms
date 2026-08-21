@@ -210,10 +210,11 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 }, { auth: 'required', requires: ['atc:write'] });
 
 // GET /api/v1/bugs — filtered, paginated, aggregate-bearing defect list
-// (BK-41 Slice 2). Auth: `auth: 'required'`, no PAT scope requirement
-// (Decision 2 — mirrors GET /api/v1/activity and GET /api/v1/tests/{id}/runs,
-// neither of which gates on a scope; the AC's original "PAT scope bugs:read"
-// wording described a scope that was never implemented). Pagination is the
+// (BK-41 Slice 2). Auth: requires `atc:read` (BK-499 — the same posture
+// GET /api/v1/activity and GET /api/v1/tests/{id}/runs now carry). BK-41's
+// Decision 2 recorded "no PAT scope requirement" and is superseded; the AC's
+// original "PAT scope bugs:read" wording named a scope that was never minted,
+// and `atc:read` is the ratified one. Pagination is the
 // bugs-local 3-field keyset cursor (`lib/bugs/list-cursor.ts`, Decision 11);
 // a malformed `cursor` is a 400, never a silent first page (Decision 4). A
 // caller who cannot see `project_id` collapses into the SAME 200
@@ -276,7 +277,4 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   });
 
   return jsonResponse(page, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });

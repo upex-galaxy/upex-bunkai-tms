@@ -236,13 +236,14 @@ registry.registerPath({
   path: '/api/v1/bugs',
   tags: ['Bugs'],
   summary: 'List and filter defects for a project, with aggregates',
-  description: 'Cookie session or Bearer PAT; no scope requirement (mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`). `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller\'s own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).',
+  description: 'Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/activity` and `GET /api/v1/tests/{id}/runs`. `bunkai_list_bugs` is SECURITY INVOKER — it runs under the caller\'s own RLS, so a non-member `project_id` silently returns a 200 empty page rather than leaking existence. Module filter rolls up the full subtree (Decision 7); archived-module defects are hidden unconditionally (Decision 12); default sort is severity ascending then most-recent-first (Decision 5); pagination is the bugs-local 3-field keyset cursor (Decision 11).',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [ProjectIdParam, ModuleIdParam, StatusParam, SeverityParam, LimitParam, CursorParam],
   responses: {
     200: { description: 'One page of the filtered defect list, with aggregates over the full filtered set (possibly empty).', content: { 'application/json': { schema: BugsListPageSchema } } },
     400: { description: 'An undecodable `cursor` (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed — missing/invalid `project_id`, an unrecognized `status`/`severity` value, `limit` outside 1..50, or `module_id` outside `project_id` (`module_not_in_project`, disclosed only once `project_id` is confirmed visible).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
