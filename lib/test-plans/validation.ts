@@ -19,6 +19,31 @@ export const TEST_PLAN_NAME_MAX = 100;
 export const TEST_PLAN_DESCRIPTION_MAX = 500;
 export const TEST_PLAN_GOAL_MAX = 100;
 
+// BK-592 — the ratified user-facing copy for each length rule, declared ONCE
+// here and consumed by BOTH validation layers: the Zod pre-check below, and
+// `mapTestPlanRpcError`'s 45600 / 45601 / 45602 arms.
+//
+// The defect this closes: the copy used to be written out twice — once as a
+// Zod message and once as a string literal in errors.ts — and the two
+// disagreed. Because the Zod schema fails fast, the RPC (and therefore the
+// ratified wording in errors.ts) was never reached for a malformed body, so
+// the API answered a 101-character name with Zod's own "Name must be 100
+// characters or fewer" and a blank name with "Name is required", while the
+// ratified copy says "Name must be between 1 and 100 characters." for both.
+//
+// Two duplicated string literals cannot be kept in sync by discipline; the
+// bug was that they were duplicated at all. Deriving both layers from these
+// constants — and deriving the constants from the bounds directly above —
+// makes the divergence unrepresentable rather than merely fixed. `name`'s
+// message deliberately covers the too-short AND too-long case with one
+// string, exactly as the RPC's single 45600 SQLSTATE does.
+export const TEST_PLAN_NAME_LENGTH_MESSAGE
+  = `Name must be between 1 and ${TEST_PLAN_NAME_MAX} characters.`;
+export const TEST_PLAN_DESCRIPTION_LENGTH_MESSAGE
+  = `Description must be ${TEST_PLAN_DESCRIPTION_MAX} characters or fewer.`;
+export const TEST_PLAN_GOAL_LENGTH_MESSAGE
+  = `Goal must be ${TEST_PLAN_GOAL_MAX} characters or fewer.`;
+
 // Collapse THEN trim — see the RPC's own comment on operand order. This is an
 // EXACT mirror of the RPC's
 // `btrim(regexp_replace(..., '[\t\n\v\f\r ]+', ' ', 'g'))`, and the character
@@ -54,13 +79,13 @@ export const TestPlanNameSchema = z
   .pipe(
     z
       .string()
-      .min(1, 'Name is required')
-      .max(TEST_PLAN_NAME_MAX, `Name must be ${TEST_PLAN_NAME_MAX} characters or fewer`),
+      .min(1, TEST_PLAN_NAME_LENGTH_MESSAGE)
+      .max(TEST_PLAN_NAME_MAX, TEST_PLAN_NAME_LENGTH_MESSAGE),
   );
 
 export const TestPlanDescriptionSchema = z
   .string()
-  .max(TEST_PLAN_DESCRIPTION_MAX, `Description must be ${TEST_PLAN_DESCRIPTION_MAX} characters or fewer`)
+  .max(TEST_PLAN_DESCRIPTION_MAX, TEST_PLAN_DESCRIPTION_LENGTH_MESSAGE)
   .optional()
   .default('');
 
@@ -71,7 +96,7 @@ export const TestPlanDescriptionSchema = z
 export const TestPlanGoalSchema = z
   .string()
   .transform(normalizeTestPlanText)
-  .pipe(z.string().max(TEST_PLAN_GOAL_MAX, `Goal must be ${TEST_PLAN_GOAL_MAX} characters or fewer`))
+  .pipe(z.string().max(TEST_PLAN_GOAL_MAX, TEST_PLAN_GOAL_LENGTH_MESSAGE))
   .optional()
   .default('');
 
