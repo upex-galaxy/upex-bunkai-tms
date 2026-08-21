@@ -3,7 +3,7 @@
 **Jira Key:** [BK-202](https://jira.upexgalaxy.com/browse/BK-202)
 **Epic:** [BK-201](https://jira.upexgalaxy.com/browse/BK-201) (Test Plans & Milestones)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** BLOCKED
 **Priority:** Medium
 **Story Points:** 3
 
@@ -94,6 +94,15 @@ Bunkai teams already assemble Tests and execute them through manual Runs. A Test
 
 ## Traceability
 
+### Test Execution (1)
+
+- [BK-590](https://jira.upexgalaxy.com/browse/BK-590): ATR: BK-202: Story Testing _(Close)_
+
+### Defects (2)
+
+- [BK-591](https://jira.upexgalaxy.com/browse/BK-591): Test Plan uniqueness check incorrectly treats NBSP-padded names as duplicates (violates AC 2.4 / ratified whitespace rule) _(Open)_
+- [BK-592](https://jira.upexgalaxy.com/browse/BK-592): Test Plan validation errors return raw Zod message instead of ratified user-facing copy (AC 1.4, 3.1-3.3) _(Open)_
+
 ### Storys (2)
 
 - [BK-203](https://jira.upexgalaxy.com/browse/BK-203): TMS-Test Plan | Add and remove tests from a plan _(Backlog)_
@@ -103,14 +112,18 @@ Bunkai teams already assemble Tests and execute them through manual Runs. A Test
 
 - [BK-24](https://jira.upexgalaxy.com/browse/BK-24): Tests (chains of ATCs) _(Planning)_
 
+### Test Plan (1)
+
+- [BK-573](https://jira.upexgalaxy.com/browse/BK-573): ATP: BK-202: TMS-Test Plan | Create a test plan grouping tests for a goal _(Planning)_
+
 ---
 
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 8/19/2026
+- **Updated:** 8/21/2026
 - **Reporter:** Ely
-- **Assignee:** Alfonso Hernandez
+- **Assignee:** Ely
 - **Labels:** new-feature, post-mvp, shift-left-2026-08-14, shift-left-reviewed
 
 ---

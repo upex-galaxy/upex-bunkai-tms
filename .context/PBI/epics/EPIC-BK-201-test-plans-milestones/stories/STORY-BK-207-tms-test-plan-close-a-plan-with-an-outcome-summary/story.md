@@ -39,7 +39,7 @@ A plan that stays open forever is a to-do list, not evidence. Closing a plan fre
 ### Storys (2)
 
 - [BK-204](https://jira.upexgalaxy.com/browse/BK-204): TMS-Test Plan | Track plan progress from run outcomes _(Backlog)_
-- [BK-202](https://jira.upexgalaxy.com/browse/BK-202): TMS-Test Plan | Create a test plan grouping tests for a goal _(Estimation)_
+- [BK-202](https://jira.upexgalaxy.com/browse/BK-202): TMS-Test Plan | Create a test plan grouping tests for a goal _(BLOCKED)_
 
 ---
 

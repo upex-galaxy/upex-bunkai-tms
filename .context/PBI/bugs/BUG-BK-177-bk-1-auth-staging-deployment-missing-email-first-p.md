@@ -3,7 +3,7 @@
 **Jira Key:** [BK-177](https://jira.upexgalaxy.com/browse/BK-177)
 **Priority:** Highest
 **Status:** REJECTED
-**Components:** Tenancy & Identity
+**Components:** Bunkai Auth
 **Severity:** Crítica
 **Error Type:** Integration
 **Test Environment:** Staging

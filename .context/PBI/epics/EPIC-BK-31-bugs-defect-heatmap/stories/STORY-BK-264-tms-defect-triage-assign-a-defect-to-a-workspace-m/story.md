@@ -71,7 +71,7 @@ Bugs already exist in Bunkai with a status of open, in progress, resolved, or cl
 - [BK-484](https://jira.upexgalaxy.com/browse/BK-484): BK-264: TC12: should keep assignee and status changes independent of each other _(AUTOMATED)_
 - [BK-485](https://jira.upexgalaxy.com/browse/BK-485): BK-264: TC6: should clear the assignee when unassigning _(AUTOMATED)_
 - [BK-486](https://jira.upexgalaxy.com/browse/BK-486): BK-264: TC7: should reject a write action given the actor is a Viewer-role member _(AUTOMATED)_
-- [BK-487](https://jira.upexgalaxy.com/browse/BK-487): BK-264: TC13: should attribute an action to the actual calling actor, not the bug's assignee _(Candidate)_
+- [BK-487](https://jira.upexgalaxy.com/browse/BK-487): BK-264: TC13: should attribute an action to the actual calling actor, not the bug's assignee _(AUTOMATED)_
 - [BK-488](https://jira.upexgalaxy.com/browse/BK-488): BK-264: TC8: should return a non-disclosing 404 given the bug does not exist or is outside the caller's workspace _(AUTOMATED)_
 - [BK-489](https://jira.upexgalaxy.com/browse/BK-489): BK-264: TC14: should write a notifications row given a bug is assigned _(AUTOMATED)_
 - [BK-490](https://jira.upexgalaxy.com/browse/BK-490): BK-264: TC15: should exclude Viewer-role members from the assignee picker _(MANUAL)_

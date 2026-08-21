@@ -73,7 +73,7 @@ A Test Plan is only useful once it holds the right Tests. This story delivers me
 
 ### Storys (2)
 
-- [BK-202](https://jira.upexgalaxy.com/browse/BK-202): TMS-Test Plan | Create a test plan grouping tests for a goal _(Estimation)_
+- [BK-202](https://jira.upexgalaxy.com/browse/BK-202): TMS-Test Plan | Create a test plan grouping tests for a goal _(BLOCKED)_
 - [BK-204](https://jira.upexgalaxy.com/browse/BK-204): TMS-Test Plan | Track plan progress from run outcomes _(Backlog)_
 
 ---

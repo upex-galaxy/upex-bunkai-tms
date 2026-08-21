@@ -6,7 +6,7 @@ _Project: BK_
 
 ## [BK-1](https://jira.upexgalaxy.com/browse/BK-1) - Tenancy & Identity
 
-**Status:** Planning | **Stories:** 10 | **Points:** 73
+**Status:** Planning | **Stories:** 11 | **Points:** 73
 
 - [BK-2](https://jira.upexgalaxy.com/browse/BK-2) Authentication | Sign up and sign in with email magic-link _(5 pts, Ready For Release)_
 - [BK-3](https://jira.upexgalaxy.com/browse/BK-3) Authentication | Sign up and sign in via OAuth (GitHub / Google) _(8 pts, QA Approved)_
@@ -15,13 +15,14 @@ _Project: BK_
 - [BK-6](https://jira.upexgalaxy.com/browse/BK-6) TMS-Workspace | Switch between workspaces _(5 pts, Ready For Release)_
 - [BK-166](https://jira.upexgalaxy.com/browse/BK-166) Authentication | Sign up and sign in with email and password _(- pts, Ready For Release)_
 - [BK-262](https://jira.upexgalaxy.com/browse/BK-262) PAT | Enforce capability scopes on every non-ATC route _(21 pts, ABORTED)_
-- [BK-497](https://jira.upexgalaxy.com/browse/BK-497) PAT | Require every API route to declare its capability posture _(5 pts, Ready For Dev)_
-- [BK-498](https://jira.upexgalaxy.com/browse/BK-498) PAT | Enforce capability scopes on the authoring domain _(8 pts, Ready For Dev)_
-- [BK-499](https://jira.upexgalaxy.com/browse/BK-499) PAT | Enforce capability scopes on read, identity and notification routes _(8 pts, Backlog)_
+- [BK-497](https://jira.upexgalaxy.com/browse/BK-497) PAT | Require every API route to declare its capability posture _(5 pts, QA Approved)_
+- [BK-498](https://jira.upexgalaxy.com/browse/BK-498) PAT | Enforce capability scopes on the authoring domain _(8 pts, QA Approved)_
+- [BK-499](https://jira.upexgalaxy.com/browse/BK-499) PAT | Enforce capability scopes on read, identity and notification routes _(8 pts, Ready For Dev)_
+- [BK-572](https://jira.upexgalaxy.com/browse/BK-572) TMS-Workspace | Remove a teammate from a workspace _(- pts, Backlog)_
 
 ## [BK-7](https://jira.upexgalaxy.com/browse/BK-7) - Project & Module Hierarchy
 
-**Status:** Planning | **Stories:** 10 | **Points:** 38
+**Status:** Planning | **Stories:** 11 | **Points:** 46
 
 - [BK-8](https://jira.upexgalaxy.com/browse/BK-8) TMS-Project | Create a project inside a workspace _(8 pts, Ready For Release)_
 - [BK-9](https://jira.upexgalaxy.com/browse/BK-9) TMS-Module | Create modules with nested sub-modules _(13 pts, Ready For Release)_
@@ -33,6 +34,7 @@ _Project: BK_
 - [BK-266](https://jira.upexgalaxy.com/browse/BK-266) TMS-Projects | Browse workspace projects in an index with a dedicated create route _(- pts, Ready For QA)_
 - [BK-398](https://jira.upexgalaxy.com/browse/BK-398) Command Palette | Search and jump across the workspace _(5 pts, QA Approved)_
 - [BK-443](https://jira.upexgalaxy.com/browse/BK-443) App Shell | Save, name, and return to a filtered view _(- pts, Backlog)_
+- [BK-509](https://jira.upexgalaxy.com/browse/BK-509) 🚀 TMS-Project | Create a project inside a workspace _(8 pts, Ready For QA)_
 
 ## [BK-12](https://jira.upexgalaxy.com/browse/BK-12) - User Stories & Acceptance Criteria
 
@@ -45,7 +47,7 @@ _Project: BK_
 
 ## [BK-13](https://jira.upexgalaxy.com/browse/BK-13) - ATC Library (Acceptance Test Cases)
 
-**Status:** Planning | **Stories:** 13 | **Points:** 42
+**Status:** Planning | **Stories:** 15 | **Points:** 42
 
 - [BK-18](https://jira.upexgalaxy.com/browse/BK-18) TMS-ATC API | Create and edit ATCs with steps and assertions _(5 pts, Ready For Release)_
 - [BK-19](https://jira.upexgalaxy.com/browse/BK-19) TMS-ATC Builder | Build an ATC with ordered steps and assertions _(5 pts, Ready For Release)_
@@ -54,12 +56,14 @@ _Project: BK_
 - [BK-22](https://jira.upexgalaxy.com/browse/BK-22) TMS-ATC Usage | See a "Used in N tests" report _(3 pts, QA Approved)_
 - [BK-23](https://jira.upexgalaxy.com/browse/BK-23) TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(5 pts, QA Approved)_
 - [BK-267](https://jira.upexgalaxy.com/browse/BK-267) TMS-ATC Library | Browse, search, and filter ATCs across every project _(1 pts, ABORTED)_
-- [BK-315](https://jira.upexgalaxy.com/browse/BK-315) TMS-ATC Library | Export a Project's ATCs to CSV _(1 pts, Estimation)_
+- [BK-315](https://jira.upexgalaxy.com/browse/BK-315) TMS-ATC Library | Export a Project's ATCs to CSV _(1 pts, Ready For Dev)_
 - [BK-399](https://jira.upexgalaxy.com/browse/BK-399) TMS-ATC Classification | Classify by test-design technique and priority _(- pts, Backlog)_
 - [BK-439](https://jira.upexgalaxy.com/browse/BK-439) TMS-ATC Library | Browse every ATC in the workspace from one index _(5 pts, Backlog)_
 - [BK-440](https://jira.upexgalaxy.com/browse/BK-440) TMS-ATC Library | Find an ATC by name as you type _(3 pts, Backlog)_
 - [BK-441](https://jira.upexgalaxy.com/browse/BK-441) TMS-ATC Library | Narrow the index by Project, Module, layer and anchor _(3 pts, Backlog)_
 - [BK-467](https://jira.upexgalaxy.com/browse/BK-467) 🚀 TMS-ATC Library | Export a Project's ATCs to CSV _(1 pts, Ready For QA)_
+- [BK-507](https://jira.upexgalaxy.com/browse/BK-507) TMS-ATC Library | Bulk-edit tags, Module and layer on selected ATCs _(- pts, Backlog)_
+- [BK-571](https://jira.upexgalaxy.com/browse/BK-571) TMS-ATC Library | Archive an ATC and restore it from the archive _(- pts, Backlog)_
 
 ## [BK-24](https://jira.upexgalaxy.com/browse/BK-24) - Tests (chains of ATCs)
 
@@ -76,7 +80,7 @@ _Project: BK_
 
 ## [BK-30](https://jira.upexgalaxy.com/browse/BK-30) - Manual Execution & Runs
 
-**Status:** Planning | **Stories:** 8 | **Points:** 38
+**Status:** Planning | **Stories:** 10 | **Points:** 40
 
 - [BK-34](https://jira.upexgalaxy.com/browse/BK-34) TMS-Run Execution | Start a manual run in a chosen environment _(8 pts, Ready For Release)_
 - [BK-35](https://jira.upexgalaxy.com/browse/BK-35) TMS-Run Execution | Mark each step pass, fail, or block _(8 pts, QA Approved)_
@@ -84,23 +88,26 @@ _Project: BK_
 - [BK-37](https://jira.upexgalaxy.com/browse/BK-37) TMS-Run History | View a test's past runs, filterable by outcome _(5 pts, Ready For QA)_
 - [BK-38](https://jira.upexgalaxy.com/browse/BK-38) TMS-Run Reporting | Filter project runs with pass/fail totals _(3 pts, QA Approved)_
 - [BK-39](https://jira.upexgalaxy.com/browse/BK-39) TMS-Run Execution | Finish a run with a final verdict _(5 pts, Ready For Release)_
-- [BK-269](https://jira.upexgalaxy.com/browse/BK-269) TMS-Run Execution | Automatically abort abandoned runs after inactivity _(1 pts, Estimation)_
+- [BK-269](https://jira.upexgalaxy.com/browse/BK-269) TMS-Run Execution | Automatically abort abandoned runs after inactivity _(3 pts, Ready For Dev)_
 - [BK-442](https://jira.upexgalaxy.com/browse/BK-442) TMS-Run History | Compare a run against the previous run of the same test _(- pts, Backlog)_
+- [BK-513](https://jira.upexgalaxy.com/browse/BK-513) TMS-Run History | Browse every run in the workspace from one index _(- pts, Backlog)_
+- [BK-554](https://jira.upexgalaxy.com/browse/BK-554) TMS-Run History | See how flaky a test is across its recent runs _(- pts, Backlog)_
 
 ## [BK-31](https://jira.upexgalaxy.com/browse/BK-31) - Bugs & Defect Heatmap
 
-**Status:** Planning | **Stories:** 10 | **Points:** 20
+**Status:** Planning | **Stories:** 11 | **Points:** 20
 
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40) TMS-Defect Filing | File a defect from a failing run step _(5 pts, QA Approved)_
 - [BK-41](https://jira.upexgalaxy.com/browse/BK-41) TMS-Defect List | List and filter defects by module, status, severity _(2 pts, In Test)_
 - [BK-42](https://jira.upexgalaxy.com/browse/BK-42) TMS-Defect Heatmap | View count and week-over-week trend per module _(3 pts, QA Approved)_
 - [BK-43](https://jira.upexgalaxy.com/browse/BK-43) TMS-Defect Sync | Sync defects one-way to the external tracker _(1 pts, ABORTED)_
 - [BK-264](https://jira.upexgalaxy.com/browse/BK-264) TMS-Defect Triage | Assign a defect to a workspace member and update its status _(- pts, QA Approved)_
-- [BK-337](https://jira.upexgalaxy.com/browse/BK-337) TMS-Defect Detail | Open a defect and read its full record _(- pts, Ready For QA)_
+- [BK-337](https://jira.upexgalaxy.com/browse/BK-337) TMS-Defect Detail | Open a defect and read its full record _(- pts, QA Approved)_
 - [BK-371](https://jira.upexgalaxy.com/browse/BK-371) TMS-Defect Sync | Point a project at a Jira destination _(3 pts, Backlog)_
 - [BK-372](https://jira.upexgalaxy.com/browse/BK-372) TMS-Defect Sync | Send a newly filed defect to Jira _(3 pts, Backlog)_
 - [BK-373](https://jira.upexgalaxy.com/browse/BK-373) TMS-Defect Sync | Recover a failed sync and show its state _(3 pts, Backlog)_
 - [BK-465](https://jira.upexgalaxy.com/browse/BK-465) TMS-Defect Filing | Capture expected and actual results at filing _(- pts, Backlog)_
+- [BK-555](https://jira.upexgalaxy.com/browse/BK-555) TMS-Bug Reports | Browse every defect in the workspace from one index _(- pts, Backlog)_
 
 ## [BK-44](https://jira.upexgalaxy.com/browse/BK-44) - Coverage & Traceability
 
@@ -120,13 +127,15 @@ _Project: BK_
 
 ## [BK-85](https://jira.upexgalaxy.com/browse/BK-85) - Account & Settings
 
-**Status:** Planning | **Stories:** 5 | **Points:** 17
+**Status:** Planning | **Stories:** 7 | **Points:** 17
 
 - [BK-86](https://jira.upexgalaxy.com/browse/BK-86) Account | View my identity, role, and sign out _(3 pts, Ready For Release)_
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87) Settings | Open a settings hub and view my account _(2 pts, Ready For QA)_
 - [BK-88](https://jira.upexgalaxy.com/browse/BK-88) Settings | Manage Personal Access Tokens _(5 pts, Ready For QA)_
 - [BK-89](https://jira.upexgalaxy.com/browse/BK-89) TMS-Workspace | View the workspaces I belong to _(2 pts, Ready For QA)_
 - [BK-90](https://jira.upexgalaxy.com/browse/BK-90) TMS-Workspace | Leave a workspace _(5 pts, Ready For QA)_
+- [BK-508](https://jira.upexgalaxy.com/browse/BK-508) Settings | Request an export of my workspace data _(- pts, Backlog)_
+- [BK-512](https://jira.upexgalaxy.com/browse/BK-512) TMS-Workspace | Delete a workspace I own _(- pts, Backlog)_
 
 ## [BK-183](https://jira.upexgalaxy.com/browse/BK-183) - QA Defect Management
 
@@ -134,9 +143,9 @@ _Project: BK_
 
 ## [BK-201](https://jira.upexgalaxy.com/browse/BK-201) - Test Plans & Milestones
 
-**Status:** Planning | **Stories:** 6 | **Points:** 8
+**Status:** Planning | **Stories:** 6 | **Points:** 11
 
-- [BK-202](https://jira.upexgalaxy.com/browse/BK-202) TMS-Test Plan | Create a test plan grouping tests for a goal _(- pts, Estimation)_
+- [BK-202](https://jira.upexgalaxy.com/browse/BK-202) TMS-Test Plan | Create a test plan grouping tests for a goal _(3 pts, BLOCKED)_
 - [BK-203](https://jira.upexgalaxy.com/browse/BK-203) TMS-Test Plan | Add and remove tests from a plan _(- pts, Backlog)_
 - [BK-204](https://jira.upexgalaxy.com/browse/BK-204) TMS-Test Plan | Track plan progress from run outcomes _(- pts, Backlog)_
 - [BK-205](https://jira.upexgalaxy.com/browse/BK-205) TMS-Milestone | Create a milestone with a target date _(8 pts, Ready For QA)_
@@ -145,13 +154,13 @@ _Project: BK_
 
 ## [BK-208](https://jira.upexgalaxy.com/browse/BK-208) - Notifications Center
 
-**Status:** Planning | **Stories:** 5 | **Points:** 29
+**Status:** Planning | **Stories:** 5 | **Points:** 34
 
 - [BK-209](https://jira.upexgalaxy.com/browse/BK-209) Notifications | View an inbox of workspace events _(13 pts, Ready For QA)_
 - [BK-211](https://jira.upexgalaxy.com/browse/BK-211) Notifications | Get notified when a run finishes or is aborted _(5 pts, Ready For QA)_
 - [BK-212](https://jira.upexgalaxy.com/browse/BK-212) Notifications | Get notified on bug assignment and status changes _(8 pts, Ready For QA)_
 - [BK-213](https://jira.upexgalaxy.com/browse/BK-213) Notifications | Configure notification preferences per event type _(3 pts, Ready For QA)_
-- [BK-214](https://jira.upexgalaxy.com/browse/BK-214) Notifications | Receive an email digest of unread notifications _(- pts, Backlog)_
+- [BK-214](https://jira.upexgalaxy.com/browse/BK-214) Notifications | Receive an email digest of unread notifications _(5 pts, Ready For Dev)_
 
 ## [BK-210](https://jira.upexgalaxy.com/browse/BK-210) - Team Chat
 
@@ -177,10 +186,10 @@ _Project: BK_
 
 ## [BK-224](https://jira.upexgalaxy.com/browse/BK-224) - Billing & Plans
 
-**Status:** Planning | **Stories:** 5 | **Points:** 8
+**Status:** Planning | **Stories:** 5 | **Points:** 21
 
 - [BK-229](https://jira.upexgalaxy.com/browse/BK-229) Billing | View my workspace plan, seats, and usage _(8 pts, Ready For QA)_
-- [BK-230](https://jira.upexgalaxy.com/browse/BK-230) Billing | Upgrade to a paid plan _(- pts, Estimation)_
+- [BK-230](https://jira.upexgalaxy.com/browse/BK-230) Billing | Upgrade to a paid plan _(13 pts, Ready For Dev)_
 - [BK-231](https://jira.upexgalaxy.com/browse/BK-231) Billing | Manage billing details and download invoices _(- pts, Backlog)_
 - [BK-232](https://jira.upexgalaxy.com/browse/BK-232) Billing | See plan-limit warnings with an upgrade path _(- pts, Backlog)_
 - [BK-233](https://jira.upexgalaxy.com/browse/BK-233) Billing | Downgrade or cancel the subscription _(- pts, Backlog)_
@@ -195,6 +204,14 @@ _Project: BK_
 - [BK-258](https://jira.upexgalaxy.com/browse/BK-258) TMS-Home | Show open bug count and severity breakdown _(- pts, Ready For QA)_
 - [BK-259](https://jira.upexgalaxy.com/browse/BK-259) TMS-Home | Show workspace test coverage summary _(- pts, Ready For QA)_
 - [BK-260](https://jira.upexgalaxy.com/browse/BK-260) TMS-Home | Show a condensed recent activity feed _(- pts, Ready For QA)_
+
+## [BK-514](https://jira.upexgalaxy.com/browse/BK-514) - QA Master Test Plan
+
+**Status:** Backlog | **Stories:** 0 | **Points:** 0
+
+## [BK-515](https://jira.upexgalaxy.com/browse/BK-515) - QA Test Artifacts
+
+**Status:** Backlog | **Stories:** 0 | **Points:** 0
 
 ---
 

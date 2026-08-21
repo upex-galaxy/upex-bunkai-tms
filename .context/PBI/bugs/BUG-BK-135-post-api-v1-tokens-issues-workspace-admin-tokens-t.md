@@ -3,7 +3,7 @@
 **Jira Key:** [BK-135](https://jira.upexgalaxy.com/browse/BK-135)
 **Priority:** Highest
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai API Tokens
 **Severity:** Crítica
 **Error Type:** Security
 **Test Environment:** Staging
@@ -148,7 +148,7 @@ Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK
 ## Metadata
 
 - **Created:** 6/12/2026
-- **Updated:** 8/2/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Carlos Alberto Chiavassa
 - **Assignee:** Carlos Alberto Chiavassa
 

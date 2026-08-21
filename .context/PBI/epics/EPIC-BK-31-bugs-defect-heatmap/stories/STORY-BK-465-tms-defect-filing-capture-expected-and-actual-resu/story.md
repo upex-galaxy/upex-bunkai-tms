@@ -48,7 +48,7 @@ Filed 2026-08-14 as unrefined backlog work. It has not been through shift-left Q
 
 ### Story (1)
 
-- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(Ready For QA)_
+- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(QA Approved)_
 
 ---
 

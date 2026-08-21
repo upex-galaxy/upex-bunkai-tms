@@ -4,7 +4,7 @@
 **Related Story:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19) - TMS-ATC Builder | Build an ATC with ordered steps and assertions
 **Priority:** Medium
 **Status:** Closed
-**Components:** ATC Library (Acceptance Test Cases)
+**Components:** Bunkai ATCs
 **Severity:** Moderada
 **Error Type:** Functional
 **Test Environment:** Staging

@@ -51,9 +51,9 @@
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 8/17/2026
+- **Updated:** 8/19/2026
 - **Reporter:** Ely
-- **Assignee:** pinto.lucas.nahuel
+- **Assignee:** Ely
 - **Labels:** shift-left-2026-08-15, shift-left-reviewed
 
 ---

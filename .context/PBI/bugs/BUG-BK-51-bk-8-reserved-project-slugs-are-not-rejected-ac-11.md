@@ -3,7 +3,7 @@
 **Jira Key:** [BK-51](https://jira.upexgalaxy.com/browse/BK-51)
 **Priority:** High
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging

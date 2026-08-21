@@ -64,10 +64,18 @@ The implementing run must settle the pairing rule, and must decide what the comp
 
 ---
 
+## Traceability
+
+### Story (1)
+
+- [BK-513](https://jira.upexgalaxy.com/browse/BK-513): TMS-Run History | Browse every run in the workspace from one index _(Backlog)_
+
+---
+
 ## Metadata
 
 - **Created:** 8/13/2026
-- **Updated:** 8/13/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** discovery-2026-08-13, manual-execution-runs, run-comparison
