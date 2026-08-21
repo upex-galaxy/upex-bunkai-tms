@@ -23,13 +23,14 @@ registry.registerPath({
   path: '/api/v1/projects/{id}/bugs',
   tags: ['Bugs'],
   summary: 'List a project\'s bugs, newest first',
-  description: 'Bare, unfiltered list (no query params yet — BK-41/BK-42 extend this route additively). Visible to any active workspace member (viewers included). Non-disclosure: a missing, non-visible, or foreign-workspace Project all return the same 404.',
+  description: 'Bearer `atc:read` (or cookie session). Bare, unfiltered list (no query params yet — BK-41/BK-42 extend this route additively). Visible to any active workspace member (viewers included). Non-disclosure: a missing, non-visible, or foreign-workspace Project all return the same 404.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
     200: { description: 'Bugs listed.', content: { 'application/json': { schema: ListResponseSchema } } },
     400: { description: 'Malformed project id.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project not found (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

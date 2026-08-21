@@ -61,13 +61,14 @@ registry.registerPath({
   path: '/api/v1/projects/{id}/metrics/recovery-cycles',
   tags: ['Metrics'],
   summary: 'Compute per-user-story recovery-cycle time (first failing run -> first all-passing run)',
-  description: 'Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_project_recovery_cycles`) resolves the Project\'s workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or query parameters: the whole-project rollup is small and bounded. Computed entirely from Run history (`runs`/`run_atcs`) — no Bugs-domain read (Decision 1). A Project with zero Runs returns an empty `items` with `median_recovery_seconds: null` and zeroed counts (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.',
+  description: 'Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/coverage`. One SECURITY DEFINER RPC (`bunkai_report_project_recovery_cycles`) resolves the Project\'s workspace and re-checks ACTIVE membership in-band; any role reads, viewers included. No pagination or query parameters: the whole-project rollup is small and bounded. Computed entirely from Run history (`runs`/`run_atcs`) — no Bugs-domain read (Decision 1). A Project with zero Runs returns an empty `items` with `median_recovery_seconds: null` and zeroed counts (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
     200: { description: 'The recovery-cycle report.', content: { 'application/json': { schema: RecoveryCycleReportSchema } } },
     400: { description: 'Malformed Project id (not a UUID) (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project not found (also returned for a Project outside the caller\'s workspaces — no existence leak).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
