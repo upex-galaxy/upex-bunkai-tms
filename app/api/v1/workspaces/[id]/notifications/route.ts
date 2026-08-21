@@ -6,9 +6,11 @@ import { fetchNotificationsPage } from './response';
 
 // GET /api/v1/workspaces/{id}/notifications — the caller's own notification
 // inbox for one workspace, newest first (BK-209 Slice 2: API). Auth: cookie
-// session or Bearer PAT, no scope requirement — mirrors GET /api/v1/activity:
-// this is a personal read (each recipient reads their own copies), not a
-// `workspace:admin` operation, so ADR-0006's `assertWorkspaceContext` does not
+// session or Bearer PAT, no capability required — this is a personal read
+// (each recipient reads their own copies), NOT the workspace-shared feed that
+// GET /api/v1/activity serves, which is why that route takes `atc:read` and
+// this one does not (BK-499 ruling Q1). It is not a
+// `workspace:admin` operation either, so ADR-0006's `assertWorkspaceContext` does not
 // apply here (that pairing is scoped to the admin-capability slice — see
 // ADR-0006). `workspace_id` is a plain filter, not a trust boundary
 // (migration 0053_notifications.sql's own header) — RLS enforces recipient +
@@ -65,7 +67,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   return jsonResponse(page, { status: 200 });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Personal inbox — each recipient reads only their own notification copies, not workspace-shared data.',
 });
 
 function extractWorkspaceId(request: NextRequest): string {

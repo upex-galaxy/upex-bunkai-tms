@@ -88,9 +88,16 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspace }, { status: 201 });
+// Bootstrap: the ONE genuinely capability-free write in the API. Creating the
+// first workspace is the only action a brand-new token can take before any
+// workspace context exists, so requiring a capability here would lock a
+// narrowly-scoped token out of ever having somewhere to act. Any PAT holding at
+// least one scope passes; RLS and the RPC still own the rest. Deliberately NOT
+// a precedent for "creation is free" — POST /workspaces/{id}/projects happens
+// inside an existing workspace and takes `atc:write`.
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — workspaces and membership.',
+  why: 'Workspace bootstrap — the sole capability-free exception; a token cannot hold workspace scope before a workspace exists.',
 });
 
 // RLS filters to workspaces the caller is an active member of, so the same
@@ -118,7 +125,4 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspaces: mergeWorkspaceRoles(data ?? [], memberships ?? []) });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — workspaces and membership.',
-});
+}, { auth: 'required', requires: ['atc:read'] });

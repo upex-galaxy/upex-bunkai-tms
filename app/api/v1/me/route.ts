@@ -109,5 +109,5 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Identity probe — a token must be able to resolve who it is and which workspaces it can see before it can hold any scope-gated conversation.',
 });

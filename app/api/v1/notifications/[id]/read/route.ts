@@ -25,7 +25,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   return jsonResponse({ notification }, { status: 200 });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Personal inbox — the caller marks only their own notification copy read.',
 });
 
 function extractNotificationId(request: NextRequest): string {

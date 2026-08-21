@@ -1,36 +1,13 @@
-import { ApiError } from '@lib/api/error-envelope';
 import { describe, expect, it } from 'bun:test';
-import { assertSessionOnly, buildActiveWorkspaceResponse } from './response';
+import { buildActiveWorkspaceResponse } from './response';
 
-// BK-316 — regression test. POST /api/v1/me/active-workspace only ever set
-// the `bk_active_ws` cookie; GET /api/v1/me's bearer branch never reads that
-// cookie (it resolves `principal.workspaceId ?? workspaces[0]` instead — see
-// `me/route.ts`'s `resolveMeActiveWorkspaceId`). So a Bearer/PAT caller got a
-// 200 "success" from a switch that was structurally a no-op on that rail.
-// The fix rejects the bearer rail outright, mirroring
-// `DELETE /api/v1/workspaces/{id}/membership`'s `assertSessionOnly`
-// precedent. This exercises the actual guard the route calls (same
-// isolation style as that precedent's own test) — not a request/ctx
-// harness, since none exists in this repo.
-describe('assertSessionOnly (BK-316)', () => {
-  it('403s a Personal Access Token (bearer) caller with actionable guidance', () => {
-    expect(() => assertSessionOnly({ via: 'bearer' })).toThrow(ApiError);
-    try {
-      assertSessionOnly({ via: 'bearer' });
-      throw new Error('expected to throw');
-    }
-    catch (err) {
-      expect(err).toBeInstanceOf(ApiError);
-      expect((err as ApiError).code).toBe('forbidden');
-      expect((err as ApiError).status).toBe(403);
-      expect((err as ApiError).message).toMatch(/workspace_id/i);
-    }
-  });
-
-  it('allows a cookie (browser session) caller through', () => {
-    expect(() => assertSessionOnly({ via: 'cookie' })).not.toThrow();
-  });
-});
+// BK-316's bearer-rejection guard used to be unit-tested here against the
+// `assertSessionOnly` helper. BK-499 lifted that guard into the route's
+// `auth: 'cookie-only'` posture, so the contract is now enforced by the
+// gateway and covered where it lives: the exact 403 message is asserted per
+// handler in `lib/api/route-capability-coverage.test.ts`, and the rejection is
+// driven end-to-end against a real minted PAT in
+// `lib/api/capability-enforcement.test.ts`.
 
 // BK-118 — regression test. The BK-83 fix added the required
 // {id, slug, name, role} fields to the switch-workspace response but left the

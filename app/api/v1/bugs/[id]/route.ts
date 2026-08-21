@@ -7,7 +7,7 @@ import { throwBugNotFound } from '@lib/bugs/errors';
 import { getBugJson } from '@lib/supabase/rpc';
 
 // GET /api/v1/bugs/{id} — a single defect's full composed record (BK-337).
-// Read auth only, no scope requirement — mirrors the report/traceability
+// Read auth requiring `atc:read` (BK-499) — mirrors the report/traceability
 // routes: any active workspace role, viewers included, may read (E-4 ratifies
 // this as an assertion of shipped behavior, not new behavior — `bugs_select_
 // workspace_member`, 0046_bugs.sql, already grants SELECT to any member).
@@ -52,10 +52,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const bug = await performBugDetailRead(db, bugId);
 
   return jsonResponse({ bug }, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 // The route is /api/v1/bugs/{id} — the bug id is the last segment.
 function extractBugId(request: NextRequest): string {

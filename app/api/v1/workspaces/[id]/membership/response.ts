@@ -1,4 +1,3 @@
-import type { Principal } from '@lib/api/principal';
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
@@ -12,13 +11,10 @@ import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 // `me/active-workspace/response.ts`, and the fake-chainable-`db` testing
 // style already used by `lib/api/pat.ts`'s `assertTokenIssuanceAuthorized`.
 
-// A PAT must not leave a workspace on the caller's behalf — mirrors
-// `DELETE /api/v1/tokens/[id]`'s exact bearer-rejection precedent.
-export function assertSessionOnly(principal: Pick<Principal, 'via'>): void {
-  if (principal.via === 'bearer') {
-    throw new ApiError('forbidden', 'Personal access tokens cannot leave a workspace. Use a browser session.');
-  }
-}
+// BK-90's `assertSessionOnly` guard lived here; BK-499 lifted it into the
+// route's `auth: 'cookie-only'` posture, so the bearer rail is rejected by the
+// gateway before the handler body runs — the same move BK-497 made on the two
+// token routes, message carried over verbatim.
 
 // Maps a `bunkai_leave_workspace` RPC error (migration 0044) to the house
 // envelope. `not_a_member` reuses this repo's established not-found/

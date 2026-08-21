@@ -7,7 +7,7 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 
 // GET /api/v1/projects/{id}/coverage — a Project's coverage rollup: modules
 // with untested/uncovered acceptance criteria and a "not run" indicator
-// (BK-46). Read auth only, no scope requirement — mirrors the Runs report
+// (BK-46). Read auth requiring `atc:read` (BK-499) — mirrors the Runs report
 // route (`/api/v1/projects/{id}/runs/report`): any active workspace role,
 // viewers included, passes the SECURITY DEFINER RPC's own membership check
 // (PO decision Q5, this is not a privileged QA-only screen). Non-disclosure:
@@ -36,10 +36,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse(data, { status: 200 });
-}, {
-  auth: 'authenticated',
-  why: 'BK-499 pending — reporting reads.',
-});
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/coverage`, so the id is the second-to-last segment.

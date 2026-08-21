@@ -29,7 +29,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   return jsonResponse(result, { status: 200 });
 }, {
   auth: 'authenticated',
-  why: 'BK-499 pending — identity and notifications.',
+  why: 'Personal inbox — the caller marks only their own notification copies read.',
 });
 
 function extractWorkspaceId(request: NextRequest): string {
