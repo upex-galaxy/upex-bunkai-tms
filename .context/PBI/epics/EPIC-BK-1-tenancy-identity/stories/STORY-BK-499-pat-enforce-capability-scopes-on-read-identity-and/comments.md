@@ -85,5 +85,124 @@ Refined Acceptance Criteria (Phase 3 of `shift-left-refinement.md`) are now full
 
 ---
 
+### Ely - 8/21/2026, 4:02:11 PM
+
+## AI Tech Lead — Decision: the `atc:read` gate on `GET /workspaces` is redundant against the ungated `GET /me` payload. Widen the gate, narrow `/me`, or ship as ruled?
+
+***Date***: 2026-08-21
+***Raised by***: the Stage 3 adversarial code review on the BK-499 implementation branch. Severity MAJOR, 0 BLOCKER.
+
+### The observation
+
+Ruling Q5 confirmed `atc:read` on `GET /workspaces` and `GET /workspaces/{id}`. Ruling Q7 confirmed no capability on `GET /me`. Both are implemented as ruled. But the two payloads overlap:
+
+| Endpoint | Posture (shipped) | Columns selected from `workspaces` |
+| --- | --- | --- |
+| `GET /workspaces` | `required: ['atc:read']` | `id, slug, name, owner*user*id, plan, created_at` |
+| `GET /workspaces/{id}` | `required: ['atc:read']` | same |
+| `GET /me` | `authenticated` (no capability) | `id, slug, name, plan, owner*user*id, created_at` — for EVERY workspace the caller belongs to (`app/api/v1/me/route.ts:52-58`) |
+
+All three are RLS-filtered to the caller's own memberships. So a PAT scoped only `run:execute` is correctly 403'd on `GET /workspaces` and then retrieves the same rows from `GET /me`. The gate is a consistency gate, not a confidentiality gate.
+
+This was not in front of the 2026-08-21 ruling — Q5 and Q7 were answered separately and neither compared the two payloads.
+
+### Alternatives scored
+
+| # | Option | Product value | Consistency with precedent | Cost | Reversibility | Risk |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | Ship as ruled; record the overlap as follow-up debt | Medium — the scope contract stays uniform ("every workspace-shared read takes `atc:read`"), which is what a client author reads and what the coverage invariant encodes | High — follows the binding ruling verbatim | Zero | n/a | Low. Discloses a known, non-widening gap rather than hiding it |
+| B | Drop `atc:read` from the two workspace reads | Low — makes the /me overlap moot, but only by giving up the gate | ***Contradicts ruling Q5 directly*** | Low | Easy | Medium-high. Re-deriving a settled decision inside the implementing story is exactly the failure mode Critical Rule #18 and the decision protocol forbid |
+| C | Narrow `GET /me`'s workspace payload in this story | High — makes the gate real | Poor — `/me` is a shipped identity endpoint the app shell and workspace switcher consume | High. Behaviour change to a UI-critical contract, needs its own AC and its own regression pass | Hard once clients depend on the narrower shape | ***High.*** An unratified payload change to the app's identity probe, smuggled into a posture sweep |
+
+### Ruling
+
+***Option A.*** Ship the postures exactly as Q5 and Q7 ruled.
+
+***Rationale.*** The gate is not useless even while the overlap exists: it makes the published scope contract uniform and enforceable, and it is what the coverage invariant and the OpenAPI spec now both state. Closing the overlap means changing what `GET /me` returns — a behaviour change to the endpoint the app shell depends on, which belongs to its own refined story with its own acceptance criteria, not to a mechanical posture sweep. Option B is worse than either: it would resolve the inconsistency by re-deriving a decision this ticket already settled, three days after it was settled, on the strength of an implementation-time observation.
+
+***What ships***: `GET /workspaces` and `GET /workspaces/{id}` require `atc:read`. `GET /me` stays capability-free. No change from the ruling.
+
+***Recorded debt***: `GET /me` returns full workspace rows (`plan`, `owner*user*id`, `created_at`) for every membership, which is more than an identity probe needs. Narrowing it to what the app shell actually consumes would make the `atc:read` gate on the list endpoints load-bearing, and is a candidate follow-up story. It is not filed as a ticket here because the payload question has never been through a shift-left pass and filing it now would create an unrefined ticket — the same reasoning this Story's own Out Of Scope applies to `POST /invites/accept`.
+
+### Also from the same review, for the record
+
+Adjudicated and FIXED on the branch: no executing test for `DELETE /workspaces/{id}/membership`'s session-only 403 (added, aimed at a nonexistent workspace id so a regression cannot delete a real membership row from the shared database); no test of the over-gating direction (added — `GET /me` with a `run:execute`-only PAT must still return 200); three stale comments.
+
+Adjudicated and DISMISSED: "no test asserts a cookie caller passes a `cookie-only` route" — true, and pre-existing since BK-497 (`app/api/v1/tokens/cookie-only-posture.test.ts` has the identical gap); no cookie-session test harness exists in this repo, so closing it is infrastructure work, not this Story. "Posture-rationale comments sit after the final `return`" — that is BK-497's own precedent in `app/api/v1/tokens/[id]/route.ts`; matching it is correct.
+
+Reconciled without code change: AC1's zero-scope scenario cannot be produced at runtime — `0008*access*tokens.sql`'s CHECK requires at least one scope and `POST /api/v1/tokens` enforces `.min(1)`, so the guarantee is held at mint time. A comment on the route now says so, to save QA hunting a 403 no reachable input can produce.
+
+---
+
+### Automation for Jira - 8/21/2026, 4:03:34 PM
+
+🔎 Pull Request created. Task is pending to ANALYZE and REVIEW by the team. Waiting for PR Approval.
+
+---
+
+### Automation for Jira - 8/21/2026, 4:03:56 PM
+
+✅ Pull Request is successfully MERGED and DEPLOYED on QA. 
+It's Ready for Testing Phase! 
+Dev Task is Done.
+
+---
+
+### Ely - 8/21/2026, 4:05:00 PM
+
+## Ready For QA — merged to `staging`
+
+***PR***: [#193](https://github.com/upex-galaxy/upex-bunkai-tms/pull/193) · merge commit `f7d3bbc` · ancestry against `origin/staging` verified (exit 0)
+***Branch***: `feature/BK-499-enforce-capability-scopes-read-identity-notification`
+***Deploy***: Vercel staging check passed on the PR before merge.
+
+Assigned to @@Luis Eduardo Flores Villarroel, who ran the 2026-08-21 shift-left pass on this Story.
+
+### What shipped
+
+All 24 handlers resolved per the 2026-08-21 AI Product Owner & AI Tech Lead ruling. No migration, no UI, no fifth scope value — the `scopes` CHECK in `0008*access*tokens.sql` is untouched and no already-minted token is invalidated.
+
+| Posture | Count |
+| --- | --- |
+| `atc:read` | 14 reads |
+| `atc:write` | 1 (`POST /workspaces/{id}/projects`) |
+| session-only (`cookie-only`) | 2 (`POST /me/active-workspace`, `DELETE /workspaces/{id}/membership`) |
+| no capability, justified | 7 (6 identity/notification + `POST /workspaces` bootstrap) |
+
+Zero `BK-<n> pending` placeholders remain anywhere under `app/` — a new test now fails if one reappears.
+
+### What QA should know before testing
+
+***The two session-only 403s are NOT missing-scope 403s.*** This is the distinction the shift-left review flagged, and it is now enforced at the gateway rather than in the handler body. A negative case must assert the right one:
+
+| Route | 403 message |
+| --- | --- |
+| `POST /me/active-workspace` | `Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead.` |
+| `DELETE /workspaces/{id}/membership` | `Personal access tokens cannot leave a workspace. Use a browser session.` |
+| any `atc:read`-gated route | `Missing required capability: atc:read` |
+| `POST /workspaces/{id}/projects` | `Missing required capability: atc:write` |
+
+Both session-only routes refuse ***every*** Bearer PAT regardless of scope, so a token holding `atc:read` is still refused — that is the correct result, not a bug.
+
+***AC1 Scenario 1.2 (zero-scope token cannot bootstrap) has no reachable fixture.*** A zero-scope token cannot be minted: `0008*access*tokens.sql` requires `array_length(scopes,1) >= 1` and `POST /api/v1/tokens` enforces `.min(1)`. The guarantee is held at mint time, not by a route 403. A comment on `app/api/v1/workspaces/route.ts` records this so nobody hunts a 403 no input can produce.
+
+***Over-gating is the regression to watch, not under-gating.*** The identity and notification routes deliberately require NO capability — `GET /me` must return 200 for a token scoped only `run:execute`. There is now a test for exactly that.
+
+***Published docs are current***: `public/openapi.json` states the scope and declares the 403 for every operation whose posture moved, and `/qa`'s PAT scope table names what `atc:read` and `atc:write` now cover — and, deliberately, what `atc:read` does NOT cover (the personal inbox, preferences, `/me`).
+
+### Verification run before merge
+
+`bun test` 1617 pass / 1 fail · `bun run types:check` clean · `bun run lint:check` 0 errors · `bun run format:check` clean.
+
+The single failure is ***pre-existing and unrelated to this Story***: `lib/runs/start-run.test.ts` ATC-01 (`step*count` expected 1, received 2). Root cause verified — its fixture builds the expected count from an unpaginated `atc*steps` read, that table now holds 6,397 rows, and PostgREST caps an unbounded select, so the fixture under-counts while the RPC counts correctly. A BK-34 test-fixture defect; this branch touches no run-creation path, no RPC and no migration. Filed as separate follow-up.
+
+The capability suites drive REAL exported handlers with REAL minted PATs against the live database, including a genuine production write path (`POST /workspaces/{id}/projects` → 201, row read back through an independent client, paired with a 403 whose row count is unchanged).
+
+### Review adjudication
+
+Independent adversarial review: ***BLOCKER 0 · MAJOR 1 · MINOR 4 · NIT 2 raised; 0 unresolved at merge.*** Four fixed on the branch, one dismissed with a reason, one reconciled without code change. The MAJOR — that the new `atc:read` gate on `GET /workspaces` is redundant against the ungated `GET /me` payload — was adjudicated in the `## AI Tech Lead — Decision` comment above: shipped as ruled, with the `/me` payload narrowing recorded as follow-up debt rather than smuggled into a posture sweep. Full per-finding table in the PR body.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

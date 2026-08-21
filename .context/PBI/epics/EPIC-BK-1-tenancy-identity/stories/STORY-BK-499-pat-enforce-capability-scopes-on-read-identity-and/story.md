@@ -3,7 +3,7 @@
 **Jira Key:** [BK-499](https://jira.upexgalaxy.com/browse/BK-499)
 **Epic:** [BK-1](https://jira.upexgalaxy.com/browse/BK-1) (Tenancy & Identity)
 **Type:** Story
-**Status:** Ready For Dev
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** 8
 
@@ -85,6 +85,7 @@ See the ruling comment for full rationale. Summary:
 - [Business Rules](./business-rules.md)
 - [Scope](./scope.md)
 - [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -103,7 +104,7 @@ See the ruling comment for full rationale. Summary:
 - **Created:** 8/17/2026
 - **Updated:** 8/21/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** shift-left-2026-08-14, shift-left-2026-08-21, shift-left-reviewed
 
 ---
