@@ -3,7 +3,7 @@
 **Jira Key:** [BK-118](https://jira.upexgalaxy.com/browse/BK-118)
 **Priority:** Low
 **Status:** Closed
-**Components:** Account & Settings, Project & Module Hierarchy
+**Components:** Bunkai Account, Bunkai Projects
 **Severity:** Menor
 **Error Type:** Functional
 **Test Environment:** Staging

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-7](https://jira.upexgalaxy.com/browse/BK-7)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 38
+**Total Story Points:** 46
 
 ---
 
@@ -115,6 +115,7 @@ See per-story `story.md` for Gherkin acceptance criteria.
 | [BK-266](https://jira.upexgalaxy.com/browse/BK-266) | TMS-Projects | Browse workspace projects in an index with a dedicated create route | - | High | Ready For QA |
 | [BK-398](https://jira.upexgalaxy.com/browse/BK-398) | Command Palette | Search and jump across the workspace | 5 | Medium | QA Approved |
 | [BK-443](https://jira.upexgalaxy.com/browse/BK-443) | App Shell | Save, name, and return to a filtered view | - | Medium | Backlog |
+| [BK-509](https://jira.upexgalaxy.com/browse/BK-509) | 🚀 TMS-Project | Create a project inside a workspace | 8 | Medium | Ready For QA |
 
 ---
 

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-337](https://jira.upexgalaxy.com/browse/BK-337)
 **Epic:** [BK-31](https://jira.upexgalaxy.com/browse/BK-31) (Bugs & Defect Heatmap)
 **Type:** Story
-**Status:** Ready For QA
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** -
 
@@ -97,6 +97,10 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 
 ## Traceability
 
+### Test Execution (1)
+
+- [BK-518](https://jira.upexgalaxy.com/browse/BK-518): ATR: BK-337: Story Testing _(Close)_
+
 ### Bug (1)
 
 - [BK-466](https://jira.upexgalaxy.com/browse/BK-466): RunnerView evidence anchor renders unscoped URLs — javascript:/data: schemes accepted _(Ready For QA)_
@@ -107,12 +111,20 @@ No single-defect read endpoint and no read RPC exist today. Scope names the page
 - [BK-372](https://jira.upexgalaxy.com/browse/BK-372): TMS-Defect Sync | Send a newly filed defect to Jira _(Backlog)_
 - [BK-465](https://jira.upexgalaxy.com/browse/BK-465): TMS-Defect Filing | Capture expected and actual results at filing _(Backlog)_
 
+### Test Plan (1)
+
+- [BK-516](https://jira.upexgalaxy.com/browse/BK-516): ATP: BK-337: TMS-Defect Detail | Open a defect and read its full record _(READY)_
+
+### Test Set (1)
+
+- [BK-541](https://jira.upexgalaxy.com/browse/BK-541): Suite: BK-337: TMS-Defect Detail | Open a defect and read its full record _(Designing)_
+
 ---
 
 ## Metadata
 
 - **Created:** 8/10/2026
-- **Updated:** 8/14/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** shift-left-2026-08-11, shift-left-reviewed

@@ -28,9 +28,10 @@ When a defect can be traced to a specific feature story or epic, file or move it
 ## Metadata
 
 - **Created:** 6/25/2026
-- **Updated:** 8/13/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
+- **Labels:** QA-Artifact
 
 ---
 

@@ -4,7 +4,7 @@
 **Related Story:** [BK-50](https://jira.upexgalaxy.com/browse/BK-50) - TMS-Traceability | Export the assembled chain as a read-only snapshot
 **Priority:** Low
 **Status:** Closed
-**Components:** Coverage & Traceability
+**Components:** Bunkai Traceability
 **Severity:** Menor
 **Fix Type:** Bugfix
 

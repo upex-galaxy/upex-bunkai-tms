@@ -125,7 +125,7 @@
 
 ### Storys (3)
 
-- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Estimation)_
+- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Ready For Dev)_
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 - [BK-232](https://jira.upexgalaxy.com/browse/BK-232): Billing | See plan-limit warnings with an upgrade path _(Backlog)_
 

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-58](https://jira.upexgalaxy.com/browse/BK-58)
 **Priority:** Lowest
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
 **Severity:** Trivial
 **Error Type:** Data
 **Test Environment:** Staging

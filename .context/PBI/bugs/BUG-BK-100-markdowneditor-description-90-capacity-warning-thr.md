@@ -3,7 +3,7 @@
 **Jira Key:** [BK-100](https://jira.upexgalaxy.com/browse/BK-100)
 **Priority:** Medium
 **Status:** Closed
-**Components:** User Stories & Acceptance Criteria
+**Components:** Bunkai User Stories
 **Severity:** Moderada
 **Error Type:** Functional
 **Test Environment:** Staging

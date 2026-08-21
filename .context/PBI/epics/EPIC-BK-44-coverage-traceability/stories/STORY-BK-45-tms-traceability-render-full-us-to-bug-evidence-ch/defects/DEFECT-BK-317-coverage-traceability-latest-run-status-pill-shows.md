@@ -4,7 +4,7 @@
 **Related Story:** [BK-45](https://jira.upexgalaxy.com/browse/BK-45) - TMS-Traceability | Render full US to bug evidence chain in one read
 **Priority:** Low
 **Status:** Closed
-**Components:** Coverage & Traceability
+**Components:** Bunkai Traceability
 **Severity:** Menor
 **Error Type:** Content
 **Test Environment:** Staging

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-182](https://jira.upexgalaxy.com/browse/BK-182)
 **Priority:** Medium
 **Status:** Ready For QA
-**Components:** Manual Execution & Runs
+**Components:** Bunkai Runs
 **Severity:** Moderada
 **Error Type:** Integration
 **Test Environment:** Staging

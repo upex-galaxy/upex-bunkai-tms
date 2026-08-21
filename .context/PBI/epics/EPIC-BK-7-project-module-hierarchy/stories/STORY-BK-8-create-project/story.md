@@ -85,7 +85,7 @@ As a Workspace member, I want to create a Project inside a Workspace so that I c
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 7/24/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** hierarchy, mvp, shift-left-2026-05-28, shift-left-reviewed, wave-1

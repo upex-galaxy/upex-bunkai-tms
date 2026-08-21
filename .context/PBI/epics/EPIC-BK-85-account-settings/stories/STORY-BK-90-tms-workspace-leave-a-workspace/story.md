@@ -47,16 +47,17 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 
 ## Traceability
 
-### Story (1)
+### Storys (2)
 
 - [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Ready For QA)_
+- [BK-512](https://jira.upexgalaxy.com/browse/BK-512): TMS-Workspace | Delete a workspace I own _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 8/5/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** implementation-plan-ready, shift-left-2026-06-10, shift-left-reviewed

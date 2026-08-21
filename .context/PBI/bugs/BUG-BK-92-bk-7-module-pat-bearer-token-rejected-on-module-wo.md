@@ -3,7 +3,7 @@
 **Jira Key:** [BK-92](https://jira.upexgalaxy.com/browse/BK-92)
 **Priority:** High
 **Status:** Duplicated
-**Components:** Tenancy & Identity
+**Components:** Bunkai API Tokens
 **Severity:** Mayor
 **Error Type:** Integration
 **Test Environment:** Staging
@@ -69,7 +69,7 @@ PAT bearer tokens are rejected with 401 on module and workspace resource endpoin
 ## Metadata
 
 - **Created:** 6/8/2026
-- **Updated:** 8/2/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Jorgelina Abdo
 - **Assignee:** Jorgelina Abdo
 - **Labels:** api, bug, exploratory-testing
