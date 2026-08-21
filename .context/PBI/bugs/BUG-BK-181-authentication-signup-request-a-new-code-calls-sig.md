@@ -3,7 +3,7 @@
 **Jira Key:** [BK-181](https://jira.upexgalaxy.com/browse/BK-181)
 **Priority:** High
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai Auth
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging

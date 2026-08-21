@@ -54,7 +54,7 @@
 ### Storys (2)
 
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(QA Approved)_
-- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(Ready For QA)_
+- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(QA Approved)_
 
 ---
 

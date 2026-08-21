@@ -4,7 +4,7 @@
 **Related Story:** [BK-6](https://jira.upexgalaxy.com/browse/BK-6) - TMS-Workspace | Switch between workspaces
 **Priority:** High
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai Workspaces
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -98,7 +98,7 @@ Reproduced via raw curl against staging (bypassing Playwright entirely) — see 
 ## Metadata
 
 - **Created:** 8/6/2026
-- **Updated:** 8/13/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Luis Eduardo Flores Villarroel
 - **Assignee:** Luis Eduardo Flores Villarroel
 

@@ -30,11 +30,12 @@ Because engineering already lives in their own tracker, every defect filed in Bu
 | [BK-42](https://jira.upexgalaxy.com/browse/BK-42) | TMS-Defect Heatmap | View count and week-over-week trend per module | 3 | Medium | QA Approved |
 | [BK-43](https://jira.upexgalaxy.com/browse/BK-43) | TMS-Defect Sync | Sync defects one-way to the external tracker | 1 | Medium | ABORTED |
 | [BK-264](https://jira.upexgalaxy.com/browse/BK-264) | TMS-Defect Triage | Assign a defect to a workspace member and update its status | - | Medium | QA Approved |
-| [BK-337](https://jira.upexgalaxy.com/browse/BK-337) | TMS-Defect Detail | Open a defect and read its full record | - | Medium | Ready For QA |
+| [BK-337](https://jira.upexgalaxy.com/browse/BK-337) | TMS-Defect Detail | Open a defect and read its full record | - | Medium | QA Approved |
 | [BK-371](https://jira.upexgalaxy.com/browse/BK-371) | TMS-Defect Sync | Point a project at a Jira destination | 3 | Medium | Backlog |
 | [BK-372](https://jira.upexgalaxy.com/browse/BK-372) | TMS-Defect Sync | Send a newly filed defect to Jira | 3 | Medium | Backlog |
 | [BK-373](https://jira.upexgalaxy.com/browse/BK-373) | TMS-Defect Sync | Recover a failed sync and show its state | 3 | Medium | Backlog |
 | [BK-465](https://jira.upexgalaxy.com/browse/BK-465) | TMS-Defect Filing | Capture expected and actual results at filing | - | Medium | Backlog |
+| [BK-555](https://jira.upexgalaxy.com/browse/BK-555) | TMS-Bug Reports | Browse every defect in the workspace from one index | - | Medium | Backlog |
 
 ---
 

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-142](https://jira.upexgalaxy.com/browse/BK-142)
 **Priority:** Highest
 **Status:** Closed
-**Components:** User Stories & Acceptance Criteria
+**Components:** Bunkai User Stories
 **Severity:** Crítica
 **Error Type:** Integration
 **Test Environment:** Staging

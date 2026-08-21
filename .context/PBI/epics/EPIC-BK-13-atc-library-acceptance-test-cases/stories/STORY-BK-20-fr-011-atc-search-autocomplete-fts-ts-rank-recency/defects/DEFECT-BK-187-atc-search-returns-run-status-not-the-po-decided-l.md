@@ -4,7 +4,7 @@
 **Related Story:** [BK-20](https://jira.upexgalaxy.com/browse/BK-20) - TMS-ATC Search | Search and autocomplete ATCs
 **Priority:** High
 **Status:** Closed
-**Components:** ATC Library (Acceptance Test Cases)
+**Components:** Bunkai ATCs
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging

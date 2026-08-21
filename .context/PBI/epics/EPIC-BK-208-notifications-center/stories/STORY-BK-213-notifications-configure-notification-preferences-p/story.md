@@ -40,7 +40,7 @@ Once run and bug events flow into the inbox, volume becomes the enemy: a busy wo
 
 - [BK-209](https://jira.upexgalaxy.com/browse/BK-209): Notifications | View an inbox of workspace events _(Ready For QA)_
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
-- [BK-214](https://jira.upexgalaxy.com/browse/BK-214): Notifications | Receive an email digest of unread notifications _(Backlog)_
+- [BK-214](https://jira.upexgalaxy.com/browse/BK-214): Notifications | Receive an email digest of unread notifications _(Ready For Dev)_
 
 ---
 

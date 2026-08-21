@@ -2,7 +2,7 @@
 
 **Jira Key:** [BK-500](https://jira.upexgalaxy.com/browse/BK-500)
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Severity:** Moderada
 **Error Type:** Functional
@@ -80,9 +80,9 @@ Filed by the scheduled `bug` delivery routine under the `autonomous-delivery` sk
 ## Metadata
 
 - **Created:** 8/17/2026
-- **Updated:** 8/17/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
-- **Assignee:** Ely
+- **Assignee:** Unassigned
 
 ---
 

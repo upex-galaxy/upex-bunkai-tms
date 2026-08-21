@@ -3,7 +3,7 @@
 **Jira Key:** [BK-176](https://jira.upexgalaxy.com/browse/BK-176)
 **Priority:** Low
 **Status:** Ready For QA
-**Components:** Account & Settings
+**Components:** Bunkai Account
 **Severity:** Menor
 **Error Type:** Functional
 **Test Environment:** Staging

@@ -3,7 +3,7 @@
 **Jira Key:** [BK-175](https://jira.upexgalaxy.com/browse/BK-175)
 **Priority:** Highest
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai Auth
 **Severity:** Crítica
 **Error Type:** Functional
 **Test Environment:** Staging

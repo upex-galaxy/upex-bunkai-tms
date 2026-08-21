@@ -22,6 +22,8 @@ The signed-in user's self-service surface: identity, role, sign out, Personal Ac
 | [BK-88](https://jira.upexgalaxy.com/browse/BK-88) | Settings | Manage Personal Access Tokens | 5 | Medium | Ready For QA |
 | [BK-89](https://jira.upexgalaxy.com/browse/BK-89) | TMS-Workspace | View the workspaces I belong to | 2 | Medium | Ready For QA |
 | [BK-90](https://jira.upexgalaxy.com/browse/BK-90) | TMS-Workspace | Leave a workspace | 5 | Medium | Ready For QA |
+| [BK-508](https://jira.upexgalaxy.com/browse/BK-508) | Settings | Request an export of my workspace data | - | Medium | Backlog |
+| [BK-512](https://jira.upexgalaxy.com/browse/BK-512) | TMS-Workspace | Delete a workspace I own | - | Medium | Backlog |
 
 ---
 

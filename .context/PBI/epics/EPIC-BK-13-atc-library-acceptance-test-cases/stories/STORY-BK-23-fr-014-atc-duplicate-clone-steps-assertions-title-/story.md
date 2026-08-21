@@ -64,7 +64,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 8/10/2026
+- **Updated:** 8/21/2026
 - **Reporter:** Ely
 - **Assignee:** Benjamin Segovia
 - **Labels:** atc, clone, mvp, wave-2

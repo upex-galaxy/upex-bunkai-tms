@@ -28,10 +28,10 @@ Membership in this epic says nothing about which product feature a test covers. 
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 8/13/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
-- **Labels:** qa, regression, test-repository
+- **Labels:** QA-Artifact, qa, regression, test-repository
 
 ---
 

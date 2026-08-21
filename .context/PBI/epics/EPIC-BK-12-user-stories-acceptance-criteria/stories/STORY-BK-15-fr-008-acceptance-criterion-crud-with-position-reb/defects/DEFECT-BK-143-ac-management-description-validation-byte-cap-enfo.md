@@ -4,7 +4,7 @@
 **Related Story:** [BK-15](https://jira.upexgalaxy.com/browse/BK-15) - TMS-AC | Manage criteria under a user story
 **Priority:** Medium
 **Status:** Closed
-**Components:** User Stories & Acceptance Criteria
+**Components:** Bunkai User Stories
 **Severity:** Moderada
 **Error Type:** Functional
 **Test Environment:** Staging

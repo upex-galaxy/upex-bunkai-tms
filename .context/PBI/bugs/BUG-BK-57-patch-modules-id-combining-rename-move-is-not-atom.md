@@ -3,7 +3,7 @@
 **Jira Key:** [BK-57](https://jira.upexgalaxy.com/browse/BK-57)
 **Priority:** Medium
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
 **Severity:** Moderada
 **Error Type:** Data
 **Test Environment:** Staging

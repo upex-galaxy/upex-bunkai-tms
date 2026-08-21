@@ -3,7 +3,7 @@
 **Jira Key:** [BK-59](https://jira.upexgalaxy.com/browse/BK-59)
 **Priority:** Low
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
 **Severity:** Menor
 **Error Type:** Functional
 **Test Environment:** Staging

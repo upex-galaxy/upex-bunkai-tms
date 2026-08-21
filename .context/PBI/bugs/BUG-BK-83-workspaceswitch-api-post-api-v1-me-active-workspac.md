@@ -3,7 +3,7 @@
 **Jira Key:** [BK-83](https://jira.upexgalaxy.com/browse/BK-83)
 **Priority:** Medium
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai Workspaces
 **Severity:** Moderada
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -94,7 +94,7 @@ HTTP 200 with body containing the new active workspace details:
 ## Metadata
 
 - **Created:** 6/6/2026
-- **Updated:** 8/2/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Luis Eduardo Flores Villarroel
 - **Assignee:** Luis Eduardo Flores Villarroel
 - **Labels:** api, bug, exploratory-testing, tenancy

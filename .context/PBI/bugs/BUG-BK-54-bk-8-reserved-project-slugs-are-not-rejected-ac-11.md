@@ -3,7 +3,7 @@
 **Jira Key:** [BK-54](https://jira.upexgalaxy.com/browse/BK-54)
 **Priority:** High
 **Status:** Duplicated
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging

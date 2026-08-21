@@ -3,7 +3,7 @@
 **Jira Key:** [BK-62](https://jira.upexgalaxy.com/browse/BK-62)
 **Priority:** Highest
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai Invites
 **Severity:** Crítica
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -141,7 +141,7 @@ Check existing role before upsert. If user has higher role, return 409 ALREADY_M
 ## Metadata
 
 - **Created:** 6/5/2026
-- **Updated:** 6/26/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Nahuel Gomez
 - **Assignee:** Ely
 

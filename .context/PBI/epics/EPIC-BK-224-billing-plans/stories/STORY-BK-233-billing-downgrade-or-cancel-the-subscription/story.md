@@ -38,7 +38,7 @@ The exit half of self-serve billing, and the half that builds trust: a downgrade
 
 ### Story (1)
 
-- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Estimation)_
+- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Ready For Dev)_
 
 ---
 

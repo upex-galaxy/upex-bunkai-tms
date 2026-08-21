@@ -3,7 +3,7 @@
 **Jira Key:** [BK-96](https://jira.upexgalaxy.com/browse/BK-96)
 **Priority:** High
 **Status:** Closed
-**Components:** ATC Library (Acceptance Test Cases)
+**Components:** Bunkai ATCs
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging
