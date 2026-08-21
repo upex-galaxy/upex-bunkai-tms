@@ -54,6 +54,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //       (P0002, non-disclosure); a non-open plan cannot be edited (45603).
 //   (j) update: the activity payload is positively projected — only the
 //       fields that actually changed appear.
+//   (m) BK-591 regression: a trailing U+00A0 makes a name DISTINCT (AC 2.4)
+//       and survives into storage, while a trailing TAB still collapses to a
+//       duplicate — covering name, goal, and the update path.
 //
 // DB-dependent + fully env-gated (service AND real-login). Skips loudly when
 // its env is missing, and logs + passes when seed state (or the login itself)
@@ -370,6 +373,91 @@ describeOrSkip('BK-202 — test plan RPC isolation (real auth write path, authz,
       expect(byInternal.error?.code).toBe('23505');
 
       await db.from('test_plans').delete().eq('id', firstId);
+    });
+  });
+
+  // BK-591 regression. Migration 0073 normalized with `'\s+'`, and both its
+  // own comment (line 24) and validation.ts's claimed Postgres `\s` does NOT
+  // match U+00A0. It does — `\s` is `[[:space:]]`, which matches U+00A0 under
+  // this instance's UTF-8 collation — so a trailing NBSP was collapsed to a
+  // space, btrim stripped it, and the name landed on its unpadded twin: 23505
+  // -> 409 where AC 2.4 requires a distinct plan. 0074 spells the class out
+  // (`[\t\n\v\f\r ]+`) in the two CHECK constraints AND both RPCs.
+  //
+  // This case fails on pre-0074 state at the FIRST assertion (23505 instead of
+  // success). It is deliberately placed on the real RPC path rather than on
+  // normalizeTestPlanText: the TypeScript mirror was already correct, so a unit
+  // test of it passes over the dead half of the bug and proves nothing.
+  //
+  // The readback through an independent service-role client is what proves the
+  // fix is real rather than merely non-erroring — it asserts the U+00A0 byte
+  // survived into storage, which also proves the table CHECK moved with the
+  // RPC. Fixing only the RPCs (what the ticket asked for) would fail HERE with
+  // a check-constraint violation instead of a 23505.
+  it('(m) BK-591 — a trailing U+00A0 makes a name DISTINCT (AC 2.4), while a tab stays a duplicate', async () => {
+    if (!fixture || !anon) { return warn(); }
+    const db = service();
+    // Escaped, never a literal byte: a bare U+00A0 in source is invisible in
+    // every diff and one stray reformat away from becoming a plain space,
+    // which would silently turn this regression into a tautology.
+    const NBSP = '\u00A0';
+
+    await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
+      const base = `${PREFIX} NBSP case`;
+
+      const first = await create(anon!, { projectId: fixture!.projectId, name: base });
+      expect(first.error).toBeNull();
+      const firstId = (first.data as unknown as TestPlanJson).id;
+
+      // The defect, stated positively: NBSP is NOT in the collapse/trim class,
+      // so this is a different name and must be created.
+      const nbspPadded = await create(anon!, { projectId: fixture!.projectId, name: `${base}${NBSP}` });
+      expect(nbspPadded.error).toBeNull();
+      const nbspPlan = nbspPadded.data as unknown as TestPlanJson;
+      expect(nbspPlan.id).not.toBe(firstId);
+
+      // The RPC's own return value kept the byte...
+      expect(nbspPlan.name).toBe(`${base}${NBSP}`);
+      expect(nbspPlan.name.endsWith(NBSP)).toBe(true);
+
+      // ...and so did storage, read back independently of the writer.
+      const { data: stored, error: storedError } = await db
+        .from('test_plans')
+        .select('name')
+        .eq('id', nbspPlan.id)
+        .single();
+      expect(storedError).toBeNull();
+      expect((stored as unknown as { name: string }).name).toBe(`${base}${NBSP}`);
+
+      // Control, straight from the ticket: a TAB *is* in the class, so the
+      // tab-padded name still collapses onto `base` and is still a duplicate.
+      // This is what stops 0074 from being over-corrected into "never
+      // normalize anything".
+      const tabPadded = await create(anon!, { projectId: fixture!.projectId, name: `${base}\t` });
+      expect(tabPadded.error?.code).toBe('23505');
+      expect(tabPadded.data).toBeNull();
+
+      // The goal column carries the identical expression and was fixed in the
+      // same migration; assert it, or the next NBSP defect gets filed against
+      // `goal` instead of `name`.
+      const withGoal = await create(anon!, {
+        projectId: fixture!.projectId,
+        name: `${PREFIX} NBSP goal case`,
+        goal: `Release${NBSP}`,
+      });
+      expect(withGoal.error).toBeNull();
+      const goalPlan = withGoal.data as unknown as TestPlanJson;
+      expect(goalPlan.goal).toBe(`Release${NBSP}`);
+
+      // The UPDATE rpc normalizes with the same rulebook (0073 step 4 / 0074
+      // section 3): renaming onto the NBSP-padded variant must NOT collide.
+      const renamed = await update(anon!, { testPlanId: firstId, name: `${base}${NBSP}${NBSP}` });
+      expect(renamed.error).toBeNull();
+      expect((renamed.data as unknown as TestPlanJson).name).toBe(`${base}${NBSP}${NBSP}`);
+
+      await db.from('test_plans').delete().eq('id', firstId);
+      await db.from('test_plans').delete().eq('id', nbspPlan.id);
+      await db.from('test_plans').delete().eq('id', goalPlan.id);
     });
   });
 

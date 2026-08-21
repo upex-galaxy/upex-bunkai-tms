@@ -20,14 +20,24 @@ export const TEST_PLAN_DESCRIPTION_MAX = 500;
 export const TEST_PLAN_GOAL_MAX = 100;
 
 // Collapse THEN trim — see the RPC's own comment on operand order. This is an
-// EXACT mirror of the RPC's `btrim(regexp_replace(..., '\s+', ' ', 'g'))`, and
-// the character class is spelled out rather than written `\s` on purpose:
-// JavaScript's `\s` matches U+00A0 (and the rest of Unicode Zs) while
-// Postgres's POSIX `\s` does not. Using `\s` + `.trim()` here would silently
-// normalize a non-breaking space that the database would have stored as-is,
-// so the same name would round-trip differently through the HTTP route than
-// through a direct RPC call — with the table CHECK, not this module, deciding
-// who was right.
+// EXACT mirror of the RPC's
+// `btrim(regexp_replace(..., '[\t\n\v\f\r ]+', ' ', 'g'))`, and the character
+// class is spelled out rather than written `\s` on purpose: `\s` matches
+// U+00A0 (and the rest of Unicode Zs) on BOTH sides — in JavaScript, and in
+// Postgres, where `\s` is `[[:space:]]` and this instance's UTF-8 collation
+// makes it match U+00A0 too.
+//
+// BK-591: until migration 0074 this comment claimed the opposite of Postgres
+// ("Postgres's POSIX `\s` does not [match U+00A0]"), and 0073 carried the same
+// claim. This module was accidentally right for a wrong reason; the SQL was
+// wrong, so an NBSP-padded name normalized onto its unpadded twin in the
+// database and came back 409. Do NOT "simplify" this back to `\s` +
+// `.trim()` — that reintroduces the defect on this side of the mirror.
+//
+// Using `\s` + `.trim()` here would silently normalize a non-breaking space
+// that the database now stores as-is, so the same name would round-trip
+// differently through the HTTP route than through a direct RPC call — with
+// the table CHECK, not this module, deciding who was right.
 //
 // NOT covering U+00A0 is the ratified scope (BK-202 Technical Question 2:
 // match the milestones precedent, do not widen it unasked). Making both sides
