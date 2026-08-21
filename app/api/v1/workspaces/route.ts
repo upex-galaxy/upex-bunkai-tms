@@ -95,6 +95,13 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // least one scope passes; RLS and the RPC still own the rest. Deliberately NOT
 // a precedent for "creation is free" — POST /workspaces/{id}/projects happens
 // inside an existing workspace and takes `atc:write`.
+//
+// "At least one scope" is not asserted here because it cannot be violated: a
+// zero-scope token cannot exist. `0008_access_tokens.sql`'s CHECK requires
+// `array_length(scopes, 1) >= 1` and `POST /api/v1/tokens` enforces `.min(1)`
+// on the request body, so the guarantee is held at mint time. Noted because
+// the acceptance criteria phrase it as a runtime behaviour, and QA would
+// otherwise go looking for a 403 that no reachable input can produce.
 }, {
   auth: 'authenticated',
   why: 'Workspace bootstrap — the sole capability-free exception; a token cannot hold workspace scope before a workspace exists.',

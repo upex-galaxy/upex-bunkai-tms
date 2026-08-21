@@ -15,6 +15,8 @@ const { GET: listUserStories } = await import('@app/api/v1/modules/[id]/user-sto
 const { GET: listProjectBugs } = await import('@app/api/v1/projects/[id]/bugs/route');
 const { POST: createProject } = await import('@app/api/v1/workspaces/[id]/projects/route');
 const { POST: switchActiveWorkspace } = await import('@app/api/v1/me/active-workspace/route');
+const { DELETE: leaveWorkspaceRoute } = await import('@app/api/v1/workspaces/[id]/membership/route');
+const { GET: getMe } = await import('@app/api/v1/me/route');
 const { mintPat } = await import('@lib/api/pat');
 
 // BK-498 — capability scopes are ENFORCED on the authoring domain.
@@ -483,6 +485,41 @@ describeOrSkip('BK-499 — capability scopes are enforced on reads and identity 
       + 'Pass workspace_id explicitly on each request instead.',
     );
   });
+
+  // The other session-only route. Deliberately aimed at a workspace id that
+  // does not exist: if the posture ever regressed, the handler body would run
+  // `bunkai_leave_workspace` for a REAL member of a SHARED database, and a test
+  // whose failure mode is destroying seed data is worse than no test. Against a
+  // nonexistent id the regression surfaces as a 404 instead of this 403, which
+  // fails the assertion without touching a row.
+  it('rejects DELETE /workspaces/{id}/membership from any Bearer PAT, regardless of scope', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+
+    const response = await leaveWorkspaceRoute(
+      leaveWorkspaceRequest('00000000-0000-0000-0000-000000000000', fixture.readToken),
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { error?: { message?: string } };
+    expect(body.error?.message).toBe(
+      'Personal access tokens cannot leave a workspace. Use a browser session.',
+    );
+  });
+
+  // The over-gating direction, which is the failure mode this Story's own
+  // no-capability category invites: someone later "tidies" an identity route
+  // onto `auth: 'required'` and every narrowly-scoped token loses the ability
+  // to find out who it is. The token here holds ONLY `run:execute` — the scope
+  // that is 403'd on every read above — and must still reach 200.
+  it('allows GET /me from a run:execute-only PAT — identity is never scope-gated', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+
+    const response = await getMe(meRequest(fixture.executeToken));
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as { user?: { id?: string } };
+    expect(typeof body.user?.id).toBe('string');
+  });
 });
 
 function projectBugsRequest(projectId: string, token: string): NextRequest {
@@ -496,6 +533,19 @@ function createProjectRequest(workspaceId: string, token: string, name: string):
     method: 'POST',
     headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
     body: JSON.stringify({ name }),
+  });
+}
+
+function leaveWorkspaceRequest(workspaceId: string, token: string): NextRequest {
+  return new NextRequest(`https://app.test/api/v1/workspaces/${workspaceId}/membership`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${token}` },
+  });
+}
+
+function meRequest(token: string): NextRequest {
+  return new NextRequest('https://app.test/api/v1/me', {
+    headers: { authorization: `Bearer ${token}` },
   });
 }
 

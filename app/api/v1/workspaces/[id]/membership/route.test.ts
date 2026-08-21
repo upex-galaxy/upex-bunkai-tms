@@ -48,9 +48,11 @@ function fakeDb(memberships: MembershipsResult, workspaceName?: WorkspaceNameRes
 
 // BK-90's bearer-rejection guard used to be unit-tested here against the
 // `assertSessionOnly` helper. BK-499 lifted it into the route's
-// `auth: 'cookie-only'` posture, so the contract is enforced by the gateway
-// and its exact 403 message is asserted per handler in
-// `lib/api/route-capability-coverage.test.ts`.
+// `auth: 'cookie-only'` posture, so it is covered where it is now enforced:
+// the exact 403 message is pinned per handler in
+// `lib/api/route-capability-coverage.test.ts`, and the rejection is driven
+// through the real exported DELETE with a real minted PAT in
+// `lib/api/capability-enforcement.test.ts`.
 
 describe('mapLeaveWorkspaceError (BK-90)', () => {
   it('maps not_authenticated (42501) to 401 unauthorized', () => {

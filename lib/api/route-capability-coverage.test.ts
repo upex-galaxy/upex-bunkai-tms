@@ -14,9 +14,9 @@ import { describe, expect, it } from 'bun:test';
 // It does not close every case, and this file is the reason the pair is needed:
 //
 //   1. A handler can skip `withApiHandler` entirely (`export function GET`).
-//      The union never sees it, so the compiler has nothing to object to. Two
-//      such handlers exist today and are legitimate; a THIRD would be invisible
-//      without this test.
+//      The union never sees it, so the compiler has nothing to object to. Four
+//      such handlers exist today and are legitimate — two under `app/api`, two
+//      under `app/auth` — and one MORE would be invisible without this test.
 //   2. A posture can be silently downgraded — `required` traded for
 //      `authenticated` — which compiles fine and removes a real gate.
 //   3. A placeholder `why` naming a successor Story needs to be enumerable so
@@ -35,8 +35,8 @@ import { describe, expect, it } from 'bun:test';
 // `public` and buy nothing, while `withApiHandler` passes only `request` and
 // the OAuth route reads `provider` from a second `ctx.params` argument — a
 // rewrite of a CSRF-state-validating path for no security gain. Enumerating
-// them is what the scan is for: a THIRD ungated handler anywhere under `app/`
-// is now a failing test instead of an invisible addition.
+// them is what the scan is for: an ungated handler anywhere under `app/` that
+// is not in that list is now a failing test instead of an invisible addition.
 //
 // The snapshot is also the single file a reviewer reads to see every handler and
 // its posture at once, which is the one genuine advantage the rejected
@@ -99,7 +99,8 @@ describe('BK-497 — every API route handler declares a capability posture', () 
 
   it('enumerates every gateway bypasser explicitly', () => {
     const bypassers = actual.filter(r => r.posture === BYPASS_POSTURE).map(key).sort();
-    // Not `toContain`: the assertion is that the set is EXACTLY the known two.
+    // Not `toContain`: the assertion is that the set is EXACTLY the enumerated
+    // one, so an addition fails here even though the list itself keeps growing.
     // A new bare `export function GET` is invisible to the type union, so this
     // is the only thing standing between it and an unreviewed ungated route.
     expect(bypassers).toEqual(Object.keys(KNOWN_GATEWAY_BYPASSERS).sort());

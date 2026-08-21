@@ -5,7 +5,7 @@ import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 
 // BK-90 (Slice A) — dependency-free logic for `DELETE
 // /api/v1/workspaces/{id}/membership`, split out of `route.ts` so the
-// auth-gate, RPC error-mapping, and active-workspace re-resolution branches
+// RPC error-mapping and active-workspace re-resolution branches
 // are unit-testable without mocking `withApiHandler` or a live NextRequest —
 // mirrors the isolation pattern already used by `workspaces/response.ts` and
 // `me/active-workspace/response.ts`, and the fake-chainable-`db` testing
