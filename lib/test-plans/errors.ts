@@ -1,4 +1,9 @@
 import { ApiError } from '@lib/api/error-envelope';
+import {
+  TEST_PLAN_DESCRIPTION_LENGTH_MESSAGE,
+  TEST_PLAN_GOAL_LENGTH_MESSAGE,
+  TEST_PLAN_NAME_LENGTH_MESSAGE,
+} from '@lib/test-plans/validation';
 
 // BK-202 — map a bunkai_*_test_plan RPC error (Postgres SQLSTATE) to the
 // canonical API envelope. The RPCs raise the test-plans-domain 456xx block
@@ -40,16 +45,22 @@ export function mapTestPlanRpcError(error: { code?: string, message: string }): 
       throw new ApiError('conflict', 'A test plan with this name already exists.', {
         details: { reason: 'test_plan_name_taken' },
       });
+    // BK-592 — these three strings are the SAME constants the Zod pre-check
+    // uses (lib/test-plans/validation.ts). Do not re-inline them as literals:
+    // the Zod layer fails fast, so for a malformed body the API answers with
+    // Zod's message and never reaches this mapper at all. When the two were
+    // written out separately they drifted, and the drift was invisible from
+    // either file on its own.
     case '45600':
-      throw new ApiError('validation_failed', 'Name must be between 1 and 100 characters.', {
+      throw new ApiError('validation_failed', TEST_PLAN_NAME_LENGTH_MESSAGE, {
         details: { reason: 'test_plan_name_length' },
       });
     case '45601':
-      throw new ApiError('validation_failed', 'Description must be 500 characters or fewer.', {
+      throw new ApiError('validation_failed', TEST_PLAN_DESCRIPTION_LENGTH_MESSAGE, {
         details: { reason: 'test_plan_description_length' },
       });
     case '45602':
-      throw new ApiError('validation_failed', 'Goal must be 100 characters or fewer.', {
+      throw new ApiError('validation_failed', TEST_PLAN_GOAL_LENGTH_MESSAGE, {
         details: { reason: 'test_plan_goal_length' },
       });
     case '45603':
