@@ -19,18 +19,24 @@ import { describe, expect, it } from 'bun:test';
 //      without this test.
 //   2. A posture can be silently downgraded — `required` traded for
 //      `authenticated` — which compiles fine and removes a real gate.
-//   3. The handlers still carrying a BK-499 placeholder `why` need to be
-//      enumerable so the remaining successor Story can find them. BK-497 left
-//      46 such handlers; BK-498 resolved its 22 (authoring domain), so 24
-//      remain, all of them BK-499's.
+//   3. A placeholder `why` naming a successor Story needs to be enumerable so
+//      that Story can find its worklist. BK-497 left 46 such handlers; BK-498
+//      resolved its 22 (authoring domain) and BK-499 the last 24, so ZERO
+//      remain. The `it('carries no unresolved posture placeholder')` assertion
+//      below is what keeps that true.
 //
-// SCOPE: `app/api` only, which is what BK-497 ratified. Route handlers exist
-// elsewhere under `app/` — `app/auth/callback/route.ts` and
-// `app/auth/oauth/[provider]/route.ts` are bare `export async function GET`
-// OAuth callbacks that never touch the gateway. They are NOT covered here and
-// are NOT counted among the two bypassers below. Widening the walk to all of
-// `app/` is a real improvement and is recorded for BK-499 rather than taken
-// now, since it would pull handlers outside this Story's stated scope.
+// SCOPE: all of `app/`, widened from `app/api` by BK-499. BK-497 recorded the
+// widening as a real improvement it was deferring, because two route handlers
+// live outside `app/api` — `app/auth/callback/route.ts` and
+// `app/auth/oauth/[provider]/route.ts`, bare `export async function GET`
+// browser-redirect flows that never touch the gateway. They are enumerated in
+// `KNOWN_GATEWAY_BYPASSERS` below rather than wrapped: both run BEFORE any
+// principal exists (they are how a session is obtained), so a posture would be
+// `public` and buy nothing, while `withApiHandler` passes only `request` and
+// the OAuth route reads `provider` from a second `ctx.params` argument — a
+// rewrite of a CSRF-state-validating path for no security gain. Enumerating
+// them is what the scan is for: a THIRD ungated handler anywhere under `app/`
+// is now a failing test instead of an invisible addition.
 //
 // The snapshot is also the single file a reviewer reads to see every handler and
 // its posture at once, which is the one genuine advantage the rejected
@@ -46,12 +52,12 @@ import { describe, expect, it } from 'bun:test';
 // unreviewed regeneration turns this gate back into the fail-open it replaced.
 
 const REPO_ROOT = join(import.meta.dir, '..', '..');
-const API_ROOT = join(REPO_ROOT, 'app', 'api');
+const APP_ROOT = join(REPO_ROOT, 'app');
 const SNAPSHOT_PATH = join(import.meta.dir, 'route-capability-coverage.snapshot.json');
 
-// Handlers under `app/api` that deliberately never reach the gateway. Named
-// here as well as in the snapshot: the snapshot proves the set did not change,
-// and this constant says WHY each one is allowed to be in it. A coverage check
+// Handlers under `app/` that deliberately never reach the gateway. Named here
+// as well as in the snapshot: the snapshot proves the set did not change, and
+// this constant says WHY each one is allowed to be in it. A coverage check
 // that quietly skipped ungated handlers would claim a completeness it does not
 // have — the same fail-open shape the posture union closes.
 const KNOWN_GATEWAY_BYPASSERS: Record<string, string> = {
@@ -60,6 +66,14 @@ const KNOWN_GATEWAY_BYPASSERS: Record<string, string> = {
     + 'trips a #state private-field error during build. The spec is public and cached.',
   'app/api/v1/route.ts::OPTIONS': 'Static 204 CORS preflight for the /api/v1 discovery route. '
     + 'No principal, no body, no data access.',
+  'app/auth/callback/route.ts::GET': 'Magic-link and OAuth callback (BK-400 / ADR-0008). Runs BEFORE '
+    + 'a principal exists — it is how a session is obtained — so it resolves no identity and could '
+    + 'only ever declare `public`. Redirect-only; every branch ends in a NextResponse.redirect to '
+    + '/login or an internal path. Its own security gate is the `bkstate` CSRF check, not a capability.',
+  'app/auth/oauth/[provider]/route.ts::GET': 'OAuth initiation (BK-3 / ADR-0008). Same pre-principal '
+    + 'position as the callback above. Reads `provider` from Next\'s second `ctx.params` argument, '
+    + 'which `withApiHandler` does not pass, so routing it through the gateway would mean re-parsing '
+    + 'the pathname on a CSRF-state-issuing path for no authorization gain.',
 };
 
 function loadSnapshot(): RouteHandlerPosture[] {
@@ -71,7 +85,7 @@ function key(row: RouteHandlerPosture): string {
 }
 
 describe('BK-497 — every API route handler declares a capability posture', () => {
-  const actual = scanRoutePostures(API_ROOT, REPO_ROOT);
+  const actual = scanRoutePostures(APP_ROOT, REPO_ROOT);
 
   if (process.env.UPDATE_ROUTE_POSTURE_SNAPSHOT === '1') {
     writeFileSync(SNAPSHOT_PATH, `${JSON.stringify(actual, null, 2)}\n`);
@@ -162,5 +176,95 @@ describe('BK-497 — every API route handler declares a capability posture', () 
       expect(`${row.file}::${row.method} -> ${row.posture}`)
         .toBe(`${row.file}::${row.method} -> ${expected}`);
     }
+  });
+
+  // BK-499 — the ratified mapping for the read, identity and notification
+  // handlers, the last 24 the placeholder sweep left behind.
+  //
+  // Same reason the BK-498 invariant above exists: the snapshot is regenerated
+  // from the source it checks, so it records a posture change rather than
+  // rejecting a wrong one. Unlike BK-498's, this mapping is NOT derivable from
+  // the verb — `POST /workspaces` and `POST /workspaces/{id}/projects` are both
+  // POSTs with deliberately different postures, and the split between
+  // `atc:read` and no-capability runs along "workspace-shared data" vs "the
+  // caller's own data", not along read-vs-write. So the table is explicit, and
+  // each row is the ruling written down where a future change has to walk past
+  // it.
+  it('holds every read, identity and notification handler to the ratified posture map', () => {
+    const SESSION_ONLY_ACTIVE_WORKSPACE
+      = 'Personal access tokens have no switchable active workspace. '
+        + 'Pass workspace_id explicitly on each request instead.';
+    const SESSION_ONLY_MEMBERSHIP
+      = 'Personal access tokens cannot leave a workspace. Use a browser session.';
+
+    // posture, and for the no-capability postures the EXACT `why` — the 403
+    // message is a contract QA writes negative cases against, and on the two
+    // session-only routes it is the only thing distinguishing "any PAT is
+    // refused" from "this PAT lacked a scope".
+    const RATIFIED: Record<string, { posture: string, why?: string }> = {
+      // Workspace-shared reads.
+      'app/api/v1/activity/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/bugs/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/bugs/[id]/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/bugs/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/bugs/heatmap/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/coverage/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/metrics/recovery-cycles/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/runs/report/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/projects/[id]/traceability/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/runs/[id]/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/tests/[id]/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/tests/[id]/runs/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/workspaces/route.ts::GET': { posture: 'required:atc:read' },
+      'app/api/v1/workspaces/[id]/route.ts::GET': { posture: 'required:atc:read' },
+      // Content creation inside an existing workspace.
+      'app/api/v1/workspaces/[id]/projects/route.ts::POST': { posture: 'required:atc:write' },
+      // Session-only: every Bearer PAT refused, regardless of scope.
+      'app/api/v1/me/active-workspace/route.ts::POST': {
+        posture: 'cookie-only',
+        why: SESSION_ONLY_ACTIVE_WORKSPACE,
+      },
+      'app/api/v1/workspaces/[id]/membership/route.ts::DELETE': {
+        posture: 'cookie-only',
+        why: SESSION_ONLY_MEMBERSHIP,
+      },
+      // The caller's own account state — no capability, by ruling Q1/Q7.
+      'app/api/v1/me/route.ts::GET': { posture: 'authenticated' },
+      'app/api/v1/notification-preferences/route.ts::GET': { posture: 'authenticated' },
+      'app/api/v1/notification-preferences/route.ts::PATCH': { posture: 'authenticated' },
+      'app/api/v1/notifications/[id]/read/route.ts::POST': { posture: 'authenticated' },
+      'app/api/v1/workspaces/[id]/notifications/route.ts::GET': { posture: 'authenticated' },
+      'app/api/v1/workspaces/[id]/notifications/read-all/route.ts::POST': { posture: 'authenticated' },
+      // The sole bootstrap exception.
+      'app/api/v1/workspaces/route.ts::POST': { posture: 'authenticated' },
+    };
+
+    // Guard the guard, same as BK-498's: a rename that emptied the set would
+    // make every assertion below vacuously true.
+    expect(Object.keys(RATIFIED)).toHaveLength(24);
+
+    const byKey = new Map(actual.map(row => [key(row), row]));
+    for (const [handler, expected] of Object.entries(RATIFIED)) {
+      const row = byKey.get(handler);
+      // Compared as one string so a failure names the handler rather than
+      // reporting an anonymous `undefined !== 'required:atc:read'`.
+      expect(`${handler} -> ${row?.posture ?? '<handler not found>'}`)
+        .toBe(`${handler} -> ${expected.posture}`);
+      if (expected.why !== undefined) {
+        expect(`${handler} why -> ${row?.why ?? ''}`)
+          .toBe(`${handler} why -> ${expected.why}`);
+      }
+    }
+  });
+
+  // The placeholder sweep is finished, and this is what keeps it finished. A
+  // `why` that defers the real posture to some later Story is how BK-497 parked
+  // 46 handlers on a gate that performs zero capability checks; reintroducing
+  // one silently would rebuild that backlog without anyone deciding to.
+  it('carries no unresolved posture placeholder', () => {
+    const deferred = actual
+      .filter(r => /\bBK-\d+ pending\b/.test(r.why ?? ''))
+      .map(r => `${key(r)}: ${r.why}`);
+    expect(deferred).toEqual([]);
   });
 });

@@ -12,6 +12,9 @@ import { NextRequest } from 'next/server';
 void mock.module('server-only', () => ({}));
 const { POST: createModule } = await import('@app/api/v1/projects/[id]/modules/route');
 const { GET: listUserStories } = await import('@app/api/v1/modules/[id]/user-stories/route');
+const { GET: listProjectBugs } = await import('@app/api/v1/projects/[id]/bugs/route');
+const { POST: createProject } = await import('@app/api/v1/workspaces/[id]/projects/route');
+const { POST: switchActiveWorkspace } = await import('@app/api/v1/me/active-workspace/route');
 const { mintPat } = await import('@lib/api/pat');
 
 // BK-498 — capability scopes are ENFORCED on the authoring domain.
@@ -308,3 +311,209 @@ describeOrSkip('BK-498 — capability scopes are enforced on the authoring domai
     expect(body.error?.message).toBe('Missing required capability: atc:read');
   });
 });
+
+// BK-499 — capability scopes are ENFORCED on the read, identity and
+// notification routes: the last 24 handlers the BK-497 placeholder sweep left
+// on `auth: 'authenticated'`.
+//
+// Same discipline as the BK-498 block above. `types:check` proves the posture
+// is DECLARED and `route-capability-coverage.test.ts` proves it matches the
+// ratified map; neither proves a narrow token is actually stopped in front of
+// the real database. Every assertion here drives a REAL exported handler with a
+// REAL minted PAT and observes the result through an independent service-role
+// client, and every negative is paired with the positive that rules out "this
+// route is simply broken".
+describeOrSkip('BK-499 — capability scopes are enforced on reads and identity routes', () => {
+  const createdProjectIds: string[] = [];
+  const createdTokenIds: string[] = [];
+  let fixture: {
+    projectId: string
+    readToken: string
+    writeToken: string
+    executeToken: string
+    workspaceId: string
+    prefix: string
+  } | null = null;
+  let skipReason: string | null = null;
+
+  // `expiresInDays: 1`, never null — see the BK-498 block's note. These are
+  // working credentials for a real account in a SHARED database.
+  async function mintFor(db: Db, userId: string, name: string, scopes: Capability[]) {
+    const pat = await mintPat({ admin: db, userId, name, scopes, expiresInDays: 1 });
+    createdTokenIds.push(pat.id);
+    return pat;
+  }
+
+  beforeAll(async () => {
+    const db = service();
+    const writer = await findWritableMember(db);
+    if (!writer) {
+      skipReason = 'need an active workspace member with role >= member (seed state).';
+      return;
+    }
+
+    const prefix = `bk499-cap-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const { data: project, error: projectError } = await db
+      .from('projects')
+      .insert({ workspace_id: writer.workspace_id, slug: prefix, name: `${prefix} project` })
+      .select('id')
+      .single();
+    if (projectError) { throw projectError; }
+    createdProjectIds.push(project.id);
+
+    fixture = {
+      projectId: project.id,
+      readToken: (await mintFor(db, writer.user_id, `${prefix}-read`, ['atc:read'])).token,
+      writeToken: (await mintFor(db, writer.user_id, `${prefix}-write`, ['atc:write'])).token,
+      // The AC-03 token: valid, unexpired, unrevoked, and holding a real scope
+      // that is simply the WRONG one. A scopeless token would be rejected for a
+      // different reason and would prove nothing about the capability gate.
+      executeToken: (await mintFor(db, writer.user_id, `${prefix}-exec`, ['run:execute'])).token,
+      workspaceId: writer.workspace_id,
+      prefix,
+    };
+  });
+
+  afterAll(async () => {
+    if (!hasEnv) { return; }
+    const db = service();
+    // Loud, not swallowed: a silent failure here leaves live credentials for a
+    // real account in a shared database.
+    if (createdProjectIds.length > 0) {
+      const { error } = await db.from('projects').delete().in('id', createdProjectIds);
+      if (error) { throw error; }
+    }
+    for (const id of createdTokenIds) {
+      const { error: secretError } = await db.from('access_token_secrets').delete().eq('token_id', id);
+      if (secretError) { throw secretError; }
+      const { error: tokenError } = await db.from('access_tokens').delete().eq('id', id);
+      if (tokenError) { throw tokenError; }
+    }
+  });
+
+  // AC-02 — the positive control for the read gate, on the exact endpoint the
+  // Acceptance Criteria name.
+  it('allows GET /projects/{id}/bugs from a PAT scoped atc:read', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+
+    const response = await listProjectBugs(projectBugsRequest(fixture.projectId, fixture.readToken));
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as { items?: unknown[] };
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+
+  // AC-03 — the criterion verbatim: a token scoped only `run:execute` is
+  // rejected on a non-ATC read, and no data comes back.
+  it('rejects GET /projects/{id}/bugs from a run:execute-only PAT, and returns no data', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+
+    const response = await listProjectBugs(projectBugsRequest(fixture.projectId, fixture.executeToken));
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { items?: unknown[], error?: { message?: string } };
+    expect(body.error?.message).toBe('Missing required capability: atc:read');
+    // "And no data is returned" is half the criterion, so it is asserted rather
+    // than inferred from the status code.
+    expect(body.items).toBeUndefined();
+  });
+
+  // The write half of this Story's map. REAL production write path: the
+  // exported handler, a real PAT, the RLS-scoped insert the route performs
+  // through the caller's impersonating client, and the row read back by an
+  // independent service-role client — not a fixture-seeded row.
+  it('allows POST /workspaces/{id}/projects from a PAT scoped exactly atc:write', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+    const db = service();
+
+    const name = `${fixture.prefix} allowed project`;
+    const response = await createProject(
+      createProjectRequest(fixture.workspaceId, fixture.writeToken, name),
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json() as { project?: { id?: string, name?: string } };
+    expect(body.project?.name).toBe(name);
+    if (body.project?.id) { createdProjectIds.push(body.project.id); }
+
+    const { data: row } = await db
+      .from('projects')
+      .select('id, name')
+      .eq('id', body.project?.id ?? '')
+      .single();
+    expect(row?.name).toBe(name);
+  });
+
+  // The negative for the same route. A 403 alone is also what a broken route
+  // produces, and an unmoved row count is also explained by a write that never
+  // worked for anyone — only the pair isolates the capability gate.
+  it('rejects POST /workspaces/{id}/projects from an atc:read-only PAT, and creates nothing', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+    const db = service();
+
+    const before = await workspaceProjectCount(db, fixture.workspaceId);
+
+    const response = await createProject(
+      createProjectRequest(fixture.workspaceId, fixture.readToken, `${fixture.prefix} denied project`),
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { error?: { message?: string } };
+    expect(body.error?.message).toBe('Missing required capability: atc:write');
+    expect(await workspaceProjectCount(db, fixture.workspaceId)).toBe(before);
+  });
+
+  // The session-only posture, driven end-to-end. This is the distinction the
+  // shift-left review flagged: the token here HOLDS a valid scope and is still
+  // refused, so the failure reason is "you are a token", not "you lack a
+  // scope". Asserting the exact message is what keeps those two 403s apart for
+  // whoever writes the negative test case downstream.
+  it('rejects POST /me/active-workspace from any Bearer PAT, regardless of scope', async () => {
+    if (!fixture) { throw new Error(skipReason ?? 'fixture not initialised'); }
+
+    const response = await switchActiveWorkspace(
+      switchWorkspaceRequest(fixture.workspaceId, fixture.readToken),
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json() as { error?: { message?: string } };
+    expect(body.error?.message).toBe(
+      'Personal access tokens have no switchable active workspace. '
+      + 'Pass workspace_id explicitly on each request instead.',
+    );
+  });
+});
+
+function projectBugsRequest(projectId: string, token: string): NextRequest {
+  return new NextRequest(`https://app.test/api/v1/projects/${projectId}/bugs`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+}
+
+function createProjectRequest(workspaceId: string, token: string, name: string): NextRequest {
+  return new NextRequest(`https://app.test/api/v1/workspaces/${workspaceId}/projects`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+    body: JSON.stringify({ name }),
+  });
+}
+
+function switchWorkspaceRequest(workspaceId: string, token: string): NextRequest {
+  return new NextRequest('https://app.test/api/v1/me/active-workspace', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+}
+
+async function workspaceProjectCount(db: Db, workspaceId: string): Promise<number> {
+  const { count } = await db
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId);
+  // Same shape guard as `moduleCount`: a failed head query returns null, and a
+  // caller comparing before/after must never compare `null === null`.
+  expect(typeof count).toBe('number');
+  return count as number;
+}

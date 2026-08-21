@@ -22,8 +22,7 @@
   {
     "file": "app/api/v1/activity/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/atcs/[id]/duplicate/route.ts",
@@ -88,8 +87,7 @@
   {
     "file": "app/api/v1/bugs/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/bugs/[id]/status/route.ts",
@@ -99,8 +97,7 @@
   {
     "file": "app/api/v1/bugs/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/bugs/route.ts",
@@ -141,14 +138,14 @@
   {
     "file": "app/api/v1/me/active-workspace/route.ts",
     "method": "POST",
-    "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "posture": "cookie-only",
+    "why": "Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead."
   },
   {
     "file": "app/api/v1/me/route.ts",
     "method": "GET",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Identity probe — a token must be able to resolve who it is and which workspaces it can see before it can hold any scope-gated conversation."
   },
   {
     "file": "app/api/v1/milestones/[id]/route.ts",
@@ -179,37 +176,34 @@
     "file": "app/api/v1/notification-preferences/route.ts",
     "method": "GET",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Own account state — the caller reads only their own notification preferences."
   },
   {
     "file": "app/api/v1/notification-preferences/route.ts",
     "method": "PATCH",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Own account state — the caller writes only their own notification preferences."
   },
   {
     "file": "app/api/v1/notifications/[id]/read/route.ts",
     "method": "POST",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Personal inbox — the caller marks only their own notification copy read."
   },
   {
     "file": "app/api/v1/projects/[id]/bugs/heatmap/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/projects/[id]/bugs/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/projects/[id]/coverage/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/projects/[id]/environments/route.ts",
@@ -224,8 +218,7 @@
   {
     "file": "app/api/v1/projects/[id]/metrics/recovery-cycles/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/projects/[id]/milestones/route.ts",
@@ -245,8 +238,7 @@
   {
     "file": "app/api/v1/projects/[id]/runs/report/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/projects/[id]/test-plans/route.ts",
@@ -261,8 +253,7 @@
   {
     "file": "app/api/v1/projects/[id]/traceability/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — reporting reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/route.ts",
@@ -287,8 +278,7 @@
   {
     "file": "app/api/v1/runs/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — runs and tests reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/runs/[id]/steps/[stepId]/mark/route.ts",
@@ -318,14 +308,12 @@
   {
     "file": "app/api/v1/tests/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — runs and tests reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/tests/[id]/runs/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — runs and tests reads."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/tests/[id]/tags/route.ts",
@@ -423,20 +411,20 @@
   {
     "file": "app/api/v1/workspaces/[id]/membership/route.ts",
     "method": "DELETE",
-    "posture": "authenticated",
-    "why": "BK-499 pending — workspaces and membership."
+    "posture": "cookie-only",
+    "why": "Personal access tokens cannot leave a workspace. Use a browser session."
   },
   {
     "file": "app/api/v1/workspaces/[id]/notifications/read-all/route.ts",
     "method": "POST",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Personal inbox — the caller marks only their own notification copies read."
   },
   {
     "file": "app/api/v1/workspaces/[id]/notifications/route.ts",
     "method": "GET",
     "posture": "authenticated",
-    "why": "BK-499 pending — identity and notifications."
+    "why": "Personal inbox — each recipient reads only their own notification copies, not workspace-shared data."
   },
   {
     "file": "app/api/v1/workspaces/[id]/open-bugs/route.ts",
@@ -446,8 +434,7 @@
   {
     "file": "app/api/v1/workspaces/[id]/projects/route.ts",
     "method": "POST",
-    "posture": "authenticated",
-    "why": "BK-499 pending — workspaces and membership."
+    "posture": "required:atc:write"
   },
   {
     "file": "app/api/v1/workspaces/[id]/recent-projects/route.ts",
@@ -457,8 +444,7 @@
   {
     "file": "app/api/v1/workspaces/[id]/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — workspaces and membership."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/workspaces/[id]/route.ts",
@@ -468,13 +454,22 @@
   {
     "file": "app/api/v1/workspaces/route.ts",
     "method": "GET",
-    "posture": "authenticated",
-    "why": "BK-499 pending — workspaces and membership."
+    "posture": "required:atc:read"
   },
   {
     "file": "app/api/v1/workspaces/route.ts",
     "method": "POST",
     "posture": "authenticated",
-    "why": "BK-499 pending — workspaces and membership."
+    "why": "Workspace bootstrap — the sole capability-free exception; a token cannot hold workspace scope before a workspace exists."
+  },
+  {
+    "file": "app/auth/callback/route.ts",
+    "method": "GET",
+    "posture": "bypass"
+  },
+  {
+    "file": "app/auth/oauth/[provider]/route.ts",
+    "method": "GET",
+    "posture": "bypass"
   }
 ]
