@@ -182,5 +182,89 @@ No change needed to scope or sequencing. BK-202 can be built against the real Te
 
 ---
 
+### Ely - 8/20/2026, 4:12:32 PM
+
+## Dev → QA handoff
+
+BK-202 is merged to `staging` and ready for acceptance testing.
+
+### Merge
+
+| Item | Value |
+| --- | --- |
+| PR | #188 (`feature/BK-202-create-test-plan`) |
+| Merge commit | `5fddd4c` |
+| Ancestry | Verified as an ancestor of `origin/staging` |
+| Migration | `0073*test*plans.sql` — additive only, applied to the live database |
+
+The migration adds no destructive statements; the post-apply definition was re-read and diffed clean against the intended shape.
+
+### What shipped
+
+- `test_plans` table plus two SECURITY DEFINER RPCs for the write paths
+- API routes for create, list, detail and edit
+- Test Plans list and detail screens under a project's `plans` route
+- A new project sub-nav entry pointing at those screens
+
+> ***NOTE:**** ****RLS is SELECT-only on ****`test_plans`****, and that is deliberate.*** Direct client writes against the table are default-denied; every write goes through the SECURITY DEFINER RPCs. If you probe direct-table inserts, updates or deletes as a negative test, expect them to fail — that failure is the designed behaviour, not a defect. Test the write paths through the API routes / RPCs instead.
+
+### Verification performed
+
+| Check | Result |
+| --- | --- |
+| `bun test` | 1607 passed, 1 failed |
+| `types:check` | Clean |
+| Lint | 0 errors, 6 pre-existing warnings |
+
+The single failing test is `lib/runs/start-run.test.ts`. It is ***pre-existing and unrelated to BK-202*** — it was reproduced on a clean `staging` baseline with none of BK-202's code present, producing the same assertion failure (Expected 1 / Received 2). Root cause: `pickRunnable` counts client-side from a PostgREST query capped at 1000 rows, while `atc_steps` currently holds 6110. Worth its own ticket; it is not a regression from this story.
+
+> ***WARNING:**** ****Authenticated live-UI validation was NOT performed.*** The implementing agent could not enter credentials, so none of the authenticated Test Plans screens were visually exercised in a browser. Visual and interaction verification of the list screen, the detail screen and the new sub-nav entry is outstanding and belongs to QA.
+
+---
+
+### Alfonso Hernandez - 8/21/2026, 2:57:14 AM
+
+## QA Testing Complete — BK-202
+
+***Environment******:*** Staging
+***Result******:*** FAILED (15/16 TCs)
+***Smoke******:*** GO
+
+### Test data used
+
+- Test Plan: `"Smoke Test Plan BK-202"` (project `smoke-project-1786682625505-501`)
+- Workspace: Aiden Workspace
+
+### Verified behaviors
+
+- AC 1.1-1.5 (create — full/minimal/boundary/whitespace-trim) — VERIFIED
+- AC 2.1, 2.2, 2.3, 2.5, 2.6 (duplicate detection: case, space-padding, cross-project reuse, rename collision, concurrent race) — VERIFIED
+- AC 3.1-3.3 (blank name rejection) — VERIFIED (status code correct; see non-blocking copy defect below)
+- AC 4.1-4.5 (full role-gate suite: viewer-role UI hiding, API 403 rejection, member-role edit, stale-cached-role server re-verification) — VERIFIED, zero defects — a positive security-posture confirmation
+
+### Failed verification
+
+- ***AC 2.4**** — Duplicate detection with tab/NBSP-padded name — ****FAILED***
+
+### Defects filed
+
+- [BK-591: Test Plan uniqueness check incorrectly treats NBSP-padded names as duplicates (violates AC 2.4 / ratified whitespace rule)](https://jira.upexgalaxy.com/browse/BK-591) — Moderada/Medium, ***blocking***
+- [BK-592: Test Plan validation errors return raw Zod message instead of ratified user-facing copy (AC 1.4, 3.1-3.3)](https://jira.upexgalaxy.com/browse/BK-592) — Menor/Low, non-blocking (cosmetic error-copy mismatch, correct status codes/behavior)
+
+> ***Note******:*** Both defects were filed without a Jira Component — no Component exists yet for the Test Plans product area, and this session lacked project-admin permission to create one. Filed with the user's explicit approval; a project admin should create a "Bunkai Test Plans" component and backfill this field on both defects.
+
+### Artifacts
+
+ATP: [BK-573](https://jira.upexgalaxy.com/browse/BK-573) · ATR: [BK-590](https://jira.upexgalaxy.com/browse/BK-590) · 16 Tests: BK-574, BK-575, BK-576, BK-577, BK-578, BK-579, BK-580, BK-581, BK-582, BK-583, BK-584, BK-585, BK-586, BK-587, BK-588, BK-589
+
+### Evidence (selected)
+
+- `evidence/BK-202-ac2.4-nbsp-padded-FAIL-409-expected-201.json`
+- `evidence/BK-202-ac2.4-tab-padded-409.json` (control case)
+- `evidence/BK-202-smoke-plan-created.png`
+- `evidence/ac4.5-stale-role-403-rejected.png`
+
+---
+
 
 _Synced from Jira by sync-jira-issues_

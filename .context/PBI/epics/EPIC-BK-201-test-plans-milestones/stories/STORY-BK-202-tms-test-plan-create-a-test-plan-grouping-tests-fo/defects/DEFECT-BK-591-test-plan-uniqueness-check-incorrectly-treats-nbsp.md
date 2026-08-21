@@ -3,7 +3,7 @@
 **Jira Key:** [BK-591](https://jira.upexgalaxy.com/browse/BK-591)
 **Related Story:** [BK-202](https://jira.upexgalaxy.com/browse/BK-202) - TMS-Test Plan | Create a test plan grouping tests for a goal
 **Priority:** Medium
-**Status:** Open
+**Status:** Ready For QA
 **Components:** None
 **Severity:** Moderada
 **Error Type:** Functional
