@@ -100,7 +100,7 @@ Bunkai teams already assemble Tests and execute them through manual Runs. A Test
 
 ### Defects (2)
 
-- [BK-591](https://jira.upexgalaxy.com/browse/BK-591): Test Plan uniqueness check incorrectly treats NBSP-padded names as duplicates (violates AC 2.4 / ratified whitespace rule) _(Open)_
+- [BK-591](https://jira.upexgalaxy.com/browse/BK-591): Test Plan uniqueness check incorrectly treats NBSP-padded names as duplicates (violates AC 2.4 / ratified whitespace rule) _(Ready For QA)_
 - [BK-592](https://jira.upexgalaxy.com/browse/BK-592): Test Plan validation errors return raw Zod message instead of ratified user-facing copy (AC 1.4, 3.1-3.3) _(Open)_
 
 ### Storys (2)
