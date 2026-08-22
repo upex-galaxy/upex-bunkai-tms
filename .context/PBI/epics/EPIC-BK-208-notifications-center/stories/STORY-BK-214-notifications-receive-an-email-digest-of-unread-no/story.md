@@ -550,7 +550,7 @@ Scenario E11 (NFR — Security): Digest does not leak cross-workspace data
 ## Metadata
 
 - **Created:** 7/11/2026
-- **Updated:** 8/18/2026
+- **Updated:** 8/22/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** +shift-left-2026-08-18, +shift-left-reviewed, new-feature, post-mvp
