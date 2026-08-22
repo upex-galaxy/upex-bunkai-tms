@@ -1,6 +1,6 @@
 ---
 name: product-management
-description: "Orchestrates continuous product management work — initial backlog seed from PRD, incremental feature addition, epic creation, story refinement (INVEST + 3-amigos), AC quality refinement (Gherkin), edge-case enumeration, and sprint reporting (PM visibility snapshot). Triggers on: 'create epic', 'crear épica', 'agregar historia al backlog', 'add feature', 'refine acceptance criteria', 'enumerar edge cases', 'INVEST a esta historia', '3 amigos', 'story refinement', 'product backlog seed', 'epic creation', 'ready for development checklist', 'sprint report', 'reporte de sprint', 'estado del sprint', 'reporte de épicas y stories', 'qué hay en el sprint', 'progress report', 'dashboard del backlog', 'in-flight stories snapshot'. Do NOT use for: foundational product definition (use `/project-foundation`), infrastructure scaffolding (use `/project-bootstrap`), per-story implementation (use `/sprint-development`), unit testing (use `/unit-testing`), or formal QA test cases / TMS workflows (out of scope here)."
+description: "Orchestrates continuous product management work — initial backlog seed from PRD, incremental feature addition, epic creation, story refinement (INVEST + 3-amigos), AC quality refinement (Gherkin), edge-case enumeration, and sprint reporting (PM visibility snapshot). Triggers on: 'create epic', 'crear épica', 'agregar historia al backlog', 'add feature', 'refine acceptance criteria', 'enumerar edge cases', 'INVEST a esta historia', '3 amigos', 'story refinement', 'product backlog seed', 'epic creation', 'ready for development checklist', 'sprint report', 'reporte de sprint', 'estado del sprint', 'reporte de épicas y stories', 'qué hay en el sprint', 'progress report', 'dashboard del backlog', 'in-flight stories snapshot'. Does NOT own design — a story is refined and made ready with no mockup; screens come later from `/sprint-development`'s design gate. Do NOT use for: authoring screens or mockups (use `/design-system` screen phase), foundational product definition (use `/project-foundation`), infrastructure scaffolding (use `/project-bootstrap`), per-story implementation (use `/sprint-development`), unit testing (use `/unit-testing`), or formal QA test cases / TMS workflows (out of scope here)."
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: management
@@ -38,6 +38,17 @@ Use this skill whenever you are doing backlog or refinement work after the found
 - You're seeding the very first product backlog from a freshly minted PRD
 
 The skill is reference-driven: each workflow points to a specific reference file with the exact protocol.
+
+**This skill does NOT own design, and must not wait for one.** A story is written, refined and made
+ready without any mockup existing. Screens are produced later, per story, at the moment development
+picks the story up — `/sprint-development`'s design gate routes to `/design-system`'s screen phase
+then. Do not defer, block or downgrade a story because its screen has not been drawn.
+
+What a UI-touching story DOES owe at creation, where the host project keeps a master design plan, is
+its **§8 US→Screen row** — one line naming which screen the story renders into, or naming explicitly
+that no mockup covers it yet (`🔒 mockup-gated`). That row is cheap, it is what the design gate reads
+later, and a story created without one arrives at development already out of compliance. The row is
+not a mockup and writing it is not designing.
 
 ## Pre-requisites
 

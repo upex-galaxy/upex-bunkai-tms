@@ -176,6 +176,51 @@ Rule of thumb: **one session = one worktree = one branch.**
   `info/exclude` lives in the shared git-common dir (one copy for all worktrees) and is
   never committed — so it cannot leak into another branch's history.
 
+### Worktree registry — `.session/worktrees.json`
+
+`one session = one worktree = one branch` is only auditable after the fact if somebody
+recorded which session owned which worktree. The registry is that record. Without it, an
+orphaned worktree or branch has no path back to the conversation that created it — even
+though the transcript is sitting on disk.
+
+**Write on create, update on remove.** When a session creates a worktree (either
+approach), append an entry to `.session/worktrees.json`; when it removes one, fill
+`removed_at`. Fields per entry:
+
+```json
+{
+  "path": ".claude/worktrees/feat-upex-123",
+  "branch": "feat/UPEX-123-bulk-assign",
+  "session_id": "0f3d9a12-4b6e-4c2f-9e1d-7a8b5c3d2e1f",
+  "created_at": "2026-08-18T14:02:11Z",
+  "removed_at": null,
+  "ticket": "UPEX-123"
+}
+```
+
+(`removed_at` stays `null` while the worktree is live; `ticket` is the issue key when
+there is one, else `null`.)
+
+Design constraints, all deliberate:
+
+- **It lives under `.session/`** because that tree is gitignored. A registry that
+  generated commit noise on every parallel agent would be deleted by the first person it
+  annoyed.
+- **It is a RECORD, never a lock.** Locking is already solved (a branch checks out in one
+  worktree only; mode locks guard scheduled runs). A registry that starts gating behaviour
+  becomes a second, weaker lock that disagrees with the first one. Never refuse or delay
+  an operation because of what the registry says.
+- **A stale entry is DIAGNOSTIC, not an error to auto-repair.** Worktree path gone from
+  disk while `removed_at` is still `null` → report it and let a human decide. Do NOT
+  delete another session's worktree — the multi-session rules above stand unchanged
+  (`ExitWorktree` only touches worktrees its own session created; the same discipline
+  applies to manual `git worktree remove`).
+- **The recovery recipe this registry exists to enable:** given an orphaned worktree or
+  branch, look up its entry, take the `session_id`, and read
+  `~/.claude/projects/<cwd-slug>/<session_id>.jsonl` — where `<cwd-slug>` is the working
+  directory with `/` replaced by `-`. That transcript is the conversation that explains
+  why the worktree exists and what state it was left in.
+
 ---
 
 ## Cleanup checklist

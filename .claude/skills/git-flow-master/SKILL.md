@@ -58,7 +58,7 @@ If the user is asking about feature implementation, test design, product backlog
 - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
 - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
 - **Stop at PR creation.** Never auto-merge.
-- **One commit = one responsibility**, conventional prefix, no AI-attribution lines.
+- **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
 
 **Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
 
@@ -294,7 +294,7 @@ Group changes by responsibility, not by file type:
 
 - One commit = one responsibility. Never bundle unrelated changes.
 - Never `git add -A` or `git add .` — list explicit paths to avoid leaking secrets (`.env`, credentials) or unrelated work.
-- **No AI attribution.** No `Generated with Claude Code`, no `Co-Authored-By: Claude`, no equivalent line. Commits look human-authored. (Critical Reminder #3 in `CLAUDE.md`.)
+- **No AI attribution.** No `Generated with Claude Code`, no `Co-Authored-By: Claude`, no equivalent line. Commits look human-authored. (Critical Rule #3 in `CLAUDE.md`.) Sole scoped exception, defined where the rule lives: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules.
 - If a pre-commit hook fails, **stop, fix the underlying issue, create a NEW commit**. Never `--amend` a commit the hook rejected — `--amend` operates on the previous commit, which destroys context.
 
 Present all proposed commits as one block. Wait for OK / modify / reject before executing.
@@ -340,7 +340,7 @@ The user can override with `--base X` in arguments. If overridden, surface it in
 
 **Title format**: `{type}({ISSUE-KEY}): {description}` — under 70 chars. Without a key: `{type}: {description}`.
 
-**Body** — render inline (no template file to read) using the structure in `references/pr-templating.md`. Substitute placeholders the skill can fill (`<<ISSUE_KEY>>`, `<<SUMMARY>>`, `<<CHANGES>>`, `<<TEST_PLAN>>`, `<<RISK>>`). Leave any unfilled placeholder visible so the author can edit it before posting — do not silently drop sections.
+**Body** — render inline (no template file to read) using the structure in `references/pr-templating.md`. Substitute placeholders the skill can fill (`<<ISSUE_KEY>>`, `<<SUMMARY>>`, `<<CHANGES>>`, `<<TEST_PLAN>>`, `<<RISK>>`, `<<SESSION_ID>>`, `<<CWD_SLUG>>`). Leave any unfilled placeholder visible so the author can edit it before posting — do not silently drop sections. Exception: the `- Session:` / `- Transcript:` provenance lines are dropped (both, together) when the session id cannot be determined or the PR is human-opened — a wrong session id is worse than none (`references/pr-templating.md` § Placeholder rules).
 
 Write the rendered body to a tempfile (e.g. `$(mktemp)`) and pass it via `gh pr create --body-file` to avoid escaping issues.
 
@@ -506,7 +506,7 @@ The branch plan that comes out of the decision is the **contract** for execution
 
 1. **Diagnose before acting.** Step 1 always runs. Never assume repo state.
 2. **One commit = one responsibility.** Never bundle unrelated changes.
-3. **No AI attribution** in commits or PR bodies. Commits look human-authored. (Critical Reminder #3 in `CLAUDE.md`.)
+3. **No AI attribution** in commits or PR bodies. Commits look human-authored. (Critical Rule #3 in `CLAUDE.md`.) Sole scoped exceptions, provenance not attribution: the `Claude-Session:` commit trailer and the PR body's `Session` / `Transcript` lines — `references/conventional-commits.md` § Hard rules, `references/pr-templating.md` § Placeholder rules.
 4. **Confirm before pushing to any protected branch.** Strategy-driven; see Step 3.3. (Critical Reminder #4 in `CLAUDE.md`.)
 5. **Never force-push, never rewrite pushed history, never `--no-verify`** unless the user explicitly authorises it AND the branch is unshared. (Critical Reminder #5 in `CLAUDE.md`.)
 6. **No `git add -A` / `git add .`** — always list explicit paths.
@@ -524,7 +524,7 @@ The branch plan that comes out of the decision is the **contract** for execution
 - **G1.** NEVER force-push to `main` or any shared branch — destroys teammates' history and is unrecoverable once others have pulled.
 - **G2.** NEVER amend or rebase a pushed commit — creates orphan commits in others' clones and rewrites history that was already replicated.
 - **G3.** NEVER commit secrets, credentials, `.env` contents, or auth tokens — git history is forever; a single commit leaks the secret permanently.
-- **G4.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or any AI-attribution line in commit messages or PR bodies (Critical Rule #3). Commits look human-authored.
+- **G4.** NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or any AI-attribution line in commit messages or PR bodies (Critical Rule #3). Commits look human-authored. (The `Claude-Session:` forensic trailer and the PR `Session`/`Transcript` lines are NOT attribution and are the one scoped exception — `references/conventional-commits.md` § Hard rules.)
 - **G5.** NEVER push to `main` without explicit user confirmation (Critical Rule #4). Strategy-driven protection applies to every protected branch, not just `main`.
 - **G6.** NEVER bypass pre-commit / pre-push hooks with `--no-verify` to "ship faster" — hooks exist to catch the bug you didn't notice. Fix the hook failure and create a new commit.
 - **G7.** NEVER mix concerns in a single commit (feat + refactor + lint fix bundled together) — atomic commits enable surgical revert and clean blame.
@@ -548,7 +548,9 @@ sharing one `.git`). Two paths:
 
 Key gotcha: a fresh worktree contains only the **tracked** files of its base — **untracked
 WIP does not teleport**, so `mv` it in (or commit first). Keep the primary tree's
-`git status` clean. Full lifecycle, multi-session safety rules, and the decision guide:
+`git status` clean. Record every worktree you create in the `.session/worktrees.json`
+registry (path, branch, session id — a record for post-hoc forensics, never a lock).
+Full lifecycle, multi-session safety rules, the registry contract, and the decision guide:
 `references/worktrees.md`.
 
 ---

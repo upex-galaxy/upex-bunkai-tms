@@ -142,7 +142,12 @@ autonomous_delivery:
     discovery: 0 # application CODE cap — always zero, discovery never writes code.
     discovery_definitions:
       2 # NEW user stories fully drafted + created per run (existing epic, new epic's
-      # first stories, or a single urgent story) — gated on the operator's synchronous chat approval below.
+      # first stories, or a single urgent story). Created UNATTENDED — the operator vetoes afterwards by
+      # closing or deleting the ticket, which the next run reads as a standing ruling. The synchronous
+      # chat approval gate was REMOVED 2026-08-18 (operator decision, made live in session): four
+      # consecutive fires produced zero backlog work while one proposal sat unanswered, and a story in
+      # `Backlog` is cheaper to close than the idle time the gate cost. THIS cap is what bounds the
+      # blast radius; the gate never was.
   lock_staleness_minutes: 90 # older than this -> abandoned, reclaimable with a logged note.
   automation_gh_account: saiotest # the `gh` identity this run asserts before every push and every
   # merge (repo admin, write scope). A second local `gh` account (`elycuracity`) is read-only on this
@@ -163,8 +168,9 @@ autonomous_delivery:
     stop_at_remaining_pct: 20 # begin the clean-stop sequence at this much budget left.
   report_channel:
     tracker:BK-261 # plain run-summary log for all 3 routines. NOT a mailbox — no reply-parsing
-    # protocol. Discovery's proposal approval happens synchronously in that routine's own chat session, never
-    # via a comment reply here. See .context/orchestration/routines.md and SKILL.md's Autonomy section.
+    # protocol, nobody replies here and nothing reads a reply. Since 2026-08-18 it is also where the operator
+    # SEES what discovery created, which is the input to the veto; the veto itself is the tracker state (close
+    # or delete the ticket). See .context/orchestration/routines.md and SKILL.md's Autonomy section.
   escalation_channel: slack:C0BNQQ7EUNM # #claude-routine-blockers (private, upexgalaxy.slack.com). ESCALATIONS
   # ONLY — never run summaries; those stay on report_channel (BK-261) as before. Primary notification path in a
   # story/bug run's clean-stop sequence (see SKILL.md Autonomy); PushNotification remains the secondary path.

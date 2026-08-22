@@ -167,9 +167,10 @@ const USER_LEVEL_SKILLS: ReadonlyArray<CommunitySkill> = [
   // any project the user touches, regardless of stack.
   { package: 'https://bun.sh/docs', skill: 'bun' },
   { package: 'https://github.com/microsoft/playwright-cli', skill: 'playwright-cli' },
-  // Cross-project human-in-the-loop feedback CLI (`toki`): a blocking browser UI
-  // the AI drives mid-conversation to collect structured, anchored answers.
-  { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'wokitoki' },
+  // Cross-project decision-deck CLI (`mkd`, Make Decision): the AI writes a spec
+  // of items (decision / question / report / table) and the user answers in a
+  // browser deck, pasting the Result JSON back into the chat (non-blocking).
+  { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'mkd' },
 ];
 
 // External CLIs the boilerplate's skills depend on. Installer NEVER auto-installs

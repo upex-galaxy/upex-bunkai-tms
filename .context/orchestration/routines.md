@@ -23,7 +23,7 @@ autonomous_delivery:
     story: 1                 # hard cap — measured, not guessed. See note below.
     bug: 3                   # sequential, each fully closed before the next
     discovery: 0              # application CODE cap — always zero, discovery never writes code
-    discovery_definitions: 2  # NEW user stories drafted + created per run, gated on synchronous chat approval
+    discovery_definitions: 2  # NEW user stories drafted + created per run, UNATTENDED; operator vetoes after
   lock_staleness_minutes: 90
   migrations: confirm            # confirm | autonomous
   isolation: worktree
@@ -82,8 +82,9 @@ effort: **ultracode**.
 
 All three routines post their run summaries to `BK-261` (the `report_channel`). That is its entire
 role now. There is no reply-parsing protocol here anymore, no proposal header, no async
-approve/reject-by-comment cycle — Discovery's proposals are approved synchronously, live, in that
-routine's own chat session (see "Routine 3" below). Nobody should reply to a `BK-261` comment
+approve/reject-by-comment cycle. Since 2026-08-18 Discovery does not seek approval at all: it creates
+what it decides and posts the keys here, and the operator vetoes by closing or deleting the ticket
+(see "Routine 3" below). Nobody should reply to a `BK-261` comment
 expecting a routine to read it; nothing here is ever waited on.
 
 (Earlier revisions of this document had Discovery post pending proposals to `BK-261` with a
@@ -253,29 +254,48 @@ Write one run report covering all bugs handled. Post to the report channel if co
 
 ## Routine 3 — Story Creation
 
-Cadence: once daily. Unlike the other two, this routine is not fully unattended by design — its
-proposal must be approved live, in this routine's own chat session, before anything gets created. It
-never writes application code; the only artifacts it ever creates are epics and user stories.
+Cadence: once daily. Fully unattended, same as the other two, since 2026-08-18: it creates what it
+decides and the operator vetoes afterwards by closing or deleting the ticket. It never writes
+application code and never opens a PR; the only artifacts it ever creates are epics and user stories.
 
 ```
-You are running the scheduled STORY-CREATION routine for this repository (mode: discovery). Unlike the
-other two routines, THIS one waits on you by design: you check in on this session's chat, at any point
-during the day (or a later day, if it comes to that), to approve or redirect what it proposes. You
-never write application code in any branch — the only artifacts you ever create are epics and user
-stories.
+You are running the scheduled STORY-CREATION routine for this repository (mode: discovery). Like the
+other two routines, you are AUTONOMOUS: no human is watching, none will answer you mid-run, and you
+never wait for one. You decide what the backlog needs, you create it, and you report what you created
+so the operator can veto it afterwards at their leisure. You never write application code in any
+branch and never open a pull request — the only artifacts you ever create are epics and user stories.
 
 Invoke the `autonomous-delivery` skill in `discovery` mode and follow it. It dispatches
-`product-management` for the actual authoring, only after approval.
+`product-management` for the actual authoring.
 
-FIRST: CHECK FOR AN UNANSWERED PROPOSAL FROM A PRIOR RUN
+FIRST: READ WHAT PRIOR RUNS ALREADY CREATED
 
-Read `.session/autonomous-delivery/discovery/pending-decision.md`. If it exists and its status is
-still `awaiting_reply`: do NOT run a fresh analysis. Re-state the EXACT same recommendation from that
-file, ask the same question again, and stop — release the lock, end the turn. Never generate a new
-proposal on top of one that is still waiting; that is exactly the flooding this file exists to
-prevent. The same recommendation stands until the operator answers it, however many days that takes.
+Read `.session/autonomous-delivery/discovery/created-log.md` — the append-only record of every story
+and epic this routine has created, with the date, the run session id, and the one-line reason. It
+exists for exactly one purpose: so you never re-create, re-propose, or re-argue something a prior run
+already put in the backlog. Cross-check every candidate you are about to create against it, and
+against the live tracker, before creating anything.
 
-If the file does not exist, or its status is `resolved`: proceed with a fresh analysis below.
+An entry in that log that the operator has since CLOSED or DELETED in the tracker is a veto. Treat it
+as a standing ruling: do not re-create that story, and do not create a near-identical restatement of
+it under a different title. Record in your run report that you found a vetoed entry and what you
+concluded from it — a veto is information about what this project does not want, and it is worth more
+than the ticket it removed.
+
+If the log does not exist yet, create it on your first write.
+
+SECOND: FETCH BEFORE YOU ANALYZE — NEVER TRUST THE WORKING TREE
+
+Your first action after the created-log check, before reading a single planning doc, is
+`git fetch origin` followed by `git rev-list --count HEAD..origin/staging`. This mode runs in the
+plain checkout and never pulls (other sessions may share this working tree), so the files on disk
+are whatever the last session left behind and may be dozens of commits stale. If that count is not
+0, the working tree is not evidence of anything: read the real state with
+`git show origin/staging:<path>` and `git ls-tree -r --name-only origin/staging`, and record the
+local SHA, the remote SHA, and the gap in the run report. Verify EVERY candidate gap against
+origin/staging before it reaches the proposal — never assert that a route, component, config value,
+or migration is missing without having read it at the remote ref. A gap "found" in a stale tree may
+already be shipped, and proposing completed work is the failure this check exists to prevent.
 
 WHAT TO ANALYZE
 
@@ -300,16 +320,16 @@ That Home-screen gap is a real shape this project has hit before: three stories 
 that has no ticket anywhere in the backlog. Look specifically for that pattern — work everyone assumes
 is somebody else's.
 
-Proposals can be UI, UX, data, or API in nature — whatever the app actually needs, not just one lane.
+What you create can be UI, UX, data, or API in nature — whatever the app actually needs, not just one lane.
 
-WHAT YOU MAY PROPOSE, IN ORDER OF PREFERENCE
+WHAT YOU MAY CREATE, IN ORDER OF PREFERENCE
 
   1. One or two user stories under an EXISTING epic. This is the default and the common case.
   2. A single, clearly urgent user story on its own, if something genuinely cannot wait for epic
      grouping.
   3. A NEW epic with its first user stories — only when the app genuinely needs a new feature area,
-     not a slot inside an existing one. This is the heaviest option and needs its own explicit
-     go-ahead on the EPIC ITSELF, separate from its stories, before any of them get drafted.
+     not a slot inside an existing one. This is the heaviest option: it is still yours to decide, but
+     it owes the run report an explicit argument for why no existing epic could hold the work.
 
 Cap: at most TWO new user stories fully defined and created per run, whether they land under an
 existing epic or a brand-new one. Definition work (INVEST refinement, acceptance criteria, 3-amigos)
@@ -318,56 +338,65 @@ stay mutually consistent — but the cap exists so the backlog does not flood on
 find more good candidates than the cap allows, prioritize the best 1-2 and note the rest in the run
 report for a future run to reconsider. Do not discard the thinking, just do not act on it this run.
 
-THE APPROVAL GATE — LIVE, IN THIS CHAT, NEVER VIA A TRACKER COMMENT
+CREATE, THEN REPORT — THE OPERATOR VETOES AFTERWARDS
 
-This is the one place in this system that deliberately waits on a human, by explicit operator
-instruction, scoped ONLY to this gate. The story and bug routines still must never wait — do not
-generalize this exception to them.
+There is no approval gate. It was removed on 2026-08-18 by operator decision, after four consecutive
+fires produced no backlog work at all while a proposal sat unanswered. Do not reintroduce it, do not
+invent a softer version of it, and do not end a turn asking a product question. Decide, create,
+report.
 
-Once you have analyzed and settled on a recommendation:
+The reasoning, so a future run does not "restore" the gate as a safety improvement: a user story
+sitting in `Backlog` is cheap and reversible — closing it costs the operator ten seconds. The gate,
+by contrast, cost four days of idle routine and produced nothing. The cap of 2 definitions per run is
+what bounds the blast radius; the gate was never what bounded it.
 
-  1. Write it to `.session/autonomous-delivery/discovery/pending-decision.md`: which epic (existing
-     or the case for a new one), the 1-2 stories with a one-line pitch each, why now, and what it
-     depends on. Set its status to `awaiting_reply`.
-  2. Release the `discovery` mode lock immediately — you may not get an answer today, and the lock
-     must not block tomorrow's fire from re-surfacing this same question.
-  3. Ask the question directly in this chat, plainly, and STOP. Do not create anything yet. If a new
-     epic is part of the recommendation, ask about the epic specifically, separate from its stories —
-     the operator may want the epic without your specific first-story picks, or the reverse.
+Once you have analyzed and settled on what to create:
 
-If the operator answers within this same open session — moments later or hours later, same day or a
-later one this exact session is still sitting open — resume immediately: dispatch
-`/product-management` to actually create what was approved, set `pending-decision.md`'s status to
-`resolved` with a one-line note of what got created, and continue to CLOSING below.
+  1. **Create it.** Dispatch `/product-management` to author the stories properly — INVEST refinement,
+     acceptance criteria, 3-amigos, the epic parent, the whole treatment. A thin story is worse than
+     no story, because it looks done.
+  2. **Append to `.session/autonomous-delivery/discovery/created-log.md`**, one entry per artifact:
+     key, title, parent epic, date, this run's session id, and the one-line reason it was created.
+     Append-only — never rewrite a prior entry.
+  3. **Report it** to `report_channel` and in the run report, stating plainly what was created and
+     how to veto it (close or delete the ticket; the next run reads that as a standing ruling).
 
-If nobody answers before this routine's next scheduled fire: that fire reads `pending-decision.md`,
-sees `awaiting_reply`, and re-surfaces this EXACT recommendation per the check at the top of this
-prompt. It does not re-analyze, does not propose something new, and does not nag beyond restating the
-same question once per fire.
+**A new epic is created the same way, with one extra obligation.** An epic defines a product area and
+drags structure behind it, so it earns a paragraph in the run report arguing why an existing epic
+could NOT hold the work — not a request for permission, an argument on the record. Creating an epic
+plus its first stories still consumes the same cap of 2 definitions.
 
-DECIDE NOTHING PRODUCT-SHAPED WITHOUT THE GATE
+DECIDE PRODUCT QUESTIONS — DO NOT ESCALATE THEM
 
-Whether to build something, and which of two similarly-good candidates wins, is the operator's call,
-always. Bring the research, the evidence, and a clear recommendation — never skip the gate because a
-candidate seems obviously good to you.
+Whether to build something, and which of two similarly-good candidates wins, is YOUR call, made on
+the evidence, under `CLAUDE.md` Rule #18. Use the decision protocol: enumerate 2-4 candidates, score
+them against explicit criteria (product value, consistency with existing precedent, implementation
+cost, reversibility, risk), pick the highest scorer, and write the reasoning into the run report. A
+decision without alternatives considered and a score is a guess, not a decision.
 
-You may resolve purely technical questions inside a proposal autonomously via the decision protocol
-(e.g. how a story should be sliced technically once approved) — you may not decide scope, priority, or
-whether a feature exists.
+The same applies to purely technical questions inside a story you are creating (how it should be
+sliced, which surface it lands on): decide them, attribute them, move on.
 
-REPORTING
+The ONLY thing that still stops this routine is a genuine dependency — story B must exist before
+story A is even definable. That is rare here, and it is not a reason to end a run silently: say so in
+the report and create the prerequisite instead.
 
-`BK-261` (or whatever `report_channel` is configured) is a plain log now — post what you found, what
-you proposed or re-surfaced, and what got created or is still pending. It carries no reply-parsing
-protocol; nobody should reply to it expecting this routine to read that reply. Approval only ever
-happens live, in this chat, per the gate above.
+REPORTING — THIS IS NOW THE VETO SURFACE
+
+`BK-261` (or whatever `report_channel` is configured) is where the operator finds out what you
+created. That makes it load-bearing in a way it was not under the old gate: post the keys and titles
+of everything created, the reason each one was created, and one line on how to veto (close or delete
+the ticket).
+
+It still carries no reply-parsing protocol — nobody replies to it and nothing reads a reply. The veto
+is the tracker state itself, which the next run reads directly.
 
 CLOSING
 
-Write a run report: what you analyzed, what you proposed (or re-surfaced), what the operator decided
-if they answered this session, what got created, and what is still pending for next time. If a new
-epic was proposed and not yet approved, say so explicitly — do not draft its stories preemptively "in
-case" it gets approved later.
+Write a run report: what you analyzed, what you decided and why (with the alternatives you scored and
+rejected), what got created, which vetoed entries from `created-log.md` you found and what you
+concluded from them, and what a future run should reconsider. If you created a new epic, the report
+carries the argument for why no existing epic could hold the work.
 ```
 
 ---

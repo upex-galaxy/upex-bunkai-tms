@@ -1,6 +1,6 @@
 ---
 name: autonomous-delivery
-description: "SCHEDULED / UNATTENDED entry point for a delivery run with no human on the line. Audits real state (git is truth, the tracker is a hint), selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out, and reports. Three modes: `story` (1 per run, hard cap), `bug` (up to 3, sequential), `discovery` (proposals only, never writes code). Four phases: Phase 0 Lock -> Phase 1 Audit -> Phase 2 Select -> Phase 3 Execute -> Phase 4 Close and report. Triggers on: scheduled delivery run, unattended run, autonomous run, cron delivery, routine run, nightly delivery, overnight sprint run, run the queue unattended, pick up the next unblocked ticket by yourself, autonomous-delivery, `/autonomous-delivery story`, `/autonomous-delivery bug`, `/autonomous-delivery discovery`. Do NOT use for: interactive per-ticket work with a human present (use /sprint-development directly — this skill only wraps it in audit + selection + handoff), backlog seeding or AC refinement on a named ticket (use /product-management directly), branch / PR / conflict operations (use /git-flow-master), foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), or unit-test TDD slices (use /unit-testing)."
+description: "SCHEDULED / UNATTENDED entry point for a delivery run with no human on the line. Audits real state (git is truth, the tracker is a hint), selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out, and reports. Three modes: `story` (1 per run, hard cap), `bug` (up to 3, sequential), `discovery` (backlog definitions only, never writes code). Four phases: Phase 0 Lock -> Phase 1 Audit -> Phase 2 Select -> Phase 3 Execute -> Phase 4 Close and report. Triggers on: scheduled delivery run, unattended run, autonomous run, cron delivery, routine run, nightly delivery, overnight sprint run, run the queue unattended, pick up the next unblocked ticket by yourself, autonomous-delivery, `/autonomous-delivery story`, `/autonomous-delivery bug`, `/autonomous-delivery discovery`. Do NOT use for: interactive per-ticket work with a human present (use /sprint-development directly — this skill only wraps it in audit + selection + handoff), backlog seeding or AC refinement on a named ticket (use /product-management directly), branch / PR / conflict operations (use /git-flow-master), foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), or unit-test TDD slices (use /unit-testing)."
 license: MIT
 compatibility: [claude-code, opencode]
 phase: implementation
@@ -57,7 +57,7 @@ Use this skill when a **scheduler, cron, routine, or timed wake-up** starts a se
 | --- | --- | --- | --- | --- |
 | `story` | highest-priority genuinely-unblocked user story | **1 per run, hard** | `/sprint-development` | yes |
 | `bug` | genuinely-unblocked defects, oldest-severest first | **up to 3, strictly sequential** | `/sprint-development` (bug entry point) | yes |
-| `discovery` | refinement, epic, or backlog gaps | proposals only | `/product-management` | **never** |
+| `discovery` | refinement, epic, or backlog gaps | backlog definitions only | `/product-management` | **never** |
 
 The invoking routine passes the mode: `/autonomous-delivery story`. No mode, or an unrecognized one, is a fast-fail — do not guess a default.
 
@@ -89,7 +89,7 @@ autonomous_delivery:
     story: 1 # HARD. Raising this is a measured mistake, not a tuning knob.
     bug: 3 # sequential; each fully closed before the next starts.
     discovery: 0 # application CODE cap — always zero, discovery never writes code.
-    discovery_definitions: 2 # NEW user stories drafted + created per run — gated on synchronous chat approval.
+    discovery_definitions: 2 # NEW user stories drafted + created per run — created UNATTENDED; this cap is what bounds the blast radius.
   lock_staleness_minutes: 90 # older than this -> abandoned, reclaimable with a logged note.
   automation_gh_account: null # gh identity this run asserts before every push and merge. See Phase 0b step 3.
   migrations: confirm # confirm | autonomous | unrestricted. See "Migration gate".
@@ -98,7 +98,8 @@ autonomous_delivery:
     handoff_checkpoint: every-phase # every-phase | every-slice. Never "at-end".
     stop_at_remaining_pct: 20 # begin the clean-stop sequence at this much budget left.
   report_channel: null # null | tracker:<ISSUE-KEY> | file:<path>. A plain summary log for all three modes —
-    # NOT a mailbox. Discovery's proposal approval is synchronous, in that routine's own chat, never a reply here.
+    # NOT a mailbox. For discovery it is where the operator SEES what was created — the input to the
+    # veto (close or delete the ticket) — while still being a log nobody replies to.
   escalation_channel: null # null | slack:<CHANNEL-ID> | <any channel the harness can post to>.
     # ESCALATIONS ONLY — never summaries; those go to report_channel above.
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
@@ -214,7 +215,7 @@ Concurrent routines must not collide, and the collision they must not have is tw
 
 ### 0a. Enter isolation (before touching config, lock, or git state) — `story` / `bug` ONLY
 
-**`discovery` mode skips this whole subsection.** It never writes application code and never creates a git branch — the only things it produces are tracker content via `/product-management`. A worktree buys it nothing and costs it the one thing its approval gate depends on: `.session/discovery/pending-decision.md` (and the mode lock, and the shared escalation log) must be the SAME file the next fire reads, not a copy made inside a worktree that gets removed before anyone reads it back. `discovery` operates directly in the plain checkout, start to finish. Go straight to §0b.
+**`discovery` mode skips this whole subsection.** It never writes application code and never creates a git branch — the only things it produces are tracker content via `/product-management`. A worktree buys it nothing and costs it the one thing its create-then-veto record depends on: `.session/autonomous-delivery/discovery/created-log.md` (and the mode lock, and the shared escalation log) must be the SAME file the next fire reads, not a copy made inside a worktree that gets removed before anyone reads it back. `discovery` operates directly in the plain checkout, start to finish. Go straight to §0b.
 
 For `story` and `bug`:
 
@@ -317,7 +318,7 @@ Pick work whose dependencies are **actually** satisfied. Four inputs, and they a
 3. Drop any candidate that is **already past dev** by live status, regardless of what the queue file claims.
 4. **Readiness is not status.** Read the refinement trail before accepting a candidate: unresolved blocking refinement questions, explicitly-disclaimed practice-exercise answers, and unchecked edge-case lists all mean not-ready even when the status field says otherwise. A ticket can be moved to ready-for-dev with a declared blocker still open and no comment trail explaining the move.
 5. **Scope-growth check.** If a candidate carries signals of being larger than a normal pick — high point estimate, no mockup where the design plan expects one, an architectural decision implied by its acceptance criteria, more than one migration — **do not claim it in an unattended run.** Log it as a candidate needing a human-present session, and take the next one. Auto-claiming the largest thing on the board by "pull the next available row" is a measured way to burn a whole run.
-6. **Apply the cap**: `story` takes exactly one. `bug` takes up to three and processes them **strictly sequentially**, each fully closed through Phase 4's close-out before the next is claimed. `discovery` produces proposals and writes no code.
+6. **Apply the cap**: `story` takes exactly one. `bug` takes up to three and processes them **strictly sequentially**, each fully closed through Phase 4's close-out before the next is claimed. `discovery` creates backlog definitions (up to `discovery_definitions`) and writes no code.
 7. **Claim it** using the claim protocol: write your name and status into the row, save, then **re-read the file**. If a different name is there, a peer won the race — back off and take the next candidate. Never fight over a row.
 8. **If nothing survives**: exit cleanly. Write the run report saying what was considered and why each was dropped. **An empty run is a correct outcome, not a failure**, and a report that explains the emptiness is worth more than a marginal ticket.
 
@@ -458,26 +459,23 @@ A failure to deliver either one never becomes a second failure that swallows the
 
 **`escalation_channel` carries escalations only.** A run that finishes cleanly does not post there, and neither does an empty run with nothing eligible — both are correct outcomes that belong in the run report. Everything landing in that channel must be something the operator has to act on; diluting it with routine traffic is what turns a channel worth reading into one that gets muted. Routine summaries go to `report_channel`, which is a different setting.
 
-### Exception — Discovery's synchronous approval gate
+### Discovery creates, the operator vetoes (no approval gate)
 
-This exception is scoped to `discovery`'s approval gate alone. Story and bug escalations are untouched: they remain a clean stop, push-and-end, never a wait.
+`discovery` never waits — exactly like `story` and `bug`. There is no approval gate: when the run settles on a definition worth creating, it creates it, records it, and reports it. Creating definitions within the `discovery_definitions` cap is this mode's work product, not an escalation; the cap — not a human in the loop — is what bounds the blast radius.
 
-Every discovery-mode recommendation is a product decision (`decision-protocol.md` §5 category 1) and always escalates. What differs is how PATIENT that escalation is allowed to be. A project may configure discovery to end its turn on an open question and sit there — rather than abandoning and reporting like every other escalation — when the operator has confirmed they will check that routine's own chat session later to answer.
+**Mechanics**, once a definition is settled:
 
-This is exactly why `discovery` skips worktree isolation entirely (Phase 0a): `pending-decision.md` must be the one real file the next fire reads, not a copy trapped inside a worktree that gets removed before that fire ever sees it.
+1. Dispatch `/product-management` to create it in the tracker.
+2. Append ONE entry per created artifact to `.session/autonomous-delivery/discovery/created-log.md`: key, title, parent, date, run session id, one-line reason. The file is APPEND-ONLY — never rewrite, resolve, or prune an entry.
+3. Report the created keys to `report_channel`.
 
-**Mechanics**, once a recommendation is settled:
+**At the START of every discovery run**: read `created-log.md` in full, before any fresh analysis, and cross-check every entry against live tracker state. An entry whose ticket is closed or deleted is a VETO — a standing operator ruling. Never re-create it, and never create a near-identical restatement of it under a new title. The veto is cheap by design: closing a user story sitting in `Backlog` costs one click, which is less than one idle scheduled fire.
 
-1. Write the recommendation to `.session/autonomous-delivery/discovery/pending-decision.md` — the proposal, the rationale, what it depends on — with `status: awaiting_reply`.
-2. Release the `discovery` mode lock immediately. The operator may not answer today, and the lock must not block tomorrow's fire from re-surfacing the same question — a discovery run sitting on an unanswered question is not "in progress" in the sense the lock exists to protect.
-3. Ask the question directly in that session's chat, plainly, and end the turn there. Do not create anything yet.
+**New epics** are created the same way — but the run report owes an explicit argument for why no existing epic could hold the work. That argument is accountability after the fact, not a request for permission.
 
-**On a later fire of discovery mode**: read `pending-decision.md` FIRST, before any fresh analysis.
+This is exactly why `discovery` skips worktree isolation entirely (Phase 0a): `created-log.md` must be the one real file the next fire reads, not a copy trapped inside a worktree that gets removed before that fire ever sees it.
 
-- `status: awaiting_reply` -> re-state the EXACT same recommendation, ask again, end the turn again. Never regenerate a new proposal on top of one still pending — that is precisely the backlog-flooding this exception exists to avoid, and it is why the file, not a fresh tracker comment, is the source of truth here.
-- `status: resolved` (or the file absent) -> proceed with a normal fresh analysis.
-
-**If the operator answers within the same open session**, resume immediately: dispatch `/product-management` to create what was approved, mark `pending-decision.md` `resolved` with a one-line note of what got created, and continue to Phase 4 as normal.
+**DO NOT REINTRODUCE the approval gate.** Until 2026-08-18, `discovery` was allowed to end its turn on an open proposal and wait for the operator to answer in that routine's own chat (`pending-decision.md`, `status: awaiting_reply`). The operator removed it by explicit decision, on evidence: ONE unanswered proposal produced FOUR consecutive fires (2026-08-14 through 2026-08-18) that created nothing at all, because the re-surface rule correctly forbade stacking a new proposal on a pending one — and during that same gated period the mode opened a pull request its own contract forbade, unnoticed for five days. The gate cost four days of idle runs and did not bound the blast radius; the per-run cap does. A future run or edit must not restore the gate, and must not invent a softer version of it — a confirm-first flag for "big" items, a pause-on-epic rule, or any other synchronous wait — as a safety improvement.
 
 ---
 
@@ -521,7 +519,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 | H16 | The scheduler's own "Worktree" option assigns a worktree `ExitWorktree` cannot see or close (it only tracks worktrees THIS session entered via `EnterWorktree`) | Leave that option unchecked; the run enters and exits its own isolation explicitly, Phase 0a / Phase 4 |
 | H17 | A fresh `EnterWorktree` branches from the repo's default branch, which is not guaranteed to be the integration branch the project works against | Fetch + `git merge-base --is-ancestor` check after entry; realign with `git checkout -B`, NEVER `git reset --hard` (Rule #13 denies it), Phase 0a step 6 |
 | H18 | A dispatched agent's worktree is never auto-removed once it holds changes — that is deliberate on the Agent tool's part | Explicit `git worktree remove` per ticket, immediately, Phase 3.5 |
-| H19 | `discovery`'s synchronous approval gate re-proposes on top of an already-pending, unanswered recommendation, flooding the backlog | Read `pending-decision.md` FIRST; `awaiting_reply` re-surfaces the same recommendation verbatim, never a new one |
+| H19 | `discovery` re-creates a definition a prior run already created, or restates one the operator vetoed by closing/deleting it, flooding the backlog | Read `created-log.md` FIRST; cross-check every entry against live tracker state; closed/deleted = standing ruling — never re-create, never restate under a new title |
 | H20 | A multi-account `gh` CLI's active identity silently flips between Phase 0 and merge time — `git push` keeps working under a separate keychain credential, so the failure surfaces only at `gh pr merge` with a permission error that looks like branch protection | Assert `autonomous_delivery.automation_gh_account`, `gh auth switch --user <account>` if wrong — at Phase 0, again before the first push, and again before any merge |
 
 ---
@@ -532,7 +530,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A2.** NEVER queue, sleep-and-retry, or proceed anyway when a live lock exists for your mode. Exit cleanly; the next scheduled fire is the retry.
 - **A3.** NEVER take a second story in one run. The cap is one, it is hard, and it is derived from measurement rather than caution.
 - **A4.** NEVER start the next bug before the current one is fully closed through Phase 4.
-- **A5.** NEVER write code in `discovery` mode. It proposes; that is the whole mode.
+- **A5.** NEVER write code in `discovery` mode. It defines and creates tracker content; that is the whole mode.
 - **A6.** NEVER defer the handoff to the end of the run. Write it as you go, or you will not write it.
 - **A7.** NEVER stop on a low budget with unpushed commits. Push first, then record, then stop.
 - **A8.** NEVER apply a destructive migration autonomously — no setting covers it, and clearing a local error is not a reason.
@@ -545,7 +543,7 @@ Every item below has been observed. Each is a check the run performs, not a caut
 - **A15.** NEVER manufacture a non-empty run. If nothing is genuinely unblocked, report that.
 - **A16.** NEVER re-ask a settled question, and never treat an answer obtained without the prior ruling in front of the human as a supersession. It is an uninformed re-ask and it overrides nothing.
 - **A17.** NEVER escalate a technical call this run is equipped to settle. There is nobody to answer, and the stop costs a whole scheduled slot.
-- **A18.** NEVER leave an escalation parked waiting for a reply, for `story` or `bug` mode. Write the entry, push, release the lock, notify `escalation_channel` if one is configured, end the run. (`discovery`'s approval gate is the one explicit, scoped exception — see Autonomy § "Discovery's synchronous approval gate". Do not read that exception as license to park anywhere else.)
+- **A18.** NEVER leave an escalation parked waiting for a reply — in ANY mode. Write the entry, push, release the lock, notify `escalation_channel` if one is configured, end the run. No mode ends its turn on an open question: `discovery` creates within its cap and lets the operator veto after the fact (see Autonomy § "Discovery creates, the operator vetoes").
 - **A19.** NEVER remove a worktree before rescuing the session records inside it.
 - **A20.** NEVER edit another run's board row (except to claim an unclaimed one per protocol), branch, or worktree.
 - **A21.** NEVER include AI-attribution lines in commits, pull request bodies, or tracker comments.

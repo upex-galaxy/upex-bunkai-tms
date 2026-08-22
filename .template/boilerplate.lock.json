@@ -4,19 +4,19 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "350379fb834e409ddf12260d1ebcffd0a993c61f",
-    "claude-config": "350379fb834e409ddf12260d1ebcffd0a993c61f",
-    "agents": "350379fb834e409ddf12260d1ebcffd0a993c61f",
+    "claude": "c2b0915b6d1ddfe4cd21bd4d9ea4294403a00962",
+    "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
+    "agents": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "350379fb834e409ddf12260d1ebcffd0a993c61f",
-    "docs": "350379fb834e409ddf12260d1ebcffd0a993c61f",
+    "scripts": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
+    "docs": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
     "context": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
     "context-engineering": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "ea626f984fc4fbb1c11c334c78b7fa295725286f",
     "tooling": "15e3f146fa35430dace91063493f73763bc0af10",
-    "env-template": "350379fb834e409ddf12260d1ebcffd0a993c61f"
+    "env-template": "5d669f4a1cba9db64be243efd2a46925ac0b03df"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
@@ -51,7 +51,7 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-18T07:10:23.204Z",
+  "lastSyncedAt": "2026-08-22T00:32:17.961Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {

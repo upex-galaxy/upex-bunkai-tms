@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-08-18T07:10:23.263Z`
+> Generated: `2026-08-22T00:34:51.194Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.claude/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -306,7 +306,7 @@ Skills indexed: 41
 - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
 - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
 - **Stop at PR creation.** Never auto-merge.
-- **One commit = one responsibility**, conventional prefix, no AI-attribution lines.
+- **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
 
 **Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
 
