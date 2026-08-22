@@ -31,6 +31,11 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 import { checkbox, password } from '@inquirer/prompts';
+import {
+  resolveAtlassianInstance,
+  toSiteSlug,
+  writeAtlassianUrlToYaml,
+} from './lib/atlassian-instance.ts';
 import * as tui from './lib/tui.ts';
 import { nextStepsVars, varsFor } from './lib/variables-manifest.ts';
 
@@ -162,9 +167,10 @@ const USER_LEVEL_SKILLS: ReadonlyArray<CommunitySkill> = [
   // any project the user touches, regardless of stack.
   { package: 'https://bun.sh/docs', skill: 'bun' },
   { package: 'https://github.com/microsoft/playwright-cli', skill: 'playwright-cli' },
-  // Cross-project human-in-the-loop feedback CLI (`toki`): a blocking browser UI
-  // the AI drives mid-conversation to collect structured, anchored answers.
-  { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'wokitoki' },
+  // Cross-project decision-deck CLI (`mkd`, Make Decision): the AI writes a spec
+  // of items (decision / question / report / table) and the user answers in a
+  // browser deck, pasting the Result JSON back into the chat (non-blocking).
+  { package: 'https://github.com/upex-galaxy/agentic-user-skills', skill: 'mkd' },
 ];
 
 // External CLIs the boilerplate's skills depend on. Installer NEVER auto-installs
@@ -936,12 +942,79 @@ async function configureMcps(agents: AgentId[], state: InstallState): Promise<vo
 // Project-bound vars (SUPABASE_URL + new-style keys, POSTGRES_*, N8N_*) are
 // deferred to `bun run doctor` — see INSTALLER_DEFERRED_VARS above.
 
-const DAY_ZERO_ATLASSIAN_VARS = ['ATLASSIAN_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
+// NOTE: the site HOST is not in this list. `ATLASSIAN_URL` is not a `.env`
+// variable — it is written to `.agents/project.yaml` by `ensureAtlassianHost()`
+// below. Only the two real secrets belong in `.env`.
+const DAY_ZERO_ATLASSIAN_VARS = ['ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
+
+/**
+ * Make sure `.agents/project.yaml` -> `issue_tracker.atlassian_url` holds the
+ * Atlassian host, prompting for it when it does not.
+ *
+ * Runs at day-0, BEFORE anything that needs the host: the acli login in Step
+ * 12.4 reads it through the resolver, so an empty yaml there means no session.
+ *
+ * Deliberately NOT written to `.env`. The host is project identity, and while
+ * it lived in `.env` a stale copy inherited from the process environment
+ * shadowed the file in silence — `jira:sync-issues` rebuilt `.context/PBI/`
+ * from a dead site and exited 0. The yaml is versioned, so the value shows up
+ * in a diff.
+ *
+ * Leaving the prompt empty is allowed and non-fatal: the install continues, the
+ * acli login step later reports it cannot authenticate, and the closing summary
+ * points at `bun run agents:setup`. Nothing guesses a host.
+ */
+async function ensureAtlassianHost(): Promise<void> {
+  let existing: string | null = null;
+  try {
+    existing = resolveAtlassianInstance().baseUrl;
+  }
+  catch {
+    existing = null;
+  }
+
+  if (existing !== null) {
+    log.dim(`  Atlassian host: ${existing} (.agents/project.yaml).`);
+    return;
+  }
+
+  if (NON_INTERACTIVE) {
+    log.warn(
+      'Atlassian host not set in .agents/project.yaml (issue_tracker.atlassian_url), '
+      + 'and non-interactive mode cannot prompt. Jira steps will be skipped. '
+      + 'Fix with `bun run agents:setup`.',
+    );
+    return;
+  }
+
+  tui.note(
+    'The Atlassian site URL, e.g. https://your-org.atlassian.net\n'
+    + 'Stored in .agents/project.yaml (versioned), NOT in .env — it is project\n'
+    + 'identity, and a stale copy in .env silently pointed the sync scripts at a\n'
+    + 'dead Jira site. Read it back any time with `bun run --silent jira:url`.',
+    'Atlassian host',
+  );
+  const value = await promptForVar('ATLASSIAN_URL');
+  if (value.length === 0) {
+    log.warn('  Atlassian host left empty — Jira steps will be skipped. Set it later with `bun run agents:setup`.');
+    return;
+  }
+  try {
+    const written = writeAtlassianUrlToYaml(value);
+    log.dim(`  Atlassian host → .agents/project.yaml (${written}).`);
+  }
+  catch (err) {
+    log.warn(`  Could not write the Atlassian host: ${(err as Error).message}`);
+  }
+}
 
 async function configureDayZeroCredentials(state: InstallState): Promise<void> {
   await ensureEnvFileExists();
   const envValues = parseEnvFile(await readFile(ENV_PATH, 'utf8'));
   const newValues: Record<string, string> = {};
+
+  // ── Atlassian host (project.yaml, not .env) ───────────────────────────────
+  await ensureAtlassianHost();
 
   // ── Atlassian credentials ─────────────────────────────────────────────────
   const missingAtlassian = DAY_ZERO_ATLASSIAN_VARS.filter((name) => {
@@ -970,7 +1043,7 @@ async function configureDayZeroCredentials(state: InstallState): Promise<void> {
     }
   }
   else {
-    log.dim('  ATLASSIAN_URL / ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN: already set.');
+    log.dim('  ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN: already set.');
   }
 
   // ── Resend API key ────────────────────────────────────────────────────────
@@ -1525,13 +1598,16 @@ function reloadDotEnv(): void {
 }
 
 /**
- * Interactive loop that checks Atlassian credentials (ATLASSIAN_URL /
- * ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN) and probes /rest/api/3/myself.
+ * Interactive loop that checks Atlassian access and probes /rest/api/3/myself.
  * Up to 5 attempts; lets the user skip at any time.
  *
- * Single credential family across every consumer (DRY):
- *   - scripts/sync-jira-*.ts  read ATLASSIAN_* directly
- *   - acli auth login         reads ATLASSIAN_* (token piped via stdin)
+ * Two inputs, two homes — on purpose:
+ *   - the HOST from `.agents/project.yaml` (project identity, versioned)
+ *   - ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN from `.env` (real secrets)
+ *
+ * Consumers:
+ *   - scripts/sync-jira-*.ts  resolve the host, read the credentials from .env
+ *   - acli auth login         `--site` from the resolver, token piped via stdin
  *
  * The Atlassian MCP server is opt-in only (see docs/mcp/*.template.* for the
  * templates to enable it manually); it is not part of the default boilerplate.
@@ -1541,19 +1617,25 @@ function reloadDotEnv(): void {
  */
 async function jiraAuthLoop(): Promise<'authenticated' | 'skipped'> {
   const probe = async (): Promise<{ ok: boolean, reason: string }> => {
-    const url = process.env.ATLASSIAN_URL;
+    let url: string | null = null;
+    try {
+      url = resolveAtlassianInstance().baseUrl;
+    }
+    catch {
+      url = null;
+    }
     const email = process.env.ATLASSIAN_EMAIL;
     const token = process.env.ATLASSIAN_API_TOKEN;
     const missing: string[] = [];
-    if (!url) { missing.push('ATLASSIAN_URL'); }
+    if (!url) { missing.push('issue_tracker.atlassian_url in .agents/project.yaml'); }
     if (!email) { missing.push('ATLASSIAN_EMAIL'); }
     if (!token) { missing.push('ATLASSIAN_API_TOKEN'); }
     if (missing.length > 0) {
-      return { ok: false, reason: `Missing env vars: ${missing.join(', ')}` };
+      return { ok: false, reason: `Missing: ${missing.join(', ')}` };
     }
     try {
       const auth = Buffer.from(`${email}:${token}`).toString('base64');
-      const res = await fetch(`${url!.replace(/\/$/, '')}/rest/api/3/myself`, {
+      const res = await fetch(`${url!}/rest/api/3/myself`, {
         method: 'GET',
         headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
         signal: AbortSignal.timeout(5000),
@@ -1581,13 +1663,15 @@ async function jiraAuthLoop(): Promise<'authenticated' | 'skipped'> {
     if (attempt === 1) {
       tui.note(
         [
-          '1. Open .env in your editor.',
-          '2. Set the three Atlassian variables:',
-          '     ATLASSIAN_URL=https://your-org.atlassian.net',
+          '1. Set the SITE HOST (not a .env variable — it is project identity):',
+          '     bun run agents:setup',
+          '     -> .agents/project.yaml  ->  issue_tracker.atlassian_url',
+          '     Check it with: bun run --silent jira:url',
+          '2. Open .env and set the two CREDENTIALS:',
           '     ATLASSIAN_EMAIL=your-email@example.com',
           '     ATLASSIAN_API_TOKEN=...',
           '     (Get a token at https://id.atlassian.com/manage-profile/security/api-tokens)',
-          '3. Save the file. dotenv auto-loads on the next probe — no shell reload needed.',
+          '3. Save. dotenv auto-loads on the next probe — no shell reload needed.',
         ].join('\n'),
         'Fix Atlassian credentials',
       );
@@ -1744,13 +1828,31 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
     ['jira', 'workitem', 'search', '--jql', 'created >= -1d', '--limit', '1', '--json'],
     { stdio: ['ignore', 'pipe', 'pipe'], timeout: 8000 },
   );
-  // The env syntax differs per shell, and PowerShell would expand
-  // `$ATLASSIAN_URL` as one of its own (undefined) variables, silently
-  // authenticating with an empty site and token — so match the platform.
+  // The env syntax differs per shell, so match the platform. The site is read
+  // from `.agents/project.yaml` via `bun run jira:url --slug` — `--site` wants
+  // the BARE host, and the old hint interpolated `$ATLASSIAN_URL`, which both
+  // carries a scheme acli rejects and no longer exists as a variable.
   const acliManualHint = process.platform === 'win32'
-    ? '$env:ATLASSIAN_API_TOKEN | acli jira auth login --site $env:ATLASSIAN_URL --email $env:ATLASSIAN_EMAIL --token'
-    : 'echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$ATLASSIAN_URL" --email "$ATLASSIAN_EMAIL" --token';
-  const ATLASSIAN_VARS = ['ATLASSIAN_URL', 'ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
+    ? '$env:ATLASSIAN_API_TOKEN | acli jira auth login --site (bun run --silent jira:url --slug) --email $env:ATLASSIAN_EMAIL --token'
+    : 'echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$(bun run --silent jira:url --slug)" --email "$ATLASSIAN_EMAIL" --token';
+  const ATLASSIAN_VARS = ['ATLASSIAN_EMAIL', 'ATLASSIAN_API_TOKEN'] as const;
+
+  /**
+   * The bare host `acli --site` requires, or null when unresolvable.
+   *
+   * `--site` rejects a value carrying `https://`. This used to pass
+   * `process.env.ATLASSIAN_URL` straight through — which in `.env` was written
+   * WITH the scheme and a trailing slash — so the login was being handed a
+   * malformed site all along.
+   */
+  const acliSite = (): string | null => {
+    try {
+      return toSiteSlug(resolveAtlassianInstance().baseUrl);
+    }
+    catch {
+      return null;
+    }
+  };
 
   if (state.postInstall.acliAuth === 'completed') {
     process.stdout.write(`${tui.statusIcon('ok')} acli already authenticated in a prior run.\n`);
@@ -1767,11 +1869,17 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
     // in state.postInstall.acliAuth and surfaced in the closing summary, so
     // this is a visible skip, not a silent one.
     reloadDotEnv();
-    const missing = ATLASSIAN_VARS.filter(v => !(process.env[v] && process.env[v].trim().length > 0));
+    const missing: string[] = ATLASSIAN_VARS.filter(
+      v => !(process.env[v] && process.env[v].trim().length > 0),
+    );
+    const site = acliSite();
+    if (site === null) {
+      missing.unshift('issue_tracker.atlassian_url (.agents/project.yaml)');
+    }
     if (missing.length > 0) {
       state.postInstall.acliAuth = 'skipped-non-interactive';
-      process.stdout.write(`${tui.statusIcon('warn')} Missing ${missing.join(', ')} in environment / .env. Skipping acli authentication.\n`);
-      process.stdout.write('  Fill them in .env and re-run `bun run setup`, or authenticate manually:\n');
+      process.stdout.write(`${tui.statusIcon('warn')} Missing ${missing.join(', ')}. Skipping acli authentication.\n`);
+      process.stdout.write('  Set the host with `bun run agents:setup`, fill the credentials in .env, then re-run `bun run setup` — or authenticate manually:\n');
       process.stdout.write(`  ${acliManualHint}\n`);
       await writeInstallState(state);
     }
@@ -1782,7 +1890,9 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
     else {
       const loginRes = spawnSync(
         'acli',
-        ['jira', 'auth', 'login', '--site', process.env.ATLASSIAN_URL!, '--email', process.env.ATLASSIAN_EMAIL!, '--token'],
+        // Non-null: a null `site` was pushed onto `missing` above, and a
+        // non-empty `missing` takes the branch that returns before this point.
+        ['jira', 'auth', 'login', '--site', site!, '--email', process.env.ATLASSIAN_EMAIL!, '--token'],
         { input: process.env.ATLASSIAN_API_TOKEN!, stdio: ['pipe', 'inherit', 'inherit'], timeout: 15000 },
       );
       if (loginRes.status === 0) {
@@ -1815,12 +1925,13 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
       // re-prompted on each failure.
       let authenticated = false;
       for (let attempt = 1; attempt <= 3; attempt++) {
-        const url = process.env.ATLASSIAN_URL;
         const email = process.env.ATLASSIAN_EMAIL;
         const token = process.env.ATLASSIAN_API_TOKEN;
-        if (!url || !email || !token) {
-          // A missing var here means the user skipped the prompt above. Re-
-          // prompt the missing one(s) so we have something to try.
+        if (acliSite() === null || !email || !token) {
+          // Missing input here means the user skipped a prompt above. Re-ask for
+          // whatever is absent — the host goes to the yaml, the credentials to
+          // `.env`, each to its own home.
+          await ensureAtlassianHost();
           const need: Record<string, string> = {};
           for (const name of ATLASSIAN_VARS) {
             if (!process.env[name] || process.env[name].trim().length === 0) {
@@ -1832,15 +1943,15 @@ async function runPostInstallSteps(state: InstallState): Promise<void> {
             await appendVarsToEnv(need);
             reloadDotEnv();
           }
-          if (!process.env.ATLASSIAN_URL || !process.env.ATLASSIAN_EMAIL || !process.env.ATLASSIAN_API_TOKEN) {
-            process.stdout.write(`${tui.statusIcon('fail')} Atlassian credentials still missing — cannot authenticate acli.\n`);
+          if (acliSite() === null || !process.env.ATLASSIAN_EMAIL || !process.env.ATLASSIAN_API_TOKEN) {
+            process.stdout.write(`${tui.statusIcon('fail')} Atlassian host / credentials still missing — cannot authenticate acli.\n`);
             break;
           }
         }
 
         const loginRes = spawnSync(
           'acli',
-          ['jira', 'auth', 'login', '--site', process.env.ATLASSIAN_URL!, '--email', process.env.ATLASSIAN_EMAIL!, '--token'],
+          ['jira', 'auth', 'login', '--site', acliSite()!, '--email', process.env.ATLASSIAN_EMAIL!, '--token'],
           { input: process.env.ATLASSIAN_API_TOKEN!, stdio: ['pipe', 'inherit', 'inherit'], timeout: 15000 },
         );
         if (loginRes.status === 0) {
@@ -2094,7 +2205,7 @@ function printClosingSummary(state: InstallState): void {
 
   if (state.postInstall.acliAuth !== 'completed') {
     process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Authenticate acli (Atlassian CLI)${COLORS.reset}\n`);
-    process.stdout.write(`    ${COLORS.cyan}echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$ATLASSIAN_URL" --email "$ATLASSIAN_EMAIL" --token${COLORS.reset}\n`);
+    process.stdout.write(`    ${COLORS.cyan}echo "$ATLASSIAN_API_TOKEN" | acli jira auth login --site "$(bun run --silent jira:url --slug)" --email "$ATLASSIAN_EMAIL" --token${COLORS.reset}\n`);
     process.stdout.write(`    ${COLORS.dim}Writes a persistent session to ~/.config/acli/. The /acli skill needs this.${COLORS.reset}\n\n`);
     stepNum++;
   }
@@ -2187,11 +2298,19 @@ function printClosingSummary(state: InstallState): void {
     process.stdout.write('\n');
   }
 
+  // `--no-hooks` is deliberate. The installer defaults to `--all`, which installs
+  // the Claude Code plugin AND writes a second copy of the same two hooks into
+  // ~/.claude/settings.json — both fire every turn, injecting caveman twice per
+  // prompt. The flag keeps the plugin (it registers those hooks in its own
+  // plugin.json), the multi-agent coverage this repo needs for OpenCode, and the
+  // caveman-shrink MCP proxy. On Windows `irm | iex` cannot receive arguments
+  // (caveman #565), so we call the Node installer the script delegates to anyway.
   const caveman = process.platform === 'win32'
-    ? 'irm https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.ps1 | iex'
-    : 'curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash';
+    ? 'npx -y github:JuliusBrussee/caveman --no-hooks'
+    : 'curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash -s -- --no-hooks';
   process.stdout.write('→  Install caveman skill (token compression, ~30s):\n');
   process.stdout.write(`     ${COLORS.cyan}${caveman}${COLORS.reset}\n`);
+  process.stdout.write(`     ${COLORS.dim}--no-hooks avoids a duplicate hook registration — see INSTALLER.md.${COLORS.reset}\n`);
 
   process.stdout.write('→  Warp terminal users — install Claude Code plugin:\n');
   process.stdout.write(`     ${COLORS.cyan}/plugin install warp@claude-code-warp${COLORS.reset}\n`);

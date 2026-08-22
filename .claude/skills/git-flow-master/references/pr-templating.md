@@ -44,6 +44,8 @@ Render this verbatim, substituting the placeholders:
 - Branch: `{branch}`
 - Base: `{base}`
 - Strategy: `{strategy}`
+- Session: `<<SESSION_ID>>`
+- Transcript: `~/.claude/projects/<<CWD_SLUG>>/<<SESSION_ID>>.jsonl`
 
 ## Evidence
 
@@ -66,10 +68,14 @@ Render this verbatim, substituting the placeholders:
 | `{branch}`      | Current branch name (computed by the skill).                                                                                                                                                                               |
 | `{base}`        | PR base branch (resolved from the strategy — see table below).                                                                                                                                                             |
 | `{strategy}`    | Active strategy slug (`solo-main`, `main-integration`, etc.). Helps reviewers understand the merge target.                                                                                                                 |
+| `<<SESSION_ID>>` | The id of the Claude session opening the PR. The session knows its own id — the most reliable source is the session-scoped scratchpad path in its own environment. If it genuinely cannot be determined, **drop BOTH the `- Session:` and `- Transcript:` lines** rather than emit a placeholder or a guess: a wrong session id is worse than none, because it sends an investigation down the wrong transcript. |
+| `<<CWD_SLUG>>`  | The working directory with `/` replaced by `-`, matching the directory name under `~/.claude/projects/` (e.g. `/Users/dev/proj` → `-Users-dev-proj`). Derive it from the actual cwd; never hardcode.                       |
 | `<<EVIDENCE>>`  | Pointer to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/evidence/` when applicable (screenshots, traces, logs). For backend/CLI PRs without visual evidence, leave the placeholder so the author can fill it in or delete it. |
 | `<<RISK>>`      | Short risk assessment: blast radius, affected modules, rollback plan. One paragraph.                                                                                                                                       |
 
 Do not pad sections. Empty sections invite skim-reads.
+
+**The `Session` / `Transcript` lines are provenance for debugging, not authorship attribution.** They exist so a broken, abandoned, or conflicting PR can be routed back to the transcript that explains WHY it exists — they name no product and claim no authorship, so they do not conflict with the no-AI-attribution rule (`conventional-commits.md` § Hard rules). A human-opened PR simply drops both lines.
 
 ---
 
@@ -202,6 +208,8 @@ model with unit tests; UI uses the existing table-action slot.
 - Branch: `feat/UPEX-123-bulk-assign`
 - Base: `staging`
 - Strategy: `main-integration`
+- Session: `0f3d9a12-4b6e-4c2f-9e1d-7a8b5c3d2e1f`
+- Transcript: `~/.claude/projects/-Users-dev-projects-upex-app/0f3d9a12-4b6e-4c2f-9e1d-7a8b5c3d2e1f.jsonl`
 
 ## Evidence
 

@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (desktop app), Claude Design (claude.ai/design premium), LLM-authored custom. OPCIONAL (siempre opt-in, post-DESIGN.md): mapea screen mockups externos (Claude Design / Open Design) en `.context/design/master-design-plan.md` con specs por-screen + US→screen map que `/sprint-development` consume. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`, `mapear screens`, `master design plan`, `screen design`, `US to screen map`, `design brief`, `brief de diseño`, `prepara el prompt para Claude Design`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
+description: 'Genera un DESIGN.md (formato Google Labs Apache-2.0) en el root del proyecto antes del scaffolding del frontend. Cinco caminos: default automatizable (npx getdesign + LLM-matcher elige 1 de 72 brands según Constitution+PRD), manual gallery (designmd.ai/explore), Open Design app local (desktop app), Claude Design (claude.ai/design premium), LLM-authored custom. SEGUNDA FASE, distinta y en otro momento — la fase de PANTALLA: diseña el mockup de UNA historia concreta, just-in-time, cuando desarrollo la levanta (no por adelantado para todo el producto). Se invoca standalone o la rutea el design gate de `/sprint-development`. Comisiona las pantallas por Open Design MCP (Mode A), un prototipador externo (Mode B) o la skill `design` de Claude Code, y las mapea en `.context/design/master-design-plan.md` con specs por-screen + US→screen map. Siempre opt-in, nunca auto-run. Triggers: `/design-system`, `definir design system`, `crear DESIGN.md`, `establecer paleta de colores`, `branding del proyecto`, `rebrandear el proyecto`, `set up theme tokens`, `generate design system`, `elegir paleta`, `setup design tokens`, `mapear screens`, `master design plan`, `screen design`, `US to screen map`, `design brief`, `brief de diseño`, `prepara el prompt para Claude Design`, `no hay mockup para esta historia`, `diseñar esta pantalla`, `design this screen`, `esta historia no tiene diseño`. Composable con /project-foundation (la invoca post-PRD, pre-SRS) y /project-bootstrap (consume el DESIGN.md en frontend-setup). Do NOT use for: scaffolding del frontend code (use /project-bootstrap), definir PRD/personas (use /project-foundation), implementación de componentes UI (use frontend-design community skill), o per-story dev (use /sprint-development).'
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation
@@ -87,6 +87,9 @@ Use this skill when:
 - A new project just finished the PRD and needs to define visual identity before the SRS architecture phase.
 - An existing project wants to rebrand without touching Constitution / PRD / code.
 - A team wants to centralize design tokens in a portable format consumable by multiple AI agents.
+- **A specific story needs a screen and no mockup covers it.** This is the screen phase (below), invoked
+  standalone, per story, at the moment the story is picked up — NOT up front for the whole product.
+  `/sprint-development`'s missing-row gate routes here; a human can also invoke it directly.
 
 Do NOT use this skill to:
 
@@ -208,14 +211,59 @@ Matching (Path B) and validation (lint) stay inline — both are cheap and fast.
 
 ---
 
-## Optional — Screen design & master design plan (always opt-in)
+## The screen phase — per-story design, invoked standalone (always opt-in)
+
+**This is a separate event from the token phase above, and it runs at a different time.** The token
+phase (`DESIGN.md`) happens once, up front, before scaffolding: it is the frozen contract. The screen
+phase happens **per story, just-in-time, at the moment that story is picked up for development** —
+typically from `/sprint-development`'s missing-row gate, or invoked directly by whoever is about to
+build the screen.
+
+Do not read this section as an appendix to the token phase. It is opt-in, not optional-in-importance,
+and it is the normal path for any story whose screen nobody has drawn yet.
+
+### Why just-in-time, and the one case where it is wrong
+
+Designing every screen up front assumes a dedicated designer hands finished screens to an implementer.
+That separation has largely collapsed: once the token system is frozen, screen composition is mostly
+assembly against a fixed contract, and the same agent (or developer) that builds the screen composes
+it. Designing all screens before the stories are refined produces mockups for requirements that then
+change.
+
+**The exception, and it is not a small one.** A design decision that is irreversible, or that changes
+the story's scope, is a product decision wearing a design costume — and just-in-time means it gets
+decided by whoever happens to be coding. A destructive-action confirmation dialog IS the deletion
+policy; drawing it first silently picks the policy. When the screen encodes a decision of that kind,
+**ratify it in an ADR before the mockup, not after** (see the host repo's ADR doctrine). Routine screen
+composition: just-in-time. Scope-changing or irreversible: ratified first.
+
+### What the phase produces
 
 After `DESIGN.md` is ready (or when re-invoked standalone), the skill **always asks** whether to also
-map per-screen designs into a `master-design-plan.md`. It never auto-runs this and never generates
-screens itself — screen mockups come from an external tool (Claude Design / Open Design / any
-prototyper) that the user supplies into `.context/designs/<project>/`. Full procedure, gating, drop
-zone, US→Screen mapping, the plan's section layout, and the external-tool delegation contract live in
-**`references/screen-design-mapping.md`**.
+map per-screen designs into a `master-design-plan.md`. It never auto-runs this. Full procedure,
+gating, drop zone, US→Screen mapping, the plan's section layout, and the tool-delegation contract live
+in **`references/screen-design-mapping.md`**.
+
+### Methods for producing the screens, in order of preference
+
+The skill does not draw screens by hand-writing HTML as a first resort. Pick the highest method
+available in the session and say which one was used in the batch's `BRIEF.md`:
+
+1. **Open Design MCP (Mode A, preferred)** — the AI commissions one run per screen itself, QAs and
+   exports into the batch folder. Highest fidelity to the token package, least human round-trip.
+2. **Claude Design / any external prototyper (Mode B)** — hand the generated brief to the user to
+   paste in, then PAUSE with session-resume.
+3. **Claude Code's own `design` skill**, where the session has it — a canvas of `.dc.html` artboards
+   the user can refine visually. Useful when the user wants to push pixels themselves after generation.
+**If none of the three is available, STOP — do not hand-author the mockup yourself.** That is banned by
+D7, and the ban is not bureaucratic: markup an agent writes to fill a gap looks exactly like a design
+artifact but was never designed, and it then gets cited as the spec by everyone downstream. The
+legitimate route when no tool is available is a **spec-only build ratified as a §5 divergence** — which
+belongs to `/sprint-development`'s missing-row gate (options b and c there), not to this skill. Building
+straight from `DESIGN.md` tokens is a valid outcome; calling the result a mockup is not.
+
+Whichever method runs, the hard boundary is identical and non-negotiable: **never invent a colour,
+font, spacing step or radius outside the frozen token contract.**
 
 Quick shape:
 
@@ -240,7 +288,7 @@ After `DESIGN.md` is generated:
 - **Return to `/project-foundation`** if the invocation came from there (Phase 2.5). Foundation continues with Phase 3 (SRS), which now can consume the design system as input to architecture decisions (e.g. richness of visuals informs stack choices like Framer Motion vs. plain Tailwind).
 - **Available for `/project-bootstrap` frontend-setup**: the bootstrap pre-flight detects `DESIGN.md` and skips the legacy interactive Q&A for palette/typography. Emits `tailwind.config.js` + `globals.css` directly from the frontmatter tokens.
 - **Consumable by any downstream agent** (Claude Code, Cursor, Antigravity, OpenCode, etc.) — by sitting at the root with the standard filename, every agent reads it automatically as design-system context.
-- **(When the optional screen phase ran) feeds `/sprint-development`**: the produced `master-design-plan.md` is a mandatory input for any UI story — sprint-dev looks the story up in the US→Screen map, opens its screen spec, and builds against the mockup + `DESIGN.md` tokens. Absent it, sprint-dev falls back to `DESIGN.md`-only fidelity.
+- **(When the screen phase ran) feeds `/sprint-development`**: the produced `master-design-plan.md` is a mandatory input for any UI story — sprint-dev looks the story up in the US→Screen map, opens its screen spec, and builds against the mockup + `DESIGN.md` tokens. Absent it, sprint-dev falls back to `DESIGN.md`-only fidelity.
 
 ---
 
@@ -268,7 +316,7 @@ On successful completion (all verification items pass), the orchestrator runs Ar
 - **D4.** NEVER ship a token rename without a migration path for component consumers — silent rename breaks every downstream import + `tailwind.config.js` reference.
 - **D5.** NEVER override design tokens inline (`style={{ color: '#fff' }}`, `className="text-[#1A1C1E]"`) in components — the escape hatch becomes the rule and the token system rots.
 - **D6.** NEVER let a designer hand off a Figma URL alone — require the exported token JSON or a built `DESIGN.md`; design intent must be machine-readable for downstream scaffolds.
-- **D7.** NEVER auto-run the optional screen phase or hand-author screen mockups yourself — the phase is always an explicit user opt-in, and the mockups always come from the external tool: either supplied by the user into `.context/designs/<project>/` (Mode B) or commissioned by the AI through the Open Design MCP and exported there (Mode A — sanctioned delegation, see `references/screen-design-mapping.md` S1). What stays banned is the orchestrating AI writing mockup markup itself.
+- **D7.** NEVER auto-run the screen phase or hand-author screen mockups yourself — the phase is always an explicit user opt-in, and the mockups always come from the external tool: either supplied by the user into `.context/designs/<project>/` (Mode B) or commissioned by the AI through the Open Design MCP and exported there (Mode A — sanctioned delegation, see `references/screen-design-mapping.md` S1), or produced through Claude Code's own `design` skill where the session has it. What stays banned is the orchestrating AI writing mockup markup itself to fill a gap — when no tool is available the answer is a spec-only build ratified as a §5 divergence, never markup invented here and filed as a design artifact.
 
 ---
 

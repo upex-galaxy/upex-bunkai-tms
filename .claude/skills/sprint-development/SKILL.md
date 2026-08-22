@@ -1,6 +1,6 @@
 ---
 name: sprint-development
-description: "Orchestrates the per-story dev loop end-to-end: Planning -> Implementation -> Code Review -> Staging deploy -> (gated) Production deploy. Mega-orchestrator on the dev side. Drives the 12-step workflow: epic precheck, Jira transitions (Ready For Dev -> In Progress -> In Review -> Ready For QA), impl plan, code, PR, review, docs, merge, staging deploy, optional production deploy with rollback. Triggers on: implementar esta historia, implement this story, trabajar el ticket UPEX-XXX, plan to code to review to deploy, fix this bug and merge, deploy a staging, code review for PR, production deployment, rollback, continue implementation, story-level dev workflow, sprint-development, process sprint N, continue sprint, implement sprint N, sprint-file. Do NOT use for: foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), backlog seeding / AC refinement (use /product-management), unit-testing TDD (use /unit-testing), formal QA testing (out of scope here)."
+description: "Orchestrates the per-story dev loop end-to-end: Planning -> Implementation -> Code Review -> Staging deploy -> (gated) Production deploy. Mega-orchestrator on the dev side. Runs the design gate on every UI story (checks the US→Screen row, routes to `/design-system`'s screen phase when no mockup exists — never authors design itself). Drives the 12-step workflow: epic precheck, Jira transitions (Ready For Dev -> In Progress -> In Review -> Ready For QA), impl plan, code, PR, review, docs, merge, staging deploy, optional production deploy with rollback. Triggers on: implementar esta historia, implement this story, trabajar el ticket UPEX-XXX, plan to code to review to deploy, fix this bug and merge, deploy a staging, code review for PR, production deployment, rollback, continue implementation, story-level dev workflow, sprint-development, process sprint N, continue sprint, implement sprint N, sprint-file. Do NOT use for: foundational product definition (use /project-foundation), infrastructure scaffolding (use /project-bootstrap), backlog seeding / AC refinement (use /product-management), unit-testing TDD (use /unit-testing), formal QA testing (out of scope here)."
 license: MIT
 compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: implementation
@@ -96,10 +96,47 @@ Canonical reading order for any AI starting cold on a sprint-development workflo
 7. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md` — story-level context (dev-authored, non-Jira): session notes, open questions.
 8. `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` — canonical story-level technical plan, synced from the Jira `spec_implementation_plan` field (read-only cache; read before Stage 2 resume).
 9. `.context/SRS/` architecture-specs and `.context/ADR/` — read existing ADRs so the plan honors a settled architectural decision instead of silently violating it. **Mechanical trigger (answer from the Stage 1 plan, not the story title): does the plan forecast adding or modifying a database migration, or touching an authentication, authorization, session, or tenancy path? Either answer of yes makes this input mandatory.** Beyond that, read them whenever the story touches a cross-cutting concern (data model, infra). The mechanical trigger exists because the stories that most need a settled invariant are the ones nobody would classify as architectural work from their title.
-10. `DESIGN.md` (+ `.context/design/master-design-plan.md` when the project keeps per-screen specs) — **mandatory whenever the story has UI**. `DESIGN.md` is the token + component-system contract; a master design plan, when present, adds per-screen fidelity specs and a US→Screen map. Procedure: look the story up in **§8** (US→Screen map) → open that screen's spec in **§4** + the frozen-token contract in **§2** → build against the physical mockup in `.context/designs/<project-slug>/<batch-slug>/`. Don't invent UI on the fly; ratify any deliberate departure in §5 before coding. **Missing-row gate**: plan exists but the story has no §8 row → STOP and offer the user: (a) just-in-time mockup — route to `/design-system` screen phase, which generates a design brief (`references/screen-design-brief.md`) and waits for the bundle; (b) ratify a spec-only build as a §5 divergence (+ ADR if the departure is architectural); (c) explicit user-approved `DESIGN.md`-only build for this story. No plan at all → degrade gracefully to `DESIGN.md`-only fidelity (token checks, no screen reference).
+10. `DESIGN.md` (+ `.context/design/master-design-plan.md` when the project keeps per-screen specs) — **mandatory whenever the story has UI**. `DESIGN.md` is the token + component-system contract; a master design plan, when present, adds per-screen fidelity specs and a US→Screen map. Procedure: look the story up in **§8** (US→Screen map) → open that screen's spec in **§4** + the frozen-token contract in **§2** → build against the physical mockup in `.context/designs/<project-slug>/<batch-slug>/`. Don't invent UI on the fly; ratify any deliberate departure in §5 before coding. **When the story has no screen to build against, see "The design gate" below — that decision does not belong in this input list.**
 11. `.context/business/business-data-map.md` · `business-feature-map.md` · `business-api-map.md` — impact assessment when the story touches multiple domains.
 
 **Optional inputs.** Business maps (11) frequently arrive after `/business-*-map` runs and may be absent. Proceed without them when missing; surface a `missing_input` note in the Stage 1 plan so a later pass can fill the gap.
+
+---
+
+## The design gate — what to do when a UI story has no screen
+
+**This skill does NOT own design and never authors a mockup.** It owns the *check* and the *routing*.
+Design is produced by `/design-system`'s screen phase, invoked per story, at this moment — not up
+front for the whole product, and not by `/product-management` when the story was written.
+
+Run this gate in Stage 1, for every story with UI, before any code is planned:
+
+| What you find | What to do |
+|---|---|
+| §8 row exists **and** its mockup exists | Build against it. Open §4 for the screen spec and §2 for the frozen tokens. Ratify any deliberate departure in §5 **before** coding |
+| §8 row exists but is `🔒 mockup-gated` | The row already names what is missing. Take one of the three routes below — the row is not a blocker, it is the gate's input |
+| No §8 row at all | Same three routes, plus write the row. A UI story with no row is out of compliance with the host repo's design-fidelity rule |
+| No master design plan in the project at all | Degrade gracefully to `DESIGN.md`-only fidelity: token checks, no screen reference. Say so in the Stage 1 plan |
+
+**The three routes. STOP and let the user pick — never choose silently:**
+
+- **(a) Just-in-time mockup.** Route to `/design-system`'s screen phase. It generates the design brief
+  (`references/screen-design-brief.md`), commissions the screens through the highest available method,
+  and returns a bundle. This is the DEFAULT and should be offered first.
+- **(b) Spec-only build, ratified as a §5 divergence** (+ an ADR when the departure is architectural).
+  Legitimate when no design tool is reachable, or when the screen is trivial against existing patterns.
+- **(c) `DESIGN.md`-only build for this story**, explicitly user-approved. Token fidelity only, no
+  screen reference.
+
+**One case where (a) is not enough and the order inverts.** When the screen encodes an irreversible or
+scope-changing decision — a destructive-action confirmation is the deletion policy, not a picture of it
+— the decision is ratified in an ADR **before** the mockup is drawn. Drawing first means the policy got
+picked by whoever was composing the screen. Check for this before routing to (a).
+
+**Why the gate lives here and not earlier.** Once the token system is frozen, screen composition is
+assembly against a fixed contract, and the agent that builds the screen composes it. Designing every
+screen up front produces mockups for requirements that later change. The cheap artifact that must
+exist early is the **§8 row** — a one-line statement of what the screen owes — never the mockup itself.
 
 ---
 
