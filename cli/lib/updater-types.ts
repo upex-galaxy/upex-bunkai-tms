@@ -476,6 +476,25 @@ export interface UpdaterConfig {
    */
   excludePaths?: string[]
   /**
+   * Paths that live in the template repo but must never reach a consumer project
+   * — the boilerplate's OWN material rather than framework the consumer
+   * inherits. Matched as a repo-relative path or as a directory prefix at a
+   * segment boundary, so `docs/proposals` covers everything under it without
+   * swallowing a sibling `docs/proposals-archive`.
+   *
+   * Distinct from the two neighbours above, which both describe a file the
+   * consumer DOES have:
+   *   - `bootstrapOnlyPaths` ships once at scaffold, then the consumer owns it.
+   *   - `excludePaths` exists in both repos; the sync just never overwrites it.
+   *   - `repoOnlyPaths` never travels at all.
+   *
+   * The scaffold side is enforced separately by `TEMPLATE_EXCLUDES` in
+   * `packages/create-agentic-dev/src/prepare.ts`; a sync-reachable entry
+   * usually belongs in both, or `bun run up` re-delivers what the scaffold
+   * pruned.
+   */
+  repoOnlyPaths?: string[]
+  /**
    * Extra repo-relative paths added to the sparse-checkout of the template
    * clone. Not synced — they exist so afterApply hooks can READ the upstream
    * copy (e.g. the protected-file drift watchlist). Without them the partial

@@ -8,7 +8,7 @@
  */
 
 import type { ProtectedWatchEntry } from './lib/updater-drift';
-import type { Component, DeprecatedFile, ReportSink, UpdaterConfig } from './lib/updater-types';
+import type { Component, DeprecatedFile, ReportSink, RunSummary, UpdaterConfig } from './lib/updater-types';
 import { execSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -19,6 +19,8 @@ import { parseEnvFile } from './install';
 import * as tui from './lib/tui';
 import { cleanupTempDir, detectGitVersion, gitVersionMeetsMin, runUpdate } from './lib/updater-core';
 import { makeProtectedDriftHook } from './lib/updater-drift';
+import { groupIgnoreLines } from './lib/updater-ignore';
+import { makePbiCacheMigrationHook } from './lib/updater-pbi';
 import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifest';
 
 // --- CONFIGURATION ---
@@ -578,6 +580,79 @@ const PROTECTED_WATCHLIST: ProtectedWatchEntry[] = [
 //    advisory — it arrives on its own.
 
 const DRIFT_PROMPT_PATH = path.join('.agents', 'prompts', 'boilerplate-drift-prompt.md');
+const PBI_MIGRATION_PROMPT_PATH = path.join('.agents', 'prompts', 'pbi-cache-migration-prompt.md');
+
+// --- REPO-ONLY PATHS ---
+//
+// The boilerplate's OWN material: tracked in this repo, but it must never reach
+// a consumer project via `bun run up`. Matched as exact path or segment-aware
+// directory prefix (see `isRepoOnlyPath` in updater-core). Mirrored in
+// TEMPLATE_EXCLUDES (packages/create-agentic-dev/src/prepare.ts) — the scaffold
+// prunes them on first install and this keeps `bun run up` from putting them
+// back on the next sync.
+//
+// Reachability per TEMPLATE_EXCLUDES entry (only sync-reachable ones live here):
+//  - `.github/workflows/pages.yml` + `ci.yml`: no component syncs `.github`
+//    TODAY, so these are defense-in-depth — the moment a `.github` component (or
+//    a root file-list entry) appears, the guard already stands. Both workflows
+//    run the boilerplate's own publishing / quality gates; a consumer defines
+//    its own CI.
+//  - `.context/business/business-*.md` + `.context/master-implementation-plan.md`:
+//    REACHABLE. `.context` is a synced component with `bootstrapOnly: true`, so
+//    a consumer missing the file gets a bootstrap copy — which would deliver the
+//    maintainer's generated maps of THIS boilerplate. Consumers regenerate their
+//    own via `/business-*-map` and `/master-implementation-plan`.
+//  - `.agents/jira-fields.json` + `jira-workflows.json`: REACHABLE. They sit in
+//    `bootstrapOnlyPaths`, so a consumer missing them would receive the
+//    boilerplate authors' per-instance Jira catalogs (and `jira:sync-fields`
+//    then errors with "already populated"). Consumers regenerate their own.
+//  - `packages/` and `CHANGELOG.md` (also in TEMPLATE_EXCLUDES): NOT here —
+//    no synced component covers them (`packages` is no component; the root
+//    file-lists name only CONTEXT.md, tooling files and .env.example), so the
+//    sync cannot re-deliver what the scaffold pruned.
+const REPO_ONLY_PATHS = [
+  '.github/workflows/pages.yml',
+  '.github/workflows/ci.yml',
+  '.context/business/business-data-map.md',
+  '.context/business/business-feature-map.md',
+  '.context/business/business-api-map.md',
+  '.context/master-implementation-plan.md',
+  '.agents/jira-fields.json',
+  '.agents/jira-workflows.json',
+];
+
+// --- HOOK COMPOSITION ---
+
+/** Run several afterApply hooks in sequence (each isolated; one failure warns, never aborts). */
+function composeHooks(
+  sink: ReportSink,
+  ...hooks: Array<(summary: RunSummary) => Promise<void>>
+): (summary: RunSummary) => Promise<void> {
+  return async (summary: RunSummary): Promise<void> => {
+    for (const hook of hooks) {
+      try { await hook(summary); }
+      catch (err) {
+        sink.warn(`afterApply hook falló: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  };
+}
+
+// REGISTRY.md is excluded from the sync (generated, per-repo). When skills
+// changed this run, regenerate it locally so it reflects the actual skill set —
+// newly synced framework skills PLUS any local community skills the boilerplate
+// never ships. Otherwise skills:registry:check (pre-push) would flag it stale
+// after a sync that added or changed skills.
+function makeSkillsRegistryHook(sink: ReportSink): (summary: RunSummary) => Promise<void> {
+  return async (summary: RunSummary): Promise<void> => {
+    if (!summary.applied.some(a => a.entry.path.startsWith('.claude/skills/'))) { return; }
+    sink.step('Regenerando `.claude/skills/REGISTRY.md` (skills cambiaron)…');
+    const res = spawnSync('bun', ['run', 'skills:registry'], { stdio: 'inherit' });
+    if (res.status !== 0) {
+      sink.warn('No se pudo regenerar REGISTRY.md. Ejecuta `bun run skills:registry` manualmente.');
+    }
+  };
+}
 
 // --- SINK ---
 function abortOnCancel<T>(v: T | symbol): T {
@@ -643,15 +718,33 @@ function buildSink(): ReportSink {
 
     pickIgnoreLines: async (file, options) => {
       if (options.length === 0) { return []; }
-      const opts = options.map(o => ({ value: o.value, label: o.label }));
-      const initialValues = options.filter(o => o.checked).map(o => o.value);
+      // Collapse pattern+negation ladders (e.g. a `dir/*` exclusion with `!`
+      // re-inclusions) into ONE all-or-nothing option: applying the exclusion
+      // without its `!` re-inclusions (or vice versa) would corrupt what git
+      // tracks.
+      const byValue = new Map(options.map(o => [o.value, o]));
+      const groups = groupIgnoreLines(options.map(o => o.value));
+      const opts = groups.map((g) => {
+        if (!g.atomic) {
+          const o = byValue.get(g.lines[0])!;
+          return { value: o.value, label: o.label };
+        }
+        return {
+          value: g.lines.join('\n'),
+          label: `${g.lines[0]}  (+${g.lines.length - 1} línea(s) ligadas — todo o nada)`,
+        };
+      });
+      const initialValues = groups
+        .filter(g => g.lines.every(l => byValue.get(l)?.checked))
+        .map(g => (g.atomic ? g.lines.join('\n') : g.lines[0]));
       const r = await tui.multiselect({
         message: `${file} — líneas nuevas en upstream (no en tu archivo):`,
         options: opts,
         initialValues,
         required: false,
       });
-      return abortOnCancel<string[]>(r);
+      // Expand atomic groups back into their individual lines for the core.
+      return abortOnCancel<string[]>(r).flatMap(v => v.split('\n'));
     },
 
     resolvePackageJsonKey: async (file, section, key, drift) => {
@@ -799,40 +892,40 @@ async function main(): Promise<void> {
     // .claude/skills) — never synced; each repo rebuilds it from its own
     // installed skill set (regenerated in afterApply below).
     excludePaths: ['.claude/skills/REGISTRY.md'],
+    // The boilerplate's own material — never delivered to consumers. Mirrored
+    // in TEMPLATE_EXCLUDES (packages/create-agentic-dev/src/prepare.ts); see
+    // the REPO_ONLY_PATHS comment for per-entry reachability reasoning.
+    repoOnlyPaths: REPO_ONLY_PATHS,
     // Watchlist files are NOT synced — included in the sparse clone only so
     // the protected-drift hook can read their upstream copies.
     sparseExtraPaths: PROTECTED_WATCHLIST.map(e => e.path),
     selfUpdateComponent: 'cli',
     hooks: {
       // Runs after files land but before tempDir cleanup → upstream `.env.example`
-      // is still on disk for the diff. Skipped on dry-run (no files were written).
-      afterApply: async (summary) => {
-        if (parsed.dryRun) { return; }
-        // REGISTRY.md is excluded from the sync (generated, per-repo). When skills
-        // changed this run, regenerate it locally so it reflects the actual skill
-        // set — newly synced framework skills PLUS any local community skills the
-        // boilerplate never ships. Otherwise skills:registry:check (pre-push)
-        // would flag it stale after a sync that added or changed skills.
-        if (summary.applied.some(a => a.entry.path.startsWith('.claude/skills/'))) {
-          sink.step('Regenerando `.claude/skills/REGISTRY.md` (skills cambiaron)…');
-          const res = spawnSync('bun', ['run', 'skills:registry'], { stdio: 'inherit' });
-          if (res.status !== 0) {
-            sink.warn('No se pudo regenerar REGISTRY.md. Ejecuta `bun run skills:registry` manualmente.');
-          }
-        }
-        await detectEnvVarDrift(TEMP_DIR, sink, parsed.auto);
-        await upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto);
-        await upsertAutomationIdentityBlock(TEMP_DIR, sink, parsed.auto);
-        // Generalized successor to the old CLAUDE.md-only advisory: same
-        // one-nudge-per-upstream-change semantics, now across the whole
-        // PROTECTED_WATCHLIST. CLAUDE.md keeps its legacy sha marker.
-        await makeProtectedDriftHook({
-          entries: PROTECTED_WATCHLIST,
-          tempDir: TEMP_DIR,
-          templateRepo: TEMPLATE_REPO,
-          promptOutPath: path.join(process.cwd(), DRIFT_PROMPT_PATH),
-        }, sink)(summary);
-      },
+      // is still on disk for the diff. Skipped entirely on dry-run (no files
+      // were written, so there is nothing to regenerate or act on). Each hook
+      // is isolated by composeHooks: one failure warns, never aborts the rest.
+      afterApply: parsed.dryRun
+        ? undefined
+        : composeHooks(
+            sink,
+            makeSkillsRegistryHook(sink),
+            async () => detectEnvVarDrift(TEMP_DIR, sink, parsed.auto),
+            async () => upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto),
+            async () => upsertAutomationIdentityBlock(TEMP_DIR, sink, parsed.auto),
+            // Legacy git-tracked PBI cache detection: advisory + agent prompt
+            // only — the hook NEVER mutates the git index.
+            makePbiCacheMigrationHook({ promptOutPath: path.join(process.cwd(), PBI_MIGRATION_PROMPT_PATH) }, sink),
+            // Generalized successor to the old CLAUDE.md-only advisory: same
+            // one-nudge-per-upstream-change semantics, now across the whole
+            // PROTECTED_WATCHLIST. CLAUDE.md keeps its legacy sha marker.
+            makeProtectedDriftHook({
+              entries: PROTECTED_WATCHLIST,
+              tempDir: TEMP_DIR,
+              templateRepo: TEMPLATE_REPO,
+              promptOutPath: path.join(process.cwd(), DRIFT_PROMPT_PATH),
+            }, sink),
+          ),
     },
   };
 

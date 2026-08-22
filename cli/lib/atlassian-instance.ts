@@ -19,7 +19,7 @@
  * The failure mode is silent, not loud. `scripts/sync-jira-issues.ts` OVERWRITES
  * `.context/PBI/` with whatever the host returns, so a stale host rewrites the
  * local cache with another site's content and reports success. This actually
- * happened (upex-bunkai-tms, 2026-08-10): a story folder was rewritten with
+ * happened (a sister QA project, 2026-08-10): a story folder was rewritten with
  * pre-migration content from the old instance.
  *
  * THE ANCHOR
@@ -69,7 +69,8 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parse as parseYaml } from 'yaml';
 
@@ -99,8 +100,12 @@ export interface ResolvedAtlassianInstance {
 // Paths
 // ----------------------------------------------------------------------------
 
-/** `cli/lib/` -> repo root. */
-const REPO_ROOT = join(import.meta.dir, '..', '..');
+/**
+ * `cli/lib/` -> repo root. `import.meta.dir` is Bun-only; this lib has no
+ * shebang and inherits the importer's runtime, so under Node it is undefined
+ * and `join(undefined)` throws — fall back to the portable URL-based form.
+ */
+const REPO_ROOT = join(import.meta.dir ?? dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PROJECT_YAML_PATH = join(REPO_ROOT, '.agents', 'project.yaml');
 
 // ----------------------------------------------------------------------------
