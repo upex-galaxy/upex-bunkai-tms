@@ -590,7 +590,10 @@ work_types:
     jira_issue_type: Test
     description: Test case (TC) work item (QA-side; included so a single Jira workspace serves both repos)
     # ---- Sync routing (consumed by scripts/sync-jira-issues.ts work-type registry) ----
-    sync: optional
+    # `never` because Tests are not swept as standalone files: a Test linked to a
+    # coverable issue materializes under that issue's test-cases/ (discoverCoverage),
+    # and a Test linked to nothing lands in epics/_orphans/tests/ (orphan sweep).
+    sync: never
     content: single
     local_dir: tests
     required_statuses:
@@ -892,3 +895,80 @@ work_types:
         { from: automated, to: in_review, description: Re-open automated work for review }
       recovered: { from: aborted, to: to_do, description: Restore an aborted item back to To Do }
     used_by: [sprint-development]
+
+  # ---- Xray container types (QA-side; declared so the sync's coverage discovery
+  # ---- resolves them when a single Jira workspace serves both repos) ----
+  test_plan:
+    jira_issue_type: Test Plan
+    description: |
+      Xray Test Plan — holds the ATP body in its description (role atp). Altitude guard
+      (sync-jira-issues): only a Plan titled `ATP:*` syncs as a Story's acceptance-test-plan.md;
+      `FTP:*` / `STP:*` / `MTP:*` Plans are higher ladder altitudes and are skipped with an info
+      line. Unprefixed titles keep the legacy behavior (any linked Plan counts).
+    sync: discovery
+    role: atp
+    content: description
+    local_dir: test-plans
+
+  test_execution:
+    jira_issue_type: Test Execution
+    description: |
+      Xray Test Execution — holds the ATR body in its description (role atr). Altitude guard
+      (sync-jira-issues): only an Execution titled `ATR:*` / `ReTest:*` syncs as a Story's
+      acceptance-test-results.md; `STR:*` / `FTR:*` Executions are skipped with an info line.
+      Unprefixed titles keep the legacy behavior (any linked Execution counts).
+    sync: discovery
+    role: atr
+    content: description
+    local_dir: test-executions
+
+  re_test_execution:
+    jira_issue_type: Re-Test Execution
+    description: Xray Re-Test Execution — retest ATR (role atr, same altitude guard as test_execution)
+    sync: discovery
+    role: atr
+    content: description
+    local_dir: test-executions
+
+  test_set:
+    jira_issue_type: Test Set
+    description: |
+      Xray Test Set — grouping of tests. Never synced as its own folder. A Set titled
+      `ATS:*` linked to a coverable issue is recognized but NOT expanded on the dev side:
+      resolving its member Tests needs the Xray GraphQL API, which this boilerplate does
+      not integrate (the companion QA boilerplate does). Feature-level `TS:*` Sets stay ignored.
+    sync: never
+    local_dir: test-sets
+
+  precondition:
+    jira_issue_type: Precondition
+    description: Xray Precondition — reusable test prerequisite (not synced)
+    sync: never
+    local_dir: preconditions
+
+  subtask:
+    # Instances map this to their own subtask-level issue type — some workspaces
+    # expose it as "Task" at the subtask level. Tracking-only: the sync never
+    # materializes it as its own folder, and the out-of-scope advisory excludes
+    # subtask-level types entirely.
+    jira_issue_type: Sub-task
+    description: Generic subtask under a Story — tracking-only, never synced as its own folder
+    sync: never
+
+# ============================================================================
+# QA-ARTIFACT EPIC DETECTION (consumed by scripts/sync-jira-issues.ts)
+# ============================================================================
+# Jira LABEL that marks an Epic as a QA-artifact bucket rather than a product
+# Epic. `sync-jira-issues` keeps labelled Epics out of `.context/PBI/epics/`
+# (the product tree, one folder per Epic with its Stories nested) and indexes
+# them in `qa-artifacts/_index.md` instead. Without it, `QA Test Repository`
+# and friends land beside real product Epics as near-empty folders, because a
+# Story query against them returns nothing.
+#
+# A label is used rather than the epic name because a product Epic may
+# legitimately start with "QA ". Whoever creates a QA-artifact Epic must apply
+# it. The sync ALSO honours `qa.qa_artifact_label` / `qa.qa_epics.*.key` in
+# `.agents/project.yaml` when the companion QA boilerplate's skills have cached
+# discovered epic keys there — this block is the shipped default.
+qa:
+  qa_artifact_label: QA-Artifact
