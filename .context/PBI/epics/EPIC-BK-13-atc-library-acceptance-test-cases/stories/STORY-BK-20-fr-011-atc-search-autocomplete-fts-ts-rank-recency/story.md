@@ -3,7 +3,7 @@
 **Jira Key:** [BK-20](https://jira.upexgalaxy.com/browse/BK-20)
 **Epic:** [BK-13](https://jira.upexgalaxy.com/browse/BK-13) (ATC Library (Acceptance Test Cases))
 **Type:** Story
-**Status:** BLOCKED
+**Status:** QA Approved
 **Priority:** Medium
 **Story Points:** 5
 **Web Link:** https://staging-upexbunkai.vercel.app/
@@ -47,7 +47,7 @@
 
 ### Defect (1)
 
-- [BK-187](https://jira.upexgalaxy.com/browse/BK-187): ATC search returns run-status, not the PO-decided lifecycle status_dot _(In Review)_
+- [BK-187](https://jira.upexgalaxy.com/browse/BK-187): ATC search returns run-status, not the PO-decided lifecycle status_dot _(Closed)_
 
 ### Story (1)
 
@@ -58,7 +58,7 @@
 ## Metadata
 
 - **Created:** 5/19/2026
-- **Updated:** 8/6/2026
+- **Updated:** 8/19/2026
 - **Reporter:** Ely
 - **Assignee:** Ely
 - **Labels:** atc, fts, mvp, search, shift-left-2026-06-01, shift-left-reviewed, wave-2

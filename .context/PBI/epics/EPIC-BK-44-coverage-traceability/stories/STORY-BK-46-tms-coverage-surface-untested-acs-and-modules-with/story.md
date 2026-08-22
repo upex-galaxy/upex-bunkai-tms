@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 8
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -21,6 +22,9 @@ As a QA Lead, I want to see the acceptance criteria and modules that have no tes
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -29,7 +33,7 @@ As a QA Lead, I want to see the acceptance criteria and modules that have no tes
 
 ### Story (1)
 
-- [BK-259](https://jira.upexgalaxy.com/browse/BK-259): TMS-Home | Show workspace test coverage summary _(Backlog)_
+- [BK-259](https://jira.upexgalaxy.com/browse/BK-259): TMS-Home | Show workspace test coverage summary _(Ready For QA)_
 
 ### Epics (2)
 

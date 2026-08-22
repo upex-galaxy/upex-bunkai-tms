@@ -21,6 +21,7 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}',
   tags: ['Workspaces'],
   summary: 'Get a single workspace',
+  description: 'Bearer `atc:read` (or cookie session).',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
@@ -29,6 +30,7 @@ registry.registerPath({
       content: { 'application/json': { schema: SingleResponseSchema } },
     },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Workspace not found or not visible.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

@@ -1,24 +1,24 @@
 # BK-17 — Implementation Plan (Dev)
 
-> Jira field: `customfield_10095` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
+> Jira field: `customfield_10165` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
 
-## Spec Implementation Plan (Dev) — BK-17
+## Spec Implementation Plan (Dev) — [https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17](https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17)
 
 Async one-way Jira import by JQL. Confirmed MVP scope: Next.js route worker (Vercel `after()`, no Edge Function / pg_cron / Vault), single-tenant env credentials, an import dialog with status polling, and the 6 ACs with pragmatic PO defaults (crash = idempotent re-run, concurrent imports serialized per project, descriptions over 50 KB truncated with a marker, custom fields deferred).
 
 ### Architecture (grounded on a live Jira probe)
 
-- Jira Cloud v3 enhanced search: `POST /rest/api/3/search/jql`, Basic auth (email + API token), body `{ jql, maxResults<=100, nextPageToken, fields }`, response `{ issues, nextPageToken, isLast }`. Description arrives as ADF (`type: doc`). Verified against the project's own Jira.
+- Jira Cloud v3 enhanced search: `POST /rest/api/3/search/jql`, Basic auth (email + API token), body {{{ jql, maxResults<=100, nextPageToken, fields }}}, response {{{ issues, nextPageToken, isLast }}}. Description arrives as ADF (`type: doc`). Verified against the project's own Jira.
 - The worker runs in `after()` (Next 15) after the 202 response, using the service-role admin client to bypass RLS (authorization is enforced at enqueue). Processes all pages to completion in one invocation; a stuck `running` job is recovered by an idempotent re-run.
 
 ### AC -> implementation map
 
-- AC1 Start job, poll to completed: `POST /api/v1/imports` returns 202 `{ import*job*id, status: queued }`; the worker fills counts; `GET /api/v1/imports/{id}` polls to `completed`.
+- AC1 Start job, poll to completed: `POST /api/v1/imports` returns 202 {{{ import*job*id, status: queued }}}; the worker fills counts; `GET /api/v1/imports/{id`} polls to `completed`.
 - AC2 Idempotent re-run: upsert `user*stories` on `(project*id, upper(external*id))`; existing rows update (created*count 0, updated_count N), no duplicate rows.
 - AC3 Component routes to Module: case-insensitive match of a Jira component name to an active Module name in the project.
 - AC4 No match -> Inbox: auto-create a root Module named `Inbox` on first need; routing there is not an error.
 - AC5 Over 500 chunked: page the search by `nextPageToken` (100/page) until `isLast`; imported_count accumulates across pages.
-- AC6 Invalid credentials -> failed: a 401/403 from Jira marks the job `failed` with `errors[]` entry `{ code: jira_unauthorized }`.
+- AC6 Invalid credentials -> failed: a 401/403 from Jira marks the job `failed` with `errors[]` entry {{{ code: jira_unauthorized }}}.
 
 ### Slice 1 — Migration + env
 
@@ -36,16 +36,16 @@ Async one-way Jira import by JQL. Confirmed MVP scope: Next.js route worker (Ver
 
 ### Slice 4 — Jira REST client
 
-- `lib/jira/client.ts`: `searchIssues({ jql, pageToken, maxResults })` -> `{ issues, nextPageToken, isLast }`. Basic auth from env. Fields `[summary, description, components, issuetype]`. 429 -> exponential backoff (1,2,4,8,16 s, max 5 retries). 401/403 -> `JiraAuthError`. Types `JiraIssue { key, fields }`.
+- `lib/jira/client.ts`: `searchIssues({ jql, pageToken, maxResults })` -> {{{ issues, nextPageToken, isLast }}}. Basic auth from env. Fields `[summary, description, components, issuetype]`. 429 -> exponential backoff (1,2,4,8,16 s, max 5 retries). 401/403 -> `JiraAuthError`. Types {{JiraIssue { key, fields }}}.
 
 ### Slice 5 — Import runner (worker core)
 
-- `lib/jira/import-runner.ts`: `runImportJob(jobId)` via the admin client. Claim (status running, started*at), then loop pages: per issue — ADF->MD (truncate over 50 KB with a marker), extract ACs, resolve Module (component match or auto-created Inbox, cached per run), upsert US on `(project*id, upper(key))` keyed external*id (created vs updated), reconcile ACs by `lower(title)` (insert missing, positions appended). Per-issue throw -> `errors[]` `{ jira*key, code, message }` + skipped*count, job continues. JiraAuthError -> status failed + `{ code: jira*unauthorized }`. On `isLast` -> status completed, completed_at. Counts updated incrementally.
+- `lib/jira/import-runner.ts`: `runImportJob(jobId)` via the admin client. Claim (status running, started*at), then loop pages: per issue — ADF->MD (truncate over 50 KB with a marker), extract ACs, resolve Module (component match or auto-created Inbox, cached per run), upsert US on `(project*id, upper(key))` keyed external*id (created vs updated), reconcile ACs by `lower(title)` (insert missing, positions appended). Per-issue throw -> `errors[]` {{{ jira*key, code, message }}} + skipped*count, job continues. JiraAuthError -> status failed + {{{ code: jira*unauthorized }}}. On `isLast` -> status completed, completed_at. Counts updated incrementally.
 
 ### Slice 6 — API routes
 
-- `POST /api/v1/imports`: body `{ project*id, jql }`. Resolve workspace from project, require member+ (RLS insert). Serialize: 409 `import*in*progress` if an active job exists for the project. Insert queued job; `after(() => runImportJob(id))`; return 202 `{ import*job_id, status }`.
-- `GET /api/v1/imports/{id}`: return the job row (member read; outsider 404).
+- `POST /api/v1/imports`: body {{{ project*id, jql }}}. Resolve workspace from project, require member+ (RLS insert). Serialize: 409 `import*in*progress` if an active job exists for the project. Insert queued job; `after(() => runImportJob(id))`; return 202 {{{ import*job_id, status }}}.
+- `GET /api/v1/imports/{id`}: return the job row (member read; outsider 404).
 
 ### Slice 7 — UI
 
@@ -53,7 +53,7 @@ Async one-way Jira import by JQL. Confirmed MVP scope: Next.js route worker (Ver
 
 ### Slice 8 — OpenAPI + verify
 
-- Register `/api/v1/imports` + `/{id}` in OpenAPI; regen `public/openapi.json`.
+- Register `/api/v1/imports` + `/{id`} in OpenAPI; regen `public/openapi.json`.
 - Unit tests: ADF->MD per node type; AC heuristic (heading/bullet/numbered/none); component match (hit + miss->Inbox); chunk accumulation; truncation.
 - `bun run lint:check` + `types:check` + `bun test` + `build` green. Live smoke: import a small BK JQL into a dev project, re-run for idempotency.
 
@@ -65,7 +65,7 @@ Two-way sync, webhooks, OAuth 3LO, Epics/Sub-tasks, attachments/comments, custom
 
 Estimated: ~1650 additions + ~30 deletions = ~1680 total lines
 400-line budget risk: High
-Chain strategy: size-exception (single cohesive integration story; solo-owner admin merge; matches BK-10 ~1435 precedent)
+Chain strategy: size-exception (single cohesive integration story; solo-owner admin merge; matches [https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10) ~1435 precedent)
 Decision needed before apply: No
 
 ---

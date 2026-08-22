@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 3
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -32,7 +33,14 @@
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -44,9 +52,9 @@
 
 ### Storys (3)
 
-- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(Ready For Release)_
 - [BK-14](https://jira.upexgalaxy.com/browse/BK-14): TMS-US | Manage user stories anchored to a module _(QA Approved)_
 - [BK-17](https://jira.upexgalaxy.com/browse/BK-17): Jira Import | Pull Jira issues by JQL _(Ready For Release)_
+- [BK-18](https://jira.upexgalaxy.com/browse/BK-18): TMS-ATC API | Create and edit ATCs with steps and assertions _(Ready For Release)_
 
 ---
 

@@ -3,7 +3,11 @@
 **Jira Key:** [BK-135](https://jira.upexgalaxy.com/browse/BK-135)
 **Priority:** Highest
 **Status:** Closed
-**Components:** Tenancy & Identity
+**Components:** Bunkai API Tokens
+**Severity:** Crítica
+**Error Type:** Security
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -17,9 +21,9 @@ POST /api/v1/tokens does not enforce role-based scope restrictions. A member-rol
 
 ### DB Confirmation (2026-06-12)
 
-***Confirmed member-role user with active workspace******:******admin PATs******:***
+***Confirmed member-role user with active workspace:admin PATs:***
 
-| Field | Value |
+| ***Field**** | ****Value*** |
 | --- | --- |
 | User ID | 2742da39-e0ff-4f0c-a0a1-88dae804e14f |
 | Role in "Bünkāï QA" workspace | member |
@@ -30,7 +34,7 @@ POST /api/v1/tokens does not enforce role-based scope restrictions. A member-rol
 
 Sample token from DB (most recent):
 
-| Field | Value |
+| ***Field**** | ****Value*** |
 | --- | --- |
 | id | <token-id-redacted> |
 | name | cli-signin |
@@ -38,16 +42,16 @@ Sample token from DB (most recent):
 | created_at | 2026-06-12T03:07:27.686Z |
 | revoked_at | NULL (active) |
 
-***Scale of defect across staging******:***
+***Scale of defect across staging:***
 
-| Metric | Value |
+| ***Metric**** | ****Value*** |
 | --- | --- |
 | Total workspace:admin PATs in staging DB | 137 |
 | Active workspace:admin PATs | 136 |
 | Users with active workspace:admin tokens | 24 |
 | Users confirmed as member-role with workspace:admin tokens | 1 (confirmed via cross-join; others not all verified) |
 
-***QA bot user clarification (user 232cd273 — qa.bot.chiavassa******@******gmail.com)******:***
+***QA bot user clarification (user 232cd273 — qa.bot.chiavassa@gmail.com):***
 
 The QA bot used for this session is `owner` role in its workspace, so TC08 cannot be directly reproduced via this user's session. However, the defect is confirmed via user `2742da39` above, who is `member` in two workspaces yet holds 19 active workspace:admin tokens — all created after 2026-06-01 (most recently on 2026-06-12), with `workspace_id = NULL` (unscoped admin access across all workspaces).
 
@@ -105,13 +109,13 @@ The `workspace_id = NULL` on all affected tokens indicates the PATs are global (
 ## Repro Steps
 
 1. Authenticate to Bunkai TMS as a member-role user (browser session / magic-link)
-2. POST /api/v1/tokens with body: `{"name": "escalation-test", "scopes": ["workspace:admin"]}`
+2. POST /api/v1/tokens with body: `{"name": "escalation-test", "scopes": ["workspace:admin"]`}
 3. Observe HTTP 201 — token created with workspace:admin scope
 4. Expected: HTTP 403 Forbidden — member role cannot issue admin-scoped tokens
 
 ## Expected vs Actual
 
-|  | Value |
+|  | ***Value*** |
 | --- |
 | Expected | HTTP 403 Forbidden — member role cannot issue workspace:admin tokens |
 | Actual | HTTP 201 Created — token issued with workspace:admin scope, no role check |
@@ -122,22 +126,29 @@ None available. Admin-scoped PATs already in circulation must be manually revoke
 
 ## Note
 
-Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK-109) al original (BK-88) según indicación de Ely.
+Este bug reemplaza a BK-117, que se elimina por consolidación de US clonada (BK-109) al original ([https://jira.upexgalaxy.com/browse/BK-88#icft=BK-88](https://jira.upexgalaxy.com/browse/BK-88#icft=BK-88)) según indicación de Ely.
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
 ## Related Issues
 
-- created by: [BK-88](https://jira.upexgalaxy.com/browse/BK-88) - Settings | Manage Personal Access Tokens
-- relates to: [BK-167](https://jira.upexgalaxy.com/browse/BK-167) - Enforce workspace:admin scope on admin endpoints (consumption-side)
 - relates to: [BK-97](https://jira.upexgalaxy.com/browse/BK-97) - Enforce per-route PAT capabilities on non-ATC API routes (ADR-0001 follow-up)
+- relates to: [BK-167](https://jira.upexgalaxy.com/browse/BK-167) - Enforce workspace:admin scope on admin endpoints (consumption-side)
+- created by: [BK-88](https://jira.upexgalaxy.com/browse/BK-88) - Settings | Manage Personal Access Tokens
+- relates to: [BK-262](https://jira.upexgalaxy.com/browse/BK-262) - PAT | Enforce capability scopes on every non-ATC route
 
 ---
 
 ## Metadata
 
 - **Created:** 6/12/2026
-- **Updated:** 6/28/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Carlos Alberto Chiavassa
 - **Assignee:** Carlos Alberto Chiavassa
 

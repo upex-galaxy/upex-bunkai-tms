@@ -1,6 +1,6 @@
 # BK-233 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
 
 - Downgrade flow with a mandatory consequence preview: which limits shrink, which resources become read-only, explicit "nothing is deleted" statement
 - Cancel flow with end-of-period access: paid limits until the period ends, then automatic drop to the Free plan

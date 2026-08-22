@@ -1,8 +1,8 @@
 # BK-222 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-222)
 
-```gherkin
+```
 Scenario: Submit a completed automated run in one call
   Given Karim holds a valid Personal Access Token for the "Acme QA" workspace
   And the Test "Checkout happy path" exists with 4 chained ATC steps
@@ -11,7 +11,7 @@ Scenario: Submit a completed automated run in one call
   And the run appears in the Test's run history as a finished run with verdict "passed" and an automated executor
 ```
 
-```gherkin
+```
 Scenario: Idempotent resubmission never doubles state
   Given Karim submitted a run with idempotency key "ci-2026-07-11-checkout-01" and received a successful response
   When Karim retries the identical submission with the same idempotency key after a network timeout
@@ -19,7 +19,7 @@ Scenario: Idempotent resubmission never doubles state
   And the response returns the identifier of the originally created run
 ```
 
-```gherkin
+```
 Scenario: Incomplete step coverage is rejected
   Given the Test "Checkout happy path" has 4 chained ATC steps
   When Karim submits a run reporting results for only 2 of the 4 steps
@@ -27,7 +27,7 @@ Scenario: Incomplete step coverage is rejected
   And no run is recorded
 ```
 
-```gherkin
+```
 Scenario: Verdict vocabulary is enforced
   Given Karim prepares a submission for the Test "Checkout happy path"
   When Karim submits the run with final verdict "success"
@@ -35,7 +35,7 @@ Scenario: Verdict vocabulary is enforced
   And the validation message lists the accepted verdicts: "passed" and "failed"
 ```
 
-```gherkin
+```
 Scenario: A viewer-role token cannot submit runs
   Given Karim holds a Personal Access Token whose owner has the "viewer" role in the workspace
   When Karim submits an automated run

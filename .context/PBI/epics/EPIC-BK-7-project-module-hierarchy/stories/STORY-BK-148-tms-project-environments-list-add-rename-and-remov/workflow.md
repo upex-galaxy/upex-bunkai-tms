@@ -1,6 +1,6 @@
 # BK-148 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
 
 1. The Senior QA Engineer opens the project's settings and selects the Environments section.
 2. The system lists the project's environments (seeded with "Staging" and "Production").

@@ -1,6 +1,6 @@
 # BK-87 — Mockup
 
-> Jira field: `customfield_10137` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-87)
+> Jira field: `customfield_10120` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-87)
 
 ***MVP Interactivo — BK-87 Settings Hub + BK-101/105 Workspaces***
 

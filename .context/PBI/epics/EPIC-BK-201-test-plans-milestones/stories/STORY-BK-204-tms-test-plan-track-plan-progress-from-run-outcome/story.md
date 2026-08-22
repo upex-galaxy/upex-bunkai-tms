@@ -21,13 +21,26 @@ Runs already record outcomes for every executed Test. This story surfaces those 
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Storys (3)
 
-- [BK-203](https://jira.upexgalaxy.com/browse/BK-203): TMS-Test Plan | Add and remove tests from a plan _(Backlog)_
-- [BK-207](https://jira.upexgalaxy.com/browse/BK-207): TMS-Test Plan | Close a plan with an outcome summary _(Backlog)_
 - [BK-206](https://jira.upexgalaxy.com/browse/BK-206): TMS-Milestone | Assign test plans and track milestone readiness _(Backlog)_
+- [BK-207](https://jira.upexgalaxy.com/browse/BK-207): TMS-Test Plan | Close a plan with an outcome summary _(Backlog)_
+- [BK-203](https://jira.upexgalaxy.com/browse/BK-203): TMS-Test Plan | Add and remove tests from a plan _(Backlog)_
 
 ### Epic (1)
 

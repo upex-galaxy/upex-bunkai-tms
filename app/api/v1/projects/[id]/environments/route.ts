@@ -37,7 +37,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ environments: data ?? [] }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const projectId = extractProjectId(request);
@@ -66,7 +66,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ environment: data }, { status: 201 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractProjectId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

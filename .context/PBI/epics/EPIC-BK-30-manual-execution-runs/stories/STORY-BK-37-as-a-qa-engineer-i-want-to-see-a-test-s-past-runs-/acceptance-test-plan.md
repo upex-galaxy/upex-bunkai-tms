@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
 
-# Shift-Left Refinement: BK-37 — TMS-Run History | View a test's past runs, filterable by outcome
+# Shift-Left Refinement: [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) — TMS-Run History | View a test's past runs, filterable by outcome
 
 ***Status***: Refined — Awaiting PO Estimation
 ***Mode***: Shift-Left (pre-sprint, single-Story session)
@@ -17,21 +17,21 @@
 ### Business context
 
 - ***Primary persona affected***: QA Engineer (Elena) — investigates flaky areas by scanning a Test's execution history.
-- ***Secondary personas (if any)***: QA Lead (Mateo) — may consult the same history when reviewing a Test's reliability, though the epic's project-wide reporting (BK-38) is his primary surface.
+- ***Secondary personas (if any)***: QA Lead (Mateo) — may consult the same history when reviewing a Test's reliability, though the epic's project-wide reporting ([https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38)) is his primary surface.
 - ***Business value proposition***: turns a Test's individual Run log into a comparable trend instead of scattered, unlinked executions — the foundation for spotting flakiness before it becomes a release risk.
 - ***KPI(s) influenced***: flaky-test detection rate, mean-time-to-identify-flaky-area.
-- ***User journey position***: inside a Test's detail view, one tab/section over from starting a new Run (BK-34).
+- ***User journey position***: inside a Test's detail view, one tab/section over from starting a new Run ([https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34)).
 
 ### Technical context
 
 - ***Frontend***: a Test detail page/section rendering a Run list (outcome, environment, executor mode, ran-at), an outcome filter control, and a "load older" control. No dedicated frontend code found yet for this view (light `fd`/`rg` pass over `../upex-bunkai-tms/app` found no `run-history` or similar component).
-- ***Backend****: per `business-api-map.md` + live code read of `../upex-bunkai-tms/app/api/v1/runs/`: `POST /api/v1/runs` (start) and `GET /api/v1/runs/{id}` (single Run) exist. ****No GET endpoint lists/paginates/filters a Test's Runs.*** `runs/route.ts` exports `POST` only.
+- ***Backend****: per `business-api-map.md` + live code read of `../upex-bunkai-tms/app/api/v1/runs/`: `POST /api/v1/runs` (start) and `GET /api/v1/runs/{id`} (single Run) exist. ****No GET endpoint lists/paginates/filters a Test's Runs.*** `runs/route.ts` exports `POST` only.
 - ***External services***: none.
 - ***Integration points specific to this Story***: `runs` table (status, environment*id, executor*mode, started*at/finished*at per `business-data-map.md`), `project_environments` (environment display name).
 
 ### Story complexity
 
-| Axis | Rating | Why |
+| ***Axis**** | ****Rating**** | ****Why*** |
 | --- | --- | --- |
 | Business logic | Low-Medium | Filter + pagination + newest-first ordering; no calculations |
 | Integration | Medium | Requires a ***new*** read endpoint — not a pure UI task |
@@ -40,11 +40,11 @@
 
 ***Estimated test effort***: Medium — the current 1-point estimate likely assumed the read endpoint already existed. Flagging for PO re-estimation once the API gap below is resolved.
 
-### Epic-level inheritance (BK-30 — Manual Execution & Runs)
+### Epic-level inheritance ([https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30) — Manual Execution & Runs)
 
-- Risks restated at Story level: `runs.status` lifecycle is `running -> {passed | failed | aborted}`, terminal and monotonic (ADR-0004) — directly relevant to this Story's "past runs" framing (see Critical Question 1 below).
+- Risks restated at Story level: `runs.status` lifecycle is `running -> {passed | failed | aborted`}, terminal and monotonic (ADR-0004) — directly relevant to this Story's "past runs" framing (see Critical Question 1 below).
 - Integration points inherited: `executor_mode` is a plain Run attribute (human/agent/ci) — display-only here, no new logic.
-- PO/Dev answers already given at epic level: none cover history listing/filtering specifically — sibling Stories BK-34/35/36/39 cover execution, BK-38 covers project-wide (not per-Test) reporting and is explicitly out-of-scope for BK-37.
+- PO/Dev answers already given at epic level: none cover history listing/filtering specifically — sibling Stories [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34)/35/36/39 cover execution, [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38) covers project-wide (not per-Test) reporting and is explicitly out-of-scope for [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37).
 - Test strategy inherited: none specific to history views yet.
 
 ---
@@ -53,21 +53,21 @@
 
 ### Ambiguities
 
-| # | Location in Story | Question for PO/Dev | Impact on testing | Suggested clarification |
+| ***#**** | ****Location in Story**** | ****Question for PO/Dev**** | ****Impact on testing**** | ****Suggested clarification*** |
 | --- | --- | --- | --- | --- |
 | 1 | AC4 / Business Rules "older runs load on demand" | Is 50 (the number used in the AC4 example: "60 past runs and the first 50 are shown") the actual contract page size, or just illustrative? | Cannot write boundary test cases (49/50/51) without the real number | State the page size explicitly in Business Rules |
 | 2 | Business Rules "Filters and ordering compose" | Does pagination also compose with the active filter — does "load older" traverse only the filtered set, or the whole history? | Determines whether load-more query needs the outcome param | Add one line confirming filter+pagination composition |
 
 ### Gaps (missing info)
 
-| # | Type | Why critical | What to add | Risk if omitted |
+| ***#**** | ****Type**** | ****Why critical**** | ****What to add**** | ****Risk if omitted*** |
 | --- | --- | --- | --- | --- |
-| 1 | Technical detail | No GET endpoint exists to list a Test's Runs (only `POST /runs` and `GET /runs/{id}` are implemented) | Add the endpoint to the implementation plan before FE work starts | Sprint commitment on a Story that cannot be built as scoped |
+| 1 | Technical detail | No GET endpoint exists to list a Test's Runs (only `POST /runs` and `GET /runs/{id`} are implemented) | Add the endpoint to the implementation plan before FE work starts | Sprint commitment on a Story that cannot be built as scoped |
 | 2 | Business rule | Story never states whether an in-progress ("running") Run appears in "past runs" history | Add an explicit rule: history = terminal Runs only, OR history includes an in-progress row | Wrong list query (filter on status) + wrong empty-state trigger for a Test with only 1 running Run |
 
 ### Edge cases not in Story
 
-| # | Scenario | Expected behavior (best guess) | Criticality | Action |
+| ***#**** | ****Scenario**** | ****Expected behavior (best guess)**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Outcome filter applied but 0 Runs match (e.g. filter "aborted" on a Test with 0 aborted Runs) | A distinct "No {outcome} runs found" message, different from the "never run" empty state | High | Add to AC (NEEDS PO/DEV CONFIRMATION) |
 | 2 | Test has exactly 50 Runs (page-size boundary) | No "load more" control shown — everything fits on page 1 | Medium | Add to AC (NEEDS PO/DEV CONFIRMATION) |
@@ -173,7 +173,7 @@ Issues:
 
 ### Coverage estimate
 
-| Type | Count | Notes |
+| ***Type**** | ****Count**** | ****Notes*** |
 | --- | --- | --- |
 | Positive | 7 | Happy-path listing, per-outcome filtering, clear-filter, load-more |
 | Negative | 1 | 0-match filter empty state |
@@ -198,7 +198,7 @@ Issues:
 
 #### Negative
 
-- ***Should show a distinct "no ******{******outcome} runs" message when the filter matches 0 runs**** — Pre: Test has runs but none matching selected outcome. Expected: outcome-specific empty message, not the "never run" one. **(NEEDS PO/DEV CONFIRMATION)*
+- ***Should show a distinct "no**** ****{outcome} runs" message when the filter matches 0 runs**** — Pre: Test has runs but none matching selected outcome. Expected: outcome-specific empty message, not the "never run" one. **(NEEDS PO/DEV CONFIRMATION)*
 
 #### Boundary
 
@@ -217,7 +217,7 @@ Issues:
 
 ## Phase 5 — Edge Cases (DRAFT)
 
-| # | Edge case | In original Story? | Criticality | Action |
+| ***#**** | ****Edge case**** | ****In original Story?**** | ****Criticality**** | ****Action*** |
 | --- | --- | --- | --- | --- |
 | 1 | Outcome filter matches 0 runs | No | High | Add to AC (PO confirm exact copy) |
 | 2 | Exactly page-size runs (no load-more shown) | No (page size itself unconfirmed) | Medium | Add to AC once page size confirmed |
@@ -263,7 +263,7 @@ Issues:
 
 ## Suggested Story Improvements
 
-| # | Current state | Suggested change | Benefit |
+| ***#**** | ****Current state**** | ****Suggested change**** | ****Benefit*** |
 | --- | --- | --- | --- |
 | 1 | "Older Runs can be loaded beyond the first page" (no number) | State the page size explicitly, e.g. "beyond the first 50" | Removes the page-size ambiguity; makes AC4 objectively testable |
 | 2 | Silent on in-progress Runs | Add an explicit line: "In-progress Runs are excluded from history; only terminal Runs (passed/failed/aborted) appear" | Removes a data-model ambiguity that would otherwise surface as a QA-found bug |
@@ -273,7 +273,7 @@ Issues:
 ## Data feasibility flags
 
 - ***Entity / fixture missing***: none — the `runs` table already carries every field the history view needs (`status`, `environment*id`, `executor*mode`, timestamps).
-- ***API contract gap***: confirmed via code read of `../upex-bunkai-tms/app/api/v1/runs/` — no GET endpoint lists/filters/paginates a Test's Runs. Only `POST /api/v1/runs` (start) and `GET /api/v1/runs/{id}` (single Run) exist.
+- ***API contract gap***: confirmed via code read of `../upex-bunkai-tms/app/api/v1/runs/` — no GET endpoint lists/filters/paginates a Test's Runs. Only `POST /api/v1/runs` (start) and `GET /api/v1/runs/{id`} (single Run) exist.
 - ***Required pre-work***: a new read endpoint (+ its `route.openapi.ts` schema, following the sibling pattern already used for `abort`/`finish`) must be scoped and built before frontend work on this Story can start.
 
 ---
@@ -301,7 +301,7 @@ Issues:
 
 ## Risks & mitigation
 
-| # | Risk | Likelihood | Impact | Mitigated by which outlines |
+| ***#**** | ****Risk**** | ****Likelihood**** | ****Impact**** | ****Mitigated by which outlines*** |
 | --- | --- | --- | --- | --- |
 | 1 | GET history endpoint doesn't exist and isn't scoped before sprint commitment | High (confirmed) | High — blocks every outline | Technical Question 1; PO/Dev must resolve before `ready*for*dev` |
 | 2 | In-progress-Run inclusion ambiguity ships wrong | Medium | Medium — wrong empty-state trigger, confusing UX | Outline "Should exclude in-progress Runs" |

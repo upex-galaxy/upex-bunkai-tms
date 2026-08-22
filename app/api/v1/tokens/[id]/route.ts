@@ -15,12 +15,7 @@ import { z } from 'zod';
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
-  const { principal, db } = getAuth(ctx);
-  // A PAT must not revoke tokens — token management is a browser-session-only
-  // operation (ADR-0001 exception).
-  if (principal.via === 'bearer') {
-    throw new ApiError('forbidden', 'Personal access tokens cannot revoke tokens. Use a browser session.');
-  }
+  const { db } = getAuth(ctx);
 
   // Extract the [id] segment from the pathname. Shape: /api/v1/tokens/<uuid>.
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);
@@ -44,4 +39,6 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return new NextResponse(null, { status: 204 });
-}, { auth: 'required' });
+// A PAT must not revoke tokens — token management is a browser-session-only
+// operation (ADR-0001 exception), enforced by the gateway before the body.
+}, { auth: 'cookie-only', why: 'Personal access tokens cannot revoke tokens. Use a browser session.' });

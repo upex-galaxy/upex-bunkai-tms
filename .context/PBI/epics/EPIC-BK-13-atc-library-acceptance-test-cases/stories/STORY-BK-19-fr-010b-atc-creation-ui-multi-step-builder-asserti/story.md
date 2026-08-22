@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -26,7 +27,7 @@
 
 ### Clarified Business Rules
 
-- Create-only form (no edit in MVP; BK-21 handles edit variant).
+- Create-only form (no edit in MVP; [https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21](https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21) handles edit variant).
 - No optimistic UI — form state is lossy on error; server is source of truth.
 - Reorder buttons (up/down) in MVP; DnD deferred.
 - Single source of truth: Zod schema mirrors `@schemas/atc.types`.
@@ -40,11 +41,11 @@
 3. Can you submit with 0 steps? 0 assertions? Without assertions?
 4. What are the user-facing error messages for each error code?
 5. Is there a max ATC title length?
-6. Is the edit variant (BK-21) scope acceptable (MVP create-only, refactoring later)?
+6. Is the edit variant ([https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21](https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21)) scope acceptable (MVP create-only, refactoring later)?
 7. Is accessibility (tab order + screen reader) mandatory for MVP or backlog-deferred?
 8. Are unit tests a mandatory PR gate or just a coverage goal?
 9. Is the error mapping utility (`mapApiError`) available? Who owns it?
-10. Will the API contract (BK-18) be finalized before dev starts? (This is a BLOCKER.)
+10. Will the API contract ([https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18)) be finalized before dev starts? (This is a BLOCKER.)
 
 ---
 
@@ -52,8 +53,13 @@
 
 > Each rich-text field is a separate file in this folder.
 
-- [Mockup](./mockup.md)
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -61,9 +67,9 @@
 
 ### Defects (3)
 
-- [BK-144](https://jira.upexgalaxy.com/browse/BK-144): ATC builder — tag input remains enabled at 10-tag maximum instead of being disabled _(Open)_
-- [BK-145](https://jira.upexgalaxy.com/browse/BK-145): ATC builder — mapApiError does not handle validation_failed + too_small shows generic error instead of field-level message for short title _(Open)_
+- [BK-145](https://jira.upexgalaxy.com/browse/BK-145): ATC builder — mapApiError does not handle validation_failed + too_small shows generic error instead of field-level message for short title _(Ready For QA)_
 - [BK-146](https://jira.upexgalaxy.com/browse/BK-146): ATC builder — module outside project subtree returns 404 not_found instead of 422 module_outside_project_subtree _(Closed)_
+- [BK-144](https://jira.upexgalaxy.com/browse/BK-144): ATC builder — tag input remains enabled at 10-tag maximum instead of being disabled _(Ready For QA)_
 
 ### Story (1)
 

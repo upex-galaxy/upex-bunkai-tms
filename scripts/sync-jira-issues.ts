@@ -64,7 +64,8 @@
  *   pull                Sync all Epics and Stories from Jira
  *     --epic <key>      Sync specific epic with all its stories
  *     --story <key>     Sync specific story only
- *     --include-comments Include Jira comments in comments.md
+ *     --include-comments Include Jira comments (comments.md in folder layouts,
+ *                        an inline `## Comments` section in flat single-file types)
  *     --dry-run         Show what would be done without writing files
  *     --json            Output results as JSON
  *   get <KEY>           Sync ONE issue (any type) with ALL custom fields (canonical read; replaces `acli view`)
@@ -1522,6 +1523,28 @@ function generateStoryMarkdown(
   return lines.join('\n');
 }
 
+/** Trailing marker every generated markdown file ends with. */
+const SYNC_FOOTER = '_Synced from Jira by sync-jira-issues_';
+
+/**
+ * Renders the per-comment blocks shared by the standalone `comments.md` file
+ * (folder layouts) and the inline `## Comments` section embedded in the single
+ * file that `content: single` work types produce.
+ */
+function renderCommentEntries(comments: JiraComment[]): string[] {
+  if (comments.length === 0) { return ['_No comments_']; }
+
+  const lines: string[] = [];
+  for (const comment of comments) {
+    const author = comment.author?.displayName || 'Unknown';
+    const date = new Date(comment.created).toLocaleString();
+    const body = adfToMarkdown(comment.body as AdfDocument);
+
+    lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
+  }
+  return lines;
+}
+
 function generateCommentsMarkdown(
   comments: JiraComment[],
   issueKey: string,
@@ -1534,24 +1557,33 @@ function generateCommentsMarkdown(
     '',
     '---',
     '',
+    ...renderCommentEntries(comments),
   ];
 
-  if (comments.length === 0) {
-    lines.push('_No comments_');
-  }
-  else {
-    for (const comment of comments) {
-      const author = comment.author?.displayName || 'Unknown';
-      const date = new Date(comment.created).toLocaleString();
-      const body = adfToMarkdown(comment.body as AdfDocument);
-
-      lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
-    }
-  }
-
-  lines.push('', '_Synced from Jira by sync-jira-issues_', '');
+  lines.push('', SYNC_FOOTER, '');
 
   return lines.join('\n');
+}
+
+/**
+ * Embeds a `## Comments` section into a `content: single` work-type file.
+ *
+ * Bug / Improvement / Test Case are declared `coverable: false` in
+ * `.agents/jira-required.yaml`, so the sync writes them as ONE flat file with no
+ * folder to hold a sibling `comments.md`. The section is spliced in just above the
+ * sync footer, which keeps the one-file contract intact and puts the comment trail
+ * in the exact file every routine already reads. See BK-502.
+ */
+function embedCommentsSection(content: string, comments: JiraComment[]): string {
+  // Every rendered comment already closes with a `---` separator; the empty case
+  // does not, so only then is a closing rule added before the footer.
+  const entries = renderCommentEntries(comments).join('\n').trimEnd();
+  const section = `## Comments\n\n${entries.endsWith('---') ? entries : `${entries}\n\n---`}\n\n`;
+
+  const footerAt = content.lastIndexOf(SYNC_FOOTER);
+  if (footerAt === -1) { return `${content.trimEnd()}\n\n---\n\n${section}`; }
+
+  return `${content.slice(0, footerAt)}${section}${content.slice(footerAt)}`;
 }
 
 /**
@@ -2881,7 +2913,15 @@ async function syncStandaloneIssue(
   if (!options.dryRun) { ensureDir(dir); }
   const filePath = join(dir, `${prefix}-${key}-${generateSlug(issue.fields.summary)}.md`);
 
-  const content = renderStandaloneContent(entry, issue, type, config);
+  let content = renderStandaloneContent(entry, issue, type, config);
+
+  // BK-502: this branch used to ignore `options.includeComments` outright, so
+  // `--include-comments` was accepted and silently dropped for every non-coverable
+  // work type (Bug, Improvement, Test Case) while the coverable path honoured it.
+  // These types have no folder, so the trail is embedded in their single file.
+  if (options.includeComments) {
+    content = embedCommentsSection(content, await fetchComments(config, key));
+  }
 
   const r = writeIndexFile(filePath, content, options.dryRun);
   if (r.status === 'created') { result.files.created++; }
@@ -3243,7 +3283,10 @@ ${colors.bold}OPTIONS${colors.reset}
   --types <csv>       Extra coverable types to pull (e.g. improvement,tech-story,tech-debt)
   --no-defects        Skip defect discovery / nesting and the orphan-Defect audit
   --project <KEY>     Override the project key for this run (beats env + project.yaml)
-  --include-comments  Include Jira comments in comments.md
+  --include-comments  Include Jira comments — comments.md for folder layouts
+                      (Story / Epic / Defect / Tech Story), an inline
+                      '## Comments' section for flat single-file work types
+                      (Bug / Improvement / Test Case)
   --dry-run           Show what would be done without writing files
   --json              Output results as JSON
 
@@ -3292,6 +3335,8 @@ ${colors.bold}OVERWRITE POLICY${colors.reset}
   Jira is the source of truth — NO files are protected. Every file the sync owns
   (story.md, epic.md, per-field .md, comments.md, bug/improvement/tech-story/... .md) is
   re-materialized on each run (per-field files only when the Jira field is non-empty).
+  Flat single-file work types carry their comment trail INSIDE that one file, under a
+  '## Comments' heading, since they have no folder to hold a sibling comments.md.
   Hand-authored NON-Jira files (context.md, evidence/, test-specs/) use names the
   sync never writes.
 
@@ -3370,7 +3415,14 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  log.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+// `import.meta.main` is false when the module is imported (e.g. by
+// `sync-jira-issues.test.ts`), so importing it no longer runs the CLI.
+if (import.meta.main) {
+  main().catch((error) => {
+    log.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
+
+export { emptyResult, routeIssueByKey };
+export type { Config, SyncOptions, SyncResult };

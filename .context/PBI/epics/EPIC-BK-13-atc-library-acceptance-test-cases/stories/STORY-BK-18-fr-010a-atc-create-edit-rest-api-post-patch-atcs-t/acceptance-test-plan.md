@@ -18,7 +18,7 @@
 
 Como ingeniero de automatización o consumidor de la API, quiero una REST API para crear y editar ATCs (Acceptance Test Cases) con sus steps y assertions en una sola llamada transaccional, para que pueda componer bloques de prueba reutilizables desde herramientas de CLI, scripts y el cliente de UI.
 
-Implementa **FR-010a** — solo superficie de servidor. El formulario de UI es BK-19, la composición de Test posterior es EPIC-BK-5.
+Implementa **FR-010a** — solo superficie de servidor. El formulario de UI es [https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19), la composición de Test posterior es EPIC-BK-5.
 
 ## Acceptance Criteria
 
@@ -68,14 +68,14 @@ And se emite un event atc.updated con affected*test*ids
 
 **Se produjeron 13 Gherkin scenarios** (Happy 2 / Negative 7 / Boundary 2 / Integration 2). Decisiones clave de contrato:
 
-1. **Slug format**: `{module-slug}/atc-{id-first-8-chars}` (prefijo de UUID en minúsculas). — **Rationale:** el prefijo de uuid es determinista (sin dependencia de secuencia), único y legible. 8 caracteres equilibran seguridad de colisión vs brevedad. Coincide con la recomendación del arquitecto en el comentario de BK-2. (Senior DEV)
+1. **Slug format**: `{module-slug}/atc-{id-first-8-chars`} (prefijo de UUID en minúsculas). — **Rationale:** el prefijo de uuid es determinista (sin dependencia de secuencia), único y legible. 8 caracteres equilibran seguridad de colisión vs brevedad. Coincide con la recomendación del arquitecto en el comentario de [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2). (Senior DEV)
 2. **PATCH semantics**: cuerpo de reemplazo total (estilo PUT), NO merge parcial. Se reutiliza el schema `ATCCreate`. Los campos omitidos NO se preservan — se limpian. — **Rationale:** el RPC existente `bunkai*save*atc` reemplaza los hijos por completo (sin diff). Un merge parcial requeriría tracking a nivel de campo a través de 4 tablas sin infra existente. Si el cliente quiere parcial, hace GET→modificar→PATCH. (Senior DEV)
 3. **Version conflict**: optimistic locking vía header `If-Match: <version>`. Sin version en el body. 409 si hay mismatch. — **Rationale:** estándar de la industria (RFC 7232). Previene lost updates. El RPC existente incrementa version incondicionalmente; el route handler chequea el header antes de llamar al RPC. (Senior DEV)
 4. **Error codes**: agregar `ac*outside*user*story`, `module*outside*project*subtree`, `steps*position*invalid`, `layer*invalid`, `slug*collision` al mapa `API*ERROR*CODES`. Envuelto vía `ApiError('validation*failed', 422, { code: 'ac*outside*user*story' })`. — **Rationale:** el flujo 422 existente en `withApiHandler` atrapa ZodError pero NO los errores de validación semántica. Los errores semánticos necesitan throws explícitos de `ApiError` con codes específicos del dominio. (Senior QA)
 5. **Auth**: `requireBearerToken` + `requireScope(ctx, 'atc:write')` en ambos endpoints. Los tokens `atc:read` se rechazan con 403. — **Rationale:** patrón establecido de las rutas de tokens. Consistente con el modelo de scope existente. (Senior QA)
 6. RPC `bunkai*create*atc`: el camino de CREATE necesita un NUEVO RPC que devuelva el nuevo `atc*id` (a diferencia de `bunkai*save*atc`, que es void). Firma: `bunkai*create*atc(p*project*id, p*module*id, p*user*story*id, p*title, p*layer, p*tags, p*steps, p*assertions, p*ac*ids) returns uuid`. — **Rationale:** `bunkai*save*atc` recibe `p*atc*id` (solo UPDATE). El INSERT necesita una firma distinta — sin id preexistente, necesita project*id para RLS + slug. Agregar un parámetro `p*create*flag` crearía un RPC dual-path feo. Un RPC dedicado es más limpio. (Senior DEV)
 7. `affected*test*ids` **(event de PATCH)**: consultar la tabla `test*steps` joineando por `atc*id`. Un array vacío = el event igual se dispara (los consumidores filtran por `affected*test*ids.length === 0` si solo les importa el impacto de dependencias). — **Rationale:** el SRS muestra el campo `used*in` en la respuesta de ATC → links de `test*steps`. Esta es la fuente canónica. (Senior DEV)
-8. **Mutabilidad de **`user*story*id`** en PATCH**: inmutable en PATCH. Si el cliente envía `user*story*id`, se ignora silenciosamente (o 422 si es distinto). Las ACs están atadas a la user story original del ATC. — **Rationale:** reasignar user*story*id rompería la validación de AC (las ACs pertenecen a la US original). La re-validación en cascada es costosa y agrega riesgo. La anotación del arquitecto lo confirma. (Senior PO + Senior DEV)
+8. **Mutabilidad de** `user*story*id` **en PATCH**: inmutable en PATCH. Si el cliente envía `user*story*id`, se ignora silenciosamente (o 422 si es distinto). Las ACs están atadas a la user story original del ATC. — **Rationale:** reasignar user*story*id rompería la validación de AC (las ACs pertenecen a la US original). La re-validación en cascada es costosa y agrega riesgo. La anotación del arquitecto lo confirma. (Senior PO + Senior DEV)
 
 ### ⚠️ Edge Cases Identified
 
@@ -88,7 +88,7 @@ And se emite un event atc.updated con affected*test*ids
 5. 🔴 Alta — Slug collision (mismo project, mismo slug). Mitigación: constraint DB UNIQUE `(project*id, slug)`. El INSERT levanta unique violation → se mapea a 409 `slug*collision`.
 6. 🔴 Alta — POST con `module*id` perteneciente a un project distinto al de `user*story*id`. Mitigación: AC3 cubre el caso positivo. Rechazar con 422 `module*outside*project*subtree`.
 7. 🟡 Media — POST con array `steps[]` vacío. Mitigación: el schema `ATCCreate` requiere `minItems: 1`. Zod rechaza → 422 `validation_failed`.
-8. 🟡 Media — POST con valor de layer fuera del enum `{UI, API, Unit}`. Mitigación: el enum de Zod rechaza → 422 `validation_failed`.
+8. 🟡 Media — POST con valor de layer fuera del enum `{UI, API, Unit`}. Mitigación: el enum de Zod rechaza → 422 `validation_failed`.
 9. 🟡 Media — POST con 11 tags (excede el máximo de 10). Mitigación: Zod `maxItems: 10` rechaza → 422.
 10. 🟡 Media — PATCH con body vacío (sin campos cambiados). **Decisión**: aceptar el PATCH vacío como no-op → 200 con la misma version (sin incremento). El RPC no se llama. (Senior DEV)
 11. 🟡 Media — POST con `acceptance*criterion*ids` que son UUIDs válidos pero no existen en la DB. Mitigación: 422 `ac*outside*user_story` (mismo code — la query devuelve vacío para IDs inexistentes también).
@@ -105,8 +105,8 @@ And se emite un event atc.updated con affected*test*ids
 - **Event emission**: `atc.created` se dispara al commit del POST. `atc.updated` se dispara al commit del PATCH con `affected*test*ids[]` poblado vía join con `test_steps`. Los events son fire-and-forget (hook after-commit). Si el event bus está caído, la respuesta de la API sigue siendo 200/201 — el event se registra para replay.
 - **RLS**: todas las operaciones de tabla pasan por las políticas de RLS existentes (`authenticated` + membresía de workspace). Los RPCs son `security invoker` para que RLS evalúe como el caller de la API.
 - **idempotency**: no requerida para el MVP. Los POSTs no son idempotentes por naturaleza (cada uno crea un nuevo ATC). El PATCH es idempotente (mismo payload = mismo resultado). Si se necesita idempotency más adelante, agregar el header `Idempotency-Key` — el `IdempotencyKeySchema` existente en el codebase lo cubre.
-- **Soft-delete**: FUERA del scope de BK-18. El endpoint DELETE será BK-? (Story futura). El campo de status existe en el schema pero POST/PATCH no lo tocan.
-- Campo `used*in` **en la respuesta**: FUERA del scope de BK-18. El endpoint GET (BK-? futuro) lo expandirá. Las respuestas de POST/PATCH devuelven el objeto ATC sin `used*in`.
+- **Soft-delete**: FUERA del scope de [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18). El endpoint DELETE será BK-? (Story futura). El campo de status existe en el schema pero POST/PATCH no lo tocan.
+- Campo `used*in` **en la respuesta**: FUERA del scope de [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18). El endpoint GET (BK-? futuro) lo expandirá. Las respuestas de POST/PATCH devuelven el objeto ATC sin `used*in`.
 
 ### ❓ Open Questions for PO / Dev / Design
 
@@ -118,21 +118,21 @@ And se emite un event atc.updated con affected*test*ids
 
 **Para Dev (4):**
 
-1. **Firma del RPC **`bunkai*create*atc`: confirmar salida: `RETURNS uuid` (el nuevo atc*id)? ¿La entrada incluye `p*project*id` para la computación de slug + RLS? **Decisión (Senior DEV)**: sí — `returns uuid`, recibe `p*project*id uuid` como primer parámetro. El slug se computa como `lower(replace(p*title, ' ', '-')) || '/atc-' || substr(gen*random*uuid()::text, 1, 8)` — determinista a partir de las entradas, sin dependencia de secuencia. RLS funciona porque `project_id` está en la fila.
+1. **Firma del RPC** `bunkai*create*atc`: confirmar salida: `RETURNS uuid` (el nuevo atc*id)? ¿La entrada incluye `p*project*id` para la computación de slug + RLS? **Decisión (Senior DEV)**: sí — `returns uuid`, recibe `p*project*id uuid` como primer parámetro. El slug se computa como `lower(replace(p*title, ' ', '-')) || '/atc-' || substr(gen*random*uuid()::text, 1, 8)` — determinista a partir de las entradas, sin dependencia de secuencia. RLS funciona porque `project_id` está en la fila.
 2. **Computación de slug — ¿SQL puro o capa de app?**: el RPC existente es PL/pgSQL. La computación de slug debería vivir en el RPC (misma transaction, sin round-trip). ¿Confirmamos? **Decisión (Senior DEV)**: PL/pgSQL puro dentro de `bunkai*create*atc`. La capa de app envía el title, el RPC deriva el slug. Inmutable después de la creación.
 3. **Registro de error code**: ¿agregar los nuevos codes al mapa `API*ERROR*CODES` o definirlos inline en los route handlers? **Decisión (Senior DEV)**: agregar al mapa `API*ERROR*CODES` por consistencia. El mapa es el registro canónico que lee la generación de la OpenAPI spec.
-4. **Query de **`affected*test*ids`: ¿existe `test*steps` en el schema todavía (es parte de EPIC-BK-5 Tests)? ¿O el payload del event debería omitir este campo hasta que llegue esa migración de schema? **Decisión (Senior DEV)**: `test*steps` NO existe todavía. Emitir `affected*test*ids: []` (vacío) en el MVP. Cuando EPIC-BK-5 agregue la tabla, actualizar la emisión del event. El nombre del campo en el contrato del event se mantiene igual — los consumidores manejan arrays vacíos.
+4. **Query de** `affected*test*ids`: ¿existe `test*steps` en el schema todavía (es parte de EPIC-BK-5 Tests)? ¿O el payload del event debería omitir este campo hasta que llegue esa migración de schema? **Decisión (Senior DEV)**: `test*steps` NO existe todavía. Emitir `affected*test*ids: []` (vacío) en el MVP. Cuando EPIC-BK-5 agregue la tabla, actualizar la emisión del event. El nombre del campo en el contrato del event se mantiene igual — los consumidores manejan arrays vacíos.
 
 **Para Design (0):**
 
-Sin preguntas de design — esta es una Story solo de API (sin UI). La contraparte de UI es BK-19.
+Sin preguntas de design — esta es una Story solo de API (sin UI). La contraparte de UI es [https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19).
 
-### 📐 Scope refinement — IN vs OUT of BK-18
+### 📐 Scope refinement — IN vs OUT of [https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18](https://jira.upexgalaxy.com/browse/BK-18#icft=BK-18)
 
 **✅ IN BK-18:**
 
 - Endpoint `POST /api/v1/atcs` (NUEVO)
-- Endpoint `PATCH /api/v1/atcs/{id}` (NUEVO)
+- Endpoint `PATCH /api/v1/atcs/{id`} (NUEVO)
 - RPC `bunkai*create*atc` (NUEVO — devuelve uuid)
 - Validación cross-entity: pertenencia AC→US, subtree module→project
 - Validación de posición de steps (estrictamente creciente desde 1)
@@ -149,9 +149,9 @@ Sin preguntas de design — esta es una Story solo de API (sin UI). La contrapar
 
 - GET /atcs, GET /atcs/{id} → BK-20 (search/browse)
 - DELETE /atcs/{id} → BK-? (futuro, soft-delete)
-- POST /atcs/{id}/duplicate → BK-23
-- Formulario de UI → BK-19
-- Expansión de respuesta `used_in` → BK-20 o BK-5
+- POST /atcs/{id}/duplicate → [https://jira.upexgalaxy.com/browse/BK-23#icft=BK-23](https://jira.upexgalaxy.com/browse/BK-23#icft=BK-23)
+- Formulario de UI → [https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19)
+- Expansión de respuesta `used_in` → BK-20 o [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5)
 - Soporte de Idempotency-Key → futuro (cuando se necesite idempotency en POST)
 - Entrega de events por webhook → futuro
 - Scopes granulares (`atc:create` vs `atc:update`) → futuro
@@ -159,7 +159,7 @@ Sin preguntas de design — esta es una Story solo de API (sin UI). La contrapar
 
 ---
 
-**Ver el custom field 🧪 Acceptance Test Plan (ATP) + el comentario de Shift-Left para el refinamiento completo (****~****13 test outlines, Gherkin scenarios completos, reconciliación AC↔code por cada divergencia).**
+**Ver el custom field 🧪 Acceptance Test Plan (ATP) + el comentario de Shift-Left para el refinamiento completo (~13 test outlines, Gherkin scenarios completos, reconciliación AC↔code por cada divergencia).**
 
 ---
 

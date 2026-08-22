@@ -28,6 +28,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Criterion.', content: criterionResponse },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
@@ -37,7 +38,7 @@ registry.registerPath({
   path: '/api/v1/acceptance-criteria/{id}',
   tags: ['Acceptance Criteria'],
   summary: 'Edit or reorder an acceptance criterion',
-  description: 'Member-only. Edits title/detail (direct update) and/or moves position (atomic, gap-free re-number).',
+  description: 'Bearer \`atc:write\` (or cookie session). Member-only. Edits title/detail (direct update) and/or moves position (atomic, gap-free re-number).',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: { body: { required: true, content: { 'application/json': { schema: UpdateBodySchema } } } },
@@ -45,7 +46,7 @@ registry.registerPath({
     200: { description: 'Updated.', content: criterionResponse },
     400: { description: 'Malformed id or body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
@@ -56,7 +57,7 @@ registry.registerPath({
   path: '/api/v1/acceptance-criteria/{id}',
   tags: ['Acceptance Criteria'],
   summary: 'Soft-delete (archive) an acceptance criterion',
-  description: 'Member-only. Archives the criterion, closes the position gap, and drops the parent story out of ready_to_test when it was the last active criterion (user_story_reverted).',
+  description: 'Bearer \`atc:write\` (or cookie session). Member-only. Archives the criterion, closes the position gap, and drops the parent story out of ready_to_test when it was the last active criterion (user_story_reverted).',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
@@ -72,7 +73,7 @@ registry.registerPath({
       },
     },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'Already archived.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

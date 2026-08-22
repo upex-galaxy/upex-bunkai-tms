@@ -4,7 +4,11 @@
 **Related Story:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19) - TMS-ATC Builder | Build an ATC with ordered steps and assertions
 **Priority:** Medium
 **Status:** Closed
-**Components:** ATC Library (Acceptance Test Cases)
+**Components:** Bunkai ATCs
+**Severity:** Moderada
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -29,11 +33,17 @@ When POST /api/v1/atcs is called with a module*id that belongs to a different pr
 
 ## Test Environment
 
-staging (https://staging-upexbunkai.vercel.app)
+staging ([https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/))
 
 ## Related Story
 
-BK-19 — TMS-ATC Builder
+[https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19) — TMS-ATC Builder
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

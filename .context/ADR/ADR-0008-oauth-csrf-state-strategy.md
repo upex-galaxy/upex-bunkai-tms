@@ -1,7 +1,7 @@
 # ADR-0008 — OAuth CSRF state strategy and sign-in flow
 
-- **Status:** Proposed
-- **Date:** 2026-06-24
+- **Status:** Accepted — Implemented
+- **Date:** 2026-06-24 (proposed) · 2026-08-13 (status synced — BK-3 shipped: `app/auth/oauth/[provider]/route.ts`, `app/auth/callback/route.ts`, `app/(auth)/login/oauth-buttons.tsx`)
 - **Story:** BK-3 (Sign up and sign in via OAuth — GitHub / Google)
 - **Supersedes / relates:** ADR-0007 (password auth + email OTP); reaffirms the PAT/cookie coexistence invariant (ADR-0001).
 

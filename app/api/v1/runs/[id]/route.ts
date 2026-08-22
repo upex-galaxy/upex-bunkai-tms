@@ -28,7 +28,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ run: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractRunId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

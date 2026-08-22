@@ -1,6 +1,6 @@
 # BK-207 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-207)
 
 - Reopening a closed plan — deliberately excluded to keep closed plans trustworthy as audit history.
 - Deleting plans, open or closed.

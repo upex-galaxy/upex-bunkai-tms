@@ -5,7 +5,7 @@
 >
 > **Design medium of record:** the Claude Design handoff mockups in `.context/designs/bunkai-test-management-tool/` (5 screens + `styles.css` token system). When mockup and implementation disagree, **the mockup wins** unless a divergence is explicitly ratified in §5.
 >
-> Last audit: 2026-06-09. Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
+> Last audit: 2026-08-13 (build-state re-verified route-by-route against `origin/staging`). Status legend: ✅ MATCH · ⚠️ PARTIAL · 🔶 DIVERGENT (gap to correct) · ❌ MISSING · 🔒 frozen contract
 
 ---
 
@@ -35,19 +35,21 @@ Every user story that touches UI MUST:
 | ATC Editor (form + live preview) | ~40% | 🔶 Anchoring-first, no preview |
 | ATC Library (global promotion) | build 0% | ❌ Still project-scoped in impl (`projects/[slug]/atcs/*`) · ✅ mockup ready 2026-07-30 (§4.9) |
 | Home / Dashboard | ~90% | ✅ Built — epic BK-254 complete (banner + 5 widgets, BK-255..BK-260). Not built by ratified departure, not debt: the KPI deltas (unsourceable), the four-up grid, the sprint eyebrow and the header actions (§4.2, §5 D20/D21/D22/D23/D24) |
-| Test Runner | 0% | ❌ Missing |
-| Bug Reports (+ Defect Heatmap) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.6) |
-| Metrics | 0% | ❌ Missing (no data model) · ✅ mockups ready 2026-07-30 (§4.7) |
-| Test Runs | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.8) |
-| Settings (5-screen suite) | build 0% | ❌ Not built · ✅ mockups ready 2026-07-30 (§4.10) |
-| Test Plans & Milestones (post-MVP, 3-screen set) | build 0% | ❌ Not built — all 6 stories Backlog · ✅ mockups ready 2026-07-30 (§4.11) |
+| Test Runner | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/[runId]/page.tsx` + `components/runs/RunnerView.tsx` (BK-34/35/36/39, all QA Approved or later). Mockup-fidelity pass against `run.jsx` not yet run (§4.5) |
+| Bug Reports (+ Defect Heatmap) | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/bugs/page.tsx` + `BugsListView` / `BugsHeatmapView` (BK-40/41/42/264). Shipped **project-scoped**, which is what `bug-reports-index.html` actually draws too (route `/projects/[projectSlug]/bugs`, no Project column) — an earlier revision of this row claimed the mockup was workspace-wide; it is not, and BK-555 is the story that needs that missing global index. Defect detail shipped since (BK-337 — `bugs/[bugId]/page.tsx`, with the §5 D32 departure ratified). Still open: Jira sync (BK-371/372/373) · mockups ready 2026-07-30 (§4.6) |
+| Metrics | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/metrics/page.tsx` + `metrics/RecoveryCycleSection`, `coverage/ProjectCoverageView`, `traceability/TraceabilityChainView` (BK-45/46/47/48/50). **The "no data model" blocker is gone** — migrations 0048/0049/0050/0068/0069 · mockups ready 2026-07-30 (§4.7) |
+| Test Runs | built · fidelity un-audited | ✅ Built — `projects/[projectSlug]/runs/page.tsx` + `RunHistoryView` / `ProjectRunsReportView` (BK-37/38) · mockups ready 2026-07-30 (§4.8) |
+| Settings (5-screen suite) | built · fidelity un-audited | ✅ Built — all five routes ship (`settings/`, `/account`, `/notifications`, `/tokens`, `/workspaces`) with `SettingsNav` + `SettingsLayout` (BK-86/87/88/89/90, plus BK-213 for the notifications pane) · mockups ready 2026-07-30 (§4.10) |
+| Test Plans & Milestones (post-MVP, 3-screen set) | Milestones built · Test Plans 0% | ⚠️ Split — **Milestones shipped** (`projects/[projectSlug]/milestones/` + `/[milestoneId]`, BK-205, migration 0064); **Test Plans genuinely unbuilt** (BK-202/203/204/206/207 all Backlog, no plan entity in the schema) · mockups ready 2026-07-30 (§4.11) |
 | Automation & CI Ingestion (post-MVP, 1 screen + 3 extension crops) | build 0% | ❌ Not built — all 4 in-scope stories Backlog · ✅ mockups ready 2026-07-30 (§4.12) |
-| Notifications Center (post-MVP, 3-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.13) |
+| Notifications Center (post-MVP, 3-screen set) | inbox + preferences built · digest 0% | ⚠️ Partial — **and a route grep alone will miss it**: the inbox shipped as a **shell bell + `NotificationsPanel` overlay** mounted inside `components/layout/AppSidebar.tsx`, with **no dedicated route** (BK-209, the ratified D17 placement). Preferences ship at `settings/notifications` (BK-213); event producers ship (BK-211/212, migrations 0053/0056/0062/0066). Only the email digest (BK-214, Backlog) is unbuilt · mockups ready 2026-07-30 (§4.13) |
 | Team Chat (post-MVP, 4-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.14) |
 | Billing & Plans (post-MVP, 5-screen set) | build 0% | ❌ Not built — all stories Backlog · ✅ mockups ready 2026-07-30 (§4.15) |
-| Activity (BK-49, standalone, spec-only — no mockup) | build 0% | ❌ Not built — BK-49 Ready For Dev · 🔒 DESIGN.md §2 tokens only, no mockup (D15, §5) |
+| Activity (BK-49, standalone, spec-only — no mockup) | built | ✅ Built — `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (BK-49, merged 2026-07-31 via PR #83; migrations 0045/0047/0055) · 🔒 DESIGN.md §2 tokens only, no mockup (D15, §5) |
 
-Current build stage: ATC-builder (tickets BK-19, BK-96). Token layer inherited faithfully; screen structure reinterpreted; 2 mockup screens + 4 nav domains not yet built.
+Current build stage: the MVP nav domains are **built, not missing** — Runs, Runner, Bugs + heatmap, Metrics/Coverage/Traceability, Settings, Activity, Home and Milestones all ship on `origin/staging`. What remains is (a) **mockup-fidelity passes** over those shipped screens, (b) the **global ATC Library** promotion (`/atcs`, BK-439/440/441), (c) **Test Plans**, and (d) the post-MVP epics with no backend yet (Automation & CI, Team Chat, Billing) plus the notifications email digest.
+
+> **Reading rule for this table.** `built` means the route and its components exist and the story reached QA — it does **not** mean the screen was audited against its mockup. A `built · fidelity un-audited` row is an invitation to audit, never a licence to rebuild the screen from scratch. This scorecard sat on stale `0%` readings from 2026-06-09 through 2026-08-13, which is exactly the failure mode that invites a rebuild proposal for a screen that already ships.
 
 ---
 
@@ -546,14 +548,19 @@ Decision rule per divergence:
 
 ---
 
-## 7. Data models that gate design (not yet existing)
+## 7. Data models that gate design
 
-These domains have **no schema/API/UI** and block faithful screens:
-- **Runs** (Test Runs, Active runs, run-result banners, runner) → blocks Home, Test Runner, Projects detail.
-- **Bugs** (Bug Reports, Report-bug drawer, OPEN BUGS card) → blocks Home, Runner, Bug Reports.
-- **Coverage / Metrics** (COVERAGE card, progress bars, Metrics screen) → blocks Home, Metrics.
+**RESOLVED 2026-08-13 — the three domains this section used to list as missing all ship.** Runs (migrations 0031, 0036-0043), Bugs (0046, 0051-0052, 0054) and Coverage/Metrics (0048-0050, 0068-0069) exist end-to-end with schema, API and UI. They gate nothing now, and the Home cards, Runner, Test Runs, Bug Reports and Metrics screens they used to block are all built (§1).
 
-Design cannot reach 100% fidelity until these exist. Sequence backend domains alongside the P2/P3 screen work.
+Domains that still have **no schema/API** and therefore still gate their screens:
+
+- **Test Plans** (§4.11 plan index + plan detail) → blocks BK-202/203/204/206/207. Note the split: Milestones shipped (migration 0064), the plan entity did not.
+- **Chat messages** (§4.14, 4-screen set) → blocks BK-215..BK-220.
+- **Billing / plan / seat data** (§4.15, 5-screen set) → blocks BK-229..BK-233.
+- **CI ingestion** (§4.12 automated runs, results upload, automation status) → blocks BK-222/223/225/226/227/228.
+- **Saved views** (BK-443) and **ATC classification** — test-design technique + priority (BK-399). New fields with neither schema nor mockup; see their §8 rows.
+
+Design cannot reach 100% fidelity on those screens until the models exist. Sequence backend domains alongside the screen work.
 
 ---
 
@@ -569,6 +576,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-5 Invite teammate | Settings · (workspace members) | §4.10 |
 | | BK-6 Workspace switch | **Shell** workspace switcher | `app.jsx` §3 |
 | | BK-166 Auth: sign-up + sign-in with email & password | **Login** — password-primary departure (D12, ADR-0007) | `login.jsx` |
+| | BK-572 Remove a teammate from a workspace | **Settings — Members** (workspace member roster; the screen does not exist yet) | 🔒 mockup-gated, unratified — no members mockup exists anywhere in the set. `settings-workspaces.html` (§4.10) renders `Members` with a `soon` tag (line 686) and draws only a member **count** column plus a **Leave** button (line 747), which is BK-90 — a self-service, reversible action by a different actor. No roster, no per-row Remove control, no destructive-confirmation treatment. Semantics are ratified by the AI Tech Lead decision on the ticket (comment `12505`): the mockup must draw the role-ladder absence (an admin sees NO Remove affordance on an owner row, not a disabled one), the sole-owner refusal, and the confirmation stating both consequences — workspace-scoped PATs revoked, assigned Bugs unassigned. Do not infer any of them; see the BK-512 🔒 precedent below |
 | **BK-7 Project & Module Hierarchy** | BK-8 Create project | **Projects** index · Home recent-projects | `home.jsx`, `project.jsx` |
 | | BK-9 Create modules | **Projects** explorer tree | `project.jsx` §4.3 |
 | | BK-10 Rename/delete module | **Projects** explorer (context menu) | `project.jsx` |
@@ -577,6 +585,7 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-148 Project Environments — list/add/rename/remove | **Projects** explorer rail — Environments group (D11, live-first; no Settings mockup) | `project-explorer.tsx` |
 | | BK-266 Projects index + dedicated create route | **Projects index** (`/projects`, spec-only — D19, no mockup) · **Create project** (`/projects/new`, form relocated unchanged) | §5 D19 · `app/(app)/activity/page.tsx` + `components/activity/ActivityView.tsx` (structural precedent only) |
 | | BK-398 Command Palette — search and jump across the workspace | **Shell** — command-palette overlay (§3 "Search ⌘K" row; no screen of its own, spec-only — D33) | §3 · §5 D33 · `app.jsx` sidebar search control (affordance only, no palette mockup) |
+| | BK-443 App Shell — save, name, and return to a filtered view | **Shell** — saved filtered views (cross-screen; no host surface picked yet) | 🔒 mockup-gated, unratified — no mockup in `.context/designs/bunkai-test-management-tool/` has a saved-view affordance. Do not infer one; see the BK-371 🔒 precedent below |
 | **BK-12 User Stories & AC** | BK-14 User Story CRUD | **Projects** explorer (story nodes) · ATC Editor anchoring | `project.jsx`, `editor.jsx` |
 | | BK-15 AC CRUD + reorder | **Projects** detail · **ATC Editor** AC chips | `editor.jsx` |
 | | BK-16 Markdown editor + render | ATC Editor · Story detail | `editor.jsx` |
@@ -590,6 +599,10 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-439 Browse every ATC in the workspace from one index | **ATC Library** (global index, `/atcs`) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
 | | BK-440 Find an ATC by name as you type | **ATC Library** (global index, `/atcs` — name search) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
 | | BK-441 Narrow the index by Project, Module, layer and anchor | **ATC Library** (global index, `/atcs` — facet filters) | §4.9 · `bk-13-atc-library-global/atc-library-global.html` |
+| | BK-315 Export a project's ATCs to CSV | **ATC Library** (project-scoped ATC list — export action) | 🔒 export control mockup-gated, unratified — `atc-library-global.html` (§4.9) draws no export affordance, and the export is project-scoped where that screen is workspace-scoped. Do not invent the control |
+| | BK-399 ATC classification by test-design technique and priority | **ATC Editor** (classification fields) · **ATC Library** (facet + filter surface) | 🔒 classification fields mockup-gated, unratified — `editor.jsx` (§4.4) has no technique or priority control, and no §4.9 facet covers them |
+| | BK-507 Bulk-edit tags, Module and layer on selected ATCs | **ATC Library** (project-scoped ATC list — row selection + bulk-edit bar) | 🔒 mockup-gated, unratified — no mockup draws a selection affordance anywhere in the product. `atc-library-global.html` (§4.9) is workspace-scoped where this story is project-scoped, and its row-open behaviour is lookup-and-launch. Do not infer the checkbox column, the selection bar, or the partial-failure surface; see the BK-315 🔒 precedent above |
+| | BK-571 Archive an ATC and restore it from the archive | **ATC Library** (project-scoped ATC list — row archive action, opt-in archived view) · **ATC Editor** (archived, read-only state) | 🔒 mockup-gated, unratified — `atc-library-global.html` (§4.9) draws no archive, restore or row-action affordance of any kind (its only `remove` occurrences are `classList.remove()` DOM calls), and `editor.jsx` (§4.4) has no archive control. No mockup anywhere draws an archived-row treatment, a restore action, an include-archived toggle, or the in-use warning. Do not infer any of them; see the BK-507 🔒 precedent above |
 | **BK-24 Tests (chains of ATCs)** | BK-27 Assemble test by chaining | **Projects** (Test nodes) · Tests builder | `project.jsx` |
 | | BK-28 Reorder ATCs in a test | Tests builder | `project.jsx` |
 | | BK-32 Open test, see every ATC | **Projects** detail (test view) | `project.jsx` |
@@ -600,6 +613,10 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-37 View a test's past runs | **Test Runs** index (per-test history) | §4.8 · `bk-30-test-runs-index/test-run-history.html` |
 | | BK-38 Filter all project runs | **Test Runs** index · Home active-runs | §4.8 · `bk-30-test-runs-index/test-runs-index.html` |
 | | BK-39 Finish a run with a final verdict | **Test Runner** (finish/verdict) | `run.jsx` §4.5 |
+| | BK-442 Compare a run against the previous run of the same test | **Test Runs** — per-test run history (comparison view, extends BK-37's surface) | 🔒 comparison view mockup-gated, unratified — `bk-30-test-runs-index/test-run-history.html` (§4.8) lists past runs but draws no run-to-run diff |
+| | BK-513 Browse every run in the workspace from one index | **Test Runs** — workspace-wide run index (new surface, `/runs`) | 🔒 mockup-gated, unratified — `test-runs-index.html` (§4.8) is **project-scoped**: its own empty state reads "matches nothing in this project" and its table carries no Project column. The workspace-wide index is the same promotion `atc-library-global.html` performed for §4.9 and has no equivalent here |
+| | BK-554 See how flaky a test is across its recent runs | **Test Runs** — per-test run history (stability/flakiness treatment, extends BK-37's surface) | ⚠️ extension needed — the host screen exists (`test-run-history.html`, §4.8) but contains no flakiness, stability or intermittency treatment of any kind. Author the metric onto the existing screen; do NOT author a new screen |
+| | BK-593 Attach a screenshot as evidence on a step result | **Test Runner** — step-result panel ("Notes & evidence") | ✅ covered — `run.jsx` §4.5 already draws the affordance: lines 224-227 render `Notes & evidence · optional · attached to step result` with a `📎 Attach` button, and §4.5's checklist lists it verbatim as "Notes & evidence (textarea + Attach + URL)". The control was designed and never built; the textarea placeholder ("paste screenshot URL…") is the plain-string stand-in `master-implementation-plan.md` §8 describes. Build the Attach control as drawn; keep the URL path beside it. No new screen, no gate |
 | **BK-31 Bugs & Defect Heatmap** | BK-40 File defect from failed step | **Test Runner** (Report-bug drawer) · Bug Reports (read view) | `run.jsx` §4.5 · §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | | BK-41 List/filter defects | **Bug Reports** | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
 | | BK-42 Defect heatmap | **Bug Reports** (heatmap view, placement note §4.6) | §4.6 · `bk-31-bug-reports/bug-reports-index.html` |
@@ -608,6 +625,8 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-371 Point a project at a Jira destination | — no mockup screen yet (integration settings surface does not exist) | 🔒 mockup-gated, unratified — see `.context/dev-roadmap.md` §5 🔒 row |
 | | BK-372 Send a newly filed defect to Jira | Bug Reports (integration, sync-status states) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
 | | BK-373 Recover a failed sync and show its state | Bug Reports (integration, sync-failed state) | §4.6 · `bk-31-bug-reports/bug-detail.html` |
+| | BK-555 Browse every defect in the workspace from one index | **Bug Reports** — workspace-wide defect index (new surface, `/bugs`) | 🔒 mockup-gated, unratified — `bug-reports-index.html` (§4.6) is **project-scoped**, route `/projects/[projectSlug]/bugs`, with no Project column. Same global-index promotion as BK-513; neither exists |
+| | BK-594 Attach screenshots as evidence when filing a defect | **Test Runner** (Report-bug drawer, filing) · **Bug Reports** (read view, `bug-detail.html`) | ✅ covered on both surfaces — filing stays in the runner drawer per §4.6's own build-order note (`run.jsx` §4.5); the read view is drawn at `bk-31-bug-reports/bug-detail.html` lines 590-596, an `evidence-panel` headed `Evidence` with "Up to 10 attachments per defect" and an `N / 10` counter, each row openable (§4.6: "evidence list (`N / 10`, each row openable)"). Uploaded files and pasted URLs share that ONE budget of 10 — already enforced twice in code (`0046_bugs.sql:111-112` CHECK, and the RPC backstop raising `bug_evidence_limit_exceeded` errcode `45303` at `0046_bugs.sql:394-395`). `bug-detail.html` is read-only by ratified design (§4.6 "No edit/status-transition controls"); do NOT infer an edit-evidence-after-filing affordance from this row |
 | **BK-44 Coverage & Traceability** | BK-45 US→bug evidence chain | **Traceability** | §4.7 · `bk-44-metrics-coverage/traceability-chain.html` |
 | | BK-46 Surface untested ACs/modules | **Metrics** · Home coverage card | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html`, `home.jsx` |
 | | BK-47 Time-to-green per US | **Metrics** | §4.7 · `bk-44-metrics-coverage/metrics-dashboard.html` |
@@ -619,6 +638,8 @@ Design cannot reach 100% fidelity until these exist. Sequence backend domains al
 | | BK-88 Manage personal access tokens | **Settings** | §4.10 · `bk-85-account-settings/settings-tokens.html` |
 | | BK-89 View my workspaces | Settings · Shell switcher | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
 | | BK-90 Leave a workspace | **Settings** | §4.10 · `bk-85-account-settings/settings-workspaces.html` |
+| | BK-508 Request an export of my workspace data | **Settings** — data-export section (new section in the settings hub) | 🔒 mockup-gated, unratified — the §4.10 five-screen suite has no export surface, and `settings-coming-soon.html` announces four planned sections (Members, Notifications, Billing, Environments) of which Data export is not one. Do not fold it into an existing screen without ratifying the placement |
+| | BK-512 Delete a workspace I own | **Settings** — workspace list, destructive-action surface | 🔒 mockup-gated, unratified — `settings-workspaces.html` (§4.10) draws **Leave** only, which is BK-90 and a different, reversible action. No delete control, no danger zone, no confirmation treatment exists. Irreversible + cascading (14 direct cascade edges off `workspaces`): semantics ratified in **ADR-0013** — the mockup must draw the sole-owner refusal, the members-remain refusal, and the 30-day grace state with its restore affordance |
 | **BK-29 QA Credentials** | (epic) | `/qa` page (out of mockup scope) | — |
 | **BK-254 Home Dashboard** | BK-255 Personalized welcome banner | **Home** greeting header (`/home` — the route itself ships here) | §4.2 · `home.jsx` · §5 D20 (sprint eyebrow struck, workspace name in its slot) |
 | | BK-256 Active test runs summary + table | **Home** active-runs table | §4.2 · `home.jsx` |

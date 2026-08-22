@@ -1,17 +1,17 @@
 # BK-3 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-3)
 
-## Acceptance Test Results — BK-3: OAuth (GitHub/Google)
+## Acceptance Test Results — [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3): OAuth (GitHub/Google)
 
-***Verdict******:*** PASSED WITH NOTES
-***QA Date******:*** 2026-07-10
-***Tester******:*** Nahuel Gomez
-***Environment******:*** staging
+***Verdict:*** PASSED WITH NOTES
+***QA Date:*** 2026-07-10
+***Tester:*** Nahuel Gomez
+***Environment:*** staging
 
 ### Results Summary
 
-| AC | Description | Result | Evidence |
+| ***AC**** | ****Description**** | ****Result**** | ****Evidence*** |
 | --- | --- | --- | --- |
 | AC-1 | GitHub first-time sign-up | PASS (Initiation & CSRF verified) | Redirect to GitHub OAuth, state token present |
 | AC-2 | Google first-time sign-up | PASS (Initiation & CSRF verified) | Redirect to Google OAuth, state token present |
@@ -26,8 +26,8 @@
 
 ### Findings
 
-- ***F-01 (LOW)******:*** Magic-link OTP field missing (BK-175) — adjacent UX gap, not in scope
-- ***F-02 (INFO)******:*** Magic-link flow sends confirmation — functional
+- ***F-01 (LOW):*** Magic-link OTP field missing ([https://jira.upexgalaxy.com/browse/BK-175#icft=BK-175](https://jira.upexgalaxy.com/browse/BK-175#icft=BK-175)) — adjacent UX gap, not in scope
+- ***F-02 (INFO):*** Magic-link flow sends confirmation — functional
 
 ### Evidence
 

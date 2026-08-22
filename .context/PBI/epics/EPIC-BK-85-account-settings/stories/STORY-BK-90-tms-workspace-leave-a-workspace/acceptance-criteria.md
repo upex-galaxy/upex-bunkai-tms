@@ -1,10 +1,8 @@
 # BK-90 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-90)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-90)
 
-# BK-90 — Acceptance Criteria
-
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-90)
+> ***INFO:*** Reconciled 2026-08-05 — merges the 2026-06-10 shift-left baseline, the 2026-07-31 PO/Dev ratification, and the 2026-07-31 mockup correction (`settings-workspaces.png`, attachment 10199). This replaces the pre-ratification draft that was previously in this field.
 
 ## Scenario 1 — Leaving a workspace asks for confirmation
 
@@ -25,6 +23,8 @@ Scenario: Leaving a workspace asks for confirmation
         as active
 ```
 
+Confirm-dialog mechanism (simple confirm/cancel naming the workspace, vs. type-to-confirm) remains an ***open question*** — see the note at the end of this document. Wording above is mechanism-agnostic on purpose.
+
 ## Scenario 2 — A user cannot leave a workspace they solely own
 
 ```gherkin
@@ -37,36 +37,40 @@ Scenario: A user cannot leave a workspace they solely own
         and must transfer or share ownership before leaving
 ```
 
+Confirmed by mockup: the "Bunkai Interno" row shows a "sole owner" badge and a locked "Can't leave" state with copy "You're its only owner. Ownership transfer isn't available yet." Ownership-transfer sub-flow is explicitly out of scope for this story.
+
 ## New Scenario A — Leaving the user's only workspace
 
 ```gherkin
 Scenario: Leaving the only workspace a user belongs to
   Given Mateo Silva belongs to exactly one workspace, "Fintech Audit"
-        (role "member", not sole owner — e.g. another member holds
-        role "owner")
-   When he selects "Leave workspace" on "Fintech Audit" and confirms
-   Then his membership row for "Fintech Audit" is removed
-    And he has no remaining workspace memberships
-    And he is routed to the onboarding flow (the same entry point a
-        brand-new user without any workspace lands on)
+        (role "member", not sole owner)
+   When he views "Fintech Audit" in the Workspaces section
+   Then the "Leave workspace" action is unavailable (does not render),
+        the same treatment as the sole-owner block in Scenario 2
+    And no confirmation dialog is reachable for this workspace
 ```
 
-********NEEDS PO/DEV CONFIRMATION***** — neither original scenario addresses what happens when the workspace being left is the user's ONLY one (Scenario 1's fallback to "Acme QA" presumes a second workspace exists). This scenario proposes routing to **`/onboarding`** (the existing no-workspace landing) as the most consistent behavior with the rest of the app, but needs PO confirmation — an alternative the team may prefer is to ******block*** "leave" when it is the user's last workspace, the same way Scenario 2 blocks sole-owner leaves.
+> ***NOTE:**** ****CORRECTED 2026-08-05 — supersedes the 2026-07-31 PO ratification.**** The earlier answer said route to `/onboarding`. The shipped mockup's "state:single-workspace" panel explicitly contradicts this: **"The Leave action doesn't render — leaving your only workspace would strand the account."* Per the mockup-precedence policy agreed on 2026-07-31, treat this as a BLOCK, structurally identical to Scenario 2.
 
-## New Scenario B — No cascading effect on workspace-owned content
+## New Scenario B — No cascading effect on workspace-owned content, PAT included
 
 ```gherkin
-Scenario: Leaving a workspace does not affect content the user authored there
+Scenario: Leaving a workspace does not affect content or tokens left behind
   Given Mateo Silva authored several ATCs and user stories within
         "Fintech Audit" before leaving
+    And Mateo holds a workspace-scoped Personal Access Token for
+        "Fintech Audit"
    When he leaves "Fintech Audit"
    Then those ATCs, user stories, modules, and projects remain
         unchanged and fully intact within "Fintech Audit"
     And Mateo can no longer view or access them (he is no longer a
         member of that workspace)
+    And the "Fintech Audit"-scoped PAT is auto-revoked as part of the
+        same leave transaction
 ```
 
-********NEEDS PO/DEV CONFIRMATION***** — neither original scenario states this explicitly. Per the data model, ATCs/user stories/modules/projects are scoped to the workspace directly (not to the membership row), so this should hold true with zero additional implementation. This scenario is included as a ******non-cascade guarantee*** — flagged for confirmation so the team agrees it's worth an explicit regression check rather than something QA assumes and never verifies.
+Ratified 2026-07-31, confirmed unaffected by the mockup. PAT auto-revocation folded in as an explicit clause per Dev's answer.
 
 ## New Scenario C — A co-owner can leave when other owners remain
 
@@ -81,7 +85,11 @@ Scenario: A co-owner can leave a workspace that has other owners
         owner with full ownership privileges unchanged
 ```
 
-********NEEDS PO/DEV CONFIRMATION**** — this is the central open question (see "Open Questions for PO/Dev" in the description). Scenario 2 only describes the SOLE-owner block; it does not say whether the gate is "you are AN owner" (which would also block this case) or "you are the LAST owner" (which would not). This scenario assumes the latter — but if the team intends NO co-owner to ever leave without an explicit ownership-transfer step first, this scenario is invalid and a "transfer ownership" sub-flow becomes new, unscoped work that would materially change the story's size.
+Ratified 2026-07-31: gate is count-based ("last remaining owner"), not identity-based ("any owner"). Confirmed unaffected by the mockup — the "sole owner" badge implies a non-sole-owner state exists, consistent with this gate.
+
+## Remaining open question
+
+> ***WARNING:**** ****Confirm-dialog mechanism*** (simple confirm/cancel vs. type-to-confirm) — no design-authoritative answer exists yet. The 2026-06-10 role-play answer is unconfirmed. Needs a direct Design/Dev answer before Scenario 1 can be test-scripted at the interaction level.
 
 ---
 _Synced from Jira by sync-jira-issues_

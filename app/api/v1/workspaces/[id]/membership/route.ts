@@ -4,7 +4,7 @@ import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { ACTIVE_WORKSPACE_COOKIE, ACTIVE_WORKSPACE_COOKIE_DEFAULTS } from '@lib/api/workspace-cookie';
 import { leaveWorkspace } from '@lib/supabase/rpc';
 import { cookies } from 'next/headers';
-import { assertSessionOnly, mapLeaveWorkspaceError, resolveNewActiveWorkspace } from './response';
+import { mapLeaveWorkspaceError, resolveNewActiveWorkspace } from './response';
 
 // DELETE /api/v1/workspaces/{id}/membership — the caller removes their OWN
 // active membership row (self-service "leave workspace", BK-90 Slice A). The
@@ -21,7 +21,6 @@ import { assertSessionOnly, mapLeaveWorkspaceError, resolveNewActiveWorkspace } 
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
-  assertSessionOnly(principal);
 
   const workspaceId = extractWorkspaceId(request);
   if (!isUuid(workspaceId)) {
@@ -53,7 +52,11 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
     response.cookies.delete(ACTIVE_WORKSPACE_COOKIE);
   }
   return response;
-}, { auth: 'required' });
+// A PAT must not leave a workspace on the caller's behalf — session-only, the
+// same ADR-0001 exception `DELETE /api/v1/tokens/[id]` takes. Enforced by the
+// gateway before the body runs; the message is the one this route has always
+// returned, moved verbatim from the `assertSessionOnly` guard it replaces.
+}, { auth: 'cookie-only', why: 'Personal access tokens cannot leave a workspace. Use a browser session.' });
 
 function extractWorkspaceId(request: NextRequest): string {
   // App Router exposes route params via context, but withApiHandler is generic

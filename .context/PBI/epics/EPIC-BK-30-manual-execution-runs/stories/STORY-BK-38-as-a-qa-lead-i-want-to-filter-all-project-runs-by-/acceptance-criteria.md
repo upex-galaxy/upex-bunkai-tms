@@ -1,6 +1,6 @@
 # BK-38 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-38)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-38)
 
 ```
 Scenario: Review a sprint's runs across the whole Project

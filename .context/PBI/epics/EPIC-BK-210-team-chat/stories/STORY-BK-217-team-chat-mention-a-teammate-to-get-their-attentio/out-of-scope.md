@@ -1,6 +1,6 @@
 # BK-217 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
 
 - Group mentions (everyone in the channel or in a role) — future iteration
 - Mention-only channel filters or a dedicated mentions feed — future iteration

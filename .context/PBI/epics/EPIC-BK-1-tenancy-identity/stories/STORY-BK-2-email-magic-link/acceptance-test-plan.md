@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
-# Acceptance Test Plan — BK-2
+# Acceptance Test Plan — [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2)
 
 ***Story:*** Sign up and sign in with email (magic-link)
 ***Jira:*** [BK-2](https://jira.upexgalaxy.com/browse/BK-2)
@@ -20,7 +20,7 @@
 
 ## 1. Scope
 
-### IN — must verify as part of BK-2 (quoted from shift-left §8)
+### IN — must verify as part of [https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2](https://jira.upexgalaxy.com/browse/BK-2#icft=BK-2) (quoted from shift-left §8)
 
 - Magic-link send via `/api/v1/auth/magic-link` (exists).
 - Magic-link callback at `/auth/callback` (exists, needs error-code mapping refactor).
@@ -35,8 +35,8 @@
 
 ### OUT — deferred to other Stories or follow-up polish (quoted from shift-left §8)
 
-- OAuth (GitHub / Google) — BK-3.
-- Invite acceptance flow + bypass branch — BK-5.
+- OAuth (GitHub / Google) — [https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3](https://jira.upexgalaxy.com/browse/BK-3#icft=BK-3).
+- Invite acceptance flow + bypass branch — [https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5](https://jira.upexgalaxy.com/browse/BK-5#icft=BK-5).
 - Workspace switching — [https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6).
 - Multiple workspaces per user — [https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6](https://jira.upexgalaxy.com/browse/BK-6#icft=BK-6).
 - UX 5.2 (provider deep-links), 5.4 (email memory), 5.6 (welcome toast), 5.9 (branded email template) — follow-up "Auth UX Polish" Story.
@@ -314,7 +314,7 @@ Severity classification per `.agents/jira-required.yaml` Bug fields: any FAIL of
 
 1. Replay enforcement strategy — Supabase-native handling; what is the actual error envelope returned to UI? Does it map to `?error=TOKEN_USED` (shift-left §2.3) or is there a UX gap? ***Answered partly by TC-BK-2-06 observed value.***
 2. Where is `MVP-NOTES.md`? Dev referenced `.context/PBI/epics/EPIC-BK-1-tenancy-identity/MVP-NOTES.md` on the target repo. Best-effort fetch via `../upex-bunkai-tms/...` during Stage 2 if testability depth requires it.
-3. `/qa` route + Epic [https://jira.upexgalaxy.com/browse/BK-29#icft=BK-29](https://jira.upexgalaxy.com/browse/BK-29#icft=BK-29) testability guide — explore during Stage 2 smoke for QA testability shortcuts (data-testid map, seed users, clock-mock).
+3. `/qa` route + Epic BK-29 testability guide — explore during Stage 2 smoke for QA testability shortcuts (data-testid map, seed users, clock-mock).
 
 ---
 

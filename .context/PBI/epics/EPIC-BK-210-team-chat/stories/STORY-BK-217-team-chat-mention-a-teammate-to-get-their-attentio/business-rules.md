@@ -1,6 +1,6 @@
 # BK-217 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-217)
 
 - ***Mentionable set = channel audience***: only members who can read the channel can be mentioned in it — the workspace member list for the general channel, project-access members for a project channel.
 - ***One notification per mention***: mentioning the same member several times in one message produces a single notification; delivery, read-state, and preferences are owned by the Notifications Center.

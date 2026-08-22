@@ -3,7 +3,11 @@
 **Jira Key:** [BK-56](https://jira.upexgalaxy.com/browse/BK-56)
 **Priority:** Low
 **Status:** Duplicated
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -15,7 +19,7 @@ Project names written in non-Latin scripts (CJK, Cyrillic, etc.) are rejected wi
 
 ## Environment
 
-Staging — https://staging-upexbunkai.vercel.app · API `/api/v1` · 2026-06-04.
+Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/) · API `/api/v1` · 2026-06-04.
 
 ## Severity / Type
 
@@ -24,8 +28,8 @@ Severity: ***Minor**** · Error type: ****functional*** (i18n usability).
 ## Steps to Reproduce
 
 1. Authenticate as an active workspace member.
-2. `POST /api/v1/workspaces/{id}/projects` with `{ "name": "日本語プロジェクト" }`.
-3. Repeat with Cyrillic `{ "name": "Проект" }`.
+2. `POST /api/v1/workspaces/{id}/projects` with {{{ "name": "日本語プロジェクト" }}}.
+3. Repeat with Cyrillic {{{ "name": "Проект" }}}.
 
 ## Expected Result
 
@@ -37,7 +41,7 @@ Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. La
 
 ## Root Cause (code-confirmed)
 
-`hasAlphanumeric` in the projects route uses an ASCII-only class `[a-z0-9]`. Non-Latin letters fail the check, and `slugify` would also strip them to empty. Consider Unicode-aware validation (`\p{L}\p{N}`) and a transliteration/fallback for the slug.
+`hasAlphanumeric` in the projects route uses an ASCII-only class `[a-z0-9]`. Non-Latin letters fail the check, and `slugify` would also strip them to empty. Consider Unicode-aware validation (`\p{L}\p{N`}) and a transliteration/fallback for the slug.
 
 ## Impact
 
@@ -49,10 +53,34 @@ International users cannot name a project in their own script. Improvement-grade
 
 ---
 
+## 🐞 Actual Result
+
+Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. Latin-accented names work (`Café Münchën` → `cafe-munchen`), but CJK/Cyrillic are rejected.
+
+---
+
+## ✅ Expected Result
+
+`201` — these are valid names with ≥1 letter. (For a multi-tenant SaaS, non-Latin project names should be allowed; slug may transliterate or fall back to a generated value.)
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
+## 🧫 Evidence
+
+`test-session-memory.md` (T13b row).
+
+---
+
 ## Related Issues
 
-- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 - duplicates: [BK-53](https://jira.upexgalaxy.com/browse/BK-53) - BK-8: Non-Latin (CJK/Cyrillic) project names rejected as name_no_alphanumeric
+- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 
 ---
 

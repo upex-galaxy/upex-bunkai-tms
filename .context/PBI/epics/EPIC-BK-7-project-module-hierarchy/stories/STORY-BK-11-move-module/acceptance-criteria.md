@@ -1,6 +1,6 @@
 # BK-11 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-11)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-11)
 
 ```
 Scenario: Move a Module to a new parent

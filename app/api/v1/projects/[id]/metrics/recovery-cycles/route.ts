@@ -10,7 +10,7 @@ import { reportProjectRecoveryCycles } from '@lib/supabase/rpc';
 // GET /api/v1/projects/{id}/metrics/recovery-cycles — a Project's per-user-
 // story recovery-cycle report: elapsed time from each story's first failing
 // terminal run to its first subsequent all-passing terminal run (BK-47).
-// Read auth only, no scope requirement — mirrors the Runs/Coverage report
+// Read auth requiring `atc:read` (BK-499) — mirrors the Runs/Coverage report
 // routes: any active workspace role, viewers included, passes the SECURITY
 // DEFINER RPC's own membership check. Non-disclosure: missing, foreign-
 // workspace, and non-member Projects all collapse into the SAME 404
@@ -47,7 +47,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const report = buildRecoveryCycleReport(raw, Date.now());
 
   return jsonResponse(report, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/metrics/recovery-cycles`, so the id is the

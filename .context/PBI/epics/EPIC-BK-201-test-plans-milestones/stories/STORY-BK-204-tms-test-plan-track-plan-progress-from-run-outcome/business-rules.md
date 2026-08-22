@@ -1,6 +1,6 @@
 # BK-204 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-204)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-204)
 
 - A test's latest outcome is the verdict of its most recent finished or aborted run, regardless of executor (human, agent, or CI) — executor parity is preserved.
 - A test whose most recent run is still executing counts as in progress; a test with no runs counts as not run.

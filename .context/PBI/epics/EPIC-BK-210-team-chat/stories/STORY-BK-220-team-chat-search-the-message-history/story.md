@@ -21,11 +21,24 @@ A chat that cannot be searched is a memory hole: the decision about why a Test w
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Story (1)
 
-- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Backlog)_
+- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Estimation)_
 
 ---
 

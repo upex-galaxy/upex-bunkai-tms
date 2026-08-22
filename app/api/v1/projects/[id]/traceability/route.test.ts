@@ -129,7 +129,10 @@ describeOrSkip('BK-329 — GET /api/v1/projects/{id}/traceability rejects a proj
       admin: db,
       userId: writer.user_id,
       name: 'bk329-traceability-regression',
-      scopes: ['atc:write'],
+      // BK-499 widened this from `['atc:write']`: the fixture creates the User
+      // Story (a write) and then drives the traceability GET, which now
+      // requires `atc:read`. Both scopes, or the read half 403s.
+      scopes: ['atc:read', 'atc:write'],
       expiresInDays: null,
     });
     createdTokenIds.push(pat.id);

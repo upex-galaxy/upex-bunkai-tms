@@ -6,7 +6,7 @@ import {
   ACTIVE_WORKSPACE_COOKIE_DEFAULTS,
 } from '@lib/api/workspace-cookie';
 import { z } from 'zod';
-import { assertSessionOnly, buildActiveWorkspaceResponse } from './response';
+import { buildActiveWorkspaceResponse } from './response';
 
 // POST /api/v1/me/active-workspace — rotate the caller's active workspace.
 // We DO NOT touch the Supabase JWT; we set an httpOnly cookie `bk_active_ws`
@@ -21,7 +21,6 @@ const BodySchema = z.object({
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
-  assertSessionOnly(principal);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -61,4 +60,9 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }));
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace_id, ACTIVE_WORKSPACE_COOKIE_DEFAULTS);
   return response;
-}, { auth: 'required' });
+// A PAT has no cookie session to rotate: this route only ever set
+// `bk_active_ws`, which GET /api/v1/me's bearer branch never reads (BK-316).
+// Session-only, enforced by the gateway before the body runs — the message is
+// the one this route has always returned, moved verbatim from the
+// `assertSessionOnly` guard it replaces.
+}, { auth: 'cookie-only', why: 'Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead.' });

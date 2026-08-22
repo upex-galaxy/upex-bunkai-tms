@@ -1,13 +1,13 @@
 # BK-37 — Implementation Plan (Dev)
 
-> Jira field: `customfield_10095` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
+> Jira field: `customfield_10165` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-37)
 
-# BK-37 — Spec Implementation Plan (Dev)
+# [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) — Spec Implementation Plan (Dev)
 
-***Story******:*** TMS-Run History | View a test's past runs, filterable by outcome
-***Epic******:**** BK-30 (Manual Execution & Runs) · ****Points******:**** 5 · ****Hard blocker******:*** BK-34 ✅ dev-done
-***Mockup******:*** `.context/designs/bunkai-test-management-tool/bk-30-test-runs-index/test-run-history.html` · spec master-design-plan §4.8
-***Authored******:*** 2026-07-30
+***Story:*** TMS-Run History | View a test's past runs, filterable by outcome
+***Epic:**** [https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30) (Manual Execution & Runs) · ****Points:**** 5 · ****Hard blocker:*** [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34) ✅ dev-done
+***Mockup:*** `.context/designs/bunkai-test-management-tool/bk-30-test-runs-index/test-run-history.html` · spec master-design-plan §4.8
+***Authored:*** 2026-07-30
 
 ---
 
@@ -18,14 +18,14 @@ Give a Test a URL-addressable Run History surface: past terminal Runs newest-fir
 ## 2. What does not exist yet (the real cost driver)
 
 - ***No GET endpoint lists a Test's Runs.*** `app/api/v1/runs/route.ts` is POST-only; `runs/[id]/route.ts` is single-Run GET-only.
-- ***No pagination pattern exists repo-wide.*** Zero `cursor` / `offset` / `before` / `has_more` / `.range()` in `app/`, `lib/`, `components/`. BK-37 establishes it; BK-38 reuses it.
+- ***No pagination pattern exists repo-wide.*** Zero `cursor` / `offset` / `before` / `has_more` / `.range()` in `app/`, `lib/`, `components/`. [https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37](https://jira.upexgalaxy.com/browse/BK-37#icft=BK-37) establishes it; [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38) reuses it.
 - `components/ui/tabs.tsx` exists with ***zero usages*** — this story is its first consumer.
 
 ## 3. Locked decisions
 
 ### 3.1 From PO (Jira comments, 2026-07-21)
 
-| # | Decision |
+| ***#**** | ****Decision*** |
 | --- | --- |
 | 1 | History = ***terminal Runs only*** (`passed` / `failed` / `aborted`). A `running` Run never appears. |
 | 2 | Page size = ***50***. |
@@ -33,27 +33,27 @@ Give a Test a URL-addressable Run History surface: past terminal Runs newest-fir
 | 4 | Tie-break for identical timestamps = `id` as secondary sort key. |
 | 5 | 0-match filter copy = `No {Outcome} runs found for this Test` (outcome capitalized). |
 
-> ***Copy reconciliation******:**** AC scenario "Filter matches zero runs" quotes `"No aborted runs found"` inside the phrase "a distinct ... message is shown". The later PO comment prescribes the literal contract string with an explicit consistency rationale. ****The PO string wins*** → rendered as `No Aborted runs found for this Test`. Recorded here so the Spec Compliance Matrix and any test assertion use one string.
+> ***Copy reconciliation:**** AC scenario "Filter matches zero runs" quotes `"No aborted runs found"` inside the phrase "a distinct ... message is shown". The later PO comment prescribes the literal contract string with an explicit consistency rationale. ****The PO string wins*** → rendered as `No Aborted runs found for this Test`. Recorded here so the Spec Compliance Matrix and any test assertion use one string.
 
 ### 3.2 From this planning session (user-ratified, 2026-07-30)
 
-| # | Decision | Rationale |
+| ***#**** | ****Decision**** | ****Rationale*** |
 | --- | --- | --- |
-| D-A | ***Sub-route + shared tab strip****: `/projects/{slug}/tests/{testId}/runs`, with a `layout.tsx` hosting the Test header + `Steps | Run History` tabs. | Critical Rule #14 (LIVE-UI-FIRST). §4.8 prescribes "standalone route until a Test-detail screen exists" — that premise is ****stale***: D10 shipped `/projects/{slug}/tests/{testId}` for BK-32 on 2026-06-19. The live page is the real host. Sub-route (not client-side tabs) keeps the active tab and the outcome filter in the URL → deep-linkable, and directly testable by QA/E2E. |
+| D-A | ***Sub-route + shared tab strip****: `/projects/{slug}/tests/{testId}/runs`, with a `layout.tsx` hosting the Test header + {{Steps  | Run History}} tabs. | Critical Rule #14 (LIVE-UI-FIRST). §4.8 prescribes "standalone route until a Test-detail screen exists" — that premise is ****stale***: D10 shipped `/projects/{slug}/tests/{testId`} for [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32) on 2026-06-19. The live page is the real host. Sub-route (not client-side tabs) keeps the active tab and the outcome filter in the URL → deep-linkable, and directly testable by QA/E2E. |
 | D-B | ***All-time totals header IS in scope**** (Passed / Failed / Aborted counts + 4px segmented bar). | Mockup §4.8 fidelity per Critical Rule #15. Costs one `count(**) … group by status` inside the same RPC — no schema change, no extra round-trip. Totals are ***all-time and filter-invariant*** (mockup behavior; BK-38's totals are filter-reactive — deliberate asymmetry, the two screens answer different questions). |
 | D-C | ***2 chained PRs*** (backend → frontend). | Forecast is High risk vs the 400-line review budget. Same shape as BK-87's PR1/PR2. |
 | D-D | ***Filtering + pagination are server-side.**** | The mockup's JS filters only already-loaded rows and says so in its copy (`3 of 8 loaded runs match`). AC "Filter stays applied across load-more" (60 failed runs → next 10 ****failed**** appended) is only satisfiable server-side. ****AC wins over mockup behavior.*** Empty-state copy therefore drops the mockup's "loaded" qualifier. |
-| D-E | Auth = `{ auth: 'required' }`, ***no scope requirement*** — mirrors `GET /api/v1/runs/{id}`. | The PAT scope catalog (`lib/api/pat.ts`) is `atc:read | atc:write | run:execute | workspace:admin`. There is no read scope for runs, and adding one touches the PAT catalog + BK-88's UI. Out of scope here; follow the sibling read route's precedent. |
+| D-E | Auth = {{{ auth: 'required' }}}, ***no scope requirement*** — mirrors `GET /api/v1/runs/{id`}. | The PAT scope catalog (`lib/api/pat.ts`) is {{atc:read  | atc:write  | run:execute  | workspace:admin}}. There is no read scope for runs, and adding one touches the PAT catalog + BK-88's UI. Out of scope here; follow the sibling read route's precedent. |
 
 ### 3.3 Mockup divergences (UI-only, no backend refactor — Rule #15)
 
-| Mockup element | Shipped as | Why |
+| ***Mockup element**** | ****Shipped as**** | ****Why*** |
 | --- | --- | --- |
 | Test id chip `ATC-118` | ***Omitted*** — render the Test title only | D9 already ratified: Test `code` generation is deferred, schema is title-only. Also `ATC-` is the wrong glossary prefix for a Test. |
 | Environment `staging · chromium-126` | `project_environments.name` only (e.g. `staging`) | Schema has no runtime column. Adding one is a backend refactor. |
 | `Export CSV` button | ***Omitted*** | `out-of-scope.md`: "Exporting the history". |
-| `Overview` tab | ***Omitted*** — tabs are `Steps | Run History` | The live page has no Overview content to route to. Inventing an empty tab is worse UX than two honest ones. |
-| Sidebar `Test Runs` active + breadcrumb `… / Test Runs / {test}` | Sidebar stays on the project explorer; breadcrumb stays `Tests / {title}` | Follows from D-A: arrival is via the Test, not via a project-wide run index. |
+| `Overview` tab | ***Omitted*** — tabs are {{Steps  | Run History}} | The live page has no Overview content to route to. Inventing an empty tab is worse UX than two honest ones. |
+| Sidebar `Test Runs` active + breadcrumb `… / Test Runs / {test`} | Sidebar stays on the project explorer; breadcrumb stays `Tests / {title`} | Follows from D-A: arrival is via the Test, not via a project-wide run index. |
 | Nav badge `472` | live count / hidden | D5 already ratified: badges read live counts. |
 | `.chip` / `.kbd` / running-dot pulse geometry | Reuse the ***live*** `.status-chip[data-status]` + `.dot[data-status]` in `app/globals.css` | Rule #14. The mockup and master-design-plan §2.2 disagree on these atoms; the live CSS is the tiebreak. Logged as a design-system question below, not resolved in this story. |
 
@@ -67,7 +67,7 @@ GET /api/v1/tests/{id}/runs?outcome=passed|failed|aborted&limit=50&cursor=<opaqu
 
 Response `200`:
 
-```jsonc
+```
 {
   "items": [
     {
@@ -85,9 +85,9 @@ Response `200`:
 }
 ```
 
-Errors use the existing `{ error: { code, message, … } }` envelope via `withApiHandler` + `mapRunRpcError`. A Test the caller cannot see collapses into the same non-disclosing `404` the sibling reads use (INV-3).
+Errors use the existing {{{ error: { code, message, … } }}} envelope via `withApiHandler` + `mapRunRpcError`. A Test the caller cannot see collapses into the same non-disclosing `404` the sibling reads use (INV-3).
 
-***Pagination = keyset on ***`(started*at desc, id desc)` — not offset. Rationale: runs are append-heavy, so offset paging would skip/duplicate rows when a new run lands mid-scroll; keyset is stable and matches the existing `runs*test*id*started*at*idx`. Cursor is an opaque base64 of `${started_at}|${id}`, decoded and validated server-side; a malformed cursor is a `400`, never a silent full-list.
+***Pagination = keyset on*** `(started*at desc, id desc)` — not offset. Rationale: runs are append-heavy, so offset paging would skip/duplicate rows when a new run lands mid-scroll; keyset is stable and matches the existing `runs*test*id*started*at*idx`. Cursor is an opaque base64 of `${started_at}|${id`}, decoded and validated server-side; a malformed cursor is a `400`, never a silent full-list.
 
 ***Duration*** is not returned — `started*at` + `finished*at` are, and a pure `formatRunDuration()` helper renders `3m 41s`. Keeps formatting unit-testable and out of SQL.
 
@@ -95,9 +95,9 @@ Errors use the existing `{ error: { code, message, … } }` envelope via `withAp
 
 ### PR1 — Backend (`feat/BK-37-runs-history-api`, base `staging`)
 
-| # | File | Work | Verify |
+| ***#**** | ****File**** | ****Work**** | ****Verify*** |
 | --- | --- | --- | --- |
-| 1 | `supabase/migrations/0038*run*history.sql` | `bunkai*list*test*runs(p*actor*user*id, p*test*id, p*outcome, p*limit, p*cursor*started*at, p*cursor*id)` SECURITY DEFINER → jsonb `{items, totals, next*cursor}`. Gates active workspace membership (any role), excludes `status='running'`, clamps limit 1..50, fetches limit+1 to derive `next*cursor`, tuple keyset predicate, joins `project*environments.name`. Adds `runs*test*id*status*started*at*idx (test*id, status, started*at desc, id desc)` for the filtered path. | migration applies clean; RPC returns expected shape |
+| 1 | `supabase/migrations/0038*run*history.sql` | `bunkai*list*test*runs(p*actor*user*id, p*test*id, p*outcome, p*limit, p*cursor*started*at, p*cursor*id)` SECURITY DEFINER → jsonb `{items, totals, next*cursor`}. Gates active workspace membership (any role), excludes `status='running'`, clamps limit 1..50, fetches limit+1 to derive `next*cursor`, tuple keyset predicate, joins `project*environments.name`. Adds `runs*test*id*status*started*at*idx (test*id, status, started*at desc, id desc)` for the filtered path. | migration applies clean; RPC returns expected shape |
 | 2 | `lib/runs/history-validation.ts` + `.test.ts` | Zod query schema + `parseRunHistoryParams(URLSearchParams)` mirroring `parseAtcSearchParams`; `encodeRunCursor` / `decodeRunCursor`. | `bun test` green |
 | 3 | `lib/runs/duration.ts` + `.test.ts` | Pure `formatRunDuration(startedAt, finishedAt)` → `"3m 41s"` / `"12s"` / `null`. | `bun test` green |
 | 4 | `lib/supabase/rpc.ts` | `listTestRuns()` wrapper, explicit-actor contract, doc comment in the house style. | types clean |
@@ -107,22 +107,22 @@ Errors use the existing `{ error: { code, message, … } }` envelope via `withAp
 
 ### PR2 — Frontend (`feat/BK-37-runs-history-ui`, base = PR1 branch)
 
-| # | File | Work | Verify |
+| ***#**** | ****File**** | ****Work**** | ****Verify*** |
 | --- | --- | --- | --- |
 | 8 | `lib/tests/load-test-detail.ts` | React `cache()`-wrapped loader (auth + active workspace + `getTestExpanded` + role + project envs) so `layout.tsx` and `page.tsx` share ***one*** RPC call per request. | types clean; no duplicate RPC in logs |
-| 9 | `app/(app)/projects/[projectSlug]/tests/[testId]/layout.tsx` | NEW. Header (back link, breadcrumb `Tests / {title}`, `StartRunButton`, ATC-count chip) moved here + `<TestDetailTabs>`. | live UI |
-| 10 | `app/(app)/projects/[projectSlug]/tests/[testId]/page.tsx` | Header removed (now in layout); keeps tags row + ATC chain. ***Surgical*** — no behavior change to BK-27/28/32/33. | live UI: Steps tab identical to today |
+| 9 | `app/(app)/projects/[projectSlug]/tests/[testId]/layout.tsx` | NEW. Header (back link, breadcrumb `Tests / {title`}, `StartRunButton`, ATC-count chip) moved here + `<TestDetailTabs>`. | live UI |
+| 10 | `app/(app)/projects/[projectSlug]/tests/[testId]/page.tsx` | Header removed (now in layout); keeps tags row + ATC chain. ***Surgical*** — no behavior change to [https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27](https://jira.upexgalaxy.com/browse/BK-27#icft=BK-27)/28/32/33. | live UI: Steps tab identical to today |
 | 11 | `components/tests/TestDetailTabs.tsx` | `'use client'` tab strip, `Link` + `usePathname`, `aria-current="page"`, `data-testid="test-tabs"` / `test-tab-steps` / `test-tab-runs`. | keyboard nav + focus ring |
 | 12 | `app/(app)/projects/[projectSlug]/tests/[testId]/runs/page.tsx` | Server page: auth + first page fetch (respects `?outcome=` search param) → `<RunHistoryView>`. | live UI |
-| 13 | `lib/runs/history-view.ts` + `.test.ts` | Pure `resolveRunHistoryViewState({ error, rowCount, outcome })` → `error | empty-never-run | empty-no-match | rows`, mirroring `resolveWorkspacesViewState`. Owns both empty-state strings. | `bun test` green |
+| 13 | `lib/runs/history-view.ts` + `.test.ts` | Pure `resolveRunHistoryViewState({ error, rowCount, outcome })` → {{error  | empty-never-run  | empty-no-match  | rows}}, mirroring `resolveWorkspacesViewState`. Owns both empty-state strings. | `bun test` green |
 | 14 | `components/runs/RunHistoryView.tsx` | `'use client'`. Totals header + segmented bar; segmented outcome filter (click-again clears, `aria-pressed`, `Clear filter`); 6-column table (Run · Environment · Executor · Outcome · Duration · Ran); `Load older runs`; foot count; three exclusive state blocks + skeleton. Outcome chips reuse live `.status-chip[data-status]` (`passed→pass`, `failed→fail`, `aborted→blocked` per §4.8). Filter/cursor changes drive `router.replace` on the URL, `fetch` with `AbortController`. | live UI + a11y |
 
-`data-testid`*** convention*** — kebab-case `<feature>-<element>` on the root and every asserted child (shipped repo convention, which beats the skill doc's camelCase template):
-`run-history-view`, `run-history-skeleton`, `run-history-error`, `run-history-empty`, `run-history-no-match`, `run-history-rows`, `run-history-row-${runId}`, `run-history-filter`, `run-history-filter-${outcome}`, `run-history-clear-filter`, `run-history-load-older`, `run-history-foot`, `run-history-total-${outcome}`.
+`data-testid` ***convention*** — kebab-case `<feature>-<element>` on the root and every asserted child (shipped repo convention, which beats the skill doc's camelCase template):
+`run-history-view`, `run-history-skeleton`, `run-history-error`, `run-history-empty`, `run-history-no-match`, `run-history-rows`, `run-history-row-${runId`}, `run-history-filter`, `run-history-filter-${outcome`}, `run-history-clear-filter`, `run-history-load-older`, `run-history-foot`, `run-history-total-${outcome`}.
 
 ## 6. AC → task mapping
 
-| AC scenario | Tasks |
+| ***AC scenario**** | ****Tasks*** |
 | --- | --- |
 | View a Test's runs newest first | 1, 5, 12, 14 |
 | Filter history to failed runs only | 1, 2, 5, 14 |
@@ -142,12 +142,12 @@ Errors use the existing `{ error: { code, message, … } }` envelope via `withAp
 
 ## 8. Risks
 
-| # | Risk | Mitigation |
+| ***#**** | ****Risk**** | ****Mitigation*** |
 | --- | --- | --- |
-| 1 | Moving the header into `layout.tsx` regresses BK-32/33's Test detail | Task 8's cached loader keeps one RPC; live-UI pass explicitly diffs the Steps tab against current |
+| 1 | Moving the header into `layout.tsx` regresses [https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32](https://jira.upexgalaxy.com/browse/BK-32#icft=BK-32)/33's Test detail | Task 8's cached loader keeps one RPC; live-UI pass explicitly diffs the Steps tab against current |
 | 2 | Keyset cursor drifts if a new run lands mid-scroll | Tuple predicate on `(started_at, id)` is monotonic for terminal rows; new runs start `running` and are excluded |
 | 3 | FE/BE page-size mismatch | Single constant exported from `lib/runs/history-validation.ts`, imported by both |
-| 4 | BK-38 diverges from this pagination pattern | PO flagged the sync; PR1 lands the reusable pattern first, and its OpenAPI entry is the contract BK-38 reads |
+| 4 | [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38) diverges from this pagination pattern | PO flagged the sync; PR1 lands the reusable pattern first, and its OpenAPI entry is the contract [https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38](https://jira.upexgalaxy.com/browse/BK-38#icft=BK-38) reads |
 
 ## 9. Open design-system question (not blocking, for the PM/design track)
 

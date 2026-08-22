@@ -29,7 +29,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ import_job: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

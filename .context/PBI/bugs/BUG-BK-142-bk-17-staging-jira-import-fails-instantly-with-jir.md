@@ -3,7 +3,11 @@
 **Jira Key:** [BK-142](https://jira.upexgalaxy.com/browse/BK-142)
 **Priority:** Highest
 **Status:** Closed
-**Components:** User Stories & Acceptance Criteria
+**Components:** Bunkai User Stories
+**Severity:** Crítica
+**Error Type:** Integration
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -11,13 +15,13 @@
 
 ## Summary
 
-Every `POST /api/v1/imports` call on staging returns ***202*** with the correct envelope, but the background worker fails instantly with `errors[0].code = "jira_unauthorized"`. This blocks BK-17 (Async Jira Import by JQL) AC1-AC5 — 21 of 22 ATP outlines cannot be executed on staging.
+Every `POST /api/v1/imports` call on staging returns ***202*** with the correct envelope, but the background worker fails instantly with `errors[0].code = "jira_unauthorized"`. This blocks [https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17](https://jira.upexgalaxy.com/browse/BK-17#icft=BK-17) (Async Jira Import by JQL) AC1-AC5 — 21 of 22 ATP outlines cannot be executed on staging.
 
 ## Steps to Reproduce
 
 1. Sign in to staging as a project member: `POST /api/v1/auth/signin` (returns session + PAT)
-2. `POST /api/v1/imports {project*id, jql}` -> ***202*** `{"import*job_id": "...", "status": "queued"}`
-3. Poll `GET /api/v1/imports/{id}` -> ***200***, `status: "failed"`, job completes in ~0.1s with NO observable `running` state:
+2. `POST /api/v1/imports {project*id, jql`} -> ***202*** `{"import*job_id": "...", "status": "queued"`}
+3. Poll `GET /api/v1/imports/{id`} -> ***200***, `status: "failed"`, job completes in ~0.1s with NO observable `running` state:
 
 ```json
 {
@@ -29,7 +33,7 @@ Every `POST /api/v1/imports` call on staging returns ***202*** with the correct 
 
 ## Evidence — 6 consecutive jobs, all identical
 
-| Job ID | started_at (UTC) | Context |
+| ***Job ID**** | ****started_at (UTC)**** | ****Context*** |
 | --- | --- | --- |
 | `33905236-...` | 2026-06-15T19:27:56 | Original Stage 2 smoke (TC-POS-01) |
 | `d3f02f40-...` | 2026-06-15T20:16:18 | Re-verification retest |
@@ -46,7 +50,7 @@ Every `POST /api/v1/imports` call on staging returns ***202*** with the correct 
 
 ## Regression Window
 
-Last successful import job `b4b8e74c-...` completed ***2026-06-05T10****:55:****04Z**** (`imported*count: 2`). Every `import*jobs` row created ****>= 2026-06-09*** fails identically. The window overlaps with the BK-84 (staging auth-gateway) redeploy (2026-06-07..2026-06-09) — possible correlation, not confirmed as same root cause.
+Last successful import job `b4b8e74c-...` completed ***2026-06-05T10****:55:****04Z**** (`imported*count: 2`). Every `import*jobs` row created ****>= 2026-06-09*** fails identically. The window overlaps with the [https://jira.upexgalaxy.com/browse/BK-84#icft=BK-84](https://jira.upexgalaxy.com/browse/BK-84#icft=BK-84) (staging auth-gateway) redeploy (2026-06-07..2026-06-09) — possible correlation, not confirmed as same root cause.
 
 ## Impact
 
@@ -56,6 +60,44 @@ Last successful import job `b4b8e74c-...` completed ***2026-06-05T10****:55:****
 ## Suggested Fix
 
 Verify/restore `ATLASSIAN*URL`, `ATLASSIAN*EMAIL`, `ATLASSIAN*API*TOKEN` on the Vercel project + environment scope that serves `staging-upexbunkai.vercel.app`, then redeploy.
+
+---
+
+## 🐞 Actual Result
+
+Every `POST /api/v1/imports` job fails instantly (~0.1s) with `status: "failed"` and {{errors[0] = 
+
+```java
+
+```
+
+}} — confirmed across 6 consecutive jobs over 84 minutes.
+
+---
+
+## ✅ Expected Result
+
+The job transitions `queued -> running -> completed`, the worker successfully calls Jira `/rest/api/3/search/jql`, and `imported_count` reflects the number of issues matched by the JQL (per AC1).
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Configuration Error 
+
+---
+
+## 🚩 Workaround
+
+None. This is an environment-level configuration blocker — no application-level workaround exists. AC1-AC5 cannot be exercised until the staging deployment's `ATLASSIAN_*` environment variables are restored.
+
+---
+
+## 🧫 Evidence
+
+- `evidence/TC-POS-01-import-post.json`, `evidence/TC-POS-01-poll-failed.json`, `evidence/SMOKE-jira-creds-regression-import-jobs-history.json` (under `.context/PBI/.../STORY-BK-17-.../evidence/`)
+- `/tmp/bk17-signin**.json`, `/tmp/bk17-import-post**.json`, `/tmp/bk17-import-poll*.json` (retest captures, 2026-06-15)
+- Local credential check: `GET {ATLASSIAN_URL}/rest/api/3/myself` with `.env` creds -> 200 OK
 
 ---
 

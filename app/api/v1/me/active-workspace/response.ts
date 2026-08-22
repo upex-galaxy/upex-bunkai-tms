@@ -8,13 +8,11 @@
 // require mocking the withApiHandler/getAuth/Supabase query chain, which is
 // disproportionate for a shape-only regression test.
 //
-// BK-316 added `assertSessionOnly` here for the same reason: it needs
-// `ApiError`, so `buildActiveWorkspaceResponse` is no longer the only export,
-// but the module still takes no route-handler-only dependencies (no
-// NextRequest/ctx) — same isolation style as
-// `workspaces/[id]/membership/response.ts`'s `assertSessionOnly`.
-import type { Principal } from '@lib/api/principal';
-import { ApiError } from '@lib/api/error-envelope';
+// BK-316 added an `assertSessionOnly` guard here; BK-499 lifted it into the
+// route's `auth: 'cookie-only'` posture, where the gateway rejects the bearer
+// rail before the handler body runs (the same move BK-497 made on the two
+// token routes). The 403 message travelled verbatim into the posture's `why`,
+// so this module is back to a single dependency-free export.
 
 export interface ActiveWorkspaceResponse {
   id: string
@@ -30,20 +28,4 @@ export function buildActiveWorkspaceResponse(params: ActiveWorkspaceResponse): A
     name: params.name,
     role: params.role,
   };
-}
-
-// A PAT has no cookie session to rotate — POST /api/v1/me/active-workspace
-// only ever set the `bk_active_ws` cookie, which GET /api/v1/me's bearer
-// branch never reads (it resolves `principal.workspaceId ?? workspaces[0]`
-// instead). Returning 200 for an operation that cannot take effect on that
-// rail is the defect (BK-316): reject the bearer rail outright, mirroring
-// `DELETE /api/v1/workspaces/{id}/membership`'s exact bearer-rejection
-// precedent in this same directory tree.
-export function assertSessionOnly(principal: Pick<Principal, 'via'>): void {
-  if (principal.via === 'bearer') {
-    throw new ApiError(
-      'forbidden',
-      'Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead.',
-    );
-  }
 }

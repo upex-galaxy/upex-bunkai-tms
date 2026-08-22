@@ -36,7 +36,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ workspace: data });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);

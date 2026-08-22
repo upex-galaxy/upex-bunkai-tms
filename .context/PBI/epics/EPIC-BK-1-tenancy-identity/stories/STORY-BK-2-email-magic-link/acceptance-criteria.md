@@ -1,6 +1,6 @@
 # BK-2 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-2)
 
 ## Refined Acceptance Criteria (Shift-Left QA pass — 2026-05-25)
 

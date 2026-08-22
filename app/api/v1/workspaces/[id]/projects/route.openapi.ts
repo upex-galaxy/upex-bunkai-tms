@@ -35,7 +35,7 @@ registry.registerPath({
   tags: ['Projects'],
   summary: 'Create a project in a workspace',
   description:
-    'Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.',
+    'Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: {
@@ -51,7 +51,7 @@ registry.registerPath({
     },
     400: { description: 'Malformed workspace id or invalid JSON body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:write scope, or caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'A project with this slug already exists in the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (including names that map to a reserved slug).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

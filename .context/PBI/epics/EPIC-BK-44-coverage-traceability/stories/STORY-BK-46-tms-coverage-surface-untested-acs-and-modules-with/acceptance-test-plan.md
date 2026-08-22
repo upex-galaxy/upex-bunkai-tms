@@ -42,7 +42,7 @@ Coverage estimate: 20 outlines | 8 Positive / 5 Negative / 4 Boundary / 3 Integr
 4. Should reflect updated coverage after an ATC is hard-deleted (AC reverts to uncovered) [Integration]
 5. Should handle large projects without degraded load time [Boundary — perf threshold TBD]
 
-***SCHEMA GAP (future)******:*** atcs has no soft-delete today. If ATC archiving is added later, define upfront whether archived ATCs count as coverage — otherwise the coverage view breaks silently. (See Q7 in the local refinement artifact.)
+***SCHEMA GAP (future):*** atcs has no soft-delete today. If ATC archiving is added later, define upfront whether archived ATCs count as coverage — otherwise the coverage view breaks silently. (See Q7 in the local refinement artifact.)
 
 ---
 _Synced from Jira by sync-jira-issues_

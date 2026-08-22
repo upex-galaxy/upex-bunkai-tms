@@ -3,8 +3,12 @@
 **Jira Key:** [BK-145](https://jira.upexgalaxy.com/browse/BK-145)
 **Related Story:** [BK-19](https://jira.upexgalaxy.com/browse/BK-19) - TMS-ATC Builder | Build an ATC with ordered steps and assertions
 **Priority:** Low
-**Status:** Open
-**Components:** ATC Library (Acceptance Test Cases)
+**Status:** Ready For QA
+**Components:** Bunkai ATCs
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -46,7 +50,13 @@ ATC saves successfully with a 2-character title. No error is displayed.
 
 ### Test Environment
 
-staging (https://staging-upexbunkai.vercel.app) — verified by code analysis 2026-07-06
+staging ([https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/)) — verified by code analysis 2026-07-06
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
@@ -59,9 +69,9 @@ staging (https://staging-upexbunkai.vercel.app) — verified by code analysis 20
 ## Metadata
 
 - **Created:** 6/18/2026
-- **Updated:** 7/10/2026
+- **Updated:** 8/12/2026
 - **Reporter:** maibeth vega
-- **Assignee:** Ely
+- **Assignee:** maibeth vega
 - **Labels:** bk-19, sprint-testing
 
 ---

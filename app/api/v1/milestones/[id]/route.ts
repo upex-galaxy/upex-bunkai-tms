@@ -61,7 +61,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ milestone: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractMilestoneId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

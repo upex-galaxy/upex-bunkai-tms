@@ -3,7 +3,7 @@
 **Jira Key:** [BK-210](https://jira.upexgalaxy.com/browse/BK-210)
 **Priority:** Medium
 **Status:** Planning
-**Total Story Points:** 0
+**Total Story Points:** 5
 
 ---
 
@@ -21,18 +21,18 @@ QA work is conversational. When Elena needs to ask "is staging down?" in the mid
 
 ## Stories
 
-| Key | Story |
+| ***Key**** | ****Story*** |
 | --- | --- |
-| BK-215 | Team Chat | Chat with workspace members in a real-time channel |
-| BK-216 | Team Chat | Chat in a dedicated per-project channel |
-| BK-217 | Team Chat | Mention a teammate to get their attention |
-| BK-218 | Team Chat | Share an ATC, test, or run as a rich link |
-| BK-219 | Team Chat | Edit and delete my own messages |
-| BK-220 | Team Chat | Search the message history |
+| [https://jira.upexgalaxy.com/browse/BK-215#icft=BK-215](https://jira.upexgalaxy.com/browse/BK-215#icft=BK-215) | Team Chat  | Chat with workspace members in a real-time channel |
+| [https://jira.upexgalaxy.com/browse/BK-216#icft=BK-216](https://jira.upexgalaxy.com/browse/BK-216#icft=BK-216) | Team Chat  | Chat in a dedicated per-project channel |
+| [https://jira.upexgalaxy.com/browse/BK-217#icft=BK-217](https://jira.upexgalaxy.com/browse/BK-217#icft=BK-217) | Team Chat  | Mention a teammate to get their attention |
+| [https://jira.upexgalaxy.com/browse/BK-218#icft=BK-218](https://jira.upexgalaxy.com/browse/BK-218#icft=BK-218) | Team Chat  | Share an ATC, test, or run as a rich link |
+| [https://jira.upexgalaxy.com/browse/BK-219#icft=BK-219](https://jira.upexgalaxy.com/browse/BK-219#icft=BK-219) | Team Chat  | Edit and delete my own messages |
+| [https://jira.upexgalaxy.com/browse/BK-220#icft=BK-220](https://jira.upexgalaxy.com/browse/BK-220#icft=BK-220) | Team Chat  | Search the message history |
 
 ## Traceability
 
-Builds on Workspace membership (epic BK-1) and Projects (epic BK-7). Mentions integrate with the Notifications Center epic (delivery into the notifications inbox). Rich links reference ATCs, Tests, and Runs from epics BK-13, BK-24, and BK-30.
+Builds on Workspace membership (epic [https://jira.upexgalaxy.com/browse/BK-1#icft=BK-1](https://jira.upexgalaxy.com/browse/BK-1#icft=BK-1)) and Projects (epic [https://jira.upexgalaxy.com/browse/BK-7#icft=BK-7](https://jira.upexgalaxy.com/browse/BK-7#icft=BK-7)). Mentions integrate with the Notifications Center epic (delivery into the notifications inbox). Rich links reference ATCs, Tests, and Runs from epics BK-13, [https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24](https://jira.upexgalaxy.com/browse/BK-24#icft=BK-24), and [https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30).
 
 ---
 
@@ -40,11 +40,11 @@ Builds on Workspace membership (epic BK-1) and Projects (epic BK-7). Mentions in
 
 | Key | Story | Points | Priority | Status |
 | --- | ----- | ------ | -------- | ------ |
-| [BK-215](https://jira.upexgalaxy.com/browse/BK-215) | Team Chat | Chat with workspace members in a real-time channel | - | Medium | Backlog |
+| [BK-215](https://jira.upexgalaxy.com/browse/BK-215) | Team Chat | Chat with workspace members in a real-time channel | - | Medium | Estimation |
 | [BK-216](https://jira.upexgalaxy.com/browse/BK-216) | Team Chat | Chat in a dedicated per-project channel | - | Medium | Backlog |
 | [BK-217](https://jira.upexgalaxy.com/browse/BK-217) | Team Chat | Mention a teammate to get their attention | - | Medium | Backlog |
 | [BK-218](https://jira.upexgalaxy.com/browse/BK-218) | Team Chat | Share an ATC, test, or run as a rich link | - | Medium | Backlog |
-| [BK-219](https://jira.upexgalaxy.com/browse/BK-219) | Team Chat | Edit and delete my own messages | - | Medium | Estimation |
+| [BK-219](https://jira.upexgalaxy.com/browse/BK-219) | Team Chat | Edit and delete my own messages | 5 | Medium | Ready For Dev |
 | [BK-220](https://jira.upexgalaxy.com/browse/BK-220) | Team Chat | Search the message history | - | Medium | Backlog |
 
 ---

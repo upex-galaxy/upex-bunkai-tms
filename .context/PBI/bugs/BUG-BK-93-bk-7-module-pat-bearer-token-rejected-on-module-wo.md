@@ -3,7 +3,11 @@
 **Jira Key:** [BK-93](https://jira.upexgalaxy.com/browse/BK-93)
 **Priority:** Medium
 **Status:** Duplicated
-**Components:** Project & Module Hierarchy, Tenancy & Identity
+**Components:** Bunkai API Tokens, Bunkai Projects
+**Severity:** Moderada
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -19,8 +23,8 @@ PAT bearer tokens are rejected with 401 on module and workspace resource endpoin
 
 ***Precondition:*** Valid PAT obtained via POST /api/v1/auth/api-tokens with scopes: atc:read, atc:write, workspace:admin
 
-1. `PATCH https://staging-upexbunkai.vercel.app/api/v1/modules/{valid-module-id}` with `Authorization: Bearer {PAT_TOKEN}` and body `{"name": "Test Rename"}`
-2. Observe HTTP 401 response: `{"error":{"code":"unauthorized","message":"You must be signed in.","request_id":"..."}}`
+1. `PATCH https://staging-upexbunkai.vercel.app/api/v1/modules/{valid-module-id`} with `Authorization: Bearer {PAT_TOKEN`} and body `{"name": "Test Rename"`}
+2. Observe HTTP 401 response: `{"error":{"code":"unauthorized","message":"You must be signed in.","request_id":"..."`}}
 3. Reproduce also on `POST /api/v1/workspaces` — same 401
 
 ---
@@ -45,20 +49,27 @@ PAT bearer tokens are rejected with 401 on module and workspace resource endpoin
 
 ## Related Stories
 
-- Related: BK-10 (TC-I04)
+- Related: [https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10) (TC-I04)
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 
 ## Related Issues
 
 - duplicates: [BK-84](https://jira.upexgalaxy.com/browse/BK-84) - [Staging] PAT bearer auth rejected on member/owned-resource routes (Imports, Projects, Modules, Tokens) — requireAuth middleware regression
+- relates to: [BK-262](https://jira.upexgalaxy.com/browse/BK-262) - PAT | Enforce capability scopes on every non-ATC route
 
 ---
 
 ## Metadata
 
 - **Created:** 6/8/2026
-- **Updated:** 6/26/2026
+- **Updated:** 8/20/2026
 - **Reporter:** Jorgelina Abdo
 - **Assignee:** Jorgelina Abdo
 - **Labels:** api, bug, exploratory-testing

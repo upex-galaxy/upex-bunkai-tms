@@ -3,7 +3,7 @@
 **Jira Key:** [BK-256](https://jira.upexgalaxy.com/browse/BK-256)
 **Epic:** [BK-254](https://jira.upexgalaxy.com/browse/BK-254) (Home Dashboard)
 **Type:** Story
-**Status:** Backlog
+**Status:** Ready For QA
 **Priority:** Medium
 **Story Points:** -
 
@@ -22,14 +22,26 @@ As a QA Lead, I want to see a table of active test runs across every project in 
 
 ## Technical notes
 
-Renders into `home.jsx` (master-design-plan.md §4.2), the "Active test runs" section. Backed by the Runs domain (BK-30, informational context only — no blocking dependency; BK-30's child stories already provide the underlying run data).
+Renders into `home.jsx` (master-design-plan.md §4.2), the "Active test runs" section. Backed by the Runs domain ([https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30](https://jira.upexgalaxy.com/browse/BK-30#icft=BK-30), informational context only — no blocking dependency; BK-30's child stories already provide the underlying run data).
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 
 ---
 
 ## Metadata
 
 - **Created:** 7/31/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/4/2026
 - **Reporter:** Ely
 - **Assignee:** Unassigned
 - **Labels:** p2

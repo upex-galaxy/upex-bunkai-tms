@@ -1,8 +1,8 @@
 # BK-232 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-232)
 
-```gherkin
+```
 Scenario: Approaching a limit shows a non-blocking warning
   Given the workspace "Acme QA" is on the Free plan with 9 of 10 projects used
   When Elena creates the 9th project
@@ -11,7 +11,7 @@ Scenario: Approaching a limit shows a non-blocking warning
   And her current work is not interrupted
 ```
 
-```gherkin
+```
 Scenario: Hitting a limit as a non-owner shows a friendly block with the owner path
   Given "Acme QA" has reached its 10-project limit
   And Elena is a member, not the workspace owner
@@ -21,7 +21,7 @@ Scenario: Hitting a limit as a non-owner shows a friendly block with the owner p
   And no upgrade checkout is offered to her
 ```
 
-```gherkin
+```
 Scenario: Hitting a limit as the owner routes directly to the upgrade flow
   Given "Acme QA" has reached its 10-project limit
   And Mateo, the workspace owner, tries to create an 11th project
@@ -29,7 +29,7 @@ Scenario: Hitting a limit as the owner routes directly to the upgrade flow
   And he is offered a direct path to the upgrade flow
 ```
 
-```gherkin
+```
 Scenario: The blocked action succeeds right after the owner upgrades
   Given Elena was blocked from creating an 11th project on the Free plan
   When the workspace owner completes an upgrade to the Team plan

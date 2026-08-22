@@ -21,11 +21,24 @@ Once a workspace pays, the billing relationship needs maintenance: company detai
 
 ---
 
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
+
+---
+
 ## Traceability
 
 ### Story (1)
 
-- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Backlog)_
+- [BK-230](https://jira.upexgalaxy.com/browse/BK-230): Billing | Upgrade to a paid plan _(Ready For Dev)_
 
 ---
 

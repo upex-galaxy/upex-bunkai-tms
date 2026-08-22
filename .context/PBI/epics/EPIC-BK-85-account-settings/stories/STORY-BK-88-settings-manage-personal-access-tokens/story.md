@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
 
 ---
 
@@ -52,7 +52,12 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
+- [Acceptance Test Results (QA)](./acceptance-test-results.md)
 
 ---
 
@@ -60,19 +65,19 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 
 ### Tests (14)
 
-- [BK-120](https://jira.upexgalaxy.com/browse/BK-120): BK-88: TC01: Validate POST /api/v1/tokens issues token and returns full secret exactly once in 201 response _(MANUAL)_
-- [BK-121](https://jira.upexgalaxy.com/browse/BK-121): BK-88: TC02: Validate GET /api/v1/tokens lists tokens with prefix only, no secret field, wrapped in {tokens:[...]} _(AUTOMATED)_
-- [BK-122](https://jira.upexgalaxy.com/browse/BK-122): BK-88: TC03: Validate DELETE /api/v1/tokens/{id} soft-revokes token returning 200 and setting revoked_at _(MANUAL)_
 - [BK-123](https://jira.upexgalaxy.com/browse/BK-123): BK-88: TC04: Validate POST /api/v1/tokens returns 401 for unauthenticated requests _(AUTOMATED)_
 - [BK-124](https://jira.upexgalaxy.com/browse/BK-124): BK-88: TC05: Validate GET /api/v1/tokens returns 401 for unauthenticated requests _(AUTOMATED)_
-- [BK-125](https://jira.upexgalaxy.com/browse/BK-125): BK-88: TC06: Validate DELETE /api/v1/tokens/{id} returns 401 for unauthenticated requests _(AUTOMATED)_
-- [BK-126](https://jira.upexgalaxy.com/browse/BK-126): BK-88: TC07: Validate POST /api/v1/tokens returns 422 when scopes array contains invalid enum value _(MANUAL)_
 - [BK-127](https://jira.upexgalaxy.com/browse/BK-127): BK-88: TC08: Validate POST /api/v1/tokens returns 403 when member-role user issues workspace:admin scope _(MANUAL)_
-- [BK-128](https://jira.upexgalaxy.com/browse/BK-128): BK-88: TC09: Validate POST /api/v1/tokens accepts token name of exactly 80 characters _(MANUAL)_
-- [BK-129](https://jira.upexgalaxy.com/browse/BK-129): BK-88: TC10: Validate POST /api/v1/tokens returns 422 when token name exceeds 80 characters _(MANUAL)_
+- [BK-121](https://jira.upexgalaxy.com/browse/BK-121): BK-88: TC02: Validate GET /api/v1/tokens lists tokens with prefix only, no secret field, wrapped in {tokens:[...]} _(AUTOMATED)_
 - [BK-130](https://jira.upexgalaxy.com/browse/BK-130): BK-88: TC11: Validate GET /api/v1/tokens returns only the authenticated user's tokens (RLS isolation) _(Candidate)_
 - [BK-131](https://jira.upexgalaxy.com/browse/BK-131): BK-88: TC12: Validate DELETE /api/v1/tokens/{id} returns 404 when targeting another user's token (RLS) _(MANUAL)_
+- [BK-120](https://jira.upexgalaxy.com/browse/BK-120): BK-88: TC01: Validate POST /api/v1/tokens issues token and returns full secret exactly once in 201 response _(MANUAL)_
+- [BK-122](https://jira.upexgalaxy.com/browse/BK-122): BK-88: TC03: Validate DELETE /api/v1/tokens/{id} soft-revokes token returning 200 and setting revoked_at _(MANUAL)_
+- [BK-125](https://jira.upexgalaxy.com/browse/BK-125): BK-88: TC06: Validate DELETE /api/v1/tokens/{id} returns 401 for unauthenticated requests _(AUTOMATED)_
+- [BK-126](https://jira.upexgalaxy.com/browse/BK-126): BK-88: TC07: Validate POST /api/v1/tokens returns 422 when scopes array contains invalid enum value _(MANUAL)_
+- [BK-128](https://jira.upexgalaxy.com/browse/BK-128): BK-88: TC09: Validate POST /api/v1/tokens accepts token name of exactly 80 characters _(MANUAL)_
 - [BK-132](https://jira.upexgalaxy.com/browse/BK-132): BK-88: TC13: Validate DELETE /api/v1/tokens/{id} returns 404 when revoking an already-revoked token _(MANUAL)_
+- [BK-129](https://jira.upexgalaxy.com/browse/BK-129): BK-88: TC10: Validate POST /api/v1/tokens returns 422 when token name exceeds 80 characters _(MANUAL)_
 - [BK-133](https://jira.upexgalaxy.com/browse/BK-133): BK-88: TC14: Validate revoked PAT returns 401 on subsequent API call (revocation reflected immediately) _(MANUAL)_
 
 ### Bug (1)
@@ -81,10 +86,10 @@ As an autonomous AI test agent operator (Karim) I want to issue, list, and revok
 
 ### Storys (4)
 
+- [BK-226](https://jira.upexgalaxy.com/browse/BK-226): CI Integration | Upload a CI results file to create a run _(Backlog)_
 - [BK-87](https://jira.upexgalaxy.com/browse/BK-87): Settings | Open a settings hub and view my account _(Ready For QA)_
 - [BK-222](https://jira.upexgalaxy.com/browse/BK-222): TMS-Automation API | Submit an automated run with step results _(Backlog)_
 - [BK-223](https://jira.upexgalaxy.com/browse/BK-223): TMS-Automation API | Stream step results during an automated run _(Backlog)_
-- [BK-226](https://jira.upexgalaxy.com/browse/BK-226): CI Integration | Upload a CI results file to create a run _(Backlog)_
 
 ### Tech Story (1)
 

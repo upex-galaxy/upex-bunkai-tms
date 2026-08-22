@@ -66,13 +66,14 @@ registry.registerPath({
   path: '/api/v1/projects/{id}/coverage',
   tags: ['Coverage'],
   summary: 'Surface a Project\'s untested acceptance criteria and modules, with a never-run indicator',
-  description: 'Cookie session or Bearer PAT; no scope requirement — mirrors `GET /api/v1/projects/{id}/runs/report`. One SECURITY DEFINER RPC (`bunkai_report_project_coverage`) resolves the Project\'s workspace and re-checks ACTIVE membership in-band; any role reads, viewers included (PO decision Q5 — this is not a privileged QA-only screen). No pagination or query parameters: the whole-project rollup is small and bounded, and the UI filters the returned payload client-side. A Project with zero acceptance criteria returns zeroed `kpis` and empty arrays (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.',
+  description: 'Bearer `atc:read` (or cookie session). Mirrors `GET /api/v1/projects/{id}/runs/report`. One SECURITY DEFINER RPC (`bunkai_report_project_coverage`) resolves the Project\'s workspace and re-checks ACTIVE membership in-band; any role reads, viewers included (PO decision Q5 — this is not a privileged QA-only screen). No pagination or query parameters: the whole-project rollup is small and bounded, and the UI filters the returned payload client-side. A Project with zero acceptance criteria returns zeroed `kpis` and empty arrays (never a 404) — a 404 means the Project itself is missing, foreign, or unreadable.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
     200: { description: 'The Project\'s coverage rollup.', content: { 'application/json': { schema: CoveragePayloadSchema } } },
     400: { description: 'Malformed Project id (not a UUID) (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project not found (also returned for a Project outside the caller\'s workspaces — no existence leak).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

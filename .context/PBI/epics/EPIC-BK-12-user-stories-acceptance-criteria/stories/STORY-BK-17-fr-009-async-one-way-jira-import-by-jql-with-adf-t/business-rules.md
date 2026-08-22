@@ -1,6 +1,6 @@
 # BK-17 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
 
 - import is one-way (Jira -> Bunkai); Bunkai never writes back to Jira in this story
 - external_id is the idempotency key (Project + uppercase Jira key)

@@ -1,6 +1,6 @@
 # BK-22 — Workflow
 
-> Jira field: `customfield_10082` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
+> Jira field: `customfield_10104` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-22)
 
 1. Elena opens an ATC's detail page.
 2. She sees "Used in N tests".

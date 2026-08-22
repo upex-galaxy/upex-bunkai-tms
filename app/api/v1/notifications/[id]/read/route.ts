@@ -23,7 +23,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const notification = await markNotificationRead(db, notificationId);
 
   return jsonResponse({ notification }, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Personal inbox — the caller marks only their own notification copy read.',
+});
 
 function extractNotificationId(request: NextRequest): string {
   // `/api/v1/notifications/{id}/read` -> segment right after the literal

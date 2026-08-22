@@ -3,8 +3,8 @@
 **Jira Key:** [BK-187](https://jira.upexgalaxy.com/browse/BK-187)
 **Related Story:** [BK-20](https://jira.upexgalaxy.com/browse/BK-20) - TMS-ATC Search | Search and autocomplete ATCs
 **Priority:** High
-**Status:** In Review
-**Components:** ATC Library (Acceptance Test Cases)
+**Status:** Closed
+**Components:** Bunkai ATCs
 **Severity:** Mayor
 **Error Type:** Functional
 **Test Environment:** Staging
@@ -76,9 +76,9 @@ Captured 2026-06-30 on staging via a PAT with the `atc:read` scope.
 ## Metadata
 
 - **Created:** 6/30/2026
-- **Updated:** 8/6/2026
+- **Updated:** 8/7/2026
 - **Reporter:** Facu Barea
-- **Assignee:** Ely
+- **Assignee:** Facu Barea
 - **Labels:** api, atc-search, defect, exploratory-testing
 
 ---

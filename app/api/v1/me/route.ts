@@ -107,4 +107,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       scopes: principal.capabilities,
     },
   });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Identity probe — a token must be able to resolve who it is and which workspaces it can see before it can hold any scope-gated conversation.',
+});

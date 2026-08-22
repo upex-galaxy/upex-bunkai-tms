@@ -1,8 +1,8 @@
 # BK-148 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-148)
 
-- Targeting a Run at an environment (selecting an environment when starting a run); owned by BK-34.
+- Targeting a Run at an environment (selecting an environment when starting a run); owned by [https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34](https://jira.upexgalaxy.com/browse/BK-34#icft=BK-34).
 - Sharing or reusing environments across different projects (cross-project environment templates).
 - Per-environment configuration beyond the name (URLs, secrets, variables, credentials).
 - Bulk import or export of environments.

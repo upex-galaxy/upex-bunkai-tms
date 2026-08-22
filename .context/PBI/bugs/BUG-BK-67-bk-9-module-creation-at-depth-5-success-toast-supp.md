@@ -3,13 +3,23 @@
 **Jira Key:** [BK-67](https://jira.upexgalaxy.com/browse/BK-67)
 **Priority:** Low
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
 ## Description
 
-ACTUAL: When a module is successfully created at depth 5 or 6, only toast.warning('This module is nested deeply — consider keeping the tree shallow.') fires. No 'Module created' success confirmation is shown to the user. CODE: create-module-form.tsx lines 116-121 uses if/else: warning branch suppresses success branch. USER IMPACT: User is left uncertain whether the module was created — they see only an advisory, not a confirmation. MODULE IS actually created (HTTP 201), but the user receives no positive feedback. EXPECTED: Both a success toast ('Module created') AND the deep-nesting advisory should fire. REPRO: API POST /api/v1/projects/{id}/modules with parent at depth 4 → 201 + warning. Observe UI shows only warning toast. ENVIRONMENT: staging | RELATED: BK-9
+ACTUAL: When a module is successfully created at depth 5 or 6, only toast.warning('This module is nested deeply — consider keeping the tree shallow.') fires. No 'Module created' success confirmation is shown to the user. CODE: create-module-form.tsx lines 116-121 uses if/else: warning branch suppresses success branch. USER IMPACT: User is left uncertain whether the module was created — they see only an advisory, not a confirmation. MODULE IS actually created (HTTP 201), but the user receives no positive feedback. EXPECTED: Both a success toast ('Module created') AND the deep-nesting advisory should fire. REPRO: API POST /api/v1/projects/{id}/modules with parent at depth 4 → 201 + warning. Observe UI shows only warning toast. ENVIRONMENT: staging | RELATED: [https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9](https://jira.upexgalaxy.com/browse/BK-9#icft=BK-9)
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

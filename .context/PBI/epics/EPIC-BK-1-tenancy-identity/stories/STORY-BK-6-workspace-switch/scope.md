@@ -1,6 +1,6 @@
 # BK-6 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-6)
 
 - POST /api/v1/me/active-workspace endpoint
 - Session field active*workspace*id rotation

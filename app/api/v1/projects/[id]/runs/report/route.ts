@@ -11,8 +11,9 @@ import { reportProjectRuns } from '@lib/supabase/rpc';
 // range / module / status / executor (AND-composed), with pass/fail totals
 // recomputed from the SAME filtered set (BK-38, Business Rule #3 — the
 // OPPOSITE convention from GET /api/v1/tests/{id}/runs's all-time totals, see
-// Technical Decision D2). Read auth only, and NO scope requirement yet —
-// mirrors the run-history route (the PAT catalog has no run-read scope) per
+// Technical Decision D2). Requires `atc:read` (BK-499, superseding BK-38's
+// "no scope requirement yet") — mirrors the run-history route, which reuses
+// the read scope because the PAT catalog has no run-read scope, per
 // the story's own Key Contract Decision ("Future PAT/API access requires
 // `run:read` or equivalent — not this story"). The read-level membership
 // re-check is enforced inside the SECURITY DEFINER RPC
@@ -105,7 +106,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       ? null
       : encodeRunCursor({ startedAt: payload.next_cursor.started_at, id: payload.next_cursor.id }),
   }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractProjectId(request: NextRequest): string {
   // Path ends in `/{id}/runs/report`, so the id is the third-to-last segment.

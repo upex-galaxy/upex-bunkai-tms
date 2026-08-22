@@ -42,7 +42,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ environment: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const environmentId = extractEnvironmentId(request);
@@ -62,7 +62,7 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ deleted: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractEnvironmentId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

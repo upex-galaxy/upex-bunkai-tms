@@ -90,7 +90,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ acceptance_criterion: data }, { status: 201 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const userStoryId = extractUserStoryId(request);
@@ -112,7 +112,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ acceptance_criteria: data ?? [] }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractUserStoryId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

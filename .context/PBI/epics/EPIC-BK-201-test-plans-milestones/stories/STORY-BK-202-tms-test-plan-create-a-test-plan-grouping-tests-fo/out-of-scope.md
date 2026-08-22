@@ -1,6 +1,6 @@
 # BK-202 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-202)
 
 - Adding or removing tests from the plan — sibling story "Add and remove tests from a plan".
 - Progress or outcome tracking — sibling story "Track plan progress from run outcomes".

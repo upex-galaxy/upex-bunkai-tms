@@ -27,7 +27,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   });
 
   return jsonResponse(result, { status: 200 });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Personal inbox — the caller marks only their own notification copies read.',
+});
 
 function extractWorkspaceId(request: NextRequest): string {
   // `/api/v1/workspaces/{id}/notifications/read-all` -> segment right after

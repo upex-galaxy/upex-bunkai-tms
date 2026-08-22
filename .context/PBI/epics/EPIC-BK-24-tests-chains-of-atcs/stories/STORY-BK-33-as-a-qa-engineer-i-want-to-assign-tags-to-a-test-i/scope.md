@@ -1,6 +1,6 @@
 # BK-33 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-33)
 
 - Assign one or more tags to a Test and see them displayed on that Test
 - Use the reserved suite tags smoke, sanity, and regression, which drive suite filtering

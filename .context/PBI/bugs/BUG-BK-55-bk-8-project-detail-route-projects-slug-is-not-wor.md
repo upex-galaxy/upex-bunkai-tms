@@ -3,7 +3,11 @@
 **Jira Key:** [BK-55](https://jira.upexgalaxy.com/browse/BK-55)
 **Priority:** High
 **Status:** Duplicated
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
+**Severity:** Mayor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -11,11 +15,11 @@
 
 ## Summary
 
-The project detail route `/projects/{slug}` is not scoped by workspace. Project slugs are unique only **per workspace**, but the detail URL omits the workspace, so slug resolution crosses workspace boundaries. When the same slug exists in two of the user's workspaces, one project becomes unreachable.
+The project detail route `/projects/{slug`} is not scoped by workspace. Project slugs are unique only **per workspace**, but the detail URL omits the workspace, so slug resolution crosses workspace boundaries. When the same slug exists in two of the user's workspaces, one project becomes unreachable.
 
 ## Environment
 
-Staging — https://staging-upexbunkai.vercel.app · 2026-06-04 · cookie-session auth as `bunkai-staging-user` (member of two workspaces).
+Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/) · 2026-06-04 · cookie-session auth as `bunkai-staging-user` (member of two workspaces).
 
 ## Severity / Type
 
@@ -30,11 +34,11 @@ Severity: ***Major**** · Error type: ****functional*** (navigation / data addre
 
 ## Expected Result
 
-Detail navigation is scoped to the active workspace (per Workflow AC step 9: `/workspaces/{ws-slug}/projects/{project-slug}`). A slug present in another workspace should not resolve under the active workspace; both same-named projects must remain independently addressable.
+Detail navigation is scoped to the active workspace (per Workflow AC step 9: `/workspaces/{ws-slug}/projects/{project-slug`}). A slug present in another workspace should not resolve under the active workspace; both same-named projects must remain independently addressable.
 
 ## Actual Result
 
-- `/projects/checkout-v2` loads the ***WS2**** project (breadcrumb "QA BK-8 Second WS / Checkout v2") even though WS1 is active — the WS1 `checkout-v2` is ****unreachable***.
+- `/projects/checkout-v2` loads the ***WS2**** project (breadcrumb "QA [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) Second WS / Checkout v2") even though WS1 is active — the WS1 `checkout-v2` is ****unreachable***.
 - `/projects/hi-project` loads the WS2 project while WS1 is active — the route ***crosses the active-workspace boundary***.
 
 ## Impact
@@ -47,10 +51,35 @@ Per-workspace slug uniqueness (a core design rule, and an explicit AC: "same slu
 
 ---
 
+## 🐞 Actual Result
+
+- `/projects/checkout-v2` loads the ***WS2**** project (breadcrumb "QA [https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8](https://jira.upexgalaxy.com/browse/BK-8#icft=BK-8) Second WS / Checkout v2") even though WS1 is active — the WS1 `checkout-v2` is ****unreachable***.
+- `/projects/hi-project` loads the WS2 project while WS1 is active — the route ***crosses the active-workspace boundary***.
+
+---
+
+## ✅ Expected Result
+
+Detail navigation is scoped to the active workspace (per Workflow AC step 9: `/workspaces/{ws-slug}/projects/{project-slug`}). A slug present in another workspace should not resolve under the active workspace; both same-named projects must remain independently addressable.
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
+## 🧫 Evidence
+
+`test-session-memory.md` (UI-3 row) + screenshot `evidence/bug-crossworkspace-checkout-v2.png`.
+
+---
+
 ## Related Issues
 
-- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 - duplicates: [BK-52](https://jira.upexgalaxy.com/browse/BK-52) - BK-8: Project detail route /projects/{slug} is not workspace-scoped
+- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 
 ---
 

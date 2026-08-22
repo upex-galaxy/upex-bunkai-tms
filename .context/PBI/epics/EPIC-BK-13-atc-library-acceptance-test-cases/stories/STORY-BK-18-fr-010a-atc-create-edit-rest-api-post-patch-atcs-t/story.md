@@ -5,7 +5,8 @@
 **Type:** Story
 **Status:** Ready For Release
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
+**Web Link:** https://staging-upexbunkai.vercel.app/
 
 ---
 
@@ -33,14 +34,14 @@ Ancla PRD US 4.1 y US 4.2 e implementa SRS FR-010 (superficie de servidor). El f
 
 Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integration 2). Decisiones clave de contrato:
 
-1. **Slug format**: `{module-slug}/atc-{id-first-8-chars}` (prefijo de UUID en minúsculas) — determinista, sin dependencia de secuencia.
+1. **Slug format**: `{module-slug}/atc-{id-first-8-chars`} (prefijo de UUID en minúsculas) — determinista, sin dependencia de secuencia.
 2. **Semántica de PATCH**: cuerpo de reemplazo total (estilo PUT), NO merge parcial. Lo omitido = se limpia.
 3. **Version conflict**: optimistic locking vía header `If-Match: <version>`. 409 si hay mismatch.
 4. **Error codes**: agregar `ac*outside*user*story`, `module*outside*project*subtree`, `steps*position*invalid` al mapa `API*ERROR*CODES`.
 5. **Auth**: `requireBearerToken` + `requireScope('atc:write')` en ambos endpoints.
 6. RPC `bunkai*create*atc`: nuevo RPC que devuelve uuid (separado de `bunkai*save*atc`, que es solo UPDATE).
-7. **affected*********test*********ids**: array vacío en el MVP (la tabla `test_steps` todavía no existe).
-8. **user*********story*********id en PATCH**: inmutable — se ignora silenciosamente si se provee.
+7. **affected**__***test***_***ids**: array vacío en el MVP (la tabla `test*steps` todavía no existe).
+8. **user**__***story***__**id en PATCH**: inmutable — se ignora silenciosamente si se provee.
 
 ### ⚠️ Edge Cases Identified
 
@@ -53,17 +54,17 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 ### ❓ Open Questions — con decisiones de Senior PO/DEV
 
 1. **Manejo de slug collision**: devolver 409 — el cliente debe reintentar con distinto module/title. (Senior PO)
-2. **Consumidores de event en el MVP**: registrar en la tabla event_log — BK-20/21 consumen después. (Senior PO)
+2. **Consumidores de event en el MVP**: registrar en la tabla event_log — [https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20)/21 consumen después. (Senior PO)
 3. **Naming de scope**: un único `atc:write` cubre tanto POST como PATCH. (Senior PO)
-4. **Firma de bunkai*********create*********atc**: devuelve uuid, recibe `p*project*id`. El slug se computa en PL/pgSQL. (Senior DEV)
+4. **Firma de bunkai**__***create***_***atc**: devuelve uuid, recibe `p*project_id`. El slug se computa en PL/pgSQL. (Senior DEV)
 5. **Registro de error codes**: agregar al mapa `API*ERROR*CODES` (no inline). (Senior DEV)
-6. **affected*********test*********ids**: array vacío `[]` — la tabla test_steps todavía no está migrada. (Senior DEV)
+6. **affected**__***test***_***ids**: array vacío `[]` — la tabla test*steps todavía no está migrada. (Senior DEV)
 7. **PATCH con body vacío**: aceptar como no-op → 200, sin incremento de version, sin event. (Senior DEV)
 
 ### 📐 Scope — IN vs OUT
 
 **IN**: endpoints POST/PATCH, RPC bunkai*create*atc, validación cross-entity, computación de slug, incremento de version, auth+scope, optimistic locking, emisión de event, nuevos error codes, OpenAPI spec, integration tests.
-**OUT**: GET (BK-20), DELETE (futuro), formulario de UI (BK-19), expansión de used*in (BK-20), idempotency (futuro), webhooks (futuro), scopes granulares (futuro), affected*test_ids con datos reales (EPIC-BK-5).
+**OUT**: GET ([https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20)), DELETE (futuro), formulario de UI ([https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19](https://jira.upexgalaxy.com/browse/BK-19#icft=BK-19)), expansión de used*in ([https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20](https://jira.upexgalaxy.com/browse/BK-20#icft=BK-20)), idempotency (futuro), webhooks (futuro), scopes granulares (futuro), affected*test_ids con datos reales (EPIC-BK-5).
 
 ---
 
@@ -71,6 +72,12 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
@@ -79,6 +86,9 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 ### Tests (12)
 
+- [BK-156](https://jira.upexgalaxy.com/browse/BK-156): BK-18: TC08: should return 200, bump version and cascade-replace children when PATCH /atcs/{id} full-replaces with X-If-Match (BK-96 regression) _(Candidate)_
+- [BK-159](https://jira.upexgalaxy.com/browse/BK-159): BK-18: TC11: should treat PATCH /atcs/{id} with an empty body as a 200 no-op without version bump or event _(Candidate)_
+- [BK-160](https://jira.upexgalaxy.com/browse/BK-160): BK-18: TC12: should keep slug, user_story_id and module_id immutable when PATCH /atcs/{id} attempts to change them _(Candidate)_
 - [BK-149](https://jira.upexgalaxy.com/browse/BK-149): BK-18: TC01: should create an ATC and return 201 with steps, assertions, slug and version 1 when POST /atcs receives a valid payload _(Candidate)_
 - [BK-150](https://jira.upexgalaxy.com/browse/BK-150): BK-18: TC02: should reject POST /atcs with 401 when auth is missing/invalid and 403 when the token lacks atc:write scope _(Candidate)_
 - [BK-151](https://jira.upexgalaxy.com/browse/BK-151): BK-18: TC03: should reject POST /atcs with 422 ac_outside_user_story when an acceptance criterion belongs to a different user story _(Candidate)_
@@ -86,11 +96,8 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 - [BK-153](https://jira.upexgalaxy.com/browse/BK-153): BK-18: TC05: should reject POST /atcs with 422 steps_position_invalid when step positions are not strictly increasing from 1 _(Candidate)_
 - [BK-154](https://jira.upexgalaxy.com/browse/BK-154): BK-18: TC06: should enforce POST /atcs body boundaries for title length, step count, tag count and layer enum _(Candidate)_
 - [BK-155](https://jira.upexgalaxy.com/browse/BK-155): BK-18: TC07: should write zero rows across atcs/atc_steps/atc_assertions when POST /atcs fails a cross-entity check given a transactional rollback _(Candidate)_
-- [BK-156](https://jira.upexgalaxy.com/browse/BK-156): BK-18: TC08: should return 200, bump version and cascade-replace children when PATCH /atcs/{id} full-replaces with X-If-Match (BK-96 regression) _(Candidate)_
 - [BK-157](https://jira.upexgalaxy.com/browse/BK-157): BK-18: TC09: should honor optimistic locking on PATCH /atcs/{id} (200 matching X-If-Match / 409 stale / 200 absent) _(Candidate)_
 - [BK-158](https://jira.upexgalaxy.com/browse/BK-158): BK-18: TC10: should return 404 not_found when PATCH /atcs/{id} targets a non-existent ATC id _(Candidate)_
-- [BK-159](https://jira.upexgalaxy.com/browse/BK-159): BK-18: TC11: should treat PATCH /atcs/{id} with an empty body as a 200 no-op without version bump or event _(Candidate)_
-- [BK-160](https://jira.upexgalaxy.com/browse/BK-160): BK-18: TC12: should keep slug, user_story_id and module_id immutable when PATCH /atcs/{id} attempts to change them _(Candidate)_
 
 ### Test Execution (1)
 
@@ -102,10 +109,10 @@ Se produjeron 13 Gherkin scenarios (Happy 2 / Negative 7 / Boundary 2 / Integrat
 
 ### Storys (7)
 
-- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For Release)_
 - [BK-19](https://jira.upexgalaxy.com/browse/BK-19): TMS-ATC Builder | Build an ATC with ordered steps and assertions _(Ready For Release)_
-- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(BLOCKED)_
-- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(BLOCKED)_
+- [BK-23](https://jira.upexgalaxy.com/browse/BK-23): TMS-ATC Duplicate | Duplicate an ATC with steps and assertions _(QA Approved)_
+- [BK-15](https://jira.upexgalaxy.com/browse/BK-15): TMS-AC | Manage criteria under a user story _(Ready For Release)_
+- [BK-20](https://jira.upexgalaxy.com/browse/BK-20): TMS-ATC Search | Search and autocomplete ATCs _(QA Approved)_
 - [BK-27](https://jira.upexgalaxy.com/browse/BK-27): TMS-Test Builder | Assemble a test by chaining ATCs _(Ready For Release)_
 - [BK-21](https://jira.upexgalaxy.com/browse/BK-21): TMS-ATC Propagation | Cascade ATC edits to all tests _(QA Approved)_
 - [BK-22](https://jira.upexgalaxy.com/browse/BK-22): TMS-ATC Usage | See a "Used in N tests" report _(QA Approved)_

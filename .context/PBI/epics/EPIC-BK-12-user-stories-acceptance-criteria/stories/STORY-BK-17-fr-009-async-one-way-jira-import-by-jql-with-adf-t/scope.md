@@ -1,6 +1,6 @@
 # BK-17 — Scope
 
-> Jira field: `customfield_10119` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
+> Jira field: `customfield_10055` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-17)
 
 - POST /api/imports - enqueue a Jira import job, return import*job*id
 - GET /api/imports/:id - poll job status (queued | running | completed | failed)

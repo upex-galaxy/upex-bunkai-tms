@@ -49,7 +49,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ acceptance_criterion: data }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const id = extractId(request);
@@ -144,7 +144,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   return jsonResponse({ acceptance_criterion: result }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
   const id = extractId(request);
@@ -187,7 +187,7 @@ export const DELETE = withApiHandler(async (request: NextRequest, ctx) => {
     },
     { status: 200 },
   );
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);

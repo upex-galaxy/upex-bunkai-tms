@@ -163,7 +163,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     { module: data, ...(warning ? { warning: DEEP_NESTING_WARNING } : {}) },
     { status: 201 },
   );
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:write'] });
 
 function extractProjectId(request: NextRequest): string {
   const segments = new URL(request.url).pathname.split('/');

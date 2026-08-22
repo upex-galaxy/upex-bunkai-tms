@@ -5,7 +5,7 @@
 **Type:** Story
 **Status:** Ready For QA
 **Priority:** Medium
-**Story Points:** -
+**Story Points:** 5
 
 ---
 
@@ -17,7 +17,7 @@ As a QA Lead (Mateo Silva) I want to leave a workspace I no longer need, so that
 
 ## QA Refinements (Shift-Left Analysis) — Added 2026-06-10
 
-> Refined Acceptance Criteria live in the `acceptance_criteria` field — the 2 existing scenarios were sharpened in place (refinements, not replacements) and 3 new scenarios were added to fill gaps the original 2 leave open. Every new scenario is flagged ********NEEDS PO/DEV CONFIRMATION**** in the field itself.
+> Refined Acceptance Criteria live in the `acceptance_criteria` field — the 2 existing scenarios were sharpened in place (refinements, not replacements) and 3 new scenarios were added to fill gaps the original 2 leave open. Every new scenario is flagged ******NEEDS PO/DEV CONFIRMATION**** in the field itself.
 
 ### Central finding — the multi-owner gate is the highest-leverage open question
 
@@ -25,9 +25,9 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 
 ### Open Questions for PO / Dev
 
-1. ********Can a workspace have more than one member with ****`role = 'owner'`****, and if so, can any of them leave freely as long as at least one owner remains — or must ownership be transferred/reduced to exactly one other owner first?**** Blocks New Scenario C (co-owner leave) — without an answer this outline cannot be designed or estimated.
-2. ********What happens when a user leaves the only workspace they belong to**** — is "leave" blocked (a "must belong to at least one workspace" guard, symmetric to the sole-owner guard), or does the user land on the onboarding/no-workspace flow? Blocks New Scenario A (boundary outline).
-3. ********(Dev)**** Should workspace-scoped Personal Access Tokens (`access*tokens` rows where `workspace*id` = the left workspace and `user_id` = the leaving user) be auto-revoked as part of the "leave workspace" transaction, or left as functionally-dead-but-not-formally-revoked rows? Determines whether New Scenario B's "no cascade" claim needs a PAT-revocation caveat.
+1. ******Can a workspace have more than one member with**** `role = 'owner'`****, and if so, can any of them leave freely as long as at least one owner remains — or must ownership be transferred/reduced to exactly one other owner first?**** Blocks New Scenario C (co-owner leave) — without an answer this outline cannot be designed or estimated.
+2. ******What happens when a user leaves the only workspace they belong to**** — is "leave" blocked (a "must belong to at least one workspace" guard, symmetric to the sole-owner guard), or does the user land on the onboarding/no-workspace flow? Blocks New Scenario A (boundary outline).
+3. ******(Dev)**** Should workspace-scoped Personal Access Tokens (`access*tokens` rows where `workspace*id` = the left workspace and `user_id` = the leaving user) be auto-revoked as part of the "leave workspace" transaction, or left as functionally-dead-but-not-formally-revoked rows? Determines whether New Scenario B's "no cascade" claim needs a PAT-revocation caveat.
 
 > Full refinement (Critical Analysis, Story Quality Analysis, Edge Cases, ATP DRAFT outlines, Risks & mitigation) lives in the `acceptance*test*plan` field and the pointer comment below. Local working copy: `.context/PBI/epics/EPIC-BK-85-account-settings/stories/STORY-BK-90-tms-workspace-leave-a-workspace/shift-left-refinement.md`
 
@@ -37,22 +37,27 @@ Scenario 2 only describes the SOLE-owner block ("Mateo is the only owner of Acme
 
 > Each rich-text field is a separate file in this folder.
 
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Implementation Plan (Dev)](./implementation-plan.md)
 - [Acceptance Test Plan (QA)](./acceptance-test-plan.md)
 
 ---
 
 ## Traceability
 
-### Story (1)
+### Storys (2)
 
 - [BK-89](https://jira.upexgalaxy.com/browse/BK-89): TMS-Workspace | View the workspaces I belong to _(Ready For QA)_
+- [BK-512](https://jira.upexgalaxy.com/browse/BK-512): TMS-Workspace | Delete a workspace I own _(Backlog)_
 
 ---
 
 ## Metadata
 
 - **Created:** 6/7/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/18/2026
 - **Reporter:** Ely
 - **Assignee:** Andrés Daniel Cumare Morales
 - **Labels:** implementation-plan-ready, shift-left-2026-06-10, shift-left-reviewed

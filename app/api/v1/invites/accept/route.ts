@@ -134,4 +134,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     workspace_id: invite.workspace_id,
     role: invite.role,
   });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Deferred debt carried from BK-262 shift-left: the caller is not yet a member of the workspace when accepting an invite, so no capability-in-that-workspace check can apply.',
+});

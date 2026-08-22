@@ -1,8 +1,8 @@
 # BK-147 — Acceptance Test Results (QA)
 
-> Jira field: `customfield_10147` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
+> Jira field: `customfield_10124` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-147)
 
-## BK-147 — ATR (Final)
+## [https://jira.upexgalaxy.com/browse/BK-147#icft=BK-147](https://jira.upexgalaxy.com/browse/BK-147#icft=BK-147) — ATR (Final)
 
 Result: PASSED (10/11) — App Shell tab workbench.
 

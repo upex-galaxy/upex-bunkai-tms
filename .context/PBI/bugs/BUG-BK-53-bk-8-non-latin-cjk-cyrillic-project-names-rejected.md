@@ -3,7 +3,11 @@
 **Jira Key:** [BK-53](https://jira.upexgalaxy.com/browse/BK-53)
 **Priority:** Low
 **Status:** Closed
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
+**Severity:** Menor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -15,7 +19,7 @@ Project names written in non-Latin scripts (CJK, Cyrillic, etc.) are rejected wi
 
 ## Environment
 
-Staging — https://staging-upexbunkai.vercel.app · API `/api/v1` · 2026-06-04.
+Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/) · API `/api/v1` · 2026-06-04.
 
 ## Severity / Type
 
@@ -24,8 +28,8 @@ Severity: ***Minor**** · Error type: ****functional*** (i18n usability).
 ## Steps to Reproduce
 
 1. Authenticate as an active workspace member.
-2. `POST /api/v1/workspaces/{id}/projects` with `{ "name": "日本語プロジェクト" }`.
-3. Repeat with Cyrillic `{ "name": "Проект" }`.
+2. `POST /api/v1/workspaces/{id}/projects` with {{{ "name": "日本語プロジェクト" }}}.
+3. Repeat with Cyrillic {{{ "name": "Проект" }}}.
 
 ## Expected Result
 
@@ -37,7 +41,7 @@ Both return `422 validation*failed`, `details.reason = name*no_alphanumeric`. La
 
 ## Root Cause (code-confirmed)
 
-`hasAlphanumeric` in the projects route uses an ASCII-only class `[a-z0-9]`. Non-Latin letters fail the check, and `slugify` would also strip them to empty. Consider Unicode-aware validation (`\p{L}\p{N}`) and a transliteration/fallback for the slug.
+`hasAlphanumeric` in the projects route uses an ASCII-only class `[a-z0-9]`. Non-Latin letters fail the check, and `slugify` would also strip them to empty. Consider Unicode-aware validation (`\p{L}\p{N`}) and a transliteration/fallback for the slug.
 
 ## Impact
 
@@ -46,6 +50,12 @@ International users cannot name a project in their own script. Improvement-grade
 ## Evidence
 
 `test-session-memory.md` (T13b row).
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
 
 ---
 

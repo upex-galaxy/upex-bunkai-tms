@@ -3,7 +3,11 @@
 **Jira Key:** [BK-54](https://jira.upexgalaxy.com/browse/BK-54)
 **Priority:** High
 **Status:** Duplicated
-**Components:** Project & Module Hierarchy
+**Components:** Bunkai Projects
+**Severity:** Mayor
+**Error Type:** Functional
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -15,7 +19,7 @@
 
 ## Environment
 
-Staging — https://staging-upexbunkai.vercel.app · API `/api/v1` · 2026-06-04 · cookie-session auth as `bunkai-staging-user`.
+Staging — [https://staging-upexbunkai.vercel.app](https://staging-upexbunkai.vercel.app/) · API `/api/v1` · 2026-06-04 · cookie-session auth as `bunkai-staging-user`.
 
 ## Severity / Type
 
@@ -24,8 +28,8 @@ Severity: ***Major**** · Error type: ****functional*** (latent routing-collisio
 ## Steps to Reproduce
 
 1. Authenticate as an active workspace member.
-2. `POST /api/v1/workspaces/{workspaceId}/projects` with body `{ "name": "api" }`.
-3. Repeat with `{ "name": "new" }`, `{ "name": "settings" }`, `{ "name": "admin" }`, `{ "name": "null" }`, `{ "name": "docs" }`.
+2. `POST /api/v1/workspaces/{workspaceId}/projects` with body {{{ "name": "api" }}}.
+3. Repeat with {{{ "name": "new" }}}, {{{ "name": "settings" }}}, {{{ "name": "admin" }}}, {{{ "name": "null" }}}, {{{ "name": "docs" }}}.
 
 ## Expected Result
 
@@ -49,10 +53,34 @@ Reserved slugs collide with Next.js route segments under `app/(app)/projects/[pr
 
 ---
 
+## 🐞 Actual Result
+
+All six requests returned ***HTTP 201*** and created the project. Verified in DB (`public.projects`) — rows present with slugs `api`, `new`, `settings`, `admin`, `null`, `docs` in workspace `bc75c0d4-6d92-4d3f-a92f-f41e4b1774fe`.
+
+---
+
+## ✅ Expected Result
+
+`422 validation*failed` (or `400`) with `details.reason = slug*reserved` / error code `SLUG_RESERVED`, per AC-11 and the Dev shift-left commitment (reserved list: `api, new, create, edit, delete, settings, admin, null, undefined, true, false, me, self, health, docs, openapi, static, public`).
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
+## 🧫 Evidence
+
+`.context/PBI/epics/EPIC-BK-7-project-module-hierarchy/stories/STORY-BK-8-create-a-project-inside-a-workspace/test-session-memory.md` (T09 row) + DB rows.
+
+---
+
 ## Related Issues
 
-- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 - duplicates: [BK-51](https://jira.upexgalaxy.com/browse/BK-51) - BK-8: Reserved project slugs are not rejected (AC-11) — created with HTTP 201
+- created by: [BK-8](https://jira.upexgalaxy.com/browse/BK-8) - TMS-Project | Create a project inside a workspace
 
 ---
 

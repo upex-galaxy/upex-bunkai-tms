@@ -1,6 +1,6 @@
 # BK-220 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
 
 - ***Visibility parity***: search sees exactly what the member sees — accessible channels only; no result counts, snippets, or hints may leak from inaccessible channels.
 - ***Tombstones excluded***: deleted messages are not searchable; edited messages are searchable by their current text only.

@@ -1,6 +1,6 @@
 # BK-166 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-166)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-166)
 
 - ***Email-first detection***: a single email field determines whether an account exists and routes the user to sign-in (password) or account creation. User enumeration is accepted as a standard tradeoff for this UX, mitigated by rate-limiting.
 - ***Email verification is mandatory on all rails***: an account is not usable (cannot sign in) until its email is verified via a 6-digit one-time code, on both the browser and the API/automation rails. There is no public auto-confirm shortcut.

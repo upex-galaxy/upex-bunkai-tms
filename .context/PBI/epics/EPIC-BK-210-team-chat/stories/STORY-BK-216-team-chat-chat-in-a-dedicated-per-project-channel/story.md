@@ -17,7 +17,20 @@ As Elena Vargas, a Senior QA Engineer, I want to chat in a dedicated channel per
 
 ## Context
 
-The workspace general channel is great for broad questions, but project work needs its own room: a regression discussion for the payments project is noise to the mobile team. This story gives each Project its own channel whose membership follows project access, and switching projects switches the chat context with it. It builds directly on the channel and message primitives from the workspace-channel story and on the shipped Projects model (epic BK-7) — it activates once both are live.
+The workspace general channel is great for broad questions, but project work needs its own room: a regression discussion for the payments project is noise to the mobile team. This story gives each Project its own channel whose membership follows project access, and switching projects switches the chat context with it. It builds directly on the channel and message primitives from the workspace-channel story and on the shipped Projects model (epic [https://jira.upexgalaxy.com/browse/BK-7#icft=BK-7](https://jira.upexgalaxy.com/browse/BK-7#icft=BK-7)) — it activates once both are live.
+
+---
+
+## Fields
+
+> Each rich-text field is a separate file in this folder.
+
+- [Acceptance Criteria](./acceptance-criteria.md)
+- [Business Rules](./business-rules.md)
+- [Scope](./scope.md)
+- [Out Of Scope](./out-of-scope.md)
+- [Workflow](./workflow.md)
+- [Mockup](./mockup.md)
 
 ---
 
@@ -25,7 +38,7 @@ The workspace general channel is great for broad questions, but project work nee
 
 ### Story (1)
 
-- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Backlog)_
+- [BK-215](https://jira.upexgalaxy.com/browse/BK-215): Team Chat | Chat with workspace members in a real-time channel _(Estimation)_
 
 ### Epic (1)
 

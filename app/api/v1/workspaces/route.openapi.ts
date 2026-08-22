@@ -74,7 +74,7 @@ registry.registerPath({
   path: '/api/v1/workspaces',
   tags: ['Workspaces'],
   summary: 'List workspaces the caller belongs to',
-  description: 'RLS-filtered list of every workspace where the caller has an active membership.',
+  description: 'Bearer `atc:read` (or cookie session). RLS-filtered list of every workspace where the caller has an active membership.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   responses: {
     200: {
@@ -85,6 +85,7 @@ registry.registerPath({
       description: 'Caller is not signed in.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

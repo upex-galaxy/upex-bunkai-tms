@@ -8,8 +8,9 @@ import { listTestRuns } from '@lib/supabase/rpc';
 
 // GET /api/v1/tests/{id}/runs — a Test's past Runs, newest first (BK-37).
 // Returns ONLY terminal Runs (passed | failed | aborted): an in-progress Run is
-// never history and is never counted. Read auth only, and NO scope requirement —
-// mirrors GET /api/v1/runs/{id} (the PAT catalog has no run-read scope); the
+// never history and is never counted. Requires `atc:read` (BK-499) —
+// mirrors GET /api/v1/runs/{id}: the PAT catalog has no run-read scope, so run
+// history reuses the read scope rather than minting a fifth one; the
 // read-level membership re-check is enforced inside the SECURITY DEFINER RPC
 // (`bunkai_list_test_runs`), where any active role — viewers included — passes.
 // Non-disclosure (INV-3): missing, not-visible, and foreign-workspace Tests all
@@ -84,7 +85,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       ? null
       : encodeRunCursor({ startedAt: payload.next_cursor.started_at, id: payload.next_cursor.id }),
   }, { status: 200 });
-}, { auth: 'required' });
+}, { auth: 'required', requires: ['atc:read'] });
 
 function extractTestId(request: NextRequest): string {
   // Path ends in `/{id}/runs`, so the id is the second-to-last segment.

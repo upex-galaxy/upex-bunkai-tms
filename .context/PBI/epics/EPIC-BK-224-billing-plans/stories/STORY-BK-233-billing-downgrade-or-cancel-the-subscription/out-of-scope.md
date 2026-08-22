@@ -1,6 +1,6 @@
 # BK-233 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-233)
 
 - Refunds and prorated credits for unused time (unsourced — gap; not offered self-serve)
 - Deleting workspace data as part of any billing action — never happens

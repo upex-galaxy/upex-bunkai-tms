@@ -2,7 +2,7 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-10)
 
-## ATP DRAFT — BK-10 | Module Rename & Soft-Delete
+## ATP DRAFT — [https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10](https://jira.upexgalaxy.com/browse/BK-10#icft=BK-10) | Module Rename & Soft-Delete
 
 ***Status:*** Shift-Left reviewed · 28 outlines (DRAFT) · Risk: HIGH · Refined 2026-06-01
 

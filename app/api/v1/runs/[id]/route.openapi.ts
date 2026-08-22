@@ -16,13 +16,14 @@ registry.registerPath({
   path: '/api/v1/runs/{id}',
   tags: ['Runs'],
   summary: 'Read a Run with its snapshot chain fully expanded',
-  description: 'Cookie session or Bearer PAT (read identity only — viewer role suffices; no write scope required). Returns the Run header plus the ordered run_atcs, each with its ordered run_steps — the immutable snapshot taken at start. Non-disclosing: missing, not-visible, and foreign-workspace Runs all return an identical 404 — never 403, never an existence echo.',
+  description: 'Bearer `atc:read` (or cookie session). Viewer role suffices; no write scope required. Returns the Run header plus the ordered run_atcs, each with its ordered run_steps — the immutable snapshot taken at start. Non-disclosing: missing, not-visible, and foreign-workspace Runs all return an identical 404 — never 403, never an existence echo.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
     200: { description: 'The expanded Run.', content: { 'application/json': { schema: z.object({ run: RunSchema }) } } },
     400: { description: 'Malformed id (not a UUID).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Run not found (missing, not visible, or foreign workspace — non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

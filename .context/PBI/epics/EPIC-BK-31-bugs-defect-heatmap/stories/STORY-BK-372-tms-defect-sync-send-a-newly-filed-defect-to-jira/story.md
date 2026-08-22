@@ -61,21 +61,21 @@ Materialized from BK-43 (ruling 12170, AI Product Owner slicing decision), const
 
 ### Tests (8)
 
-- [BK-234](https://jira.upexgalaxy.com/browse/BK-234): BK-43-TDS01: New defect auto-syncs when integration enabled _(In Automation)_
-- [BK-235](https://jira.upexgalaxy.com/browse/BK-235): BK-43-TDS02: Fire-and-forget sync on network failure _(In Automation)_
-- [BK-238](https://jira.upexgalaxy.com/browse/BK-238): BK-43-TDS05: External update does not flow back to Bunkai _(In Automation)_
-- [BK-239](https://jira.upexgalaxy.com/browse/BK-239): BK-43-TDS06: No sync when integration not configured _(In Automation)_
-- [BK-240](https://jira.upexgalaxy.com/browse/BK-240): BK-43-TDS07: Re-sync does not create duplicate external item _(In Automation)_
-- [BK-245](https://jira.upexgalaxy.com/browse/BK-245): BK-43-TDS12: Field mapping accuracy across severity levels _(In Automation)_
-- [BK-246](https://jira.upexgalaxy.com/browse/BK-246): BK-43-TDS13: Workspace isolation keeps defects in correct projects _(In Automation)_
-- [BK-247](https://jira.upexgalaxy.com/browse/BK-247): BK-43-TDS14: Synced defect carries external link back to Bunkai _(In Automation)_
+- [BK-234](https://jira.upexgalaxy.com/browse/BK-234): BK-372-TDS01: New defect auto-syncs when integration enabled _(In Automation)_
+- [BK-235](https://jira.upexgalaxy.com/browse/BK-235): BK-372-TDS02: Fire-and-forget sync on network failure _(In Automation)_
+- [BK-238](https://jira.upexgalaxy.com/browse/BK-238): BK-372-TDS05: External update does not flow back to Bunkai _(In Automation)_
+- [BK-239](https://jira.upexgalaxy.com/browse/BK-239): BK-372-TDS06: No sync when integration not configured _(In Automation)_
+- [BK-240](https://jira.upexgalaxy.com/browse/BK-240): BK-372-TDS07: Re-sync does not create duplicate external item _(In Automation)_
+- [BK-245](https://jira.upexgalaxy.com/browse/BK-245): BK-372-TDS12: Field mapping accuracy across severity levels _(In Automation)_
+- [BK-246](https://jira.upexgalaxy.com/browse/BK-246): BK-372-TDS13: Workspace isolation keeps defects in correct projects _(In Automation)_
+- [BK-247](https://jira.upexgalaxy.com/browse/BK-247): BK-372-TDS14: Synced defect carries external link back to Bunkai _(In Automation)_
 
 ### Storys (4)
 
 - [BK-371](https://jira.upexgalaxy.com/browse/BK-371): TMS-Defect Sync | Point a project at a Jira destination _(Backlog)_
 - [BK-373](https://jira.upexgalaxy.com/browse/BK-373): TMS-Defect Sync | Recover a failed sync and show its state _(Backlog)_
 - [BK-40](https://jira.upexgalaxy.com/browse/BK-40): TMS-Defect Filing | File a defect from a failing run step _(QA Approved)_
-- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(Ready For QA)_
+- [BK-337](https://jira.upexgalaxy.com/browse/BK-337): TMS-Defect Detail | Open a defect and read its full record _(QA Approved)_
 
 ---
 

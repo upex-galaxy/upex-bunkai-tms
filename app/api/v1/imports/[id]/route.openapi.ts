@@ -13,12 +13,13 @@ registry.registerPath({
   path: '/api/v1/imports/{id}',
   tags: ['Imports'],
   summary: 'Poll an import job',
-  description: 'Member-only. Returns the job status (queued | running | completed | failed) plus per-run counts and per-issue errors.',
+  description: 'Bearer \`atc:read\` (or cookie session). Member-only. Returns the job status (queued | running | completed | failed) plus per-run counts and per-issue errors.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
     200: { description: 'Job.', content: { 'application/json': { schema: z.object({ import_job: ImportJobSchema }) } } },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Missing atc:read scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

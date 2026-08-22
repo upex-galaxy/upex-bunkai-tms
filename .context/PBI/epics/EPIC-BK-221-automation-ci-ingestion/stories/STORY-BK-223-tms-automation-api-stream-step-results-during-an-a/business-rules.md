@@ -1,6 +1,6 @@
 # BK-223 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-223)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-223)
 
 - ***Authentication and role gate***: same contract as the single-call submission story — workspace-scoped Personal Access Token, member role or higher (roles: viewer < member < admin < owner).
 - ***Lifecycle parity***: a streamed run follows the same rules as a manual run — only an in-progress run accepts step results; finishing requires the passed / failed verdict vocabulary; aborting requires a reason.

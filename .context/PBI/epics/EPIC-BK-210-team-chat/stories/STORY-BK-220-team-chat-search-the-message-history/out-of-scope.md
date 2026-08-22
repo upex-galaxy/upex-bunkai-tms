@@ -1,6 +1,6 @@
 # BK-220 — Out Of Scope
 
-> Jira field: `customfield_10075` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
+> Jira field: `customfield_10101` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-220)
 
 - Searching inside rich-card contents (entity titles/states) — search covers message text; entity search lives in the explorer
 - Saved searches and search alerts — future iteration

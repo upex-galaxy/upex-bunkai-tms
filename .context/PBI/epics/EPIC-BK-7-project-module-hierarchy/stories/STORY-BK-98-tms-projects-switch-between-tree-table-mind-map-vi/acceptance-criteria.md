@@ -1,6 +1,6 @@
 # BK-98 — Acceptance Criteria
 
-> Jira field: `customfield_10063` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-98)
+> Jira field: `customfield_10097` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-98)
 
 ## Scenario: View switcher offers Tree, Table and Mind map
 

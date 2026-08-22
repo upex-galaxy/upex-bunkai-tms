@@ -1,6 +1,6 @@
 # BK-226 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-226)
 
 - ***Role gate***: uploads require the member role or higher (roles: viewer < member < admin < owner); the scripted path authenticates with a workspace-scoped Personal Access Token, the in-app path uses the signed-in session.
 - ***File bounds****: one results file per upload, maximum size ****10 MB****. ****JUnit XML*** is the first supported format; other formats are future scope.

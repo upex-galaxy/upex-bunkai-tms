@@ -2,11 +2,11 @@
 
 > Jira field: `customfield_10067` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-21)
 
-# Acceptance Test Plan - BK-21 - TMS-ATC Propagation
+# Acceptance Test Plan - [https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21](https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21) - TMS-ATC Propagation
 
-***Story******:*** BK-21 - TMS-ATC Propagation | Cascade ATC edits to all tests  
-***Epic******:*** BK-13 - ATC Library (Atomic Test Components)  
-***Status******:*** Draft ATP based on Shift-Left QA refinement
+***Story:*** [https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21](https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21) - TMS-ATC Propagation | Cascade ATC edits to all tests  
+***Epic:*** [https://jira.upexgalaxy.com/browse/BK-13#icft=BK-13](https://jira.upexgalaxy.com/browse/BK-13#icft=BK-13) - ATC Library (Atomic Test Components)  
+***Status:*** Draft ATP based on Shift-Left QA refinement
 
 ## Objective
 
@@ -54,7 +54,7 @@ Validate that editing a reusable ATC updates all live Tests that reference that 
 
 ## Test Scenarios
 
-| ID | Layer | Scenario | Priority | Expected Result |
+| ***ID**** | ****Layer**** | ****Scenario**** | ****Priority**** | ****Expected Result*** |
 | --- | --- | --- | --- | --- |
 | BK21-T01 | Integration | Edit one ATC step while the ATC is referenced by multiple active Tests | Critical | All referencing Tests render the updated step on next read and keep the same ATC id reference |
 | BK21-T02 | DB/Integration | Inspect Test-to-ATC relationship after edit | Critical | `test_steps` stores ATC references and does not copy ATC step/assertion content |
@@ -89,7 +89,7 @@ Validate that editing a reusable ATC updates all live Tests that reference that 
 
 ## Entry Criteria
 
-- BK-21 implementation is deployed to the target QA/staging environment.
+- [https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21](https://jira.upexgalaxy.com/browse/BK-21#icft=BK-21) implementation is deployed to the target QA/staging environment.
 - Final PATCH contract is documented or otherwise confirmed by Dev.
 - Test data can be created or seeded for active, unused, cross-workspace, viewer, and historical Run cases.
 - DB/API access is available for reference-integrity validation.

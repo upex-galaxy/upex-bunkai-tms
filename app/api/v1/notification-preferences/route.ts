@@ -31,7 +31,10 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
   const preferences = await listNotificationPreferences(db, principal.userId);
   return jsonResponse({ preferences });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Own account state — the caller reads only their own notification preferences.',
+});
 
 export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal, db } = getAuth(ctx);
@@ -43,4 +46,7 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
 
   const preference = await upsertNotificationPreference(db, principal.userId, input);
   return jsonResponse({ preference });
-}, { auth: 'required' });
+}, {
+  auth: 'authenticated',
+  why: 'Own account state — the caller writes only their own notification preferences.',
+});

@@ -2,8 +2,12 @@
 
 **Jira Key:** [BK-248](https://jira.upexgalaxy.com/browse/BK-248)
 **Priority:** Medium
-**Status:** Ready For QA
+**Status:** Closed
 **Components:** None
+**Severity:** Moderada
+**Error Type:** Integration
+**Test Environment:** Staging
+**Fix Type:** Bugfix
 
 ---
 
@@ -34,10 +38,28 @@ Idempotency middleware at lib/api/idempotency.ts fails on insert into idempotenc
 
 ---
 
+## 🐞 Actual Result
+
+POST /api/v1/tests returns 500: Idempotency insert failed
+
+---
+
+## ✅ Expected Result
+
+201 Created
+
+---
+
+## 🔍 Root Cause
+
+**Category:** Code Error
+
+---
+
 ## Metadata
 
 - **Created:** 7/22/2026
-- **Updated:** 7/31/2026
+- **Updated:** 8/5/2026
 - **Reporter:** Nahuel Gomez
 - **Assignee:** Nahuel Gomez
 - **Labels:** automation-found, bk-27, idempotency, regression-blocker

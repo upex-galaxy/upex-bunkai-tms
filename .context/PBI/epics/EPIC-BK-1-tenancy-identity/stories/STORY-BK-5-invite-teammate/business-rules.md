@@ -1,6 +1,6 @@
 # BK-5 — Business Rules
 
-> Jira field: `customfield_10116` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
+> Jira field: `customfield_10054` · [View in Jira](https://jira.upexgalaxy.com/browse/BK-5)
 
 - Caller's role MUST be ≥ admin to create an invite.
 
