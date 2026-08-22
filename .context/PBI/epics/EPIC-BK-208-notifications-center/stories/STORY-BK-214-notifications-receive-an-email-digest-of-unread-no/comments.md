@@ -213,5 +213,61 @@ Story: BK-214 — Notifications | Receive an email digest of unread notification
 
 ---
 
+### Ely - 8/22/2026, 3:27:40 PM
+
+## AI Tech Lead — Finding: BK-214 is not claimable by an unattended run as currently refined
+
+Recorded by the scheduled `autonomous-delivery` `story` routine of 2026-08-22. This is a ***readiness finding, not a rejection of the story*** and not a status change — BK-214 stays `Ready For Dev`. Its dependencies are genuinely merged and ancestor-verified (BK-209 `aed91e0`, BK-213 `2e91ad9`), its mockup exists and is registered in the design plan, and 5 SP is comfortably inside the size ceiling. It was deferred on four specific defects, each verified against a file in the repository rather than inferred. Three of the four are cheap to close.
+
+### 1. AC4 has no deep-link target, and the absence is ratified rather than accidental
+
+Scenario 4 requires the reader to **"land in his Bunkai notification inbox"**. ***There is no ****`/notifications`**** route.**** The inbox ships as a bell plus a `NotificationsPanel` overlay mounted in `components/layout/AppSidebar.tsx`, held in local component state and portaled — it has no URL representation at all, and `.context/design/master-design-plan.md` records that placement as ratified divergence ****D17***, a deliberate decision.
+
+The refinement's answer to the deep-link question — **"standard session redirect with **`?next=`** param"** — describes a real mechanism (`middleware.ts` honours `next`), but ***it has no legal target to point at***. AC4 is therefore not implementable as written. Closing this needs a product decision: either add a routable inbox surface, or rewrite AC4 to land on `/settings/notifications`, or open the overlay from a query parameter. That decision belongs on this ticket before it is picked up.
+
+### 2. Three artifacts state three different send times, with no ratified divergence
+
+| Artifact | Says |
+| --- | --- |
+| `email-digest-template.html` (the mockup, registered in the design plan §4.13) | Daily at ***17******:******00 workspace time*** |
+| Refinement answer #1 | ***08******:******00 UTC*** daily, no per-user timezone |
+| The story's own workflow narrative | At ***8******:******00*** local |
+
+Under design-fidelity rules a departure from the mockup must be ratified in the design plan's divergence section ***before*** implementation, not decided during it. 08:00 UTC is very likely the right answer — no workspace-timezone column exists to support "workspace time" — but it needs to be recorded as a divergence, and the mockup copy corrected to match, rather than chosen silently by whoever builds it.
+
+### 3. The event-type list names a type that does not exist, and omits six that do
+
+Refinement answer #4 enumerates `run.finished`, `run.aborted`, `bug.assigned`, `bug.status_changed`, `bug.commented`.
+
+`bug.commented`*** does not exist.*** The live vocabulary is `bug.filed`, `bug.assigned`, `bug.reassigned`, `bug.unassigned`, `bug.status_changed`, `run.started`, `run.finished`, `run.aborted`, `milestone.created`, `milestone.updated`. A digest built against the answer as written would silently drop six real event types and filter on one that never appears.
+
+Related, and unclosed by the refinement: `notification*preferences` stores ***no default rows***, so "absence means enabled" has to be resolved by outer join; and the two vocabularies do not line up — `notifications` records `run.finished` / `bug.assigned` while preferences are keyed `run*lifecycle` / `bug_lifecycle`. Scenario 3 ("digest respects my channel preferences") cannot be implemented without that bridge being specified.
+
+### 4. Scheduling and the admin endpoint are a larger, separate decision than the story reflects
+
+Refinement answer #12 commits the story to a Vercel Cron plus `POST /api/v1/admin/send-digest`. Both are greenfield here, and the second is an architectural decision rather than an implementation detail:
+
+- ***No scheduler of any kind exists*** — no `vercel.json`, no `vercel.ts`, no Supabase Edge Functions directory, no `pg_cron`.
+- ***No outbound email exists*** — `resend` is not a dependency, and `RESEND*API*KEY`, while present in the environment file, is not declared in the validated environment schema. All email today is Supabase Auth sending its own one-time codes.
+- ***No route in ******`******app/api/v1/****` authenticates anything other than a user session or a personal access token.*** A cron bearer would be a third principal class, which amends the ratified API-authentication ADR rather than applying it.
+- A digest necessarily performs a ***privileged cross-user read and then sends the result outside the system***. Today a scoping mistake surfaces in an HTTP response to an already-authenticated caller; in a digest it arrives in someone's inbox, where it is neither revocable nor observable by the application. That is a different risk class and deserves its own ADR.
+
+The environment schema detail is a live trap worth stating plainly: the env module throws at import when validation fails, so declaring the Resend key ***required*** would boot-fail every route on staging if the deployment scope lacks it — while declaring it optional means a silently absent key makes the whole feature a no-op that a green test suite would still report as passing.
+
+### What would make this story claimable
+
+1. A decision on AC4's target surface, recorded on this ticket.
+2. A send-time divergence ratified in the design plan, and the mockup copy aligned to it.
+3. The event-type list corrected to the live vocabulary, and the preference-key bridge specified.
+4. The scheduler and the admin endpoint split out, or an ADR ratifying the new principal class and the egress risk ahead of implementation.
+
+Items 1-3 are ordinary refinement. Item 4 is the one that genuinely wants a human in the room, and it is why this routine did not claim the story rather than deciding it alone.
+
+### A note on the refinement's attribution, recorded and deliberately not corrected
+
+The fourteen answers in this story's description are signed `Confirmed by PO Senior`, `Confirmed by Dev Senior` and `Confirmed by UX/UI Designer`, under a heading describing a "cross-role resolution" phase. No such phase is defined anywhere in this project's tooling, and the comment history shows only two participants ever. The substance of most of those answers is sound and this finding ratifies the majority of it — but four of them are wrong about the shipped code in ways a reader of the code would not have gotten wrong, which is a more useful signal than the signatures. Rewriting another author's content is not this routine's call, so it is recorded here and left in place.
+
+---
+
 
 _Synced from Jira by sync-jira-issues_
