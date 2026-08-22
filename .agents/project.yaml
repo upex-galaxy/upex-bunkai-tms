@@ -117,7 +117,7 @@ git_strategy:
   meta:
     setup_version: 2
     created: 2026-06-24 # YYYY-MM-DD stamped by Strategy Setup
-    policy_verified: 2026-08-18 # YYYY-MM-DD of the last reconciliation of `policy:` against the host (git-flow-master Step 1b). null = never verified. Per-project — this file is a template; a fresh project starts unverified
+    policy_verified: 2026-08-22 # YYYY-MM-DD of the last reconciliation of `policy:` against the host (git-flow-master Step 1b). null = never verified. Per-project — this file is a template; a fresh project starts unverified
     policy_source: verified # verified | declared — `declared` means `policy:` records team INTENT and has never been checked against the remote. Never state what the remote requires from a `declared` reading
 
 # WHO decides what, when a question has no settled answer. Read by every skill that
