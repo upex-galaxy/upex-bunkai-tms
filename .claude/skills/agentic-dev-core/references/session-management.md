@@ -47,7 +47,7 @@ Rules:
 
 - `<skill-slug>` matches the skill's directory name under `.claude/skills/`.
 - `<scope>` is invocation-specific (see §9 for the naming convention per skill). Project-scope skills omit it entirely — files live directly at `.session/<skill-slug>/{plan.md, progress.md}`.
-- `.session/` is **gitignored** in both repos. The contents are work-in-progress orchestration scaffolding, not committed deliverables. Audit history lives in (a) Engram observations under the `session/...` topic prefix, (b) the canonical domain artifacts each skill already commits to `.context/...`.
+- `.session/` is **gitignored** in both repos. The contents are work-in-progress orchestration scaffolding, not committed deliverables. Audit history lives in (a) Engram observations under the `session/...` topic prefix, (b) the canonical domain artifacts each skill already persists — Jira fields materialized as `[SYNC]` files under `.context/PBI/` (a gitignored cache; recovery = re-sync, per `CLAUDE.md` §9), plus the committed docs elsewhere under `.context/`.
 - `.session/.archive/` is also gitignored. The archive exists for local resume-replay and human inspection during the same session; long-term audit is delegated to Engram.
 - A skill MUST NOT write anywhere else under `.session/`. Sibling directories under `.session/` are reserved for future use.
 
@@ -103,9 +103,9 @@ The choice is recorded in the skill's SKILL.md "Subagent Dispatch Strategy" tabl
 
 ### Special cases
 
-Some skills have a canonical plan artifact that already lives outside `.session/` and is committed to git (e.g. `sprint-development`'s `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md`). For those skills:
+Some skills have a canonical plan artifact that already lives outside `.session/` (e.g. `sprint-development`'s story implementation plan). For those skills the canonical copy lives **in Jira** (the `spec_implementation_plan` field); the local file at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` is a `[SYNC]` cache materialized by `bun run jira:sync-issues` — gitignored, rebuilt on every sync. History and recovery go through Jira + re-sync, NOT git. For those skills:
 
-- The committed artifact stays canonical.
+- The Jira-held artifact stays canonical; the synced file is how it is read.
 - `.session/<skill-slug>/<scope>/plan.md` MAY be omitted; the skill writes only `progress.md`.
 - `progress.md` §"Cross-references" cites the canonical plan by path.
 
@@ -301,7 +301,7 @@ The subagent treats `plan.md` and `progress.md` as read-only context. Only the o
 
 ### Skills adopting the progress-only variant (no plan.md)
 
-`sprint-development`. The canonical plan stays at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (Jira-synced, committed, PR-reviewed). Only `progress.md` lives under `.session/`.
+`sprint-development`. The canonical plan lives in the Jira `spec_implementation_plan` field, read locally via its `[SYNC]` cache at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (gitignored; recovery = re-sync). Only `progress.md` lives under `.session/`.
 
 ### Skills explicitly excluded
 

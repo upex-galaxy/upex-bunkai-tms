@@ -15,7 +15,7 @@ The gate is simple: **no row may sit at `uncovered` when the PR merges**. Anythi
 
 ## When the matrix is generated
 
-At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged to `staging`. The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the PR description or as a comment on the PR; a copy persists at `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md` with topic_key `pbi/{ticket}/compliance-matrix`.
+At the **end of Stage 3 (Code Review)**, after the static review checklist passes and before the PR is merged to `staging`. The reviewer subagent (or orchestrator, when reviewing inline) produces it. It lands in the PR description or as a comment on the PR (the durable copy); a working copy also lands in the gitignored `.context/PBI/` cache at `epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md` with topic_key `pbi/{ticket}/compliance-matrix`.
 
 If the matrix exposes any `uncovered` row, the PR loops back to Stage 2 with a TODO list (add test, add manual evidence, or reclassify with a real reason). The matrix is never green-lit by hand-waving; the reviewer either edits one of the cells with a real evidence pointer or writes a concrete `exempt:<reason>`.
 
@@ -201,7 +201,7 @@ If the matrix exposes a scenario that nobody can figure out how to verify at all
 
 The matrix lives in two places:
 
-- **Inline in the PR** (description or top-of-thread comment) so reviewers see it without leaving GitHub.
-- **In the project repo** at `.context/PBI/epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
+- **Inline in the PR** (description or top-of-thread comment) so reviewers see it without leaving GitHub. This copy is the durable, canonical one — it survives a fresh clone and is what a future reader (or a different machine) can actually see.
+- **In `.context/PBI/`** at `epics/EPIC-<KEY>-<epic>/stories/STORY-<KEY>-<slug>/compliance-matrix.md`, topic_key `pbi/{ticket}/compliance-matrix`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`. `.context/PBI/` is a gitignored, machine-local cache (not a tracked file in the repo) — nothing downstream may depend on this copy existing; the engram-saved observation and the PR copy are what persist.
 
-Both copies must agree at merge time. If they drift, the in-repo copy is canonical.
+Both copies should agree while the local one exists. If they drift, the PR copy is canonical — regenerate the local cache copy from it, never the other way around.

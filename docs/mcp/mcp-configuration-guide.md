@@ -641,7 +641,7 @@ POST https://czuusjchqpgvanvbdrnz.supabase.co/auth/v1/token?grant_type=password
 **Headers:**
 
 ```
-apikey: {{SUPABASE_ANON_KEY}}
+apikey: {{SUPABASE_PUBLISHABLE_KEY}}
 Content-Type: application/json
 ```
 
@@ -680,7 +680,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```bash
 # Paso 1: Obtener token
 curl -X POST 'https://czuusjchqpgvanvbdrnz.supabase.co/auth/v1/token?grant_type=password' \
-  -H 'apikey: {{SUPABASE_ANON_KEY}}' \
+  -H 'apikey: {{SUPABASE_PUBLISHABLE_KEY}}' \
   -H 'Content-Type: application/json' \
   -d '{"email":"{{DEMO_EMAIL}}","password":"{{DEMO_PASSWORD}}"}'
 

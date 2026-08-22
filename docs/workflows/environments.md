@@ -151,7 +151,9 @@ Múltiples ambientes intermedios. "Canary" despliega a un pequeño % de usuarios
 
 ## Ambientes en Este Template
 
-Para este proyecto educativo, usamos **3 ambientes**:
+> **Fuente de verdad:** los ambientes reales de cada proyecto (y sus URLs) se declaran en `.agents/project.yaml` → bloque `environments:` (`web_url`, `api_url`, `db_project_ref` por ambiente; `testing.default_env` marca el activo). El mapeo branch↔ambiente depende del bloque `git_strategy:` del mismo archivo — el repo del boilerplate en sí opera como **solo-main** (solo existe `main`, sin branch `staging`).
+
+Como default recomendado para un proyecto scaffoldeado, usamos **3 ambientes**:
 
 ### Local (tu máquina)
 
@@ -220,6 +222,8 @@ DEBUG_MODE=false
 
 Esto se maneja con archivos `.env` o variables de entorno en el servidor.
 
+**En este boilerplate:** las URLs por ambiente NO viven en `.env` — se declaran en `.agents/project.yaml` (`environments:`), y los prompts las resuelven como `{{WEB_URL}}` / `{{API_URL}}` según el ambiente activo. En `.env` quedan solo credenciales y secretos.
+
 ---
 
 ## Testing en Cada Ambiente
@@ -272,7 +276,7 @@ Nunca ejecutes tests experimentales en producción. Siempre usa staging.
 Violarías la privacidad de usuarios y posibles regulaciones legales.
 
 **❌ Hacer push directamente a main**
-Siempre pasa por staging primero.
+Siempre pasa por staging primero — cuando tu `git_strategy` define una branch de integración. En una estrategia `solo-main` (como el repo del boilerplate) el push directo a `main` ES el flujo.
 
 **❌ Asumir que staging = producción**
 Aunque son similares, pueden tener diferencias sutiles. Monitorea producción post-deploy.
@@ -323,7 +327,7 @@ Los ambientes te protegen de errores costosos. Pruebas localmente, integras en s
 
 El mercado usa principalmente: Local → Dev → Staging → Production.
 
-Este template usa: Local → Staging → Production (simplificado para aprendizaje).
+Este template recomienda por default: Local → Staging → Production (simplificado para aprendizaje). Los ambientes reales de tu proyecto se declaran en `.agents/project.yaml` → `environments:`.
 
 ---
 

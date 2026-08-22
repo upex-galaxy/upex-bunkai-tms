@@ -1,6 +1,6 @@
 # Sincronizar OpenAPI - Guia de Uso
 
-Esta guia explica como usar el script `sync-openapi.ts` para sincronizar especificaciones OpenAPI desde repositorios remotos.
+Esta guia explica como usar el script `sync-openapi.ts` para sincronizar especificaciones OpenAPI desde tres fuentes: una URL HTTP, un repositorio de GitHub, o un archivo local.
 
 ---
 
@@ -19,7 +19,7 @@ Usa `sync-openapi.ts` cuando:
 
 ---
 
-## Setup Inicial
+## Setup Inicial (solo para la fuente GitHub)
 
 ### 1. Verificar GitHub CLI
 
@@ -50,7 +50,7 @@ gh repo view owner/backend-repo
 bun run api:sync
 ```
 
-El script te preguntara:
+El script te preguntara primero la fuente (`URL / GitHub / Local`) y luego los datos de esa fuente. Para GitHub:
 
 1. **Repository (owner/repo):** Ej. `myorg/backend-api`
 2. **Branch:** Ej. `main` o `develop`
@@ -66,25 +66,30 @@ bun run api:sync --config
 bun run api:sync -c
 ```
 
-### Sincronizar y generar tipos TypeScript
+### Fuentes no interactivas
 
 ```bash
-bun run api:sync -c --generate-types
-# o
-bun run api:sync -c -t
+bun run api:sync --url http://localhost:3000/api/openapi   # desde una URL
+bun run api:sync --file ./backend/docs/openapi.yaml        # desde archivo local
 ```
 
-Esto genera `api/types.ts` usando `openapi-typescript`.
+### Tipos TypeScript
+
+Cada sync genera `api/openapi-types.ts` **por defecto** usando `openapi-typescript` (no hay flag para pedirlos). Para saltar la generacion:
+
+```bash
+bun run api:sync --no-types
+```
 
 ---
 
 ## Archivos generados
 
-| Archivo                    | Descripcion                 |
-| -------------------------- | --------------------------- |
-| `api/.openapi-config.json` | Configuracion guardada      |
-| `api/openapi.yaml`         | Spec descargado             |
-| `api/types.ts`             | Tipos TypeScript (con `-t`) |
+| Archivo                     | Descripcion                              |
+| --------------------------- | ---------------------------------------- |
+| `api/.openapi-config.json`  | Configuracion guardada                   |
+| `api/openapi.yaml` / `.json`| Spec descargado (segun formato original) |
+| `api/openapi-types.ts`      | Tipos TypeScript (default; `--no-types` los salta) |
 
 ---
 
@@ -92,10 +97,13 @@ Esto genera `api/types.ts` usando `openapi-typescript`.
 
 ```json
 {
+  "source": "github",
   "repo": "myorg/backend-api",
   "branch": "main",
   "filePath": "docs/openapi.yaml",
-  "lastSync": "2024-01-15T10:30:00.000Z"
+  "specFile": "openapi.yaml",
+  "lastSync": "2024-01-15T10:30:00.000Z",
+  "endpointCount": 42
 }
 ```
 
@@ -128,7 +136,7 @@ Usa el spec descargado con `@ivotoby/openapi-mcp-server`:
 ### Opcion B: Usar tipos en tests Playwright
 
 ```typescript
-import type { paths } from '../api/types';
+import type { paths } from '../api/openapi-types';
 
 type UserResponse = paths['/users/{id}']['get']['responses']['200']['content']['application/json'];
 ```

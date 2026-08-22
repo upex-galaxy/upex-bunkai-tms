@@ -129,7 +129,7 @@ Write `.context/dev-roadmap.md` with this structure.
 > **Authority**: dependency edges + execution sprints + mockup-gates are owned HERE. Live story status is owned by the issue tracker (see §6 — never frozen here).
 ```
 
-**Never emit a single undifferentiated "Last sync" date.** One timestamp invites the reader to treat everything on the page as fresh, including availability — and the durable layers (edges, gates) move on a completely different axis from a ticket's status today. Separate dates, plus the explicit "no status snapshot" line, keep those axes visibly apart. A recent edge date says nothing about whether BK-39 is still open.
+**Never emit a single undifferentiated "Last sync" date.** One timestamp invites the reader to treat everything on the page as fresh, including availability — and the durable layers (edges, gates) move on a completely different axis from a ticket's status today. Separate dates, plus the explicit "no status snapshot" line, keep those axes visibly apart. A recent edge date says nothing about whether PROJ-39 is still open.
 
 ### 1. How to read this — authority split
 Open with a **plain-language TL;DR** so any reader (especially an AI loading this cold) gets it in one breath:
@@ -139,7 +139,7 @@ Open with a **plain-language TL;DR** so any reader (especially an AI loading thi
 > Answers ONE question: "which ticket do we work next, and what is blocking it?" It is NOT the strategy plan and does NOT store live status.
 > - "why this epic order?" → master-implementation-plan.md (strategy). Not here.
 > - "what ticket is next + what unblocks what?" → you are in the right doc (§3 graph, §4 sprints, §5 gates).
-> - "is BK-X done yet?" → do NOT read it off this page. Query it live (§6).
+> - "is PROJ-X done yet?" → do NOT read it off this page. Query it live (§6).
 > One-line rule: §2–§5 are durable truth; live status is always a query, never a paste.
 ```
 
@@ -158,8 +158,8 @@ The Kahn-sort output (Execution Sprint | parallel-safe count | story keys | note
 
 | Banned (reads as status) | Required (reads as order) |
 | ------------------------ | ------------------------- |
-| "BK-39 workable now" | "BK-39 workable once BK-38 is dev-done" |
-| "ready" / "unblocked" / "available" / "next up" / "can start today" | "unblocked by BK-38" / "no upstream edges" / "first in Execution Sprint 2" |
+| "PROJ-39 workable now" | "PROJ-39 workable once PROJ-38 is dev-done" |
+| "ready" / "unblocked" / "available" / "next up" / "can start today" | "unblocked by PROJ-38" / "no upstream edges" / "first in Execution Sprint 2" |
 | "already done" / "shipped" | (say nothing about completion — that is §6) |
 
 Same rule in the user's language: any phrasing implying a ticket's CURRENT state is banned here. A story with no upstream edges is described as having no upstream edges, never as "ready to work" — whether it can actually be picked up depends on its live status, which this page does not know.

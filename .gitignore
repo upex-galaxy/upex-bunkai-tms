@@ -149,3 +149,8 @@ cookies.txt
 
 # ----- 2026-08-18 (sync) -----
 .claude/worktrees/
+
+# ----- 2026-08-22 (sync) -----
+.context/PBI/*
+!.context/PBI/README.md
+!.context/PBI/templates/

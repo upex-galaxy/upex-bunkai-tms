@@ -10,6 +10,8 @@
 
 Este proyecto usa un GitFlow adaptado para trabajar con inteligencia artificial. La AI genera código y lo commitea inteligentemente, pero **tú mantienes el control** en los puntos clave.
 
+> **Fuente de verdad:** la estrategia activa de CADA proyecto vive en el bloque `git_strategy:` de `.agents/project.yaml`, y la skill `git-flow-master` la detecta y adapta cada commit/branch/PR a ella (verifícala contra el host con `bun run git:policy verify`). Este documento describe el sabor de referencia **main + staging** (main-integration). El repo del boilerplate en sí opera como **solo-main**: una sola branch `main`, sin `staging`.
+
 ---
 
 ## Estructura de Branches
@@ -173,14 +175,14 @@ git log --graph --oneline --all
 
 ## Integración con GitHub
 
-Este flujo se potencia con GitHub MCP, que permite a la AI:
+Este flujo se potencia con el CLI `gh` (que la skill `git-flow-master` opera), y permite a la AI:
 
 - Ver pull requests existentes
 - Crear nuevos PRs con descripción automática
 - Listar issues y vincularlos a commits
 - Revisar estado de checks automáticos
 
-Sin GitHub MCP configurado, el flujo funciona pero pierdes automatización en la parte de PRs.
+Sin `gh` autenticado (`gh auth status`), el flujo funciona pero pierdes automatización en la parte de PRs.
 
 ---
 

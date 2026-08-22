@@ -5,6 +5,19 @@ license: MIT
 compatibility: [claude-code, opencode]
 phase: foundation
 complementary_categories: []
+# compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
+# no truncation). Keep in sync with the MCP decision rule + "What this skill does NOT do" in the body below.
+compact_rules: |
+  - Use **Context7** for "how to use X" — official docs, current API
+  - Use **Tavily** for "how to solve X" — community fixes, troubleshooting
+  - Use **Atlassian** only as fallback — prefer `/acli` skill (fewer tokens, faster)
+  What this skill does NOT do:
+  - Implement features → use `/sprint-development`
+  - Write unit tests → use `/unit-testing`
+  - Refine acceptance criteria → use `/product-management`
+  - Define a brand-new product → use `/project-foundation`
+  - Scaffold backend / frontend code → use `/project-bootstrap`
+  - Generate the in-app `/qa` page + credentials artifact → use `/testability-guide`
 ---
 
 <!-- Model preferences (advisory; dispatchers may use to route) -->
@@ -57,7 +70,7 @@ Skip step if the catalog is unavailable; log `skill_resolution: "fallback-inline
 | Language    | TypeScript (strict mode)              |
 | Runtime     | bun                                   |
 | Lint/format | ESLint + Prettier (pre-commit hooks)  |
-| Tests       | Vitest (unit) + Playwright (E2E)      |
+| Tests       | Vitest (unit) + Playwright (E2E) — scaffolded app stack; this repo's own suite runs on Bun's test runner |
 | AI agent    | Claude Code (primary), OpenCode (alt) |
 
 The stack is intentionally locked. If your project needs a different stack, this boilerplate is not the right starting point.

@@ -22,6 +22,9 @@ This directory is what makes a fresh AI session productive on day one. Every fil
 ├── master-implementation-plan.md  High-level dependency-cascaded roadmap — EPIC/strategy (/master-implementation-plan)
 ├── dev-roadmap.md                 Ticket-level dependency execution roadmap — TICKET/sequence (/dev-roadmap; subsumes PBI/sprint-sequence.md)
 │
+├── reports/                       Sprint-level cross-ticket dev trackers (/sprint-development batch)
+│   └── README.md                  Lifecycle rules for SPRINT-{N}-DEVELOPMENT.md
+│
 ├── PRD/                           Output of /project-foundation Phase 2 — Product Requirements
 │   └── README.md                  Phase placeholder (see file)
 │
@@ -55,15 +58,15 @@ Every file in `.context/` has an owner. Do not edit auto-generated files by hand
 | `PRD/*.md`                                          | `/project-foundation` (Phase 2)         | Executive summary, personas, MVP scope, user journeys  |
 | `SRS/*.md`                                          | `/project-foundation` (Phase 2)         | Functional / non-functional / architecture / API specs |
 | `ADR/ADR-NNNN-<slug>.md`                            | Human architect, or `/project-foundation` (SRS) / `/sprint-development` (Stage 1) — AI drafts for human approval | **Exception: append-only, never regenerated.** Superseded by a newer ADR, never overwritten or hand-re-run. See `ADR/README.md`. |
-| `PBI/epics/EPIC-<KEY>-<slug>/epic.md`               | `/product-management` (epic creation)   | Topic key: `pbi/{epic-slug}/epic`                      |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/spec.md`            | `/product-management` (AC refinement)   | Topic key: `pbi/{ticket}/spec`                         |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` | `/sprint-development` Stage 1                   | Topic key: `pbi/{ticket}/impl-plan`                    |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md`          | `/sprint-development` Stage 3                   | Topic key: `pbi/{ticket}/review`                       |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/compliance-matrix.md` | `/sprint-development` Stage 3                   | Topic key: `pbi/{ticket}/compliance-matrix`            |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/bug-fix.md`         | `/sprint-development` Stage 2 (bug-fix flow)    | Topic key: `pbi/{ticket}/bug-fix`                      |
-| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/edge-cases.md`      | `/product-management` (enumeration)     | Topic key: `pbi/{ticket}/edge-cases`                   |
+| `reports/SPRINT-{N}-DEVELOPMENT.md`                 | `/sprint-development` (batch mode)      | Cross-ticket sprint tracker; lifecycle → `reports/README.md` |
+| `PBI/epic-tree.md`, `PBI/epics/EPIC-<KEY>-<slug>/epic.md`               | **[SYNC]** — content authored in Jira by `/product-management` (epic creation), materialized by `bun run context:hydrate`   | Gitignored cache, not committed. Topic key: `pbi/{epic-slug}/epic`                      |
+| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/story.md`, `acceptance-criteria.md`, `scope.md`, `out-of-scope.md`, `business-rules.md`, `workflow.md`            | **[SYNC]** — content authored in Jira by `/product-management` (AC refinement), materialized by `bun run context:hydrate`   | Gitignored cache, not committed. Topic key: `pbi/{ticket}/spec`                         |
+| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` | **[SYNC]** — pushed to Jira `spec_implementation_plan` field by `/sprint-development` Stage 1, materialized by `bun run context:hydrate`                  | Gitignored cache, not committed. Topic key: `pbi/{ticket}/impl-plan`                    |
+| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/comments.md`         | **[SYNC]** — `bun run context:hydrate` (`--include-comments`)    | Gitignored cache, not committed.                       |
+| `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md`, `progress.md`, `evidence/` | **[LOCAL]** — dev-authored, hand-written     | Machine-local, disposable; nothing downstream may depend on these existing. Durable session state lives under `.session/` instead; durable evidence goes to Jira. |
+| `PBI/README.md`, `PBI/templates/`      | Hand-maintained     | **[COMMIT]** — the only paths under `PBI/` actually tracked in git                  |
 
-Full topic-key conventions: `.claude/skills/agentic-dev-core/references/topic-key-conventions.md`.
+Plan history for a story lives in the Jira field's own edit history (plus engram), not in git log — the files above are a regenerable read cache, never a commit target. Full tier rules: `.context/PBI/README.md` and `CLAUDE.md` §9. Full topic-key conventions: `.claude/skills/agentic-dev-core/references/topic-key-conventions.md`.
 
 ## Minimum viable context
 

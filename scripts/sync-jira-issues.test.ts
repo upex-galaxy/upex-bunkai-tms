@@ -1,180 +1,288 @@
-/**
- * Regression coverage for BK-502 — `--include-comments` was accepted and silently
- * dropped for every non-coverable work type (`Bug`, `Improvement`), while the
- * coverable path (`Defect`) honoured it.
- *
- * These tests drive the REAL routing path (`routeIssueByKey` -> `syncStandaloneIssue`)
- * against a throwaway HTTP server speaking the Jira REST shapes the script consumes,
- * and against the REAL `.agents/jira-required.yaml` registry — so the `coverable:`
- * flags that decide the routing are the project's own, not a fixture.
- */
-import type { Config, SyncOptions } from './sync-jira-issues.ts';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { emptyResult, routeIssueByKey } from './sync-jira-issues.ts';
+import { describe, expect, test } from 'bun:test';
 
-const COMMENT_BODY = 'Activation still pending — cross-device sign-in broken in production';
-const COMMENT_AUTHOR = 'QA Owner';
+import {
+  classifyCoverageLinks,
+  classifyQaArtifactEpic,
+  DEFAULT_QA_ARTIFACT_LABEL,
+  defaultSweepEntries,
+  higherAltitudeLabel,
+  outOfScopeTypeNames,
+} from './sync-jira-issues.ts';
 
-/** Minimal ADF doc: one paragraph of plain text. */
-function adfParagraph(text: string) {
-  return { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] };
-}
+// ---------------------------------------------------------------------------
+// Shared fixtures (pure objects — no network, no file writes)
+// ---------------------------------------------------------------------------
 
-/** Jira issues this fake instance serves, keyed by issue key. */
-const ISSUES: Record<string, { issuetype: string, summary: string }> = {
-  'BK-9001': { issuetype: 'Bug', summary: 'Flat-file bug with a comment trail' },
-  'BK-9002': { issuetype: 'Improvement', summary: 'Flat-file improvement with a comment trail' },
-  'BK-9003': { issuetype: 'Defect', summary: 'Folder-layout defect control case' },
-};
-
-let server: ReturnType<typeof Bun.serve>;
-let outputDir: string;
-
-function config(): Config {
+/** Minimal work-type entry matching the shape `loadRegistry()` produces. */
+function entry(over: Record<string, unknown>): Record<string, unknown> {
   return {
-    baseUrl: server.url.origin,
-    displayUrl: 'https://jira.example.test',
-    email: 'sync@example.test',
-    apiToken: 'not-a-real-token',
-    project: 'BK',
-    projectKeySource: 'project.yaml',
-    instanceSource: 'project.yaml',
-    instanceWarning: null,
-    outputDir,
+    slug: 'story',
+    jiraIssueType: 'Story',
+    sync: 'never',
+    recommended: false,
+    coverable: false,
+    container: false,
+    role: null,
+    content: null,
+    defectLinkTypes: [],
+    localDir: null,
+    ...over,
   };
 }
 
-function options(includeComments: boolean): SyncOptions {
-  return { issueType: 'stories', includeComments, dryRun: false, json: true, noDefects: true };
+/** Builds a Registry (list + byJiraType + bySlug) from plain entries. */
+function makeRegistry(entries: Array<Record<string, unknown>>): never {
+  const byJiraType = new Map<string, unknown>();
+  const bySlug = new Map<string, unknown>();
+  for (const e of entries) {
+    byJiraType.set(e.jiraIssueType as string, e);
+    bySlug.set(e.slug as string, e);
+  }
+  return { list: entries, byJiraType, bySlug } as never;
 }
 
-beforeAll(() => {
-  outputDir = mkdtempSync(join(tmpdir(), 'bk502-sync-'));
-  server = Bun.serve({
-    port: 0,
-    fetch(req) {
-      const { pathname } = new URL(req.url);
+/** The registry shape this repo ships for coverage discovery. */
+const coverageRegistry = makeRegistry([
+  entry({ slug: 'story', jiraIssueType: 'Story', sync: 'default', coverable: true }),
+  entry({ slug: 'bug', jiraIssueType: 'Bug', sync: 'default' }),
+  entry({ slug: 'epic', jiraIssueType: 'Epic', sync: 'default', container: true }),
+  entry({ slug: 'defect', jiraIssueType: 'Defect', sync: 'discovery', coverable: true }),
+  entry({ slug: 'test_plan', jiraIssueType: 'Test Plan', sync: 'discovery', role: 'atp' }),
+  entry({ slug: 'test_execution', jiraIssueType: 'Test Execution', sync: 'discovery', role: 'atr' }),
+  entry({ slug: 're_test_execution', jiraIssueType: 'Re-Test Execution', sync: 'discovery', role: 'atr' }),
+  entry({ slug: 'test_set', jiraIssueType: 'Test Set', sync: 'never' }),
+  entry({ slug: 'test_case', jiraIssueType: 'Test', sync: 'never' }),
+]);
 
-      if (/^\/rest\/api\/3\/issue\/[\w-]+\/comment$/.test(pathname)) {
-        return Response.json({
-          comments: [{
-            id: '1',
-            author: { displayName: COMMENT_AUTHOR },
-            body: adfParagraph(COMMENT_BODY),
-            created: '2026-08-17T10:00:00.000+0000',
-            updated: '2026-08-17T10:00:00.000+0000',
-          }],
-        });
-      }
-
-      const issue = pathname.match(/^\/rest\/api\/3\/issue\/([\w-]+)$/);
-      if (issue) {
-        const key = issue[1];
-        const meta = key ? ISSUES[key] : undefined;
-        if (!key || !meta) { return new Response('not found', { status: 404 }); }
-        return Response.json({
-          key,
-          fields: {
-            summary: meta.summary,
-            issuetype: { name: meta.issuetype },
-            status: { name: 'In Progress' },
-            priority: { name: 'Medium' },
-            description: adfParagraph('Synthetic fixture issue.'),
-            created: '2026-08-17T09:00:00.000+0000',
-            updated: '2026-08-17T09:30:00.000+0000',
-            reporter: { displayName: 'Reporter' },
-            assignee: { displayName: 'Assignee' },
-            issuelinks: [],
-            labels: [],
-            components: [],
-          },
-        });
-      }
-
-      // Coverage discovery (defect control case) issues a JQL search. These tests run
-      // with `noDefects: true`, so the empty result is a deliberate no-op stub — it is
-      // NOT a fixture for coverage discovery. Anything asserting on ATP/ATR/defect
-      // nesting must serve real issues here instead of trusting this branch.
-      if (pathname === '/rest/api/3/search/jql') {
-        return Response.json({ issues: [], isLast: true });
-      }
-
-      return new Response('unhandled', { status: 500 });
+/** An issue whose links point at the given (issueType, summary) pairs. */
+function issueWithLinks(links: Array<{ type: string, summary: string, key?: string }>): never {
+  return {
+    key: 'PROJ-1',
+    fields: {
+      summary: 'A story',
+      issuelinks: links.map((l, i) => ({
+        id: String(i),
+        type: { id: '10', name: 'Test', inward: 'is tested by', outward: 'tests' },
+        inwardIssue: {
+          key: l.key ?? `PROJ-${100 + i}`,
+          fields: { summary: l.summary, issuetype: { name: l.type, subtask: false } },
+        },
+      })),
     },
-  });
-});
-
-afterAll(() => {
-  void server?.stop(true);
-  if (outputDir) { rmSync(outputDir, { recursive: true, force: true }); }
-});
-
-/** Reads the single flat file the sync writes for a `content: single` work type. */
-function readFlatFile(subdir: string, prefix: string, key: string): string {
-  const dir = join(outputDir, subdir);
-  const name = new Bun.Glob(`${prefix}-${key}-*.md`).scanSync({ cwd: dir })[Symbol.iterator]().next();
-  expect(name.done, `no ${prefix}-${key}-*.md written under ${subdir}/`).toBe(false);
-  return readFileSync(join(dir, name.value as string), 'utf-8');
+  } as never;
 }
 
-describe('sync-jira-issues --include-comments (BK-502)', () => {
-  it('embeds the comment trail in the flat file of a Bug (coverable: false)', async () => {
-    const result = emptyResult();
-    await routeIssueByKey(config(), 'BK-9001', options(true), result);
+// ---------------------------------------------------------------------------
+// QA-artifact epic classifier (three signals, descending confidence)
+// ---------------------------------------------------------------------------
 
-    expect(result.warnings).toEqual([]);
-    expect(result.synced.bugs).toBe(1);
+describe('classifyQaArtifactEpic', () => {
+  const cfg = { label: DEFAULT_QA_ARTIFACT_LABEL, cachedKeys: new Set(['PROJ-900']) };
+  const epic = (over: Record<string, unknown>): never =>
+    ({ key: 'PROJ-1', fields: { summary: 'Checkout', labels: [], ...over } }) as never;
 
-    const md = readFlatFile('bugs', 'BUG', 'BK-9001');
-    expect(md).toContain('## Comments');
-    expect(md).toContain(COMMENT_AUTHOR);
-    expect(md).toContain(COMMENT_BODY);
+  test('a product epic is not an artifact bucket', () => {
+    expect(classifyQaArtifactEpic(epic({}), cfg)).toBeNull();
   });
 
-  it('embeds the comment trail in the flat file of an Improvement (coverable defaults false)', async () => {
-    const result = emptyResult();
-    await routeIssueByKey(config(), 'BK-9002', options(true), result);
-
-    expect(result.warnings).toEqual([]);
-    expect(result.synced.improvements).toBe(1);
-
-    const md = readFlatFile('improvements', 'IMPROVEMENT', 'BK-9002');
-    expect(md).toContain('## Comments');
-    expect(md).toContain(COMMENT_BODY);
+  test('the label is authoritative', () => {
+    expect(classifyQaArtifactEpic(epic({ labels: ['QA-Artifact'] }), cfg)).toEqual({ via: 'label' });
   });
 
-  it('omits the section when --include-comments is not passed', async () => {
-    const result = emptyResult();
-    await routeIssueByKey(config(), 'BK-9001', options(false), result);
-
-    const md = readFlatFile('bugs', 'BUG', 'BK-9001');
-    expect(md).not.toContain('## Comments');
-    expect(md).not.toContain(COMMENT_BODY);
+  test('a cached qa_epics key is recognized without the label', () => {
+    const e = { key: 'PROJ-900', fields: { summary: 'Anything', labels: [] } } as never;
+    expect(classifyQaArtifactEpic(e, cfg)).toEqual({ via: 'cached-key' });
   });
 
-  it('keeps the sync footer last so the file contract is unchanged', async () => {
-    const result = emptyResult();
-    await routeIssueByKey(config(), 'BK-9001', options(true), result);
-
-    const md = readFlatFile('bugs', 'BUG', 'BK-9001');
-    expect(md.trimEnd().endsWith('_Synced from Jira by sync-jira-issues_')).toBe(true);
-    expect(md.indexOf('## Comments')).toBeGreaterThan(md.indexOf('## Metadata'));
-    // A comment already closes with its own `---`; the section must not add a second.
-    expect(md).not.toContain('---\n\n---');
+  test('falls back to the QA name prefix, reporting the weaker signal', () => {
+    expect(classifyQaArtifactEpic(epic({ summary: 'QA Test Repository' }), cfg))
+      .toEqual({ via: 'name-prefix' });
   });
 
-  it('control: a Defect (coverable: true) still gets its own comments.md', async () => {
-    const result = emptyResult();
-    await routeIssueByKey(config(), 'BK-9003', options(true), result);
+  test('the label wins over the prefix so the signal is never downgraded', () => {
+    const e = epic({ summary: 'QA Test Repository', labels: ['QA-Artifact'] });
+    expect(classifyQaArtifactEpic(e, cfg)).toEqual({ via: 'label' });
+  });
 
-    const dir = new Bun.Glob('DEFECT-BK-9003-*').scanSync({ cwd: join(outputDir, 'defects'), onlyFiles: false });
-    const folder = dir[Symbol.iterator]().next();
-    expect(folder.done).toBe(false);
+  test('"QA" without a trailing space is a product epic', () => {
+    // "QAlity Dashboard" must not be swept up by the prefix heuristic.
+    expect(classifyQaArtifactEpic(epic({ summary: 'QAlity Dashboard' }), cfg)).toBeNull();
+  });
 
-    const md = readFileSync(join(outputDir, 'defects', folder.value as string, 'comments.md'), 'utf-8');
-    expect(md).toContain(COMMENT_BODY);
+  test('tolerates an epic with no labels field', () => {
+    const e = { key: 'PROJ-2', fields: { summary: 'Checkout' } } as never;
+    expect(classifyQaArtifactEpic(e, cfg)).toBeNull();
+  });
+
+  test('honours a project-specific label instead of the default', () => {
+    const custom = { label: 'proceso-qa', cachedKeys: new Set<string>() };
+    expect(classifyQaArtifactEpic(epic({ labels: ['proceso-qa'] }), custom)).toEqual({ via: 'label' });
+    expect(classifyQaArtifactEpic(epic({ labels: ['QA-Artifact'] }), custom)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Altitude guard (title-prefix classification of linked Plans / Executions)
+// ---------------------------------------------------------------------------
+
+describe('higherAltitudeLabel', () => {
+  test('sprint-altitude for STP and STR', () => {
+    expect(higherAltitudeLabel('STP: Sprint 4 test plan')).toBe('sprint-altitude');
+    expect(higherAltitudeLabel('str: sprint 4 results')).toBe('sprint-altitude');
+  });
+
+  test('feature-altitude for FTP and the legacy FTR', () => {
+    expect(higherAltitudeLabel('FTP: Checkout feature plan')).toBe('feature-altitude');
+    expect(higherAltitudeLabel('FTR: Checkout feature results')).toBe('feature-altitude');
+  });
+
+  test('master-plan-altitude for MTP', () => {
+    expect(higherAltitudeLabel('MTP: Master test plan')).toBe('master-plan-altitude');
+  });
+});
+
+describe('classifyCoverageLinks — altitude guard', () => {
+  test('an ATP: Test Plan feeds the atp bucket', () => {
+    const { atp, skipped } = classifyCoverageLinks(
+      issueWithLinks([{ type: 'Test Plan', summary: 'ATP: PROJ-1: login plan' }]),
+      coverageRegistry,
+    );
+    expect(atp).toHaveLength(1);
+    expect(skipped).toHaveLength(0);
+  });
+
+  test('an unprefixed Test Plan keeps the legacy behavior (backward compat)', () => {
+    const { atp } = classifyCoverageLinks(
+      issueWithLinks([{ type: 'Test Plan', summary: 'Login test plan' }]),
+      coverageRegistry,
+    );
+    expect(atp).toHaveLength(1);
+  });
+
+  test('higher-altitude Plans are skipped, never materialized as the ATP', () => {
+    for (const summary of ['FTP: Checkout plan', 'STP: Sprint 4 plan', 'MTP: Master plan']) {
+      const { atp, skipped } = classifyCoverageLinks(
+        issueWithLinks([{ type: 'Test Plan', summary }]),
+        coverageRegistry,
+      );
+      expect(atp).toHaveLength(0);
+      expect(skipped).toEqual([expect.objectContaining({ role: 'ATP', summary })]);
+    }
+  });
+
+  test('an STR: Execution is skipped while a ReTest: Execution counts as ATR', () => {
+    const { atr, skipped } = classifyCoverageLinks(
+      issueWithLinks([
+        { type: 'Test Execution', summary: 'STR: Sprint 4 results' },
+        { type: 'Re-Test Execution', summary: 'ReTest: PROJ-1 login' },
+      ]),
+      coverageRegistry,
+    );
+    expect(atr).toHaveLength(1);
+    expect(atr[0].summary).toBe('ReTest: PROJ-1 login');
+    expect(skipped).toEqual([expect.objectContaining({ role: 'ATR' })]);
+  });
+
+  test('the legacy FTR prefix still guards pre-migration Executions', () => {
+    const { atr, skipped } = classifyCoverageLinks(
+      issueWithLinks([{ type: 'Test Execution', summary: 'FTR: Checkout results' }]),
+      coverageRegistry,
+    );
+    expect(atr).toHaveLength(0);
+    expect(skipped).toHaveLength(1);
+  });
+
+  test('only ATS: Sets are bucketed — feature-level TS: Sets stay ignored', () => {
+    const { sets } = classifyCoverageLinks(
+      issueWithLinks([
+        { type: 'Test Set', summary: 'ATS: PROJ-1: login set' },
+        { type: 'Test Set', summary: 'TS: Checkout regression set' },
+      ]),
+      coverageRegistry,
+    );
+    expect(sets).toHaveLength(1);
+    expect(sets[0].summary).toBe('ATS: PROJ-1: login set');
+  });
+
+  test('linked Tests land in the tests bucket', () => {
+    const { tests } = classifyCoverageLinks(
+      issueWithLinks([{ type: 'Test', summary: 'TC: login happy path' }]),
+      coverageRegistry,
+    );
+    expect(tests).toHaveLength(1);
+  });
+
+  test('prefixes match case-insensitively and tolerate leading whitespace', () => {
+    const { skipped } = classifyCoverageLinks(
+      issueWithLinks([{ type: 'Test Plan', summary: '  stp: sprint plan' }]),
+      coverageRegistry,
+    );
+    expect(skipped).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Declarative pull scope (registry-driven sweep + out-of-scope advisory)
+// ---------------------------------------------------------------------------
+
+describe('defaultSweepEntries', () => {
+  const reg = makeRegistry([
+    entry({ slug: 'epic', jiraIssueType: 'Epic', sync: 'default', container: true }),
+    entry({ slug: 'story', jiraIssueType: 'Story', sync: 'default' }),
+    entry({ slug: 'bug', jiraIssueType: 'Bug', sync: 'default' }),
+    entry({ slug: 'defect', jiraIssueType: 'Defect', sync: 'discovery' }),
+    entry({ slug: 'improvement', jiraIssueType: 'Improvement', sync: 'optional' }),
+    entry({ slug: 'test_case', jiraIssueType: 'Test', sync: 'never' }),
+  ]);
+
+  test('sweeps sync: default types but never Epic/Story (syncAll already walks them)', () => {
+    const slugs = defaultSweepEntries(reg).map((e: { slug: string }) => e.slug);
+    expect(slugs).toEqual(['bug']);
+  });
+
+  test('a widened registry sweeps the extra default type', () => {
+    const widened = makeRegistry([
+      entry({ slug: 'story', jiraIssueType: 'Story', sync: 'default' }),
+      entry({ slug: 'bug', jiraIssueType: 'Bug', sync: 'default' }),
+      entry({ slug: 'tech_debt', jiraIssueType: 'Tech Debt', sync: 'default' }),
+    ]);
+    const slugs = defaultSweepEntries(widened).map((e: { slug: string }) => e.slug);
+    expect(slugs).toEqual(['bug', 'tech_debt']);
+  });
+});
+
+describe('outOfScopeTypeNames', () => {
+  const reg = makeRegistry([
+    entry({ slug: 'story', jiraIssueType: 'Story', sync: 'default' }),
+    entry({ slug: 'bug', jiraIssueType: 'Bug', sync: 'default' }),
+    entry({ slug: 'defect', jiraIssueType: 'Defect', sync: 'discovery' }),
+    entry({ slug: 'test_case', jiraIssueType: 'Test', sync: 'never' }),
+    entry({ slug: 'improvement', jiraIssueType: 'Improvement', sync: 'optional' }),
+    entry({ slug: 'tech_story', jiraIssueType: 'Tech Story', sync: 'optional' }),
+  ]);
+  const present = ['Story', 'Bug', 'Defect', 'Test', 'Improvement', 'Tech Story'];
+
+  test('default, discovery and test_case types are in scope; optional types are named', () => {
+    expect(outOfScopeTypeNames(present, reg, [])).toEqual(['Improvement', 'Tech Story']);
+  });
+
+  test('a --types slug pulls its type back into scope', () => {
+    expect(outOfScopeTypeNames(present, reg, ['improvement'])).toEqual(['Tech Story']);
+  });
+
+  test('dash-form slugs normalize to the underscore registry key', () => {
+    expect(outOfScopeTypeNames(present, reg, ['tech-story'])).toEqual(['Improvement']);
+  });
+
+  test('an unknown slug is ignored rather than throwing', () => {
+    expect(outOfScopeTypeNames(present, reg, ['nope'])).toEqual(['Improvement', 'Tech Story']);
+  });
+
+  test('a type unknown to the registry is reported as out of scope', () => {
+    expect(outOfScopeTypeNames(['Story', 'Task'], reg, [])).toEqual(['Task']);
+  });
+
+  test('empty when everything present is covered', () => {
+    expect(outOfScopeTypeNames(['Story', 'Bug', 'Defect', 'Test'], reg, [])).toEqual([]);
   });
 });

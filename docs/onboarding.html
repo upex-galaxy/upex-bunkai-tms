@@ -1191,7 +1191,7 @@
         <a class="cta" href="#section-9">
           <span class="cta-title">Skill catalog</span>
           <span class="cta-desc"
-            >11 workflow skills + 5 utility commands, what they do, when to call them.</span
+            >13 skills + 7 utility commands, what they do, when to call them.</span
           >
         </a>
         <a class="cta" href="#section-8">
@@ -1918,7 +1918,7 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                     <dt>Trigger</dt>
                     <dd>
                       <code>bun install</code> → <code>bun run setup</code> (interactive installer
-                      for gentle-ai (Engram) + 5 canonical MCPs + external CLIs) →
+                      for gentle-ai (Engram) + 4 canonical MCPs + external CLIs) →
                       <code>bun run agents:setup</code> → <code>bun run jira:sync-fields</code> →
                       <code>bun run jira:check</code>. Foundation files (<code>.agents/</code>,
                       <code>scripts/</code>, <code>CLAUDE.md</code>) ship with the cloned repo — à
@@ -1931,8 +1931,8 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                       <code>sync-jira-fields</code>, <code>check-jira-setup</code>) wired into
                       <code>package.json</code>, the workspace catalog at
                       <code>.agents/jira-fields.json</code> (custom field IDs), and the
-                      <code>.mcp.json</code> with credentials for Tavily, Context7, Supabase, n8n,
-                      Atlassian.
+                      <code>.mcp.json</code> with credentials for Tavily, Context7, Supabase, n8n
+                      (the Atlassian MCP is opt-in — see <code>docs/mcp/</code>).
                     </dd>
                     <dt>When to repeat</dt>
                     <dd>
@@ -2624,7 +2624,7 @@ bun run vars:check           # validate placeholders</code></pre>
                     <th>Examples</th>
                     <td>
                       <code>LOCAL_USER_EMAIL</code>, <code>STAGING_USER_PASSWORD</code>,
-                      <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>,
+                      <code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>SUPABASE_SECRET_KEY</code>,
                       <code>TAVILY_API_KEY</code>, <code>ATLASSIAN_API_TOKEN</code>.
                     </td>
                     <td>
@@ -3296,6 +3296,24 @@ bun run vars:check           # validate placeholders</code></pre>
 
               <article class="skill-card">
                 <div class="skill-card-head">
+                  <span class="skill-card-name">autonomous-delivery</span>
+                  <span class="badge badge-workflow">Workflow</span>
+                  <span class="badge badge-tier-t1">T1</span>
+                </div>
+                <p class="skill-card-trigger">/autonomous-delivery story | bug | discovery</p>
+                <p class="skill-card-desc">
+                  Scheduled / unattended entry point for a delivery run with no human on the line.
+                  Audits real state (git is truth, the tracker is a hint), selects work whose
+                  dependencies are genuinely satisfied, dispatches the owning pipeline skill
+                  (<code>/sprint-development</code>, <code>/product-management</code>), closes out
+                  and reports. Three modes: <code>story</code> (1 per run, hard cap),
+                  <code>bug</code> (up to 3, sequential), <code>discovery</code> (backlog
+                  definitions only, never writes code).
+                </p>
+              </article>
+
+              <article class="skill-card">
+                <div class="skill-card-head">
                   <span class="skill-card-name">unit-testing</span>
                   <span class="badge badge-workflow">Workflow</span>
                   <span class="badge badge-tier-t1">T1</span>
@@ -3518,6 +3536,22 @@ bun run vars:check           # validate placeholders</code></pre>
                       high-level dependency-cascaded roadmap of what to build first and why.</span
                     >
                   </li>
+                  <li>
+                    <code>/dev-roadmap</code>
+                    <span class="muted"
+                      >Generate / update <code>.context/dev-roadmap.md</code> — ticket-level
+                      dependency execution roadmap (which story unblocks which, in what execution
+                      sprint, gated by which mockup). Subsumes the former
+                      <code>sprint-sequence.md</code>.</span
+                    >
+                  </li>
+                  <li>
+                    <code>/jira-instance-migration</code>
+                    <span class="muted"
+                      >Repoint the repo at a new Atlassian instance after a site migration and
+                      regenerate the <code>.agents/</code> catalogs the move invalidated.</span
+                    >
+                  </li>
                 </ul>
               </div>
 
@@ -3531,9 +3565,9 @@ bun run vars:check           # validate placeholders</code></pre>
                   <li>
                     <code>bun run setup</code>
                     <span class="muted"
-                      >Interactive installer — gentle-ai (Engram via --preset minimal) + 5 canonical
-                      MCPs (Tavily, Context7, Supabase, n8n, Atlassian) + external CLI verification
-                      (vercel, supabase, acli, playwright, resend).</span
+                      >Interactive installer — gentle-ai (Engram via --preset minimal) + 4 canonical
+                      MCPs (Tavily, Context7, Supabase, n8n) + external CLI verification (vercel,
+                      supabase, acli, playwright, resend).</span
                     >
                   </li>
                   <li>
@@ -3548,13 +3582,12 @@ bun run vars:check           # validate placeholders</code></pre>
                     >
                   </li>
                   <li>
-                    <code>bun run env</code>
+                    <code>bun run claude</code> / <code>bun run opencode</code>
                     <span class="muted"
-                      >Canonical <code>set -a; source .env; set +a</code> snippet. Run it
-                      <strong>inline</strong> in your terminal (not via <code>bun run</code>, which
-                      uses a child subshell) to export every <code>.env</code> key into the current
-                      shell — then bare <code>claude</code> / <code>opencode</code> /
-                      <code>acli</code> all inherit the vars with no wrapper.</span
+                      >Cross-platform launchers — wrap <code>claude</code> /
+                      <code>opencode</code> with <code>dotenv-cli</code> so every
+                      <code>.env</code> key is loaded before the agent (and its MCP servers)
+                      starts.</span
                     >
                   </li>
                   <li>
@@ -3587,7 +3620,15 @@ bun run vars:check           # validate placeholders</code></pre>
                       <code>.context/PBI/</code> (acceptance-criteria, business-rules, scope,
                       out-of-scope, workflow, implementation-plan, …). Read one issue with
                       <code>get &lt;KEY&gt;</code> or a batch with <code>jql "&lt;query&gt;"</code>;
-                      <code>pull</code> syncs whole Epics / Stories.</span
+                      <code>pull</code> syncs whole Epics / Stories. The synced tree is a gitignored
+                      read-only cache — Jira is the source of truth.</span
+                    >
+                  </li>
+                  <li>
+                    <code>bun run context:hydrate</code>
+                    <span class="muted"
+                      >Rebuild the gitignored <code>.context/PBI/</code> Jira cache on a cold clone
+                      — alias for <code>jira:sync-issues pull --include-comments</code>.</span
                     >
                   </li>
                   <li>
@@ -3643,16 +3684,18 @@ bun run vars:check           # validate placeholders</code></pre>
             </div>
 
             <p class="small muted">
-              Run <code>bun &lt;script&gt; --help</code> on any script for usage. The Vitest binary
-              is installed locally — no global install needed.
+              Run <code>bun &lt;script&gt; --help</code> on any script for usage.
+              <code>bun run test</code> runs Bun's built-in test runner against
+              <code>cli/lib/</code>, <code>scripts/</code>, and the <code>acli</code> skill scripts
+              — no separate test runner install needed.
             </p>
 
             <h3>Artifact refresh cycle</h3>
 
             <p>
-              The five utility commands generate <em>living artifacts</em> — files that drift as the
-              codebase evolves. Re-running them is normal maintenance, not a one-shot. Use this
-              table to decide when to refresh each artifact.
+              Six of the seven utility commands generate <em>living artifacts</em> — files that
+              drift as the codebase evolves. Re-running them is normal maintenance, not a one-shot.
+              Use this table to decide when to refresh each artifact.
             </p>
 
             <div class="table-wrap">
@@ -3706,6 +3749,14 @@ bun run vars:check           # validate placeholders</code></pre>
                     <td>
                       Backlog reshaped, dependency cascade changed, roadmap pivot, sprint plan
                       diverged from reality.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>/dev-roadmap</code></td>
+                    <td><code>.context/dev-roadmap.md</code></td>
+                    <td>
+                      New stories or dependency links landed in Jira, mockup gate changed,
+                      execution-sprint order stale.
                     </td>
                   </tr>
                 </tbody>
@@ -4242,7 +4293,7 @@ bun run vars:check           # validate placeholders</code></pre>
         </div>
         <p class="footer-meta">
           <code>agentic-dev-boilerplate</code> · MIT License · Onboarding page v1.2 · Last updated
-          2026-05-13
+          2026-08-22
         </p>
       </footer>
     </div>
