@@ -37,8 +37,8 @@ agentic-dev-boilerplate/
 ├── CONTEXT.md                      This file — Context Engineering in this repo
 │
 ├── .claude/
-│   ├── skills/                     11 workflow skills (executable workflows)
-│   └── commands/                   5 utility slash commands
+│   ├── skills/                     13 workflow skills (executable workflows)
+│   └── commands/                   7 utility slash commands
 │
 ├── .agents/                        Project variable contract (SOT for project values)
 │   ├── project.yaml                {{VAR_NAME}} resolution
@@ -126,6 +126,7 @@ These files have stable names and locations. Any skill, command, or doc can refe
 | `/product-management`  | Continuous: seed backlog, create epics, refine stories (INVEST + AC), sprint reporting                                                             |
 | `/sprint-development`  | Per-story: Plan → Code → Review → Staging → (gated) Production                                                                                     |
 | `/unit-testing`        | Standalone or composable mid-flight from `/sprint-development` for TDD slices                                                                      |
+| `/autonomous-delivery` | Scheduled / unattended: audits real state (git is truth), selects genuinely unblocked work, dispatches the owning pipeline skill, reports. Modes: `story` (1 per run), `bug` (up to 3), `discovery` (no code) |
 | `/git-flow-master`     | Any git/PR work — auto-detects branching strategy and adapts                                                                                       |
 | `/acli`                | Atlassian CLI cookbook for Jira Cloud + Confluence Cloud                                                                                           |
 | `/vercel-cli`          | Vercel CLI cookbook: deployment verification (poll commit SHA + `inspect --wait`), env sync, debug, rollback. Auto-loads on `vercel` Bash calls    |
@@ -141,6 +142,7 @@ These files have stable names and locations. Any skill, command, or doc can refe
 | `/business-api-map`           | Generate/update `.context/business/business-api-map.md`                                                      |
 | `/master-implementation-plan` | Generate/update `.context/master-implementation-plan.md` (EPIC/strategy roadmap)                             |
 | `/dev-roadmap`                | Generate/update `.context/dev-roadmap.md` (TICKET/sequence roadmap — dependency edges, execution sprints, mockup-gates; subsumes `sprint-sequence.md`) |
+| `/jira-instance-migration`    | Repoint the repo at a new Atlassian instance (`.env` + `.agents/project.yaml` + `acli` session) and regenerate the `.agents/` catalogs                 |
 
 ---
 
@@ -328,7 +330,7 @@ Use this table to decide what to re-generate after what kind of change.
 | Feature surface changes                   | `.context/business/business-feature-map.md`         | `/business-feature-map`                       |
 | API auth or topology changes              | `.context/business/business-api-map.md`             | `/business-api-map`                           |
 | Hard-to-reverse architecture decision     | `.context/ADR/ADR-NNNN-<slug>.md` (new file; supersede, never edit)   | Author per `.context/ADR/README.md` (human, or `/project-foundation` SRS / `/sprint-development` Stage 1) |
-| New epic / story refinement               | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/*` (or `.context/PBI/epics/EPIC-<KEY>-<slug>/*` for epic-level) | `/product-management`                         |
+| New epic / story refinement               | `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/*` (or `.context/PBI/epics/EPIC-<KEY>-<slug>/*` for epic-level) | `/product-management` (authors content in Jira) + `bun run context:hydrate` (pulls the gitignored local cache) |
 | Major rebrand / new visual identity       | `DESIGN.md` at repo root                            | `/design-system`                              |
 | New UI screens need mockups (per feature) | `.context/designs/<project>/<batch>/` (brief + bundle) + `.context/design/master-design-plan.md` (UPSERT) | `/design-system` screen-mapping phase (opt-in) |
 | This file (`CONTEXT.md`) drifts from repo | Update sections that no longer match the filesystem | Edit manually or `/sync-ai-memory` if covered |

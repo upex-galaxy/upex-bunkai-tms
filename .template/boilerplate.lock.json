@@ -4,14 +4,14 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "c2b0915b6d1ddfe4cd21bd4d9ea4294403a00962",
+    "claude": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
-    "agents": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
+    "agents": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
-    "docs": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
-    "context": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
-    "context-engineering": "5cc6d6e41ab2d3842efab68b9ee0b52991a4ffee",
+    "scripts": "5cbdb645dda633d452c0f78a186960083cf28cc2",
+    "docs": "5cbdb645dda633d452c0f78a186960083cf28cc2",
+    "context": "5cbdb645dda633d452c0f78a186960083cf28cc2",
+    "context-engineering": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "ea626f984fc4fbb1c11c334c78b7fa295725286f",
@@ -21,7 +21,7 @@
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "f693ca1a0c552c77bd78b6767b8b3f6d3a8d8042",
+      "lastSyncedSha": "d3726f424a30b61e7dcf91e67e7522e764dda083",
       "appendedLines": [
         "dbhub.toml",
         ".claude/scheduled_tasks.lock",
@@ -33,7 +33,10 @@
         "*.har",
         ".template/upstream-sha/",
         "/.agents/prompts/",
-        ".claude/worktrees/"
+        ".claude/worktrees/",
+        ".context/PBI/*",
+        "!.context/PBI/README.md",
+        "!.context/PBI/templates/"
       ]
     },
     ".prettierignore": {
@@ -51,29 +54,30 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-22T00:32:17.961Z",
+  "lastSyncedAt": "2026-08-22T22:20:52.972Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "6cd065da2793f0b870e328938898a42684b69c14",
+        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
         "appliedKeys": [
           "jira:sync-link-types",
           "vars:env:check",
           "git:policy",
-          "jira:url"
+          "jira:url",
+          "context:hydrate"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "6cd065da2793f0b870e328938898a42684b69c14",
+        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
         "appliedKeys": []
       },
       "dependencies": {
-        "lastSyncedSha": "6cd065da2793f0b870e328938898a42684b69c14",
+        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
         "appliedKeys": []
       },
       "lint-staged": {
-        "lastSyncedSha": "6cd065da2793f0b870e328938898a42684b69c14",
+        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
         "appliedKeys": []
       }
     }

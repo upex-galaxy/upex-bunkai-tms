@@ -6,6 +6,18 @@ compatibility: [claude-code, copilot, cursor, codex, opencode]
 phase: foundation
 complementary_categories:
   - language
+# compact_rules is consumed VERBATIM by scripts/build-skill-registry.ts (frontmatter-first,
+# no truncation). Keep in sync with "What this skill does NOT cover" in the body below.
+compact_rules: |
+  `agentic-dev-core` does not:
+  - Provide a bootstrap or init action — clone the full repo instead.
+  - Create or modify any files. It is a passive reference library.
+  - Create or modify `.context/` files (that belongs to `/agentic-dev-onboard` and `/project-foundation`).
+  - Generate or scaffold tests, fixtures, or test components (that belongs to `/unit-testing` and test-automation skills).
+  - Adapt the framework to a specific stack (that belongs to `/project-bootstrap`).
+  - Sync project-specific facts in `CLAUDE.md` (that belongs to `/sync-ai-memory`).
+  - Sync OpenAPI / API schemas (that's `bun run api:sync`).
+  - Run any external command — no `bun install`, no `git`, no `gh`.
 ---
 
 # Agentic Dev Core — Foundation reference host

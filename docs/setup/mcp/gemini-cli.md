@@ -23,13 +23,13 @@
 #### Agregar servidor stdio local
 
 ```bash
-gemini mcp add myserver --command "python3 my_server.py" --port 8080
+gemini mcp add myserver python3 my_server.py
 ```
 
 #### Agregar servidor HTTP remoto
 
 ```bash
-gemini mcp add --transport http context7 https://context7.mcp.io
+gemini mcp add --transport http context7 https://mcp.context7.com/mcp
 ```
 
 #### Listar servidores configurados
@@ -55,7 +55,7 @@ gemini mcp remove myserver
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_your_token_here"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     }
   }
@@ -115,7 +115,7 @@ gemini mcp remove myserver
 **Mediante CLI**:
 
 ```bash
-gemini mcp add --command "npx -y @supabase/mcp-server-supabase@latest" supabase
+gemini mcp add supabase -e SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN -- npx -y @supabase/mcp-server-supabase@latest
 ```
 
 **O manualmente en ~/.gemini/settings.json**:
@@ -127,7 +127,7 @@ gemini mcp add --command "npx -y @supabase/mcp-server-supabase@latest" supabase
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_your_actual_token"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     }
   }
@@ -137,7 +137,7 @@ gemini mcp add --command "npx -y @supabase/mcp-server-supabase@latest" supabase
 ### Ejemplo 2: Context7 (Documentación)
 
 ```bash
-gemini mcp add --transport http context7 https://context7.mcp.io
+gemini mcp add --transport http context7 https://mcp.context7.com/mcp
 ```
 
 ### Ejemplo 3: Playwright MCP
@@ -212,13 +212,13 @@ Gemini CLI soporta **extensiones** que empaquetan:
 ### Instalar extensión
 
 ```bash
-gemini extension install firebase
+gemini extensions install https://github.com/gemini-cli-extensions/firebase
 ```
 
 ### Listar extensiones instaladas
 
 ```bash
-gemini extension list
+gemini extensions list
 ```
 
 ### Ejemplo: Instalar Firebase Extension
@@ -226,7 +226,7 @@ gemini extension list
 **Opción 1**: Via extensión (recomendado)
 
 ```bash
-gemini extension install firebase
+gemini extensions install https://github.com/gemini-cli-extensions/firebase
 ```
 
 **Opción 2**: Configuración manual
@@ -367,8 +367,8 @@ Crear `.gemini/settings.json` en cada proyecto:
 
 ```bash
 # En lugar de configurar manualmente
-gemini extension install firebase
-gemini extension install playwright
+gemini extensions install https://github.com/gemini-cli-extensions/firebase
+gemini extensions install <url-del-repo-de-la-extension>
 ```
 
 ### 4. Debugging
@@ -398,7 +398,7 @@ gemini mcp list
       }
     },
     "context7": {
-      "httpUrl": "https://context7.mcp.io"
+      "httpUrl": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -418,7 +418,7 @@ gemini mcp list
       "args": ["-y", "chrome-devtools-mcp"]
     },
     "context7": {
-      "httpUrl": "https://context7.mcp.io"
+      "httpUrl": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -440,7 +440,7 @@ gemini mcp list
       }
     },
     "context7": {
-      "httpUrl": "https://context7.mcp.io"
+      "httpUrl": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -455,7 +455,7 @@ gemini mcp list
       "httpUrl": "https://mcp.notion.com/mcp"
     },
     "context7": {
-      "httpUrl": "https://context7.mcp.io"
+      "httpUrl": "https://mcp.context7.com/mcp"
     },
     "tavily": {
       "command": "npx",

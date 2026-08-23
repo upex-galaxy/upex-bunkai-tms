@@ -115,7 +115,7 @@ export interface QaConfig {
 export const qaConfig: QaConfig = {/* DETECTED — filled by the skill */} as QaConfig;
 ```
 
-> The golden's whole point: reviewers can see at a glance that the page contains **no literal endpoint, host, or token** — only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote`, and `db.rlsProbe` fields are ALL detection-driven: render only what the project actually exposes, with `null`/empty rendering a gap. The Bunkai-shaped values (signup/signin/tokens, BYPASSRLS roles, Supabase pooler) are EXAMPLES — never bake them into a fresh run.
+> The golden's whole point: reviewers can see at a glance that the page contains **no literal endpoint, host, or token** — only `qaConfig.*` reads. The `apiRequests`, `db.roles`, `db.poolerNote`, and `db.rlsProbe` fields are ALL detection-driven: render only what the project actually exposes, with `null`/empty rendering a gap. The sample-project values (signup/signin/tokens, BYPASSRLS roles, Supabase pooler) are EXAMPLES — never bake them into a fresh run.
 
 ---
 

@@ -2,8 +2,8 @@
 
 > **Purpose**: Complete reference for Jira/Xray integration in QA Automation (IQL-Aligned)
 > **Last Updated**: February 2026
-> **Methodology**: Integrated Quality Lifecycle (IQL) - see `test-management-system.md`
-> **Related**: `cli/xray.ts` (CLI tool), `tests/utils/jiraSync.ts` (Sync utility)
+> **Methodology**: Integrated Quality Lifecycle (IQL) - see `IQL-methodology.md`
+> **Related**: `scripts/sync-jira-issues.ts` (Jira-backed PBI cache sync), external `xray-cli` (test-management operations — ships with the QA boilerplate, not this repo)
 
 ---
 
@@ -376,78 +376,9 @@ curl -X POST \
 
 ---
 
-## CLI Quick Reference (IQL-Aligned)
+## Test-Management CLI
 
-### Authentication
-
-```bash
-bun xray auth login --client-id "xxx" --client-secret "xxx"  # Cloud
-bun xray auth login --token "xxx" --base-url "https://..."   # Server/DC
-bun xray auth status                                          # Verify connection
-bun xray auth logout                                          # Clear credentials
-```
-
-### Test Operations
-
-```bash
-# List tests with filters
-bun xray test list                                    # All tests
-bun xray test list --status Automated                 # Filter by workflow status
-bun xray test list --type Generic                     # Filter by test type
-bun xray test list --label regression                 # Filter by label
-
-# Get test details
-bun xray test get PROJ-101                            # Single test
-
-# Create new test (via Jira API)
-bun xray test create \
-  --summary "Verify login with valid credentials" \
-  --type Generic \
-  --project PROJ \
-  --labels "e2e,auth"
-```
-
-### Test Execution
-
-```bash
-# List executions
-bun xray execution list                               # All executions
-bun xray execution list --test-plan PROJ-300          # For specific plan
-
-# Create execution
-bun xray execution create \
-  --summary "CI Run #142" \
-  --test-plan PROJ-300 \
-  --environment staging
-```
-
-### Results Import
-
-```bash
-# Import from JUnit XML (Playwright default)
-bun xray import junit.xml --project PROJ --test-plan PROJ-300
-
-# Import with auto-execution creation
-bun xray import junit.xml \
-  --project PROJ \
-  --test-plan PROJ-300 \
-  --execution-summary "CI Run #142 - Staging" \
-  --environment staging
-
-# Import with test info (multipart)
-bun xray import junit.xml \
-  --project PROJ \
-  --test-plan PROJ-300 \
-  --test-info '{"fields":{"labels":["automated"]}}'
-```
-
-### Test Plans
-
-```bash
-bun xray plan list                                    # List all plans
-bun xray plan get PROJ-300                            # Get plan details
-bun xray plan add-tests PROJ-300 --tests PROJ-101,PROJ-102
-```
+This repo ships no Xray CLI. Test-management operations (auth, test/plan/execution CRUD, result imports) belong to the **QA boilerplate's** `xray-cli`; this repo's `scripts/sync-jira-issues.ts` only *reads* Xray container issues (Test Plans, Executions, Sets) as part of the PBI cache sync and defers run results to that external tooling.
 
 ---
 
@@ -481,7 +412,7 @@ bun xray plan add-tests PROJ-300 --tests PROJ-101,PROJ-102
     │                                                                                     │
     └─────────────────────────────────────────────────────────────────────────────────────┘
                                               │
-                                              │ bun xray import OR CI/CD
+                                              │ xray-cli import OR CI/CD
                                               ▼
     ┌─────────────────────────────────────────────────────────────────────────────────────┐
     │                              XRAY API PROCESSING                                    │
@@ -669,11 +600,9 @@ For Xray to match test results to Test issues:
 
 ## Related Files
 
-- `cli/xray.ts` - CLI tool for Xray operations
-- `tests/utils/jiraSync.ts` - Sync utility for test results
-- `config/variables.ts` - Environment configuration
-- `.env` - Environment variables (XRAY_CLIENT_ID, etc.)
-- `.context/test-management-system.md` - IQL methodology reference
+- `scripts/sync-jira-issues.ts` - Jira-backed PBI cache sync (reads Xray container issues)
+- `.agents/jira-required.yaml` - work-type registry incl. Xray container types and pull scope
+- `docs/methodology/IQL-methodology.md` - IQL methodology reference
 
 ---
 

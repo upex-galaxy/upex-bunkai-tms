@@ -79,6 +79,25 @@ export function errorMessage(err: unknown): string {
 }
 
 /**
+ * True when a repo-relative path falls under one of the `repoOnlyPaths` prefixes
+ * — the boilerplate's own material, which never travels to a consumer project.
+ *
+ * A prefix matches the path itself or anything beneath it, and only at a segment
+ * boundary: `.context/business` must not swallow a sibling called
+ * `.context/business-archive`. Backslashes are normalized so a Windows-shaped
+ * entry path compares equal to a POSIX-shaped prefix. An empty prefix never
+ * matches, so a stray entry cannot blank the whole sync.
+ */
+export function isRepoOnlyPath(filePath: string, prefixes: string[]): boolean {
+  const p = filePath.replace(/\\/g, '/');
+  return prefixes.some((raw) => {
+    const prefix = raw.replace(/\\/g, '/').replace(/\/+$/, '');
+    if (prefix === '') { return false; }
+    return p === prefix || p.startsWith(`${prefix}/`);
+  });
+}
+
+/**
  * Recursive count of plain files under a directory. Returns 0 when the dir is missing.
  */
 export function countFilesInDir(dir: string): number {
@@ -2124,6 +2143,13 @@ export async function runUpdate(
   if (cfg.excludePaths && cfg.excludePaths.length > 0) {
     const excluded = new Set(cfg.excludePaths.map(p => p.replace(/\\/g, '/')));
     entries = entries.filter(e => !excluded.has(e.path.replace(/\\/g, '/')));
+  }
+
+  // Drop the boilerplate's own working material, which no consumer inherits
+  // (e.g. `.context/business/business-*.md`). Same filter point as excludePaths
+  // for the same reason: all detection paths converge on `entries`.
+  if (cfg.repoOnlyPaths && cfg.repoOnlyPaths.length > 0) {
+    entries = entries.filter(e => !isRepoOnlyPath(e.path, cfg.repoOnlyPaths ?? []));
   }
 
   // Filter out unchanged / binary-skip from the user-facing pool

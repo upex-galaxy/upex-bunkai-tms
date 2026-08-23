@@ -8,35 +8,31 @@
 
 ## 🚀 Quick Start
 
-### Setup Inicial Crítico
+### Setup Inicial
 
-La primera vez que uses Claude Code:
+La primera vez que uses Claude Code basta con lanzarlo — el login y la inicialización son automáticos:
 
 ```bash
-# Bypass de permisos inicial (NECESARIO)
-claude --dangerously-skip-permissions
+claude
 ```
 
-Esto:
+> ⚠️ El flag `--dangerously-skip-permissions` NO es parte del setup: desactiva TODOS los prompts de permisos y solo tiene sentido en sandboxes desechables. No lo uses en tu máquina de trabajo.
 
-- Inicializa el directorio de configuración
-- Establece permisos de seguridad
-- Crea tokens de autenticación
-- Configura el registro de MCP
+**En este boilerplate**: lanza Claude Code con `bun run claude` — es un wrapper con `dotenv-cli` que carga `.env` antes de arrancar, para que los `${VAR}` del `.mcp.json` resuelvan.
 
 ### Archivos de Configuración
 
 Claude Code usa un sistema jerárquico:
 
-1. **Proyecto** (`.mcp.json` en la raíz del proyecto) - Mayor prioridad
-2. **Local** (`.mcp.json` en el directorio actual)
-3. **Usuario** (`~/.claude.json`) - Configuración global
+1. **Local** (scope `local`, guardado en `~/.claude.json` por-proyecto) - Mayor prioridad
+2. **Proyecto** (`.mcp.json` en la raíz del proyecto, commiteado al repo)
+3. **Usuario** (scope `user` en `~/.claude.json`) - Configuración global
 
 ### Scopes de Configuración
 
 - `user`: Global para todos los proyectos
-- `project`: Específico del proyecto actual
-- `local`: Directorio de trabajo actual
+- `project`: Específico del proyecto actual (archivo `.mcp.json`, compartido con el equipo)
+- `local`: Privado tuyo para el proyecto actual
 
 ---
 
@@ -95,19 +91,14 @@ claude mcp remove mi-servidor
       "type": "http",
       "url": "https://mcp.postman.com/mcp",
       "headers": {
-        "Authorization": "Bearer ${input:postman-api-key}"
+        "Authorization": "Bearer ${POSTMAN_API_KEY}"
       }
     }
-  },
-  "inputs": [
-    {
-      "id": "postman-api-key",
-      "type": "promptString",
-      "description": "Enter your Postman API key"
-    }
-  ]
+  }
 }
 ```
+
+> **Nota**: Claude Code NO soporta el bloque `inputs` / `${input:...}` (eso es sintaxis de VS Code). Los secretos se referencian como `${VAR}` (o `${VAR:-default}`) y se expanden desde el entorno del proceso — si la variable falta, el servidor falla al arrancar. Por eso este repo lanza `bun run claude`, que carga `.env` primero.
 
 **Servidor con npx**:
 
@@ -119,7 +110,7 @@ claude mcp remove mi-servidor
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "${input:supabase-token}"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     }
   }
@@ -143,7 +134,7 @@ Claude Code eliminó soporte para SSE en versiones superiores a 2.0.9.
 **Solución 1**: Usar versión anterior de Claude Code
 
 ```bash
-npm install -g claude-code@2.0.9
+npm install -g @anthropic-ai/claude-code@2.0.9
 ```
 
 **Solución 2**: Migrar a HTTP Streamable (recomendado)
@@ -171,18 +162,10 @@ claude mcp add -t stdio -s user supabase -- npx -y @supabase/mcp-server-supabase
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "${input:supabase-token}"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     }
-  },
-  "inputs": [
-    {
-      "id": "supabase-token",
-      "type": "promptString",
-      "description": "Enter your Supabase access token",
-      "password": true
-    }
-  ]
+  }
 }
 ```
 
@@ -195,18 +178,10 @@ claude mcp add -t stdio -s user supabase -- npx -y @supabase/mcp-server-supabase
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp",
       "headers": {
-        "Authorization": "Bearer ${input:github-token}"
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
       }
     }
-  },
-  "inputs": [
-    {
-      "id": "github-token",
-      "type": "promptString",
-      "description": "Enter your GitHub token",
-      "password": true
-    }
-  ]
+  }
 }
 ```
 
@@ -218,8 +193,10 @@ claude mcp add -t stdio -s user playwright -- npx -y @playwright/mcp@latest
 
 ### Ejemplo 4: Context7 (Documentación)
 
+Este repo ya lo trae en `.mcp.json` como servidor stdio (`bunx -y @upstash/context7-mcp`). Para agregarlo global como servidor remoto:
+
 ```bash
-claude mcp add --transport http --scope user context7 https://context7.mcp.io
+claude mcp add --transport http --scope user context7 https://mcp.context7.com/mcp
 ```
 
 ---
@@ -228,9 +205,9 @@ claude mcp add --transport http --scope user context7 https://context7.mcp.io
 
 ### Sistema Jerárquico
 
-Project > Local > User
+Local > Project > User
 
-Los archivos en el proyecto sobrescriben configuración local y global.
+Ante nombres repetidos, el scope local gana sobre el `.mcp.json` del proyecto, y este sobre la configuración global de usuario.
 
 ### Gestión de Permisos
 
@@ -240,20 +217,15 @@ Control granular de acceso a recursos del sistema.
 
 Acceso a servidores verificados desde el registro oficial.
 
-### Variables de Entrada
+### Variables de Entorno
 
-Soporte para inputs interactivos:
+Expansión de `${VAR}` y `${VAR:-default}` en `.mcp.json` desde el entorno del proceso (no hay inputs interactivos — eso es sintaxis de VS Code):
 
 ```json
 {
-  "inputs": [
-    {
-      "id": "unique-id",
-      "type": "promptString",
-      "description": "User-friendly description",
-      "password": true // Oculta entrada
-    }
-  ]
+  "env": {
+    "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+  }
 }
 ```
 
@@ -263,11 +235,7 @@ Soporte para inputs interactivos:
 
 ### "Permission denied"
 
-**Solución**: Ejecutar setup inicial
-
-```bash
-claude --dangerously-skip-permissions
-```
+**Solución**: revisar los permisos configurados (`/permissions` dentro de la sesión, o `settings.json` / `settings.local.json` en `.claude/`). NO uses `--dangerously-skip-permissions` como atajo fuera de un sandbox desechable.
 
 ### "SSE transport not supported"
 
@@ -277,7 +245,7 @@ claude --dangerously-skip-permissions
 
 ```bash
 # Downgrade
-npm install -g claude-code@2.0.9
+npm install -g @anthropic-ai/claude-code@2.0.9
 
 # O migrar a HTTP
 ```
@@ -339,7 +307,7 @@ claude mcp list
 ```json
 {
   "env": {
-    "API_KEY": "${input:api-key}"
+    "API_KEY": "${API_KEY}"
   }
 }
 ```
@@ -351,10 +319,9 @@ claude mcp list
 
 ### 4. Usar Registry Oficial
 
-```bash
-# Explorar servidores verificados
-claude mcp registry
-```
+No hay subcomando `claude mcp registry` — explora servidores verificados en el registro oficial y agrégalos con `claude mcp add`:
+
+- https://github.com/modelcontextprotocol/servers
 
 ---
 
@@ -370,12 +337,12 @@ claude mcp registry
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "${input:supabase-token}"
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
     },
     "context7": {
       "type": "http",
-      "url": "https://context7.mcp.io"
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -393,7 +360,7 @@ claude mcp registry
     },
     "context7": {
       "type": "http",
-      "url": "https://context7.mcp.io"
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -413,7 +380,7 @@ claude mcp registry
       "type": "http",
       "url": "https://mcp.postman.com/mcp",
       "headers": {
-        "Authorization": "Bearer ${input:postman-key}"
+        "Authorization": "Bearer ${POSTMAN_API_KEY}"
       }
     }
   }

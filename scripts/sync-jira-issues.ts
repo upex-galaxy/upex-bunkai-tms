@@ -64,8 +64,7 @@
  *   pull                Sync all Epics and Stories from Jira
  *     --epic <key>      Sync specific epic with all its stories
  *     --story <key>     Sync specific story only
- *     --include-comments Include Jira comments (comments.md in folder layouts,
- *                        an inline `## Comments` section in flat single-file types)
+ *     --include-comments Include Jira comments in comments.md
  *     --dry-run         Show what would be done without writing files
  *     --json            Output results as JSON
  *   get <KEY>           Sync ONE issue (any type) with ALL custom fields (canonical read; replaces `acli view`)
@@ -745,6 +744,87 @@ function readProjectKeyFromYaml(): string | null {
   if (typeof raw !== 'string') { return null; }
   const trimmed = raw.trim();
   return trimmed === '' ? null : trimmed;
+}
+
+/** Default when no yaml declares `qa.qa_artifact_label`. */
+const DEFAULT_QA_ARTIFACT_LABEL = 'QA-Artifact';
+
+interface QaArtifactConfig {
+  /** Jira label marking an Epic as a QA-artifact bucket. */
+  label: string
+  /** Epic keys cached under `qa.qa_epics.*.key`; empty until a skill discovers them. */
+  cachedKeys: Set<string>
+}
+
+/** Best-effort read of a yaml file's top-level `qa:` block. `null` when absent/unreadable. */
+function readQaBlock(path: string): Record<string, unknown> | null {
+  if (!existsSync(path)) { return null; }
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(readFileSync(path, 'utf8'));
+  }
+  catch {
+    return null;
+  }
+  const qa = (parsed as Record<string, unknown> | null)?.qa;
+  return qa !== null && typeof qa === 'object' ? qa as Record<string, unknown> : null;
+}
+
+/**
+ * Reads the QA-artifact detection config. Two homes, merged:
+ *   - `.agents/project.yaml` → `qa:` — where the companion QA boilerplate's
+ *     skills cache discovered epic keys (`qa.qa_epics.*.key`), so a project
+ *     pairing both repos is recognized without re-declaring anything here.
+ *   - `.agents/jira-required.yaml` → `qa:` — where THIS repo ships the default
+ *     label (project.yaml is a frozen per-project template on the dev side).
+ *
+ * Falls back to the default label when neither file declares one, so a project
+ * that never edited any yaml still gets the filtering.
+ */
+function readQaArtifactConfig(): QaArtifactConfig {
+  const blocks = [readQaBlock(PROJECT_YAML_PATH), readQaBlock(JIRA_REQUIRED_PATH)];
+
+  let label = DEFAULT_QA_ARTIFACT_LABEL;
+  const cachedKeys = new Set<string>();
+  for (const qa of blocks) {
+    if (!qa) { continue; }
+    const rawLabel = qa.qa_artifact_label;
+    if (label === DEFAULT_QA_ARTIFACT_LABEL && typeof rawLabel === 'string' && rawLabel.trim() !== '') {
+      label = rawLabel.trim();
+    }
+    const epics = qa.qa_epics;
+    if (epics !== null && typeof epics === 'object') {
+      for (const entry of Object.values(epics as Record<string, unknown>)) {
+        if (entry === null || typeof entry !== 'object') { continue; }
+        const key = (entry as Record<string, unknown>).key;
+        if (typeof key === 'string' && key.trim() !== '') { cachedKeys.add(key.trim()); }
+      }
+    }
+  }
+
+  return { label, cachedKeys };
+}
+
+/**
+ * Decides whether an Epic is a QA-artifact bucket rather than a product Epic.
+ *
+ * Three signals, in descending confidence. The label is authoritative. The cached
+ * `qa_epics.*.key` values cover an instance whose Epics predate the label. The
+ * `QA ` name prefix is a last resort, and it reports so the yaml can be
+ * completed — it is the only signal that can misfire, on a product Epic
+ * legitimately named "QA Tooling" or similar.
+ *
+ * Returns null for a product Epic.
+ */
+function classifyQaArtifactEpic(
+  epic: JiraIssue,
+  cfg: QaArtifactConfig,
+): { via: 'label' | 'cached-key' | 'name-prefix' } | null {
+  const labels = epic.fields.labels ?? [];
+  if (labels.includes(cfg.label)) { return { via: 'label' }; }
+  if (cfg.cachedKeys.has(epic.key)) { return { via: 'cached-key' }; }
+  if (epic.fields.summary.startsWith('QA ')) { return { via: 'name-prefix' }; }
+  return null;
 }
 
 /**
@@ -1523,28 +1603,6 @@ function generateStoryMarkdown(
   return lines.join('\n');
 }
 
-/** Trailing marker every generated markdown file ends with. */
-const SYNC_FOOTER = '_Synced from Jira by sync-jira-issues_';
-
-/**
- * Renders the per-comment blocks shared by the standalone `comments.md` file
- * (folder layouts) and the inline `## Comments` section embedded in the single
- * file that `content: single` work types produce.
- */
-function renderCommentEntries(comments: JiraComment[]): string[] {
-  if (comments.length === 0) { return ['_No comments_']; }
-
-  const lines: string[] = [];
-  for (const comment of comments) {
-    const author = comment.author?.displayName || 'Unknown';
-    const date = new Date(comment.created).toLocaleString();
-    const body = adfToMarkdown(comment.body as AdfDocument);
-
-    lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
-  }
-  return lines;
-}
-
 function generateCommentsMarkdown(
   comments: JiraComment[],
   issueKey: string,
@@ -1557,33 +1615,24 @@ function generateCommentsMarkdown(
     '',
     '---',
     '',
-    ...renderCommentEntries(comments),
   ];
 
-  lines.push('', SYNC_FOOTER, '');
+  if (comments.length === 0) {
+    lines.push('_No comments_');
+  }
+  else {
+    for (const comment of comments) {
+      const author = comment.author?.displayName || 'Unknown';
+      const date = new Date(comment.created).toLocaleString();
+      const body = adfToMarkdown(comment.body as AdfDocument);
+
+      lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
+    }
+  }
+
+  lines.push('', '_Synced from Jira by sync-jira-issues_', '');
 
   return lines.join('\n');
-}
-
-/**
- * Embeds a `## Comments` section into a `content: single` work-type file.
- *
- * Bug / Improvement / Test Case are declared `coverable: false` in
- * `.agents/jira-required.yaml`, so the sync writes them as ONE flat file with no
- * folder to hold a sibling `comments.md`. The section is spliced in just above the
- * sync footer, which keeps the one-file contract intact and puts the comment trail
- * in the exact file every routine already reads. See BK-502.
- */
-function embedCommentsSection(content: string, comments: JiraComment[]): string {
-  // Every rendered comment already closes with a `---` separator; the empty case
-  // does not, so only then is a closing rule added before the footer.
-  const entries = renderCommentEntries(comments).join('\n').trimEnd();
-  const section = `## Comments\n\n${entries.endsWith('---') ? entries : `${entries}\n\n---`}\n\n`;
-
-  const footerAt = content.lastIndexOf(SYNC_FOOTER);
-  if (footerAt === -1) { return `${content.trimEnd()}\n\n---\n\n${section}`; }
-
-  return `${content.slice(0, footerAt)}${section}${content.slice(footerAt)}`;
 }
 
 /**
@@ -2065,15 +2114,51 @@ function loadLinkTypeNames(slugs: string[]): Set<string> {
   return names;
 }
 
-/** Splits an issue's links into ATP (Test Plan), ATR (Test / Re-Test Execution) and Defect buckets. */
+// ---------------------------------------------------------------------------
+// Artifact-ladder altitudes (title-prefix guard)
+//
+// The QA artifact ladder puts ATP / ATR / ATS at Story altitude; FTP (feature),
+// STP / STR (sprint) and MTP (master) live higher and must NEVER materialize as
+// a Story's acceptance-test-plan.md / acceptance-test-results.md just because
+// they are linked to it. Titles with no recognized prefix keep the pre-ladder
+// behavior (any linked Plan / Execution counts) for backward compatibility.
+// ---------------------------------------------------------------------------
+
+/** Story-altitude Test Set title (`ATS: {US_ID}: ...`). */
+const STORY_ATS_PREFIX = /^ATS:/i;
+/**
+ * Higher-altitude ladder artifacts a Story link must skip for its ATP/ATR.
+ * `FTR` is a legacy guard: it was retired from the ladder (its results roll up
+ * via ATRs + the sprint STR), but the prefix skip stays so pulls of
+ * pre-migration data never mistake an old FTR for a Story-altitude ATR.
+ */
+const HIGHER_ALTITUDE_PREFIX = /^(FTP|FTR|STP|STR|MTP):/i;
+
+/** Human label for a skipped higher-altitude artifact's info line. */
+function higherAltitudeLabel(summary: string): string {
+  const m = HIGHER_ALTITUDE_PREFIX.exec(summary.trim());
+  const p = (m?.[1] ?? '').toUpperCase();
+  if (p === 'STP' || p === 'STR') { return 'sprint-altitude'; }
+  if (p === 'FTP' || p === 'FTR') { return 'feature-altitude'; }
+  return 'master-plan-altitude';
+}
+
+/** Splits an issue's links into ATP (Test Plan), ATR (Test / Re-Test Execution), ATS (Test Set), Test and Defect buckets. */
 function classifyCoverageLinks(issue: JiraIssue, reg: Registry): {
   atp: CoverageLink[]
   atr: CoverageLink[]
+  sets: CoverageLink[]
+  tests: CoverageLink[]
   defects: Array<CoverageLink & { linkOk: boolean }>
+  /** Higher-altitude Plans/Executions skipped by the title guard (info-lined, never materialized). */
+  skipped: Array<CoverageLink & { role: 'ATP' | 'ATR' }>
 } {
   const atp: CoverageLink[] = [];
   const atr: CoverageLink[] = [];
+  const sets: CoverageLink[] = [];
+  const tests: CoverageLink[] = [];
   const defects: Array<CoverageLink & { linkOk: boolean }> = [];
+  const skipped: Array<CoverageLink & { role: 'ATP' | 'ATR' }> = [];
   const acceptedDefectNames = loadLinkTypeNames(reg.bySlug.get('defect')?.defectLinkTypes ?? []);
 
   for (const link of issue.fields.issuelinks ?? []) {
@@ -2087,11 +2172,82 @@ function classifyCoverageLinks(issue: JiraIssue, reg: Registry): {
       summary: other.fields.summary,
       linkTypeName: link.type.name,
     };
-    if (entry.role === 'atp') { atp.push(cl); }
-    else if (entry.role === 'atr') { atr.push(cl); }
+    if (entry.role === 'atp') {
+      if (HIGHER_ALTITUDE_PREFIX.test(cl.summary.trim())) { skipped.push({ ...cl, role: 'ATP' }); }
+      else { atp.push(cl); } // `ATP:*` or unprefixed (backward compat)
+    }
+    else if (entry.role === 'atr') {
+      if (HIGHER_ALTITUDE_PREFIX.test(cl.summary.trim())) { skipped.push({ ...cl, role: 'ATR' }); }
+      else { atr.push(cl); } // `ATR:*` / `ReTest:*` or unprefixed (backward compat)
+    }
+    else if (entry.slug === 'test_set') {
+      // Only the Story's own `ATS:*` Set is bucketed. Feature-level `TS:*`
+      // Sets stay ignored, exactly as every Test Set was before.
+      if (STORY_ATS_PREFIX.test(cl.summary.trim())) { sets.push(cl); }
+    }
+    else if (entry.slug === 'test_case') { tests.push(cl); }
     else if (entry.slug === 'defect') { defects.push({ ...cl, linkOk: acceptedDefectNames.has(link.type.name) }); }
   }
-  return { atp, atr, defects };
+  return { atp, atr, sets, tests, defects, skipped };
+}
+
+/** Keys of the coverable issues this issue links to, sorted for a stable report. */
+function coverableLinkKeys(issue: JiraIssue, reg: Registry): string[] {
+  const keys = new Set<string>();
+  for (const link of issue.fields.issuelinks ?? []) {
+    const other = link.inwardIssue ?? link.outwardIssue;
+    if (!other) { continue; }
+    const e = reg.byJiraType.get(other.fields.issuetype?.name ?? '');
+    if (e?.coverable === true) { keys.add(other.key); }
+  }
+  return [...keys].sort();
+}
+
+/** True when the issue has an issue-link to a coverable work type. */
+function hasCoverableLink(issue: JiraIssue, reg: Registry): boolean {
+  return coverableLinkKeys(issue, reg).length > 0;
+}
+
+/**
+ * Materializes one directly linked Test under the coverable's `test-cases/`.
+ * A Test already placed for this coverable is not re-placed.
+ *
+ * LIMITATION (deliberate): Tests are resolved from Jira issue links ONLY.
+ * Xray-internal membership (TC ∈ Test Set / TC ∈ Test Plan) is GraphQL-only
+ * and this boilerplate carries no Xray client, so a Test whose only home is
+ * Set/Plan membership is not discoverable here and stays an orphan for
+ * `syncOrphanTests` to surface. The companion QA boilerplate resolves those
+ * memberships; on the dev side, re-linking the Test in Jira is the fix.
+ */
+async function placeLinkedTest(
+  config: Config,
+  coverable: JiraIssue,
+  tcDir: string,
+  testKey: string,
+  options: SyncOptions,
+  result: SyncResult,
+  reg: Registry,
+  placed: Set<string>,
+): Promise<void> {
+  if (placed.has(testKey) || testKey === coverable.key) { return; }
+  placed.add(testKey);
+  if (!options.dryRun) { ensureDir(tcDir); }
+  const tIssue = await fetchIssue(config, testKey, TEST_FIELDS);
+  const body = generateTestMarkdown(tIssue, config);
+  const prefix = FOLDER_PREFIX.test_case ?? 'TEST';
+  bumpFile(writeIndexFile(join(tcDir, `${prefix}-${tIssue.key}-${generateSlug(tIssue.fields.summary)}.md`), body, options.dryRun).status, result);
+  result.synced.tests++;
+
+  // A Test may cover several issues; it is then written under each of them.
+  // Duplicating is safe here — every copy is generated from the same sync of
+  // the same Jira issue, so they cannot drift — but broad coverage is usually
+  // a sign the Test should be split, so it is worth naming. Reported only
+  // while processing the lowest-keyed coverer, otherwise the same Test would
+  // announce itself once per issue it covers.
+  const covered = coverableLinkKeys(tIssue, reg);
+  if (covered.length > 1 && coverable.key === covered[0]) {
+    result.warnings.push(`INFO: ${tIssue.key} covers ${covered.length} issues (${covered.join(', ')}) — materialized under each`);
+  }
 }
 
 /** Provenance footer appended to an ATP/ATR file synced from a linked Xray artifact. */
@@ -2114,7 +2270,16 @@ async function discoverCoverage(
   result: SyncResult,
 ): Promise<void> {
   const reg = loadRegistry();
-  const { atp, atr, defects } = classifyCoverageLinks(issue, reg);
+  const { atp, atr, tests, defects, skipped } = classifyCoverageLinks(issue, reg);
+
+  // --- Altitude guard: higher-ladder artifacts linked to this issue are named, never materialized ---
+  for (const s of skipped) {
+    result.warnings.push(`INFO: ${issue.key}: skipping ${s.summary} (${s.key}) — ${higherAltitudeLabel(s.summary)} artifact, not this Story's ${s.role}`);
+  }
+
+  // NOTE: `sets` (linked `ATS:*` Test Sets) are recognized but NOT expanded:
+  // resolving a Set's member Tests needs the Xray GraphQL API, which this
+  // boilerplate deliberately does not integrate. See `placeLinkedTest`.
 
   // --- ATP: Xray Test Plan description overrides the custom-field copy ---
   if (atp.length > 0) {
@@ -2152,6 +2317,19 @@ async function discoverCoverage(
         bumpFile(writeIndexFile(join(exDir, `${prefix}-${ex.key}-${generateSlug(ex.fields.summary)}.md`), exBody, options.dryRun).status, result);
       }
     }
+  }
+
+  // --- Tests directly linked to this issue (the anti-duplication rule) ---
+  // A Test that covers this issue belongs to it. Materializing it here is what
+  // lets the orphan-tests sweep shrink to genuinely orphan Tests instead of
+  // holding a second copy of every Test already reachable from a Story.
+  const tcDir = join(folder, 'test-cases');
+  const placedTests = new Set<string>();
+  for (const t of tests) {
+    if (t.linkTypeName !== 'Test') {
+      result.warnings.push(`${issue.key} ↔ ${t.key} (Test) linked via '${t.linkTypeName}' (expected 'is tested by') — fix Jira link`);
+    }
+    await placeLinkedTest(config, issue, tcDir, t.key, options, result, reg, placedTests);
   }
 
   // --- Defects: nested under defects/ (skipped with --no-defects) ---
@@ -2344,6 +2522,45 @@ async function syncSingleStory(
   await syncStory(config, story, epic, epicFolder, options, result);
 }
 
+/** Directory holding the index of QA-artifact Epics, sibling of `epics/`. */
+const QA_ARTIFACTS_DIR = 'qa-artifacts';
+
+/**
+ * Writes `qa-artifacts/_index.md` — the register of Epics that are QA buckets.
+ *
+ * No per-epic folder is created on purpose: their content is already distributed
+ * (Tests under their covering Story, defects nested, ATP/ATR under their coverable
+ * parent), so a folder per bucket would only hold an `epic.md` with no children.
+ * What is worth keeping is the mapping from bucket to key, which is what a skill
+ * needs to parent a new artifact.
+ */
+function writeQaArtifactsIndex(
+  epics: Array<{ epic: JiraIssue, via: string }>,
+  config: Config,
+  dryRun: boolean,
+  result: SyncResult,
+): void {
+  const dir = join(config.outputDir, QA_ARTIFACTS_DIR);
+  if (!dryRun) { ensureDir(dir); }
+
+  const lines = [
+    '# QA-Artifact Epics',
+    '',
+    '> Epics that hold QA artifacts instead of product scope. Kept out of `epics/`',
+    '> so the product tree stays product-only. Their content is not stored here —',
+    '> it lives under whatever each artifact covers.',
+    '',
+    '| Key | Name | Detected via |',
+    '| --- | ---- | ------------ |',
+  ];
+  for (const { epic, via } of epics) {
+    lines.push(`| [${epic.key}](${config.displayUrl}/browse/${epic.key}) | ${epic.fields.summary} | ${via} |`);
+  }
+  lines.push('', '---', '_Synced from Jira by sync-jira-issues_', '');
+
+  bumpFile(writeIndexFile(join(dir, '_index.md'), lines.join('\n'), dryRun).status, result);
+}
+
 async function syncAll(config: Config, options: SyncOptions): Promise<SyncResult> {
   const startTime = Date.now();
 
@@ -2384,14 +2601,41 @@ async function syncAll(config: Config, options: SyncOptions): Promise<SyncResult
         log.info('Fetching epics from Jira...');
       }
 
-      const epics = await searchIssues(
+      const allEpics = await searchIssues(
         config,
         `project = ${config.project} AND issuetype = Epic ORDER BY key ASC`,
         EPIC_FIELDS,
       );
 
+      // Split product Epics from QA-artifact buckets. Without this, `QA Test
+      // Repository` and its siblings land in `epics/` beside real product Epics,
+      // and syncEpic then queries them for Stories and finds none — a folder that
+      // looks like a product module but is a process bucket.
+      const qaCfg = readQaArtifactConfig();
+      const qaArtifactEpics: Array<{ epic: JiraIssue, via: string }> = [];
+      const epics: JiraIssue[] = [];
+      for (const epic of allEpics) {
+        const verdict = classifyQaArtifactEpic(epic, qaCfg);
+        if (verdict) { qaArtifactEpics.push({ epic, via: verdict.via }); }
+        else { epics.push(epic); }
+      }
+
+      if (qaArtifactEpics.length > 0) {
+        writeQaArtifactsIndex(qaArtifactEpics, config, options.dryRun, result);
+        // The name-prefix signal is the guessy one — surface it so the label (or the
+        // cached key) can be set and the guess stops being load-bearing.
+        const guessed = qaArtifactEpics.filter(e => e.via === 'name-prefix').map(e => e.epic.key);
+        if (guessed.length > 0) {
+          result.warnings.push(
+            `${guessed.length} Epic(s) treated as QA artifacts by name prefix only: ${guessed.join(', ')} — `
+            + `add the \`${qaCfg.label}\` label in Jira, or cache their keys under \`qa.qa_epics.*.key\` in .agents/project.yaml`,
+          );
+        }
+      }
+
       if (!options.json) {
-        log.success(`Found ${epics.length} epics`);
+        const qaNote = qaArtifactEpics.length > 0 ? ` (+${qaArtifactEpics.length} QA-artifact, indexed separately)` : '';
+        log.success(`Found ${epics.length} product epics${qaNote}`);
       }
 
       // Also find orphan stories (stories without parent epic)
@@ -2630,55 +2874,72 @@ async function syncImprovements(config: Config, options: SyncOptions): Promise<S
   return result;
 }
 
+/** Where a Test with no covering issue lands, beside the orphan Stories. */
+const ORPHAN_TESTS_DIR = join('epics', '_orphans', 'tests');
+
+/**
+ * Materializes Tests that no coverable issue covers, into `epics/_orphans/tests/`.
+ *
+ * A Test linked to a Story is written under that Story by `discoverCoverage`, so
+ * it is deliberately skipped here — one Jira issue, one file. What is left is the
+ * set nothing points at, and those are the interesting ones: a Test with no
+ * covering issue traces to no requirement. Parking them beside the orphan Stories
+ * (the `_orphans` convention this tree already uses) makes the gap a visible
+ * worklist rather than a silent absence, and re-linking one in Jira moves it under
+ * its Story on the next sync.
+ *
+ * TRADE-OFF (deliberate): no membership refinement runs here. A Test whose only
+ * connection to a Story is Xray Set/Plan membership (TC ∈ ATS / TC ∈ ATP) would
+ * need the Xray GraphQL API to be rescued from this list, and this boilerplate
+ * carries no Xray client — so such a Test IS reported as an orphan. The report
+ * over-approximates rather than misses; the companion QA boilerplate (which does
+ * integrate Xray) resolves memberships, and a Jira issue link fixes it here.
+ */
+async function syncOrphanTests(
+  config: Config,
+  options: SyncOptions,
+  result: SyncResult,
+): Promise<void> {
+  if (!options.json) { log.info('Fetching tests from Jira...'); }
+
+  const allTests = await searchIssues(
+    config,
+    `project = ${config.project} AND issuetype = Test${sprintAndClause(options)} ORDER BY key ASC`,
+    TEST_FIELDS,
+  );
+
+  const reg = loadRegistry();
+  const orphans = allTests.filter(t => !hasCoverableLink(t, reg));
+  const nested = allTests.length - orphans.length;
+
+  if (!options.json) {
+    log.success(`Found ${allTests.length} test(s) — ${orphans.length} orphan, ${nested} already under a covering issue`);
+  }
+  if (orphans.length === 0) { return; }
+
+  const dir = join(config.outputDir, ORPHAN_TESTS_DIR);
+  if (!options.dryRun) { ensureDir(dir); }
+
+  for (const test of orphans) {
+    if (!options.json) {
+      log.tree(test.key, test.fields.summary, test === orphans[orphans.length - 1]);
+    }
+    const filename = `TEST-${test.key}-${generateSlug(test.fields.summary)}.md`;
+    bumpFile(writeIndexFile(join(dir, filename), generateTestMarkdown(test, config), options.dryRun).status, result);
+    result.synced.tests++;
+  }
+
+  result.warnings.push(
+    `${orphans.length} Test(s) cover no Story/Bug/Improvement — see ${ORPHAN_TESTS_DIR}/ and link them in Jira`,
+  );
+}
+
 async function syncTests(config: Config, options: SyncOptions): Promise<SyncResult> {
   const startTime = Date.now();
-
-  const result: SyncResult = {
-    success: true,
-    synced: { epics: 0, stories: 0, bugs: 0, defects: 0, improvements: 0, tests: 0, tech_stories: 0, tech_debts: 0 },
-    warnings: [],
-    files: { created: 0, updated: 0, skipped: 0 },
-    duration_ms: 0,
-  };
+  const result = emptyResult();
 
   try {
-    const testsDir = join(config.outputDir, 'tests');
-    if (!options.dryRun) {
-      ensureDir(testsDir);
-    }
-
-    if (!options.json) {
-      log.info('Fetching tests from Jira...');
-    }
-
-    const tests = await searchIssues(
-      config,
-      `project = ${config.project} AND issuetype = Test${sprintAndClause(options)} ORDER BY key ASC`,
-      TEST_FIELDS,
-    );
-
-    if (!options.json) {
-      log.success(`Found ${tests.length} tests`);
-    }
-
-    for (const test of tests) {
-      const slug = generateSlug(test.fields.summary);
-      const filename = `TEST-${test.key}-${slug}.md`;
-      const filePath = join(testsDir, filename);
-
-      if (!options.json) {
-        log.tree(test.key, test.fields.summary, test === tests[tests.length - 1]);
-      }
-
-      const content = generateTestMarkdown(test, config);
-      const writeResult = writeIndexFile(filePath, content, options.dryRun);
-
-      if (writeResult.status === 'created') { result.files.created++; }
-      else if (writeResult.status === 'updated') { result.files.updated++; }
-      else { result.files.skipped++; }
-
-      result.synced.tests++;
-    }
+    await syncOrphanTests(config, options, result);
   }
   catch (error) {
     result.success = false;
@@ -2913,15 +3174,7 @@ async function syncStandaloneIssue(
   if (!options.dryRun) { ensureDir(dir); }
   const filePath = join(dir, `${prefix}-${key}-${generateSlug(issue.fields.summary)}.md`);
 
-  let content = renderStandaloneContent(entry, issue, type, config);
-
-  // BK-502: this branch used to ignore `options.includeComments` outright, so
-  // `--include-comments` was accepted and silently dropped for every non-coverable
-  // work type (Bug, Improvement, Test Case) while the coverable path honoured it.
-  // These types have no folder, so the trail is embedded in their single file.
-  if (options.includeComments) {
-    content = embedCommentsSection(content, await fetchComments(config, key));
-  }
+  const content = renderStandaloneContent(entry, issue, type, config);
 
   const r = writeIndexFile(filePath, content, options.dryRun);
   if (r.status === 'created') { result.files.created++; }
@@ -3045,6 +3298,91 @@ async function auditOrphanDefects(config: Config, options: SyncOptions, result: 
   }
 }
 
+/**
+ * Slugs whose issues `syncAll` already materializes by walking Epics and the
+ * Stories nested under them. A declarative sweep must skip them or every Story
+ * would be written twice.
+ */
+const SWEPT_BY_SYNC_ALL = new Set(['epic', 'story']);
+
+/**
+ * Work types the registry marks `sync: default` and that still need their own
+ * sweep. Replaces a hardcoded Bug sweep: the scope now lives in
+ * `.agents/jira-required.yaml`, which is where a project can widen it without
+ * editing this script.
+ *
+ * The shipped default resolves to Bug alone, and deliberately so — Epic, Story
+ * and Bug are the only types a vanilla Jira instance has. Defect, Improvement,
+ * Tech Story and Tech Debt are custom types, so making them default would break
+ * the first sync on any project that never created them.
+ */
+function defaultSweepEntries(reg: Registry): WorkTypeEntry[] {
+  return reg.list.filter(e => e.sync === 'default' && !SWEPT_BY_SYNC_ALL.has(e.slug));
+}
+
+interface JiraProjectMeta {
+  issueTypes?: Array<{ name?: string, subtask?: boolean }>
+}
+
+/**
+ * The subset of `present` Jira issue-type names an unfiltered pull will NOT
+ * touch: not `sync: default` (swept), not `sync: discovery` (arrives through
+ * issue links), not `test_case` (arrives through coverage / the orphan sweep),
+ * and not requested via `--types`. Pure — extracted so it can be unit-tested.
+ */
+function outOfScopeTypeNames(present: string[], reg: Registry, extraSlugs: string[]): string[] {
+  const enabled = new Set<string>();
+  for (const e of reg.list) {
+    // `discovery` types arrive through issue links, `test_case` through coverage —
+    // both produce files without being swept, so neither is "out of scope".
+    if (e.sync === 'default' || e.sync === 'discovery' || e.slug === 'test_case') { enabled.add(e.jiraIssueType); }
+  }
+  for (const slug of extraSlugs) {
+    const e = reg.bySlug.get(slug) ?? reg.bySlug.get(slug.replace(/-/g, '_'));
+    if (e) { enabled.add(e.jiraIssueType); }
+  }
+  return present.filter(n => !enabled.has(n));
+}
+
+/**
+ * Names the issue types that exist in the Jira project but will produce nothing
+ * this run, so an empty folder reads as a configuration choice rather than a bug.
+ *
+ * Informational by design: most projects legitimately leave several types off,
+ * and this is not a fault to fix. Names only, no counts — counts would need a
+ * search per type, which is a lot of API calls to answer a question nobody asked.
+ *
+ * Never throws: an advisory must not be able to fail a sync.
+ */
+async function reportOutOfScopeTypes(
+  config: Config,
+  reg: Registry,
+  options: SyncOptions,
+  result: SyncResult,
+): Promise<void> {
+  let meta: JiraProjectMeta;
+  try {
+    meta = await jiraFetch<JiraProjectMeta>(config, `/rest/api/3/project/${config.project}`);
+  }
+  catch {
+    return;
+  }
+
+  // Sub-tasks are structural children, never a work item this methodology syncs.
+  const present = (meta.issueTypes ?? [])
+    .filter(t => t.subtask !== true)
+    .map(t => t.name)
+    .filter((n): n is string => typeof n === 'string' && n !== '');
+
+  const outOfScope = outOfScopeTypeNames(present, reg, options.types ?? []);
+  if (outOfScope.length === 0) { return; }
+
+  result.warnings.push(
+    `INFO: present in Jira but not synced — ${outOfScope.join(', ')}. `
+    + 'Add one to this run with `--types <slug>`, or set its `sync:` in .agents/jira-required.yaml → `work_types`.',
+  );
+}
+
 async function cmdPull(options: SyncOptions): Promise<void> {
   const issueTypeLabels: Record<IssueTypeFilter, string> = {
     stories: 'Epics, Stories & Bugs',
@@ -3085,17 +3423,22 @@ async function cmdPull(options: SyncOptions): Promise<void> {
       case 'stories':
       default:
         result = await syncAll(config, options);
-        // Default scope also pulls Bugs (+ optional --types) unless scoped to a single epic/story.
+        // An unfiltered pull also sweeps every `sync: default` type (+ optional
+        // --types). Scoping to one epic/story means the caller asked for that
+        // subtree, so no project-wide sweep runs.
         if (!options.epicKey && !options.storyKey) {
           const reg = loadRegistry();
-          const bug = reg.bySlug.get('bug');
-          if (bug) { await syncTypeSweep(config, bug, options, result); }
+          for (const entry of defaultSweepEntries(reg)) {
+            await syncTypeSweep(config, entry, options, result);
+          }
           for (const slug of options.types ?? []) {
             const e = reg.bySlug.get(slug) ?? reg.bySlug.get(slug.replace(/-/g, '_'));
             if (e) { await syncTypeSweep(config, e, options, result); }
             else { result.warnings.push(`INFO: --types '${slug}' is not a known work_type slug — skipped.`); }
           }
+          await syncOrphanTests(config, options, result);
           await auditOrphanDefects(config, options, result);
+          await reportOutOfScopeTypes(config, reg, options, result);
         }
         break;
     }
@@ -3125,6 +3468,7 @@ async function cmdPull(options: SyncOptions): Promise<void> {
         if (result.synced.bugs > 0) { log.line(`Bugs synced:    ${result.synced.bugs}`); }
         if (result.synced.defects > 0) { log.line(`Defects synced: ${result.synced.defects}`); }
         if (result.synced.improvements > 0) { log.line(`Improvements synced: ${result.synced.improvements}`); }
+        if (result.synced.tests > 0) { log.line(`Tests synced:   ${result.synced.tests}`); }
         if (result.synced.tech_stories > 0) { log.line(`Tech Stories synced: ${result.synced.tech_stories}`); }
         if (result.synced.tech_debts > 0) { log.line(`Tech Debts synced: ${result.synced.tech_debts}`); }
       }
@@ -3250,11 +3594,13 @@ ${colors.bold}COMMANDS${colors.reset}
   help                Show this help message
 
 ${colors.bold}PULL SUBCOMMANDS${colors.reset}
-  pull                Sync Epics + Stories + Bugs (default) → .context/PBI/
+  pull                Sync Epics + Stories + every registry \`sync: default\` type
+                      (ships as Bug — widen via .agents/jira-required.yaml) → .context/PBI/
   pull bugs           Sync Bugs → .context/PBI/bugs/BUG-<KEY>-<slug>/
   pull defects        Sync Defects → nested under their coverable parent (defects/)
   pull improvements   Sync Improvements → .context/PBI/improvements/IMPROVEMENT-<KEY>-<slug>/
-  pull tests          Sync Tests → .context/PBI/tests/
+  pull tests          Sync orphan Tests (no coverable link) → .context/PBI/epics/_orphans/tests/
+                      (a Test linked to a Story materializes under that Story's test-cases/)
 
 ${colors.bold}COVERABLE FOLDERS${colors.reset}
   Coverable issues — Story, Bug, Defect, Improvement, Tech Story, Tech Debt — each
@@ -3283,10 +3629,7 @@ ${colors.bold}OPTIONS${colors.reset}
   --types <csv>       Extra coverable types to pull (e.g. improvement,tech-story,tech-debt)
   --no-defects        Skip defect discovery / nesting and the orphan-Defect audit
   --project <KEY>     Override the project key for this run (beats env + project.yaml)
-  --include-comments  Include Jira comments — comments.md for folder layouts
-                      (Story / Epic / Defect / Tech Story), an inline
-                      '## Comments' section for flat single-file work types
-                      (Bug / Improvement / Test Case)
+  --include-comments  Include Jira comments in comments.md
   --dry-run           Show what would be done without writing files
   --json              Output results as JSON
 
@@ -3335,8 +3678,6 @@ ${colors.bold}OVERWRITE POLICY${colors.reset}
   Jira is the source of truth — NO files are protected. Every file the sync owns
   (story.md, epic.md, per-field .md, comments.md, bug/improvement/tech-story/... .md) is
   re-materialized on each run (per-field files only when the Jira field is non-empty).
-  Flat single-file work types carry their comment trail INSIDE that one file, under a
-  '## Comments' heading, since they have no folder to hold a sibling comments.md.
   Hand-authored NON-Jira files (context.md, evidence/, test-specs/) use names the
   sync never writes.
 
@@ -3415,14 +3756,20 @@ async function main(): Promise<void> {
   }
 }
 
-// `import.meta.main` is false when the module is imported (e.g. by
-// `sync-jira-issues.test.ts`), so importing it no longer runs the CLI.
+export {
+  classifyCoverageLinks,
+  classifyQaArtifactEpic,
+  DEFAULT_QA_ARTIFACT_LABEL,
+  defaultSweepEntries,
+  higherAltitudeLabel,
+  outOfScopeTypeNames,
+};
+
+// Guarded so the pure helpers above can be imported by tests without running a
+// sync.
 if (import.meta.main) {
   main().catch((error) => {
     log.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   });
 }
-
-export { emptyResult, routeIssueByKey };
-export type { Config, SyncOptions, SyncResult };

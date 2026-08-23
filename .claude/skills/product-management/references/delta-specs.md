@@ -3,6 +3,8 @@
 > **Status:** OPTIONAL pattern. The default `product-management` flow edits acceptance criteria **in place** on each story. Only adopt delta specs when one of the conditions in [§ When to use](#when-to-use) actually holds — the overhead is real.
 >
 > **Scope:** Methodology + local-file pattern only. This workflow does NOT push rich-text content to the issue tracker — all artifacts live under `.context/PBI/`. If a future extension publishes deltas to Jira, route through `[ISSUE_TRACKER_TOOL]` and see `references/jira-publishing-gotchas.md` for ADF rules.
+>
+> **Gitignore prerequisite:** `.context/PBI/*` is gitignored by default (Jira is the source of truth for everything else under that tree — see `CLAUDE.md` §9). `specs/` and `archive/` are the two exceptions this pattern needs committed, since they are hand-authored and not Jira-mirrored. Before adopting delta specs, add `!.context/PBI/specs/` and `!.context/PBI/archive/` negations to `.gitignore` alongside the existing `!.context/PBI/README.md` / `!.context/PBI/templates/` lines — otherwise the "git-diffable changelog" this pattern promises never actually reaches git.
 
 ---
 

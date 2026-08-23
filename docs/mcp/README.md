@@ -56,6 +56,7 @@ Non-sensitive values (URLs, paths) use real examples from the SoloQ project.
 | **openapi**    | stdio  | REST API testing via OpenAPI spec           |
 | **sql**        | stdio  | Database testing via DBHub                  |
 | **supabase**   | stdio  | Supabase database management                |
+| **shadcn**     | stdio  | shadcn/ui component registry                |
 | **context7**   | stdio  | Developer documentation lookup              |
 | **tavily**     | remote | Web search                                  |
 | **postman**    | remote | API collections & testing                   |
@@ -63,6 +64,7 @@ Non-sensitive values (URLs, paths) use real examples from the SoloQ project.
 | **vercel**     | remote | Deployment management                       |
 | **notion**     | remote | Documentation                               |
 | **atlassian**  | stdio  | Jira/Confluence                             |
+| **nanobanana** | stdio  | Image generation (Gemini)                   |
 | **github**     | remote | Repository management                       |
 | **slack**      | stdio  | Team communication                          |
 
@@ -160,8 +162,7 @@ Run your agent and verify with:
 ## Security
 
 - **Templates** (this folder) = Safe for git, uses `{{VAR}}` placeholders
-- **Catalog files** (your copies) = NOT in git, contain real API keys
-- `*.catalog.json` (your real-key copies) are in `.gitignore`
+- **Literal-secret copies** (strategy A) = NOT for git — add them to `.gitignore` yourself; there is no automatic pattern covering them
 - `dbhub.toml` is **COMMITTED** (`${VAR}` placeholders, no secrets — same convention as `.mcp.json` / `opencode.jsonc`); only `dbhub.local.toml` (literal-secret overrides) is ignored
 
 ## Atlassian MCP (opt-in)
@@ -175,7 +176,7 @@ The Atlassian MCP server is **not enabled by default**. By default the boilerpla
    - Codex CLI: `codex.template.toml`
 2. Copy the `atlassian` block into your active config (`.mcp.json` for Claude Code, `opencode.jsonc` for OpenCode, etc.).
 3. Confirm `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` are set in `.env` (the installer collects both during `bun run setup`).
-4. Replace `{{ATLASSIAN_URL}}` in the block you pasted with the literal site host. Print it with:
+4. Replace `{{ATLASSIAN_URL}}` in the block you pasted with the literal site host (Codex only: its template's `atlassian` block authenticates via `mcp-remote` OAuth and has no `{{ATLASSIAN_URL}}` to replace). Print it with:
 
    ```bash
    bun run --silent jira:url

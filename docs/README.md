@@ -6,7 +6,7 @@ Bienvenido a la documentación del **AI-Driven Project Starter**.
 
 Esta documentación está orientada a **humanos** — para aprender conceptos, entender metodologías y seguir guías paso a paso.
 
-> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `CLAUDE.md` y `CLAUDE.md` en la raíz del repo. El resto del comportamiento de la AI vive en skills (`.claude/skills/`) y commands (`.claude/commands/`).
+> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `CLAUDE.md` y `CONTEXT.md` en la raíz del repo. El resto del comportamiento de la AI vive en skills (`.claude/skills/`) y commands (`.claude/commands/`).
 
 ---
 
@@ -35,7 +35,9 @@ docs/
 ├── architectures/                # Guías específicas por stack
 │   └── supabase-nextjs/          # Configuración Supabase + Next.js
 │
-└── context-engineering.md        # Estrategia de context engineering
+├── agentic-development-engineering.md  # Ingeniería del ciclo de desarrollo agéntico
+├── ai-personality.md             # Espejo humano del contrato de personalidad de la AI
+└── onboarding.html               # Tour de onboarding interactivo (HTML standalone)
 ```
 
 ---
@@ -143,4 +145,4 @@ Para agregar documentación:
 
 ---
 
-**Última actualización**: 2026-05-07
+**Última actualización**: 2026-08-22

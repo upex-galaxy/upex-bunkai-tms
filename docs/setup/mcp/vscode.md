@@ -52,7 +52,7 @@ Luego:
   "servers": {
     "github-mcp": {
       "type": "http",
-      "url": "https://mcp.github.com/"
+      "url": "https://api.githubcopilot.com/mcp/"
     }
   },
   "inputs": [
@@ -156,7 +156,7 @@ code-insiders --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix
   "servers": {
     "context7": {
       "type": "http",
-      "url": "https://context7.mcp.io"
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }
@@ -380,7 +380,7 @@ En Copilot Chat:
     },
     "context7": {
       "type": "http",
-      "url": "https://context7.mcp.io"
+      "url": "https://mcp.context7.com/mcp"
     }
   },
   "inputs": [
@@ -433,7 +433,7 @@ En Copilot Chat:
     },
     "context7": {
       "type": "http",
-      "url": "https://context7.mcp.io"
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }

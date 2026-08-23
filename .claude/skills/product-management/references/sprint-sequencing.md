@@ -73,8 +73,8 @@ This algorithm produces the schema below. It is NOT written to a standalone file
 
 | Execution Sprint | Parallel-safe count | Story keys | Notes |
 |---|---|---|---|
-| 1 | 4 | BK-2, BK-3, BK-18, BK-29 | No dependencies — start here |
-| 2 | 3 | BK-4 (deps BK-2), BK-19 (deps BK-18), BK-30 (deps BK-29) | Single-step deps |
+| 1 | 4 | PROJ-2, PROJ-3, PROJ-18, PROJ-29 | No dependencies — start here |
+| 2 | 3 | PROJ-4 (deps PROJ-2), PROJ-19 (deps PROJ-18), PROJ-30 (deps PROJ-29) | Single-step deps |
 | … | … | … | … |
 
 ## Cycle warnings

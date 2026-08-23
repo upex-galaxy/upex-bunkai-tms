@@ -47,6 +47,8 @@ Supabase proporciona dos tipos de API keys:
 
 Encuentras ambas en: **Dashboard → Project Settings → API**
 
+> **Nota (este boilerplate):** `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` son los nombres **legacy** de Supabase. Los proyectos modernos usan el par nuevo **publishable + secret**, y el `.env` de este repo los declara como `SUPABASE_PUBLISHABLE_KEY` (equivale al anon key) y `SUPABASE_SECRET_KEY` (equivale al service role key). Donde este documento diga "Anon Key", usa tu `SUPABASE_PUBLISHABLE_KEY`.
+
 ### Anon Key (pública)
 
 ```javascript
@@ -230,7 +232,7 @@ import { test, expect, Page } from '@playwright/test';
 
 // Configuración
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const ANON_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
 const PROJECT_REF = SUPABASE_URL.split('//')[1].split('.')[0];
 
 interface AuthData {

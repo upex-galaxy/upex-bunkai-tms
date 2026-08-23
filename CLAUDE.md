@@ -301,31 +301,49 @@ Project values live in **`.agents/project.yaml`** — load once per session. NEV
 
 ## 9. LOCAL CONTEXT (PBI)
 
-`.context/PBI/` is the **Jira-synced cache** — Jira is the source of truth; the sync script (`jira:sync-issues`, READ `package.json`) re-materializes every file it owns. Hand-authored files (context.md, evidence/, shift-left-refinement.md) use names the sync never writes.
+> **`.context/PBI/` is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Jira is the source of truth; local `.md` files are a **read-only cache**. NEVER hand-write a Jira-mirrored file: author the content, push it to the Jira field (or fallback comment), then run the sync. Rebuild the whole tree with `bun run context:hydrate`.
+>
+> **WHY NOT COMMITTED**: synced content regenerates. Two sessions re-syncing at different times produce conflicting commits of the same generated text; a 3-way merge over a full-file rewrite is meaningless. Jira already IS the versioned, shared, cloud-hosted copy — committing the cache duplicates the database into git and buys nothing. Untracked in this repo on 2026-08-22 (1125 files; recovery tag `pbi-pre-cache-migration`).
+
+**THREE TIERS** — every path under `.context/PBI/` is exactly one of these. Check before creating any file:
+
+| Tier | Source of truth | In git? | Recovered by |
+| --- | --- | --- | --- |
+| `[SYNC]` | Jira | No | `bun run context:hydrate` |
+| `[COMMIT]` | This repo | **Yes** | `git checkout` |
+| `[LOCAL]` | Nothing durable | No | Not recovered — disposable by design |
+
+`[LOCAL]` files (`context.md`, `progress.md`, `shift-left-refinement.md`, `evidence/`) MAY be hand-written, but **NOTHING downstream may depend on one existing**: they live only on the machine that made them. Durable session state → `.session/sprint-development/<KEY>/progress.md` (the resume contract already reads it, NOT the PBI copy); durable evidence → Jira (attachment / comment).
+
+**GITIGNORE LADDER** (in `.gitignore`): `.context/PBI/*` → `!.context/PBI/README.md` → `!.context/PBI/templates/`. NEVER collapse it to a plain `.context/PBI/` — git cannot re-include a file whose parent dir is excluded, so a collapse silently drops the committed exceptions. Verify any change with `git check-ignore -v` on `README.md` (must NOT be ignored) and on a `stories/.../story.md` (must be ignored).
 
 ```
 .context/PBI/
-  epic-tree.md                       # Global index: epics → stories (+points/status)
+  README.md                          [COMMIT] tier rules + gitignore ladder
+  templates/                         [COMMIT] skeletons
+  epic-tree.md                       [SYNC] Global index: epics → stories (+points/status)
   epics/EPIC-{KEY}-{slug}/
-    epic.md                          # Summary, description, story table, metadata
-    feature-*.md                     # Epic-level rich-text fields (when non-empty)
+    epic.md                          [SYNC] Summary, description, story table, metadata
+    feature-*.md                     [SYNC] Epic-level rich-text fields (when non-empty)
     stories/STORY-{KEY}-{slug}/
-      story.md                       # Index: overview, field manifest, traceability
-      acceptance-criteria.md, scope.md, business-rules.md, …   # One file per non-empty field
-      implementation-plan.md         # Spec Implementation Plan (Dev) field
-      acceptance-test-plan.md / acceptance-test-results.md     # ATP / ATR fields
-      comments.md                    # With --include-comments
-      defects/                       # Linked defects (auto-nested)
-      evidence/                      # Hand-authored: screenshots, traces (gitignored)
-  bugs/BUG-{KEY}-{slug}.md           # Flat file (registry: coverable=false, content=single)
-  tech-stories/TECHSTORY-{KEY}-{slug}/   # Coverable folder (registry-driven)
-  tests/ improvements/ …             # Other work types per .agents/jira-required.yaml
-  test-plans/ test-executions/ test-sets/   # [SYNC] Xray container issues (jira-xray); description holds the ATP/ATR body
+      story.md                       [SYNC] Index: overview, field manifest, traceability
+      acceptance-criteria.md, scope.md, business-rules.md, …   [SYNC] One file per non-empty field
+      implementation-plan.md         [SYNC ← Jira `spec_implementation_plan` / stub]
+      acceptance-test-plan.md / acceptance-test-results.md     [SYNC] ATP / ATR fields
+      comments.md                    [SYNC, --include-comments]
+      defects/                       [SYNC] Linked defects (auto-nested)
+      context.md  progress.md  evidence/   [LOCAL] machine-local, disposable
+  bugs/BUG-{KEY}-{slug}.md           [SYNC] Flat file (registry: coverable=false, content=single)
+  tech-stories/TECHSTORY-{KEY}-{slug}/   [SYNC] Coverable folder (registry-driven)
+  tests/ improvements/ …             [SYNC] Other work types per .agents/jira-required.yaml
+  test-plans/ test-executions/ test-sets/ preconditions/   [SYNC] Xray container issues (jira-xray); description holds the ATP/ATR body
 ```
 
-Folder layout per work type is governed by `.agents/jira-required.yaml` → `work_types` (coverable/content/local_dir) — the script is shared byte-identical with both boilerplates; per-repo behavior lives in that YAML.
+Folder layout per work type is governed by `.agents/jira-required.yaml` → `work_types` (coverable/content/local_dir) — the script is shared byte-identical with both boilerplates; per-repo behavior lives in that YAML. **A work type absent from that manifest is invisible to `jira:sync-workflows`, which still exits 0** — a stale manifest silently regenerates a truncated `jira-workflows.json`.
 
-**`[SYNC]` files = forbidden to hand-write** — every file the sync owns (epic.md, story.md, per-field `.md`, implementation-plan.md, ATP/ATR, comments.md, Xray containers) is overwritten on every sync. Jira is the source of truth. Author the content, push it to its Jira field (or fallback comment), THEN run the sync and read it back. File holds info NOT in Jira (context.md, progress.md, evidence/, roadmaps) → author locally as usual.
+**`[SYNC]` files = forbidden to hand-write** — every file the sync owns (epic.md, story.md, per-field `.md`, implementation-plan.md, ATP/ATR, comments.md, Xray containers) is overwritten on every sync; NO file is hard-protected. **Rule of thumb**: file mirrors a Jira field → read the synced copy, never author it locally. File holds info NOT in Jira → decide its tier: another machine or a later session needs it → it does NOT belong here (Jira field/comment, or `.session/`); only this machine, this work → `[LOCAL]`.
+
+**COLD CLONE**: a fresh clone has an almost-empty `.context/PBI/` (README + `templates/`) — **the intended state, not a broken checkout**. `bun run context:hydrate` (= `jira:sync-issues pull --include-comments`) rebuilds the cache. Requires `ATLASSIAN_EMAIL` / `ATLASSIAN_API_TOKEN` in `.env`; host from `.agents/project.yaml` → `issue_tracker.atlassian_url` (§7).
 
 **DETAILED READS via the script** (NOT `acli view` — that returns null for custom fields): `bun run jira:sync-issues get <KEY> --include-comments` → one issue, ALL custom fields + comments → read the generated `.md`. **FALLBACK**: a required custom field absent from the instance → write the content as a structured Jira comment (`## <label>`) per `.agents/jira-required.yaml` → `fallback:`; the sync emits a pointer stub. Never block on a missing field.
 

@@ -44,6 +44,7 @@ ONE-TIME FOUNDATION    →    CONTINUOUS MANAGEMENT    →    PER-STORY IMPLEMEN
 | **Testability bridge** (one-time + idempotent re-runs) | `testability-guide`                                                 | In-app `/qa` page ("Software Testability Guide for QA") + tool-agnostic credentials artifact (Jira Epic / Confluence / Notion / MCP / CLI / manual paste) |
 | **Management** (continuous)                            | `product-management`                                                | Jira backlog (epics + stories), refined ACs in Gherkin, edge-case enumeration, sprint snapshots                                                           |
 | **Implementation** (per story)                         | `sprint-development` (+ optional `unit-testing`, `git-flow-master`) | `implementation-plan.md`, code on a feature branch, PR, code review, merged to staging                                                                    |
+| **Autonomous delivery** (scheduled / unattended runs)  | `autonomous-delivery` (wraps the pipeline skills)                   | Audit of real state (git is truth, the tracker is a hint), selection of genuinely unblocked work, dispatch to the owning pipeline skill, run report        |
 | **Spec-Driven Development** (any substantial change)   | `sdd-*` skill bloque (not auto-installed; see §3.1 note)            | Exploration → Proposal → Spec → Design → Tasks → Apply → Verify → Archive                                                                                 |
 
 Every phase is powered by an AI skill, every skill operates with at least one human-in-the-loop checkpoint, and every artefact produced is traceable from the original Jira ticket back to the source PRD requirement that motivated it.
@@ -73,7 +74,7 @@ The goal of this boilerplate is therefore not to "add some AI to a project," but
 - A Spec-Driven Development (SDD) workflow for any substantial change, with explicit phases (explore → propose → spec → design → tasks → apply → verify → archive).
 - A backlog seeded from the PRD with INVEST-validated stories and Gherkin acceptance criteria.
 - A per-story dev loop that drives Jira state transitions, plans before it codes, reviews before it merges, and never deploys to production without a human gate.
-- Persistent memory (`engram`) that survives sessions and compactions, plus on-disk PBI folders for everything `engram` cannot host.
+- Persistent memory (`engram`) that survives sessions and compactions, plus a gitignored `.context/PBI/` cache — hydrated from Jira on demand (`bun run context:hydrate`) — for anything `engram` should not have to hold in full.
 
 The rest of this document describes the engineering reasoning behind those choices and the hooks for extending them.
 
@@ -218,7 +219,11 @@ The practice is organised in three conceptual tiers:
 │  sdd-tasks · sdd-apply · sdd-verify · sdd-archive                   │
 │                                                                     │
 │  Tool / utility skills                                              │
-│  acli (Jira CLI) · agentic-dev-onboard (tour)                       │
+│  acli (Jira CLI) · vercel-cli (deploy ops) · agentic-dev-onboard    │
+│  (tour) · testability-guide (/qa page)                              │
+│                                                                     │
+│  Unattended delivery                                                │
+│  autonomous-delivery (scheduled runs: audit → select → dispatch)    │
 │                                                                     │
 │  Shared Knowledge Layer                                             │
 │  Product specs · Design tokens · Discovery docs · Per-ticket memory │
@@ -244,7 +249,7 @@ The skill roster is split by _phase_ (declared in each `SKILL.md` frontmatter as
 - **`foundation`** — `project-foundation` (Constitution + PRD + SRS + Discovery), `design-system` (DESIGN.md + opt-in screen-mapping: design briefs for Claude Design / Open Design → `master-design-plan.md`), `project-bootstrap` (backend + frontend scaffolding).
 - **`foundation-extension`** — `testability-guide` (in-app `/qa` page + tool-agnostic credentials artifact for QA testers and AI agents; runs after `project-bootstrap`, idempotent on re-run).
 - **`management`** — `product-management` (backlog seed, epic creation, story refinement, AC quality, edge-case enumeration, sprint reporting).
-- **`implementation`** — `sprint-development` (per-story mega-orchestrator), `unit-testing` (TDD composable slice), `git-flow-master` (branches, commits, PRs, conflicts).
+- **`implementation`** — `sprint-development` (per-story mega-orchestrator), `unit-testing` (TDD composable slice), `git-flow-master` (branches, commits, PRs, conflicts), `autonomous-delivery` (scheduled / unattended entry point: audits real state — git is truth, the tracker is a hint — selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out and reports; modes `story` / `bug` / `discovery`).
 
 On top of the project-shipped skills, the boilerplate composes with **two external skill catalogs** installed via `bun run setup`:
 
@@ -330,7 +335,9 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │
 ├── master-implementation-plan.md     # High-level roadmap                (/master-implementation-plan)
 │
-└── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1)
+└── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1) — GITIGNORED CACHE; only README.md + templates/ are committed
+    ├── README.md                    #   [COMMIT] tier rules + gitignore ladder
+    ├── templates/                   #   [COMMIT] skeletons
     ├── epic-tree.md                 #   [SYNC] master index
     ├── bugs/ defects/ improvements/ tests/  # [SYNC] standalone issue types (per work_types registry)
     └── epics/EPIC-<KEY>-<slug>/
@@ -346,12 +353,12 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
             ├── workflow.md          #   Flow / sequence     [SYNC ← Jira field / stub]
             ├── implementation-plan.md  # Plan               [SYNC ← Jira `spec_implementation_plan` / stub]
             ├── comments.md          #   [SYNC, --include-comments]
-            ├── context.md           #   Session context     (non-Jira)
-            ├── progress.md          #   Story progress       (non-Jira)
-            └── evidence/            #   Screenshots, logs   (gitignored)
+            ├── context.md           #   Session context     [LOCAL] disposable
+            ├── progress.md          #   Story progress       [LOCAL] disposable
+            └── evidence/            #   Screenshots, logs   [LOCAL] disposable
 ```
 
-The `PBI/` tree is owned by `scripts/sync-jira-issues.ts`: Jira is the source of truth and the local `[SYNC]` `.md` files are a read-only cache materialized by `bun run jira:sync-issues`. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read.
+The `PBI/` tree is owned by `scripts/sync-jira-issues.ts` and is a **gitignored cache**: everything under `.context/PBI/` is excluded except `README.md` and `templates/`, the only two paths actually tracked in git. Jira is the source of truth; plan history lives in the Jira field's own edit history plus engram, not in git log. `bun run context:hydrate` (`sync-jira-issues pull --include-comments`) rebuilds the whole `[SYNC]` tree from scratch — a fresh clone starts with an almost-empty `PBI/` (just `README.md` and `templates/`), and that is the intended state, not a broken checkout. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read. Story-level `context.md`, `progress.md`, and `evidence/` are `[LOCAL]`: hand-written, machine-local, disposable — nothing downstream may depend on one existing; durable session state lives under `.session/` and durable evidence goes to Jira.
 
 Plus, at the project root:
 
@@ -375,7 +382,7 @@ A second knowledge surface exists outside `.context/`: the `agentic-dev-core/ref
 
 ### Project variables vs runtime credentials
 
-Static project values (`{{PROJECT_KEY}}`, `{{WEB_URL}}`, `{{API_URL}}`, `{{ATLASSIAN_URL}}`, etc.) live in `.agents/project.yaml` — the AI resolves `{{VAR_NAME}}` references against that file once per session. Runtime credentials (`STAGING_USER_EMAIL`, `STAGING_USER_PASSWORD`, etc.) remain in `.env` and are read at execution time. The two systems are separate by design: `.agents/project.yaml` is committed to the repo, `.env` is gitignored.
+Static project values (`{{PROJECT_KEY}}`, `{{WEB_URL}}`, `{{API_URL}}`, etc.) live in `.agents/project.yaml` — the AI resolves `{{VAR_NAME}}` references against that file once per session. The Atlassian host is a special case, not a `{{VAR_NAME}}`: it lives only in `.agents/project.yaml` → `issue_tracker.atlassian_url`, resolved through the `cli/lib/atlassian-instance.ts` accessor (`bun run jira:url`), and is deliberately absent from `.env` / `.env.example` so a stale local copy can never shadow it. Runtime credentials (`STAGING_USER_EMAIL`, `STAGING_USER_PASSWORD`, etc.) remain in `.env` and are read at execution time. The two systems are separate by design: `.agents/project.yaml` is committed to the repo, `.env` is gitignored.
 
 Four reference syntaxes coexist across prompts and docs:
 
@@ -602,7 +609,7 @@ Consider a ticket `UPEX-XXX` with a handful of acceptance criteria covering a us
 
 3. **Stage 2 — Implementation.** An implementation subagent picks up the plan and writes code across the listed files. After each batch, three verifiers run in parallel: `bun run lint:check`, `bun run build`, `bun test`. Red → fix loop, max 2 iterations. The developer can opt into a TDD slice via `/unit-testing` for any pure function or complex branching.
 
-4. **Stage 3 — Code Review.** The branch is pushed and a PR is opened via `/git-flow-master` (auto-detected branching strategy chooses the base branch). Jira automatically transitions In Progress → In Review. A reviewer subagent (model alias = opus) walks the AC compliance matrix, the code-standards checklist, and the composition patterns. Output: `review.md` and `compliance-matrix.md` committed in the PR branch.
+4. **Stage 3 — Code Review.** The branch is pushed and a PR is opened via `/git-flow-master` (auto-detected branching strategy chooses the base branch). Jira automatically transitions In Progress → In Review. A reviewer subagent (model alias = opus) walks the AC compliance matrix, the code-standards checklist, and the composition patterns. Output: `review.md` and `compliance-matrix.md`, persisted to the gitignored PBI cache and to engram (topic keys `pbi/{ticket}/review`, `pbi/{ticket}/compliance-matrix`) — not committed to the PR branch.
 
 5. **Stage 4 — Staging Deploy.** PR is merged to `staging`. Vercel deploys the preview. Supabase migrations run (if any). A background subagent watches health and smoke for N minutes. Jira transitions In Review → Ready For QA.
 
@@ -610,7 +617,7 @@ Consider a ticket `UPEX-XXX` with a handful of acceptance criteria covering a us
 
 7. **Memory persistence.** Throughout the session, the orchestrator and subagents call `mem_save` on decisions, bug fixes, conventions, and discoveries — tagged with stable topic keys (`pbi/UPEX-XXX/impl-plan`, `pbi/UPEX-XXX/review`, etc.) so the next session can recover them.
 
-Every artefact lives in the PBI folder on disk and in engram. The AI produces the plan, writes the code, opens the PR, runs the deploy. The engineer reviews and approves at each checkpoint.
+Every artefact is durable in Jira (source of truth, synced into the read-only `.context/PBI/` cache on disk) and in engram — never in git history of the PBI folder itself, which is gitignored by design. The AI produces the plan, writes the code, opens the PR, runs the deploy. The engineer reviews and approves at each checkpoint.
 
 ### Typical timing
 
@@ -693,7 +700,6 @@ The skill architecture leaves room for future enhancements without rework. Docum
 - **Cross-agent portability.** Each skill declares `compatibility: [claude-code, copilot, cursor, codex, opencode]`. A future CI step could spin up multiple runners to validate cross-agent reliability.
 - **Team-shared engram.** A future cross-machine persistent memory layer (sync between developers, team-shared decisions) could plug into the existing topic-key convention.
 - **Per-phase autonomous routing.** A future orchestrator could read each skill's `phase:` frontmatter and route to a different model automatically without the developer specifying.
-- **Master roadmap.** A future pattern (Pattern 7, currently deferred) would produce a high-level `.context/master-implementation-plan.md` from the business maps and the SRS — see `docs/methodology/` for the deferral rationale.
 
 These hooks are documented but not implemented. Reopen when there is concrete demand.
 
@@ -708,10 +714,10 @@ These hooks are documented but not implemented. Reopen when there is concrete de
 - **The SDD meta-skill bloque** — explore → propose → spec → design → tasks → apply → verify → archive for any substantial change.
 - **A library of utility slash commands** — deterministic, single-purpose, invoked with `/<name>`. The current library is enumerated in [onboarding.html §10 Commands & Scripts](onboarding.html).
 - **Live system integrations** — MCPs for the database (Supabase), library docs (context7), web search (tavily), workflow automation (n8n), persistent memory (engram); first-party CLIs for Jira (acli), GitHub (gh), deploys (vercel, supabase), browser automation (playwright).
-- **A structured context layer** — project, module, and story-level knowledge, on disk and version-controlled. Contains product specs, design tokens, discovery docs, per-ticket memory, and team guidelines.
+- **A structured context layer** — project, module, and story-level knowledge, on disk. Project-level docs (product specs, design tokens, discovery docs) are version-controlled; per-ticket memory under `.context/PBI/` is a gitignored cache hydrated from Jira, not a git-tracked artefact.
 - **A portable design system (`DESIGN.md`)** — Apache-2.0 Google Labs spec at the project root. Consumed by `/project-bootstrap` and any AI agent reading the repo.
 - **Project variable contract** — `.agents/project.yaml` + `.agents/jira-required.yaml` + auto-generated catalogs, validated by `bun run vars:check` and `bun run jira:check`.
-- **Persistent memory (engram + PBI folders)** — sessions resume from the exact point they ended. No context loss between days or developers.
+- **Persistent memory (engram + Jira, synced on demand into a machine-local `.context/PBI/` cache)** — sessions resume from the exact point they ended. No context loss between days or developers.
 - **A per-story dev loop** — Planning → Implementation → Code Review → Staging → (gated) Production. Drives Jira state transitions automatically. Production is always human-gated.
 - **A CI / CD pipeline** — Vercel for deploys, GitHub Actions for lint/types/tests on PRs, Supabase migrations on merge to `staging`.
 - **A pre-flight quality gate** — lint + types + tests + review + deploy. Failures stop the line; the developer decides retry / skip / abort.

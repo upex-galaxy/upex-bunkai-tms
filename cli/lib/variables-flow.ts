@@ -51,7 +51,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { password } from '@clack/prompts';
 import {
   appendVarsToEnv,
@@ -77,7 +78,9 @@ import {
 // Paths + colors (kept local so the module is self-contained)
 // ----------------------------------------------------------------------------
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..');
+// `import.meta.dir` is Bun-only; this lib has no shebang and inherits the
+// importer's runtime — fall back to the portable URL-based form under Node.
+const REPO_ROOT = resolve(import.meta.dir ?? dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ENV_PATH = join(REPO_ROOT, '.env');
 const BACKUPS_DIR = join(REPO_ROOT, '.backups');
 const VERCEL_PROJECT_JSON = join(REPO_ROOT, '.vercel', 'project.json');
