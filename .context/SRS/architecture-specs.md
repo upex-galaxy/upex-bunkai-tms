@@ -124,7 +124,10 @@ erDiagram
 | `bugs` | `id`, `project_id`, `module_id`, `atc_id?`, `run_id?`, `title`, `severity`, `status`, `description`, `steps_to_reproduce`, `evidence_urls[]`, `external_id?` | Native defect. |
 | `environments` | `project_id`, `name`, `web_url`, `api_url` | Run targeting. |
 | `integrations` | `project_id`, `kind`, `config` (jsonb), `secrets_ref` | Jira, GitHub, etc. |
-| `access_tokens` | `id`, `user_id`, `workspace_id?`, `hash`, `scopes`, `expires_at` | Bearer auth. |
+| `access_tokens` | `id`, `user_id`, `workspace_id?`, `name`, `token_prefix`, `scopes`, `expires_at`, `revoked_at`, `last_used_at`, `created_at` | Bearer auth (PAT). Carries **no** secret material: the `hash` column was dropped in migration `0012`. Revocation is `revoked_at` (soft); there is no DELETE policy. |
+| `access_token_secrets` | `token_id`, `hash` | 1:1 sibling of `access_tokens` holding `sha256(secret)`. Migration `0011`. RLS on with **no policies** + all grants revoked from `anon` / `authenticated` / QA roles — `service_role` only. |
+| `magic_link_token_secrets` | `magic_link_token_id`, `token_hash`, `ip_hash` | 1:1 sibling of `magic_link_tokens`. Same isolation contract. Migration `0011`. |
+| `workspace_invite_secrets` | `invite_id`, `token_hash` | 1:1 sibling of `workspace_invites`. Same isolation contract. Migration `0011`. |
 | `activity_log` | `id`, `actor_id`, `action`, `entity_type`, `entity_id`, `payload_summary` | Audit-light. |
 | `feature_flags` | `workspace_id?`, `project_id?`, `key`, `enabled` | Phase 2 gates. |
 | `idempotency_keys` | `key`, `endpoint`, `response_snapshot`, `expires_at` | 24h TTL. |
@@ -230,32 +233,63 @@ The shape of the data produced is identical to a human-driven Run. Dashboards ag
 
 ## 5. Security Architecture
 
-### Auth flow (end-user)
+### Auth flow (end-user, browser)
+
+The UI entry point is `/login` (`app/(auth)/login/page.tsx`) — an email-first form, not a `/auth/sign-in` route.
 
 ```
-Browser ─ /auth/sign-in ──► Next.js ─ supabase.auth.signInWith{OAuth|Otp} ──► Supabase Auth
-                                                          │
-                                                          ▼
-                                                JWT in HttpOnly cookie
-                                                          │
-                                                          ▼
-                                  Next.js middleware extracts JWT, resolves
-                                  session → propagates workspace_id to handlers
+Browser ─ /login ──► POST /api/v1/auth/check-email  (does this email already have an account?)
+                                   │
+        ┌──────────────────────────┴──────────────────────────┐
+        ▼ existing account                                    ▼ new account
+POST /api/v1/auth/signin                            POST /api/v1/auth/signup ──► 202
+supabase.auth.signInWithPassword                    (no session, no credentials issued)
+        │                                                     │
+        │                                           POST /api/v1/auth/confirm
+        │                                           supabase.auth.verifyOtp (6-digit email code)
+        └──────────────────────────┬──────────────────────────┘
+                                   ▼
+                Supabase session written to HttpOnly cookies by the SSR client
+                                   │
+                                   ▼
+        middleware.ts refreshes that cookie session (supabase.auth.getUser()) and
+        redirects unauthenticated hits on PROTECTED_PREFIXES to /login?next=…
 ```
+
+Two secondary rails exist: OAuth (GitHub / Google) starts **server-side** at `/auth/oauth/{provider}` so the CSRF state cookie is minted before the redirect (ADR-0008), and a magic link via `POST /api/v1/auth/magic-link`.
+
+**`middleware.ts` does exactly two things**: refresh the Supabase cookie session, and gate the protected path prefixes. It never reads the `Authorization` header, never verifies a PAT, and never resolves or propagates `workspace_id`.
 
 ### Auth flow (API / CLI / Agent)
 
+There is no device-code flow and no `/auth/login` route. A PAT is minted **inline in the sign-in response**.
+
 ```
-CLI ─ /auth/login (device-code flow) ──► Next.js ─ issue PAT ──► access_tokens table
-                                                                       │
-                                                                       ▼
-                                                          token_prefix + sha256(hash)
-                                                                       │
-Request ─ Authorization: Bearer bk_pat_... ──► middleware
-                                                  ├── lookup hash, verify expiry/revocation
-                                                  ├── attach { user_id, workspace_id?, scopes }
-                                                  └── proceed to handler
+CLI ─ POST /api/v1/auth/signin { email, password } ──► Supabase Auth verifies the password
+                                   │
+                                   ▼
+         the SAME response mints a fresh PAT (lib/api/pat.ts) and returns
+         { user, session, pat: { token: "bk_pat_<prefix>.<secret>", scopes, … } }
+         New accounts get their first PAT from POST /api/v1/auth/confirm instead —
+         signup issues none. Default scopes are least-privilege; a global
+         workspace:admin token can never be minted here (ADR-0005).
+                                   │
+                                   ▼
+         access_tokens  (token_prefix indexed, scopes, expires_at, revoked_at)
+         access_token_secrets  (sha256 of the secret — service_role only)
+                                   │
+Request ─ Authorization: Bearer bk_pat_<prefix>.<secret> ──► withApiHandler (lib/api/handler.ts)
+                                   └── resolveIdentity (lib/api/principal.ts)
+                                         ├── bearer.ts: prefix lookup → hash compare →
+                                         │   revocation + expiry check (uniform 401 on any failure)
+                                         ├── collapses cookie AND bearer callers into ONE
+                                         │   Principal { userId, workspaceId, capabilities,
+                                         │               via, tokenId, db }
+                                         ├── enforces the route's declared capabilities
+                                         └── hands the handler an RLS-scoped `principal.db`
 ```
+
+**The gateway is `withApiHandler`, not Next.js middleware** (ADR-0001). Authentication is resolved per route by the wrapper, which every `/api/v1` handler must opt into with an explicit posture (`public` / `authenticated` / `cookie-only` / `required`) — a route cannot compile without choosing one.
 
 ### RBAC
 
@@ -268,18 +302,32 @@ Request ─ Authorization: Bearer bk_pat_... ──► middleware
 - All API responses pass through a response shaper that strips internal fields (`*_internal`, `payload_summary`).
 - Markdown content sanitized via `rehype-sanitize` with an allowlist that excludes scripts, inline event handlers, and iframes (except a known-good Mermaid renderer).
 - Webhook URLs (Jira sync, integrations) validated against an allowlist of public hostnames; private IP ranges rejected.
-- Personal Access Tokens hashed with SHA-256 (no Argon needed — tokens are random 32-byte secrets).
+- Personal Access Tokens hashed with SHA-256 (no Argon needed — tokens are random 32-byte secrets). The hash is stored in the `access_token_secrets` sibling table, not on `access_tokens`, so QA / analytics roles that can read the token metadata cannot read the secret.
 
-## 6. ADRs (Architecture Decision Records) — pending
+## 6. ADRs (Architecture Decision Records)
 
-Create these under `docs/decisions/` as the MVP progresses:
+ADRs live in **`.context/ADR/`**, one file per decision, four-digit numbering (`ADR-0001…`). The authoritative list is the index in [`.context/ADR/README.md`](../ADR/README.md) — read it first, and treat it as source of truth over anything summarized here.
 
-- **ADR-001**: Supabase for MVP, plan Phase-2 substitution path for Community edition.
-- **ADR-002**: Next.js Route Handlers for API in MVP; extract NestJS when agentic mode demands persistent WebSocket.
-- **ADR-003**: Tree view via recursive CTE; revisit Apache AGE if mind-map view performance degrades.
-- **ADR-004**: Markdown is the canonical content format; storage as plain text + sanitized render-time pipeline.
-- **ADR-005**: Idempotency-Key header convention; 24h TTL.
-- **ADR-006**: RLS-first authorization; service-role only for migrations + scheduled jobs.
+> ⚠️ **Retired numbering — do not cite.** An earlier draft of this section listed six *placeholder* ADRs numbered `ADR-001`…`ADR-006` to be created under `docs/decisions/`. That directory was never created, and those placeholder numbers **collide with real, unrelated ADRs** — the real `ADR-0006` is consumption-side scope enforcement, not "RLS-first authorization". The placeholder numbers are retired; cite only numbers that appear in the `.context/ADR/README.md` index.
+
+Topics raised in this spec that a real ADR now covers:
+
+| Topic in this spec | Real ADR |
+| --- | --- |
+| Idempotency-Key convention and TTL (§4.1, NFR cross-ref) | [`ADR-0002`](../ADR/ADR-0002-idempotency-key-scoping.md) — Idempotency-Key Scoping for the Headless Write Surface |
+| Authorization model: RLS as the single source of truth, one identity gateway for cookie + PAT (§5) | [`ADR-0001`](../ADR/ADR-0001-unified-api-authentication.md) — Unified API Authentication |
+| End-user auth rails: password-primary + mandatory email OTP (§5) | [`ADR-0007`](../ADR/ADR-0007-password-auth-and-email-otp.md) |
+| OAuth CSRF state handling (§5) | [`ADR-0008`](../ADR/ADR-0008-oauth-csrf-state-strategy.md) |
+| PAT issuance limits — no global `workspace:admin` token (§5) | [`ADR-0005`](../ADR/ADR-0005-pat-issuance-role-gate.md) · [`ADR-0006`](../ADR/ADR-0006-consumption-side-scope-enforcement.md) |
+| Realtime transport for run/step updates (§1, §4.2) | [`ADR-0010`](../ADR/ADR-0010-realtime-transport-supabase-realtime.md) |
+| Run snapshot model + Project environments (§2, §4.3) | [`ADR-0004`](../ADR/ADR-0004-run-snapshot-and-environments.md) |
+
+Decisions asserted in this spec that are **not yet** recorded as ADRs (candidates — write them with the next free number from the index, never with the retired placeholder numbers above):
+
+- Supabase for the MVP, with a Phase-2 substitution path for the Community edition (§3).
+- Next.js Route Handlers for the API in the MVP; extract a NestJS service when agentic mode demands persistent WebSocket (§3).
+- Tree view via recursive CTE; revisit Apache AGE if mind-map view performance degrades (§3).
+- Markdown as the canonical content format: plain-text storage + a sanitized render-time pipeline (§5).
 
 ---
 

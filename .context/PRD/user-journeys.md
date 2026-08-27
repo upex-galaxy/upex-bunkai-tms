@@ -136,7 +136,7 @@ A scheduled job kicks off at 02:00 UTC. The agent has a workspace-scoped Bearer 
 **Step 1 — Authenticate**
 - *Agent action*: `GET /api/v1/me` with `Authorization: Bearer <token>`.
 - *System response*: 200 with token scopes confirmed.
-- *Pain point*: Token expired. Mitigation: 401 response includes `code: TOKEN_EXPIRED` so the agent can fail loudly and notify Elena.
+- *Pain point*: Token expired. Mitigation: the agent fails loudly on any 401 and notifies Elena. NOTE — this journey originally assumed a `code: TOKEN_EXPIRED` sub-code; the shipped design deliberately collapses every bearer failure into a uniform 401 `unauthorized` / "Invalid token." for anti-enumeration reasons (`lib/api/middleware/bearer.ts`). An agent must treat any 401 as re-authenticate, without branching on a sub-code.
 
 **Step 2 — Fetch the Test contract**
 - *Agent action*: `GET /api/v1/tests/TEST-008?expand=atcs.steps,atcs.assertions`.

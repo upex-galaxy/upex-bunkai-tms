@@ -137,7 +137,7 @@ One subsection per MVP Sprint. Each rationale is product-facing (Why it matters)
 
 **How to scope it**:
 - `POST /projects` + `GET /projects` — workspace-scoped slug — `{{PROJECT_KEY}}-005`.
-- `POST/PATCH/DELETE /modules` with recursive parent chain — `{{PROJECT_KEY}}-006`. Materialized `modules.path` column. Depth-≤6 hard guard + soft warning at depth 4. Circular-parent check returns `409 MODULE_CIRCULAR_PARENT`.
+- `POST/PATCH/DELETE /modules` with recursive parent chain — `{{PROJECT_KEY}}-006`. Materialized `modules.path` column. Depth-≤6 hard guard + soft warning at depth 4. Circular-parent check returns `422 validation_failed` with `details.reason = "move_cycle"`.
 - `POST /user-stories` + `POST /acceptance-criteria` — Markdown bodies — `{{PROJECT_KEY}}-007`, `{{PROJECT_KEY}}-008`.
 - **Minimal tree view (Sprint-2 slice of {{PROJECT_KEY}}-029)** — Modules only, no ATC/Test/Run rollup yet. Pure recursive CTE. Status dots come in Sprint 4.
 - **Most likely scope creep to resist**: Jira import (`{{PROJECT_KEY}}-009`) — defer to Sprint 3 alongside ATC library work. Bulk-edit, Table view — Sprint 6.
@@ -212,7 +212,7 @@ One subsection per MVP Sprint. Each rationale is product-facing (Why it matters)
 - Command palette `GET /search` — multi-source tsvector union — `{{PROJECT_KEY}}-031`.
 - Persist view state per (user_id, project_id, view_kind) — `{{PROJECT_KEY}}-032`. Resolves Discovery Gap G3 from data-map (`user_view_state` table — already scaffolded in Sprint 0).
 - `GET /api/openapi.json` served correctly with all endpoints introspectable — `{{PROJECT_KEY}}-033`.
-- `POST/GET/DELETE /auth/tokens` — Bearer-PAT issuance + revocation + scope-gating — `{{PROJECT_KEY}}-034`.
+- `POST/GET /api/v1/tokens` + `DELETE /api/v1/tokens/{id}` — Bearer-PAT issuance + revocation + capability-gating — `{{PROJECT_KEY}}-034`.
 - Complete CRUD endpoints (close Discovery Gap §12-G3: missing R/U/D/List for US + AC) — `{{PROJECT_KEY}}-035`.
 - `bunkai` CLI binary (Bun-compiled) — `auth login` + `atc list` + `run start` — `{{PROJECT_KEY}}-036`.
 - Rate-limit middleware (100 req/min writes, 600 req/min reads, per-token sliding window) — NFR §2.
@@ -354,9 +354,9 @@ Features that share an entity, a state machine, an external integration, or a bu
 
 ### 7.6 Bearer-PAT + RBAC role coupling
 
-**Shared element**: the auth context passed by middleware (`{ user_id, workspace_id, scopes }`).
+**Shared element**: the `Principal` resolved per route by the `withApiHandler` gateway (`lib/api/principal.ts`), NOT by `middleware.ts` — which only refreshes the cookie session and guards page routes.
 
-**Features on each side**: FEAT-041 (Bearer-token auth, Sprint 6) intersects with every Sprint 1+ feature that does an RLS-gated write. The scope (`read|write`) is ANDed with the role (`viewer|member|admin|owner`).
+**Features on each side**: FEAT-041 (Bearer-token auth, Sprint 6) intersects with every Sprint 1+ feature that does an RLS-gated write. The capability (`atc:read` | `atc:write` | `run:execute` | `workspace:admin`, see `lib/api/capabilities.ts`) is ANDed with the role (`viewer|member|admin|owner`).
 
 **What goes wrong if designed in isolation**: handler guards check role but forget scope, or vice versa. A `member`-minted read-only PAT can write ATCs. Failure mode is a silent over-permission.
 
@@ -371,7 +371,7 @@ Per third-party service: when to integrate, what it unlocks, what to mock with i
 ### Supabase Auth — Sprint 1
 
 **First required by**: {{PROJECT_KEY}}-001 (sign-up).
-**Unlocks**: every authenticated UI flow, every Bearer-PAT (PATs are minted against a user session — see api-map §2.3 device-code flow).
+**Unlocks**: every authenticated UI flow, every Bearer-PAT (PATs are minted against a user session — see api-map §2.3; the headless rail is `POST /api/v1/auth/signin`, not a device-code flow).
 **Lead-time**: zero — Supabase Auth is included in the same Supabase project. Just enable GitHub + Google OAuth providers in the dashboard.
 **Stand-in during Sprint 0**: env-flag-gated `MOCK_AUTH=true` that bypasses auth in local dev only. Never deployed.
 
@@ -537,8 +537,8 @@ Adapted from the project's CLAUDE.md §1 + behavior layer + `/sprint-development
 - Verify soft-delete (`archived_at`) is implemented + listing endpoints filter it out by default ({{PROJECT_KEY}}-039).
 - Verify Realtime row broadcasts are emitted where the spec calls for them ({{PROJECT_KEY}}-040: `runs`, `run_atcs`, `run_steps`, `bugs`).
 - Verify the entity definition matches `business-data-map.md` (no schema drift). Run `bun run api:sync` and confirm OpenAPI + types are aligned.
-- Verify the response shape is `{ success, data, error }` and internal fields are stripped.
-- Verify error codes are stable identifiers (`MODULE_CIRCULAR_PARENT`, `TOKEN_EXPIRED`, `VALIDATION_ERROR`) — never localized prose.
+- Verify success responses are bare JSON (there is NO `success` flag and NO `data` wrapper) and internal fields are stripped. Errors use `{ error: { code, message, details?, request_id? } }` — see `lib/api/error-envelope.ts`.
+- Verify error codes are stable snake_case identifiers drawn from `API_ERROR_CODES` (`lib/api/error-envelope.ts`) — e.g. `validation_failed`, `forbidden`, `unauthorized` — never localized prose. Note: bearer-auth failures deliberately collapse to a single uniform `unauthorized`; do NOT expect a sub-code distinguishing expired from revoked from malformed.
 - Verify RLS policy is in place on every new `workspace_id`-bearing table + a cross-tenant query test exists in the migration's test suite.
 - Verify the feature has been demoed against staging before requesting code review.
 - Verify the feature does not regress NFRs — single-entity reads <200ms p95, listing endpoints <500ms p95, tree view <800ms p95 (NFR §1).

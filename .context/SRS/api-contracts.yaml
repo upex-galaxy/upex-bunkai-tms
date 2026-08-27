@@ -1,3 +1,21 @@
+# =============================================================================
+# ⚠️  DESIGN-TIME INPUT — NOT THE LIVE API CONTRACT.  (reviewed 2026-08-24)
+# =============================================================================
+# This file is an INPUT authored during `/project-foundation` (see
+# `.context/SRS/README.md`). It does NOT track the build and it is NOT
+# generated from the code.
+#
+#   * Coverage: 28 paths here vs ~68 paths actually live. Roughly half the
+#     real surface is absent, and some paths described here were never built.
+#   * The LIVE contract is `public/openapi.json`, generated from the route
+#     handlers by `bun run openapi:gen` (per-route `route.openapi.ts` files).
+#     Served at `/api/openapi`; browsable UI at `/api/docs`.
+#   * `bun run api:sync` derives TypeScript types into `api/schemas/`.
+#
+# If this file and `public/openapi.json` disagree, `public/openapi.json` wins.
+# Never quote this file as evidence of what the API does today; quote it only
+# as evidence of what was designed.
+# =============================================================================
 openapi: 3.1.0
 info:
   title: Bunkai API
@@ -6,11 +24,25 @@ info:
     REST API for Bunkai — open-core Test Management System.
     Designed to be operated by humans, scripts, CI/CD pipelines, and autonomous AI agents.
 
+    DESIGN-TIME INPUT — the live, generated contract is `public/openapi.json`
+    (`bun run openapi:gen`, served at `/api/openapi`, browsable at `/api/docs`).
+
     - Versioning: URL-prefixed (`/api/v1`). Breaking changes ship as `/api/v2`.
-    - Authentication: Bearer tokens (Personal Access Tokens, prefix `bk_pat_`).
-    - Response envelope: `{ success: boolean, data?: T, error?: { code, message, details? } }`.
-    - Idempotency: write endpoints honor an `Idempotency-Key` header (max 64 chars, 24h TTL).
-    - Rate limits: 100 req/min/token for writes, 600 req/min for reads. `Retry-After` returned on 429.
+    - Authentication: two schemes, no blanket global requirement — a Bearer
+      Personal Access Token (`bk_pat_<prefix>.<secret>`) for headless callers,
+      or the Supabase session cookie for browser callers. Each route declares
+      its own posture.
+    - Error envelope: `{ error: { code, message, details?, request_id? } }`.
+      There is no `success` flag and no `data` wrapper — success responses
+      return the resource payload directly. See `lib/api/error-envelope.ts`.
+    - Idempotency: NOT a blanket rule. `Idempotency-Key` is required on
+      `POST /api/v1/tests` and `POST /api/v1/runs` only (24h TTL, see
+      ADR-0002). Other writes — including run finish/abort and step marking —
+      are idempotent by construction and take no key.
+    - Rate limits: TARGET, not implemented. No app-level limiter exists; the
+      only 429s today are pass-throughs of Supabase Auth's own throttle on the
+      auth routes. Intended: 100 req/min/token writes, 600 req/min reads,
+      `Retry-After` on every 429.
     - Cursor pagination: list endpoints accept `?limit` (max 100) and `?before=<cursor>`.
 
   contact:
@@ -25,8 +57,9 @@ servers:
   - url: https://bunkai.io/api/v1
     description: Production (Bunkai Cloud)
 
-security:
-  - BearerAuth: []
+# No global `security:` requirement — the live spec declares none either.
+# Each operation states its own posture, mirroring `withApiHandler`'s
+# per-route `auth:` option (public / authenticated / cookie-only / required).
 
 tags:
   - name: Auth
@@ -55,9 +88,11 @@ paths:
           content:
             application/json: {}
 
-  /auth/tokens:
+  # SHIPPED PATH IS /tokens (no `auth/` segment) and issuance is COOKIE-ONLY:
+  # a Bearer PAT is rejected with 403 (a PAT must not mint a PAT, ADR-0001).
+  /tokens:
     post:
-      tags: [Auth]
+      tags: [Tokens]
       summary: Issue Personal Access Token
       requestBody:
         required: true
@@ -85,9 +120,10 @@ paths:
                 properties:
                   data: { type: array, items: { $ref: '#/components/schemas/Token' } }
 
-  /auth/tokens/{token_id}:
+  # SHIPPED PATH IS /tokens/{id}, also cookie-only.
+  /tokens/{token_id}:
     delete:
-      tags: [Auth]
+      tags: [Tokens]
       summary: Revoke a token
       parameters: [{ $ref: '#/components/parameters/TokenIdPath' }]
       responses:
@@ -760,10 +796,27 @@ paths:
 
 components:
   securitySchemes:
+    # Names kept PascalCase for the existing `$ref`s in this file. The live
+    # generated spec uses lowercase `bearerAuth` / `cookieAuth` — same two
+    # schemes, different casing.
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: 'bk_pat_<random>'
+      bearerFormat: 'bk_pat_<12-char-prefix>.<base64url-secret>'
+      description: >-
+        Personal access token. Anything not starting with `bk_pat_` is
+        rejected with 401 — a raw Supabase JWT is NOT accepted here.
+        Issue via `POST /api/v1/tokens`, or inline from
+        `POST /api/v1/auth/signin` / `POST /api/v1/auth/confirm`.
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: sb-<project-ref>-auth-token
+      description: >-
+        Supabase session cookie, set by the SSR client after sign-in, OTP
+        confirmation, magic-link callback or OAuth callback. The browser rail.
+        A few routes are cookie-only by design (token issuance and revocation:
+        a PAT must not mint a PAT — ADR-0001).
 
   parameters:
     WorkspaceIdPath:
@@ -1282,7 +1335,8 @@ components:
         error:
           type: object
           properties:
-            code: { type: string, example: VALIDATION_ERROR }
+            # Codes are snake_case, drawn from API_ERROR_CODES in lib/api/error-envelope.ts.
+            code: { type: string, example: validation_failed }
             message: { type: string }
             details:
               type: array

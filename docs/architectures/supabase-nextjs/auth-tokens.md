@@ -6,6 +6,23 @@
 
 ---
 
+> ### ⚠️ Salvedad para Bunkai TMS — leé esto antes de probar `/api/v1`
+>
+> Esta página es una referencia **genérica** de Supabase + Next.js compartida entre proyectos. Su guía vale para los endpoints propios de Supabase. **No vale** para la API propia de Bunkai.
+>
+> **En `/api/v1`, `Authorization: Bearer` significa un Personal Access Token de Bunkai y nada más.** `lib/api/middleware/bearer.ts` rechaza cualquier bearer que no empiece con `bk_pat_`: un `access_token` JWT de Supabase recibe un `401 unauthorized` seco, con un mensaje deliberadamente poco informativo. No hay fallback a verificación de JWT de Supabase en ninguna parte del request path.
+>
+> | Familia de endpoints | Credencial aceptada |
+> | --- | --- |
+> | `{SUPABASE_URL}/rest/v1/*`, `{SUPABASE_URL}/auth/v1/*` | JWT `access_token` de Supabase (aplica todo lo de abajo) |
+> | `{APP_URL}/api/v1/*` | PAT `bk_pat_<prefijo-12-chars>.<secreto-base64url>` **o** la cookie de sesión de Supabase |
+>
+> Para sacar un PAT sin browser: `POST /api/v1/auth/signin` con `{ email, password }` devuelve uno recién minteado en la misma respuesta, bajo `pat.token`. Las cuentas nuevas sacan su primer PAT de `POST /api/v1/auth/confirm` después del OTP de 6 dígitos; `POST /api/v1/auth/signup` devuelve `202` y no emite credenciales. Tokens adicionales: `POST /api/v1/tokens` (cookie-only — un PAT no puede mintear otro PAT, ADR-0001).
+>
+> Otro detalle: el `middleware.ts` de Bunkai nunca lee el header `Authorization`. Sólo refresca la cookie de sesión y protege rutas de página. La autenticación de la API se resuelve por ruta en `withApiHandler` (ADR-0001). Detalle: `.context/SRS/architecture-specs.md` §5 y el contrato vivo en `/api/docs`.
+
+---
+
 ## Overview
 
 Supabase usa JWT (JSON Web Tokens) para autenticación. El mismo token funciona para:
@@ -33,6 +50,8 @@ Supabase usa JWT (JSON Web Tokens) para autenticación. El mismo token funciona 
 ```
 
 > **Nota:** Next.js API Routes soportan Bearer token (recomendado para testing) y cookies (automático en browser).
+>
+> **No aplica a Bunkai TMS:** en `/api/v1` el Bearer es un PAT `bk_pat_*`, no el JWT de Supabase. Ver el recuadro "Bunkai TMS caveat" al inicio de este documento.
 
 ---
 
@@ -149,6 +168,8 @@ const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?user_id=eq.${userId
 Next.js API routes soportan **dos métodos** de autenticación:
 
 ### Opción A: Bearer Token (Recomendado para Testing)
+
+> ⚠️ **En Bunkai TMS esta opción NO funciona con el JWT de Supabase.** `/api/v1` sólo acepta un PAT `bk_pat_<prefix>.<secret>`; cualquier otro Bearer devuelve `401`. Usa el PAT que devuelve `POST /api/v1/auth/signin` en `pat.token`. Ver el recuadro del inicio.
 
 El método más simple - igual que Supabase REST API:
 

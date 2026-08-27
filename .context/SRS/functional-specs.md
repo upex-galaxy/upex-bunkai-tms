@@ -55,7 +55,7 @@
 - **Relacionado a**: US 2.2, US 2.3
 - **Input**: `project_id`, `name` (2–80 chars), optional `parent_module_id`, optional `description` (Markdown).
 - **Processing**: Insert / update / soft-delete `modules` row. Maintain `path` materialized column (`/cart/add-to-cart`) for tree queries. Soft-delete cascades to descendant modules + linked entities (US, ATC, Tests) via `archived_at`.
-- **Output**: 201/200 `{ module }`; or 409 `MODULE_CIRCULAR_PARENT`.
+- **Output**: 201/200 `{ module }`; or 422 `validation_failed` with `details.reason = "move_cycle"` (as shipped — there is no `MODULE_CIRCULAR_PARENT` code).
 - **Validations**: depth ≤ 6 (soft warning at depth 4 returned in response metadata); parent in same project; no circular ancestry.
 
 ---
@@ -264,9 +264,9 @@
 ### {{PROJECT_KEY}}-034 — Bearer-token auth
 - **Relacionado a**: US 9.2
 - **Input**: `Authorization: Bearer <token>` header on protected endpoints.
-- **Processing**: Token issuance via `POST /api/v1/auth/tokens` for an authenticated session: generates a 32-byte random token (prefix `bk_pat_`), stores SHA-256 hash + scopes (`read|write`, optional `workspace_id` constraint), returns plain token once. Verification middleware looks up hash, checks expiry, attaches workspace context.
-- **Output**: 201 `{ token, prefix, scopes, expires_at }` on issuance; 401 with `code` on bad/expired/revoked token.
-- **Validations**: token revocation (`DELETE /api/v1/auth/tokens/{id}`) immediately invalidates.
+- **Processing** (as shipped): Token issuance via `POST /api/v1/tokens` — note the path carries no `auth/` segment — for a **cookie session only**; a Bearer PAT is rejected with 403, because a PAT must not mint a PAT (ADR-0001). Generates a 32-byte random secret, returns `bk_pat_<12-char-prefix>.<secret>` once, and stores SHA-256(secret) in the sibling table `access_token_secrets` (migration 0011; the legacy `access_tokens.hash` column was dropped in 0012). Scopes are the four capabilities in `lib/api/capabilities.ts` (`atc:read`, `atc:write`, `run:execute`, `workspace:admin`), not `read|write`; `workspace:admin` additionally requires a `workspace_id` plus an admin/owner role there (ADR-0005). Verification is NOT middleware: `withApiHandler` → `resolveIdentity` → `requireBearerToken` (`lib/api/middleware/bearer.ts`) resolves the token per route.
+- **Output**: 201 `{ id, token, name, scopes, workspace_id, expires_at, created_at, warning }` on issuance. A bad, expired or revoked token yields a **uniform** 401 `unauthorized` / "Invalid token." — deliberately anti-enumeration, with no sub-code distinguishing the cases.
+- **Validations**: token revocation (`DELETE /api/v1/tokens/{id}`, also cookie-only) immediately invalidates.
 
 ### {{PROJECT_KEY}}-035 — CRUD endpoints exposed
 - **Relacionado a**: US 9.3
@@ -275,7 +275,7 @@
 ### {{PROJECT_KEY}}-036 — CLI binary
 - **Relacionado a**: US 9.4
 - **Surface**: `bunkai` CLI distributed as a Bun-compiled single binary + as `npx bunkai`. Initial commands:
-  - `bunkai auth login` — interactive device-code flow that creates a Personal Access Token via {{PROJECT_KEY}}-034.
+  - `bunkai auth login` — creates a Personal Access Token via {{PROJECT_KEY}}-034. NOTE: no CLI package exists in this repo yet, and no device-code flow was built. The shipped headless bootstrap is `POST /api/v1/auth/signin`, which returns a freshly minted PAT in the same response.
   - `bunkai atc list [--module <id>] [--query <text>]` — calls {{PROJECT_KEY}}-011.
   - `bunkai run start --test <id> --env <name>` — calls {{PROJECT_KEY}}-019.
   - `bunkai run import --file <json> --test <id>` — Phase 2 placeholder (returns "not implemented" with link).

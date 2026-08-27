@@ -49,3 +49,8 @@ Applies in BK-167 to: invites create/list/resend/revoke and workspace settings P
 - ADR-0001 — Unified API Authentication (capability gating + RLS-as-truth)
 - `lib/api/principal.ts` (requireCapability, assertWorkspaceContext), `lib/api/handler.ts` (`requires`), `lib/api/user-jwt.ts` (JWT claims)
 - Routes: `app/api/v1/workspaces/[id]/route.ts`, `app/api/v1/workspaces/[id]/invites/route.ts`, `app/api/v1/workspaces/[id]/invites/[inviteId]/route.ts`
+
+## Implementation status (as of 2026-08-24)
+
+- **The BK-168 follow-up at `:38` has PARTIALLY landed.** The non-ATC surface now carries real capability postures rather than blanket authentication: of 92 handler entries in `lib/api/route-capability-coverage.snapshot.json`, **67** declare `auth: 'required'` with at least one capability (`atc:read` 31, `atc:write` 27, `run:execute` 4, `workspace:admin` 5) and only **9** remain on the `auth: 'authenticated'` escape hatch, each carrying a mandatory `why` justification enforced by `lib/api/route-capability-coverage.test.ts:122`. The scope-vocabulary consolidation BK-168 also called for is done on the PAT side — `lib/api/pat.ts:17` derives `ALLOWED_PAT_SCOPES` from `ALL_CAPABILITIES` in `@lib/api/capabilities` instead of restating the list. Still open: those 9 no-capability handlers.
+- **`requireScope` (`lib/api/middleware/bearer.ts:115-119`) is still dead code, exactly as `:16` states.** A repo-wide grep over `app/`, `lib/` and `scripts/` finds no call site outside its own definition. The live gate remains `requireCapability` (`lib/api/principal.ts:84`), invoked from `withApiHandler` (`lib/api/handler.ts:93-97`).
