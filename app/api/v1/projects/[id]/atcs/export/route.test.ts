@@ -72,19 +72,34 @@ describe('BK-315 — GET /api/v1/projects/{id}/atcs/export — auth gate (no DB 
   });
 });
 
+// Make a missing seed precondition VISIBLE on a DB-backed run: fail with a
+// clear reason instead of logging + passing (no silent green) — same
+// convention as `lib/atcs/search-isolation.test.ts`, adopted per Conductor
+// review of PR #207 (MAJOR): every `it()` here used to guard on
+// `if (!fixture) { return warn(); }`, which reports PASS when `beforeAll`
+// never populated `fixture` — including the foreign-workspace case (AC3.1,
+// the only multi-tenant assertion in this suite), which used to
+// `console.warn` and return green when the seed had no second workspace. On
+// a no-DB run the whole suite is already skipped via `describeOrSkip`, so
+// this never fires there.
+function requirePrecondition<T>(value: T | null | undefined, reason: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(`[atcs/export route] precondition not met — ${reason}. Seed the dev DB to cover this path.`);
+  }
+  return value;
+}
+
 describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', () => {
   const createdProjectIds: string[] = [];
   const createdTokenIds: string[] = [];
   let fixture: { emptyProjectId: string, populatedProjectId: string, projectSlug: string, token: string, foreignProjectId: string | null } | null = null;
-  let skipReason: string | null = null;
 
   beforeAll(async () => {
     const db = service();
-    const writer = await findWritableMember(db);
-    if (!writer) {
-      skipReason = 'need an active workspace member with role >= member (seed state).';
-      return;
-    }
+    const writer = requirePrecondition(
+      await findWritableMember(db),
+      'need an active workspace member with role >= member',
+    );
 
     const { data: existingProjects } = await db.from('projects').select('id, workspace_id');
     const foreignProjectId = (existingProjects ?? [])
@@ -167,23 +182,24 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   });
 
   it('returns a header-only CSV for a Project with zero ATCs (AC2.1/2.2)', async () => {
-    if (!fixture) { return warn(); }
-    const response = await GET(exportRequest(fixture.emptyProjectId, fixture.token));
+    const { emptyProjectId, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const response = await GET(exportRequest(emptyProjectId, token));
     const body = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/csv');
-    expect(body).toBe('ATC ID,Slug,Title,Module,Layer,Tags,Status\r\n');
+    expect(body).toBe('﻿ATC ID,Slug,Title,Module,Layer,Tags,Status\r\n');
   });
 
   it('returns one row per ATC with escaped Title/Tags and Content-Disposition (AC1.1, AC4.0, AC4.4)', async () => {
-    if (!fixture) { return warn(); }
-    const response = await GET(exportRequest(fixture.populatedProjectId, fixture.token));
+    const { populatedProjectId, projectSlug, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const response = await GET(exportRequest(populatedProjectId, token));
     const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-disposition')).toBe(`attachment; filename="${fixture.projectSlug}-atcs.csv"`);
-    const lines = body.split('\r\n').filter(Boolean);
+    expect(response.headers.get('content-disposition')).toBe(`attachment; filename="${projectSlug}-atcs.csv"`);
+    expect(body.startsWith('﻿')).toBe(true);
+    const lines = body.slice(1).split('\r\n').filter(Boolean);
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('"Order ""fails"", edge-case"');
     expect(lines[1]).toContain('"urgent, blocker"');
@@ -191,8 +207,8 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   });
 
   it('returns the identical 404 not_found for a nonexistent Project id (AC3.2)', async () => {
-    if (!fixture) { return warn(); }
-    const response = await GET(exportRequest(NONEXISTENT_PROJECT_ID, fixture.token));
+    const { token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const response = await GET(exportRequest(NONEXISTENT_PROJECT_ID, token));
     const body = await response.json() as ErrorBody;
 
     expect(response.status).toBe(404);
@@ -201,12 +217,12 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   });
 
   it('returns the identical 404 for a Project in a workspace the caller is not a member of (AC3.1)', async () => {
-    if (!fixture) { return warn(); }
-    if (!fixture.foreignProjectId) {
-      console.warn('[atcs/export route] skipped foreign-workspace case: need a Project outside the writer\'s workspace (seed state).');
-      return;
-    }
-    const response = await GET(exportRequest(fixture.foreignProjectId, fixture.token));
+    const { token, foreignProjectId } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const projectId = requirePrecondition(
+      foreignProjectId,
+      'need a Project outside the writer\'s workspace to exercise the foreign-workspace 404 (AC3.1)',
+    );
+    const response = await GET(exportRequest(projectId, token));
     const body = await response.json() as ErrorBody;
 
     expect(response.status).toBe(404);
@@ -214,15 +230,11 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   });
 
   it('malformed {id} 400s (bad_request), never reaching the DB read', async () => {
-    if (!fixture) { return warn(); }
-    const response = await GET(exportRequest('not-a-uuid', fixture.token));
+    const { token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const response = await GET(exportRequest('not-a-uuid', token));
     const body = await response.json() as ErrorBody;
 
     expect(response.status).toBe(400);
     expect(body.error?.code).toBe('bad_request');
   });
-
-  function warn() {
-    console.warn(`[atcs/export route] skipped: ${skipReason ?? 'fixture unavailable.'}`);
-  }
 });
