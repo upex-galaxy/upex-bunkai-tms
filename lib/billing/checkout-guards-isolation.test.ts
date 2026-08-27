@@ -380,5 +380,57 @@ describeOrSkip('BK-230 — billing checkout guards isolation (rpc-authorization.
       await db.from('workspaces').update({ plan: 'community', purchased_seats: null }).eq('id', fixture.workspaceId);
       await db.from('billing_checkout_sessions').update({ status: 'expired' }).eq('stripe_checkout_session_id', sessionId);
     });
+
+    it('re-review item 1 (NEW MAJOR) — a PAID completed event still applies against a row this app already marked "expired" locally', async () => {
+      const db = service();
+      const sessionId = `${PREFIX}-cs-locally-expired`;
+      const eventId = `${PREFIX}-evt-locally-expired`;
+
+      const { data: insertedRow, error: insertError } = await db.from('billing_checkout_sessions').insert({
+        workspace_id: fixture.workspaceId,
+        created_by_user_id: fixture.qaUserId,
+        target_plan: 'cloud',
+        seat_quantity: 7,
+        stripe_checkout_session_id: sessionId,
+        status: 'open',
+        idempotency_key: `${PREFIX}-locally-expired-key`,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      }).select('id').single();
+      expect(insertError).toBeNull();
+
+      // Simulate checkout.ts's reuseOpenCheckoutSession flipping this row to
+      // 'expired' WITHOUT ever consulting Stripe (the exact path the review
+      // describes: it happens purely from local row age/state).
+      const { error: localExpireError } = await db
+        .from('billing_checkout_sessions')
+        .update({ status: 'expired' })
+        .eq('id', insertedRow!.id as string);
+      expect(localExpireError).toBeNull();
+
+      // The customer still holds the live Stripe URL from before the local
+      // flip and pays. The webhook's paid completed event MUST still apply
+      // the upgrade — a silent `already_processed` here is the charged-and-
+      // never-upgraded bug this test guards against.
+      const result = await db.rpc('bunkai_apply_billing_checkout_webhook_event', {
+        p_stripe_event_id: eventId,
+        p_stripe_event_type: 'checkout.session.completed',
+        p_stripe_checkout_session_id: sessionId,
+        p_client_reference_id: insertedRow!.id as string,
+        p_payment_status: 'paid',
+        p_stripe_customer_id: `${PREFIX}-cus-locally-expired`,
+        p_stripe_subscription_id: `${PREFIX}-sub-locally-expired`,
+      });
+      expect(result.error).toBeNull();
+      expect((result.data as { status: string }).status).toBe('applied');
+
+      const { data: workspaceAfter } = await db.from('workspaces').select('plan, purchased_seats').eq('id', fixture.workspaceId).single();
+      expect(workspaceAfter?.plan).toBe('cloud');
+      expect(workspaceAfter?.purchased_seats).toBe(7);
+
+      const { data: rowAfter } = await db.from('billing_checkout_sessions').select('status').eq('id', insertedRow!.id as string).single();
+      expect(rowAfter?.status).toBe('completed'); // NOT stuck at 'expired'
+
+      await db.from('workspaces').update({ plan: 'community', purchased_seats: null }).eq('id', fixture.workspaceId);
+    });
   });
 });

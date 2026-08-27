@@ -440,7 +440,27 @@ begin
     return jsonb_build_object('status', 'unknown_session');
   end if;
 
-  if v_status in ('completed', 'expired', 'canceled') then
+  if v_status = 'completed' then
+    -- Row already fully applied — replaying the SAME event id (Stripe
+    -- redelivers until it sees 2xx) is a safe, idempotent no-op.
+    return jsonb_build_object('status', 'already_processed');
+  end if;
+
+  -- Conductor re-review (PR #208) item 1 — NEW MAJOR introduced by this
+  -- round's own item 2/3 fix: widening this short-circuit to ALSO cover
+  -- 'expired'/'canceled' silently 200s a PAID completed event against a row
+  -- this app marked expired/canceled LOCALLY (checkout.ts's
+  -- reuseOpenCheckoutSession flips a stale open row to 'expired' WITHOUT
+  -- consulting Stripe whenever it has no stripe_checkout_session_id yet —
+  -- the backfill at checkout.ts:203-213 is deliberately non-fatal). A
+  -- customer who already holds a live Stripe URL for that row can still pay
+  -- it after the local flip; the webhook must still be able to apply that
+  -- payment. Only short-circuit an expired/canceled row for event types
+  -- that cannot themselves complete a purchase — a genuinely paid
+  -- completed/async_payment_succeeded event falls through to the branch
+  -- below regardless of how this row got marked expired/canceled.
+  if v_status in ('expired', 'canceled')
+     and p_stripe_event_type not in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') then
     return jsonb_build_object('status', 'already_processed');
   end if;
 

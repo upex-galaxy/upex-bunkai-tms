@@ -339,12 +339,33 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
   }
 
   if (openRow.stripe_checkout_session_id) {
+    // Conductor re-review (PR #208) item 2 — MINOR: this used to call
+    // `expire()` straight away and swallow EVERY failure, marking the row
+    // `canceled` regardless. `expire()` throws precisely when the session
+    // is already `complete` (paid) — swallowing that meant a stale tab
+    // remounting at `?checkout=canceled` AFTER a successful payment (see
+    // UpgradeView.tsx's fire-and-forget cancel POST on mount) flipped an
+    // already-paid row to `canceled`, and the webhook's own paid event then
+    // no-ops against it. Retrieve first so "already complete" and
+    // "already expired" are distinguished BEFORE any write.
+    const stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+
+    if (stripeSession.status === 'complete') {
+      // Do NOT mark this row canceled — leave it `open` so the webhook's
+      // own checkout.session.completed/async_payment_succeeded event
+      // applies the upgrade normally (and, per migration 0077 item 1's
+      // fix, would still apply it even from a terminal row).
+      throw new ApiError('checkout_in_progress', 'This checkout has already been paid and is being activated.', {
+        details: { reason: 'checkout_already_completed' },
+      });
+    }
+
     try {
       await getStripeClient().checkout.sessions.expire(openRow.stripe_checkout_session_id);
     }
     catch {
-      // Already expired/completed on Stripe's side — not fatal, we still
-      // release our own lock below.
+      // Already expired on Stripe's side — not fatal, we still release our
+      // own lock below.
     }
   }
 
