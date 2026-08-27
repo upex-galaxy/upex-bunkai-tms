@@ -1300,6 +1300,10 @@
             "enum": ["community", "cloud", "enterprise"],
             "description": "The workspace's `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it."
           },
+          "purchased_seats": {
+            "type": ["integer", "null"],
+            "description": "BK-230 — the Cloud workspace's real purchased seat count (set at checkout completion). `null` for Community/Enterprise, or a Cloud workspace predating this column — `lib/billing/plan-tiers.ts`'s `effectiveSeatLimit()` falls back to the tier's flat `seatLimit` in that case. This is the workspace's ACTUAL seat cap; `PLAN_TIERS.cloud.seatLimit` (25) is only the plan's maximum purchasable quantity."
+          },
           "active_seats": {
             "type": "integer",
             "description": "Workspace members with `status = 'active'` only. Pending invitations and suspended members never count toward this figure."
@@ -1313,8 +1317,35 @@
             "description": "Age in days of the workspace's oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan's retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion."
           }
         },
-        "required": ["plan", "active_seats", "project_count", "oldest_run_age_days"],
+        "required": [
+          "plan",
+          "purchased_seats",
+          "active_seats",
+          "project_count",
+          "oldest_run_age_days"
+        ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
+      },
+      "BillingCheckoutResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The Stripe-hosted Checkout URL to redirect the browser to. No card data ever reaches this app (Stripe Checkout, hosted — zero PCI scope)."
+          }
+        },
+        "required": ["url"]
+      },
+      "BillingCheckoutBody": {
+        "type": "object",
+        "properties": {
+          "seat_quantity": {
+            "type": "integer",
+            "description": "Minimum is the workspace's current active_seats count (no seat-reduction path exists in this Story); maximum is the Cloud tier's seatLimit (25, see lib/billing/plan-tiers.ts)."
+          }
+        },
+        "required": ["seat_quantity"]
       },
       "ModuleCreateResponse": {
         "type": "object",
@@ -7014,6 +7045,185 @@
           },
           "500": {
             "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/checkout": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Start a self-serve Community -> Cloud upgrade",
+        "description": "Owner-only (bunkai_is_workspace_owner) — an admin/member/viewer is rejected before any Stripe call. `Idempotency-Key` is REQUIRED (ADR-0002). Plan activation happens asynchronously via the Stripe webhook once payment is confirmed — this endpoint never writes `workspaces.plan` itself. At most one open Checkout Session may exist per workspace at a time (a partial unique index backs this); a second concurrent request either reuses the existing session's URL or answers 409.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored response; the same key with a different payload returns 409 `conflict`. This is the HTTP-level replay guard — distinct from the DB-level one-open-session-per-workspace guard that covers two different tabs/keys racing for the same workspace."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCheckoutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checkout Session URL (freshly created, or replayed/reused).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingCheckoutResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/malformed Idempotency-Key, or malformed workspace id (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A checkout session is already open (`checkout_in_progress`) or an Idempotency-Key was reused with a different payload (`conflict`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Workspace is already on Cloud/Enterprise (`plan_not_upgradable`), or `seat_quantity` is out of bounds (`seat_quantity_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/billing/checkout/cancel": {
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Cancel the workspace's open checkout session",
+        "description": "Owner-only. Expires the Stripe Checkout Session server-side (best-effort) and releases the one-open-session lock immediately, instead of stranding the owner for the session's TTL. A no-op (still 204) when there is no open session.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Canceled (or nothing to cancel)."
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006).",
             "content": {
               "application/json": {
                 "schema": {

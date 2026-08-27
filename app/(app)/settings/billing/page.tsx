@@ -4,6 +4,7 @@ import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 // Settings > Billing (BK-229 — AC1-AC18). Extends the live Settings hub
 // (BK-87) rather than the mockup's separate icon rail (Rule #14: live shell
@@ -41,7 +42,11 @@ export default async function SettingsBillingPage() {
     <div className="mx-auto flex max-w-[880px] flex-col gap-1 px-6 py-8">
       <h1 className="text-2xl font-bold tracking-tight text-fg-0">Billing</h1>
       <p className="mb-4 text-base text-fg-2">Plan, seats, and usage for this workspace.</p>
-      <BillingOverviewView workspaceId={activeWorkspaceId} />
+      {/* BillingOverviewView reads `?upgraded=1` via useSearchParams (BK-230
+          item 8) — same Suspense-wrapping convention as app/(auth)/login/page.tsx. */}
+      <Suspense fallback={<div className="h-40" aria-hidden />}>
+        <BillingOverviewView workspaceId={activeWorkspaceId} />
+      </Suspense>
     </div>
   );
 }

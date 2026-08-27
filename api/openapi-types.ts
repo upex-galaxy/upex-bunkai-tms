@@ -1949,6 +1949,174 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{id}/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a self-serve Community -> Cloud upgrade
+         * @description Owner-only (bunkai_is_workspace_owner) — an admin/member/viewer is rejected before any Stripe call. `Idempotency-Key` is REQUIRED (ADR-0002). Plan activation happens asynchronously via the Stripe webhook once payment is confirmed — this endpoint never writes `workspaces.plan` itself. At most one open Checkout Session may exist per workspace at a time (a partial unique index backs this); a second concurrent request either reuses the existing session's URL or answers 409.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored response; the same key with a different payload returns 409 `conflict`. This is the HTTP-level replay guard — distinct from the DB-level one-open-session-per-workspace guard that covers two different tabs/keys racing for the same workspace. */
+                    "Idempotency-Key": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BillingCheckoutBody"];
+                };
+            };
+            responses: {
+                /** @description Checkout Session URL (freshly created, or replayed/reused). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BillingCheckoutResponse"];
+                    };
+                };
+                /** @description Missing/malformed Idempotency-Key, or malformed workspace id (`bad_request`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Caller is not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Workspace not found. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description A checkout session is already open (`checkout_in_progress`) or an Idempotency-Key was reused with a different payload (`conflict`). */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Workspace is already on Cloud/Enterprise (`plan_not_upgradable`), or `seat_quantity` is out of bounds (`seat_quantity_invalid`). */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Stripe is not configured for this environment (`payment_processor_unavailable`). */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{id}/billing/checkout/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel the workspace's open checkout session
+         * @description Owner-only. Expires the Stripe Checkout Session server-side (best-effort) and releases the one-open-session lock immediately, instead of stranding the owner for the session's TTL. A no-op (still 204) when there is no open session.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Canceled (or nothing to cancel). */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller is not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006). */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/modules": {
         parameters: {
             query?: never;
@@ -7319,12 +7487,25 @@ export interface components {
              * @enum {string}
              */
             plan: "community" | "cloud" | "enterprise";
+            /** @description BK-230 — the Cloud workspace's real purchased seat count (set at checkout completion). `null` for Community/Enterprise, or a Cloud workspace predating this column — `lib/billing/plan-tiers.ts`'s `effectiveSeatLimit()` falls back to the tier's flat `seatLimit` in that case. This is the workspace's ACTUAL seat cap; `PLAN_TIERS.cloud.seatLimit` (25) is only the plan's maximum purchasable quantity. */
+            purchased_seats: number | null;
             /** @description Workspace members with `status = 'active'` only. Pending invitations and suspended members never count toward this figure. */
             active_seats: number;
             /** @description Every project in the workspace. `projects` carries no soft-delete column, so this is an exact, unfiltered count. */
             project_count: number;
             /** @description Age in days of the workspace's oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan's retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion. */
             oldest_run_age_days: number | null;
+        };
+        BillingCheckoutResponse: {
+            /**
+             * Format: uri
+             * @description The Stripe-hosted Checkout URL to redirect the browser to. No card data ever reaches this app (Stripe Checkout, hosted — zero PCI scope).
+             */
+            url: string;
+        };
+        BillingCheckoutBody: {
+            /** @description Minimum is the workspace's current active_seats count (no seat-reduction path exists in this Story); maximum is the Cloud tier's seatLimit (25, see lib/billing/plan-tiers.ts). */
+            seat_quantity: number;
         };
         ModuleCreateResponse: {
             module: components["schemas"]["Module"];

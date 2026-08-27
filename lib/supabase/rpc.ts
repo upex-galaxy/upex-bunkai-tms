@@ -921,3 +921,43 @@ export async function updateTestPlan(supabase: Client, args: UpdateTestPlanArgs)
     p_goal: args.goal ?? '',
   });
 }
+
+// BK-230 — webhook-only. The caller MUST be createAdminClient() (migration
+// 0077's own comment: the webhook request carries no Supabase session, so
+// this RPC is SECURITY DEFINER and granted to service_role only — passing
+// the caller's RLS-scoped client here would fail with a permission error).
+export interface ApplyBillingCheckoutWebhookEventArgs {
+  stripeEventId: string
+  stripeEventType: string
+  stripeCheckoutSessionId: string
+  // Review item 2/1 (PR #208): the row is looked up by clientReferenceId
+  // FIRST (our own billing_checkout_sessions.id, round-tripped through
+  // Stripe), falling back to stripeCheckoutSessionId. paymentStatus gates
+  // whether a completed/async_payment_succeeded event actually flips the
+  // plan (only on 'paid' — see migration 0077's RPC comment for the BLOCKER
+  // this closes). stripeCustomerId/stripeSubscriptionId are captured for
+  // review item 4 (BK-231 will need them; this is the only moment they are
+  // free to record).
+  clientReferenceId: string | null
+  paymentStatus: string | null
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
+}
+
+export async function applyBillingCheckoutWebhookEvent(supabase: Client, args: ApplyBillingCheckoutWebhookEventArgs) {
+  return supabase.rpc('bunkai_apply_billing_checkout_webhook_event', {
+    p_stripe_event_id: args.stripeEventId,
+    p_stripe_event_type: args.stripeEventType,
+    p_stripe_checkout_session_id: args.stripeCheckoutSessionId,
+    // The generated Args type marks these `string` (Supabase's type
+    // generator does not infer nullability for a plpgsql text param with no
+    // DEFAULT), but the SQL body genuinely accepts and relies on NULL for
+    // each of these (nullif/coalesce/`is distinct from`) — a real `null`
+    // reaches Postgres fine over the wire; only the compile-time type is
+    // wrong. Same cast shape as `p_steps`/`p_assertions` above.
+    p_client_reference_id: args.clientReferenceId as unknown as string,
+    p_payment_status: args.paymentStatus as unknown as string,
+    p_stripe_customer_id: args.stripeCustomerId as unknown as string,
+    p_stripe_subscription_id: args.stripeSubscriptionId as unknown as string,
+  });
+}

@@ -93,6 +93,15 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
         details: { reason: 'not_a_member' },
       });
     }
+    // 45700 = bunkai_enforce_project_limit_trigger (migration 0077, BK-230):
+    // the workspace's Billing Plan project cap is already at or over its
+    // limit. See lib/billing/plan-tiers.ts for the ladder (Community 3,
+    // Cloud 50, Enterprise unlimited).
+    if (error.code === '45700') {
+      throw new ApiError('project_limit_reached', 'This workspace has reached its Billing Plan\'s project limit. Upgrade to create more projects.', {
+        details: { reason: 'project_limit_reached' },
+      });
+    }
     throw new ApiError('internal_error', error.message);
   }
 

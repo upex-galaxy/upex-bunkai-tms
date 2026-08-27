@@ -55,6 +55,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   return jsonResponse({
     plan: data.plan,
+    purchased_seats: data.purchased_seats,
     active_seats: data.active_seats,
     project_count: data.project_count,
     oldest_run_age_days: data.oldest_run_age_days,
@@ -66,6 +67,12 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
 interface BillingOverviewShape {
   plan: string
+  // BK-230 (Conductor review PR #208, item 5) — the Cloud workspace's real
+  // purchased seat count, additive on `bunkai_workspace_billing_overview`
+  // (migration 0077). `null` for Community/Enterprise or a Cloud workspace
+  // predating this column; `lib/billing/plan-tiers.ts`'s effectiveSeatLimit()
+  // falls back to the tier constant in that case.
+  purchased_seats: number | null
   active_seats: number
   project_count: number
   oldest_run_age_days: number | null
@@ -77,6 +84,7 @@ function isBillingOverviewShape(value: unknown): value is BillingOverviewShape {
   }
   const v = value as Record<string, unknown>;
   return typeof v.plan === 'string'
+    && (v.purchased_seats === null || v.purchased_seats === undefined || typeof v.purchased_seats === 'number')
     && typeof v.active_seats === 'number'
     && typeof v.project_count === 'number'
     && (v.oldest_run_age_days === null || typeof v.oldest_run_age_days === 'number');
