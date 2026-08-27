@@ -33,6 +33,10 @@ interface ApiErrorBody {
 }
 
 const DEBOUNCE_MS = 250;
+// bunkai_search_tests caps p_limit at 50 (0076:299) — request the max so a
+// library with more than the RPC's own default of 20 doesn't silently
+// truncate.
+const SEARCH_LIMIT = 50;
 
 export function TestPickerDialog({ open, onClose, planId, projectId, existingTestIds, onAdded }: TestPickerDialogProps) {
   const [query, setQuery] = useState('');
@@ -59,7 +63,7 @@ export function TestPickerDialog({ open, onClose, planId, projectId, existingTes
 
     const run = async () => {
       try {
-        const params = new URLSearchParams({ query: trimmed, project_id: projectId });
+        const params = new URLSearchParams({ query: trimmed, project_id: projectId, limit: String(SEARCH_LIMIT) });
         const res = await fetch(`/api/v1/tests/search?${params}`, { signal: controller.signal });
         if (!res.ok) {
           setResults([]);
@@ -72,7 +76,12 @@ export function TestPickerDialog({ open, onClose, planId, projectId, existingTes
         // Aborted or network error — leave the previous results in place.
       }
       finally {
-        setSearching(false);
+        // On a keystroke that aborts an in-flight fetch, the aborted
+        // promise's finally runs on a later microtask than the new effect's
+        // setSearching(true) — stamping searching back to false while the
+        // new search is genuinely in flight. Only the request that actually
+        // finished gets to flip the flag.
+        if (!controller.signal.aborted) { setSearching(false); }
       }
     };
 
@@ -229,6 +238,15 @@ export function TestPickerDialog({ open, onClose, planId, projectId, existingTes
               </button>
             );
           })}
+          {results.length === SEARCH_LIMIT && (
+            <p data-testid="test-picker-truncated" className="px-1 py-2 text-2xs italic text-fg-4">
+              Showing the first
+              {' '}
+              {SEARCH_LIMIT}
+              {' '}
+              matches — refine your search to narrow the results.
+            </p>
+          )}
         </div>
 
         {error && (

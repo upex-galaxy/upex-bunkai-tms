@@ -55,10 +55,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //       project (ALL-match, not ANY-match) — an ANY-match gate would let it
 //       join plans in both projects at once, which search must also refuse
 //       to surface as a candidate.
+//   (p) a member of workspace X cannot add a Test that belongs to a
+//       DIFFERENT workspace Y (422, test_outside_plan_project) — 0076:162's
+//       `t.workspace_id = v_workspace_id` filter, exercised directly rather
+//       than only implied by the cross-project case.
 //
-// DB-dependent + fully env-gated (service AND real-login). Skips loudly when
-// its env is missing, and logs + passes when seed state (or the login itself)
-// cannot satisfy a precondition — never blocks a build.
+// DB-dependent + fully env-gated (service AND real-login). Skips loudly via
+// describe.skip when its env is missing (nothing to assert). When the env IS
+// present but seed state (or the login itself) cannot satisfy a
+// precondition, beforeAll THROWS — same convention as
+// lib/atcs/search-isolation.test.ts's requirePrecondition: a missing
+// precondition on a DB-backed run is a real coverage gap, not a green.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -88,6 +95,8 @@ interface Fixture {
   test2Id: string // chains to Project B's ATC
   test3Id: string // chains to Project A's ATC (second A-scoped test)
   test4Id: string // chains to BOTH Project A's and Project B's ATC
+  workspaceYId: string // a second, unrelated workspace
+  testInWorkspaceYId: string // belongs to workspaceY, never to the fixture workspace
 }
 
 function service() {
@@ -147,7 +156,6 @@ async function membershipCount(db: ReturnType<typeof service>, testPlanId: strin
 
 let fixture: Fixture | null = null;
 let anon: ReturnType<typeof service> | null = null;
-let skipReason: string | null = null;
 
 describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write path, authz, cross-project, uniqueness)', () => {
   beforeAll(async () => {
@@ -157,8 +165,10 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
       password: qaPassword!,
     });
     if (signInError || !signIn.session || !signIn.user) {
-      skipReason = `QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`;
-      return;
+      throw new Error(
+        '[test-plan-tests-rpc-isolation] precondition not met — QA_E2E login failed '
+        + `(${signInError?.message ?? 'no session returned'}). Fix QA_E2E_USER_EMAIL/PASSWORD in .env.`,
+      );
     }
     anon = client;
     const qaUserId = signIn.user.id;
@@ -186,8 +196,10 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
     if (membersError) { throw membersError; }
     const distinctIds = [...new Set((members ?? []).map(m => m.user_id as string))].filter(id => id !== qaUserId);
     if (distinctIds.length < 1) {
-      skipReason = 'need at least 1 distinct real user id (other than QA_E2E) among active workspace members (seed state).';
-      return;
+      throw new Error(
+        '[test-plan-tests-rpc-isolation] precondition not met — need at least 1 distinct real user id '
+        + '(other than QA_E2E) among active workspace members. Seed the dev DB to cover this path.',
+      );
     }
     const [ownerUserId] = distinctIds;
 
@@ -209,8 +221,10 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
       .order('slug', { ascending: true });
     if (projectError) { throw projectError; }
     if (!projects || projects.length !== 2) {
-      skipReason = 'could not create the two throwaway projects the cross-project case needs.';
-      return;
+      throw new Error(
+        '[test-plan-tests-rpc-isolation] precondition not met — could not create the two throwaway '
+        + 'projects the cross-project case needs.',
+      );
     }
     const projectAId = projects.find(p => (p.slug as string).endsWith('project-a'))!.id as string;
     const projectBId = projects.find(p => (p.slug as string).endsWith('project-b'))!.id as string;
@@ -287,6 +301,26 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
     const planOpen2Id = (plans ?? []).find(p => (p.name as string).endsWith('open 2'))!.id as string;
     const planClosedId = (plans ?? []).find(p => (p.name as string).endsWith('closed'))!.id as string;
 
+    // A second, wholly unrelated workspace + Test for case (p) — its
+    // workspace_id alone (0076:162's `t.workspace_id = v_workspace_id`
+    // filter) is enough to make it unresolvable against planOpen1, no
+    // project/module/ATC/test_steps chain needed.
+    const { data: workspaceY, error: workspaceYError } = await db
+      .from('workspaces')
+      .insert({ slug: `${PREFIX}-ws-y`, name: `${PREFIX} workspace Y`, owner_user_id: ownerUserId })
+      .select('id')
+      .single();
+    if (workspaceYError) { throw workspaceYError; }
+    const workspaceYId = workspaceY.id as string;
+
+    const { data: testInWorkspaceY, error: testInWorkspaceYError } = await db
+      .from('tests')
+      .insert({ workspace_id: workspaceYId, title: `${PREFIX} test in workspace Y`, created_by: ownerUserId })
+      .select('id')
+      .single();
+    if (testInWorkspaceYError) { throw testInWorkspaceYError; }
+    const testInWorkspaceYId = testInWorkspaceY.id as string;
+
     fixture = {
       workspaceId,
       projectAId,
@@ -300,6 +334,8 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
       test2Id,
       test3Id,
       test4Id,
+      workspaceYId,
+      testInWorkspaceYId,
     };
   });
 
@@ -312,14 +348,11 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
     // workspace_id IS on delete cascade — 0024), so the workspace delete
     // covers them too.
     await db.from('workspaces').delete().eq('id', fixture.workspaceId);
+    await db.from('workspaces').delete().eq('id', fixture.workspaceYId);
   });
 
-  function warn(): void {
-    console.warn(`⚠ skipped: ${skipReason ?? 'fixture unavailable'}`);
-  }
-
   it('(a) a real authenticated member+ add persists the row, and activity_log records the AUTHENTICATED caller', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { data, error } = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.test1Id] });
       expect(error).toBeNull();
@@ -341,7 +374,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(b) a batch mixing an already-member test with a new one is rejected WHOLESALE (23505) — the new test is NOT added', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const before = await membershipCount(service(), fixture!.planOpen1Id);
       const { error } = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.test1Id, fixture!.test3Id] });
@@ -352,7 +385,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(c) a Viewer cannot add (403, 42501)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'viewer' }, async () => {
       const { error } = await addTests(anon!, { testPlanId: fixture!.planOpen2Id, testIds: [fixture!.test3Id] });
       expect(error?.code).toBe('42501');
@@ -360,13 +393,13 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(d) a non-member cannot add (404, P0002, non-disclosure)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const { error } = await addTests(anon, { testPlanId: fixture.planOpen2Id, testIds: [fixture.test3Id] });
     expect(error?.code).toBe('P0002');
   });
 
   it('(e) a Test whose only chained ATC is in a DIFFERENT project is rejected (422, test_outside_plan_project)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { error } = await addTests(anon!, { testPlanId: fixture!.planOpen2Id, testIds: [fixture!.test2Id] });
       expect(error?.code).toBe('45604');
@@ -376,7 +409,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(f) an empty test_ids array is rejected (422, test_selection_empty)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { error } = await addTests(anon!, { testPlanId: fixture!.planOpen2Id, testIds: [] });
       expect(error?.code).toBe('45605');
@@ -384,7 +417,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(g) add on a Closed plan is rejected (409, test_plan_not_open)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { error } = await addTests(anon!, { testPlanId: fixture!.planClosedId, testIds: [fixture!.test3Id] });
       expect(error?.code).toBe('45603');
@@ -394,7 +427,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(h) remove persists the deletion, leaves the Test itself unchanged, and audits the AUTHENTICATED caller', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { data, error } = await removeTest(anon!, { testPlanId: fixture!.planOpen1Id, testId: fixture!.test1Id });
@@ -418,7 +451,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(i) removing a test that is not a member is rejected (404, test_plan_test_not_found)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const { error } = await removeTest(anon!, { testPlanId: fixture!.planOpen1Id, testId: fixture!.test1Id });
       expect(error?.code).toBe('45606');
@@ -426,7 +459,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(j) remove on a Closed plan is rejected (409, test_plan_not_open) — existing membership row survives', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     // Seed a membership row directly on the Closed plan — no write path can
     // add one through the RPC (it is itself Closed-gated), mirroring 0073's
@@ -451,7 +484,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(k) a Viewer cannot remove (403, 42501)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     await withQaRole(service(), { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'viewer' }, async () => {
       const { error } = await removeTest(anon!, { testPlanId: fixture!.planOpen2Id, testId: fixture!.test3Id });
       expect(error?.code).toBe('42501');
@@ -459,7 +492,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(l) the same Test is a member of two plans independently — removing it from one leaves the other unchanged', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const add1 = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.test3Id] });
@@ -486,7 +519,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(m) the table is default-deny on DIRECT writes: a member+ cannot INSERT or DELETE through PostgREST, only through the RPCs', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     // Seed a row directly (service-role) so the direct-DELETE attempt below
     // has something visible to try against.
@@ -517,7 +550,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(n) bunkai_search_tests is project-scoped and matches on title substring', async () => {
-    if (!fixture) { return warn(); }
+    if (!fixture) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     // `owner_user_id` on the throwaway `workspaces` row is a column filler
     // (never an actual membership) — bunkai_search_tests requires an ACTIVE
@@ -549,7 +582,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
   });
 
   it('(o) a Test whose chain spans TWO projects is rejected by add in EITHER project, and excluded from search in EITHER project (ALL-match, not ANY-match)', async () => {
-    if (!fixture || !anon) { return warn(); }
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
     const db = service();
     await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
       const addToA = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.test4Id] });
@@ -572,6 +605,17 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
         p_limit: 20,
       });
       expect(((matchesB ?? []) as { id: string }[]).map(m => m.id)).not.toContain(fixture!.test4Id);
+    });
+  });
+
+  it('(p) a member of workspace X cannot add a Test that belongs to a DIFFERENT workspace Y (422, test_outside_plan_project)', async () => {
+    if (!fixture || !anon) { throw new Error('fixture setup failed — see beforeAll error above'); }
+    const db = service();
+    await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
+      const { error } = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.testInWorkspaceYId] });
+      expect(error?.code).toBe('45604');
+      const count = await membershipCount(db, fixture!.planOpen1Id);
+      expect(count).toBe(0);
     });
   });
 });

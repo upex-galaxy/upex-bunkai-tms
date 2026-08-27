@@ -296,6 +296,10 @@ declare
   v_limit  int;
   v_result jsonb;
 begin
+  if auth.uid() is not null and p_actor_user_id <> auth.uid() then
+    raise exception 'actor mismatch' using errcode = '42501';
+  end if;
+
   v_limit := least(greatest(coalesce(p_limit, 20), 1), 50);
   v_query := btrim(coalesce(p_query, ''));
   if v_query = '' then
@@ -343,5 +347,11 @@ begin
 end;
 $$;
 
-revoke execute on function public.bunkai_search_tests(uuid, text, uuid, int) from public, anon;
-grant  execute on function public.bunkai_search_tests(uuid, text, uuid, int) to authenticated, service_role;
+-- service_role only: the route calls this through createAdminClient() (never
+-- the browser client), and p_actor_user_id is caller-supplied — granting to
+-- authenticated would let any signed-in user pass someone else's uuid and a
+-- foreign project_id to read Tests out of a workspace they are not a member
+-- of. The auth.uid() guard above is defense in depth if this is ever called
+-- with a user JWT.
+revoke execute on function public.bunkai_search_tests(uuid, text, uuid, int) from public, anon, authenticated;
+grant  execute on function public.bunkai_search_tests(uuid, text, uuid, int) to service_role;
