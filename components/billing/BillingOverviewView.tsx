@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Meter, MeterWarningChip } from '@components/ui/meter';
 import { formatPrice, meterFillPercent, meterLabel, meterState, PLAN_TIERS } from '@lib/billing/plan-tiers';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface BillingOverview {
@@ -137,15 +138,18 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
             )}
           </div>
           {!tier.isPaid && (
-            <span
+            // BK-230 — D34(d): this was the BK-229 inert "soon" affordance;
+            // it becomes a live link now that the upgrade flow ships. Owner
+            // gating happens on /settings/billing/upgrade itself, not here —
+            // any admin/member/viewer may open the comparison read-only
+            // (Q4, 2026-08-17 ratification).
+            <Link
+              href="/settings/billing/upgrade"
               data-testid="billing-upgrade-entry"
-              title="Coming soon"
-              aria-disabled="true"
-              className="flex h-8 shrink-0 cursor-not-allowed items-center gap-2 rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-3"
+              className="flex h-8 shrink-0 items-center gap-2 rounded-2 border border-stroke-2 bg-surface-3 px-3 text-sm font-medium text-fg-1 hover:bg-surface-4"
             >
               Upgrade plan
-              <span className="rounded-1 border border-stroke-2 px-1.5 py-px font-mono text-2xs uppercase tracking-wide text-fg-4">soon</span>
-            </span>
+            </Link>
           )}
         </CardContent>
       </Card>
