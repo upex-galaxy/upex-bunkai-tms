@@ -152,6 +152,8 @@ import '../app/api/v1/projects/[id]/bugs/route.openapi';
 
 import '../app/api/v1/projects/[id]/coverage/route.openapi';
 
+import '../app/api/v1/projects/[id]/atcs/export/route.openapi';
+
 import '../app/api/v1/projects/[id]/bugs/heatmap/route.openapi';
 
 import '../app/api/v1/workspaces/[id]/notifications/route.openapi';

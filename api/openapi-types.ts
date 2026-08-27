@@ -6438,6 +6438,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{id}/atcs/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export a Project's whole ATC library as a CSV file
+         * @description Bearer `atc:read` (or cookie session). Columns, fixed order: ATC ID, Slug, Title, Module, Layer, Tags, Status. Multiple Tags for one ATC join into a single cell with `; ` (semicolon-space). Any cell containing a comma, a double quote, or a line break is RFC4180-quoted, with embedded double quotes doubled. A cell whose content starts with `=`, `+`, `-`, `@`, a tab, or a CR is prefixed with a literal `'` before that escaping, to neutralize spreadsheet formula injection (OWASP guidance). The body is prefixed with a UTF-8 BOM so non-ASCII Title/Tag content renders correctly in Windows Excel. A Project with zero ATCs returns a header-only CSV (200, never an error). No row cap: every non-archived ATC is included regardless of library size.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The Project whose ATC library to export. */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The Project's ATC library as CSV, `Content-Disposition: attachment`. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                    };
+                };
+                /** @description Malformed Project id (not a UUID) (`bad_request`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Not authenticated. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing atc:read scope. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Project not found (also returned for a Project outside the caller's workspaces — no existence leak). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/bugs/heatmap": {
         parameters: {
             query?: never;
