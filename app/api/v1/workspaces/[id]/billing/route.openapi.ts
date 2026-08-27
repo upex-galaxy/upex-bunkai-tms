@@ -11,6 +11,11 @@ const WorkspaceBillingOverviewSchema = z
     plan: z
       .enum(['community', 'cloud', 'enterprise'])
       .describe('The workspace\'s `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it.'),
+    purchased_seats: z
+      .number()
+      .int()
+      .nullable()
+      .describe('BK-230 — the Cloud workspace\'s real purchased seat count (set at checkout completion). `null` for Community/Enterprise, or a Cloud workspace predating this column — `lib/billing/plan-tiers.ts`\'s `effectiveSeatLimit()` falls back to the tier\'s flat `seatLimit` in that case. This is the workspace\'s ACTUAL seat cap; `PLAN_TIERS.cloud.seatLimit` (25) is only the plan\'s maximum purchasable quantity.'),
     active_seats: z
       .number()
       .int()

@@ -1300,6 +1300,10 @@
             "enum": ["community", "cloud", "enterprise"],
             "description": "The workspace's `workspaces.plan` literal. Look up the tier ladder (display name, seat/project/retention limits, price) for this key in `lib/billing/plan-tiers.ts` — this endpoint does not repeat it."
           },
+          "purchased_seats": {
+            "type": ["integer", "null"],
+            "description": "BK-230 — the Cloud workspace's real purchased seat count (set at checkout completion). `null` for Community/Enterprise, or a Cloud workspace predating this column — `lib/billing/plan-tiers.ts`'s `effectiveSeatLimit()` falls back to the tier's flat `seatLimit` in that case. This is the workspace's ACTUAL seat cap; `PLAN_TIERS.cloud.seatLimit` (25) is only the plan's maximum purchasable quantity."
+          },
           "active_seats": {
             "type": "integer",
             "description": "Workspace members with `status = 'active'` only. Pending invitations and suspended members never count toward this figure."
@@ -1313,7 +1317,13 @@
             "description": "Age in days of the workspace's oldest run (`now() - min(runs.created_at)`), or `null` when the workspace has no runs. This reports how much of the plan's retention WINDOW is in use — nothing in this product prunes runs, so this figure is never a countdown to deletion."
           }
         },
-        "required": ["plan", "active_seats", "project_count", "oldest_run_age_days"],
+        "required": [
+          "plan",
+          "purchased_seats",
+          "active_seats",
+          "project_count",
+          "oldest_run_age_days"
+        ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
       },
       "BillingCheckoutResponse": {

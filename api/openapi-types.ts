@@ -7409,6 +7409,8 @@ export interface components {
              * @enum {string}
              */
             plan: "community" | "cloud" | "enterprise";
+            /** @description BK-230 — the Cloud workspace's real purchased seat count (set at checkout completion). `null` for Community/Enterprise, or a Cloud workspace predating this column — `lib/billing/plan-tiers.ts`'s `effectiveSeatLimit()` falls back to the tier's flat `seatLimit` in that case. This is the workspace's ACTUAL seat cap; `PLAN_TIERS.cloud.seatLimit` (25) is only the plan's maximum purchasable quantity. */
+            purchased_seats: number | null;
             /** @description Workspace members with `status = 'active'` only. Pending invitations and suspended members never count toward this figure. */
             active_seats: number;
             /** @description Every project in the workspace. `projects` carries no soft-delete column, so this is an exact, unfiltered count. */
