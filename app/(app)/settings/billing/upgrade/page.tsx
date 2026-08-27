@@ -4,6 +4,7 @@ import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 // Settings > Billing > Upgrade (BK-230 — AC1-AC5). Same cookie-driven active
 // workspace resolution as `settings/billing/page.tsx`; additionally resolves
@@ -51,7 +52,11 @@ export default async function SettingsBillingUpgradePage() {
       </div>
       <h1 className="text-2xl font-bold tracking-tight text-fg-0">Upgrade your plan</h1>
       <p className="mb-4 text-base text-fg-2">Compare tiers and pick your seat count. Changes apply immediately once payment is confirmed.</p>
-      <UpgradeView workspaceId={activeWorkspaceId} isOwner={isOwner} />
+      {/* UpgradeView reads `?checkout=canceled` via useSearchParams — same
+          Suspense-wrapping convention as app/(auth)/login/page.tsx. */}
+      <Suspense fallback={<div className="h-40" aria-hidden />}>
+        <UpgradeView workspaceId={activeWorkspaceId} isOwner={isOwner} />
+      </Suspense>
     </div>
   );
 }
