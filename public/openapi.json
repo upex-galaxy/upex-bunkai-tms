@@ -12113,7 +12113,7 @@
       "get": {
         "tags": ["ATCs"],
         "summary": "Export a Project's whole ATC library as a CSV file",
-        "description": "Bearer `atc:read` (or cookie session). Columns, fixed order: ATC ID, Slug, Title, Module, Layer, Tags, Status. Multiple Tags for one ATC join into a single cell with `; ` (semicolon-space). Any cell containing a comma, a double quote, or a line break is RFC4180-quoted, with embedded double quotes doubled. A Project with zero ATCs returns a header-only CSV (200, never an error). No pagination, no row cap.",
+        "description": "Bearer `atc:read` (or cookie session). Columns, fixed order: ATC ID, Slug, Title, Module, Layer, Tags, Status. Multiple Tags for one ATC join into a single cell with `; ` (semicolon-space). Any cell containing a comma, a double quote, or a line break is RFC4180-quoted, with embedded double quotes doubled. A cell whose content starts with `=`, `+`, `-`, `@`, a tab, or a CR is prefixed with a literal `'` before that escaping, to neutralize spreadsheet formula injection (OWASP guidance). The body is prefixed with a UTF-8 BOM so non-ASCII Title/Tag content renders correctly in Windows Excel. A Project with zero ATCs returns a header-only CSV (200, never an error). No row cap: every non-archived ATC is included regardless of library size.",
         "security": [
           {
             "cookieAuth": []

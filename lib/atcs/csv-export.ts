@@ -18,6 +18,16 @@
 //     an embedded double quote is doubled. Applied to every column generically
 //     (the business rule says "any field", not just Title).
 //   - A Project with zero ATCs still exports — header row only, never an error.
+//
+// CSV formula-injection neutralization (Conductor review of PR #207, MAJOR;
+// AI Tech Lead decision on BK-315, Jira comment): a cell whose content begins
+// with `=+-@` or a tab/CR executes as a formula when opened in Excel/Sheets —
+// RFC4180 quoting alone does not stop this, since the spreadsheet evaluates
+// the cell AFTER unquoting. A leading `'` is prepended before escaping
+// (OWASP guidance) to force literal-text treatment. Applied generically to
+// every column, same reasoning as the escaping rule. Tradeoff: an affected
+// cell's exported value differs from the stored value by one leading
+// character — a deliberate, visible security marker, not data loss.
 
 export interface AtcExportRow {
   id: string
@@ -33,13 +43,23 @@ const CSV_HEADER = ['ATC ID', 'Slug', 'Title', 'Module', 'Layer', 'Tags', 'Statu
 const TAG_DELIMITER = '; ';
 const ROW_SEPARATOR = '\r\n';
 
+// OWASP CSV-injection guidance: a spreadsheet treats a cell starting with any
+// of these as a formula, not literal text.
+const FORMULA_TRIGGER_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
+
+function neutralizeFormulaPrefix(value: string): string {
+  return value.length > 0 && FORMULA_TRIGGER_CHARS.has(value[0]) ? `'${value}` : value;
+}
+
 // RFC4180 §2.6/2.7: quote a field that contains the delimiter, a double
-// quote, or a line break; double every embedded double quote.
+// quote, or a line break; double every embedded double quote. Formula
+// neutralization runs first — see the module header.
 function csvEscapeField(value: string): string {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const safe = neutralizeFormulaPrefix(value);
+  if (/[",\r\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 function csvRow(fields: string[]): string {

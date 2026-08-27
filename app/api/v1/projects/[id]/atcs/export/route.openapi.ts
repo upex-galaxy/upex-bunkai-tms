@@ -1,11 +1,15 @@
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
-// BK-315 — a Project's whole ATC library as an RFC4180 CSV download. No
-// pagination, no row cap (AI Tech Lead decision, Jira BK-315): a buffered
-// single-response body, sufficient for an occasional, human-triggered audit
-// pull. Non-disclosure: missing, foreign-workspace, and non-member Projects
-// all collapse into the SAME 404 (`not_found`), never a 403, never an
-// existence leak — mirrors every sibling project-scoped reporting endpoint.
+// BK-315 — a Project's whole ATC library as an RFC4180 CSV download. No row
+// cap and no client-facing pagination (AI Tech Lead decision, Jira BK-315): a
+// single buffered response, sufficient for an occasional, human-triggered
+// audit pull. The server DOES page its own read of `atcs` past PostgREST's
+// `db-max-rows` cap internally (Conductor review of PR #207, BLOCKER fix) so
+// a library larger than 1000 rows is never silently truncated — that paging
+// is not exposed to the caller. Non-disclosure: missing, foreign-workspace,
+// and non-member Projects all collapse into the SAME 404 (`not_found`),
+// never a 403, never an existence leak — mirrors every sibling project-scoped
+// reporting endpoint.
 
 const IdParam = {
   name: 'id',
@@ -20,7 +24,7 @@ registry.registerPath({
   path: '/api/v1/projects/{id}/atcs/export',
   tags: ['ATCs'],
   summary: 'Export a Project\'s whole ATC library as a CSV file',
-  description: 'Bearer `atc:read` (or cookie session). Columns, fixed order: ATC ID, Slug, Title, Module, Layer, Tags, Status. Multiple Tags for one ATC join into a single cell with `; ` (semicolon-space). Any cell containing a comma, a double quote, or a line break is RFC4180-quoted, with embedded double quotes doubled. A Project with zero ATCs returns a header-only CSV (200, never an error). No pagination, no row cap.',
+  description: 'Bearer `atc:read` (or cookie session). Columns, fixed order: ATC ID, Slug, Title, Module, Layer, Tags, Status. Multiple Tags for one ATC join into a single cell with `; ` (semicolon-space). Any cell containing a comma, a double quote, or a line break is RFC4180-quoted, with embedded double quotes doubled. A cell whose content starts with `=`, `+`, `-`, `@`, a tab, or a CR is prefixed with a literal `\'` before that escaping, to neutralize spreadsheet formula injection (OWASP guidance). The body is prefixed with a UTF-8 BOM so non-ASCII Title/Tag content renders correctly in Windows Excel. A Project with zero ATCs returns a header-only CSV (200, never an error). No row cap: every non-archived ATC is included regardless of library size.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
