@@ -104,7 +104,7 @@ export interface QaConfig {
     uriBlock: string
     // QA roles + isolation invariant — all referenced by .env slot name only.
     roles: DbRole[]
-    revokedColumns: string[]
+    revokedSecretTables: string[]
     poolerNote: string
     rlsProbe: string
   }
@@ -224,7 +224,15 @@ curl '<API_BASE_URL>/me' \\
 # COEXISTENCIA (ADR-0001 / ADR-0007): la cookie del browser y el Bearer PAT de
 # la MISMA cuenta conviven independientes — ninguno revoca al otro. Podés tener
 # sesión por UI y PAT por API al mismo tiempo, ambos válidos (resolveIdentity).
-# Endpoints que ya aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).`;
+# QUÉ ACEPTA BEARER: casi toda la API. De los ~92 handlers, sólo CUATRO son
+# cookie-only (un PAT no puede tocarlos, devuelven 403):
+#   POST   /api/v1/tokens                       (un PAT no mintea otro PAT)
+#   DELETE /api/v1/tokens/{id}                  (un PAT no se revoca a sí mismo)
+#   POST   /api/v1/me/active-workspace          (un PAT no tiene workspace activo)
+#   DELETE /api/v1/workspaces/{id}/membership   (un PAT no abandona un workspace)
+# El resto acepta cookie O Bearer; los scope-gated además exigen el scope.
+# OJO: la cookie de sesión lleva TODAS las capabilities, el PAT sólo las suyas.
+# Por eso algo puede andar en el browser y dar 403 desde curl.`;
 
 const signinSnippet = `# Onboarding headless (verification-first, BK-166) — signup → confirm → signin.
 # El alta NO loguea a nadie: signup crea la cuenta SIN confirmar y dispara un
@@ -401,9 +409,11 @@ const apiRequests: ApiRequest[] = [
     ],
     body: null,
     response: `{
-  "auth": { "source": "cookie" },
   "user": { "id": "<uuid>", "email": "<email>" },
-  "workspaces": [ /* ... */ ]
+  "workspaces": [ /* ... */ ],
+  "active_workspace_id": "<uuid|null>",
+  "active_workspace_role": "owner|admin|member|viewer|null",
+  "auth": { "source": "cookie", "scopes": [ /* todas las capabilities */ ] }
 }`,
     curl: `curl '<API_BASE_URL>/me' \\
   --cookie 'sb-<project-ref>-auth-token=<valor-de-DevTools>'
@@ -418,14 +428,21 @@ const apiRequests: ApiRequest[] = [
       'Bearer PAT (headless) — sin navegador, ideal para CLI / CI / agentes. El token '
       + 'tiene forma bk_pat_<prefix>.<secret> y va en cada request. Convive con la cookie '
       + 'de sesión de la misma cuenta — ninguno revoca al otro (ADR-0001 / ADR-0007). '
-      + 'Endpoints que ya aceptan Bearer: GET /me, GET /workspaces (se suman más por sprint).',
+      + 'Casi toda la API acepta Bearer: de ~92 handlers sólo cuatro son cookie-only '
+      + '(POST /tokens, DELETE /tokens/{id}, POST /me/active-workspace, '
+      + 'DELETE /workspaces/{id}/membership). El resto acepta cookie O Bearer. La cookie '
+      + 'lleva TODAS las capabilities; el PAT sólo las suyas — por eso algo puede andar en '
+      + 'el browser y dar 403 desde curl.',
     headers: [
       { key: 'Authorization', value: 'Bearer bk_pat_<prefix>.<secret>' },
     ],
     body: null,
     response: `{
-  "auth": { "source": "bearer", "scopes": ["atc:read", "atc:write"] },
-  "user": { "id": "<uuid>", "email": "<email>" }
+  "user": { "id": "<uuid>", "email": "<email>" },
+  "workspaces": [ /* ... */ ],
+  "active_workspace_id": "<uuid|null>",
+  "active_workspace_role": "owner|admin|member|viewer|null",
+  "auth": { "source": "bearer", "scopes": ["atc:read", "atc:write", "run:execute"] }
 }`,
     curl: `curl '<API_BASE_URL>/me' \\
   -H 'Authorization: Bearer bk_pat_<prefix>.<secret>'
@@ -568,8 +585,12 @@ const apiRequests: ApiRequest[] = [
     response: `{
   "id": "<uuid>",
   "token": "bk_pat_<prefix>.<secret>",
+  "name": "browser-hybrid",
   "scopes": ["atc:read", "atc:write"],
-  "warning": "token se muestra UNA vez"
+  "workspace_id": "<uuid|null>",
+  "expires_at": "<iso-8601|null>",
+  "created_at": "<iso-8601>",
+  "warning": "Store this token now — it cannot be retrieved later."
 }`,
     curl: `curl -X POST '<API_BASE_URL>/tokens' \\
   -H 'content-type: application/json' \\
@@ -595,7 +616,7 @@ export const qaConfig: QaConfig = {
     ui: 'shadcn/ui + Tailwind',
     db: 'Supabase (PostgreSQL 17)',
     orm: null,
-    auth: ['Email + password (primary)', 'Magic link (secondary)', 'Supabase cookie', 'Bearer PAT'],
+    auth: ['Email + password (primary)', 'OAuth GitHub / Google (BK-3, ADR-0008)', 'Magic link (secondary)', 'Supabase cookie', 'Bearer PAT'],
   },
   credentialsSource: {
     label: 'Jira Epic',
@@ -623,10 +644,13 @@ export const qaConfig: QaConfig = {
     apiRequests,
     patScopes: [
       { scope: 'atc:read', purpose: 'Leer ATCs, steps, assertions, modules, user stories, AC — y, desde BK-499, TODA lectura de datos compartidos del workspace: reportes (coverage, traceability, runs report, heatmap, recovery cycles), bugs, runs, tests, activity y workspaces. NO cubre la bandeja personal (notificaciones, preferencias, /me), que no pide scope. (DEFAULT)' },
-      { scope: 'atc:write', purpose: 'Crear / actualizar / borrar ATCs — y, desde BK-499, crear projects dentro de un workspace existente. (DEFAULT)' },
-      { scope: 'run:execute', purpose: 'Iniciar runs + postear resultados de steps (Sprint 2). (DEFAULT)' },
-      { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace. NO es default — signin/confirm lo rechazan (ADR-0005); se mintea sólo vía POST /tokens con un workspace_id donde seas admin/owner.' },
+      { scope: 'atc:write', purpose: 'TODA escritura de datos compartidos del workspace: ATCs, bugs (crear / asignar / cambiar status), tests (+ tags, reorder), user stories, acceptance criteria, modules, milestones, environments, test plans, imports, duplicar ATCs y —desde BK-499— crear projects. Son 27 handlers, no sólo ATCs. (DEFAULT)' },
+      { scope: 'run:execute', purpose: 'Ciclo de vida del run: iniciar (POST /runs), marcar pass/fail por step, abortar (POST /runs/{id}/abort) y finalizar (POST /runs/{id}/finish). (DEFAULT)' },
+      { scope: 'workspace:admin', purpose: 'Gestionar members, invites, metadata del workspace. NO es default — signin/confirm lo rechazan con 403 (ADR-0005); se mintea sólo vía POST /tokens con un workspace_id donde seas admin/owner. Consecuencia práctica: ningún PAT sacado por el rail headless puede tocar los endpoints de invites.' },
     ],
+    // La cookie de sesión del browser lleva TODAS las capabilities (no se le
+    // asignan scopes: es el usuario completo). El PAT lleva sólo las suyas. Por
+    // eso una llamada puede andar logueado en la UI y devolver 403 desde curl.
     endpoints: [
       { method: 'GET', path: '/api/v1/me', purpose: 'Identidad + lista de workspaces + workspace activo. Acepta cookie y Bearer.' },
       { method: 'GET', path: '/api/v1/workspaces', purpose: 'Workspaces a los que pertenece el caller. Acepta cookie y Bearer.' },
@@ -634,13 +658,19 @@ export const qaConfig: QaConfig = {
       { method: 'POST', path: '/api/v1/auth/signup', purpose: 'Crea cuenta SIN confirmar + dispara OTP por mail → 202. Sin session ni PAT.' },
       { method: 'POST', path: '/api/v1/auth/confirm', purpose: 'Verifica el OTP del signup → session + PAT fresco.' },
       { method: 'POST', path: '/api/v1/auth/signin', purpose: 'Login email+password (cuenta confirmada) → session + PAT fresco.' },
+      { method: 'POST', path: '/api/v1/auth/resend', purpose: 'Reenvía el OTP de confirmación (BK-181). Sólo pide email — no lleva password. 202.' },
       { method: 'POST', path: '/api/v1/auth/magic-link', purpose: 'Dispara el mail de magic-link (login secundario "email me a link").' },
-      { method: 'POST', path: '/api/v1/tokens', purpose: 'Mintea un PAT (cookie o Bearer). Token visible una sola vez.' },
-      { method: 'GET', path: '/api/v1/tokens', purpose: 'Lista PATs (sin secretos).' },
-      { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación.' },
-      { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace (admin/owner).' },
+      { method: 'GET', path: '/auth/oauth/{provider}', purpose: 'Inicia OAuth (github | google). Mintea el state CSRF y redirige al provider (ADR-0008).' },
+      { method: 'POST', path: '/api/v1/tokens', purpose: 'Mintea un PAT. COOKIE-ONLY — un PAT no puede mintear otro PAT (403 con Bearer). Token visible una sola vez.' },
+      { method: 'GET', path: '/api/v1/tokens', purpose: 'Lista PATs (sin secretos). Acepta cookie y Bearer.' },
+      { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación. COOKIE-ONLY (403 con Bearer).' },
+      { method: 'POST', path: '/api/v1/workspaces', purpose: 'Crea un workspace. Única escritura sin scope — es el bootstrap que un PAT nuevo necesita.' },
+      { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace. Exige scope workspace:admin, que un PAT headless nunca tiene → 403.' },
       { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token.' },
-      { method: 'PUT', path: '/api/v1/me/active-workspace', purpose: 'Cambia el workspace activo del usuario.' },
+      { method: 'DELETE', path: '/api/v1/workspaces/{id}/membership', purpose: 'Abandona un workspace. COOKIE-ONLY (403 con Bearer).' },
+      { method: 'POST', path: '/api/v1/me/active-workspace', purpose: 'Cambia el workspace activo. Es POST, no PUT. COOKIE-ONLY: un PAT no tiene workspace activo, pasá workspace_id en cada request.' },
+      { method: 'GET', path: '/api/v1/search', purpose: 'Búsqueda global del workspace. Exige scope atc:read.' },
+      { method: 'GET', path: '/api/v1/', purpose: 'Banner de discovery → { version, openapi, docs, status }. También responde OPTIONS (preflight CORS).' },
       { method: 'GET', path: '/api/v1/health', purpose: 'Liveness probe.' },
       { method: 'GET', path: '/api/openapi', purpose: 'Spec OpenAPI (JSON).' },
       { method: 'GET', path: '/api/docs', purpose: 'Docs interactivas (Scalar UI).' },
@@ -656,7 +686,12 @@ export const qaConfig: QaConfig = {
       { name: 'qa_inspector_ro', access: 'Solo lectura (SELECT en public.*). BYPASSRLS.' },
       { name: 'qa_inspector_rw', access: 'Lectura + escritura (SELECT/INSERT/UPDATE/DELETE en public.*). BYPASSRLS.' },
     ],
-    revokedColumns: ['access_tokens.hash', 'workspace_invites.token_hash', 'magic_link_tokens.token_hash'],
+    // Migración 0011 movió cada secreto a una tabla hermana 1:1 y 0012 DROPEÓ las
+    // columnas viejas (access_tokens.hash, workspace_invites.token_hash,
+    // magic_link_tokens.token_hash/ip_hash). Postgres no puede ocultar una sola
+    // columna cuando ya existe un GRANT de SELECT sobre la tabla, así que el
+    // aislamiento es a nivel TABLA, no a nivel columna.
+    revokedSecretTables: ['access_token_secrets', 'magic_link_token_secrets', 'workspace_invite_secrets'],
     poolerNote: 'Conectá por el Session Pooler en el puerto 5432 (transacciones largas OK). NO uses el 6543 (transaction pooler, sin prepared statements). El usuario del pooler es punteado: <DBHUB_USER>.<project-ref> — host, user y ref viven en el .env (DBHUB_HOST, DBHUB_USER), nunca en esta página.',
     rlsProbe: 'Sonda cross-tenant: logueate como usuario B e intentá SELECT en projects con un workspace_id del usuario A → esperá 0 filas. RLS está activo en cada tabla; auth.uid() maneja la membresía vía la familia bunkai_is_workspace_member.',
   },
@@ -690,7 +725,7 @@ export const qaConfig: QaConfig = {
   ],
   playwright: {
     loginTestIds: [
-      { id: 'login-email', purpose: 'Input de email (paso único email-first).' },
+      { id: 'login-email', purpose: 'Input de email (paso único email-first). OJO: el mismo testid existe también en el form de magic-link, así que una vez abierto ese toggle getByTestId("login-email") matchea DOS nodos y Playwright tira strict-mode violation. Scopeá por el form.' },
       { id: 'login-continue', purpose: 'Botón "Continue" — dispara check-email y enruta.' },
       { id: 'login-password', purpose: 'Input de password (steps de signin y create).' },
       { id: 'login-signin', purpose: 'Botón de login para cuenta existente (email+password).' },
@@ -699,6 +734,10 @@ export const qaConfig: QaConfig = {
       { id: 'login-verify', purpose: 'Botón "Verify" — confirma el OTP.' },
       { id: 'login-resend', purpose: 'Reenvía el código OTP.' },
       { id: 'login-magic-link-toggle', purpose: 'Toggle al login secundario por magic-link.' },
+      { id: 'login-submit', purpose: 'Submit del form de magic-link (el que revela el toggle de arriba).' },
+      { id: 'login-error', purpose: 'Nodo role="alert" donde aterriza el mensaje de error — el que necesita todo test negativo.' },
+      { id: 'oauth-github', purpose: 'Botón de login con GitHub (ADR-0008).' },
+      { id: 'oauth-google', purpose: 'Botón de login con Google (ADR-0008).' },
     ],
     scriptedFixture,
     hybridBridge,

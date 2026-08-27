@@ -250,16 +250,23 @@ export async function QaShell({ config }: { config: QaConfig }) {
 
             <Callout hue="emerald" title="Material secreto sigue opaco">
               <p>
-                Ambos roles tienen REVOKE a nivel columna sobre
+                Postgres no puede ocultar una sola columna cuando ya existe un GRANT de
+                SELECT sobre la tabla. Así que el secreto se mudó a tablas hermanas 1:1
+                (migración 0011) y las columnas viejas se dropearon (0012). Ambos roles
+                tienen REVOKE a nivel TABLA sobre
                 {' '}
-                {config.db.revokedColumns.map((c, i) => (
+                {config.db.revokedSecretTables.map((c, i) => (
                   <span key={c}>
                     <code className="rounded bg-surface-2 px-1 text-fg-1">{c}</code>
-                    {i < config.db.revokedColumns.length - 1 ? ', ' : ''}
+                    {i < config.db.revokedSecretTables.length - 1 ? ', ' : ''}
                   </span>
                 ))}
                 {' '}
-                — los hashes no se ven ni con BYPASSRLS.
+                {' '}
+                — los hashes no se ven ni con BYPASSRLS. No busques
+                {' '}
+                <code className="rounded bg-surface-2 px-1 text-fg-1">access_tokens.hash</code>
+                : esa columna ya no existe.
               </p>
             </Callout>
 
@@ -577,6 +584,65 @@ export async function QaShell({ config }: { config: QaConfig }) {
                   {' '}
                   <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signup</code>
                   ) o usá el camino híbrido.
+                </li>
+                <li>
+                  <strong className="text-fg-0">403 al pedir un PAT con</strong>
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace:admin</code>
+                  {' '}
+                  en
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/signin</code>
+                  {' '}
+                  o
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">/auth/confirm</code>
+                  {' '}
+                  → es por diseño (ADR-0005), no un bug. Los rails headless no reciben
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace_id</code>
+                  , así que no pueden satisfacer la regla "admin sólo dentro de un workspace
+                  donde sos admin/owner". Sacá ese scope del array (o omití
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">pat_scopes</code>
+                  {' '}
+                  entero y te quedan los tres defaults). Si de verdad necesitás un PAT admin:
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /api/v1/tokens</code>
+                  {' '}
+                  con cookie de sesión y un
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">workspace_id</code>
+                  .
+                </li>
+                <li>
+                  <strong className="text-fg-0">403 con Bearer en un endpoint que anda en el browser</strong>
+                  {' '}
+                  → o el endpoint es cookie-only (
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /tokens</code>
+                  ,
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">
+                    DELETE /tokens/
+                    {'{id}'}
+                  </code>
+                  ,
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">POST /me/active-workspace</code>
+                  ,
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">
+                    DELETE /workspaces/
+                    {'{id}'}
+                    /membership
+                  </code>
+                  ), o a tu PAT le falta el scope. El mensaje distingue: "cannot ... Use a
+                  browser session" es lo primero;
+                  {' '}
+                  <code className="rounded bg-surface-2 px-1 text-fg-1">Missing required capability</code>
+                  {' '}
+                  es lo segundo. La cookie lleva TODAS las capabilities, por eso el mismo
+                  request anda logueado en la UI.
                 </li>
                 <li>
                   <strong className="text-fg-0">DBHub auth críptico</strong>
