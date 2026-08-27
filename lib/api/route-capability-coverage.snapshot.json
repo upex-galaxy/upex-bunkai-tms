@@ -80,6 +80,11 @@
     "posture": "public"
   },
   {
+    "file": "app/api/v1/billing/webhook/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
     "file": "app/api/v1/bugs/[id]/assign/route.ts",
     "method": "POST",
     "posture": "required:atc:write"
@@ -377,6 +382,16 @@
     "file": "app/api/v1/workspaces/[id]/active-runs/route.ts",
     "method": "GET",
     "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/checkout/cancel/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/billing/checkout/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
   },
   {
     "file": "app/api/v1/workspaces/[id]/billing/route.ts",
