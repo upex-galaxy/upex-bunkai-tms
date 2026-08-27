@@ -961,3 +961,51 @@ export async function applyBillingCheckoutWebhookEvent(supabase: Client, args: A
     p_stripe_subscription_id: args.stripeSubscriptionId as unknown as string,
   });
 }
+
+// BK-203 — Test Plan membership. Both mutating wrappers carry NO
+// actor/scope argument (auth.uid() is read internally by the RPC, same
+// posture as createTestPlan/updateTestPlan above) — call them ONLY through
+// the caller's own RLS-scoped client, never `createAdminClient()`.
+export interface AddTestsToPlanArgs {
+  testPlanId: string
+  testIds: string[]
+}
+
+export async function addTestsToPlan(supabase: Client, args: AddTestsToPlanArgs) {
+  return supabase.rpc('bunkai_add_tests_to_plan', {
+    p_test_plan_id: args.testPlanId,
+    p_test_ids: args.testIds,
+  });
+}
+
+export interface RemoveTestFromPlanArgs {
+  testPlanId: string
+  testId: string
+}
+
+export async function removeTestFromPlan(supabase: Client, args: RemoveTestFromPlanArgs) {
+  return supabase.rpc('bunkai_remove_test_from_plan', {
+    p_test_plan_id: args.testPlanId,
+    p_test_id: args.testId,
+  });
+}
+
+// BK-203 — Test library search for the add-tests picker. Explicit actor +
+// admin client (mirrors searchAtcs/filterTestsByTag above): search endpoints
+// in this codebase consistently take an explicit actor, unlike the no-actor
+// test_plans mutation RPCs.
+export interface SearchTestsArgs {
+  actorUserId: string
+  query: string
+  projectId: string
+  limit?: number
+}
+
+export async function searchTests(supabase: Client, args: SearchTestsArgs) {
+  return supabase.rpc('bunkai_search_tests', {
+    p_actor_user_id: args.actorUserId,
+    p_query: args.query,
+    p_project_id: args.projectId,
+    p_limit: args.limit ?? undefined,
+  });
+}
