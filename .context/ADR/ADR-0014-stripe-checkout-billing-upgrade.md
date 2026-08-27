@@ -1,6 +1,6 @@
 # ADR-0014 — Stripe Checkout (hosted) for the self-serve plan upgrade, provisioned by env vars
 
-- **Status:** Accepted
+- **Status:** Accepted — Implemented
 - **Date:** 2026-08-27
 - **Deciders:** AI Product Owner / AI Tech Lead (BK-230, per Critical Rule #18) — payment-processor choice ratified by the human PO/dev pair on 2026-08-17 (Jira comment); this ADR formalizes the ratification and adds the provisioning-mechanism decision
 - **Tags:** billing, payments, api, auth, cross-cutting-invariant
@@ -8,6 +8,32 @@
 - **Superseded by:** —
 
 ---
+
+> **Revision note (2026-08-27, same day, Conductor review PR #208):** four
+> hardening fixes landed on top of this decision without changing its shape —
+> recorded here rather than superseding, since none reverses the Decision
+> below. **(1)** The webhook RPC now gates the plan flip on Stripe's own
+> `payment_status === 'paid'`, not on `checkout.session.completed` alone (a
+> delayed-notification payment method fires `.completed` immediately with
+> `payment_status: 'unpaid'` — this was a real BLOCKER, a free unpaid
+> upgrade). `checkout.session.async_payment_succeeded` / `.async_payment_failed`
+> now carry the real outcome for those methods. **(2)** `billing_checkout_sessions`
+> is inserted BEFORE the Stripe API call (its own `id` becomes Stripe's
+> `client_reference_id`), and the webhook's dedupe write only happens AFTER a
+> matching row is confirmed — closing a crash-window that could otherwise
+> strand a paying customer with no row a webhook could ever find, forever.
+> **(3)** The table's owner-scoped RLS INSERT/UPDATE policies were dropped;
+> every write now goes through `createAdminClient()` with the authorization
+> check performed explicitly in TypeScript first (both routes already did
+> this for the primary path — the policies were a redundant, wider-than-
+> intended PostgREST-direct write surface that let the owner bypass the
+> one-open-session invariant they were supposed to be protected by).
+> **(4)** `stripe_customer_id` / `stripe_subscription_id` are now captured on
+> the row at the only moment they are free, and `workspaces.purchased_seats`
+> records what was actually bought (BillingOverviewView's seat meter reads it
+> via `effectiveSeatLimit()`) — hard invite-time seat enforcement itself is
+> deferred to a follow-up ticket, published as a separate AI Product Owner
+> decision on BK-230.
 
 ## Context
 
