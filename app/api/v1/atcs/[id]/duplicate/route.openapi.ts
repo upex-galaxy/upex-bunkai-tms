@@ -24,7 +24,7 @@ registry.registerPath({
   path: '/api/v1/atcs/{id}/duplicate',
   tags: ['ATCs'],
   summary: 'Duplicate an ATC (deep-copy steps, assertions, AC bindings)',
-  description: 'Bearer `atc:write` (or cookie session). Deep-copies the source ATC into a NEW ATC in the same project — every step and assertion (in order) plus the AC bindings — with a fresh slug, `version = 1`, and an independent set of child rows (editing the copy never changes the source). The title defaults to `<source> (copy)` unless an optional `title` is supplied. Emits an `atc.created` event.',
+  description: 'Bearer `atc:write` (or cookie session). Deep-copies the source ATC into a NEW ATC in the same project — every step and assertion (in order) plus the AC bindings — with a fresh slug, `version = 1`, and an independent set of child rows (editing the copy never changes the source). The title defaults to `<source> (copy)` unless the optional `new_title` field is supplied. The field is named `new_title`, NOT `title` — an unknown `title` key is stripped silently by the schema, so a request sending it succeeds and the copy quietly keeps the default `(copy)` name. Emits an `atc.created` event.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: { body: { required: false, content: { 'application/json': { schema: DuplicateBodySchema } } } },

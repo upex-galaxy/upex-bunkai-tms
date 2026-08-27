@@ -2,8 +2,15 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 import { WorkspaceSchema } from '../route.openapi';
 
 const PatchBodySchema = z
-  .object({ name: z.string().min(1).max(80).optional() })
-  .openapi('WorkspacePatchBody');
+  .object({
+    name: z.string().min(1).max(80).optional().openapi({
+      description: 'New display name. The only mutable field today — slug rotation is post-MVP.',
+    }),
+  })
+  .openapi('WorkspacePatchBody', {
+    description:
+      'At least one field is required. An empty object `{}` parses cleanly against this schema but is rejected by the handler with 400 `bad_request` ("Provide at least one field to update."), so the constraint is not visible in the schema itself.',
+  });
 
 const SingleResponseSchema = z
   .object({ workspace: WorkspaceSchema })
@@ -54,8 +61,9 @@ registry.registerPath({
       description: 'Updated workspace.',
       content: { 'application/json': { schema: SingleResponseSchema } },
     },
+    400: { description: 'The body was not valid JSON, the path `{id}` is not a UUID, or the body was an empty object `{}` — at least one updatable field is required (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not an owner.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); the PAT is bound to a DIFFERENT workspace than `{id}`; or the caller is not an owner (RLS returns zero rows). The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

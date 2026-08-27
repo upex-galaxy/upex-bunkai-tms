@@ -45,6 +45,8 @@ const ApiErrorCodeSchema = z
     'chain_empty',
     'chain_mismatch',
     'chain_invalid',
+    'no_executable_steps',
+    'environment_invalid',
     'internal_error',
     'upstream_error',
   ])

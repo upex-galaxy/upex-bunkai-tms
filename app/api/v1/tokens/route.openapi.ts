@@ -15,10 +15,12 @@ const CreateTokenBodySchema = z
       example: 'ci-pipeline',
     }),
     scopes: z.array(PatScopeSchema).min(1).openapi({
-      description: 'Scopes granted to this token. At least one required.',
+      description:
+        'Scopes granted to this token. At least one required. Requesting `workspace:admin` makes `workspace_id` MANDATORY — omitting it returns 403 `forbidden` — and additionally requires the caller to hold the role `admin` or `owner` in that workspace; any other role returns 403. Both guards run after schema validation, so the enum accepting the value is not a grant. See ADR-0005.',
     }),
     workspace_id: z.string().uuid().optional().openapi({
-      description: 'Restrict the token to a single workspace. Omit for cross-workspace tokens.',
+      description:
+        'Restrict the token to a single workspace. Omit for cross-workspace tokens (non-admin scopes only). When supplied, the caller must be an ACTIVE member of that workspace — a non-member or a non-active membership returns 403 `forbidden`.',
     }),
     expires_in_days: z.number().int().positive().max(365).optional().openapi({
       description: 'TTL in days. Omit for non-expiring tokens. Max 365.',
@@ -88,6 +90,11 @@ registry.registerPath({
       description: 'Not signed in.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
+    403: {
+      description:
+        'Any of: a Personal Access Token was used (this route is session-only — a PAT must not mint a PAT); `workspace:admin` was requested without a `workspace_id`; the caller is not an ACTIVE member of the target workspace; or the caller is a member but not `admin`/`owner` while requesting `workspace:admin`. All four are checked after body validation. See ADR-0005.',
+      content: { 'application/json': { schema: ErrorEnvelopeSchema } },
+    },
     422: {
       description: 'Body failed validation.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
@@ -102,7 +109,10 @@ registry.registerPath({
   summary: 'List the caller\'s tokens',
   description:
     'Returns every PAT the calling user owns, without the secret hash. RLS enforces ownership.',
-  security: [{ cookieAuth: [] }],
+  // `auth: 'authenticated'` in the sibling `route.ts` — read-only and
+  // RLS-scoped to the caller's own tokens, so either auth method works. Unlike
+  // POST /api/v1/tokens (cookie-only), a Bearer PAT MAY list tokens.
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   responses: {
     200: {
       description: 'Token list.',

@@ -78,6 +78,8 @@
                   "chain_empty",
                   "chain_mismatch",
                   "chain_invalid",
+                  "no_executable_steps",
+                  "environment_invalid",
                   "internal_error",
                   "upstream_error"
                 ],
@@ -218,7 +220,8 @@
             "items": {
               "type": "string",
               "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
-            }
+            },
+            "description": "`workspace:admin` is NOT accepted here and returns 403 `forbidden`, even though the enum lists it — the enum is the shared capability vocabulary, not the set this route grants. Headless auth carries no `workspace_id`, and an admin-scoped token must target one specific workspace, so the guard rejects the scope outright. Mint admin-scoped tokens through `POST /api/v1/tokens` with a `workspace_id` instead. Omit this field to get the defaults: `atc:read`, `atc:write`, `run:execute`. See ADR-0005."
           },
           "pat_expires_in_days": {
             "type": "integer",
@@ -348,7 +351,8 @@
             "items": {
               "type": "string",
               "enum": ["atc:read", "atc:write", "run:execute", "workspace:admin"]
-            }
+            },
+            "description": "`workspace:admin` is NOT accepted here and returns 403 `forbidden`, even though the enum lists it — the enum is the shared capability vocabulary, not the set this route grants. Headless auth carries no `workspace_id`, and an admin-scoped token must target one specific workspace, so the guard rejects the scope outright. Mint admin-scoped tokens through `POST /api/v1/tokens` with a `workspace_id` instead. Omit this field to get the defaults: `atc:read`, `atc:write`, `run:execute`. See ADR-0005."
           },
           "pat_expires_in_days": {
             "type": "integer",
@@ -529,12 +533,12 @@
               "description": "PAT scope vocabulary. Mirrors `.context/SRS/api-contracts.yaml` tags."
             },
             "minItems": 1,
-            "description": "Scopes granted to this token. At least one required."
+            "description": "Scopes granted to this token. At least one required. Requesting `workspace:admin` makes `workspace_id` MANDATORY — omitting it returns 403 `forbidden` — and additionally requires the caller to hold the role `admin` or `owner` in that workspace; any other role returns 403. Both guards run after schema validation, so the enum accepting the value is not a grant. See ADR-0005."
           },
           "workspace_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Restrict the token to a single workspace. Omit for cross-workspace tokens."
+            "description": "Restrict the token to a single workspace. Omit for cross-workspace tokens (non-admin scopes only). When supplied, the caller must be an ACTIVE member of that workspace — a non-member or a non-active membership returns 403 `forbidden`."
           },
           "expires_in_days": {
             "type": "integer",
@@ -795,6 +799,7 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 40,
+            "description": "URL slug. Must match `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`: lowercase letters and digits plus hyphens, 3 to 40 characters, and no leading or trailing hyphen. Uppercase, underscores, spaces and other characters are rejected with 422 `validation_failed`. A further 422 rejects 16 reserved slugs that would shadow app routes: `admin`, `api`, `app`, `auth`, `docs`, `invites`, `login`, `logout`, `onboarding`, `projects`, `public`, `qa`, `settings`, `static`, `workspaces`, `_next`. A slug already taken by another workspace returns 409 `conflict`.",
             "example": "acme-qa"
           }
         },
@@ -844,9 +849,11 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 80,
+            "description": "New display name. The only mutable field today — slug rotation is post-MVP."
           }
-        }
+        },
+        "description": "At least one field is required. An empty object `{}` parses cleanly against this schema but is rejected by the handler with 400 `bad_request` (\"Provide at least one field to update.\"), so the constraint is not visible in the schema itself."
       },
       "WorkspaceInviteCreateResponse": {
         "type": "object",
@@ -1598,7 +1605,7 @@
           },
           "description": {
             "type": "string",
-            "description": "0–500 chars. Defaults to empty."
+            "description": "0–500 chars. DEFAULTS TO EMPTY WHEN OMITTED, and the empty value is written straight through — omitting this field CLEARS an existing description with no warning and no way to recover it. Always resend the current description on an edit that is not meant to erase it."
           }
         },
         "required": ["name", "target_date"]
@@ -1903,7 +1910,7 @@
           },
           "external_id": {
             "type": ["string", "null"],
-            "description": "Jira key. Immutable once set — a change returns 409."
+            "description": "Jira key, e.g. `BK-42`. Immutable once set: after a story carries an `external_id`, ANY differing value returns 409 `conflict` (`details.reason = \"external_id_immutable\"`) — including `null` and an empty string. A set Jira link cannot be cleared or relinked through this endpoint; only re-sending the identical key is accepted, as a no-op. While the story has no link yet, the key must read as LETTERS-NUMBER or the request is 422."
           },
           "status": {
             "type": "string",
@@ -2334,6 +2341,63 @@
           }
         },
         "required": ["id", "slug", "title", "layer", "status", "module_path"]
+      },
+      "SearchPageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResultItem"
+            },
+            "description": "Matches across all six entity types. The RPC caps each GROUP at 5 rows regardless of `limit`, so a broad query returns at most 5 ATCs, 5 Tests, 5 Projects, and so on."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when ANY entity group hit its 5-row cap — the signal for rendering a per-group \"+ more\" hint. It does not mean the whole result set was cut to `limit`."
+          }
+        },
+        "required": ["data", "truncated"]
+      },
+      "SearchResultItem": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "enum": ["atc", "test", "project", "module", "bug", "run"]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display label for the row — the entity's title / name / slug as the RPC projected it."
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_slug": {
+            "type": "string"
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string",
+            "description": "Server-built destination path for this row (e.g. `/projects/{slug}/atcs/{id}`, `/projects/{slug}?module={id}`). Navigate to it verbatim — never reconstruct it client-side."
+          }
+        },
+        "required": [
+          "entity_type",
+          "id",
+          "name",
+          "project_id",
+          "project_slug",
+          "project_name",
+          "href"
+        ]
       },
       "AtcUpdateBody": {
         "type": "object",
@@ -3241,6 +3305,18 @@
           },
           {
             "$ref": "#/components/schemas/ActivityItemRunAborted"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemBugAssigned"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemBugReassigned"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemBugUnassigned"
+          },
+          {
+            "$ref": "#/components/schemas/ActivityItemBugStatusChanged"
           }
         ],
         "discriminator": {
@@ -3253,7 +3329,11 @@
             "atc.created": "#/components/schemas/ActivityItemAtcCreated",
             "test.created": "#/components/schemas/ActivityItemTestCreated",
             "run.finished": "#/components/schemas/ActivityItemRunFinished",
-            "run.aborted": "#/components/schemas/ActivityItemRunAborted"
+            "run.aborted": "#/components/schemas/ActivityItemRunAborted",
+            "bug.assigned": "#/components/schemas/ActivityItemBugAssigned",
+            "bug.reassigned": "#/components/schemas/ActivityItemBugReassigned",
+            "bug.unassigned": "#/components/schemas/ActivityItemBugUnassigned",
+            "bug.status_changed": "#/components/schemas/ActivityItemBugStatusChanged"
           }
         }
       },
@@ -3729,6 +3809,246 @@
         },
         "required": ["skipped_steps"]
       },
+      "ActivityItemBugAssigned": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["bug"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["bug.assigned"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadBugAssigned"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadBugAssigned": {
+        "type": "object",
+        "properties": {
+          "previous_assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["previous_assignee_user_id", "assignee_user_id"]
+      },
+      "ActivityItemBugReassigned": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["bug"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["bug.reassigned"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadBugReassigned"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadBugReassigned": {
+        "type": "object",
+        "properties": {
+          "previous_assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["previous_assignee_user_id", "assignee_user_id"]
+      },
+      "ActivityItemBugUnassigned": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["bug"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["bug.unassigned"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadBugUnassigned"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadBugUnassigned": {
+        "type": "object",
+        "properties": {
+          "previous_assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["previous_assignee_user_id", "assignee_user_id"]
+      },
+      "ActivityItemBugStatusChanged": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["bug"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["bug.status_changed"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadBugStatusChanged"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadBugStatusChanged": {
+        "type": "object",
+        "properties": {
+          "previous_status": {
+            "type": ["string", "null"],
+            "enum": ["open", "in_progress", "resolved", "closed", null]
+          },
+          "status": {
+            "type": ["string", "null"],
+            "enum": ["open", "in_progress", "resolved", "closed", null]
+          },
+          "assignee_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          }
+        },
+        "required": ["previous_status", "status", "assignee_user_id"]
+      },
       "RunStepMarkBody": {
         "type": "object",
         "properties": {
@@ -3945,7 +4265,8 @@
               "type": "string",
               "format": "uri"
             },
-            "maxItems": 10
+            "maxItems": 10,
+            "description": "Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL."
           }
         },
         "required": ["run_step_id", "title", "severity"]
@@ -3982,7 +4303,8 @@
               "type": "string",
               "format": "uri"
             },
-            "maxItems": 10
+            "maxItems": 10,
+            "description": "Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL."
           }
         },
         "required": ["project_id", "module_id", "title", "severity"]
@@ -4871,6 +5193,16 @@
               }
             }
           },
+          "403": {
+            "description": "`pat_scopes` contained `workspace:admin`. The scope is schema-valid but rejected after parsing: headless auth has no `workspace_id` to bind an admin token to. Use `POST /api/v1/tokens` instead. See ADR-0005.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation failed.",
             "content": {
@@ -4981,6 +5313,16 @@
           },
           "401": {
             "description": "Invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`pat_scopes` contained `workspace:admin`. The scope is schema-valid but rejected after parsing: headless auth has no `workspace_id` to bind an admin token to. Use `POST /api/v1/tokens` instead. See ADR-0005.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5209,6 +5551,16 @@
               }
             }
           },
+          "403": {
+            "description": "Any of: a Personal Access Token was used (this route is session-only — a PAT must not mint a PAT); `workspace:admin` was requested without a `workspace_id`; the caller is not an ACTIVE member of the target workspace; or the caller is a member but not `admin`/`owner` while requesting `workspace:admin`. All four are checked after body validation. See ADR-0005.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Body failed validation.",
             "content": {
@@ -5228,6 +5580,9 @@
         "security": [
           {
             "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -5283,6 +5638,16 @@
           },
           "401": {
             "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A Bearer PAT was used. This route is session-only (`auth: 'cookie-only'`): a token cannot revoke tokens, including itself. Sign in through the browser and retry with the session cookie.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5389,9 +5754,6 @@
         "security": [
           {
             "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -5708,6 +6070,16 @@
               }
             }
           },
+          "400": {
+            "description": "The body was not valid JSON, the path `{id}` is not a UUID, or the body was an empty object `{}` — at least one updatable field is required (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Caller is not signed in.",
             "content": {
@@ -5719,7 +6091,7 @@
             }
           },
           "403": {
-            "description": "Caller is not an owner.",
+            "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); the PAT is bound to a DIFFERENT workspace than `{id}`; or the caller is not an owner (RLS returns zero rows). The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5797,7 +6169,7 @@
             }
           },
           "403": {
-            "description": "Caller is not an admin/owner.",
+            "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); the PAT is bound to a DIFFERENT workspace than `{id}`; or the caller is not an admin/owner. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5831,7 +6203,7 @@
       "get": {
         "tags": ["Invites"],
         "summary": "List workspace invites",
-        "description": "RLS limits results to admins/owners of the workspace.",
+        "description": "Requires the `workspace:admin` capability; RLS then limits results to admins/owners of the workspace. A Bearer PAT must additionally be bound to THIS workspace.",
         "security": [
           {
             "cookieAuth": []
@@ -5864,6 +6236,16 @@
           },
           "401": {
             "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5929,6 +6311,16 @@
               }
             }
           },
+          "403": {
+            "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Invite not found or no permission.",
             "content": {
@@ -5985,6 +6377,16 @@
           },
           "401": {
             "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7247,7 +7649,7 @@
       "patch": {
         "tags": ["Milestones"],
         "summary": "Edit a milestone",
-        "description": "Member-only (role >= member). Same normalize/length rules as create. The target-date bounds (today-or-later, within 5 years) are enforced ONLY when the submitted date differs from the milestone's current stored value — an unchanged past-dated milestone stays editable (e.g. a description-only edit). Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.",
+        "description": "Member-only (role >= member). Same normalize/length rules as create. The target-date bounds (today-or-later, within 5 years) are enforced ONLY when the submitted date differs from the milestone's current stored value — an unchanged past-dated milestone stays editable (e.g. a description-only edit). Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.\n\nThis is a FULL REPLACE, not a partial patch: `description` defaults to empty when omitted, so a body carrying only `name` and `target_date` silently CLEARS an existing description. Send all three fields on every edit.",
         "security": [
           {
             "cookieAuth": []
@@ -9097,6 +9499,88 @@
         }
       }
     },
+    "/api/v1/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Cross-entity workspace search",
+        "description": "Bearer `atc:read` (or cookie session). Searches ATCs, Tests, Projects, Modules, Bugs and Runs inside ONE workspace and returns up to 5 matches per entity type, each with a ready-to-navigate `href`.\n\nThere is deliberately no workspace path segment and no workspace query parameter — the caller is never the authority on scope. A cookie session is scoped to its active workspace (the `bk_active_ws` cookie, falling back to the caller's oldest workspace); a Bearer PAT is scoped to the workspace it was issued against.\n\nScope failures never disclose existence: an unknown, foreign or inaccessible workspace and a query with no matches all return the same `200 { \"data\": [], \"truncated\": false }`. This route answers no 403 or 404 for scope reasons.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Required. Free-text query, trimmed server-side; it must be at least 2 characters AFTER trimming, so `\"  a  \"` fails with 422. The client is expected never to send a shorter query in the first place — this is a defensive backstop."
+            },
+            "required": true,
+            "description": "Required. Free-text query, trimmed server-side; it must be at least 2 characters AFTER trimming, so `\"  a  \"` fails with 422. The client is expected never to send a shorter query in the first place — this is a defensive backstop.",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "description": "1..20, default 20. A per-request ceiling only: the underlying RPC independently caps each entity group at 5 rows, so raising `limit` never returns more than 5 of any one type."
+            },
+            "required": false,
+            "description": "1..20, default 20. A per-request ceiling only: the underlying RPC independently caps each entity group at 5 rows, so raising `limit` never returns more than 5 of any one type.",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches, grouped-capped and possibly empty.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Bearer PAT does not carry the `atc:read` scope (`forbidden`). Enforced by the gateway before the handler runs; cookie sessions hold every capability and never hit this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Any of: `q` missing or shorter than 2 characters after trimming; `limit` not an integer in 1..20 (`validation_failed`). ALSO returned — unlike every other workspace-scoped route, which answers 403 — when a Bearer PAT is not bound to any workspace, or when a cookie session has no resolvable active workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/atcs/{id}": {
       "patch": {
         "tags": ["ATCs"],
@@ -9232,7 +9716,7 @@
       "post": {
         "tags": ["ATCs"],
         "summary": "Duplicate an ATC (deep-copy steps, assertions, AC bindings)",
-        "description": "Bearer `atc:write` (or cookie session). Deep-copies the source ATC into a NEW ATC in the same project — every step and assertion (in order) plus the AC bindings — with a fresh slug, `version = 1`, and an independent set of child rows (editing the copy never changes the source). The title defaults to `<source> (copy)` unless an optional `title` is supplied. Emits an `atc.created` event.",
+        "description": "Bearer `atc:write` (or cookie session). Deep-copies the source ATC into a NEW ATC in the same project — every step and assertion (in order) plus the AC bindings — with a fresh slug, `version = 1`, and an independent set of child rows (editing the copy never changes the source). The title defaults to `<source> (copy)` unless the optional `new_title` field is supplied. The field is named `new_title`, NOT `title` — an unknown `title` key is stripped silently by the schema, so a request sending it succeeds and the copy quietly keeps the default `(copy)` name. Emits an `atc.created` event.",
         "security": [
           {
             "cookieAuth": []
@@ -9579,8 +10063,8 @@
               }
             }
           },
-          "400": {
-            "description": "Authentication / scope error (`bad_request`).",
+          "401": {
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9589,8 +10073,8 @@
               }
             }
           },
-          "401": {
-            "description": "Not authenticated.",
+          "403": {
+            "description": "The Bearer PAT does not carry the `atc:read` scope (`forbidden`). The gateway enforces the capability before the handler runs. Cookie sessions hold every capability and never hit this.",
             "content": {
               "application/json": {
                 "schema": {

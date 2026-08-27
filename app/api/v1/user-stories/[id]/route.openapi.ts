@@ -5,7 +5,9 @@ const UpdateBodySchema = z
   .object({
     title: z.string().optional().describe('3–200 chars.'),
     description: z.string().nullable().optional().describe('Markdown, up to 50 KB; null clears it.'),
-    external_id: z.string().nullable().optional().describe('Jira key. Immutable once set — a change returns 409.'),
+    external_id: z.string().nullable().optional().openapi({
+      description: 'Jira key, e.g. `BK-42`. Immutable once set: after a story carries an `external_id`, ANY differing value returns 409 `conflict` (`details.reason = "external_id_immutable"`) — including `null` and an empty string. A set Jira link cannot be cleared or relinked through this endpoint; only re-sending the identical key is accepted, as a no-op. While the story has no link yet, the key must read as LETTERS-NUMBER or the request is 422.',
+    }),
     status: z.enum(['draft', 'ready_to_test']).optional().describe('Ready-to-test gate: moving to ready_to_test with zero active acceptance criteria returns 409 (BK-15).'),
   })
   .openapi('UserStoryUpdateBody');

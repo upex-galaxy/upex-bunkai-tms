@@ -102,6 +102,8 @@ import '../app/api/v1/atcs/route.openapi';
 
 import '../app/api/v1/atcs/search/route.openapi';
 
+import '../app/api/v1/search/route.openapi';
+
 import '../app/api/v1/atcs/[id]/route.openapi';
 
 import '../app/api/v1/atcs/[id]/duplicate/route.openapi';

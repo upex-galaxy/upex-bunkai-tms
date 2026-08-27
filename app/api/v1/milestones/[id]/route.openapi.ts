@@ -9,7 +9,7 @@ const UpdateBodySchema = z
   .object({
     name: z.string().describe('1–100 chars after normalize. Unique per project, case-insensitive.'),
     target_date: z.string().describe('Calendar date (YYYY-MM-DD). Bounds (today-or-later, within 5 years) apply ONLY when this differs from the milestone\'s current stored value.'),
-    description: z.string().optional().describe('0–500 chars. Defaults to empty.'),
+    description: z.string().optional().describe('0–500 chars. DEFAULTS TO EMPTY WHEN OMITTED, and the empty value is written straight through — omitting this field CLEARS an existing description with no warning and no way to recover it. Always resend the current description on an edit that is not meant to erase it.'),
   })
   .openapi('MilestoneUpdateBody');
 
@@ -30,7 +30,7 @@ registry.registerPath({
   tags: ['Milestones'],
   summary: 'Edit a milestone',
   description:
-    'Member-only (role >= member). Same normalize/length rules as create. The target-date bounds (today-or-later, within 5 years) are enforced ONLY when the submitted date differs from the milestone\'s current stored value — an unchanged past-dated milestone stays editable (e.g. a description-only edit). Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.',
+    'Member-only (role >= member). Same normalize/length rules as create. The target-date bounds (today-or-later, within 5 years) are enforced ONLY when the submitted date differs from the milestone\'s current stored value — an unchanged past-dated milestone stays editable (e.g. a description-only edit). Non-members receive a non-disclosing 404; a member with only the viewer role receives 403.\n\nThis is a FULL REPLACE, not a partial patch: `description` defaults to empty when omitted, so a body carrying only `name` and `target_date` silently CLEARS an existing description. Send all three fields on every edit.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: {

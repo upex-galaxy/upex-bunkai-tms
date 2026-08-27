@@ -19,7 +19,11 @@ registry.registerPath({
   tags: ['Identity'],
   summary: 'Set the active workspace for the current session',
   description: 'Validates membership, then sets the `bk_active_ws` httpOnly cookie. Supabase JWT is untouched.',
-  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  // Session-only route (`auth: 'cookie-only'` in the sibling `route.ts`). A
+  // Bearer PAT is rejected by the gateway with 403 before the body runs, so
+  // `bearerAuth` is deliberately NOT offered here — advertising it would hand
+  // generated clients and Scalar's "Try it" a method that always fails.
+  security: [{ cookieAuth: [] }],
   request: {
     body: {
       required: true,

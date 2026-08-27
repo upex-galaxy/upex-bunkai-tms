@@ -44,6 +44,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Rotated invite.', content: { 'application/json': { schema: ResendResponseSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Invite not found or no permission.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
@@ -58,6 +59,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Revoked.', content: { 'application/json': { schema: DeleteResponseSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Invite not found or no permission.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

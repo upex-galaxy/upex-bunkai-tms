@@ -82,6 +82,28 @@ const ActivityItemSchema = z
       // selects it, so it can never be part of this contract.
       skipped_steps: z.number().int().nullable(),
     }),
+    // BK-264 (Slice 4) — the 4 Bug-triage actions. `entity_type` is `bug`
+    // (0054_bug_assignment_status.sql:526, :611) and each payload is exactly
+    // the projection 0055_activity_bug_events.sql:133-152 allowlists — no
+    // wider. The assign/reassign/unassign trio share one shape because a
+    // single RPC writes all three, branching only on the action label.
+    activityItemVariant('BugAssigned', 'bug.assigned', 'bug', {
+      previous_assignee_user_id: z.string().uuid().nullable(),
+      assignee_user_id: z.string().uuid().nullable(),
+    }),
+    activityItemVariant('BugReassigned', 'bug.reassigned', 'bug', {
+      previous_assignee_user_id: z.string().uuid().nullable(),
+      assignee_user_id: z.string().uuid().nullable(),
+    }),
+    activityItemVariant('BugUnassigned', 'bug.unassigned', 'bug', {
+      previous_assignee_user_id: z.string().uuid().nullable(),
+      assignee_user_id: z.string().uuid().nullable(),
+    }),
+    activityItemVariant('BugStatusChanged', 'bug.status_changed', 'bug', {
+      previous_status: z.enum(['open', 'in_progress', 'resolved', 'closed']).nullable(),
+      status: z.enum(['open', 'in_progress', 'resolved', 'closed']).nullable(),
+      assignee_user_id: z.string().uuid().nullable(),
+    }),
   ])
   .openapi('ActivityItem');
 

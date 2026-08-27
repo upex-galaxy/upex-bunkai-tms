@@ -61,7 +61,7 @@ registry.registerPath({
       content: { 'application/json': { schema: CreateResponseSchema } },
     },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    403: { description: 'Caller is not an admin/owner.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); the PAT is bound to a DIFFERENT workspace than `{id}`; or the caller is not an admin/owner. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'Email already belongs to an active member (`email_already_member`) or a pending invite exists (`invite_already_pending`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
@@ -72,7 +72,7 @@ registry.registerPath({
   path: '/api/v1/workspaces/{id}/invites',
   tags: ['Invites'],
   summary: 'List workspace invites',
-  description: 'RLS limits results to admins/owners of the workspace.',
+  description: 'Requires the `workspace:admin` capability; RLS then limits results to admins/owners of the workspace. A Bearer PAT must additionally be bound to THIS workspace.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   responses: {
@@ -81,6 +81,7 @@ registry.registerPath({
       content: { 'application/json': { schema: ListResponseSchema } },
     },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Any of: the Bearer PAT lacks the `workspace:admin` capability; the PAT is not bound to any workspace (there is no global admin — ADR-0005); or the PAT is bound to a DIFFERENT workspace than `{id}`. The token-binding checks run before RLS, so a correctly-scoped RLS row does not rescue a mis-bound token. See ADR-0006.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

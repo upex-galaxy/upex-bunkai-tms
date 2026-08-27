@@ -5,7 +5,10 @@ const BodySchema = z
     email: z.string().email().max(254).openapi({ example: 'qa.user@example.com' }),
     password: z.string().min(6).max(128),
     pat_name: z.string().min(1).max(80).optional(),
-    pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional(),
+    pat_scopes: z.array(z.enum(['atc:read', 'atc:write', 'run:execute', 'workspace:admin'])).optional().openapi({
+      description:
+        '`workspace:admin` is NOT accepted here and returns 403 `forbidden`, even though the enum lists it — the enum is the shared capability vocabulary, not the set this route grants. Headless auth carries no `workspace_id`, and an admin-scoped token must target one specific workspace, so the guard rejects the scope outright. Mint admin-scoped tokens through `POST /api/v1/tokens` with a `workspace_id` instead. Omit this field to get the defaults: `atc:read`, `atc:write`, `run:execute`. See ADR-0005.',
+    }),
     pat_expires_in_days: z.number().int().positive().max(365).optional(),
   })
   .openapi('SigninBody');
@@ -49,6 +52,10 @@ registry.registerPath({
   responses: {
     200: { description: 'Authenticated.', content: { 'application/json': { schema: ResponseSchema } } },
     401: { description: 'Invalid credentials.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: {
+      description: '`pat_scopes` contained `workspace:admin`. The scope is schema-valid but rejected after parsing: headless auth has no `workspace_id` to bind an admin token to. Use `POST /api/v1/tokens` instead. See ADR-0005.',
+      content: { 'application/json': { schema: ErrorEnvelopeSchema } },
+    },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

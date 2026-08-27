@@ -23,6 +23,10 @@ registry.registerPath({
       description: 'Not signed in.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
+    403: {
+      description: 'A Bearer PAT was used. This route is session-only (`auth: \'cookie-only\'`): a token cannot revoke tokens, including itself. Sign in through the browser and retry with the session cookie.',
+      content: { 'application/json': { schema: ErrorEnvelopeSchema } },
+    },
     404: {
       description: 'Token not found or already revoked.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },

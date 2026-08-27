@@ -14,7 +14,11 @@ const WorkspaceSchema = z
 const CreateBodySchema = z
   .object({
     name: z.string().min(1).max(80).openapi({ example: 'Acme QA' }),
-    slug: z.string().min(3).max(40).openapi({ example: 'acme-qa' }),
+    slug: z.string().min(3).max(40).openapi({
+      description:
+        'URL slug. Must match `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`: lowercase letters and digits plus hyphens, 3 to 40 characters, and no leading or trailing hyphen. Uppercase, underscores, spaces and other characters are rejected with 422 `validation_failed`. A further 422 rejects 16 reserved slugs that would shadow app routes: `admin`, `api`, `app`, `auth`, `docs`, `invites`, `login`, `logout`, `onboarding`, `projects`, `public`, `qa`, `settings`, `static`, `workspaces`, `_next`. A slug already taken by another workspace returns 409 `conflict`.',
+      example: 'acme-qa',
+    }),
   })
   .openapi('WorkspaceCreateBody');
 

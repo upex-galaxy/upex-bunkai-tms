@@ -90,8 +90,8 @@ registry.registerPath({
   parameters: [TagFilterParam],
   responses: {
     200: { description: 'The matching Tests (possibly empty).', content: { 'application/json': { schema: z.object({ items: z.array(FilteredTestSchema) }) } } },
-    400: { description: 'Authentication / scope error (`bad_request`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'The Bearer PAT does not carry the `atc:read` scope (`forbidden`). The gateway enforces the capability before the handler runs. Cookie sessions hold every capability and never hit this.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Missing `tag` query parameter (`validation_failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

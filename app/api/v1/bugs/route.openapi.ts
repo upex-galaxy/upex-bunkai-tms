@@ -110,7 +110,9 @@ const RunLinkedCreateBodySchema = z
     severity: z.enum(['P1', 'P2', 'P3', 'P4']),
     description: z.string().optional(),
     steps_to_reproduce: z.string().optional(),
-    evidence_urls: z.array(z.string().url()).max(10).optional(),
+    evidence_urls: z.array(z.string().url()).max(10).optional().openapi({
+      description: 'Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL.',
+    }),
   })
   .openapi('BugRunLinkedCreateBody');
 
@@ -122,7 +124,9 @@ const StandaloneCreateBodySchema = z
     severity: z.enum(['P1', 'P2', 'P3', 'P4']),
     description: z.string().optional(),
     steps_to_reproduce: z.string().optional(),
-    evidence_urls: z.array(z.string().url()).max(10).optional(),
+    evidence_urls: z.array(z.string().url()).max(10).optional().openapi({
+      description: 'Up to 10 evidence links. Each entry must use the `http://` or `https://` scheme — the validator is protocol-restricted, so `ftp://`, `data:`, `file://` and any other scheme are rejected with 422 `validation_failed` even though the value is a well-formed URL.',
+    }),
   })
   .openapi('BugStandaloneCreateBody');
 
