@@ -15,7 +15,7 @@ export interface Database {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: '14.17'
   }
   public: {
     Tables: {
@@ -331,6 +331,56 @@ export interface Database {
             columns: ['user_story_id']
             isOneToOne: false
             referencedRelation: 'user_stories'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      billing_checkout_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          id: string
+          idempotency_key: string
+          seat_quantity: number
+          status: string
+          stripe_checkout_session_id: string
+          target_plan: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id: string
+          expires_at: string
+          id?: string
+          idempotency_key: string
+          seat_quantity: number
+          status?: string
+          stripe_checkout_session_id: string
+          target_plan: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          id?: string
+          idempotency_key?: string
+          seat_quantity?: number
+          status?: string
+          stripe_checkout_session_id?: string
+          target_plan?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_checkout_sessions_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
         ]
@@ -1083,6 +1133,63 @@ export interface Database {
           },
         ]
       }
+      stripe_webhook_events: {
+        Row: {
+          id: string
+          received_at: string
+          type: string
+        }
+        Insert: {
+          id: string
+          received_at?: string
+          type: string
+        }
+        Update: {
+          id?: string
+          received_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      test_plan_tests: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          test_id: string
+          test_plan_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          test_id: string
+          test_plan_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          test_id?: string
+          test_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'test_plan_tests_test_id_fkey'
+            columns: ['test_id']
+            isOneToOne: false
+            referencedRelation: 'tests'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'test_plan_tests_test_plan_id_fkey'
+            columns: ['test_plan_id']
+            isOneToOne: false
+            referencedRelation: 'test_plans'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       test_plans: {
         Row: {
           created_at: string
@@ -1450,6 +1557,18 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_add_tests_to_plan: {
+        Args: { p_test_ids: string[], p_test_plan_id: string }
+        Returns: Json
+      }
+      bunkai_apply_billing_checkout_webhook_event: {
+        Args: {
+          p_stripe_checkout_session_id: string
+          p_stripe_event_id: string
+          p_stripe_event_type: string
+        }
+        Returns: Json
+      }
       bunkai_archive_acceptance_criterion: {
         Args: { p_id: string }
         Returns: Json
@@ -1679,6 +1798,10 @@ export interface Database {
         Args: { p_tags: string[] }
         Returns: string[]
       }
+      bunkai_remove_test_from_plan: {
+        Args: { p_test_id: string, p_test_plan_id: string }
+        Returns: Json
+      }
       bunkai_rename_environment: {
         Args: {
           p_actor_user_id: string
@@ -1763,6 +1886,15 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_search_tests: {
+        Args: {
+          p_actor_user_id: string
+          p_limit?: number
+          p_project_id: string
+          p_query: string
+        }
+        Returns: Json
+      }
       bunkai_search_workspace: {
         Args: { p_limit?: number, p_query: string, p_workspace_id: string }
         Returns: Json
@@ -1778,6 +1910,10 @@ export interface Database {
       }
       bunkai_set_user_story_status: {
         Args: { p_id: string, p_status: string }
+        Returns: Json
+      }
+      bunkai_sweep_abandoned_runs: {
+        Args: { p_threshold_hours?: number }
         Returns: Json
       }
       bunkai_test_json: { Args: { p_test_id: string }, Returns: Json }
