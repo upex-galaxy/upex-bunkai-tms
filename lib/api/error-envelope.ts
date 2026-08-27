@@ -49,6 +49,13 @@ export const API_ERROR_CODES = {
   NO_EXECUTABLE_STEPS: 'no_executable_steps',
   ENVIRONMENT_INVALID: 'environment_invalid',
 
+  // Billing domain (BK-230) — self-serve plan upgrade + Free-plan project cap.
+  PLAN_NOT_UPGRADABLE: 'plan_not_upgradable',
+  SEAT_QUANTITY_INVALID: 'seat_quantity_invalid',
+  CHECKOUT_IN_PROGRESS: 'checkout_in_progress',
+  PROJECT_LIMIT_REACHED: 'project_limit_reached',
+  PAYMENT_PROCESSOR_UNAVAILABLE: 'payment_processor_unavailable',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -76,6 +83,11 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   chain_invalid: 422,
   no_executable_steps: 422,
   environment_invalid: 422,
+  plan_not_upgradable: 422,
+  seat_quantity_invalid: 422,
+  checkout_in_progress: 409,
+  project_limit_reached: 422,
+  payment_processor_unavailable: 503,
   internal_error: 500,
   upstream_error: 502,
 };

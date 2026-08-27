@@ -921,3 +921,21 @@ export async function updateTestPlan(supabase: Client, args: UpdateTestPlanArgs)
     p_goal: args.goal ?? '',
   });
 }
+
+// BK-230 — webhook-only. The caller MUST be createAdminClient() (migration
+// 0077's own comment: the webhook request carries no Supabase session, so
+// this RPC is SECURITY DEFINER and granted to service_role only — passing
+// the caller's RLS-scoped client here would fail with a permission error).
+export interface ApplyBillingCheckoutWebhookEventArgs {
+  stripeEventId: string
+  stripeEventType: string
+  stripeCheckoutSessionId: string
+}
+
+export async function applyBillingCheckoutWebhookEvent(supabase: Client, args: ApplyBillingCheckoutWebhookEventArgs) {
+  return supabase.rpc('bunkai_apply_billing_checkout_webhook_event', {
+    p_stripe_event_id: args.stripeEventId,
+    p_stripe_event_type: args.stripeEventType,
+    p_stripe_checkout_session_id: args.stripeCheckoutSessionId,
+  });
+}

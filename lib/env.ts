@@ -36,6 +36,14 @@ const EnvSchema = z.object({
   ATLASSIAN_URL: z.string().url().optional(),
   ATLASSIAN_EMAIL: z.string().optional(),
   ATLASSIAN_API_TOKEN: z.string().optional(),
+
+  // Stripe — server-only (BK-230). Optional, same posture as the Atlassian
+  // vars above: a missing key is not a boot-time crash, it is a
+  // `payment_processor_unavailable` 503 the first time a workspace tries to
+  // reach checkout — see lib/billing/stripe.ts.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_CLOUD_PRICE_ID: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -47,6 +55,9 @@ const parsed = EnvSchema.safeParse({
   ATLASSIAN_URL: process.env.ATLASSIAN_URL,
   ATLASSIAN_EMAIL: process.env.ATLASSIAN_EMAIL,
   ATLASSIAN_API_TOKEN: process.env.ATLASSIAN_API_TOKEN,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_CLOUD_PRICE_ID: process.env.STRIPE_CLOUD_PRICE_ID,
 });
 
 if (!parsed.success) {
