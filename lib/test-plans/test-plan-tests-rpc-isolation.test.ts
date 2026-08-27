@@ -17,12 +17,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //
 // Fixture chain (all service-role, throwaway, prefixed, torn down in
 // afterAll): one workspace, two projects (A, B), one module + one user story
-// + one ATC per project, and three Tests — test1 and test3 chain to Project
+// + one ATC per project, and four Tests — test1 and test3 chain to Project
 // A's ATC (test1/test3's derived project is A), test2 chains to Project B's
-// ATC (derived project B). Three plans in Project A: planOpen1, planOpen2
-// (proves shared membership is independent), planClosed (seeded directly with
-// status='closed' — endorsed by 0073's own header comment as the way to test
-// a Closed plan pre-BK-207, since no product write path can produce one yet).
+// ATC (derived project B), test4 chains to BOTH A's and B's ATC (a
+// multi-project chain — legal per bunkai_create_test/0024, which validates a
+// chained ATC only against the Test's WORKSPACE). Three plans in Project A:
+// planOpen1, planOpen2 (proves shared membership is independent), planClosed
+// (seeded directly with status='closed' — endorsed by 0073's own header
+// comment as the way to test a Closed plan pre-BK-207, since no product
+// write path can produce one yet).
 //
 // Covers, at minimum:
 //   (a) a real authenticated member+ add — persisted row is independently
@@ -48,6 +51,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //       PostgREST fail or silently no-op, only the RPCs write.
 //   (n) bunkai_search_tests: project-scoped, matches title substring, a
 //       foreign project returns no rows.
+//   (o) a Test whose chain spans TWO projects is rejected by add in EITHER
+//       project (ALL-match, not ANY-match) — an ANY-match gate would let it
+//       join plans in both projects at once, which search must also refuse
+//       to surface as a candidate.
 //
 // DB-dependent + fully env-gated (service AND real-login). Skips loudly when
 // its env is missing, and logs + passes when seed state (or the login itself)
@@ -80,6 +87,7 @@ interface Fixture {
   test1Id: string // chains to Project A's ATC
   test2Id: string // chains to Project B's ATC
   test3Id: string // chains to Project A's ATC (second A-scoped test)
+  test4Id: string // chains to BOTH Project A's and Project B's ATC
 }
 
 function service() {
@@ -246,12 +254,14 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
         { workspace_id: workspaceId, title: `${PREFIX} test 1 (project A)`, created_by: ownerUserId },
         { workspace_id: workspaceId, title: `${PREFIX} test 2 (project B)`, created_by: ownerUserId },
         { workspace_id: workspaceId, title: `${PREFIX} test 3 (project A)`, created_by: ownerUserId },
+        { workspace_id: workspaceId, title: `${PREFIX} test 4 (project A+B)`, created_by: ownerUserId },
       ])
       .select('id, title');
     if (testsError) { throw testsError; }
     const test1Id = (tests ?? []).find(t => (t.title as string).includes('test 1'))!.id as string;
     const test2Id = (tests ?? []).find(t => (t.title as string).includes('test 2'))!.id as string;
     const test3Id = (tests ?? []).find(t => (t.title as string).includes('test 3'))!.id as string;
+    const test4Id = (tests ?? []).find(t => (t.title as string).includes('test 4'))!.id as string;
 
     const { error: stepsError } = await db
       .from('test_steps')
@@ -259,6 +269,8 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
         { test_id: test1Id, atc_id: atcAId, position: 1 },
         { test_id: test2Id, atc_id: atcBId, position: 1 },
         { test_id: test3Id, atc_id: atcAId, position: 1 },
+        { test_id: test4Id, atc_id: atcAId, position: 1 },
+        { test_id: test4Id, atc_id: atcBId, position: 2 },
       ]);
     if (stepsError) { throw stepsError; }
 
@@ -287,6 +299,7 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
       test1Id,
       test2Id,
       test3Id,
+      test4Id,
     };
   });
 
@@ -532,6 +545,33 @@ describeOrSkip('BK-203 — test plan membership RPC isolation (real auth write p
       });
       const foreignIds = ((foreignProjectMatches ?? []) as { id: string }[]).map(m => m.id);
       expect(foreignIds).not.toContain(fixture!.test1Id);
+    });
+  });
+
+  it('(o) a Test whose chain spans TWO projects is rejected by add in EITHER project, and excluded from search in EITHER project (ALL-match, not ANY-match)', async () => {
+    if (!fixture || !anon) { return warn(); }
+    const db = service();
+    await withQaRole(db, { workspaceId: fixture.workspaceId, userId: fixture.qaUserId, role: 'member' }, async () => {
+      const addToA = await addTests(anon!, { testPlanId: fixture!.planOpen1Id, testIds: [fixture!.test4Id] });
+      expect(addToA.error?.code).toBe('45604');
+      const countA = await membershipCount(db, fixture!.planOpen1Id);
+      expect(countA).toBe(0);
+
+      const { data: matchesA } = await db.rpc(SEARCH_RPC, {
+        p_actor_user_id: fixture!.qaUserId,
+        p_query: 'test 4',
+        p_project_id: fixture!.projectAId,
+        p_limit: 20,
+      });
+      expect(((matchesA ?? []) as { id: string }[]).map(m => m.id)).not.toContain(fixture!.test4Id);
+
+      const { data: matchesB } = await db.rpc(SEARCH_RPC, {
+        p_actor_user_id: fixture!.qaUserId,
+        p_query: 'test 4',
+        p_project_id: fixture!.projectBId,
+        p_limit: 20,
+      });
+      expect(((matchesB ?? []) as { id: string }[]).map(m => m.id)).not.toContain(fixture!.test4Id);
     });
   });
 });

@@ -27,14 +27,21 @@
 --      second, independent backstop behind the Idempotency-Key header
 --      middleware for a rapid double-submit (AC E3, Dev-answered).
 --   4. A Test's "project", for the cross-project isolation gate (AC E2), is
---      derived the same way `bunkai_start_run` (0031_runs.sql) already
---      derives it: `test_steps -> atcs -> projects`, since `public.tests`
+--      derived via `test_steps -> atcs -> projects`, since `public.tests`
 --      itself carries no project_id column (Tests are workspace-scoped,
---      BK-27). A test_id that does not resolve to a non-archived ATC inside
---      the plan's own project — because it does not exist, belongs to a
---      foreign workspace, or genuinely belongs only to a different project —
---      collapses into ONE uniform raise with no id echoed back (INV-3
---      non-disclosure, mirrors `atc_not_in_workspace` in 0024).
+--      BK-27) — same join `bunkai_start_run` (0031_runs.sql) walks, but NOT
+--      the same match rule: `bunkai_create_test` (0024) validates a chained
+--      ATC only against the Test's WORKSPACE, never against a single
+--      project, so one Test's chain can legally span two projects. An
+--      ANY-match gate (at least one chained ATC in the plan's project) would
+--      let such a Test join plans in BOTH projects at once — a real
+--      integrity gap, not merely a hypothetical. Both
+--      bunkai_add_tests_to_plan and bunkai_search_tests therefore require
+--      the ENTIRE chain to resolve inside the target project: non-empty, and
+--      no chained ATC outside it. A test_id that fails this — nonexistent,
+--      foreign-workspace, empty-chain, single-foreign-project, or
+--      multi-project — collapses into ONE uniform raise with no id echoed
+--      back (INV-3 non-disclosure, mirrors `atc_not_in_workspace` in 0024).
 --
 -- Custom SQLSTATE codes allocated for this migration (456xx block, verified
 -- unused: 0073 claims 45600-45603, nothing else in this block exists):
@@ -141,20 +148,29 @@ begin
   end if;
 
   -- 5. Every distinct submitted id must resolve to a Test in THIS workspace
-  --    with at least one chained ATC in THIS plan's project (AC E2).
-  --    Nonexistent, foreign-workspace and cross-project ids all collapse
-  --    into the SAME raise, with no id echoed back (INV-3, mirrors 0024's
-  --    atc_not_in_workspace).
+  --    whose ENTIRE chain resolves inside THIS plan's project (AC E2):
+  --    non-empty, and no chained ATC outside v_project_id. ANY-match (at
+  --    least one chained ATC in the project) would let a Test whose chain
+  --    spans two projects become a member of plans in BOTH — bunkai_create_test
+  --    (0024) validates a chained ATC only against the Test's WORKSPACE, not
+  --    against a single project, so a multi-project chain is legal and must
+  --    be handled here, not assumed away. Nonexistent, foreign-workspace,
+  --    empty-chain and cross-project ids all collapse into the SAME raise,
+  --    with no id echoed back (INV-3, mirrors 0024's atc_not_in_workspace).
   select count(*) into v_resolved
     from public.tests t
     where t.id = any(p_test_ids)
       and t.workspace_id = v_workspace_id
       and exists (
+        select 1 from public.test_steps ts
+        where ts.test_id = t.id
+      )
+      and not exists (
         select 1
         from public.test_steps ts
         join public.atcs a on a.id = ts.atc_id
         where ts.test_id = t.id
-          and a.project_id = v_project_id
+          and a.project_id <> v_project_id
       );
   select count(*) into v_distinct
     from (select distinct x from unnest(p_test_ids) as t(x)) d;
@@ -300,12 +316,20 @@ begin
     join public.workspace_members wm on wm.workspace_id = t.workspace_id
     where wm.user_id = p_actor_user_id
       and wm.status = 'active'
+      -- Same ALL-match posture as bunkai_add_tests_to_plan: a Test whose
+      -- chain spans two projects is not a member of either search result set
+      -- — searching in Project A must not surface a Test that
+      -- bunkai_add_tests_to_plan would then reject with 45604.
       and exists (
+        select 1 from public.test_steps ts
+        where ts.test_id = t.id
+      )
+      and not exists (
         select 1
         from public.test_steps ts
         join public.atcs a on a.id = ts.atc_id
         where ts.test_id = t.id
-          and a.project_id = p_project_id
+          and a.project_id <> p_project_id
       )
       and (
         t.title ilike '%' || v_query || '%'

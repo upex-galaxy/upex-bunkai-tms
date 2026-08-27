@@ -93,6 +93,12 @@ export function TestPickerDialog({ open, onClose, planId, projectId, existingTes
     setResults([]);
     setSelected(new Set());
     setError(null);
+    // Unlike NewTestBuilder's Test-create submit, this dialog is NOT
+    // unmounted after a successful add (it stays mounted, reused across
+    // open/close cycles on the same plan page) — so the key must rotate here
+    // too, not only on failure, or the next add reuses a key already marked
+    // `succeeded` for a different payload and gets a spurious 409.
+    setIdempotencyKey(crypto.randomUUID());
     onClose();
   };
 

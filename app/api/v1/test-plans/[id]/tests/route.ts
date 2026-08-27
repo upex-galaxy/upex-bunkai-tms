@@ -89,10 +89,21 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   });
   const body = TestPlanAddTestsBodySchema.parse(payload);
 
+  // RLS-scoped read purely for the idempotency row's workspace_id (matches
+  // the sibling POST /api/v1/tests). Not an authorization gate — a plan the
+  // caller cannot see simply yields null here, and the RPC below is the
+  // actual, re-checked-live enforcement point regardless.
+  const { data: planForIdempotency } = await db
+    .from('test_plans')
+    .select('workspace_id')
+    .eq('id', testPlanId)
+    .maybeSingle();
+
   const begin = await beginIdempotentRequest({
     headers: request.headers,
     userId: principal.userId,
     endpoint: `POST /api/v1/test-plans/${testPlanId}/tests`,
+    workspaceId: planForIdempotency?.workspace_id ?? null,
     requestPayload: body,
   });
   if (begin.isReplay) {
