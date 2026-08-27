@@ -154,8 +154,6 @@ describeSession('BK-635 — the two search RPCs are unreachable from a real auth
   });
 });
 
-interface AclRow { proname: string, acl: string, guard_pos: number, first_read_pos: number }
-
 describePg('BK-635 — the actor bind fires at step 0 and preserves the NULL-uid PAT rail', () => {
   let sql: SQL | null = null;
 
