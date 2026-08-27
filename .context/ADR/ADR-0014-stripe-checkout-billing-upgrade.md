@@ -35,6 +35,28 @@
 > deferred to a follow-up ticket, published as a separate AI Product Owner
 > decision on BK-230.
 
+> **Revision note (2026-08-27, same day, Conductor re-review PR #208 round
+> 2):** two more fixes, both narrow corrections to round 1's own changes
+> above, neither reversing the Decision below. **(1)** Round 1's fix (2) above
+> widened the webhook RPC's terminal-status short-circuit from `status =
+> 'completed'` to `status in ('completed','expired','canceled')`. That
+> re-opened the exact charged-but-never-upgraded failure mode round 1's fix
+> (2) existed to close: `checkout.ts`'s `reuseOpenCheckoutSession` can flip a
+> row to `expired` locally, without ever consulting Stripe (it has no
+> `stripe_checkout_session_id` yet to ask about), and a customer who still
+> holds and pays the live Stripe URL for that row would then have their paid
+> `completed` event silently answer `already_processed` → 200 → no Stripe
+> retry. Fixed: the short-circuit now only swallows an expired/canceled row
+> for event types that cannot themselves complete a purchase — a genuinely
+> paid `completed`/`async_payment_succeeded` event still applies regardless
+> of how the row got marked expired/canceled. **(2)** `cancelBillingCheckout`
+> swallowed every `stripe.checkout.sessions.expire()` failure and marked the
+> row `canceled` regardless, including the one failure that means "already
+> paid" (`expire()` throws on an already-`complete` session) — a stale tab
+> remounting at `?checkout=canceled` after a successful payment could flip an
+> already-paid row to `canceled`. Fixed: retrieves the session first and, on
+> `status === 'complete'`, leaves the row untouched instead.
+
 ## Context
 
 BK-230 (Billing | Upgrade to a paid plan) needs a real payment mechanism — the first one anywhere in
