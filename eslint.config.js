@@ -32,6 +32,8 @@ export default antfu({
     '.github/**',
     // Generated files (auto-generated, not manually edited)
     'api/openapi-types.ts',
+    'api/.openapi-config.json',
+    'api/openapi.json',
     // Skill directories — never lint.
     // T1 skills (.claude/skills/) and community T3/T4 skills (.agents/skills/,
     // installed at scaffold-time by `bunx skills add`) ship their .md/.json/.ts

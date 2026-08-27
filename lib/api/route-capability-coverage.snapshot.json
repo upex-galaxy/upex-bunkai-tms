@@ -191,6 +191,11 @@
     "why": "Personal inbox — the caller marks only their own notification copy read."
   },
   {
+    "file": "app/api/v1/projects/[id]/atcs/export/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
     "file": "app/api/v1/projects/[id]/bugs/heatmap/route.ts",
     "method": "GET",
     "posture": "required:atc:read"

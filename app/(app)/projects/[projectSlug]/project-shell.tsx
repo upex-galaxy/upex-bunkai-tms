@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { AtcSearchFilter } from './atc-search-filter';
+import { ExportAtcsButton } from './export-atcs-button';
 import { ProjectExplorer } from './project-explorer';
 import { ProjectSubNav, resolveProjectSectionLabel } from './project-sub-nav';
 import { TestTagFilter } from './test-tag-filter';
@@ -68,6 +69,10 @@ function ShellChrome({ children }: { children: ReactNode }) {
   const sectionLabel = resolveProjectSectionLabel(pathname, projectSlug) ?? 'All ATCs';
 
   const projectIndexHref = `/projects/${projectSlug}`;
+  // The ATC library IS the project index — export is scoped to that view
+  // only, not to an open ATC/Test/run detail route (BK-315, AI Product Owner
+  // decision, master-design-plan.md §5 D36).
+  const showExportAtcs = pathname === projectIndexHref;
 
   const selectView = (next: WorkbenchView) => {
     setView(next);
@@ -112,6 +117,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
             <TestTagFilter />
+            {showExportAtcs && <ExportAtcsButton projectId={projectId} />}
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
               className={buttonVariants({ size: 'sm' })}
