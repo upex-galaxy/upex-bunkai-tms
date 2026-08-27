@@ -345,7 +345,9 @@ export interface Database {
           idempotency_key: string
           seat_quantity: number
           status: string
-          stripe_checkout_session_id: string
+          stripe_checkout_session_id: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           target_plan: string
           workspace_id: string
         }
@@ -358,7 +360,9 @@ export interface Database {
           idempotency_key: string
           seat_quantity: number
           status?: string
-          stripe_checkout_session_id: string
+          stripe_checkout_session_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           target_plan: string
           workspace_id: string
         }
@@ -371,7 +375,9 @@ export interface Database {
           idempotency_key?: string
           seat_quantity?: number
           status?: string
-          stripe_checkout_session_id?: string
+          stripe_checkout_session_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           target_plan?: string
           workspace_id?: string
         }
@@ -1516,6 +1522,7 @@ export interface Database {
           name: string
           owner_user_id: string
           plan: string
+          purchased_seats: number | null
           slug: string
         }
         Insert: {
@@ -1524,6 +1531,7 @@ export interface Database {
           name: string
           owner_user_id: string
           plan?: string
+          purchased_seats?: number | null
           slug: string
         }
         Update: {
@@ -1532,6 +1540,7 @@ export interface Database {
           name?: string
           owner_user_id?: string
           plan?: string
+          purchased_seats?: number | null
           slug?: string
         }
         Relationships: []
@@ -1563,9 +1572,13 @@ export interface Database {
       }
       bunkai_apply_billing_checkout_webhook_event: {
         Args: {
+          p_client_reference_id: string
+          p_payment_status: string
           p_stripe_checkout_session_id: string
+          p_stripe_customer_id: string
           p_stripe_event_id: string
           p_stripe_event_type: string
+          p_stripe_subscription_id: string
         }
         Returns: Json
       }

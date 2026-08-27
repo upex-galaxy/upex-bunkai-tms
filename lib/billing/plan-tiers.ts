@@ -119,6 +119,17 @@ export function meterFillPercent(used: number, limit: number | null): number {
   return Math.min(100, Math.round((used / limit) * 100));
 }
 
+// BK-230 (Conductor review PR #208, item 5) — a Cloud workspace's REAL seat
+// ceiling is what it purchased at checkout (`workspaces.purchased_seats`,
+// migration 0077), not the tier's flat `seatLimit` (25 — that stays the
+// PLAN's maximum PURCHASABLE quantity, never the workspace's actual cap).
+// `purchasedSeats` is `null` for Community/Enterprise (no purchase flow) and
+// for any Cloud workspace predating this column — both fall back to the
+// tier constant so the meter never regresses to a blank/zero cap.
+export function effectiveSeatLimit(tier: PlanTier, purchasedSeats: number | null): number | null {
+  return purchasedSeats ?? tier.seatLimit;
+}
+
 // "$24 / seat / month" · "Custom" (Enterprise) · "$0 / month" (Community —
 // AC3's Free-plan price rendering, price is 0 not absent).
 export function formatPrice(tier: PlanTier): string {
