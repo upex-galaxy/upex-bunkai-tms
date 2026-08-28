@@ -62,4 +62,42 @@ describe('mapAtcRpcError', () => {
     expect(err.code).toBe('internal_error');
     expect(err.message).toBe('boom');
   });
+
+  // BK-622 — before this case existed, 23514 fell through to the `default`
+  // branch above (like the XX999 case does), throwing `internal_error` → HTTP
+  // 500 with the raw Postgres constraint text as the message. This pins the
+  // real Postgres check_violation message shape for the
+  // `atcs_title_min_length` constraint (0058_atc_title_min_length.sql,
+  // confirmed live on the shared instance: `check (length(title) >= 3) not
+  // valid` — NOT VALID still enforces on new/updated rows, only skips the
+  // pre-existing-row backfill scan).
+  test('BK-622: 23514 on atcs_title_min_length → 422 validation_failed, not 500', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_title_min_length"',
+    }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'title_too_short' });
+  });
+
+  test('BK-622: 23514 message never leaks the raw Postgres constraint text to the caller', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_title_min_length"',
+    }));
+    expect(err.message).not.toContain('violates check constraint');
+    expect(err.message).not.toContain('relation "atcs"');
+  });
+
+  test('BK-622: 23514 on an unrecognized constraint → 422 validation_failed, generic reason, no raw text', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_tags_max_10"',
+    }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'check_constraint_violation' });
+    expect(err.message).not.toContain('atcs_tags_max_10');
+  });
 });
