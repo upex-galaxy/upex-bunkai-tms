@@ -152,4 +152,52 @@ describeOrSkip('BK-184 — POST /api/v1/atcs/{id}/duplicate honors a supplied ne
     if (body.atc?.id) { createdAtcIds.push(body.atc.id); }
     expect(body.atc?.title).toBe(`${seed.sourceTitle} (copy)`);
   });
+
+  // BK-622 — real production write path (real POST handler, real Bearer PAT,
+  // real `bunkai_duplicate_atc` RPC, real DB, real `atcs_title_min_length`
+  // CHECK constraint). A raw-string unit test on the Zod schema alone cannot
+  // prove the DB-layer defence-in-depth (mapAtcRpcError's 23514 case) is wired
+  // up correctly on the exact path a caller hits; this exercises that path.
+  it('BK-622: new_title "  ab  " (trims to 2 chars) is rejected 422, never a raw-Postgres 500', async () => {
+    const db = service();
+    const seed = requirePrecondition(await findWritableSource(db), 'need a writable source ATC with ≥1 step');
+
+    const pat = await mintPat({
+      admin: db,
+      userId: seed.actorUserId,
+      name: 'bk622-duplicate-whitespace-regression',
+      scopes: ['atc:write'],
+      expiresInDays: null,
+    });
+    createdTokenIds.push(pat.id);
+
+    const response = await POST(duplicateRequest(seed.sourceAtcId, pat.token, { new_title: '  ab  ' }));
+    const body = await response.json() as DuplicateSuccessBody & ErrorBody;
+
+    expect(response.status).toBe(422);
+    expect(body.error?.code).not.toBe('internal_error');
+    expect(JSON.stringify(body)).not.toContain('violates check constraint');
+    expect(JSON.stringify(body)).not.toContain('relation "atcs"');
+  });
+
+  it('BK-622: new_title "  abc  " (trims to exactly 3 chars) is accepted and stored trimmed', async () => {
+    const db = service();
+    const seed = requirePrecondition(await findWritableSource(db), 'need a writable source ATC with ≥1 step');
+
+    const pat = await mintPat({
+      admin: db,
+      userId: seed.actorUserId,
+      name: 'bk622-duplicate-boundary-regression',
+      scopes: ['atc:write'],
+      expiresInDays: null,
+    });
+    createdTokenIds.push(pat.id);
+
+    const response = await POST(duplicateRequest(seed.sourceAtcId, pat.token, { new_title: '  abc  ' }));
+    const body = await response.json() as DuplicateSuccessBody & ErrorBody;
+
+    expect(response.status).toBe(201);
+    if (body.atc?.id) { createdAtcIds.push(body.atc.id); }
+    expect(body.atc?.title).toBe('abc');
+  });
 });
