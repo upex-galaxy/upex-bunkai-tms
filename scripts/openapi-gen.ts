@@ -88,6 +88,10 @@ import '../app/api/v1/projects/[id]/test-plans/route.openapi';
 
 import '../app/api/v1/test-plans/[id]/route.openapi';
 
+import '../app/api/v1/test-plans/[id]/tests/route.openapi';
+
+import '../app/api/v1/test-plans/[id]/tests/[testId]/route.openapi';
+
 import '../app/api/v1/modules/[id]/route.openapi';
 
 import '../app/api/v1/modules/[id]/user-stories/route.openapi';
@@ -115,6 +119,8 @@ import '../app/api/v1/atcs/[id]/duplicate/route.openapi';
 import '../app/api/v1/atcs/[id]/usage/route.openapi';
 
 import '../app/api/v1/tests/route.openapi';
+
+import '../app/api/v1/tests/search/route.openapi';
 
 import '../app/api/v1/tests/[id]/route.openapi';
 

@@ -80,6 +80,7 @@
                   "chain_invalid",
                   "no_executable_steps",
                   "environment_invalid",
+                  "test_outside_plan_project",
                   "internal_error",
                   "upstream_error"
                 ],
@@ -1756,6 +1757,103 @@
         },
         "required": ["name"]
       },
+      "TestPlanMemberTestListResponse": {
+        "type": "object",
+        "properties": {
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestPlanMemberTest"
+            },
+            "description": "Ordered by added_at ascending (addition order)."
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": ["tests", "count"]
+      },
+      "TestPlanMemberTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Test id (not the membership row id)."
+          },
+          "title": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "added_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "added_by_email": {
+            "type": ["string", "null"]
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "title", "tags", "added_by", "added_by_email", "added_at"]
+      },
+      "TestPlanAddTestsResponse": {
+        "type": "object",
+        "properties": {
+          "test_plan_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "added_count": {
+            "type": "integer"
+          },
+          "member_count": {
+            "type": "integer",
+            "description": "Total member count after this add."
+          }
+        },
+        "required": ["test_plan_id", "added_count", "member_count"]
+      },
+      "TestPlanAddTestsBody": {
+        "type": "object",
+        "properties": {
+          "test_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "description": "At least one Test id from the plan's own project."
+          }
+        },
+        "required": ["test_ids"]
+      },
+      "TestPlanRemoveTestResponse": {
+        "type": "object",
+        "properties": {
+          "test_plan_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "removed_test_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "member_count": {
+            "type": "integer",
+            "description": "Total member count after this removal."
+          }
+        },
+        "required": ["test_plan_id", "removed_test_id", "member_count"]
+      },
       "ModuleUpdateResponse": {
         "type": "object",
         "properties": {
@@ -2642,6 +2740,25 @@
           }
         },
         "required": ["id", "title", "tags", "step_count"]
+      },
+      "TestSearchResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "title", "tags"]
       },
       "ExpandedTest": {
         "type": "object",
@@ -8245,6 +8362,287 @@
         }
       }
     },
+    "/api/v1/test-plans/{id}/tests": {
+      "get": {
+        "tags": ["Test Plans"],
+        "summary": "List a test plan's member tests",
+        "description": "Visible to any workspace member of the plan, viewers included — seeing membership is role-agnostic (only add/remove is gated). Membership is a reference: the same Test may appear in several plans, and removing it here never alters the Test.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member tests listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanMemberTestListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Test Plans"],
+        "summary": "Add tests to a test plan",
+        "description": "Member-only (role >= member), re-checked live server-side, and only while the plan is Open. Every submitted Test id must belong to the plan's own project (derived from its chained ATCs); a mismatch, a nonexistent id, or a foreign-workspace id are all rejected uniformly (422 test_outside_plan_project), with no id disclosed back. A Test already in the plan rejects the WHOLE request (409 conflict) rather than partially applying. Requires an `Idempotency-Key` header; a rapid double-submit of the same selection is deduplicated by the header AND independently by the database unique constraint.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanAddTestsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tests added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanAddTestsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A submitted test is already in the plan, or the plan is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty test_ids, or a submitted test does not belong to the plan's project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-plans/{id}/tests/{testId}": {
+      "delete": {
+        "tags": ["Test Plans"],
+        "summary": "Remove a test from a test plan",
+        "description": "Member-only (role >= member), re-checked live server-side, and only while the plan is Open. Removing a membership never deletes or alters the Test itself, and never affects the Test's membership in any other plan.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "testId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test removed from the plan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanRemoveTestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id or test id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is a viewer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found, or this test is not a member of it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The plan is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/modules/{id}": {
       "patch": {
         "tags": ["Modules"],
@@ -10295,6 +10693,108 @@
           },
           "422": {
             "description": "Missing `tag` query parameter (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/search": {
+      "get": {
+        "tags": ["Tests"],
+        "summary": "Search Tests by title and tags",
+        "description": "Bearer `atc:read` (or cookie session). Project-scoped substring search over Test title and tags. A Test has no project_id of its own (Tests are workspace-scoped); the project match is derived from the Test's chained ATCs. Results are restricted to the caller's active workspace memberships AND to the required `project_id`. Zero matches return an empty `items` array (never 404).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Free-text query matched (substring, case-insensitive) against Test title and tags."
+            },
+            "required": true,
+            "description": "Free-text query matched (substring, case-insensitive) against Test title and tags.",
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Required. Scopes the search to a single project, derived from each Test's chained ATCs; a project outside the caller's active workspaces returns no rows."
+            },
+            "required": true,
+            "description": "Required. Scopes the search to a single project, derived from each Test's chained ATCs; a project outside the caller's active workspaces returns no rows.",
+            "name": "project_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "1..50, default 20."
+            },
+            "required": false,
+            "description": "1..50, default 20.",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matches (possibly empty), newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TestSearchResult"
+                      }
+                    }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (empty/missing query, missing/invalid project_id, bad limit).",
             "content": {
               "application/json": {
                 "schema": {

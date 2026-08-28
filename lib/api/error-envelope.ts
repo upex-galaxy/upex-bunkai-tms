@@ -56,6 +56,12 @@ export const API_ERROR_CODES = {
   PROJECT_LIMIT_REACHED: 'project_limit_reached',
   PAYMENT_PROCESSOR_UNAVAILABLE: 'payment_processor_unavailable',
 
+  // Test Plans domain (BK-203) — a Test added to a Plan must belong to the
+  // Plan's own project (derived via its chained ATCs). Distinct from
+  // validation_failed so API consumers can branch on it, same shape as
+  // module_outside_project_subtree above.
+  TEST_OUTSIDE_PLAN_PROJECT: 'test_outside_plan_project',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -88,6 +94,7 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   checkout_in_progress: 409,
   project_limit_reached: 422,
   payment_processor_unavailable: 503,
+  test_outside_plan_project: 422,
   internal_error: 500,
   upstream_error: 502,
 };

@@ -92,16 +92,29 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
     }
   }
 
+  // BK-203 — live per-plan test counts. One extra query, counted client-side
+  // (this list is small-N, same scale the rest of this page already reads at)
+  // rather than a denormalized counter column, which would be a second write
+  // path to keep in sync with test_plan_tests.
+  const planIds = planRows.map(row => row.id);
+  const testCountByPlanId = new Map<string, number>();
+  if (planIds.length > 0) {
+    const { data: memberships } = await supabase
+      .from('test_plan_tests')
+      .select('test_plan_id')
+      .in('test_plan_id', planIds);
+    for (const row of memberships ?? []) {
+      testCountByPlanId.set(row.test_plan_id, (testCountByPlanId.get(row.test_plan_id) ?? 0) + 1);
+    }
+  }
+
   const testPlans: TestPlanListItem[] = planRows.map(row => ({
     id: row.id,
     name: row.name,
     description: row.description,
     goal: row.goal,
     status: row.status as TestPlanStatus,
-    // Membership arrives with the sibling story; until then every plan
-    // genuinely holds zero tests, so this is the real count rather than a
-    // placeholder.
-    testCount: 0,
+    testCount: testCountByPlanId.get(row.id) ?? 0,
     creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
   }));
 

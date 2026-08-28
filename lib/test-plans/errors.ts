@@ -74,3 +74,48 @@ export function mapTestPlanRpcError(error: { code?: string, message: string }): 
       throw new ApiError('internal_error', error.message);
   }
 }
+
+// BK-203 — map a bunkai_add_tests_to_plan / bunkai_remove_test_from_plan RPC
+// error. New codes in the SAME 456xx block 0073 claims for this domain:
+// 45604 test_outside_plan_project (AC E2 — nonexistent / foreign-workspace /
+// cross-project test, uniform non-disclosure raise), 45605
+// test_selection_empty (add called with zero ids), 45606
+// test_plan_test_not_found (remove — the membership row does not exist).
+// 45603 is the SAME code and SAME message 0073 already uses for a closed
+// plan (Dev-answered: add and remove share one rejection shape). Duplicate
+// add surfaces as the native 23505 (AC 3.2, Dev-answered).
+
+export function mapTestPlanTestsRpcError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case '42501':
+      throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
+        details: { reason: 'not_a_member' },
+      });
+    case 'P0002':
+      throw new ApiError('not_found', 'Test plan not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '45606':
+      throw new ApiError('not_found', 'This test is not in the plan.', {
+        details: { reason: 'test_not_in_plan' },
+      });
+    case '23505':
+      throw new ApiError('conflict', 'This test is already in the plan.', {
+        details: { reason: 'test_already_in_plan' },
+      });
+    case '45603':
+      throw new ApiError('conflict', 'This test plan is closed and can no longer be edited.', {
+        details: { reason: 'test_plan_not_open' },
+      });
+    case '45605':
+      throw new ApiError('validation_failed', 'Select at least one test to add.', {
+        details: { reason: 'test_selection_empty' },
+      });
+    case '45604':
+      throw new ApiError('test_outside_plan_project', 'This test does not belong to the plan\'s project.', {
+        details: { reason: 'test_outside_plan_project' },
+      });
+    default:
+      throw new ApiError('internal_error', error.message);
+  }
+}

@@ -3013,6 +3013,253 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/test-plans/{id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a test plan's member tests
+         * @description Visible to any workspace member of the plan, viewers included — seeing membership is role-agnostic (only add/remove is gated). Membership is a reference: the same Test may appear in several plans, and removing it here never alters the Test.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Member tests listed. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TestPlanMemberTestListResponse"];
+                    };
+                };
+                /** @description Malformed test plan id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Caller is not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing atc:read scope. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Test plan not found (or not visible to the caller). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Add tests to a test plan
+         * @description Member-only (role >= member), re-checked live server-side, and only while the plan is Open. Every submitted Test id must belong to the plan's own project (derived from its chained ATCs); a mismatch, a nonexistent id, or a foreign-workspace id are all rejected uniformly (422 test_outside_plan_project), with no id disclosed back. A Test already in the plan rejects the WHOLE request (409 conflict) rather than partially applying. Requires an `Idempotency-Key` header; a rapid double-submit of the same selection is deduplicated by the header AND independently by the database unique constraint.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TestPlanAddTestsBody"];
+                };
+            };
+            responses: {
+                /** @description Tests added. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TestPlanAddTestsResponse"];
+                    };
+                };
+                /** @description Malformed test plan id or invalid JSON body. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Caller is not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing atc:write scope, or the caller is a viewer. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Test plan not found (or not visible to the caller). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description A submitted test is already in the plan, or the plan is closed. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Empty test_ids, or a submitted test does not belong to the plan's project. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-plans/{id}/tests/{testId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a test from a test plan
+         * @description Member-only (role >= member), re-checked live server-side, and only while the plan is Open. Removing a membership never deletes or alters the Test itself, and never affects the Test's membership in any other plan.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    testId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Test removed from the plan. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TestPlanRemoveTestResponse"];
+                    };
+                };
+                /** @description Malformed test plan id or test id. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Caller is not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing atc:write scope, or the caller is a viewer. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Test plan not found, or this test is not a member of it. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description The plan is closed. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/modules/{id}": {
         parameters: {
             query?: never;
@@ -4737,6 +4984,81 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tests/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Tests by title and tags
+         * @description Bearer `atc:read` (or cookie session). Project-scoped substring search over Test title and tags. A Test has no project_id of its own (Tests are workspace-scoped); the project match is derived from the Test's chained ATCs. Results are restricted to the caller's active workspace memberships AND to the required `project_id`. Zero matches return an empty `items` array (never 404).
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Free-text query matched (substring, case-insensitive) against Test title and tags. */
+                    query: string;
+                    /** @description Required. Scopes the search to a single project, derived from each Test's chained ATCs; a project outside the caller's active workspaces returns no rows. */
+                    project_id: string;
+                    /** @description 1..50, default 20. */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Matches (possibly empty), newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["TestSearchResult"][];
+                        };
+                    };
+                };
+                /** @description Not authenticated. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Missing atc:read scope. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Validation failed (empty/missing query, missing/invalid project_id, bad limit). */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6982,7 +7304,7 @@ export interface components {
                  * @description Machine-readable error code. Branch on this value, not on `message`.
                  * @enum {string}
                  */
-                code: "bad_request" | "validation_failed" | "unauthorized" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "idempotency_key_required" | "idempotency_key_invalid" | "rate_limited" | "ac_outside_user_story" | "module_outside_project_subtree" | "steps_position_invalid" | "slug_collision" | "chain_empty" | "chain_mismatch" | "chain_invalid" | "no_executable_steps" | "environment_invalid" | "internal_error" | "upstream_error";
+                code: "bad_request" | "validation_failed" | "unauthorized" | "forbidden" | "not_found" | "method_not_allowed" | "conflict" | "idempotency_key_required" | "idempotency_key_invalid" | "rate_limited" | "ac_outside_user_story" | "module_outside_project_subtree" | "steps_position_invalid" | "slug_collision" | "chain_empty" | "chain_mismatch" | "chain_invalid" | "no_executable_steps" | "environment_invalid" | "test_outside_plan_project" | "internal_error" | "upstream_error";
                 /** @description Human-readable error description. */
                 message: string;
                 /** @description Optional structured details. For validation errors this is the ZodError issues array. */
@@ -7669,6 +7991,44 @@ export interface components {
             /** @description 0–100 chars after normalize. Defaults to empty. */
             goal?: string;
         };
+        TestPlanMemberTestListResponse: {
+            /** @description Ordered by added_at ascending (addition order). */
+            tests: components["schemas"]["TestPlanMemberTest"][];
+            count: number;
+        };
+        TestPlanMemberTest: {
+            /**
+             * Format: uuid
+             * @description The Test id (not the membership row id).
+             */
+            id: string;
+            title: string;
+            tags: string[];
+            /** Format: uuid */
+            added_by: string | null;
+            added_by_email: string | null;
+            /** Format: date-time */
+            added_at: string;
+        };
+        TestPlanAddTestsResponse: {
+            /** Format: uuid */
+            test_plan_id: string;
+            added_count: number;
+            /** @description Total member count after this add. */
+            member_count: number;
+        };
+        TestPlanAddTestsBody: {
+            /** @description At least one Test id from the plan's own project. */
+            test_ids: string[];
+        };
+        TestPlanRemoveTestResponse: {
+            /** Format: uuid */
+            test_plan_id: string;
+            /** Format: uuid */
+            removed_test_id: string;
+            /** @description Total member count after this removal. */
+            member_count: number;
+        };
         ModuleUpdateResponse: {
             module: components["schemas"]["ModuleDetail"];
         };
@@ -7982,6 +8342,12 @@ export interface components {
             title: string;
             tags: string[];
             step_count: number;
+        };
+        TestSearchResult: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            tags: string[];
         };
         ExpandedTest: {
             /** Format: uuid */

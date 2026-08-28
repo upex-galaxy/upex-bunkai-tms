@@ -84,19 +84,44 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   // control that appears and then fails is its own defect.
   const canEdit = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
-  let creatorLabel = '';
-  if (row.created_by) {
+  // BK-203 — the plan's member tests, joined with `tests` for title/tags.
+  const { data: memberRows } = await supabase
+    .from('test_plan_tests')
+    .select('id, test_id, added_by, created_at, tests(id, title, tags)')
+    .eq('test_plan_id', row.id)
+    .order('created_at', { ascending: true });
+
+  const rowsForActors = memberRows ?? [];
+  const addedByIds = [...new Set(
+    rowsForActors.map(r => r.added_by).filter((id): id is string => id !== null),
+  )];
+  // Union with the plan's own creator so ONE resolveActivityActors call
+  // covers both labels — no second RPC round trip.
+  const allActorIds = [...new Set([...addedByIds, ...(row.created_by ? [row.created_by] : [])])];
+
+  const emailById = new Map<string, string>();
+  if (allActorIds.length > 0) {
     const { data: resolved } = await resolveActivityActors(supabase, {
       workspaceId: row.workspace_id,
-      userIds: [row.created_by],
+      userIds: allActorIds,
     });
-    creatorLabel = ((resolved ?? []) as { user_id: string, email: string | null }[])
-      .find(actor => actor.user_id === row.created_by)
-      ?.email ?? '';
+    for (const actor of (resolved ?? []) as { user_id: string, email: string | null }[]) {
+      emailById.set(actor.user_id, actor.email ?? '');
+    }
   }
+
+  const creatorLabel = row.created_by ? (emailById.get(row.created_by) ?? '') : '';
+
+  const initialTests = rowsForActors.map(r => ({
+    id: r.test_id,
+    title: r.tests?.title ?? '',
+    tags: r.tests?.tags ?? [],
+    addedByLabel: r.added_by ? (emailById.get(r.added_by) || 'a workspace member') : 'a workspace member',
+  }));
 
   const testPlan: TestPlanDetail = {
     id: row.id,
+    projectId: row.project_id,
     projectSlug,
     name: row.name,
     description: row.description,
@@ -106,5 +131,5 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
     createdAtLabel: row.created_at.slice(0, 10),
   };
 
-  return <TestPlanDetailView testPlan={testPlan} canEdit={canEdit} />;
+  return <TestPlanDetailView testPlan={testPlan} initialTests={initialTests} canEdit={canEdit} />;
 }

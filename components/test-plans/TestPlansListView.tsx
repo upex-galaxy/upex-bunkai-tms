@@ -21,8 +21,8 @@ import { useState } from 'react';
 //   - the Open/Closed segmented status filter (the BRIEF attributes it to
 //     BK-207, and no plan can be Closed until that story ships)
 //   - the mono `PLAN-001` id column (plans have a uuid, no human-facing key)
-// The "Tests" count column IS rendered — scope.md lists it — and reads 0 for
-// every plan until BK-203 adds membership. That is the truth, not a stub.
+// The "Tests" count column IS rendered — scope.md lists it — and reads the
+// plan's live membership count (BK-203).
 
 export interface TestPlanListItem {
   id: string
