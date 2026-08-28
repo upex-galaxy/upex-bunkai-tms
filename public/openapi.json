@@ -2361,7 +2361,8 @@
           "title": {
             "type": "string",
             "minLength": 3,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "3-200 characters after trimming leading/trailing whitespace (BK-622)."
           },
           "module_id": {
             "type": "string",
@@ -2534,7 +2535,8 @@
           "title": {
             "type": "string",
             "minLength": 3,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "3-200 characters after trimming leading/trailing whitespace (BK-622)."
           },
           "layer": {
             "type": "string",
@@ -2606,7 +2608,7 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 200,
-            "description": "Optional title for the copy. Omit to default to `<source> (copy)`."
+            "description": "Optional title for the copy. Omit to default to `<source> (copy)`. 3-200 characters after trimming leading/trailing whitespace (BK-622)."
           }
         }
       },
