@@ -806,6 +806,42 @@ export interface Database {
           },
         ]
       }
+      notification_digest_log: {
+        Row: {
+          created_at: string
+          digest_date: string
+          error: string | null
+          id: string
+          notification_count: number
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          digest_date: string
+          error?: string | null
+          id?: string
+          notification_count?: number
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          digest_date?: string
+          error?: string | null
+          id?: string
+          notification_count?: number
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           channel: string
@@ -1810,6 +1846,23 @@ export interface Database {
       bunkai_normalize_test_tags: {
         Args: { p_tags: string[] }
         Returns: string[]
+      }
+      bunkai_notification_digest_candidates: {
+        Args: never
+        Returns: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          notification_id: string
+          payload: Json
+          project_id: string
+          project_name: string
+          project_slug: string
+          recipient_email: string
+          recipient_user_id: string
+          workspace_id: string
+        }[]
       }
       bunkai_remove_test_from_plan: {
         Args: { p_test_id: string, p_test_plan_id: string }
