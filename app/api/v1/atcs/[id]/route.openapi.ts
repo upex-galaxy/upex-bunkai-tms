@@ -14,7 +14,7 @@ const AssertionInput = z.object({
 
 const UpdateBodySchema = z
   .object({
-    title: z.string().min(3).max(200),
+    title: z.string().min(3).max(200).describe('3-200 characters after trimming leading/trailing whitespace (BK-622).'),
     layer: z.enum(['UI', 'API', 'Unit']),
     tags: z.array(z.string()).max(10).optional(),
     steps: z.array(StepInput).min(1),

@@ -7,7 +7,7 @@ import { AtcSchema } from '../../route.openapi';
 // implementation had drifted to `title`).
 const DuplicateBodySchema = z
   .object({
-    new_title: z.string().min(3).max(200).optional().describe('Optional title for the copy. Omit to default to `<source> (copy)`.'),
+    new_title: z.string().min(3).max(200).optional().describe('Optional title for the copy. Omit to default to `<source> (copy)`. 3-200 characters after trimming leading/trailing whitespace (BK-622).'),
   })
   .openapi('AtcDuplicateBody');
 

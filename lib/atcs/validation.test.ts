@@ -1,4 +1,4 @@
-import { AtcCreateBodySchema, stepPositionsError } from '@lib/atcs/validation';
+import { AtcCreateBodySchema, AtcUpdateBodySchema, stepPositionsError } from '@lib/atcs/validation';
 import { describe, expect, test } from 'bun:test';
 
 describe('stepPositionsError', () => {
@@ -70,6 +70,22 @@ describe('atcCreateBodySchema boundaries', () => {
     expect(AtcCreateBodySchema.safeParse({ ...base, title: 'a'.repeat(200) }).success).toBe(true);
   });
 
+  // BK-622 — validation must run on the TRIMMED title, matching what the
+  // route persists (`body.title.trim()`). Before the fix, `.min()` ran on the
+  // raw 6-char string, so this passed Zod and only failed later at the DB
+  // CHECK constraint (23514), surfacing as a 500 instead of a 422.
+  test('BK-622: rejects "  ab  " — 6 raw chars, but trims to 2 (below the floor)', () => {
+    expect(AtcCreateBodySchema.safeParse({ ...base, title: '  ab  ' }).success).toBe(false);
+  });
+
+  test('BK-622: accepts "  abc  " — trims to exactly 3 — and stores it trimmed', () => {
+    const parsed = AtcCreateBodySchema.safeParse({ ...base, title: '  abc  ' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.title).toBe('abc');
+    }
+  });
+
   test('rejects empty steps (B2)', () => {
     expect(AtcCreateBodySchema.safeParse({ ...base, title: 'Valid', steps: [] }).success).toBe(false);
   });
@@ -92,5 +108,25 @@ describe('atcCreateBodySchema boundaries', () => {
 
   test('rejects step content over 2KB', () => {
     expect(AtcCreateBodySchema.safeParse({ ...base, title: 'Valid', steps: [{ position: 1, content: 'a'.repeat(2049) }] }).success).toBe(false);
+  });
+});
+
+describe('atcUpdateBodySchema title trim (BK-622, PATCH entry point)', () => {
+  const base = {
+    acceptance_criterion_ids: ['33333333-3333-4333-8333-333333333333'],
+    layer: 'UI' as const,
+    steps: [{ position: 1, content: 'step' }],
+  };
+
+  test('rejects "  ab  " on PATCH the same as on create', () => {
+    expect(AtcUpdateBodySchema.safeParse({ ...base, title: '  ab  ' }).success).toBe(false);
+  });
+
+  test('accepts "  abc  " on PATCH and trims it', () => {
+    const parsed = AtcUpdateBodySchema.safeParse({ ...base, title: '  abc  ' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.title).toBe('abc');
+    }
   });
 });

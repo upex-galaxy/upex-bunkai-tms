@@ -1,10 +1,30 @@
 import { ApiError } from '@lib/api/error-envelope';
+import { ATC_TITLE_MIN } from '@lib/atcs/validation';
 
 // BK-18 — map a bunkai_create_atc / bunkai_update_atc / bunkai_get_atc RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise custom
 // 45xxx codes for the domain rules; 42501/P0002/23505 are standard SQLSTATEs.
 export function mapAtcRpcError(error: { code?: string, message: string }): never {
   switch (error.code) {
+    // BK-622 — 23514 is Postgres' generic check_violation. It reached here
+    // (and fell through to the 500 default below) for `atcs_title_min_length`
+    // (0058) when a title trimmed below the 3-char floor at write time even
+    // though the pre-trim string passed Zod's `.min()` — see validation.ts.
+    // The Zod `.trim()` fix closes that specific gap at the door; this case
+    // is defence in depth for any write path that reaches the RPC without
+    // going through the route's schema, and for any future CHECK on this
+    // table. Never surfaces the raw Postgres constraint text to the caller.
+    case '23514': {
+      const constraint = parseCheckConstraintName(error.message);
+      if (constraint === 'atcs_title_min_length') {
+        throw new ApiError('validation_failed', `Title must be at least ${ATC_TITLE_MIN} characters after trimming leading/trailing whitespace.`, {
+          details: { reason: 'title_too_short' },
+        });
+      }
+      throw new ApiError('validation_failed', 'The request failed a database validation rule.', {
+        details: { reason: 'check_constraint_violation' },
+      });
+    }
     case '42501':
       throw new ApiError('forbidden', 'You must be a member of this workspace with write access.', {
         details: { reason: 'not_a_member' },
@@ -75,4 +95,13 @@ export function mapAtcUsageRpcError(error: { code?: string, message: string }): 
 function parseConflictVersion(message: string): number | null {
   const match = /version_conflict:(\d+)/.exec(message);
   return match ? Number(match[1]) : null;
+}
+
+// Postgres' check_violation message is
+// `new row for relation "…" violates check constraint "<name>"` — pull the
+// constraint name out so 23514 can be mapped per-constraint without ever
+// forwarding the raw message text to the caller.
+function parseCheckConstraintName(message: string): string | null {
+  const match = /violates check constraint "([^"]+)"/.exec(message);
+  return match ? match[1] : null;
 }

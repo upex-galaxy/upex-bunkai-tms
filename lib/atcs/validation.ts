@@ -33,7 +33,11 @@ export const AtcAssertionInputSchema = z.object({
 // Shared body shape for create and (full-replace) edit. PATCH reuses it because
 // edits are PUT-style — omitted children are cleared, not merged.
 export const AtcWriteBodySchema = z.object({
-  title: z.string().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX),
+  // BK-622 — .trim() runs BEFORE .min()/.max() so the bound is enforced on the
+  // same string the route persists (it writes `body.title.trim()`). Without
+  // this, "  ab  " (6 raw chars) passed validation but trimmed to "ab" (2
+  // chars) at write time, tripping the DB's `atcs_title_min_length` CHECK.
+  title: z.string().trim().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX),
   layer: z.enum(ATC_LAYERS),
   tags: z.array(z.string()).max(MAX_ATC_TAGS).optional().default([]),
   steps: z.array(AtcStepInputSchema).min(1),
@@ -59,7 +63,9 @@ export const AtcUpdateBodySchema = AtcWriteBodySchema.extend({
 // everything else from the source ATC. An empty body is valid and defaults
 // the copy's title to `<source> (copy)`.
 export const AtcDuplicateBodySchema = z.object({
-  new_title: z.string().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX).optional(),
+  // BK-622 — same pre-trim/post-trim fix as `title` above; the route writes
+  // `title?.trim()`.
+  new_title: z.string().trim().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX).optional(),
 });
 
 // BK-23 — default title for a duplicate when the caller supplies none. Single
