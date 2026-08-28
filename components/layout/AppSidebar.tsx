@@ -6,6 +6,7 @@ import type { MemberRole } from '@lib/types';
 import type { ComponentType } from 'react';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { NotificationsPanel } from '@components/notifications/NotificationsPanel';
+import { OpenInboxFromQuery } from '@components/notifications/OpenInboxFromQuery';
 import { useAuth } from '@components/providers/auth-context';
 import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
@@ -35,7 +36,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
@@ -442,6 +443,9 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
 
   return (
     <aside className="flex h-screen flex-col overflow-hidden border-r border-stroke-1 bg-surface-1">
+      <Suspense fallback={null}>
+        <OpenInboxFromQuery onOpen={() => { if (!notifOpen) { toggleNotifications(); } }} />
+      </Suspense>
       {/* Logo + Notifications bell + New */}
       <div className="flex items-center justify-between gap-2 px-3.5 pb-3 pt-3.5">
         <span className="inline-flex items-center gap-2">
