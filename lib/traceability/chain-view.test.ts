@@ -24,6 +24,7 @@ import {
   isDateRangeInverted,
   isFilteredEmpty,
   isFilteringActive,
+  mergeFilterParamsIntoUrl,
   parseFilterStateFromParams,
   resolveAtcRowState,
   resolveKnownModuleId,
@@ -540,5 +541,37 @@ describe('URL query params <-> filter state (AC5)', () => {
 
   test('RESULT_FILTER_VALUES matches AC1.3\'s mandated six-value set, in order', () => {
     expect(RESULT_FILTER_VALUES).toEqual(['pass', 'fail', 'blocked', 'skipped', 'aborted', 'running']);
+  });
+});
+
+describe('mergeFilterParamsIntoUrl (BK-717 — a filter change must not drop unrelated URL params)', () => {
+  test('reproduces the reported defect: `story` survives a Fail-filter click instead of vanishing', () => {
+    // Repro as filed: land on `?story=<id>`, press "Fail". Before the fix,
+    // `syncFilterUrl` rebuilt the URL from `filterStateToParams(next)`
+    // alone — which has no notion of `story` — so the deep-link id was
+    // silently dropped and a reload fell back to "Select a user story".
+    const current = new URLSearchParams('story=us-42');
+    const merged = mergeFilterParamsIntoUrl(current, filterState({ results: ['fail'] }));
+    expect(merged.toString()).toBe('story=us-42&result=fail');
+  });
+
+  test('preserves `story` whichever position it was in, alongside every filter axis', () => {
+    const current = new URLSearchParams('story=us-1');
+    const state = filterState({ results: ['fail'], moduleId: 'mod-1', from: '2026-07-20', to: '2026-07-25' });
+    const merged = mergeFilterParamsIntoUrl(current, state);
+    expect(merged.get('story')).toBe('us-1');
+    expect(merged.toString()).toBe('story=us-1&result=fail&module=mod-1&from=2026-07-20&to=2026-07-25');
+  });
+
+  test('replaces a stale filter value rather than appending a duplicate', () => {
+    const current = new URLSearchParams('story=us-1&result=pass');
+    const merged = mergeFilterParamsIntoUrl(current, filterState({ results: ['fail'] }));
+    expect(merged.getAll('result')).toEqual(['fail']);
+  });
+
+  test('Clear-all (EMPTY_FILTER_STATE) drops every filter key but keeps `story`', () => {
+    const current = new URLSearchParams('story=us-1&result=fail&module=mod-1');
+    const merged = mergeFilterParamsIntoUrl(current, EMPTY_FILTER_STATE);
+    expect(merged.toString()).toBe('story=us-1');
   });
 });
