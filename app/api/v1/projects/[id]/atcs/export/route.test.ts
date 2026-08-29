@@ -77,6 +77,9 @@ async function bodyBytes(response: Response): Promise<number[]> {
   return [...new Uint8Array(await response.arrayBuffer())];
 }
 
+// One row past PostgREST's `db-max-rows` cap — see the over-cap seeding block.
+const OVER_CAP_MODULE_COUNT = ATCS_EXPORT_PAGE_SIZE + 1;
+
 describe('BK-315 — GET /api/v1/projects/{id}/atcs/export — auth gate (no DB needed)', () => {
   it('rejects a fully unauthenticated request with 401 (AC3.4)', async () => {
     const response = await GET(exportRequest(NONEXISTENT_PROJECT_ID));
@@ -113,7 +116,6 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
     token: string
     foreignProjectId: string | null
     overCapProjectId: string
-    overCapModulePath: string
   } | null = null;
 
   beforeAll(async () => {
@@ -177,54 +179,57 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
     if (atcError) { throw atcError; }
 
     // BK-637 defect 2 — a Project whose module set is one row PAST PostgREST's
-    // `db-max-rows` cap, with its only ATC deliberately attached to a module
-    // that sorts past that cap by id. An unpaged `select` on `modules` returns
-    // the first 1000 rows with HTTP 200 and no error, so `modulePathById` is
-    // missing exactly this module and the export 500s for this Project on
-    // every attempt. Seeded against the real database because the cap is
-    // enforced by PostgREST, not by any code a mock could stand in for.
-    const overCapModuleRows = Array.from({ length: ATCS_EXPORT_PAGE_SIZE + 1 }, (_, i) => ({
+    // `db-max-rows` cap, with ONE ATC per module. Seeded against the real
+    // database because the cap is enforced by PostgREST, not by any code a
+    // mock could stand in for.
+    //
+    // The pigeonhole is what makes this deterministic, and it is the whole
+    // point of the shape: an unpaged `select` on `modules` comes back with
+    // exactly 1000 rows (HTTP 200, no error, no signal), while the ATCs
+    // reference 1001 DISTINCT modules — so at least one ATC is guaranteed to
+    // reference a module that is missing from `modulePathById`, whatever order
+    // the unranged read happened to return. Attaching a single ATC to one
+    // "past the cap" module does NOT work: an unranged select carries no ORDER
+    // BY, so which single module gets dropped is not knowable in advance, and
+    // such a test passes against the unfixed code most of the time.
+    const overCapModuleRows = Array.from({ length: OVER_CAP_MODULE_COUNT }, (_, i) => ({
       project_id: overCapProjectId,
       path: `mod-${String(i).padStart(5, '0')}`,
       name: `Module ${i}`,
     }));
-    const { error: overCapModulesError } = await db.from('modules').insert(overCapModuleRows);
-    if (overCapModulesError) { throw overCapModulesError; }
-
-    // Module ids are random UUIDs, so "past the cap" is only knowable by
-    // reading back in the same `order('id')` the route pages on.
-    const { data: pastCapModules, error: pastCapError } = await db
+    const { data: overCapModules, error: overCapModulesError } = await db
       .from('modules')
-      .select('id, path')
-      .eq('project_id', overCapProjectId)
-      .order('id', { ascending: true })
-      .range(ATCS_EXPORT_PAGE_SIZE, ATCS_EXPORT_PAGE_SIZE);
-    if (pastCapError) { throw pastCapError; }
-    const pastCapModule = requirePrecondition(
-      (pastCapModules ?? [])[0],
-      `expected a module at index ${ATCS_EXPORT_PAGE_SIZE} of the over-cap Project`,
+      .insert(overCapModuleRows)
+      .select('id, path');
+    if (overCapModulesError) { throw overCapModulesError; }
+    requirePrecondition(
+      (overCapModules ?? []).length === OVER_CAP_MODULE_COUNT ? true : null,
+      `expected ${OVER_CAP_MODULE_COUNT} seeded modules, got ${(overCapModules ?? []).length}`,
     );
 
+    // `atcs.user_story_id` carries no cross-check against `atcs.module_id`, so
+    // one User Story is enough to satisfy the FK for every seeded ATC — this
+    // suite is exercising the module read, not the story model.
     const { data: overCapStory, error: overCapStoryError } = await db
       .from('user_stories')
-      .insert({ module_id: pastCapModule.id, title: `${prefix} overcap story` })
+      .insert({ module_id: overCapModules[0].id, title: `${prefix} overcap story` })
       .select('id')
       .single();
     if (overCapStoryError) { throw overCapStoryError; }
 
-    const { error: overCapAtcError } = await db
-      .from('atcs')
-      .insert({
+    const { error: overCapAtcError } = await db.from('atcs').insert(
+      (overCapModules ?? []).map((m, i) => ({
         project_id: overCapProjectId,
-        module_id: pastCapModule.id,
+        module_id: m.id,
         user_story_id: overCapStory.id,
-        slug: `${prefix}-overcap-atc`,
-        title: 'Exports even past the module row cap',
+        slug: `${prefix}-overcap-atc-${String(i).padStart(5, '0')}`,
+        title: `Exports past the module row cap ${i}`,
         layer: 'API',
         version: 1,
         status: 'unrun',
         tags: [],
-      });
+      })),
+    );
     if (overCapAtcError) { throw overCapAtcError; }
 
     const pat = await mintPat({
@@ -243,7 +248,6 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       token: pat.token,
       foreignProjectId,
       overCapProjectId,
-      overCapModulePath: pastCapModule.path as string,
     };
   });
 
@@ -285,14 +289,17 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   });
 
   it(`exports a Project with more than ${ATCS_EXPORT_PAGE_SIZE} modules instead of 500ing (BK-637 defect 2)`, async () => {
-    const { overCapProjectId, overCapModulePath, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const { overCapProjectId, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
     const response = await GET(exportRequest(overCapProjectId, token));
     const body = await response.text();
 
     expect(response.status).toBe(200);
-    const lines = body.split('\r\n').filter(Boolean);
-    expect(lines).toHaveLength(2);
-    expect(lines[1]).toContain(`,${overCapModulePath},API,`);
+    const dataLines = body.split('\r\n').filter(Boolean).slice(1);
+    expect(dataLines).toHaveLength(OVER_CAP_MODULE_COUNT);
+    // Every seeded module resolved to a path — no module silently dropped by a
+    // capped read, and no ATC left pointing at a module that "does not exist".
+    const modulePaths = new Set(dataLines.map(line => line.split(',')[3]));
+    expect(modulePaths.size).toBe(OVER_CAP_MODULE_COUNT);
   });
 
   it('returns the identical 404 not_found for a nonexistent Project id (AC3.2)', async () => {
