@@ -1,8 +1,12 @@
 // BK-315 — renders a Project's ATC library into an RFC4180 CSV document for a
-// client-initiated download. Pure and framework-agnostic (no Next, no
-// Supabase), mirroring the BK-45/BK-46 convention of keeping testable
-// rendering logic in a plain `lib/` module (`lib/traceability/export-snapshot.ts`,
-// `lib/coverage/coverage-view.ts`).
+// client-initiated download. Framework-agnostic (no Next, no Supabase),
+// mirroring the BK-45/BK-46 convention of keeping testable rendering logic in a
+// plain `lib/` module (`lib/traceability/export-snapshot.ts`,
+// `lib/coverage/coverage-view.ts`). The rendering half is pure; BK-637 added
+// the wire-side BOM contract at the bottom of this file, which touches `Response`
+// and `Blob` (both Web standards, still no framework) so that the encoding rule
+// and the two places that must honour it live together instead of one being a
+// bare constant in a route with its consuming half implied nowhere.
 //
 // Business rules (Jira BK-315, `customfield_10054`, PO Q1/Q2 rulings):
 //   - Fixed column order: ATC ID, Slug, Title, Module, Layer, Tags, Status.
@@ -94,4 +98,41 @@ export function renderAtcsCsv(rows: AtcExportRow[]): string {
 
 export function atcsExportFilename(projectSlug: string): string {
   return `${projectSlug}-atcs.csv`;
+}
+
+// A UTF-8 byte-order mark. `business-rules.md` requires "CSV, UTF-8" and this
+// export's stated audience is non-technical auditors opening the file in Excel
+// on Windows (story Context: "people opening this in Excel/Sheets, not
+// developers reading raw CSV") — without a BOM, Windows Excel decodes a
+// BOM-less .csv with the system ANSI codepage, so any non-ASCII Title/Tag
+// (e.g. "Validación de pago") renders as mojibake ("ValidaciÃ³n"). A BOM fixes
+// that at the cost of tripping a minority of strict RFC4180 parsers — judged
+// worth it for this export's actual audience (Conductor review, optional item,
+// dev-owned call).
+export const UTF8_BOM = '﻿';
+
+// Idempotent, so the BOM can be asserted on both sides of the wire without any
+// risk of emitting two of them (BK-637).
+export function withUtf8Bom(csv: string): string {
+  return csv.startsWith(UTF8_BOM) ? csv : UTF8_BOM + csv;
+}
+
+const CSV_BLOB_TYPE = 'text/csv;charset=utf-8';
+
+// BK-637 — the read half of the BOM contract. It returns the Blob rather than
+// the string on purpose: the Blob's bytes are what actually land on disk, so
+// this is the last point where the BOM can still be asserted by a test. A
+// helper that stopped at the string would leave the `new Blob([...])` call
+// sitting untested in a client component, which is one file away from the
+// false green this ticket was filed about.
+//
+// Why the step exists at all: `Response.text()` runs the WHATWG "UTF-8 decode"
+// algorithm, and stripping a leading BOM is part of that algorithm — not a
+// runtime quirk. So the BOM the route writes onto the wire is already gone by
+// the time a browser holds a string, and a Blob built from that string writes a
+// BOM-less file, defeating the server-side BOM on the exact path it was added
+// for. `withUtf8Bom` is idempotent, so this is also correct on a runtime that
+// does not strip.
+export async function csvBlobFromResponse(response: Response): Promise<Blob> {
+  return new Blob([withUtf8Bom(await response.text())], { type: CSV_BLOB_TYPE });
 }

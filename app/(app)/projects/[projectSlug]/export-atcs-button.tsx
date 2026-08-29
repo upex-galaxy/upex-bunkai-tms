@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@components/ui/button';
+import { csvBlobFromResponse } from '@lib/atcs/csv-export';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -12,6 +13,12 @@ import { toast } from 'sonner';
 // Disabled while the request is in flight — a one-shot action trigger, not a
 // filter input (Dev Q3 ruling, Jira BK-315), matching the disable-while-loading
 // pattern at `ProjectRunsReportView.tsx:495`.
+//
+// BK-637 — the response is turned into a Blob by `csvBlobFromResponse`, never
+// by a bare `response.text()` + `new Blob(...)` here: `text()` strips the
+// route's UTF-8 BOM as part of the WHATWG UTF-8 decode, and the saved file
+// would then be BOM-less. The construction lives in the lib so the bytes that
+// reach disk are asserted by a test rather than only by this comment.
 
 const FALLBACK_ERROR_MESSAGE = 'Could not export the ATC library.';
 const FALLBACK_FILENAME = 'atcs.csv';
@@ -22,8 +29,7 @@ function filenameFromContentDisposition(header: string | null): string | null {
   return match?.[1] ?? null;
 }
 
-function triggerCsvDownload(csv: string, filename: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+function triggerCsvDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -45,9 +51,9 @@ export function ExportAtcsButton({ projectId }: { projectId: string }) {
         toast.error(body.error?.message ?? FALLBACK_ERROR_MESSAGE);
         return;
       }
-      const csv = await response.text();
+      const blob = await csvBlobFromResponse(response);
       const filename = filenameFromContentDisposition(response.headers.get('content-disposition')) ?? FALLBACK_FILENAME;
-      triggerCsvDownload(csv, filename);
+      triggerCsvDownload(blob, filename);
       toast.success('ATC library exported', { description: `Saved as ${filename}.` });
     }
     catch (err) {
