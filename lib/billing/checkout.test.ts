@@ -19,12 +19,22 @@ void mock.module('server-only', () => ({}));
 // convention as `app/api/v1/billing/webhook/route.test.ts`.
 //
 // `mock.module` is PROCESS-wide, not file-scoped, and `bun test` does not
-// guarantee file order — so both substitutions here are supersets that behave
-// exactly like the real module when this file's tests are not the ones
-// running. Without that, whichever of this file and the webhook route test
-// registered its `@lib/billing/stripe` mock last would silently break the
-// other (observed: the webhook's RPC-dispatch case answering 500 instead of
-// 502 because it got this file's admin double).
+// guarantee file order. Without care, whichever of this file and the webhook
+// route test registered its `@lib/billing/stripe` mock last would silently
+// break the other (observed: the webhook's RPC-dispatch case answering 500
+// instead of 502 because it got this file's admin double).
+//
+// Precisely what is safe, so nobody over-reads it: `createAdminClient` and
+// `getStripeClient().checkout` fall through to real behaviour whenever this
+// file's tests are not the ones steering them (`stripeRetrieve` /
+// `adminFactory` are reset on BOTH `beforeEach` and `afterEach`), and
+// `getStripeClient()`'s other properties always proxy to a real Stripe
+// instance so `webhooks.constructEventAsync` keeps working. `getStripeCloudPriceId`
+// and `getStripeWebhookSecret` are FIXED FAKES, and none of the three ever
+// throws `payment_processor_unavailable` the way the real module does when
+// STRIPE_* is unset. That is fine only while no other suite in this process
+// asserts the unconfigured-Stripe 503 — today the sole other mocker is the
+// webhook route test, using these same constants.
 
 type StripeRetrieve = (sessionId: string) => Promise<{ status: string, url?: string }>;
 
@@ -53,13 +63,18 @@ function passthroughAdminClient(): unknown {
   );
 }
 
-// Everything except `checkout.sessions` falls through to a real Stripe client
-// (that is what keeps `webhooks.constructEventAsync` working for whichever
-// other suite is sharing this process).
+// Everything except `checkout` falls through to a real Stripe client (that is
+// what keeps `webhooks.constructEventAsync` working for whichever other suite
+// is sharing this process). `checkout` itself NEVER falls through: passing it
+// to the real client would send an unsteered test's request to api.stripe.com
+// over the network with a bogus key. Unsteered access throws instead.
 const steerableStripe = new Proxy(passthroughStripe, {
   get(target, prop, receiver) {
-    if (prop === 'checkout' && stripeRetrieve) {
+    if (prop === 'checkout') {
       const impl = stripeRetrieve;
+      if (!impl) {
+        throw new Error('checkout.sessions was reached without a test configuring `stripeRetrieve` — refusing to fall through to the real Stripe API');
+      }
       return {
         sessions: {
           retrieve: async (sessionId: string) => impl(sessionId),
@@ -209,11 +224,24 @@ interface OpenRow {
   stripe_checkout_session_id: string | null
 }
 
+interface RecordedUpdate {
+  patch: Record<string, unknown>
+  filters: [string, unknown][]
+}
+
 // Minimal PostgREST-shaped double covering exactly the two chains
 // `cancelBillingCheckout` builds on the admin client:
 //   read  — .from(t).select(cols).eq().eq().maybeSingle()
 //   write — .from(t).update(patch).eq().eq()   (awaited directly)
-function fakeAdmin(row: OpenRow | null, updates: Record<string, unknown>[]): unknown {
+//
+// The FILTERS are recorded, not just the patch. `.eq('id', …).eq('status',
+// 'open')` is the compare-and-swap that makes this write a lock release: it
+// must not flip a row some other request already moved off `open`. A double
+// that recorded only the patch would stay green if that second `.eq` were
+// deleted — and because the chain is awaited directly, the awaited value
+// would then be a non-thenable and `updateError` would silently be
+// `undefined`.
+function fakeAdmin(row: OpenRow | null, updates: RecordedUpdate[]): unknown {
   return {
     from: (table: string) => {
       if (table !== 'billing_checkout_sessions') {
@@ -226,8 +254,19 @@ function fakeAdmin(row: OpenRow | null, updates: Record<string, unknown>[]): unk
           }),
         }),
         update: (patch: Record<string, unknown>) => {
-          updates.push(patch);
-          return { eq: () => ({ eq: async () => ({ error: null }) }) };
+          const recorded: RecordedUpdate = { patch, filters: [] };
+          updates.push(recorded);
+          // Every link is thenable, so a chain that ends one `.eq` early is
+          // still awaitable — and is then caught by the filter assertion
+          // rather than resolving to `undefined` and passing silently.
+          const link = {
+            eq: (column: string, value: unknown) => {
+              recorded.filters.push([column, value]);
+              return link;
+            },
+            then: (resolve: (result: { error: null }) => unknown) => resolve({ error: null }),
+          };
+          return link;
         },
       };
     },
@@ -301,7 +340,7 @@ describe('cancelBillingCheckout — already-complete branch (PR #208 review item
     // webhook's own paid event no-ops against it. The assertion that matters
     // is not the 409, it is that NOTHING was written and expire() was never
     // called, so the paid row survives for the webhook to apply.
-    const updates: Record<string, unknown>[] = [];
+    const updates: RecordedUpdate[] = [];
     adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
     stripeRetrieve = async () => ({ status: 'complete' });
 
@@ -323,14 +362,21 @@ describe('cancelBillingCheckout — already-complete branch (PR #208 review item
     // The paired positive case. A 409 on its own is also what a cancel path
     // that is simply broken would produce; only the two together isolate the
     // already-complete branch as the thing under test.
-    const updates: Record<string, unknown>[] = [];
+    const updates: RecordedUpdate[] = [];
     adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
     stripeRetrieve = async () => ({ status: 'open', url: 'https://checkout.stripe.test/session' });
 
     await cancelBillingCheckout({ db: ownerDb(), workspaceId: WORKSPACE_ID });
 
     expect(stripeExpireCalls).toEqual([STRIPE_SESSION_ID]);
-    expect(updates).toEqual([{ status: 'canceled' }]);
+    // Both the patch AND its filters: `.eq('status', 'open')` is the
+    // compare-and-swap that stops this write from flipping a row another
+    // request already moved off `open`. Asserting the patch alone would stay
+    // green if that filter were dropped.
+    expect(updates).toEqual([{
+      patch: { status: 'canceled' },
+      filters: [['id', OPEN_ROW_ID], ['status', 'open']],
+    }]);
   });
 });
 
@@ -355,7 +401,7 @@ describe('cancelBillingCheckout — Stripe retrieve() failure (BK-638 defect 2)'
   }
 
   test('the caller never receives Stripe\'s upstream message in the response body', async () => {
-    const updates: Record<string, unknown>[] = [];
+    const updates: RecordedUpdate[] = [];
     adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
     stripeRetrieve = async () => { throw new Error(UPSTREAM_TEXT); };
 
@@ -377,12 +423,14 @@ describe('cancelBillingCheckout — Stripe retrieve() failure (BK-638 defect 2)'
   });
 
   test('a payment processor that is not configured keeps its own 503 rather than collapsing to 500', async () => {
-    // `getStripeClient()` throws `payment_processor_unavailable` (an
-    // ApiError, not an upstream failure). A guard that swallowed every throw
-    // into `internal_error` would turn a configuration answer into a server
-    // fault and cost the operator that signal.
+    // FORWARD guard, not evidence for this fix: it passes with OR without the
+    // try/catch, because an ApiError left unguarded reaches `toApiError`
+    // unchanged and produces the same 503. What it protects against is a
+    // FUTURE over-broad catch here swallowing `getStripeClient()`'s own
+    // `payment_processor_unavailable` into a generic 500 and costing the
+    // operator the "Stripe is not configured" signal.
     const { ApiError } = await import('@lib/api/error-envelope');
-    const updates: Record<string, unknown>[] = [];
+    const updates: RecordedUpdate[] = [];
     adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
     stripeRetrieve = async () => { throw new ApiError('payment_processor_unavailable', 'The payment processor is not configured for this environment.'); };
 

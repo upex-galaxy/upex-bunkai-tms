@@ -34,13 +34,21 @@ void mock.module('@lib/billing/stripe', () => ({
 
 const { POST } = await import('./route');
 
-// BK-638 item 6 — the DB gate covers only the cases that actually reach the
-// database. Signature verification runs BEFORE `createAdminClient()` is ever
-// called (see route.ts: the `stripe-signature` check and
-// `constructEventAsync` both answer 400 above that line), so gating those
-// three behind Supabase secrets silently deleted the security coverage on
-// exactly the CI runners that lack them. They report as `skip`, not as a
-// false pass — but a skipped signature test guards nothing.
+// BK-638 item 6 — the DB gate now covers only the cases that actually reach
+// the database. Signature verification runs BEFORE `createAdminClient()` is
+// ever called (route.ts: the `stripe-signature` check and
+// `constructEventAsync` both answer 400 above that line), so those three
+// never needed Supabase secrets.
+//
+// The ticket framed this as coverage that "silently vanishes" on a runner
+// without those secrets. It does not, and the correction matters for anyone
+// relying on this gate: `lib/env.ts` validates NEXT_PUBLIC_SUPABASE_URL
+// (`.url()`) and SUPABASE_SERVICE_ROLE_KEY (`.min(1)`) at import, so a runner
+// missing either one fails this whole FILE at load rather than skipping it.
+// Reading the same two variables, `hasEnv` below could only ever be true
+// wherever this file loads at all. The gate was dead, not fail-open — but it
+// described a boundary that was not the real one, which is the part worth
+// removing.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const hasEnv = Boolean(url && serviceKey);

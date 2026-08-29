@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'bun:test';
 
 // BK-638 defect 1 — the cancel route can answer 409, but its OpenAPI spec
@@ -17,7 +17,22 @@ import { describe, expect, it } from 'bun:test';
 // contract test consumes, so a `.openapi.ts` edit that was never followed by
 // `bun run openapi:gen` must fail here too.
 
-const REPO_ROOT = join(import.meta.dir, '..', '..', '..', '..', '..', '..', '..', '..');
+// Walk up to the directory holding `package.json` rather than counting `..`
+// segments — this file sits eight levels down and a route move would otherwise
+// break it with a bare ENOENT.
+function repoRoot(): string {
+  let dir = import.meta.dir;
+  while (!existsSync(join(dir, 'package.json'))) {
+    const parent = dirname(dir);
+    if (parent === dir) {
+      throw new Error('could not locate the repository root from this test file');
+    }
+    dir = parent;
+  }
+  return dir;
+}
+
+const REPO_ROOT = repoRoot();
 const CANCEL_PATH = '/api/v1/workspaces/{id}/billing/checkout/cancel';
 
 interface OpenApiDoc {
@@ -45,9 +60,18 @@ describe('POST /workspaces/{id}/billing/checkout/cancel — OpenAPI response cov
   });
 
   it('declares the 400 the route throws on a malformed workspace id', () => {
-    // route.ts rejects a non-UUID `{id}` with `bad_request` BEFORE auth
-    // resolution — the same outcome the sibling begin-checkout spec declares.
+    // route.ts rejects a non-UUID `{id}` with `bad_request`. Reachable only by
+    // an already-authenticated caller holding `workspace:admin` —
+    // `withApiHandler` resolves identity and enforces capabilities before the
+    // handler body runs — same as the sibling begin-checkout spec declares.
     expect(Object.keys(cancelResponses('public/openapi.json'))).toContain('400');
+  });
+
+  it('declares the 500 the Stripe guard and the row read/write failures produce', () => {
+    // `internal_error`: the BK-638 guard around `sessions.retrieve()`, plus
+    // the owner-check RPC error, the open-row select error, and the status
+    // update error. Seven other route specs under app/api/v1 declare 500.
+    expect(Object.keys(cancelResponses('public/openapi.json'))).toContain('500');
   });
 
   it('declares the 503 an unconfigured payment processor produces', () => {

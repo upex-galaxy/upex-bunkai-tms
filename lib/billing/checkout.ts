@@ -354,11 +354,18 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     // a raw Error to lib/api/handler.ts's `toApiError`, which wraps anything
     // non-ApiError as `internal_error` carrying `raw.message` — and
     // `errorResponse` copies that message straight into the response body.
-    // Same guard shape as beginBillingCheckout's around
-    // `sessions.create` above, with one deliberate difference: the upstream
-    // text goes to the LOG, not to the caller. This is a payment route, and
-    // echoing an upstream processor's error string back is disclosure the
-    // operator gains nothing from.
+    // Same guard SHAPE as beginBillingCheckout's around `sessions.create`
+    // above, with one deliberate difference: the upstream text goes to the
+    // LOG, not to the caller. This is a payment route, and echoing an upstream
+    // processor's error string back is disclosure the caller gains nothing
+    // from.
+    //
+    // Do not read that as "begin is already safe". It is NOT: its catch at
+    // ~:194 still interpolates `raw.message` into the response, and
+    // `reuseOpenCheckoutSession`'s own `sessions.retrieve()` at ~:262 has no
+    // guard at all. Both are outside BK-638's scope, which names this call
+    // site only, and reuseOpenCheckoutSession belongs to the deferred
+    // double-payable-URL item routed to BK-636.
     let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
     try {
       stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);

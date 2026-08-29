@@ -2127,6 +2127,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorEnvelope"];
                     };
                 };
+                /** @description The payment processor could not be reached to check the session, or the session row could not be read or written (`internal_error`). The one-open-session lock is deliberately NOT released on this path — cancelling a session that may already have been paid is worse than refusing. */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
                 /** @description Stripe is not configured for this environment (`payment_processor_unavailable`). */
                 503: {
                     headers: {

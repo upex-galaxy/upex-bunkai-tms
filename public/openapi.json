@@ -7371,6 +7371,16 @@
               }
             }
           },
+          "500": {
+            "description": "The payment processor could not be reached to check the session, or the session row could not be read or written (`internal_error`). The one-open-session lock is deliberately NOT released on this path — cancelling a session that may already have been paid is worse than refusing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
             "content": {
