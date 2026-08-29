@@ -1,12 +1,12 @@
 # ADR-0013 — Workspace deletion: soft-delete with a grace period, sole-owner gate, and no member eviction
 
-- **Status:** Accepted — Not yet implemented <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
+- **Status:** Superseded by ADR-0015 <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-08-20
 - **Deciders:** AI Product Owner + AI Tech Lead (joint, per `CLAUDE.md` Critical Rule #18 — this project is AI-led and has no human PO; the operator directed that the decision be recorded before the mockup, not after)
 - **Tags:** tenancy, data-lifecycle, irreversible-action, gdpr, cross-cutting-invariant
 - **Story:** BK-512 (Delete a workspace I own)
 - **Supersedes:** — (extends the tenancy model established in ADR-0001; pairs with BK-508, workspace data export)
-- **Superseded by:** —
+- **Superseded by:** ADR-0015 — on two facts that changed after this ADR was written: `pg_cron` shipped in `0075_run_inactivity_sweep.sql` (2026-08-24), removing the "purge is new infrastructure" cost; and clause 4's *"or being removed"* escape hatch was found not to exist in the product, making any workspace with a second member permanently undeletable. **The decision body below is left unedited as the historical record.**
 
 ---
 
