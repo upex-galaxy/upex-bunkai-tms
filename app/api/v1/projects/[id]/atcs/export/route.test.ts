@@ -77,8 +77,18 @@ async function bodyBytes(response: Response): Promise<number[]> {
   return [...new Uint8Array(await response.arrayBuffer())];
 }
 
-// One row past PostgREST's `db-max-rows` cap — see the over-cap seeding block.
-const OVER_CAP_MODULE_COUNT = ATCS_EXPORT_PAGE_SIZE + 1;
+// PostgREST's own `db-max-rows` ceiling, empirically confirmed against this
+// project's API (`Range: 0-99999` on `atcs` came back `content-range:
+// 0-999/2973`). Deliberately NOT derived from `ATCS_EXPORT_PAGE_SIZE`: the two
+// happen to be equal today, but the truncation this suite reproduces is caused
+// by the SERVER's ceiling, not by the app's page size. Lowering
+// `ATCS_EXPORT_PAGE_SIZE` alone would otherwise shrink the fixture below the
+// ceiling and the test would pass against the unfixed route while still calling
+// itself the defect-2 regression.
+const POSTGREST_DB_MAX_ROWS = 1000;
+
+// One row past whichever ceiling binds first — see the over-cap seeding block.
+const OVER_CAP_MODULE_COUNT = Math.max(ATCS_EXPORT_PAGE_SIZE, POSTGREST_DB_MAX_ROWS) + 1;
 
 describe('BK-315 — GET /api/v1/projects/{id}/atcs/export — auth gate (no DB needed)', () => {
   it('rejects a fully unauthenticated request with 401 (AC3.4)', async () => {
@@ -141,10 +151,17 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       ])
       .select('id, slug');
     if (projectsError) { throw projectsError; }
-    const emptyProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-empty'))!.id as string;
-    const populatedProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-full'))!.id as string;
-    const overCapProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-overcap'))!.id as string;
-    createdProjectIds.push(emptyProjectId, populatedProjectId, overCapProjectId);
+    // Register EVERY inserted id for teardown BEFORE any lookup that can throw
+    // — a failed `.find()` below would otherwise abandon all three seeded
+    // Projects in the shared dev database with nothing to clean them up.
+    createdProjectIds.push(...(projects ?? []).map(p => p.id as string));
+    const bySuffix = (suffix: string) => requirePrecondition(
+      (projects ?? []).find(p => (p.slug as string).endsWith(suffix)),
+      `seeded Project '${suffix}' missing from the insert result`,
+    ).id as string;
+    const emptyProjectId = bySuffix('-empty');
+    const populatedProjectId = bySuffix('-full');
+    const overCapProjectId = bySuffix('-overcap');
 
     const { data: userStoryModule, error: moduleError } = await db
       .from('modules')
@@ -202,23 +219,23 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       .insert(overCapModuleRows)
       .select('id, path');
     if (overCapModulesError) { throw overCapModulesError; }
-    requirePrecondition(
-      (overCapModules ?? []).length === OVER_CAP_MODULE_COUNT ? true : null,
-      `expected ${OVER_CAP_MODULE_COUNT} seeded modules, got ${(overCapModules ?? []).length}`,
-    );
+    const seededModules = overCapModules ?? [];
+    if (seededModules.length !== OVER_CAP_MODULE_COUNT) {
+      throw new Error(`[atcs/export route] precondition not met — expected ${OVER_CAP_MODULE_COUNT} seeded modules, got ${seededModules.length}. The pigeonhole below needs the full set.`);
+    }
 
     // `atcs.user_story_id` carries no cross-check against `atcs.module_id`, so
     // one User Story is enough to satisfy the FK for every seeded ATC — this
     // suite is exercising the module read, not the story model.
     const { data: overCapStory, error: overCapStoryError } = await db
       .from('user_stories')
-      .insert({ module_id: overCapModules[0].id, title: `${prefix} overcap story` })
+      .insert({ module_id: seededModules[0].id, title: `${prefix} overcap story` })
       .select('id')
       .single();
     if (overCapStoryError) { throw overCapStoryError; }
 
     const { error: overCapAtcError } = await db.from('atcs').insert(
-      (overCapModules ?? []).map((m, i) => ({
+      seededModules.map((m, i) => ({
         project_id: overCapProjectId,
         module_id: m.id,
         user_story_id: overCapStory.id,
@@ -291,9 +308,11 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   it(`exports a Project with more than ${ATCS_EXPORT_PAGE_SIZE} modules instead of 500ing (BK-637 defect 2)`, async () => {
     const { overCapProjectId, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
     const response = await GET(exportRequest(overCapProjectId, token));
-    const body = await response.text();
+    const bytes = await bodyBytes(response);
 
     expect(response.status).toBe(200);
+    expect(bytes.slice(0, 3)).toEqual(UTF8_BOM_BYTES);
+    const body = new TextDecoder().decode(new Uint8Array(bytes.slice(3)));
     const dataLines = body.split('\r\n').filter(Boolean).slice(1);
     expect(dataLines).toHaveLength(OVER_CAP_MODULE_COUNT);
     // Every seeded module resolved to a path — no module silently dropped by a

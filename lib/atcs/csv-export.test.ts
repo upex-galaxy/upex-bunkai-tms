@@ -1,6 +1,6 @@
 import type { AtcExportRow } from './csv-export';
 import { describe, expect, it } from 'bun:test';
-import { atcsExportFilename, readCsvForDownload, renderAtcsCsv, UTF8_BOM, withUtf8Bom } from './csv-export';
+import { atcsExportFilename, csvBlobFromResponse, renderAtcsCsv, UTF8_BOM, withUtf8Bom } from './csv-export';
 
 function row(overrides: Partial<AtcExportRow> = {}): AtcExportRow {
   return {
@@ -164,36 +164,44 @@ describe('atcsExportFilename', () => {
 // drops the leading BOM. A test written against the string shape passes with
 // or without the fix and proves nothing; that false green is what this ticket
 // was filed about.
-describe('BK-637 — the UTF-8 BOM survives the browser download path', () => {
+describe('BK-637 — the BOM contract, and the runtime assumption it rests on', () => {
   const csv = renderAtcsCsv([row({ title: 'Validación de pago' })]);
 
   // What the route actually puts on the wire, delivered the way the network
-  // delivers it.
+  // delivers it: as BYTES. That distinction IS the bug. A `Response` built from
+  // a JS string hands `text()` back the same string verbatim with the BOM
+  // intact (no encode/decode round-trip), while a byte-backed one — the only
+  // shape a browser ever sees — runs the WHATWG UTF-8 decode and drops the
+  // leading BOM. A test written against the string shape passes with or without
+  // the fix. The route's real wire bytes are asserted separately, against the
+  // real handler, in `app/api/v1/projects/[id]/atcs/export/route.test.ts`.
   function wireResponse(body: string): Response {
     return new Response(new TextEncoder().encode(body));
   }
 
-  it('confirms the wire body carries the BOM bytes EF BB BF', async () => {
-    const bytes = new Uint8Array(await wireResponse(withUtf8Bom(csv)).arrayBuffer());
-    expect([...bytes.slice(0, 3)]).toEqual([0xEF, 0xBB, 0xBF]);
-  });
-
-  it('documents the stripping that causes the bug — a raw text() read loses the BOM', async () => {
+  it('pins the runtime behaviour that causes the bug — a raw text() read loses the BOM', async () => {
     const stripped = await wireResponse(withUtf8Bom(csv)).text();
     expect(stripped.startsWith(UTF8_BOM)).toBe(false);
     expect(stripped.codePointAt(0)).toBe(csv.codePointAt(0));
   });
 
-  it('restores the BOM on the string handed to the Blob, so the saved file opens as UTF-8 in Excel', async () => {
-    const forDownload = await readCsvForDownload(wireResponse(withUtf8Bom(csv)));
-    expect(forDownload.codePointAt(0)).toBe(0xFEFF);
-    expect(forDownload.slice(1)).toBe(csv);
+  it('gives the Blob a body whose first bytes are the BOM, so the SAVED FILE opens as UTF-8 in Excel', async () => {
+    const blob = await csvBlobFromResponse(wireResponse(withUtf8Bom(csv)));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xEF, 0xBB, 0xBF]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe(csv);
+    expect(blob.type).toBe('text/csv;charset=utf-8');
   });
 
-  it('writes exactly one BOM even when a runtime hands back a body that kept its own', async () => {
-    const forDownload = await readCsvForDownload(new Response(withUtf8Bom(csv)));
-    expect(forDownload.startsWith(UTF8_BOM + UTF8_BOM)).toBe(false);
-    expect(forDownload).toBe(withUtf8Bom(csv));
+  // Asserted on bytes, and on `slice(3)` rather than the whole buffer, because
+  // `TextDecoder` ALSO strips a leading BOM by default — decoding the full
+  // buffer would hide a double BOM instead of catching it.
+  it('writes exactly one BOM even on a runtime that hands back a body which kept its own', async () => {
+    const blob = await csvBlobFromResponse(new Response(withUtf8Bom(csv)));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xEF, 0xBB, 0xBF]);
+    expect([...bytes.slice(3, 6)]).not.toEqual([0xEF, 0xBB, 0xBF]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe(csv);
   });
 
   it('is idempotent on a body that already starts with a BOM', () => {
