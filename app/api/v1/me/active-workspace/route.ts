@@ -65,4 +65,12 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // Session-only, enforced by the gateway before the body runs — the message is
 // the one this route has always returned, moved verbatim from the
 // `assertSessionOnly` guard it replaces.
-}, { auth: 'cookie-only', why: 'Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead.' });
+// BK-623 — `Use a browser session.` is AC5's literal remedy sentence, required
+// on BOTH session-only routes. It was missing here while the sibling
+// `DELETE /workspaces/{id}/membership` carried it, so the same class of
+// rejection gave two different remedies. The sentence is inserted in the
+// sibling's position (straight after the reason); the workspace_id guidance
+// that followed is kept verbatim, since it is the token-side alternative and
+// AC5 asks for the sentence to be present, not for the rest to be replaced.
+// Message text only — the guard, the status and the error code are unchanged.
+}, { auth: 'cookie-only', why: 'Personal access tokens have no switchable active workspace. Use a browser session. Pass workspace_id explicitly on each request instead.' });

@@ -480,8 +480,16 @@ describeOrSkip('BK-499 — capability scopes are enforced on reads and identity 
 
     expect(response.status).toBe(403);
     const body = await response.json() as { error?: { message?: string } };
+    // BK-623 — AC5 requires the literal remedy sentence on BOTH session-only
+    // routes, and this route shipped without it. Asserted as a `toContain` on
+    // its own line, separate from the exact-message check below: the exact
+    // check is a change-detector that a future reword silences by being
+    // regenerated, whereas this one states the contract AC5 actually imposes,
+    // so a reword that drops the sentence fails here and names the reason.
+    expect(body.error?.message).toContain('Use a browser session.');
     expect(body.error?.message).toBe(
       'Personal access tokens have no switchable active workspace. '
+      + 'Use a browser session. '
       + 'Pass workspace_id explicitly on each request instead.',
     );
   });
