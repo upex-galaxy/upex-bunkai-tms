@@ -1,13 +1,95 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { describe, expect, mock, test } from 'bun:test';
+import { createClient } from '@supabase/supabase-js';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { NextRequest } from 'next/server';
+import Stripe from 'stripe';
 
 // The module under test imports `@lib/supabase/admin`, which pulls in
 // `server-only`; shim it so the module graph loads under Bun. Same
 // convention as `app/api/v1/runs/route.test.ts` / `lib/api/capability-
 // enforcement.test.ts`.
 void mock.module('server-only', () => ({}));
-const { resolveSeatQuantityBounds, validateSeatQuantity, beginBillingCheckout } = await import('./checkout');
+
+// BK-638 — the cancel-path suites below need Stripe and the admin client to
+// be steerable per test. Both substitutions live above the `await import`
+// (mock.module only reaches modules resolved AFTER it registers) and are
+// deliberately narrow: only the credential/client PROVIDERS are replaced, so
+// every line of `cancelBillingCheckout`'s own logic runs unmocked. Same
+// convention as `app/api/v1/billing/webhook/route.test.ts`.
+//
+// `mock.module` is PROCESS-wide, not file-scoped, and `bun test` does not
+// guarantee file order — so both substitutions here are supersets that behave
+// exactly like the real module when this file's tests are not the ones
+// running. Without that, whichever of this file and the webhook route test
+// registered its `@lib/billing/stripe` mock last would silently break the
+// other (observed: the webhook's RPC-dispatch case answering 500 instead of
+// 502 because it got this file's admin double).
+
+type StripeRetrieve = (sessionId: string) => Promise<{ status: string, url?: string }>;
+
+// Same fixed non-secret as the webhook route test, so a Stripe client built
+// from it verifies signatures identically no matter which mock wins.
+const TEST_STRIPE_SECRET_KEY = 'sk_test_ci_only_not_a_real_key';
+const TEST_WEBHOOK_SECRET = 'whsec_ci_only_not_a_real_secret';
+const passthroughStripe = new Stripe(TEST_STRIPE_SECRET_KEY);
+
+let stripeRetrieve: StripeRetrieve | null = null;
+let stripeExpireCalls: string[] = [];
+let adminFactory: (() => unknown) | null = null;
+let adminBuildCount = 0;
+
+// NOT `await import('@lib/supabase/admin')` for the passthrough: `mock.module`
+// patches the EXISTING module record, so a namespace captured beforehand ends
+// up pointing at this very mock and `createAdminClient()` recurses forever
+// (observed as `bun test` hanging on the first webhook case, no output).
+// Constructing the client here — the same two env vars and the same options
+// `lib/supabase/admin.ts` uses — keeps the fallback a genuinely real client.
+function passthroughAdminClient(): unknown {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
+
+// Everything except `checkout.sessions` falls through to a real Stripe client
+// (that is what keeps `webhooks.constructEventAsync` working for whichever
+// other suite is sharing this process).
+const steerableStripe = new Proxy(passthroughStripe, {
+  get(target, prop, receiver) {
+    if (prop === 'checkout' && stripeRetrieve) {
+      const impl = stripeRetrieve;
+      return {
+        sessions: {
+          retrieve: async (sessionId: string) => impl(sessionId),
+          expire: async (sessionId: string) => {
+            stripeExpireCalls.push(sessionId);
+            return { id: sessionId, status: 'expired' };
+          },
+        },
+      };
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+
+void mock.module('@lib/billing/stripe', () => ({
+  getStripeClient: () => steerableStripe,
+  getStripeCloudPriceId: () => 'price_ci_only_not_real',
+  getStripeWebhookSecret: () => TEST_WEBHOOK_SECRET,
+}));
+
+void mock.module('@lib/supabase/admin', () => ({
+  createAdminClient: () => {
+    adminBuildCount += 1;
+    return adminFactory ? adminFactory() : passthroughAdminClient();
+  },
+}));
+
+const { resolveSeatQuantityBounds, validateSeatQuantity, beginBillingCheckout, cancelBillingCheckout } = await import('./checkout');
+const { withApiHandler } = await import('@lib/api/handler');
 
 // BK-230 — pure-function coverage for the seat-quantity bounds (Scenario
 // 2.4/2.5, the AI Product Owner decision published on the ticket: minimum =
@@ -107,5 +189,208 @@ describe('beginBillingCheckout — owner gate (AC 5.2, server half)', () => {
       expect((err as { code?: string }).code).toBe('forbidden');
       expect((err as { details?: { reason?: string } }).details?.reason).toBe('not_workspace_owner');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BK-638 — cancelBillingCheckout. Three gaps the PR #208 round-2 review
+// raised and the fix round did not close: the owner gate (item 4), the
+// already-complete branch (item 5), and — defect 2 — an unguarded
+// `stripe.checkout.sessions.retrieve()` whose failure reached the caller with
+// Stripe's own upstream text inside the response body.
+// ---------------------------------------------------------------------------
+
+const WORKSPACE_ID = '33333333-3333-3333-3333-333333333333';
+const OPEN_ROW_ID = '44444444-4444-4444-4444-444444444444';
+const STRIPE_SESSION_ID = 'cs_test_bk638_cancel_path';
+
+interface OpenRow {
+  id: string
+  stripe_checkout_session_id: string | null
+}
+
+// Minimal PostgREST-shaped double covering exactly the two chains
+// `cancelBillingCheckout` builds on the admin client:
+//   read  — .from(t).select(cols).eq().eq().maybeSingle()
+//   write — .from(t).update(patch).eq().eq()   (awaited directly)
+function fakeAdmin(row: OpenRow | null, updates: Record<string, unknown>[]): unknown {
+  return {
+    from: (table: string) => {
+      if (table !== 'billing_checkout_sessions') {
+        throw new Error(`unexpected admin table access: ${table}`);
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: row, error: null }) }),
+          }),
+        }),
+        update: (patch: Record<string, unknown>) => {
+          updates.push(patch);
+          return { eq: () => ({ eq: async () => ({ error: null }) }) };
+        },
+      };
+    },
+  };
+}
+
+function ownerDb(): SupabaseClient<Database> {
+  return {
+    rpc: async (fn: string) => {
+      if (fn === 'bunkai_is_workspace_owner') {
+        return { data: true, error: null };
+      }
+      throw new Error(`unexpected rpc call: ${fn}`);
+    },
+    from: () => { throw new Error('cancelBillingCheckout must not read tables through the caller client'); },
+  } as unknown as SupabaseClient<Database>;
+}
+
+function releaseModuleOverrides(): void {
+  // `null` = fall through to the real module. Reset on BOTH edges: `beforeEach`
+  // alone leaves the last test's doubles installed for whatever file `bun test`
+  // runs next in this same process.
+  stripeRetrieve = null;
+  adminFactory = null;
+}
+
+beforeEach(() => {
+  stripeExpireCalls = [];
+  adminBuildCount = 0;
+  releaseModuleOverrides();
+});
+
+afterEach(releaseModuleOverrides);
+
+describe('cancelBillingCheckout — owner gate (PR #208 review item 4)', () => {
+  test('a non-owner member is rejected with `forbidden`/`not_workspace_owner` before any admin client is built', async () => {
+    // This gate is the ONLY thing between a non-owner member and cancelling
+    // the owner's in-progress checkout: migration 0077 dropped the
+    // billing_checkout_sessions write policies, and `workspace:admin` +
+    // `assertWorkspaceContext` are both no-ops for a cookie session
+    // (ADR-0006). `adminBuildCount` below is the part that matters: it proves
+    // the gate rejected BEFORE the function reached for admin credentials,
+    // not merely that it rejected eventually.
+    const db = {
+      rpc: async (fn: string) => {
+        if (fn === 'bunkai_is_workspace_owner') {
+          return { data: false, error: null };
+        }
+        throw new Error(`unexpected rpc call in cancel owner-gate test: ${fn}`);
+      },
+      from: () => { throw new Error('unexpected table access — the gate must reject before any read'); },
+    } as unknown as SupabaseClient<Database>;
+
+    try {
+      await cancelBillingCheckout({ db, workspaceId: WORKSPACE_ID });
+      throw new Error('expected cancelBillingCheckout to reject');
+    }
+    catch (err) {
+      expect((err as { code?: string }).code).toBe('forbidden');
+      expect((err as { details?: { reason?: string } }).details?.reason).toBe('not_workspace_owner');
+    }
+
+    expect(adminBuildCount).toBe(0);
+  });
+});
+
+describe('cancelBillingCheckout — already-complete branch (PR #208 review item 5)', () => {
+  test('a Stripe session in `complete` answers 409 and leaves the row OPEN for the webhook', async () => {
+    // The round-2 fix: this used to call expire() first and swallow every
+    // failure, flipping an already-PAID row to `canceled` — after which the
+    // webhook's own paid event no-ops against it. The assertion that matters
+    // is not the 409, it is that NOTHING was written and expire() was never
+    // called, so the paid row survives for the webhook to apply.
+    const updates: Record<string, unknown>[] = [];
+    adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
+    stripeRetrieve = async () => ({ status: 'complete' });
+
+    try {
+      await cancelBillingCheckout({ db: ownerDb(), workspaceId: WORKSPACE_ID });
+      throw new Error('expected cancelBillingCheckout to reject');
+    }
+    catch (err) {
+      expect((err as { code?: string }).code).toBe('checkout_in_progress');
+      expect((err as { status?: number }).status).toBe(409);
+      expect((err as { details?: { reason?: string } }).details?.reason).toBe('checkout_already_completed');
+    }
+
+    expect(updates).toEqual([]);
+    expect(stripeExpireCalls).toEqual([]);
+  });
+
+  test('a Stripe session still `open` is expired and the row flips to `canceled`', async () => {
+    // The paired positive case. A 409 on its own is also what a cancel path
+    // that is simply broken would produce; only the two together isolate the
+    // already-complete branch as the thing under test.
+    const updates: Record<string, unknown>[] = [];
+    adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
+    stripeRetrieve = async () => ({ status: 'open', url: 'https://checkout.stripe.test/session' });
+
+    await cancelBillingCheckout({ db: ownerDb(), workspaceId: WORKSPACE_ID });
+
+    expect(stripeExpireCalls).toEqual([STRIPE_SESSION_ID]);
+    expect(updates).toEqual([{ status: 'canceled' }]);
+  });
+});
+
+describe('cancelBillingCheckout — Stripe retrieve() failure (BK-638 defect 2)', () => {
+  // The leak is only observable in the body the CALLER receives, so these
+  // assertions drive the REAL response pipeline: `withApiHandler`'s own
+  // `toApiError` + `errorResponse`, exactly as the cancel route does. Calling
+  // the function and inspecting the thrown object would miss the defect —
+  // `toApiError` is what copies a raw upstream `Error.message` into
+  // `internal_error`, and `errorResponse` is what serialises it into the body.
+  const UPSTREAM_TEXT = 'No such checkout.session: cs_live_other_account_9xQ; request-log req_bk638leak';
+
+  function cancelHandler(): (request: NextRequest) => Promise<Response> {
+    return withApiHandler(async () => {
+      await cancelBillingCheckout({ db: ownerDb(), workspaceId: WORKSPACE_ID });
+      return new Response(null, { status: 204 });
+    }, { auth: 'public' });
+  }
+
+  function cancelRequest(): NextRequest {
+    return new NextRequest(`https://app.test/api/v1/workspaces/${WORKSPACE_ID}/billing/checkout/cancel`, { method: 'POST' });
+  }
+
+  test('the caller never receives Stripe\'s upstream message in the response body', async () => {
+    const updates: Record<string, unknown>[] = [];
+    adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
+    stripeRetrieve = async () => { throw new Error(UPSTREAM_TEXT); };
+
+    const response = await cancelHandler()(cancelRequest());
+
+    expect(response.status).toBe(500);
+    const raw = await response.text();
+    expect(raw).not.toContain(UPSTREAM_TEXT);
+    expect(raw).not.toContain('cs_live_other_account_9xQ');
+    expect(raw).not.toContain('req_bk638leak');
+
+    const body = JSON.parse(raw) as { error: { code: string, message: string } };
+    expect(body.error.code).toBe('internal_error');
+    expect(body.error.message.length).toBeGreaterThan(0);
+
+    // The lock must NOT be released on an unknown Stripe state — refusing to
+    // cancel beats cancelling a session that may already be paid.
+    expect(updates).toEqual([]);
+  });
+
+  test('a payment processor that is not configured keeps its own 503 rather than collapsing to 500', async () => {
+    // `getStripeClient()` throws `payment_processor_unavailable` (an
+    // ApiError, not an upstream failure). A guard that swallowed every throw
+    // into `internal_error` would turn a configuration answer into a server
+    // fault and cost the operator that signal.
+    const { ApiError } = await import('@lib/api/error-envelope');
+    const updates: Record<string, unknown>[] = [];
+    adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
+    stripeRetrieve = async () => { throw new ApiError('payment_processor_unavailable', 'The payment processor is not configured for this environment.'); };
+
+    const response = await cancelHandler()(cancelRequest());
+
+    expect(response.status).toBe(503);
+    const body = await response.json() as { error: { code: string } };
+    expect(body.error.code).toBe('payment_processor_unavailable');
+    expect(updates).toEqual([]);
   });
 });
