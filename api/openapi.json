@@ -2361,7 +2361,8 @@
           "title": {
             "type": "string",
             "minLength": 3,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "3-200 characters after trimming leading/trailing whitespace (BK-622)."
           },
           "module_id": {
             "type": "string",
@@ -2534,7 +2535,8 @@
           "title": {
             "type": "string",
             "minLength": 3,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "3-200 characters after trimming leading/trailing whitespace (BK-622)."
           },
           "layer": {
             "type": "string",
@@ -2606,7 +2608,7 @@
             "type": "string",
             "minLength": 3,
             "maxLength": 200,
-            "description": "Optional title for the copy. Omit to default to `<source> (copy)`."
+            "description": "Optional title for the copy. Omit to default to `<source> (copy)`. 3-200 characters after trimming leading/trailing whitespace (BK-622)."
           }
         }
       },
@@ -7329,6 +7331,16 @@
           "204": {
             "description": "Canceled (or nothing to cancel)."
           },
+          "400": {
+            "description": "Malformed workspace id (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Caller is not signed in.",
             "content": {
@@ -7340,7 +7352,27 @@
             }
           },
           "403": {
-            "description": "Missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006).",
+            "description": "Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The open session has already been PAID and is being activated (`checkout_in_progress`, `details.reason: checkout_already_completed`). The row is deliberately left open so the Stripe webhook still applies the upgrade — retry the cancel only if the upgrade does not land.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
             "content": {
               "application/json": {
                 "schema": {
