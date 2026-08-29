@@ -34,6 +34,21 @@ void mock.module('@lib/billing/stripe', () => ({
 
 const { POST } = await import('./route');
 
+// BK-638 item 6 — the DB gate now covers only the cases that actually reach
+// the database. Signature verification runs BEFORE `createAdminClient()` is
+// ever called (route.ts: the `stripe-signature` check and
+// `constructEventAsync` both answer 400 above that line), so those three
+// never needed Supabase secrets.
+//
+// The ticket framed this as coverage that "silently vanishes" on a runner
+// without those secrets. It does not, and the correction matters for anyone
+// relying on this gate: `lib/env.ts` validates NEXT_PUBLIC_SUPABASE_URL
+// (`.url()`) and SUPABASE_SERVICE_ROLE_KEY (`.min(1)`) at import, so a runner
+// missing either one fails this whole FILE at load rather than skipping it.
+// Reading the same two variables, `hasEnv` below could only ever be true
+// wherever this file loads at all. The gate was dead, not fail-open — but it
+// described a boundary that was not the real one, which is the part worth
+// removing.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const hasEnv = Boolean(url && serviceKey);
@@ -71,7 +86,11 @@ function fakeCompletedSessionPayload(overrides: Record<string, unknown> = {}): s
   });
 }
 
-describeOrSkip('POST /api/v1/billing/webhook — signature verification (PR #208 item 6)', () => {
+// No database, no Supabase secrets: every case here is rejected by
+// `stripe.webhooks.constructEventAsync` (real signature math, real raw body)
+// before the route builds an admin client. Plain `describe` — these run
+// everywhere.
+describe('POST /api/v1/billing/webhook — signature verification (PR #208 item 6)', () => {
   test('missing stripe-signature header -> 400', async () => {
     const request = new NextRequest('https://app.test/api/v1/billing/webhook', {
       method: 'POST',
@@ -104,7 +123,12 @@ describeOrSkip('POST /api/v1/billing/webhook — signature verification (PR #208
     const response = await POST(request);
     expect(response.status).toBe(400);
   });
+});
 
+// Past signature verification the route dispatches to
+// `bunkai_apply_billing_checkout_webhook_event` against the real database, so
+// this block keeps the Supabase gate.
+describeOrSkip('POST /api/v1/billing/webhook — post-verification dispatch (needs Supabase)', () => {
   test('valid signature over the RAW body reaches RPC dispatch (proves raw-body, not re-serialized JSON, is what is verified)', async () => {
     // No fixture row exists for this fabricated session id, so the RPC
     // legitimately answers `unknown_session` and the route maps that to a

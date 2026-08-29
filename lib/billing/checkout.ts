@@ -348,7 +348,44 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     // already-paid row to `canceled`, and the webhook's own paid event then
     // no-ops against it. Retrieve first so "already complete" and
     // "already expired" are distinguished BEFORE any write.
-    const stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+    //
+    // BK-638 defect 2: this call was unguarded. A Stripe outage, a 5xx, a
+    // rotated key or a session id belonging to another account propagated as
+    // a raw Error to lib/api/handler.ts's `toApiError`, which wraps anything
+    // non-ApiError as `internal_error` carrying `raw.message` — and
+    // `errorResponse` copies that message straight into the response body.
+    // Same guard SHAPE as beginBillingCheckout's around `sessions.create`
+    // above, with one deliberate difference: the upstream text goes to the
+    // LOG, not to the caller. This is a payment route, and echoing an upstream
+    // processor's error string back is disclosure the caller gains nothing
+    // from.
+    //
+    // Do not read that as "begin is already safe". It is NOT: its catch at
+    // ~:194 still interpolates `raw.message` into the response, and
+    // `reuseOpenCheckoutSession`'s own `sessions.retrieve()` at ~:262 has no
+    // guard at all. Both are outside BK-638's scope, which names this call
+    // site only, and reuseOpenCheckoutSession belongs to the deferred
+    // double-payable-URL item routed to BK-636.
+    let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
+    try {
+      stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+    }
+    catch (raw) {
+      if (raw instanceof ApiError) {
+        // `getStripeClient()`'s own `payment_processor_unavailable` (503) —
+        // a configuration answer, not an upstream failure. Keep its code
+        // rather than collapsing every throw here into a 500.
+        throw raw;
+      }
+      console.error('stripe checkout session retrieve failed while cancelling', {
+        rowId: openRow.id,
+        stripeCheckoutSessionId: openRow.stripe_checkout_session_id,
+        error: raw instanceof Error ? raw.message : String(raw),
+      });
+      // Deliberately does NOT release the lock: refusing to cancel beats
+      // cancelling a session that may already have been paid.
+      throw new ApiError('internal_error', 'Could not reach the payment processor to check this checkout. Try again in a moment.');
+    }
 
     if (stripeSession.status === 'complete') {
       // Do NOT mark this row canceled — leave it `open` so the webhook's

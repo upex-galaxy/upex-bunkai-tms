@@ -2091,6 +2091,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Malformed workspace id (`bad_request`). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
                 /** @description Caller is not signed in. */
                 401: {
                     headers: {
@@ -2100,8 +2109,35 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorEnvelope"];
                     };
                 };
-                /** @description Missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006). */
+                /** @description Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler). */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description The open session has already been PAID and is being activated (`checkout_in_progress`, `details.reason: checkout_already_completed`). The row is deliberately left open so the Stripe webhook still applies the upgrade — retry the cancel only if the upgrade does not land. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description The payment processor could not be reached to check the session, or the session row could not be read or written (`internal_error`). The one-open-session lock is deliberately NOT released on this path — cancelling a session that may already have been paid is worse than refusing. */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Stripe is not configured for this environment (`payment_processor_unavailable`). */
+                503: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8216,6 +8252,7 @@ export interface components {
             content: string;
         };
         AtcCreateBody: {
+            /** @description 3-200 characters after trimming leading/trailing whitespace (BK-622). */
             title: string;
             /** Format: uuid */
             module_id: string;
@@ -8271,6 +8308,7 @@ export interface components {
             href: string;
         };
         AtcUpdateBody: {
+            /** @description 3-200 characters after trimming leading/trailing whitespace (BK-622). */
             title: string;
             /** @enum {string} */
             layer: "UI" | "API" | "Unit";
@@ -8288,7 +8326,7 @@ export interface components {
             acceptance_criterion_ids: string[];
         };
         AtcDuplicateBody: {
-            /** @description Optional title for the copy. Omit to default to `<source> (copy)`. */
+            /** @description Optional title for the copy. Omit to default to `<source> (copy)`. 3-200 characters after trimming leading/trailing whitespace (BK-622). */
             new_title?: string;
         };
         AtcUsageReport: {
