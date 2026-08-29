@@ -95,3 +95,32 @@ export function renderAtcsCsv(rows: AtcExportRow[]): string {
 export function atcsExportFilename(projectSlug: string): string {
   return `${projectSlug}-atcs.csv`;
 }
+
+// A UTF-8 byte-order mark. `business-rules.md` requires "CSV, UTF-8" and this
+// export's stated audience is non-technical auditors opening the file in Excel
+// on Windows (story Context: "people opening this in Excel/Sheets, not
+// developers reading raw CSV") — without a BOM, Windows Excel decodes a
+// BOM-less .csv with the system ANSI codepage, so any non-ASCII Title/Tag
+// (e.g. "Validación de pago") renders as mojibake ("ValidaciÃ³n"). A BOM fixes
+// that at the cost of tripping a minority of strict RFC4180 parsers — judged
+// worth it for this export's actual audience (Conductor review, optional item,
+// dev-owned call).
+export const UTF8_BOM = '﻿';
+
+// Idempotent, so the BOM can be asserted on both sides of the wire without any
+// risk of emitting two of them (BK-637).
+export function withUtf8Bom(csv: string): string {
+  return csv.startsWith(UTF8_BOM) ? csv : UTF8_BOM + csv;
+}
+
+// BK-637 — the read half of the BOM contract, and the reason it is a named
+// function rather than a bare `await response.text()` at the call site.
+// `Response.text()` runs the WHATWG "UTF-8 decode" algorithm, and stripping a
+// leading BOM is part of that algorithm. So the BOM the route writes onto the
+// wire is already gone by the time a browser has a string in hand, and a Blob
+// built from that string writes a BOM-less file — defeating the server-side
+// BOM on the exact path it was added for. Re-apply it here, on the very string
+// that gets written to disk.
+export async function readCsvForDownload(response: Response): Promise<string> {
+  return withUtf8Bom(await response.text());
+}

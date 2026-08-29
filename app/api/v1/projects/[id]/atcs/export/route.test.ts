@@ -1,3 +1,4 @@
+import { ATCS_EXPORT_PAGE_SIZE } from '@lib/atcs/export-query';
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test';
 import { NextRequest } from 'next/server';
@@ -63,6 +64,19 @@ interface ErrorBody { error?: { code?: string, message?: string, details?: { rea
 
 const NONEXISTENT_PROJECT_ID = '11111111-2222-4333-8444-555555555555';
 
+// BK-637 defect 1 — assert the BOM on the BYTES the route puts on the wire,
+// never on `await response.text()`. `text()` runs the WHATWG UTF-8 decode,
+// which strips a leading BOM off a byte-backed body; the previous string-based
+// assertion passed only because this harness calls the handler in-process, so
+// the NextResponse body is still a JS string and Bun returns it verbatim. That
+// made the assertion a statement about the fixture rather than about the
+// response, and it stayed green while the browser download had no BOM at all.
+const UTF8_BOM_BYTES = [0xEF, 0xBB, 0xBF];
+
+async function bodyBytes(response: Response): Promise<number[]> {
+  return [...new Uint8Array(await response.arrayBuffer())];
+}
+
 describe('BK-315 — GET /api/v1/projects/{id}/atcs/export — auth gate (no DB needed)', () => {
   it('rejects a fully unauthenticated request with 401 (AC3.4)', async () => {
     const response = await GET(exportRequest(NONEXISTENT_PROJECT_ID));
@@ -92,7 +106,15 @@ function requirePrecondition<T>(value: T | null | undefined, reason: string): T 
 describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', () => {
   const createdProjectIds: string[] = [];
   const createdTokenIds: string[] = [];
-  let fixture: { emptyProjectId: string, populatedProjectId: string, projectSlug: string, token: string, foreignProjectId: string | null } | null = null;
+  let fixture: {
+    emptyProjectId: string
+    populatedProjectId: string
+    projectSlug: string
+    token: string
+    foreignProjectId: string | null
+    overCapProjectId: string
+    overCapModulePath: string
+  } | null = null;
 
   beforeAll(async () => {
     const db = service();
@@ -113,12 +135,14 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       .insert([
         { workspace_id: writer.workspace_id, slug: `${prefix}-empty`, name: `${prefix} empty` },
         { workspace_id: writer.workspace_id, slug: `${prefix}-full`, name: `${prefix} full` },
+        { workspace_id: writer.workspace_id, slug: `${prefix}-overcap`, name: `${prefix} overcap` },
       ])
       .select('id, slug');
     if (projectsError) { throw projectsError; }
     const emptyProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-empty'))!.id as string;
     const populatedProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-full'))!.id as string;
-    createdProjectIds.push(emptyProjectId, populatedProjectId);
+    const overCapProjectId = (projects ?? []).find(p => (p.slug as string).endsWith('-overcap'))!.id as string;
+    createdProjectIds.push(emptyProjectId, populatedProjectId, overCapProjectId);
 
     const { data: userStoryModule, error: moduleError } = await db
       .from('modules')
@@ -152,6 +176,57 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       });
     if (atcError) { throw atcError; }
 
+    // BK-637 defect 2 — a Project whose module set is one row PAST PostgREST's
+    // `db-max-rows` cap, with its only ATC deliberately attached to a module
+    // that sorts past that cap by id. An unpaged `select` on `modules` returns
+    // the first 1000 rows with HTTP 200 and no error, so `modulePathById` is
+    // missing exactly this module and the export 500s for this Project on
+    // every attempt. Seeded against the real database because the cap is
+    // enforced by PostgREST, not by any code a mock could stand in for.
+    const overCapModuleRows = Array.from({ length: ATCS_EXPORT_PAGE_SIZE + 1 }, (_, i) => ({
+      project_id: overCapProjectId,
+      path: `mod-${String(i).padStart(5, '0')}`,
+      name: `Module ${i}`,
+    }));
+    const { error: overCapModulesError } = await db.from('modules').insert(overCapModuleRows);
+    if (overCapModulesError) { throw overCapModulesError; }
+
+    // Module ids are random UUIDs, so "past the cap" is only knowable by
+    // reading back in the same `order('id')` the route pages on.
+    const { data: pastCapModules, error: pastCapError } = await db
+      .from('modules')
+      .select('id, path')
+      .eq('project_id', overCapProjectId)
+      .order('id', { ascending: true })
+      .range(ATCS_EXPORT_PAGE_SIZE, ATCS_EXPORT_PAGE_SIZE);
+    if (pastCapError) { throw pastCapError; }
+    const pastCapModule = requirePrecondition(
+      (pastCapModules ?? [])[0],
+      `expected a module at index ${ATCS_EXPORT_PAGE_SIZE} of the over-cap Project`,
+    );
+
+    const { data: overCapStory, error: overCapStoryError } = await db
+      .from('user_stories')
+      .insert({ module_id: pastCapModule.id, title: `${prefix} overcap story` })
+      .select('id')
+      .single();
+    if (overCapStoryError) { throw overCapStoryError; }
+
+    const { error: overCapAtcError } = await db
+      .from('atcs')
+      .insert({
+        project_id: overCapProjectId,
+        module_id: pastCapModule.id,
+        user_story_id: overCapStory.id,
+        slug: `${prefix}-overcap-atc`,
+        title: 'Exports even past the module row cap',
+        layer: 'API',
+        version: 1,
+        status: 'unrun',
+        tags: [],
+      });
+    if (overCapAtcError) { throw overCapAtcError; }
+
     const pat = await mintPat({
       admin: db,
       userId: writer.user_id,
@@ -167,6 +242,8 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       projectSlug: `${prefix}-full`,
       token: pat.token,
       foreignProjectId,
+      overCapProjectId,
+      overCapModulePath: pastCapModule.path as string,
     };
   });
 
@@ -184,26 +261,38 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
   it('returns a header-only CSV for a Project with zero ATCs (AC2.1/2.2)', async () => {
     const { emptyProjectId, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
     const response = await GET(exportRequest(emptyProjectId, token));
-    const body = await response.text();
+    const bytes = await bodyBytes(response);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/csv');
-    expect(body).toBe('﻿ATC ID,Slug,Title,Module,Layer,Tags,Status\r\n');
+    expect(bytes.slice(0, 3)).toEqual(UTF8_BOM_BYTES);
+    expect(new TextDecoder().decode(new Uint8Array(bytes.slice(3)))).toBe('ATC ID,Slug,Title,Module,Layer,Tags,Status\r\n');
   });
 
   it('returns one row per ATC with escaped Title/Tags and Content-Disposition (AC1.1, AC4.0, AC4.4)', async () => {
     const { populatedProjectId, projectSlug, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
     const response = await GET(exportRequest(populatedProjectId, token));
-    const body = await response.text();
+    const bytes = await bodyBytes(response);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-disposition')).toBe(`attachment; filename="${projectSlug}-atcs.csv"`);
-    expect(body.startsWith('﻿')).toBe(true);
-    const lines = body.slice(1).split('\r\n').filter(Boolean);
+    expect(bytes.slice(0, 3)).toEqual(UTF8_BOM_BYTES);
+    const lines = new TextDecoder().decode(new Uint8Array(bytes.slice(3))).split('\r\n').filter(Boolean);
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('"Order ""fails"", edge-case"');
     expect(lines[1]).toContain('"urgent, blocker"');
     expect(lines[1]).toContain(',checkout,UI,');
+  });
+
+  it(`exports a Project with more than ${ATCS_EXPORT_PAGE_SIZE} modules instead of 500ing (BK-637 defect 2)`, async () => {
+    const { overCapProjectId, overCapModulePath, token } = requirePrecondition(fixture, 'fixture setup failed — see beforeAll');
+    const response = await GET(exportRequest(overCapProjectId, token));
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    const lines = body.split('\r\n').filter(Boolean);
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain(`,${overCapModulePath},API,`);
   });
 
   it('returns the identical 404 not_found for a nonexistent Project id (AC3.2)', async () => {

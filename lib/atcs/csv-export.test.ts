@@ -1,6 +1,6 @@
 import type { AtcExportRow } from './csv-export';
 import { describe, expect, it } from 'bun:test';
-import { atcsExportFilename, renderAtcsCsv } from './csv-export';
+import { atcsExportFilename, readCsvForDownload, renderAtcsCsv, UTF8_BOM, withUtf8Bom } from './csv-export';
 
 function row(overrides: Partial<AtcExportRow> = {}): AtcExportRow {
   return {
@@ -153,5 +153,51 @@ describe('renderAtcsCsv', () => {
 describe('atcsExportFilename', () => {
   it('builds a stable, slug-based filename', () => {
     expect(atcsExportFilename('checkout-revamp')).toBe('checkout-revamp-atcs.csv');
+  });
+});
+
+// BK-637 defect 1. Every test here reads a body that was put on the wire as
+// BYTES, because that distinction IS the bug: a `Response` constructed from a
+// JS string hands `text()` back the same string verbatim (no encode/decode
+// round-trip, BOM intact), while a `Response` constructed from bytes — which
+// is the only shape a browser ever sees — runs the WHATWG UTF-8 decode and
+// drops the leading BOM. A test written against the string shape passes with
+// or without the fix and proves nothing; that false green is what this ticket
+// was filed about.
+describe('BK-637 — the UTF-8 BOM survives the browser download path', () => {
+  const csv = renderAtcsCsv([row({ title: 'Validación de pago' })]);
+
+  // What the route actually puts on the wire, delivered the way the network
+  // delivers it.
+  function wireResponse(body: string): Response {
+    return new Response(new TextEncoder().encode(body));
+  }
+
+  it('confirms the wire body carries the BOM bytes EF BB BF', async () => {
+    const bytes = new Uint8Array(await wireResponse(withUtf8Bom(csv)).arrayBuffer());
+    expect([...bytes.slice(0, 3)]).toEqual([0xEF, 0xBB, 0xBF]);
+  });
+
+  it('documents the stripping that causes the bug — a raw text() read loses the BOM', async () => {
+    const stripped = await wireResponse(withUtf8Bom(csv)).text();
+    expect(stripped.startsWith(UTF8_BOM)).toBe(false);
+    expect(stripped.codePointAt(0)).toBe(csv.codePointAt(0));
+  });
+
+  it('restores the BOM on the string handed to the Blob, so the saved file opens as UTF-8 in Excel', async () => {
+    const forDownload = await readCsvForDownload(wireResponse(withUtf8Bom(csv)));
+    expect(forDownload.codePointAt(0)).toBe(0xFEFF);
+    expect(forDownload.slice(1)).toBe(csv);
+  });
+
+  it('writes exactly one BOM even when a runtime hands back a body that kept its own', async () => {
+    const forDownload = await readCsvForDownload(new Response(withUtf8Bom(csv)));
+    expect(forDownload.startsWith(UTF8_BOM + UTF8_BOM)).toBe(false);
+    expect(forDownload).toBe(withUtf8Bom(csv));
+  });
+
+  it('is idempotent on a body that already starts with a BOM', () => {
+    expect(withUtf8Bom(withUtf8Bom(csv))).toBe(withUtf8Bom(csv));
+    expect(withUtf8Bom(csv).slice(1)).toBe(csv);
   });
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@components/ui/button';
+import { readCsvForDownload } from '@lib/atcs/csv-export';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -12,6 +13,10 @@ import { toast } from 'sonner';
 // Disabled while the request is in flight — a one-shot action trigger, not a
 // filter input (Dev Q3 ruling, Jira BK-315), matching the disable-while-loading
 // pattern at `ProjectRunsReportView.tsx:495`.
+//
+// BK-637 — the body is read through `readCsvForDownload`, never a bare
+// `response.text()`: `text()` strips the route's UTF-8 BOM as part of the
+// WHATWG UTF-8 decode, and the Blob below would then write a BOM-less file.
 
 const FALLBACK_ERROR_MESSAGE = 'Could not export the ATC library.';
 const FALLBACK_FILENAME = 'atcs.csv';
@@ -45,7 +50,7 @@ export function ExportAtcsButton({ projectId }: { projectId: string }) {
         toast.error(body.error?.message ?? FALLBACK_ERROR_MESSAGE);
         return;
       }
-      const csv = await response.text();
+      const csv = await readCsvForDownload(response);
       const filename = filenameFromContentDisposition(response.headers.get('content-disposition')) ?? FALLBACK_FILENAME;
       triggerCsvDownload(csv, filename);
       toast.success('ATC library exported', { description: `Saved as ${filename}.` });
