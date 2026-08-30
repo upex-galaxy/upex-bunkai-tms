@@ -23,6 +23,12 @@ export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   { id: 'billing', label: 'Billing', href: '/settings/billing' },
 ];
 
+// BK-508 — Owner-only, so it is NOT in SETTINGS_NAV_AVAILABLE (rendered
+// unconditionally to everyone). SettingsNav renders this only when the
+// server-resolved caller is the workspace Owner (AC-02: absent, not
+// present-and-refused, for Admin/Member/Viewer).
+export const SETTINGS_NAV_DATA_EXPORT: SettingsNavItem = { id: 'data-export', label: 'Data export', href: '/settings/data-export' };
+
 export const SETTINGS_NAV_COMING_SOON: SettingsNavItem[] = [
   { id: 'members', label: 'Members', href: null },
   { id: 'environments', label: 'Environments', href: null },

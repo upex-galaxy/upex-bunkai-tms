@@ -1,6 +1,6 @@
 'use client';
 
-import { isSettingsNavItemActive, SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_COMING_SOON } from '@lib/settings/nav-items';
+import { isSettingsNavItemActive, SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_COMING_SOON, SETTINGS_NAV_DATA_EXPORT } from '@lib/settings/nav-items';
 import { cn } from '@lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -15,8 +15,11 @@ import { usePathname } from 'next/navigation';
 // items are plain, non-focusable spans (no href, `aria-disabled`, a "soon"
 // text tag) — structurally different from a live link, never color-only
 // (standing color-not-sole-signal rule), and skipped by Tab by construction.
-export function SettingsNav() {
+export function SettingsNav({ showDataExport = false }: { showDataExport?: boolean }) {
   const pathname = usePathname();
+  // BK-508 — Owner-only. Appended after the static list rather than baked
+  // into SETTINGS_NAV_AVAILABLE, which renders to every role unconditionally.
+  const availableItems = showDataExport ? [...SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_DATA_EXPORT] : SETTINGS_NAV_AVAILABLE;
 
   return (
     <nav
@@ -36,7 +39,7 @@ export function SettingsNav() {
       <div className="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-fg-3">
         Available
       </div>
-      {SETTINGS_NAV_AVAILABLE.map((item) => {
+      {availableItems.map((item) => {
         const active = isSettingsNavItemActive(pathname, item.href);
         return (
           <Link
