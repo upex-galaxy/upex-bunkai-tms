@@ -1,6 +1,7 @@
 'use client';
 
-import { isSettingsNavItemActive, SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_COMING_SOON } from '@lib/settings/nav-items';
+import type { MemberRole } from '@lib/types';
+import { isSettingsNavItemActive, SETTINGS_NAV_COMING_SOON, settingsNavItemsForRole } from '@lib/settings/nav-items';
 import { cn } from '@lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -15,8 +16,13 @@ import { usePathname } from 'next/navigation';
 // items are plain, non-focusable spans (no href, `aria-disabled`, a "soon"
 // text tag) — structurally different from a live link, never color-only
 // (standing color-not-sole-signal rule), and skipped by Tab by construction.
-export function SettingsNav() {
+// BK-740 — `role` is the caller's role in the ACTIVE workspace, resolved
+// server-side by `app/(app)/settings/layout.tsx`. Role-gated entries
+// (Billing) are filtered out here so a member never sees a link into a
+// section whose own server gate would only answer 404.
+export function SettingsNav({ role }: { role: MemberRole | null }) {
   const pathname = usePathname();
+  const availableItems = settingsNavItemsForRole(role);
 
   return (
     <nav
@@ -36,7 +42,7 @@ export function SettingsNav() {
       <div className="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-widest text-fg-3">
         Available
       </div>
-      {SETTINGS_NAV_AVAILABLE.map((item) => {
+      {availableItems.map((item) => {
         const active = isSettingsNavItemActive(pathname, item.href);
         return (
           <Link
