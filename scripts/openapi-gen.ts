@@ -174,6 +174,8 @@ import '../app/api/v1/notification-preferences/route.openapi';
 
 import '../app/api/v1/projects/[id]/traceability/route.openapi';
 
+import '../app/api/v1/admin/send-digest/route.openapi';
+
 const document = buildOpenApiDocument();
 const outPath = resolve(process.cwd(), 'public/openapi.json');
 mkdirSync(dirname(outPath), { recursive: true });

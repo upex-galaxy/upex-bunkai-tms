@@ -1,6 +1,7 @@
 'use client';
 
-import { isSettingsNavItemActive, SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_COMING_SOON, SETTINGS_NAV_DATA_EXPORT } from '@lib/settings/nav-items';
+import type { MemberRole } from '@lib/types';
+import { isSettingsNavItemActive, SETTINGS_NAV_COMING_SOON, settingsNavItemsForRole } from '@lib/settings/nav-items';
 import { cn } from '@lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -15,11 +16,13 @@ import { usePathname } from 'next/navigation';
 // items are plain, non-focusable spans (no href, `aria-disabled`, a "soon"
 // text tag) — structurally different from a live link, never color-only
 // (standing color-not-sole-signal rule), and skipped by Tab by construction.
-export function SettingsNav({ showDataExport = false }: { showDataExport?: boolean }) {
+// BK-740 — `role` is the caller's role in the ACTIVE workspace, resolved
+// server-side by `app/(app)/settings/layout.tsx`. Role-gated entries
+// (Billing, Data export) are filtered out here so a member never sees a link
+// into a section whose own server gate would only answer 404/403.
+export function SettingsNav({ role }: { role: MemberRole | null }) {
   const pathname = usePathname();
-  // BK-508 — Owner-only. Appended after the static list rather than baked
-  // into SETTINGS_NAV_AVAILABLE, which renders to every role unconditionally.
-  const availableItems = showDataExport ? [...SETTINGS_NAV_AVAILABLE, SETTINGS_NAV_DATA_EXPORT] : SETTINGS_NAV_AVAILABLE;
+  const availableItems = settingsNavItemsForRole(role);
 
   return (
     <nav

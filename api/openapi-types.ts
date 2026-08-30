@@ -7541,6 +7541,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/send-digest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the daily unread-notifications email digest
+         * @description Internal — system/cron principal only (ADR-0017), not part of the public consumer surface. Triggered by Vercel Cron at 08:00 UTC daily; may also be invoked manually as a same-day retry. Requires `Authorization: Bearer <CRON_SECRET>`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Digest run completed (per-recipient outcomes; a partial failure does not fail the whole request). */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SendDigestResponse"];
+                    };
+                };
+                /** @description Missing or invalid CRON_SECRET. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+                /** @description Failed to load digest candidates. */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorEnvelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9650,6 +9707,14 @@ export interface components {
             run_id: string | null;
             /** Format: uuid */
             run_step_id: string | null;
+        };
+        SendDigestResponse: {
+            /** @description Distinct recipients with at least one eligible unread notification. */
+            eligible_users: number;
+            sent: number;
+            failed: number;
+            /** @description Already claimed for today (same-day re-invocation) — not a failure. */
+            skipped: number;
         };
     };
     responses: never;

@@ -1,7 +1,9 @@
+import type { MemberRole } from '@lib/types';
 import {
   isSettingsNavItemActive,
   SETTINGS_NAV_AVAILABLE,
   SETTINGS_NAV_COMING_SOON,
+  settingsNavItemsForRole,
 } from '@lib/settings/nav-items';
 import { describe, expect, test } from 'bun:test';
 
@@ -41,6 +43,61 @@ describe('SETTINGS_NAV_AVAILABLE / SETTINGS_NAV_COMING_SOON', () => {
   test('billing is now available, not coming soon', () => {
     expect(SETTINGS_NAV_AVAILABLE.find(item => item.id === 'billing')?.href).toBe('/settings/billing');
     expect(SETTINGS_NAV_COMING_SOON.some(item => item.id === 'billing')).toBe(false);
+  });
+});
+
+// BK-740 — REGRESSION. Billing shipped (BK-229) as an ungated entry in
+// SETTINGS_NAV_AVAILABLE, so a workspace `member` saw the nav link, clicked
+// it, and hit a dead end: `bunkai_workspace_billing_overview`'s step-0
+// admin gate returns null and the route answers a uniform 404. AC9 of BK-229
+// ("Billing section is not offered to her") held at the CONTENT level but
+// never at the NAVIGATION level. These assertions run through the real
+// exported `settingsNavItemsForRole`, which filters the real exported
+// `SETTINGS_NAV_AVAILABLE` — no fixture array is injected, so the production
+// data and the production filter are both under test.
+describe('settingsNavItemsForRole (BK-740 — Billing nav gate)', () => {
+  const ids = (role: MemberRole | null) => settingsNavItemsForRole(role).map(item => item.id);
+
+  test('a member does NOT get the Billing entry (the reported dead end)', () => {
+    expect(ids('member')).not.toContain('billing');
+  });
+
+  test('a viewer does NOT get the Billing entry', () => {
+    expect(ids('viewer')).not.toContain('billing');
+  });
+
+  test('a caller with no active workspace role does NOT get the Billing entry', () => {
+    expect(ids(null)).not.toContain('billing');
+  });
+
+  // The allowed set mirrors `bunkai_is_workspace_admin`
+  // (0005_rls_helpers.sql: role in ('admin','owner')) — the same gate the
+  // Billing RPC runs at step 0, so nav visibility and content access agree.
+  test('an owner DOES get the Billing entry', () => {
+    expect(ids('owner')).toContain('billing');
+  });
+
+  test('an admin DOES get the Billing entry', () => {
+    expect(ids('admin')).toContain('billing');
+  });
+
+  test('the Billing entry keeps its real href for the roles that can see it', () => {
+    expect(settingsNavItemsForRole('admin').find(item => item.id === 'billing')?.href)
+      .toBe('/settings/billing');
+  });
+
+  test('ungated personal sections stay visible to every role, including none', () => {
+    for (const role of ['owner', 'admin', 'member', 'viewer', null] as const) {
+      expect(ids(role)).toEqual(expect.arrayContaining(['account', 'tokens', 'workspaces', 'notifications']));
+    }
+  });
+
+  test('the gate only ever removes items — never reorders or invents them', () => {
+    const full = SETTINGS_NAV_AVAILABLE.map(item => item.id);
+    for (const role of ['owner', 'admin', 'member', 'viewer', null] as const) {
+      expect(ids(role)).toEqual(full.filter(id => ids(role).includes(id)));
+    }
+    expect(ids('owner')).toEqual(full);
   });
 });
 

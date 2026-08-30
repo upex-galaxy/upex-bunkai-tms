@@ -76,6 +76,9 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0013](./ADR-0013-workspace-deletion-semantics.md) | Workspace deletion: soft-delete with a grace period, sole-owner gate, and no member eviction | Superseded | — | ADR-0015 |
 | [ADR-0014](./ADR-0014-stripe-checkout-billing-upgrade.md) | Stripe Checkout (hosted) for the self-serve plan upgrade, provisioned by env vars, activated by a signature-verified webhook | Accepted — Implemented | — | — |
 | [ADR-0015](./ADR-0015-workspace-deletion-revised.md) | Workspace deletion, revised: soft-delete with grace, immediate access revocation, no member veto | Accepted — Not yet implemented | ADR-0013 | — |
+| [ADR-0017](./ADR-0017-system-cron-principal-class.md) | System/cron principal class for scheduled internal jobs | Proposed | — | — |
+
+> ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 

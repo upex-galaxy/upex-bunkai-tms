@@ -1,3 +1,4 @@
+import type { MemberRole } from '@lib/types';
 import type { ReactNode } from 'react';
 import { SettingsNav } from '@components/settings/SettingsNav';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
@@ -20,26 +21,40 @@ export default async function SettingsLayout({ children }: { children: ReactNode
     redirect('/login?next=/settings');
   }
 
-  // BK-508 — Owner-only "Data export" nav entry (AC-02: absent, not
-  // present-and-refused, for every other role). Same cookie/active-workspace
-  // resolution as settings/billing/page.tsx; bunkai_is_workspace_owner (0005)
-  // is display-only here — the route's own assertExportAuthorized + RLS are
-  // the real enforcement point, same convention as billing/upgrade/page.tsx's
-  // isOwner hint.
+  // BK-740 — resolve the caller's role in the ACTIVE workspace so the nav can
+  // hide workspace-scoped sections they cannot use (Billing, and now BK-508's
+  // Data export). Same cookie-driven active-workspace idiom as
+  // settings/billing/page.tsx, and the same self-row membership read as
+  // lib/tests/load-test-detail.ts:79-85 — no cached/shared role accessor
+  // exists in this repo to prefer over it. The `status = 'active'` + role
+  // filter mirrors `bunkai_is_workspace_admin`, which stays the real access
+  // control on the Billing route itself; `assertExportAuthorized` +
+  // `workspace_exports`' RLS are the real access control for Data export.
   const { data: workspaces } = await supabase
     .from('workspaces')
     .select('id')
     .order('created_at', { ascending: true });
   const cookieStore = await cookies();
-  const cookieActive = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null;
-  const activeWorkspaceId = resolveActiveWorkspaceId(cookieActive, (workspaces ?? []).map(w => w.id));
-  const { data: isOwner } = activeWorkspaceId
-    ? await supabase.rpc('bunkai_is_workspace_owner', { ws_id: activeWorkspaceId })
-    : { data: false };
+  const activeWorkspaceId = resolveActiveWorkspaceId(
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null,
+    (workspaces ?? []).map(w => w.id),
+  );
+
+  let role: MemberRole | null = null;
+  if (activeWorkspaceId) {
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', activeWorkspaceId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    role = (membership?.role as MemberRole | undefined) ?? null;
+  }
 
   return (
     <div className="flex h-full min-h-0">
-      <SettingsNav showDataExport={isOwner ?? false} />
+      <SettingsNav role={role} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {children}
       </div>
