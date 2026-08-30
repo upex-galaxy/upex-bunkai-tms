@@ -68,7 +68,14 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
       // A superseded request (a newer `load()` call already aborted this
       // one, or the component unmounted) must never overwrite state a later
       // call already set — mirrors `ActivityView.tsx`'s abort guard.
-      if (controller.signal.aborted) { return null; }
+      //
+      // BK-741: this asks "am I still the current request?", NOT "was I
+      // aborted?". The FETCH_TIMEOUT_MS timer aborts this very same
+      // controller, so `signal.aborted` cannot tell a timeout from a
+      // supersede — reading it here swallowed every timeout and stranded the
+      // view on its skeleton. `inFlight.current` is claimed only by a newer
+      // `load()` (or cleared on unmount), so it is the real supersede test.
+      if (inFlight.current !== controller) { return null; }
       if (response.status === 404) {
         setState('forbidden');
         return null;
@@ -78,13 +85,17 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
         return null;
       }
       const data = await response.json() as BillingOverview;
-      if (controller.signal.aborted) { return null; }
+      if (inFlight.current !== controller) { return null; }
       setOverview(data);
       setState('success');
       return data;
     }
     catch {
-      if (controller.signal.aborted) { return null; }
+      // BK-741 (AC18): a timed-out request lands here as an AbortError while
+      // still being the current one — a genuine failure that must surface as
+      // the error card + Retry, never as a silent return to an endless
+      // skeleton. Only a truly superseded request bails out quietly.
+      if (inFlight.current !== controller) { return null; }
       setState('error');
       return null;
     }
@@ -95,7 +106,13 @@ export function BillingOverviewView({ workspaceId }: BillingOverviewViewProps) {
 
   useEffect(() => {
     void load();
-    return () => inFlight.current?.abort();
+    return () => {
+      inFlight.current?.abort();
+      // BK-741: clearing the ref is what keeps unmount indistinguishable from
+      // a supersede for the guards above. Without it an unmounted view's
+      // in-flight request would still match `inFlight.current` and set state.
+      inFlight.current = null;
+    };
   }, [load]);
 
   // Review item 8 (PR #208) — `?upgraded=1` means the owner just returned
