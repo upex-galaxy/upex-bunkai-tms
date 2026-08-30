@@ -149,7 +149,7 @@
     "file": "app/api/v1/me/active-workspace/route.ts",
     "method": "POST",
     "posture": "cookie-only",
-    "why": "Personal access tokens have no switchable active workspace. Pass workspace_id explicitly on each request instead."
+    "why": "Personal access tokens have no switchable active workspace. Use a browser session. Pass workspace_id explicitly on each request instead."
   },
   {
     "file": "app/api/v1/me/route.ts",

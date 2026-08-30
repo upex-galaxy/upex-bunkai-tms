@@ -40,6 +40,20 @@ describe('atcDuplicateBodySchema', () => {
     expect(AtcDuplicateBodySchema.safeParse({ new_title: 'a'.repeat(201) }).success).toBe(false);
   });
 
+  // BK-622 — same pre-trim/post-trim asymmetry as AtcCreateBodySchema.title;
+  // the route writes `title?.trim()` (app/api/v1/atcs/[id]/duplicate/route.ts).
+  test('BK-622: rejects "  ab  " — 6 raw chars, but trims to 2 (below the floor)', () => {
+    expect(AtcDuplicateBodySchema.safeParse({ new_title: '  ab  ' }).success).toBe(false);
+  });
+
+  test('BK-622: accepts "  abc  " — trims to exactly 3 — and stores it trimmed', () => {
+    const parsed = AtcDuplicateBodySchema.safeParse({ new_title: '  abc  ' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.new_title).toBe('abc');
+    }
+  });
+
   test('BK-184 regression: a body using the old `title` key is silently ignored, not treated as new_title', () => {
     const parsed = AtcDuplicateBodySchema.safeParse({ title: 'Should not be picked up' });
     expect(parsed.success).toBe(true);

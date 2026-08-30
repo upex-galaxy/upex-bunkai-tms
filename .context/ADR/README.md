@@ -73,11 +73,12 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 | [ADR-0010](./ADR-0010-realtime-transport-supabase-realtime.md) | Real-time transport for live run/step updates: Supabase Realtime | Accepted — Implemented | — | — |
 | [ADR-0011](./ADR-0011-activity-feed-actor-resolution.md) | Activity Feed Actor Resolution: peer-visible `auth.users` lookup, scoped by co-membership | Accepted | — | — |
 | [ADR-0012](./ADR-0012-rpc-authorization-invariant.md) | RPC authorization invariant: actor bind and result scoping on every DEFINER function | Proposed | — | — |
-| [ADR-0013](./ADR-0013-workspace-deletion-semantics.md) | Workspace deletion: soft-delete with a grace period, sole-owner gate, and no member eviction | Accepted — Not yet implemented | — | — |
+| [ADR-0013](./ADR-0013-workspace-deletion-semantics.md) | Workspace deletion: soft-delete with a grace period, sole-owner gate, and no member eviction | Superseded | — | ADR-0015 |
 | [ADR-0014](./ADR-0014-stripe-checkout-billing-upgrade.md) | Stripe Checkout (hosted) for the self-serve plan upgrade, provisioned by env vars, activated by a signature-verified webhook | Accepted — Implemented | — | — |
+| [ADR-0015](./ADR-0015-workspace-deletion-revised.md) | Workspace deletion, revised: soft-delete with grace, immediate access revocation, no member veto | Accepted — Not yet implemented | ADR-0013 | — |
 | [ADR-0017](./ADR-0017-system-cron-principal-class.md) | System/cron principal class for scheduled internal jobs | Proposed | — | — |
 
-> ADR-0015 (workspace-deletion supersede, PR #210 in-flight) and ADR-0016 are taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28. BK-214 took the next free number, 0017.
+> ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 

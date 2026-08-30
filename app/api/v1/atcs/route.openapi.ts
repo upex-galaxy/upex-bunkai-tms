@@ -52,7 +52,7 @@ const AssertionInput = z.object({
 
 const CreateBodySchema = z
   .object({
-    title: z.string().min(3).max(200),
+    title: z.string().min(3).max(200).describe('3-200 characters after trimming leading/trailing whitespace (BK-622).'),
     module_id: z.string().uuid(),
     user_story_id: z.string().uuid(),
     acceptance_criterion_ids: z.array(z.string().uuid()).min(1).describe('≥1; all must belong to user_story_id.'),

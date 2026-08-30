@@ -433,4 +433,113 @@ describeOrSkip('BK-230 — billing checkout guards isolation (rpc-authorization.
       await db.from('workspaces').update({ plan: 'community', purchased_seats: null }).eq('id', fixture.workspaceId);
     });
   });
+
+  describe('4. billing_checkout_sessions direct-write posture (BK-638 — round-1 item 3 exploit)', () => {
+    // The round-1 exploit, verbatim: the owner PATCHes their OWN open row
+    // from `open` to `canceled` over PostgREST, which releases the partial
+    // unique index and lets them mint a SECOND, independently payable Stripe
+    // Checkout Session. Migration 0077 closed it by dropping the table's
+    // INSERT/UPDATE policies; nothing tested it, so a future migration
+    // re-adding a write policy would reopen it silently.
+    //
+    // These drive a REAL authenticated owner session against PostgREST — the
+    // production write path the exploit uses — never service_role, which
+    // bypasses RLS and would prove nothing. `authenticated` DOES hold the
+    // table-level UPDATE/INSERT grants (checked live), so the only thing
+    // standing here is the absence of a write policy.
+
+    async function seedOpenRow(suffix: string): Promise<string> {
+      const db = service();
+      const { data, error } = await db
+        .from('billing_checkout_sessions')
+        .insert({
+          workspace_id: fixture.workspaceId,
+          created_by_user_id: fixture.qaUserId,
+          target_plan: 'cloud',
+          seat_quantity: 3,
+          stripe_checkout_session_id: `${PREFIX}-cs-${suffix}`,
+          status: 'open',
+          idempotency_key: `${PREFIX}-${suffix}-key`,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        })
+        .select('id')
+        .single();
+      if (error) { throw error; }
+      return data.id;
+    }
+
+    it('the OWNER cannot PATCH their own open row to `canceled` over PostgREST — the row is untouched', async () => {
+      const rowId = await seedOpenRow('patch-exploit');
+      const session = await qaSession();
+
+      // The owner can SELECT it — the one surviving policy
+      // (billing_checkout_sessions_select_owner) is SELECT-only, so a read
+      // that came back empty would mean this test never reached the write
+      // boundary at all and would pass for the wrong reason.
+      const { data: visible, error: readError } = await session
+        .from('billing_checkout_sessions')
+        .select('id, status')
+        .eq('id', rowId)
+        .maybeSingle();
+      expect(readError).toBeNull();
+      expect(visible?.status).toBe('open');
+
+      // The exploit. With no UPDATE policy the statement is legal but matches
+      // zero rows, so PostgREST answers success with an EMPTY representation
+      // rather than an error — which is exactly why the row must be re-read
+      // through an independent client instead of trusting the error field.
+      const { data: updated, error: updateError } = await session
+        .from('billing_checkout_sessions')
+        .update({ status: 'canceled' })
+        .eq('id', rowId)
+        .select('id, status');
+      if (updateError) {
+        // A 42501 is an equally acceptable denial (it is what a revoked
+        // table GRANT would produce). Either shape is fine; a WRITE is not.
+        expect(updateError.code).toBe('42501');
+      }
+      else {
+        expect(updated).toEqual([]);
+      }
+
+      const db = service();
+      const { data: after } = await db
+        .from('billing_checkout_sessions')
+        .select('status')
+        .eq('id', rowId)
+        .single();
+      expect(after?.status).toBe('open');
+
+      await db.from('billing_checkout_sessions').update({ status: 'expired' }).eq('id', rowId);
+    });
+
+    it('the OWNER cannot INSERT a second row over PostgREST either — the other half of the same exploit', async () => {
+      const session = await qaSession();
+
+      const { error } = await session
+        .from('billing_checkout_sessions')
+        .insert({
+          workspace_id: fixture.workspaceId,
+          created_by_user_id: fixture.qaUserId,
+          target_plan: 'cloud',
+          seat_quantity: 3,
+          stripe_checkout_session_id: `${PREFIX}-cs-insert-exploit`,
+          status: 'open',
+          idempotency_key: `${PREFIX}-insert-exploit-key`,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        });
+
+      // Unlike UPDATE, a policy-less INSERT raises rather than no-opping:
+      // there is no WITH CHECK expression the new row can satisfy.
+      expect(error).not.toBeNull();
+      expect(error!.code).toBe('42501');
+
+      const db = service();
+      const { count } = await db
+        .from('billing_checkout_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('idempotency_key', `${PREFIX}-insert-exploit-key`);
+      expect(count).toBe(0);
+    });
+  });
 });

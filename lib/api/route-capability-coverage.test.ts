@@ -194,6 +194,7 @@ describe('BK-497 — every API route handler declares a capability posture', () 
   it('holds every read, identity and notification handler to the ratified posture map', () => {
     const SESSION_ONLY_ACTIVE_WORKSPACE
       = 'Personal access tokens have no switchable active workspace. '
+        + 'Use a browser session. '
         + 'Pass workspace_id explicitly on each request instead.';
     const SESSION_ONLY_MEMBERSHIP
       = 'Personal access tokens cannot leave a workspace. Use a browser session.';
@@ -255,6 +256,33 @@ describe('BK-497 — every API route handler declares a capability posture', () 
         expect(`${handler} why -> ${row?.why ?? ''}`)
           .toBe(`${handler} why -> ${expected.why}`);
       }
+    }
+  });
+
+  // BK-623 — AC5's literal remedy sentence, asserted as an invariant rather
+  // than only inside the exact-`why` strings above.
+  //
+  // The RATIFIED table pins each message in full, which catches this too — but
+  // only incidentally, and it is regenerated alongside a deliberate reword, so
+  // a reword that drops the sentence updates the table and passes. This is the
+  // reason BK-623 shipped: the sibling carried the sentence, this route never
+  // did, and nothing stated the requirement independently of the two literals.
+  // Both session-only routes are named explicitly so a NEW cookie-only route is
+  // not silently held to a rule AC5 scoped to these two.
+  it('states AC5\'s browser-session remedy on both session-only handlers', () => {
+    const SESSION_ONLY = [
+      'app/api/v1/me/active-workspace/route.ts::POST',
+      'app/api/v1/workspaces/[id]/membership/route.ts::DELETE',
+    ];
+
+    const byKey = new Map(actual.map(row => [key(row), row]));
+    for (const handler of SESSION_ONLY) {
+      const row = byKey.get(handler);
+      // Guard the guard: a rename would otherwise make `undefined?.why ?? ''`
+      // fail with a message that never names the missing handler.
+      expect(`${handler} -> ${row?.posture ?? '<handler not found>'}`)
+        .toBe(`${handler} -> cookie-only`);
+      expect(row?.why ?? '').toContain('Use a browser session.');
     }
   });
 

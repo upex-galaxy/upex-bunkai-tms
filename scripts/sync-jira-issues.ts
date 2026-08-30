@@ -1603,6 +1603,28 @@ function generateStoryMarkdown(
   return lines.join('\n');
 }
 
+/** Trailing marker every generated markdown file ends with. */
+const SYNC_FOOTER = '_Synced from Jira by sync-jira-issues_';
+
+/**
+ * Renders the per-comment blocks shared by the standalone `comments.md` file
+ * (folder layouts) and the inline `## Comments` section embedded in the single
+ * file that a flat, non-coverable work type produces (see `embedCommentsSection`).
+ */
+function renderCommentEntries(comments: JiraComment[]): string[] {
+  if (comments.length === 0) { return ['_No comments_']; }
+
+  const lines: string[] = [];
+  for (const comment of comments) {
+    const author = comment.author?.displayName || 'Unknown';
+    const date = new Date(comment.created).toLocaleString();
+    const body = adfToMarkdown(comment.body as AdfDocument);
+
+    lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
+  }
+  return lines;
+}
+
 function generateCommentsMarkdown(
   comments: JiraComment[],
   issueKey: string,
@@ -1615,24 +1637,38 @@ function generateCommentsMarkdown(
     '',
     '---',
     '',
+    ...renderCommentEntries(comments),
   ];
 
-  if (comments.length === 0) {
-    lines.push('_No comments_');
-  }
-  else {
-    for (const comment of comments) {
-      const author = comment.author?.displayName || 'Unknown';
-      const date = new Date(comment.created).toLocaleString();
-      const body = adfToMarkdown(comment.body as AdfDocument);
-
-      lines.push(`### ${author} - ${date}`, '', body, '', '---', '');
-    }
-  }
-
-  lines.push('', '_Synced from Jira by sync-jira-issues_', '');
+  lines.push('', SYNC_FOOTER, '');
 
   return lines.join('\n');
+}
+
+/**
+ * Embeds a `## Comments` section into a flat, non-coverable work type's single
+ * file (Bug, Improvement, Test Case, and any other `work_types:` entry with
+ * `coverable: false` that reaches `syncStandaloneIssue`). Those types have no
+ * folder to hold a sibling `comments.md`, so the trail is spliced in just above
+ * the sync footer — keeping the one-file contract intact and putting the comment
+ * trail in the exact file every routine already reads. See BK-502: this branch
+ * used to accept `--include-comments` and silently drop it for every work type
+ * the registry marks non-coverable, because it never called `fetchComments`.
+ */
+function embedCommentsSection(content: string, comments: JiraComment[]): string {
+  const section = [
+    '## Comments',
+    '',
+    renderCommentEntries(comments).join('\n').trimEnd(),
+    '',
+    '---',
+    '',
+  ].join('\n');
+
+  const footerAt = content.lastIndexOf(SYNC_FOOTER);
+  if (footerAt === -1) { return `${content.trimEnd()}\n\n---\n\n${section}`; }
+
+  return `${content.slice(0, footerAt)}${section}\n${content.slice(footerAt)}`;
 }
 
 /**
@@ -3174,7 +3210,16 @@ async function syncStandaloneIssue(
   if (!options.dryRun) { ensureDir(dir); }
   const filePath = join(dir, `${prefix}-${key}-${generateSlug(issue.fields.summary)}.md`);
 
-  const content = renderStandaloneContent(entry, issue, type, config);
+  let content = renderStandaloneContent(entry, issue, type, config);
+
+  // BK-502: this branch used to ignore `options.includeComments` outright, so
+  // `--include-comments` was accepted and silently dropped for every work type
+  // the registry marks `coverable: false` (Bug, Improvement, Test Case, and any
+  // future non-coverable type), while the coverable path above already honoured
+  // it. These types have no folder, so the trail is embedded in their single file.
+  if (options.includeComments) {
+    content = embedCommentsSection(content, await fetchComments(config, key));
+  }
 
   const r = writeIndexFile(filePath, content, options.dryRun);
   if (r.status === 'created') { result.files.created++; }
@@ -3761,9 +3806,12 @@ export {
   classifyQaArtifactEpic,
   DEFAULT_QA_ARTIFACT_LABEL,
   defaultSweepEntries,
+  emptyResult,
   higherAltitudeLabel,
   outOfScopeTypeNames,
+  routeIssueByKey,
 };
+export type { Config, SyncOptions, SyncResult };
 
 // Guarded so the pure helpers above can be imported by tests without running a
 // sync.
