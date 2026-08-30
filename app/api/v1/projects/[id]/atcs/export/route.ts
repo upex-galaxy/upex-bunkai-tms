@@ -2,20 +2,14 @@ import type { AtcExportRow } from '@lib/atcs/csv-export';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, withApiHandler } from '@lib/api/handler';
-import { atcsExportFilename, renderAtcsCsv } from '@lib/atcs/csv-export';
+import { atcsExportFilename, renderAtcsCsv, withUtf8Bom } from '@lib/atcs/csv-export';
 import { fetchAllPages } from '@lib/atcs/export-query';
 import { NextResponse } from 'next/server';
 
-// A UTF-8 byte-order mark. `business-rules.md` requires "CSV, UTF-8" and this
-// export's stated audience is non-technical auditors opening the file in
-// Excel on Windows (story Context: "people opening this in Excel/Sheets, not
-// developers reading raw CSV") — without a BOM, Windows Excel decodes a
-// BOM-less .csv with the system ANSI codepage, so any non-ASCII Title/Tag
-// (e.g. "Validación de pago") renders as mojibake ("ValidaciÃ³n"). A BOM
-// fixes that at the cost of tripping a minority of strict RFC4180 parsers —
-// judged worth it for this export's actual audience (Conductor review,
-// optional item, dev-owned call).
-const UTF8_BOM = '﻿';
+interface ModuleSourceRow {
+  id: string
+  path: string
+}
 
 interface AtcSourceRow {
   id: string
@@ -67,8 +61,22 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('not_found', 'Project not found.', { details: { reason: 'not_found' } });
   }
 
-  const [{ data: modules, error: modulesError }, atcs] = await Promise.all([
-    db.from('modules').select('id, path').eq('project_id', projectId),
+  // BK-637 — the modules read is paged for exactly the same reason the atcs
+  // read is: an unranged PostgREST select stops at `db-max-rows` (1000) with
+  // no error, `modulePathById` then misses every module past the cap, and the
+  // first ATC pointing at one of them trips the hard throw below — turning a
+  // silent truncation into a permanent 500 for that Project. `.order('id')`
+  // is what makes the offset windows stable across pages.
+  const [modules, atcs] = await Promise.all([
+    fetchAllPages<ModuleSourceRow>(async (offset, limit) => {
+      const { data, error } = await db
+        .from('modules')
+        .select('id, path')
+        .eq('project_id', projectId)
+        .order('id', { ascending: true })
+        .range(offset, offset + limit - 1);
+      return { data, error };
+    }),
     fetchAllPages<AtcSourceRow>(async (offset, limit) => {
       const { data, error } = await db
         .from('atcs')
@@ -80,11 +88,8 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
       return { data, error };
     }),
   ]);
-  if (modulesError) {
-    throw new ApiError('internal_error', modulesError.message);
-  }
 
-  const modulePathById = new Map((modules ?? []).map(m => [m.id, m.path]));
+  const modulePathById = new Map(modules.map(m => [m.id, m.path]));
   const rows: AtcExportRow[] = atcs.map((a) => {
     const modulePath = modulePathById.get(a.module_id);
     // `atcs.module_id` is a NOT NULL FK, so this can only fire if a module
@@ -108,7 +113,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const csv = renderAtcsCsv(rows);
   const filename = atcsExportFilename(project.slug);
 
-  return new NextResponse(UTF8_BOM + csv, {
+  return new NextResponse(withUtf8Bom(csv), {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',

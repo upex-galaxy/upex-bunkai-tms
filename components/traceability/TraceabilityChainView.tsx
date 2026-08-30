@@ -22,13 +22,13 @@ import {
   filterCriteria,
   FILTERED_EMPTY_TITLE,
   filteredEmptyBody,
-  filterStateToParams,
   filterTotals,
   isAcCardHidden,
   isAcUncovered,
   isDateRangeInverted,
   isFilteredEmpty,
   isFilteringActive,
+  mergeFilterParamsIntoUrl,
   parseFilterStateFromParams,
   resolveAtcRowState,
   resolveKnownModuleId,
@@ -308,7 +308,13 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
 
   const syncFilterUrl = useCallback((next: TraceabilityFilterState) => {
     if (typeof window === 'undefined') { return; }
-    const params = filterStateToParams(next);
+    // BK-717 — merge onto the CURRENT search params, not a fresh
+    // `URLSearchParams()`: this URL also carries `?story=`, the deep-link
+    // identity `userStoryId` was resolved from server-side. Replacing the
+    // whole query string with only the filter axes silently dropped
+    // `story` the moment any filter changed, so a reload lost the selected
+    // story and fell back to "Select a user story".
+    const params = mergeFilterParamsIntoUrl(new URLSearchParams(window.location.search), next);
     const query = params.toString();
     const url = `${window.location.pathname}${query ? `?${query}` : ''}`;
     window.history.replaceState(null, '', url);

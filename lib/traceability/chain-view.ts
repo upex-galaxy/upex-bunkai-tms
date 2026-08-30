@@ -447,6 +447,12 @@ export function parseFilterStateFromParams(params: URLSearchParams): Traceabilit
   return { results, moduleId, from, to };
 }
 
+// The exact param keys `filterStateToParams` writes. Exported so
+// `mergeFilterParamsIntoUrl` can clear precisely these keys before
+// rewriting them — kept as one array so the two functions cannot drift
+// apart (BK-717).
+export const FILTER_URL_PARAM_KEYS = ['result', 'module', 'from', 'to'] as const;
+
 // Only the axes actually set are written (AC5.5/5.6 — partial and
 // open-ended ranges never force the other params into the URL).
 export function filterStateToParams(state: TraceabilityFilterState): URLSearchParams {
@@ -456,4 +462,20 @@ export function filterStateToParams(state: TraceabilityFilterState): URLSearchPa
   if (state.from !== null) { params.set('from', state.from); }
   if (state.to !== null) { params.set('to', state.to); }
   return params;
+}
+
+// BK-717 fix — merges the filter axes INTO the caller's existing URL params
+// instead of replacing the whole query string. `TraceabilityChainView`'s
+// `syncFilterUrl` used to build the entire URL from `filterStateToParams`
+// alone, which only ever knows about the four filter axes — so any other
+// param already on the URL (most importantly `story`, the deep-link
+// identity this whole screen is keyed on) was silently dropped the moment a
+// filter changed. Here, only the keys `filterStateToParams` owns
+// (`FILTER_URL_PARAM_KEYS`) are cleared and rewritten; everything else on
+// `currentParams` (e.g. `story`) passes through untouched.
+export function mergeFilterParamsIntoUrl(currentParams: URLSearchParams, state: TraceabilityFilterState): URLSearchParams {
+  const merged = new URLSearchParams(currentParams);
+  for (const key of FILTER_URL_PARAM_KEYS) { merged.delete(key); }
+  for (const [key, value] of filterStateToParams(state)) { merged.set(key, value); }
+  return merged;
 }
