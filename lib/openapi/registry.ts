@@ -88,6 +88,16 @@ registry.registerComponent('securitySchemes', 'cookieAuth', {
     'Supabase session cookie. Set automatically after the magic-link callback in the web app. Used for browser-driven calls.',
 });
 
+// System/cron principal (ADR-0017) — a third class beyond cookie/PAT, used
+// only by scheduler-triggered internal routes (`app/api/v1/admin/**`). Never
+// a user credential; carries no identity, always acts as "the system".
+registry.registerComponent('securitySchemes', 'cronAuth', {
+  type: 'http',
+  scheme: 'bearer',
+  description:
+    'System secret (`CRON_SECRET`). Internal only — used by the scheduler that triggers this route, never issued to end users.',
+});
+
 // ---------------------------------------------------------------------------
 // Document builder. Servers list pulls from `lib/urls.ts` (single source of
 // truth for environment URLs) — do not redeclare them here.

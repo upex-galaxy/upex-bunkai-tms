@@ -49,6 +49,11 @@
         "in": "cookie",
         "name": "sb-fmbpikzpkafptqximhxn-auth-token",
         "description": "Supabase session cookie. Set automatically after the magic-link callback in the web app. Used for browser-driven calls."
+      },
+      "cronAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "System secret (`CRON_SECRET`). Internal only — used by the scheduler that triggers this route, never issued to end users."
       }
     },
     "schemas": {
@@ -5253,6 +5258,26 @@
           }
         },
         "required": ["id", "title", "severity", "status", "created_at", "run_id", "run_step_id"]
+      },
+      "SendDigestResponse": {
+        "type": "object",
+        "properties": {
+          "eligible_users": {
+            "type": "integer",
+            "description": "Distinct recipients with at least one eligible unread notification."
+          },
+          "sent": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer",
+            "description": "Already claimed for today (same-day re-invocation) — not a failure."
+          }
+        },
+        "required": ["eligible_users", "sent", "failed", "skipped"]
       }
     },
     "parameters": {}
@@ -13414,6 +13439,50 @@
           },
           "404": {
             "description": "User Story not found. Also returned, byte-identical, for a Story outside the caller's workspaces, or for a Story that does not belong to the `{id}` Project asserted in the URL — no existence leak, never a 403.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/send-digest": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Send the daily unread-notifications email digest",
+        "description": "Internal — system/cron principal only (ADR-0017), not part of the public consumer surface. Triggered by Vercel Cron at 08:00 UTC daily; may also be invoked manually as a same-day retry. Requires `Authorization: Bearer <CRON_SECRET>`.",
+        "security": [
+          {
+            "cronAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Digest run completed (per-recipient outcomes; a partial failure does not fail the whole request).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendDigestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid CRON_SECRET.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to load digest candidates.",
             "content": {
               "application/json": {
                 "schema": {

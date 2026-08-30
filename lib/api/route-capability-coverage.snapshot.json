@@ -25,6 +25,11 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/admin/send-digest/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
     "file": "app/api/v1/atcs/[id]/duplicate/route.ts",
     "method": "POST",
     "posture": "required:atc:write"
