@@ -37,6 +37,9 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'bug.reassigned',
   'bug.unassigned',
   'bug.status_changed',
+  // BK-508 — workspace data export request/download audit trail (AC-12).
+  'export.requested',
+  'export.downloaded',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ALLOWED_ACTIONS)[number];

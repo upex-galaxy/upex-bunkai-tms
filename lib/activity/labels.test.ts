@@ -16,11 +16,11 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
     }
   });
 
-  test('the label map carries exactly the 12 allowlisted actions — no orphan, no gap', () => {
+  test('the label map carries exactly the 14 allowlisted actions — no orphan, no gap', () => {
     expect(Object.keys(ACTION_LABELS).sort()).toEqual([...ACTIVITY_ALLOWED_ACTIONS].sort());
   });
 
-  test('the exact 12-row table matches implementation-plan.md / BK-264\'s AC verbatim', () => {
+  test('the exact 14-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
     expect(ACTION_LABELS).toEqual({
       'module.renamed': 'renamed a module',
       'module.description_updated': 'updated a module description',
@@ -34,6 +34,8 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
       'bug.reassigned': 'assigned this defect to {assignee}',
       'bug.unassigned': 'unassigned this defect',
       'bug.status_changed': 'moved this defect to {status}',
+      'export.requested': 'requested a workspace data export',
+      'export.downloaded': 'downloaded the workspace data export',
     });
   });
 });
