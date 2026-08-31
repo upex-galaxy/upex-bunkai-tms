@@ -67,6 +67,7 @@
     "cli-table3": "^0.6.5",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "fflate": "^0.8.3",
     "figures": "^6.1.0",
     "lucide-react": "^1.16.0",
     "next": "^15",

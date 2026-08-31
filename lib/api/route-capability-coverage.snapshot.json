@@ -434,6 +434,24 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/data-export/download/route.ts",
+    "method": "GET",
+    "posture": "cookie-only",
+    "why": "Workspace data export is available to the Owner via a browser session only."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/data-export/route.ts",
+    "method": "GET",
+    "posture": "cookie-only",
+    "why": "Workspace data export is available to the Owner via a browser session only."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/data-export/route.ts",
+    "method": "POST",
+    "posture": "cookie-only",
+    "why": "Workspace data export is available to the Owner via a browser session only."
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/invites/[inviteId]/route.ts",
     "method": "DELETE",
     "posture": "required:workspace:admin"

@@ -22,12 +22,14 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   }
 
   // BK-740 — resolve the caller's role in the ACTIVE workspace so the nav can
-  // hide workspace-scoped sections they cannot use (Billing). Same cookie-
-  // driven active-workspace idiom as settings/billing/page.tsx, and the same
-  // self-row membership read as lib/tests/load-test-detail.ts:79-85 — no
-  // cached/shared role accessor exists in this repo to prefer over it. The
-  // `status = 'active'` + role filter mirrors `bunkai_is_workspace_admin`,
-  // which stays the real access control on the Billing route itself.
+  // hide workspace-scoped sections they cannot use (Billing, and now BK-508's
+  // Data export). Same cookie-driven active-workspace idiom as
+  // settings/billing/page.tsx, and the same self-row membership read as
+  // lib/tests/load-test-detail.ts:79-85 — no cached/shared role accessor
+  // exists in this repo to prefer over it. The `status = 'active'` + role
+  // filter mirrors `bunkai_is_workspace_admin`, which stays the real access
+  // control on the Billing route itself; `assertExportAuthorized` +
+  // `workspace_exports`' RLS are the real access control for Data export.
   const { data: workspaces } = await supabase
     .from('workspaces')
     .select('id')

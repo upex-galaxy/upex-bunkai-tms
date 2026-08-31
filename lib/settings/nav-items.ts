@@ -25,6 +25,12 @@ export interface SettingsNavItem {
 // a dead-end link again.
 export const BILLING_NAV_ROLES: readonly MemberRole[] = ['owner', 'admin'];
 
+// BK-508 — Owner only (AC-02: absent, not present-and-refused, for Admin/
+// Member/Viewer). Reuses the same `roles` gate BK-740 introduced for Billing
+// rather than a bespoke boolean prop — one filtering mechanism for every
+// role-gated nav entry.
+export const DATA_EXPORT_NAV_ROLES: readonly MemberRole[] = ['owner'];
+
 export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   { id: 'account', label: 'Account', href: '/settings/account' },
   { id: 'tokens', label: 'Tokens', href: '/settings/tokens' },
@@ -39,6 +45,8 @@ export const SETTINGS_NAV_AVAILABLE: SettingsNavItem[] = [
   // but never at the NAVIGATION level, so members saw the entry and clicked
   // into a dead end.
   { id: 'billing', label: 'Billing', href: '/settings/billing', roles: BILLING_NAV_ROLES },
+  // BK-508 — Data export section, Owner only.
+  { id: 'data-export', label: 'Data export', href: '/settings/data-export', roles: DATA_EXPORT_NAV_ROLES },
 ];
 
 export const SETTINGS_NAV_COMING_SOON: SettingsNavItem[] = [

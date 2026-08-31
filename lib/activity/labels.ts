@@ -26,6 +26,8 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'bug.reassigned': 'assigned this defect to {assignee}',
   'bug.unassigned': 'unassigned this defect',
   'bug.status_changed': 'moved this defect to {status}',
+  'export.requested': 'requested a workspace data export',
+  'export.downloaded': 'downloaded the workspace data export',
 };
 
 // R1 backstop (implementation-plan.md Risk R1 — allowlist/label-map drift):

@@ -1449,6 +1449,56 @@ export interface Database {
           },
         ]
       }
+      workspace_exports: {
+        Row: {
+          archive_bytes: number | null
+          archive_path: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          requested_by: string
+          started_at: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          archive_bytes?: number | null
+          archive_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          requested_by: string
+          started_at?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          archive_bytes?: number | null
+          archive_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          requested_by?: string
+          started_at?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'workspace_exports_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       workspace_invite_secrets: {
         Row: {
           invite_id: string
@@ -1926,6 +1976,10 @@ export interface Database {
           email: string
           user_id: string
         }[]
+      }
+      bunkai_resolve_workspace_export_download: {
+        Args: { p_workspace_id: string }
+        Returns: Json
       }
       bunkai_run_json: { Args: { p_run_id: string }, Returns: Json }
       bunkai_save_atc: {

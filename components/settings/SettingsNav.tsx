@@ -18,8 +18,8 @@ import { usePathname } from 'next/navigation';
 // (standing color-not-sole-signal rule), and skipped by Tab by construction.
 // BK-740 — `role` is the caller's role in the ACTIVE workspace, resolved
 // server-side by `app/(app)/settings/layout.tsx`. Role-gated entries
-// (Billing) are filtered out here so a member never sees a link into a
-// section whose own server gate would only answer 404.
+// (Billing, Data export) are filtered out here so a member never sees a link
+// into a section whose own server gate would only answer 404/403.
 export function SettingsNav({ role }: { role: MemberRole | null }) {
   const pathname = usePathname();
   const availableItems = settingsNavItemsForRole(role);
