@@ -204,10 +204,13 @@ create policy workspace_members_select_self_or_admin
 -- ADR-0015 point 4: deletion is NEVER blocked by other members' presence —
 -- no count-of-members gate exists here at all (unlike 0044's leave guard).
 --
--- IDEMPOTENCE (Scenario N5): a workspace already soft-deleted raises
--- already_deleted (45901) rather than silently re-stamping deleted_at, so a
--- lost double-submit race is refused cleanly instead of resetting the grace
--- clock.
+-- IDEMPOTENCE (Scenario N5, ticket-scored Option B, 25/25): a workspace
+-- already soft-deleted raises already_deleted (45901) rather than silently
+-- re-stamping deleted_at, so a lost double-submit race is refused cleanly
+-- instead of resetting the grace clock. The app layer (deletion-response.ts)
+-- maps this SQLSTATE to 404 not_found, not 409 -- the shipped `DELETE
+-- /api/v1/tokens/[id]` precedent (`.is('revoked_at', null)`, 404 on zero
+-- rows matched) is the exact structural match the ticket ruling names.
 --
 -- Immediate eviction (point 5): PATs and pending invites for the workspace
 -- are revoked in the same transaction as the deleted_at stamp, so they die

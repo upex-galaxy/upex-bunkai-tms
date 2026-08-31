@@ -2146,6 +2146,7 @@ export interface Database {
         Args: { p_workspace_id: string }
         Returns: Json
       }
+      bunkai_workspace_is_live: { Args: { ws_id: string }, Returns: boolean }
     }
     Enums: {
       [_ in never]: never
