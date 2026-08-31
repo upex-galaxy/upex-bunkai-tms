@@ -75,6 +75,7 @@ import '../app/api/v1/workspaces/[id]/billing/checkout/route.openapi';
 import '../app/api/v1/workspaces/[id]/billing/checkout/cancel/route.openapi';
 import '../app/api/v1/workspaces/[id]/data-export/route.openapi';
 import '../app/api/v1/workspaces/[id]/data-export/download/route.openapi';
+import '../app/api/v1/workspaces/[id]/restore/route.openapi';
 
 import '../app/api/v1/projects/[id]/modules/route.openapi';
 

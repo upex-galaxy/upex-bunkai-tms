@@ -861,6 +861,44 @@
         },
         "description": "At least one field is required. An empty object `{}` parses cleanly against this schema but is rejected by the handler with 400 `bad_request` (\"Provide at least one field to update.\"), so the constraint is not visible in the schema itself."
       },
+      "WorkspaceDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspaceName": {
+            "type": "string"
+          },
+          "purgeDeadline": {
+            "type": "string"
+          },
+          "otherMemberCount": {
+            "type": "integer"
+          },
+          "wasActiveWorkspace": {
+            "type": "boolean",
+            "description": "Whether the deleted workspace was the caller's active one. `newActiveWorkspaceId`/`newActiveWorkspaceName` are only meaningful when this is true — they stay null when the deleted workspace was not active, which is not the same as \"no workspace left\" (AC-10)."
+          },
+          "newActiveWorkspaceId": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "newActiveWorkspaceName": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "workspaceId",
+          "workspaceName",
+          "purgeDeadline",
+          "otherMemberCount",
+          "wasActiveWorkspace",
+          "newActiveWorkspaceId",
+          "newActiveWorkspaceName"
+        ]
+      },
       "WorkspaceInviteCreateResponse": {
         "type": "object",
         "properties": {
@@ -1397,6 +1435,19 @@
           "expires_at",
           "created_at"
         ]
+      },
+      "WorkspaceRestoreResponse": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspaceName": {
+            "type": "string"
+          }
+        },
+        "required": ["workspaceId", "workspaceName"]
       },
       "ModuleCreateResponse": {
         "type": "object",
@@ -6331,6 +6382,69 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": ["Workspaces"],
+        "summary": "Delete a workspace I own",
+        "description": "Owner-only, session-only (BK-512, ADR-0015). Soft-deletes the workspace: access ends immediately for the owner and every other member, the workspace's Personal Access Tokens and pending invites are revoked in the same transaction, and a deletion audit record is written. Nothing is physically removed until the 30-day grace period elapses, during which the workspace can be restored via `POST /api/v1/workspaces/{id}/restore`. A confirmation email naming the workspace, the actor and the restore deadline is sent to the owner and every active member. If the deleted workspace was the caller's active one, the response carries the newly re-resolved active workspace (oldest remaining membership first) and the `bk_active_ws` cookie is rotated in the same response.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace deleted (soft-delete; grace period started).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller authenticated via a Personal Access Token, or is an active member but not the workspace Owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, caller is not an active member, or the workspace was already deleted by a concurrent request (Scenario N5 — a double-submit's losing call is refused as not_found, matching the shipped `DELETE /api/v1/tokens/{id}` precedent, not a 409).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/workspaces/{id}/invites": {
@@ -7683,6 +7797,81 @@
           },
           "404": {
             "description": "No export requested yet, not ready, or the ready archive has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/restore": {
+      "post": {
+        "tags": ["Workspaces"],
+        "summary": "Restore a workspace during its grace period",
+        "description": "Owner-only, session-only (BK-512, ADR-0015 point 10). Clears `deleted_at` on a soft-deleted workspace — no data movement. Reachable from the confirm-time deletion-receipt email even though the workspace is invisible via RLS while deleted, since the underlying RPC resolves ownership directly and bypasses RLS internally.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace restored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRestoreResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller authenticated via a Personal Access Token, or is an active member but not the workspace Owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found, already purged, or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The workspace is not currently deleted (`not_deleted`).",
             "content": {
               "application/json": {
                 "schema": {
