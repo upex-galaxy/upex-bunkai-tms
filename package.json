@@ -44,7 +44,8 @@
     "vars:env:check": "bun scripts/check-vars.ts",
     "git:policy": "bun scripts/git-policy.ts",
     "jira:url": "bun scripts/atlassian-url.ts",
-    "context:hydrate": "bun scripts/sync-jira-issues.ts pull --include-comments"
+    "context:hydrate": "bun scripts/sync-jira-issues.ts pull --include-comments",
+    "jira:components": "bun scripts/sync-jira-components.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
