@@ -281,6 +281,10 @@ export async function QaShell({ config }: { config: QaConfig }) {
               <p>{config.db.poolerNote}</p>
             </Callout>
 
+            <Callout hue="emerald" title="Funciones RPC — qué podés llamar">
+              <p>{config.db.rpcAccess}</p>
+            </Callout>
+
             <Callout hue="emerald" title="Sonda de aislamiento (RLS)">
               <p>{config.db.rlsProbe}</p>
             </Callout>

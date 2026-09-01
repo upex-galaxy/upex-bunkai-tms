@@ -106,6 +106,7 @@ export interface QaConfig {
     roles: DbRole[]
     revokedSecretTables: string[]
     poolerNote: string
+    rpcAccess: string
     rlsProbe: string
   }
   mcp: {
@@ -683,8 +684,8 @@ export const qaConfig: QaConfig = {
     tomlBlock: dbTomlBlock,
     uriBlock: dbUriBlock,
     roles: [
-      { name: 'qa_inspector_ro', access: 'Solo lectura (SELECT en public.*). BYPASSRLS.' },
-      { name: 'qa_inspector_rw', access: 'Lectura + escritura (SELECT/INSERT/UPDATE/DELETE en public.*). BYPASSRLS.' },
+      { name: 'qa_inspector_ro', access: 'Solo lectura: SELECT sobre las tablas de public menos las 3 revocadas abajo. BYPASSRLS.' },
+      { name: 'qa_inspector_rw', access: 'Lectura + escritura: SELECT/INSERT/UPDATE/DELETE sobre las tablas de public menos las 3 revocadas abajo. BYPASSRLS.' },
     ],
     // Migración 0011 movió cada secreto a una tabla hermana 1:1 y 0012 DROPEÓ las
     // columnas viejas (access_tokens.hash, workspace_invites.token_hash,
@@ -693,7 +694,8 @@ export const qaConfig: QaConfig = {
     // aislamiento es a nivel TABLA, no a nivel columna.
     revokedSecretTables: ['access_token_secrets', 'magic_link_token_secrets', 'workspace_invite_secrets'],
     poolerNote: 'Conectá por el Session Pooler en el puerto 5432 (transacciones largas OK). NO uses el 6543 (transaction pooler, sin prepared statements). El usuario del pooler es punteado: <DBHUB_USER>.<project-ref> — host, user y ref viven en el .env (DBHUB_HOST, DBHUB_USER), nunca en esta página.',
-    rlsProbe: 'Sonda cross-tenant: logueate como usuario B e intentá SELECT en projects con un workspace_id del usuario A → esperá 0 filas. RLS está activo en cada tabla; auth.uid() maneja la membresía vía la familia bunkai_is_workspace_member.',
+    rpcAccess: 'Los RPC de SECURITY INVOKER (bunkai_list_bugs, bunkai_save_atc, bunkai_search_workspace, bunkai_*_json…) están habilitados para ambos roles desde la migración 0085, que además arregló el ALTER DEFAULT PRIVILEGES para que cada RPC nuevo quede accesible solo. Los de SECURITY DEFINER siguen denegados a propósito: corren como postgres y bindean contra auth.uid(), que es NULL en una conexión directa, así que no harían nada útil. Ese camino se prueba por la API, no por SQL.',
+    rlsProbe: 'Ojo: estas credenciales NO sirven para probar aislamiento multi-tenant — BYPASSRLS hace que vean todos los workspaces a la vez. La sonda cross-tenant va con una sesión authenticated real (JWT): logueate como usuario B e intentá SELECT en projects con un workspace_id del usuario A → esperá 0 filas. RLS está activo en cada tabla; auth.uid() maneja la membresía vía la familia bunkai_is_workspace_member.',
   },
   mcp: {
     agents: ['claude', 'opencode'],
