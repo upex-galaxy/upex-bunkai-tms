@@ -947,11 +947,16 @@ work_types:
     local_dir: preconditions
 
   subtask:
-    # Instances map this to their own subtask-level issue type — some workspaces
-    # expose it as "Task" at the subtask level. Tracking-only: the sync never
-    # materializes it as its own folder, and the out-of-scope advisory excludes
-    # subtask-level types entirely.
-    jira_issue_type: Sub-task
+    # `A | B | C` = ordered alternatives; the first one the project actually has
+    # wins. The subtask level is named differently per instance: Jira's default is
+    # "Sub-task", the BK instance calls it "Task", a Spanish-localized instance
+    # calls it "Subtarea". Declaring a single name made every other spelling a
+    # silent skip in jira:sync-workflows — which is exactly why this work_type was
+    # missing from the catalog while being declared right here. Add your own
+    # spelling to the list if your instance uses another.
+    # Tracking-only: the sync never materializes it as its own folder, and the
+    # out-of-scope advisory excludes subtask-level types entirely.
+    jira_issue_type: Sub-task | Task | Subtarea
     description: Generic subtask under a Story — tracking-only, never synced as its own folder
     sync: never
 
