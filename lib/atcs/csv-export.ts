@@ -8,7 +8,7 @@
 // and the two places that must honour it live together instead of one being a
 // bare constant in a route with its consuming half implied nowhere.
 //
-// Business rules (Jira BK-315, `customfield_10054`, PO Q1/Q2 rulings):
+// Business rules (Jira BK-315, `business_rules_specification`, PO Q1/Q2 rulings):
 //   - Fixed column order: ATC ID, Slug, Title, Module, Layer, Tags, Status.
 //   - ATC ID is the raw `atcs.id` UUID — this codebase has an explicit,
 //     repeated ruling (master-design-plan.md §5 D32) against inventing a
