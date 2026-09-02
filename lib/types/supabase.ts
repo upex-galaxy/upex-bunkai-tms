@@ -1449,6 +1449,45 @@ export interface Database {
           },
         ]
       }
+      workspace_deletions: {
+        Row: {
+          id: string
+          member_count: number
+          purge_deadline: string
+          purged_at: string | null
+          requested_at: string
+          requested_by: string
+          row_count_digest: Json
+          workspace_id: string
+          workspace_name: string
+          workspace_slug: string
+        }
+        Insert: {
+          id?: string
+          member_count?: number
+          purge_deadline: string
+          purged_at?: string | null
+          requested_at?: string
+          requested_by: string
+          row_count_digest?: Json
+          workspace_id: string
+          workspace_name: string
+          workspace_slug: string
+        }
+        Update: {
+          id?: string
+          member_count?: number
+          purge_deadline?: string
+          purged_at?: string | null
+          requested_at?: string
+          requested_by?: string
+          row_count_digest?: Json
+          workspace_id?: string
+          workspace_name?: string
+          workspace_slug?: string
+        }
+        Relationships: []
+      }
       workspace_exports: {
         Row: {
           archive_bytes: number | null
@@ -1604,6 +1643,8 @@ export interface Database {
       workspaces: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deletion_requested_by: string | null
           id: string
           name: string
           owner_user_id: string
@@ -1613,6 +1654,8 @@ export interface Database {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deletion_requested_by?: string | null
           id?: string
           name: string
           owner_user_id: string
@@ -1622,6 +1665,8 @@ export interface Database {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deletion_requested_by?: string | null
           id?: string
           name?: string
           owner_user_id?: string
@@ -1914,6 +1959,7 @@ export interface Database {
           workspace_id: string
         }[]
       }
+      bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
       bunkai_remove_test_from_plan: {
         Args: { p_test_id: string, p_test_plan_id: string }
         Returns: Json
@@ -1970,6 +2016,10 @@ export interface Database {
         Args: { p_actor_user_id: string, p_user_story_id: string }
         Returns: Json
       }
+      bunkai_request_workspace_deletion: {
+        Args: { p_workspace_id: string }
+        Returns: Json
+      }
       bunkai_resolve_activity_actors: {
         Args: { p_user_ids: string[], p_workspace_id: string }
         Returns: {
@@ -1978,6 +2028,10 @@ export interface Database {
         }[]
       }
       bunkai_resolve_workspace_export_download: {
+        Args: { p_workspace_id: string }
+        Returns: Json
+      }
+      bunkai_restore_workspace_deletion: {
         Args: { p_workspace_id: string }
         Returns: Json
       }
@@ -2092,6 +2146,7 @@ export interface Database {
         Args: { p_workspace_id: string }
         Returns: Json
       }
+      bunkai_workspace_is_live: { Args: { ws_id: string }, Returns: boolean }
     }
     Enums: {
       [_ in never]: never

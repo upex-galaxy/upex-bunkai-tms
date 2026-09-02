@@ -34,6 +34,35 @@ export async function leaveWorkspace(supabase: Client, args: LeaveWorkspaceArgs)
   });
 }
 
+// BK-512 — Delete a workspace I own (ADR-0015: soft-delete, 30-day grace).
+// The SECURITY DEFINER RPC (migration 0084) validates the caller is the
+// active owner, stamps `deleted_at`, revokes the workspace's PATs and
+// pending invites in the same transaction, writes the `workspace_deletions`
+// audit tombstone, and returns the confirm-time recipient list for the
+// app-layer email receipt (ADR-0015 point 9).
+export interface RequestWorkspaceDeletionArgs {
+  workspaceId: string
+}
+
+export async function requestWorkspaceDeletion(supabase: Client, args: RequestWorkspaceDeletionArgs) {
+  return supabase.rpc('bunkai_request_workspace_deletion', {
+    p_workspace_id: args.workspaceId,
+  });
+}
+
+// BK-512 — restore during the grace period (ADR-0015 point 10): `deleted_at
+// = null`, no data movement. Reachable even though the workspace is
+// invisible via RLS while deleted — the RPC is SECURITY DEFINER.
+export interface RestoreWorkspaceDeletionArgs {
+  workspaceId: string
+}
+
+export async function restoreWorkspaceDeletion(supabase: Client, args: RestoreWorkspaceDeletionArgs) {
+  return supabase.rpc('bunkai_restore_workspace_deletion', {
+    p_workspace_id: args.workspaceId,
+  });
+}
+
 // BK-21 unified the web editor's save onto bunkai_update_atc (the canonical
 // edit RPC), so the legacy bunkai_save_atc wrapper (SECURITY INVOKER, no event
 // emission) is no longer called from app code. The DB function is retained
