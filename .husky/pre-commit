@@ -15,3 +15,13 @@ if echo "$STAGED" | grep -qE '^(\.claude/skills/.+/SKILL\.md$|scripts/build-skil
     exit 1
   }
 fi
+
+# openapi spec freshness gate — only runs when staged files affect the spec.
+if echo "$STAGED" | grep -qE '^(app/api/.+/route\.openapi\.ts$|scripts/openapi-gen\.ts$|lib/openapi/.+$|public/openapi\.json$)'; then
+  bun run openapi:check || {
+    echo ""
+    echo "❌ public/openapi.json is stale. Fix:"
+    echo "   bun run openapi:gen && git add public/openapi.json"
+    exit 1
+  }
+fi

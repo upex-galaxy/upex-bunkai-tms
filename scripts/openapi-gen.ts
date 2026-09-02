@@ -10,8 +10,16 @@
  *
  * Adding a new endpoint:
  *   1. `app/api/v1/<resource>/route.openapi.ts` — call `registry.registerPath`.
- *   2. Add one import line below so the registration runs.
- *   3. Run `bun run openapi:gen` and commit the regenerated `public/openapi.json`.
+ *   2. Run `bun run openapi:gen` and commit the regenerated `public/openapi.json`.
+ *
+ * There is NO import list to maintain: every `app/api/**\/route.openapi.ts` is
+ * auto-discovered by glob below and imported for its side effect. Do not
+ * reintroduce a hand-written list — it only ever goes stale silently.
+ *
+ * Drift gate:
+ *   `--check` rebuilds the document in memory (writing nothing) and exits 1
+ *   when the committed `public/openapi.json` does not match. Wired into the
+ *   husky hooks and the repo-wide check chain.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -19,167 +27,84 @@ import { dirname, resolve } from 'node:path';
 
 import prettier from 'prettier';
 import { buildOpenApiDocument } from '../lib/openapi/registry';
-// Side-effect imports — each module calls `registry.registerPath(...)` at
-// load time. Order does not matter; the registry deduplicates by method+path.
 
-import '../app/api/v1/auth/check-email/route.openapi';
-
-import '../app/api/v1/auth/confirm/route.openapi';
-
-import '../app/api/v1/auth/magic-link/route.openapi';
-
-import '../app/api/v1/auth/signin/route.openapi';
-
-import '../app/api/v1/auth/signup/route.openapi';
-
-import '../app/api/v1/auth/resend/route.openapi';
-
-import '../app/api/v1/health/route.openapi';
-
-import '../app/api/v1/route.openapi';
-
-import '../app/api/v1/tokens/route.openapi';
-
-import '../app/api/v1/tokens/[id]/route.openapi';
-
-import '../app/api/v1/invites/accept/route.openapi';
-
-import '../app/api/v1/me/active-workspace/route.openapi';
-
-import '../app/api/v1/me/route.openapi';
-
-import '../app/api/v1/workspaces/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/invites/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/invites/[inviteId]/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/membership/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/projects/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/recent-projects/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/active-runs/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/open-bugs/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/coverage/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/billing/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/billing/checkout/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/billing/checkout/cancel/route.openapi';
-import '../app/api/v1/workspaces/[id]/data-export/route.openapi';
-import '../app/api/v1/workspaces/[id]/data-export/download/route.openapi';
-import '../app/api/v1/workspaces/[id]/restore/route.openapi';
-
-import '../app/api/v1/projects/[id]/modules/route.openapi';
-
-import '../app/api/v1/projects/[id]/environments/route.openapi';
-
-import '../app/api/v1/environments/[id]/route.openapi';
-
-import '../app/api/v1/projects/[id]/milestones/route.openapi';
-
-import '../app/api/v1/milestones/[id]/route.openapi';
-
-import '../app/api/v1/projects/[id]/test-plans/route.openapi';
-
-import '../app/api/v1/test-plans/[id]/route.openapi';
-
-import '../app/api/v1/test-plans/[id]/tests/route.openapi';
-
-import '../app/api/v1/test-plans/[id]/tests/[testId]/route.openapi';
-
-import '../app/api/v1/modules/[id]/route.openapi';
-
-import '../app/api/v1/modules/[id]/user-stories/route.openapi';
-
-import '../app/api/v1/user-stories/[id]/route.openapi';
-
-import '../app/api/v1/user-stories/[id]/acceptance-criteria/route.openapi';
-
-import '../app/api/v1/acceptance-criteria/[id]/route.openapi';
-
-import '../app/api/v1/imports/route.openapi';
-
-import '../app/api/v1/imports/[id]/route.openapi';
-
-import '../app/api/v1/atcs/route.openapi';
-
-import '../app/api/v1/atcs/search/route.openapi';
-
-import '../app/api/v1/search/route.openapi';
-
-import '../app/api/v1/atcs/[id]/route.openapi';
-
-import '../app/api/v1/atcs/[id]/duplicate/route.openapi';
-
-import '../app/api/v1/atcs/[id]/usage/route.openapi';
-
-import '../app/api/v1/tests/route.openapi';
-
-import '../app/api/v1/tests/search/route.openapi';
-
-import '../app/api/v1/tests/[id]/route.openapi';
-
-import '../app/api/v1/tests/[id]/reorder/route.openapi';
-
-import '../app/api/v1/tests/[id]/tags/route.openapi';
-
-import '../app/api/v1/tests/[id]/runs/route.openapi';
-
-import '../app/api/v1/projects/[id]/runs/report/route.openapi';
-
-import '../app/api/v1/projects/[id]/metrics/recovery-cycles/route.openapi';
-
-import '../app/api/v1/runs/route.openapi';
-
-import '../app/api/v1/runs/[id]/route.openapi';
-
-import '../app/api/v1/runs/[id]/abort/route.openapi';
-
-import '../app/api/v1/runs/[id]/finish/route.openapi';
-
-import '../app/api/v1/activity/route.openapi';
-
-import '../app/api/v1/runs/[id]/steps/[stepId]/mark/route.openapi';
-
-import '../app/api/v1/bugs/route.openapi';
-
-import '../app/api/v1/bugs/[id]/route.openapi';
-
-import '../app/api/v1/bugs/[id]/assign/route.openapi';
-
-import '../app/api/v1/bugs/[id]/status/route.openapi';
-
-import '../app/api/v1/projects/[id]/bugs/route.openapi';
-
-import '../app/api/v1/projects/[id]/coverage/route.openapi';
-
-import '../app/api/v1/projects/[id]/atcs/export/route.openapi';
-
-import '../app/api/v1/projects/[id]/bugs/heatmap/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/notifications/route.openapi';
-
-import '../app/api/v1/notifications/[id]/read/route.openapi';
-
-import '../app/api/v1/workspaces/[id]/notifications/read-all/route.openapi';
-
-import '../app/api/v1/notification-preferences/route.openapi';
-
-import '../app/api/v1/projects/[id]/traceability/route.openapi';
-
-import '../app/api/v1/admin/send-digest/route.openapi';
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'patch',
+  'delete',
+  'options',
+  'head',
+  'trace',
+] as const;
+
+const repoRoot = resolve(import.meta.dir, '..');
+const outPath = resolve(repoRoot, 'public/openapi.json');
+const checkMode = process.argv.includes('--check');
+
+/** Sorted list of the `route.openapi.ts` files that feed the registry. */
+function discoverSpecFiles(): string[] {
+  const glob = new Bun.Glob('app/api/**/route.openapi.ts');
+  // Sorting is mandatory, not cosmetic: the registry emits paths in
+  // registration order, so an unsorted glob would make the generated bytes
+  // depend on filesystem iteration order and the drift gate would flap.
+  return [...glob.scanSync({ cwd: repoRoot })].sort();
+}
+
+function countPaths(document: ReturnType<typeof buildOpenApiDocument>): number {
+  return Object.keys(document.paths ?? {}).length;
+}
+
+function countOperations(document: ReturnType<typeof buildOpenApiDocument>): number {
+  return Object.values(document.paths ?? {}).reduce<number>((acc, pathItem) => {
+    if (!pathItem || typeof pathItem !== 'object') {
+      return acc;
+    }
+    return acc + HTTP_METHODS.filter(m => m in pathItem).length;
+  }, 0);
+}
+
+/** Remediation command, read from `package.json` rather than hardcoded. */
+async function regenerateCommand(): Promise<string> {
+  try {
+    const pkg = (await Bun.file(resolve(repoRoot, 'package.json')).json()) as {
+      scripts?: Record<string, string>
+    };
+    const entry = Object.entries(pkg.scripts ?? {}).find(
+      ([, cmd]) => cmd.trim() === 'bun scripts/openapi-gen.ts',
+    );
+    if (entry) {
+      return `bun run ${entry[0]}`;
+    }
+  }
+  catch {
+    // Fall through to the direct invocation below.
+  }
+  return 'bun scripts/openapi-gen.ts';
+}
+
+// ---------------------------------------------------------------------------
+// Discover + load. Each module calls `registry.registerPath(...)` at load time.
+// ---------------------------------------------------------------------------
+
+const specFiles = discoverSpecFiles();
+
+if (specFiles.length === 0) {
+  console.error(
+    '✗ No `app/api/**/route.openapi.ts` files discovered — refusing to emit an empty spec.',
+  );
+  console.error(`  Searched from: ${repoRoot}`);
+  process.exit(1);
+}
+
+for (const specFile of specFiles) {
+  await import(resolve(repoRoot, specFile));
+}
 
 const document = buildOpenApiDocument();
-const outPath = resolve(process.cwd(), 'public/openapi.json');
-mkdirSync(dirname(outPath), { recursive: true });
+const pathCount = countPaths(document);
+const operationCount = countOperations(document);
 
 // Run the JSON through Prettier so the committed file matches the project's
 // formatting contract and `format:check` stays green after every regeneration.
@@ -188,15 +113,72 @@ const formatted = await prettier.format(JSON.stringify(document, null, 2), {
   ...prettierOptions,
   filepath: outPath,
 });
-writeFileSync(outPath, formatted);
 
-const pathCount = Object.keys(document.paths ?? {}).length;
-const operationCount = Object.values(document.paths ?? {}).reduce<number>((acc, pathItem) => {
-  if (!pathItem || typeof pathItem !== 'object') {
-    return acc;
+// ---------------------------------------------------------------------------
+// `--check`: compare in memory, never write. Writing here would dirty the
+// working tree and defeat the point of the gate.
+// ---------------------------------------------------------------------------
+
+if (checkMode) {
+  const committedFile = Bun.file(outPath);
+  const committed = (await committedFile.exists()) ? await committedFile.text() : null;
+
+  if (committed === formatted) {
+    console.log(
+      `✓ public/openapi.json is up to date — ${pathCount} paths, ${operationCount} operations (${specFiles.length} route specs).`,
+    );
+    process.exit(0);
   }
-  const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
-  return acc + methods.filter(m => m in pathItem).length;
-}, 0);
+
+  console.error('✗ public/openapi.json is stale — it does not match a fresh generation.');
+
+  if (committed === null) {
+    console.error('  Committed file: missing.');
+  }
+  else {
+    let committedPaths: string[] | null = null;
+    try {
+      const parsed = JSON.parse(committed) as { paths?: Record<string, unknown> };
+      committedPaths = Object.keys(parsed.paths ?? {});
+    }
+    catch {
+      console.error('  Committed file: present but not valid JSON.');
+    }
+
+    if (committedPaths) {
+      const generatedPaths = Object.keys(document.paths ?? {});
+      const committedSet = new Set(committedPaths);
+      const generatedSet = new Set(generatedPaths);
+      const added = generatedPaths.filter(p => !committedSet.has(p)).sort();
+      const removed = committedPaths.filter(p => !generatedSet.has(p)).sort();
+
+      console.error(`  Committed: ${committedPaths.length} paths.`);
+      console.error(`  Generated: ${generatedPaths.length} paths.`);
+
+      if (added.length > 0) {
+        console.error(`  Missing from the committed file (${added.length}):`);
+        added.forEach(p => console.error(`    + ${p}`));
+      }
+      if (removed.length > 0) {
+        console.error(`  Present in the committed file but no longer generated (${removed.length}):`);
+        removed.forEach(p => console.error(`    - ${p}`));
+      }
+      if (added.length === 0 && removed.length === 0) {
+        console.error('  Same path set — the difference is inside an operation, schema, or ordering.');
+      }
+    }
+  }
+
+  console.error('');
+  console.error(`  Fix: ${await regenerateCommand()} && git add public/openapi.json`);
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// Normal mode: write the file.
+// ---------------------------------------------------------------------------
+
+mkdirSync(dirname(outPath), { recursive: true });
+writeFileSync(outPath, formatted);
 
 console.log(`✓ Wrote ${outPath} — ${pathCount} paths, ${operationCount} operations.`);
