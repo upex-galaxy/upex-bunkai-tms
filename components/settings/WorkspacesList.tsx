@@ -1,7 +1,9 @@
 'use client';
 
+import type { DeleteWorkspaceTarget } from '@components/settings/DeleteWorkspaceModal';
 import type { LeaveWorkspaceTarget } from '@components/settings/LeaveWorkspaceModal';
 import type { WorkspaceRow } from '@lib/account/workspaces';
+import { DeleteWorkspaceModal } from '@components/settings/DeleteWorkspaceModal';
 import { LeaveWorkspaceModal } from '@components/settings/LeaveWorkspaceModal';
 import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
@@ -32,6 +34,7 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
   const router = useRouter();
   const state = resolveWorkspacesViewState({ error, rowCount: workspaces.length });
   const [leaveTarget, setLeaveTarget] = useState<LeaveWorkspaceTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteWorkspaceTarget | null>(null);
   const [liveMessage, setLiveMessage] = useState('');
 
   return (
@@ -88,7 +91,7 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
               <div
                 key={ws.id}
                 data-testid={`workspace-row-${ws.slug}`}
-                className={enableLeaveAction && workspaces.length > 1
+                className={enableLeaveAction
                   ? 'grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-4 border-b border-stroke-1 px-4 py-3 last:border-b-0'
                   : 'grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-4 border-b border-stroke-1 px-4 py-3 last:border-b-0'}
               >
@@ -110,32 +113,54 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
                   {' '}
                   {ws.memberCount === 1 ? 'member' : 'members'}
                 </span>
-                {enableLeaveAction && workspaces.length > 1 && (
-                  <span className="flex flex-col items-end gap-0.5 text-right">
-                    {ws.isSoleOwner
-                      ? (
-                          <>
-                            <span className="flex items-center gap-1.5 text-xs font-medium text-signal-blocked">
-                              <Lock size={13} aria-hidden="true" />
-                              Can&apos;t leave
-                            </span>
-                            <span className="text-2xs text-fg-3">
-                              You&apos;re its only owner. Ownership transfer isn&apos;t available yet.
-                            </span>
-                          </>
-                        )
-                      : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            data-testid={`workspace-leave-${ws.slug}`}
-                            aria-label={`Leave workspace ${ws.name} (${ws.slug})`}
-                            onClick={() => setLeaveTarget({ id: ws.id, slug: ws.slug, name: ws.name, isActive: ws.isActive })}
-                          >
-                            Leave
-                          </Button>
-                        )}
+                {enableLeaveAction && (
+                  <span className="flex flex-col items-end gap-1 text-right">
+                    {workspaces.length > 1 && (
+                      ws.isSoleOwner
+                        ? (
+                            <>
+                              <span className="flex items-center gap-1.5 text-xs font-medium text-signal-blocked">
+                                <Lock size={13} aria-hidden="true" />
+                                Can&apos;t leave
+                              </span>
+                              <span className="text-2xs text-fg-3">
+                                You&apos;re its only owner. Ownership transfer isn&apos;t available yet.
+                              </span>
+                            </>
+                          )
+                        : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`workspace-leave-${ws.slug}`}
+                              aria-label={`Leave workspace ${ws.name} (${ws.slug})`}
+                              onClick={() => setLeaveTarget({ id: ws.id, slug: ws.slug, name: ws.name, isActive: ws.isActive })}
+                            >
+                              Leave
+                            </Button>
+                          )
+                    )}
+                    {/* AC-01/AC-02/AC-12: owner-only, offered even for a sole
+                        owner's only workspace (no v_other_active_owners state
+                        to draw -- see master-design-plan.md §4.18). */}
+                    {ws.role === 'owner' && (
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        data-testid={`workspace-delete-${ws.slug}`}
+                        aria-label={`Delete workspace ${ws.name} (${ws.slug})`}
+                        onClick={() => setDeleteTarget({
+                          id: ws.id,
+                          slug: ws.slug,
+                          name: ws.name,
+                          otherMemberCount: Math.max(ws.memberCount - 1, 0),
+                        })}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </span>
                 )}
               </div>
@@ -151,6 +176,10 @@ export function WorkspacesList({ workspaces, error = false, enableLeaveAction = 
             workspace={leaveTarget}
             onClose={() => setLeaveTarget(null)}
             onLeft={setLiveMessage}
+          />
+          <DeleteWorkspaceModal
+            workspace={deleteTarget}
+            onClose={() => setDeleteTarget(null)}
           />
         </>
       )}

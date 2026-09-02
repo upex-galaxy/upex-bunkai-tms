@@ -505,6 +505,18 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/restore/route.ts",
+    "method": "POST",
+    "posture": "cookie-only",
+    "why": "Workspace restore is available to the Owner via a browser session only."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/route.ts",
+    "method": "DELETE",
+    "posture": "cookie-only",
+    "why": "Workspace deletion is available to the Owner via a browser session only."
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/route.ts",
     "method": "GET",
     "posture": "required:atc:read"

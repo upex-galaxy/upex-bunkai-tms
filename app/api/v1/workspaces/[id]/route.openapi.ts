@@ -67,3 +67,37 @@ registry.registerPath({
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
+
+const DeleteResponseSchema = z
+  .object({
+    workspaceId: z.string().uuid(),
+    workspaceName: z.string(),
+    purgeDeadline: z.string(),
+    otherMemberCount: z.number().int(),
+    wasActiveWorkspace: z.boolean().openapi({
+      description: 'Whether the deleted workspace was the caller\'s active one. `newActiveWorkspaceId`/`newActiveWorkspaceName` are only meaningful when this is true — they stay null when the deleted workspace was not active, which is not the same as "no workspace left" (AC-10).',
+    }),
+    newActiveWorkspaceId: z.string().uuid().nullable(),
+    newActiveWorkspaceName: z.string().nullable(),
+  })
+  .openapi('WorkspaceDeleteResponse');
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/workspaces/{id}',
+  tags: ['Workspaces'],
+  summary: 'Delete a workspace I own',
+  description:
+    'Owner-only, session-only (BK-512, ADR-0015). Soft-deletes the workspace: access ends immediately for the owner and every other member, the workspace\'s Personal Access Tokens and pending invites are revoked in the same transaction, and a deletion audit record is written. Nothing is physically removed until the 30-day grace period elapses, during which the workspace can be restored via `POST /api/v1/workspaces/{id}/restore`. A confirmation email naming the workspace, the actor and the restore deadline is sent to the owner and every active member. If the deleted workspace was the caller\'s active one, the response carries the newly re-resolved active workspace (oldest remaining membership first) and the `bk_active_ws` cookie is rotated in the same response.',
+  security: [{ cookieAuth: [] }],
+  parameters: [IdParam],
+  responses: {
+    200: {
+      description: 'Workspace deleted (soft-delete; grace period started).',
+      content: { 'application/json': { schema: DeleteResponseSchema } },
+    },
+    401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Caller authenticated via a Personal Access Token, or is an active member but not the workspace Owner.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Workspace not found, caller is not an active member, or the workspace was already deleted by a concurrent request (Scenario N5 — a double-submit\'s losing call is refused as not_found, matching the shipped `DELETE /api/v1/tokens/{id}` precedent, not a 409).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
