@@ -4,19 +4,19 @@
   "templateCommit": "c684bc430d49d862644cd1c34954dd26ec095391",
   "perComponentCommit": {
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
-    "claude": "5cbdb645dda633d452c0f78a186960083cf28cc2",
+    "claude": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
     "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
     "agents": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "5cbdb645dda633d452c0f78a186960083cf28cc2",
-    "docs": "5cbdb645dda633d452c0f78a186960083cf28cc2",
+    "scripts": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
+    "docs": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
     "context": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "context-engineering": "5cbdb645dda633d452c0f78a186960083cf28cc2",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "ea626f984fc4fbb1c11c334c78b7fa295725286f",
     "tooling": "15e3f146fa35430dace91063493f73763bc0af10",
-    "env-template": "5d669f4a1cba9db64be243efd2a46925ac0b03df"
+    "env-template": "babed50e23cf3db1d2b4dac69eb784fbba3979d7"
   },
   "syncedComponents": [],
   "ignoreFileSync": {
@@ -54,30 +54,31 @@
     }
   },
   "cliVersion": "7.0",
-  "lastSyncedAt": "2026-08-22T22:20:52.972Z",
+  "lastSyncedAt": "2026-09-01T16:57:03.435Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
       "scripts": {
-        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
+        "lastSyncedSha": "0babb76126b6657fa6a2441e7ae7531e2e77f8af",
         "appliedKeys": [
           "jira:sync-link-types",
           "vars:env:check",
           "git:policy",
           "jira:url",
-          "context:hydrate"
+          "context:hydrate",
+          "jira:components"
         ]
       },
       "devDependencies": {
-        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
+        "lastSyncedSha": "0babb76126b6657fa6a2441e7ae7531e2e77f8af",
         "appliedKeys": []
       },
       "dependencies": {
-        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
+        "lastSyncedSha": "0babb76126b6657fa6a2441e7ae7531e2e77f8af",
         "appliedKeys": []
       },
       "lint-staged": {
-        "lastSyncedSha": "95eaee5f317a86811d74d2bf73f34f6c77ee1c0a",
+        "lastSyncedSha": "0babb76126b6657fa6a2441e7ae7531e2e77f8af",
         "appliedKeys": []
       }
     }
