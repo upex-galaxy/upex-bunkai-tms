@@ -154,12 +154,76 @@ async function main(): Promise<void> {
       }
     }
 
+    await auditPrivilegeDrift(pg);
+
     console.log(
       '\n✓ Done. Connect with the strings in QA_INSPECTOR_RO_URL / QA_INSPECTOR_RW_URL.\n',
     );
   }
   finally {
     await pg.close();
+  }
+}
+
+// Migration 0085 set ALTER DEFAULT PRIVILEGES ... ON FUNCTIONS, which cannot
+// distinguish SECURITY INVOKER from SECURITY DEFINER — Postgres has no such
+// knob. So every function created in `public` from now on is auto-granted to
+// both QA roles. That default is what fixed the original bug (75 of 82 RPCs
+// unreachable), and giving it up would reintroduce it. The cost is two ways a
+// future migration can quietly widen QA access, both checked here so the drift
+// is detectable instead of invisible.
+async function auditPrivilegeDrift(pg: SQL): Promise<void> {
+  // The CTE is MATERIALIZED because Postgres does not guarantee predicate
+  // evaluation order and pg_get_functiondef() throws on an aggregate.
+  const [row] = await pg`
+    with routines as materialized (
+      select p.oid, p.prosecdef, p.provolatile, p.prorettype
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prokind = 'f'
+    )
+    select
+      (select count(*) from routines
+        where pg_get_functiondef(oid) ~ 'auth\.users'
+          and (has_function_privilege('qa_inspector_rw', oid, 'EXECUTE')
+            or has_function_privilege('qa_inspector_ro', oid, 'EXECUTE'))
+      ) as auth_users_reachable,
+      (select count(*) from routines
+        where prosecdef and provolatile = 'v'
+          and prorettype <> 'trigger'::regtype
+          and has_function_privilege('qa_inspector_ro', oid, 'EXECUTE')
+      ) as ro_write_capable,
+      (select count(*) from unnest(array[
+                'public.access_token_secrets',
+                'public.magic_link_token_secrets',
+                'public.workspace_invite_secrets']) t(rel)
+        where has_table_privilege('qa_inspector_rw', t.rel, 'SELECT')
+          or has_table_privilege('qa_inspector_ro', t.rel, 'SELECT')
+      ) as secret_tables_reachable
+  `;
+
+  const authUsers = Number(row.auth_users_reachable);
+  const roWrites = Number(row.ro_write_capable);
+  const secrets = Number(row.secret_tables_reachable);
+
+  console.log('\nPrivilege audit\n');
+  console.log(`  functions reading auth.users, callable by QA : ${authUsers}  (must be 0)`);
+  console.log(`  write-capable DEFINER fns callable by _ro    : ${roWrites}  (must be 0)`);
+  console.log(`  secret tables readable by QA                 : ${secrets}  (must be 0)`);
+
+  // Trigger functions are excluded from the _ro count on purpose: they return
+  // `trigger`, and Postgres refuses to invoke those directly, so a PUBLIC grant
+  // on one is not a write path. Four such functions predate the project's
+  // `revoke execute from public` discipline and would otherwise report as false
+  // positives forever.
+
+  if (authUsers > 0 || roWrites > 0 || secrets > 0) {
+    console.error(
+      '\n✗ Privilege drift detected. A migration granted the QA roles more than intended.\n'
+      + '  Revoke the offending function(s) from qa_inspector_ro / qa_inspector_rw,\n'
+      + '  following the pattern in 0086_qa_inspector_definer_grants.sql.\n',
+    );
+    process.exitCode = 1;
   }
 }
 
