@@ -8,7 +8,7 @@
   //   - Env var expansion uses {env:VAR_NAME}  (NOT ${VAR})
   //   - MCP root key is "mcp"                  (NOT "mcpServers")
   //   - MCP env field is "environment"         (NOT "env")
-  //   - Missing env vars resolve to empty string (no hard failure) — see CLAUDE.md
+  //   - Missing env vars resolve to empty string (no hard failure) — see AGENTS.md
   //     Critical Reminder about stopping immediately when MCP credentials fail.
   "$schema": "https://opencode.ai/config.json",
   // Plugins:
@@ -22,6 +22,10 @@
     "@warp-dot-dev/opencode-warp",
     "opencode-subagent-statusline"
   ],
+  // MCP — the SAME six servers as .mcp.json and .codex/config.toml.
+  // `bun run agents:compat:check` normalizes the three files and compares them
+  // against the set .mcp.json declares: a server missing here, or present here
+  // only, fails the gate. Keep the .env variable names identical per server.
   "mcp": {
     "context7": {
       "type": "local",
@@ -74,41 +78,6 @@
         "N8N_API_KEY": "{env:N8N_API_KEY}"
       }
     },
-    "dbhub": {
-      "type": "local",
-      "command": [
-        "bunx",
-        "-y",
-        "@bytebase/dbhub@latest",
-        "--config",
-        "dbhub.toml"
-      ],
-      "enabled": true
-    },
-    "openapi": {
-      "type": "local",
-      "command": [
-        "bunx",
-        "-y",
-        "@ivotoby/openapi-mcp-server",
-        "--tools",
-        "dynamic"
-      ],
-      "enabled": true,
-      "environment": {
-        "API_BASE_URL": "{env:API_BASE_URL}",
-        "OPENAPI_SPEC_PATH": "{env:OPENAPI_SPEC_PATH}",
-        "API_HEADERS": "Authorization:Bearer {env:API_TOKEN}"
-      }
-    },
-    "postman": {
-      "type": "remote",
-      "url": "https://mcp.postman.com/mcp",
-      "headers": {
-        "Authorization": "Bearer {env:POSTMAN_API_KEY}"
-      },
-      "enabled": true
-    },
     "playwright": {
       "type": "local",
       "command": [
@@ -117,6 +86,27 @@
         "--extension"
       ],
       "enabled": true
+    },
+    // DBHub reads dbhub.toml, which expands ${DBHUB_*} itself; the variables are
+    // forwarded explicitly so the .env contract is visible to the parity check.
+    "dbhub": {
+      "type": "local",
+      "command": [
+        "bunx",
+        "-y",
+        "@bytebase/dbhub@1.2.3",
+        "--config",
+        "dbhub.toml"
+      ],
+      "enabled": true,
+      "environment": {
+        "DBHUB_TYPE": "{env:DBHUB_TYPE}",
+        "DBHUB_HOST": "{env:DBHUB_HOST}",
+        "DBHUB_PORT": "{env:DBHUB_PORT}",
+        "DBHUB_DATABASE": "{env:DBHUB_DATABASE}",
+        "DBHUB_USER": "{env:DBHUB_USER}",
+        "DBHUB_PASSWORD": "{env:DBHUB_PASSWORD}"
+      }
     }
   },
   // Permissions — mirrors .claude/settings.json 1:1.

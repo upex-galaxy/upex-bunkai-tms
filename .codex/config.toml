@@ -1,0 +1,96 @@
+# Codex CLI + Desktop read this same file. Instructions come from AGENTS.md and
+# skills from .agents/skills/, both natively — neither needs configuring here.
+# The MCP inventory below is the Codex-format adapter of the six servers that
+# .mcp.json and opencode.jsonc also declare; `bun run agents:compat:check`
+# compares the three semantically, so a server added to one host only fails.
+#
+# Codex never expands `${VAR}` in args or env values. Every secret is therefore
+# forwarded BY NAME (`env_vars`, `bearer_token_env_var`) from the environment
+# `bun run codex` loads out of .env; `[mcp_servers.X.env]` tables hold literal
+# settings only. The parity check compares the .env variable names each host
+# depends on, so the command shape may differ from .mcp.json where Codex needs it.
+
+[shell_environment_policy]
+inherit = "core"
+
+[mcp_servers.context7]
+command = "bunx"
+enabled = true
+args = [
+  "-y",
+  "@upstash/context7-mcp",
+]
+
+# Streamable HTTP with the key as a bearer token: the mcp-remote tunnel that
+# .mcp.json / opencode.jsonc use only exists to put ${TAVILY_API_KEY} in a URL.
+[mcp_servers.tavily]
+url = "https://mcp.tavily.com/mcp/"
+bearer_token_env_var = "TAVILY_API_KEY"
+enabled = true
+
+# @supabase/mcp-server-supabase reads SUPABASE_ACCESS_TOKEN from the environment
+# when --access-token is absent (documented fallback), so the token is forwarded
+# instead of interpolated. The URL and the two keys travel under their .env
+# names; the SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY aliases
+# that .mcp.json sets are the same three variables, renamed.
+[mcp_servers.supabase]
+command = "bunx"
+enabled = true
+args = [
+  "-y",
+  "@supabase/mcp-server-supabase@latest",
+]
+env_vars = [
+  "SUPABASE_ACCESS_TOKEN",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_SECRET_KEY",
+]
+
+[mcp_servers.n8n]
+command = "npx"
+enabled = true
+args = [
+  "-y",
+  "n8n-mcp",
+]
+env_vars = [
+  "N8N_API_URL",
+  "N8N_API_KEY",
+]
+
+[mcp_servers.n8n.env]
+MCP_MODE = "stdio"
+LOG_LEVEL = "error"
+DISABLE_CONSOLE_OUTPUT = "true"
+
+# Browser automation through the Playwright MCP (`--extension` attaches to the
+# running browser). No .env dependency.
+[mcp_servers.playwright]
+command = "bunx"
+enabled = true
+args = [
+  "@playwright/mcp@latest",
+  "--extension",
+]
+
+# DBHub reads dbhub.toml (committed, ${VAR} placeholders only) and expands the
+# DBHUB_* variables itself, so they are forwarded by name. Read-only SQL through
+# the QA inspector role; real values live in .env, never here.
+[mcp_servers.dbhub]
+command = "bunx"
+enabled = true
+args = [
+  "-y",
+  "@bytebase/dbhub@1.2.3",
+  "--config",
+  "dbhub.toml",
+]
+env_vars = [
+  "DBHUB_TYPE",
+  "DBHUB_HOST",
+  "DBHUB_PORT",
+  "DBHUB_DATABASE",
+  "DBHUB_USER",
+  "DBHUB_PASSWORD",
+]
