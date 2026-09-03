@@ -30,7 +30,7 @@ Then read, in full, in this order:
 1. `.context/orchestration/avalanche-2026-07.md` (in the MAIN checkout).
 2. `/Users/ely/Desktop/projects/bunkai/upex-bunkai-tms/.session/sprint-development-queue/avalanche-2026-07/queue.md`
    — always read/write this via that absolute path, regardless of your own cwd.
-3. `.claude/skills/sprint-development/references/live-ui-identity.md` — binding credential contract.
+3. `.agents/skills/sprint-development/references/live-ui-identity.md` — binding credential contract.
 
 ## Your initial batch (claim these now in `queue.md`)
 

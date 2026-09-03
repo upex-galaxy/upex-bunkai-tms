@@ -167,7 +167,7 @@ carries no caller-supplied actor parameter.
 - `lib/billing/checkout.ts`, `lib/billing/stripe.ts`, `app/api/v1/billing/webhook/route.ts`
 - ADR-0002 — Idempotency-Key scoping (the HTTP-level layer this reuses)
 - ADR-0012 — RPC authorization invariant
-- `.claude/skills/sprint-development/references/rpc-authorization.md` (the actor-bind / DB-integration-test
+- `.agents/skills/sprint-development/references/rpc-authorization.md` (the actor-bind / DB-integration-test
   checklist this RPC's design is checked against)
-- `.claude/skills/agentic-dev-core` / Vercel `marketplace` skill — the Marketplace-first instruction this
+- `.agents/skills/agentic-dev-core` / Vercel `marketplace` skill — the Marketplace-first instruction this
   ADR deliberately departs from, and why

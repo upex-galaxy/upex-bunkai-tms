@@ -11,7 +11,7 @@
 
 ## Context
 
-The mechanism is deliberately **not** restated here. `.claude/skills/sprint-development/references/rpc-authorization.md` owns why `SECURITY DEFINER` bypasses RLS, the canonical guard shape, the six-question authoring checklist, and the test contract that proves both properties. This ADR records the decision to treat that reference as a binding project invariant, plus the two things that are specific to **this** codebase and belong nowhere else.
+The mechanism is deliberately **not** restated here. `.agents/skills/sprint-development/references/rpc-authorization.md` owns why `SECURITY DEFINER` bypasses RLS, the canonical guard shape, the six-question authoring checklist, and the test contract that proves both properties. This ADR records the decision to treat that reference as a binding project invariant, plus the two things that are specific to **this** codebase and belong nowhere else.
 
 **RLS does not apply inside a DEFINER function here.** Verified 2026-08-01: `FORCE ROW LEVEL SECURITY` appears nowhere in `supabase/migrations/` — zero hits against both `origin/staging` and the working tree. Table owners therefore bypass their own policies, and a `WHERE` clause inside a DEFINER function selects rows without deciding whether the caller was allowed to ask.
 
@@ -51,7 +51,7 @@ We will treat actor bind and result scoping as a **cross-cutting invariant on ev
 
 > A DEFINER function taking a caller-supplied identity or scope parameter is not authorized until **(a)** the parameter is bound to `auth.uid()` at step 0, before any table read, and **(b)** every row that leaves the function is separately constrained to the boundary that was asserted. Satisfying (a) does not satisfy (b), and asserting the caller's own membership satisfies neither.
 
-The guard shape, the six authoring questions, the failure-path error contract, and the DB-integration test requirement are **binding by reference** to `.claude/skills/sprint-development/references/rpc-authorization.md`. They live in exactly one place on purpose: duplicated doctrine that later diverges is worse than none.
+The guard shape, the six authoring questions, the failure-path error contract, and the DB-integration test requirement are **binding by reference** to `.agents/skills/sprint-development/references/rpc-authorization.md`. They live in exactly one place on purpose: duplicated doctrine that later diverges is worse than none.
 
 The reference's first question stands as the preferred outcome — **prefer `SECURITY INVOKER`, or delete the identity parameter, over guarding it.** A function that cannot be told who the caller is cannot be lied to. `bunkai_list_activity` (`0045`) is the worked example: redesigned to INVOKER with no actor parameter at all, removing the class instead of defending against it.
 
@@ -77,13 +77,13 @@ Enforcement points: Stage 1 answers the six questions in Technical Decisions bef
 - **Retrofit the 22 as part of accepting this ADR** — rejected as a bundling error, not as unnecessary work. Twenty-two guards plus their tests is a dedicated remediation ticket with its own regression budget; folding it into an architectural decision means it lands unreviewed or the ADR stalls behind it. Recording the debt precisely and refusing to grow it is the part that has to happen now.
 - **Enable `FORCE ROW LEVEL SECURITY` on the tables instead** — rejected. It would silently change the result set of ~24 functions at once with nothing proving equivalence, and it breaks the DEFINER functions that legitimately need to read across a boundary (`auth.users` is the real case). More fundamentally it does not address the actor bind at all: RLS keys on `auth.uid()`, and the defect is that a *parameter* claiming to be someone else is never compared to it.
 - **Rely on the Stage 3 adversarial review that caught two of the three** — rejected. It also missed one, which reached the shared project and stayed there across a merge. A control that must fire perfectly on every ticket, in a codebase where the unguarded shape is the statistical default, is not a control.
-- **Document it in `CLAUDE.md` and the skill's Compact Rules only, with no ADR** — rejected on ADR-0001's own reasoning: a defense whose only enforcement is that the developer remembers has already failed. The Compact Rule stays as the always-loaded reminder; this ADR is what a planner is mechanically routed to read, and what records the debt a rule cannot carry.
+- **Document it in `AGENTS.md` and the skill's Compact Rules only, with no ADR** — rejected on ADR-0001's own reasoning: a defense whose only enforcement is that the developer remembers has already failed. The Compact Rule stays as the always-loaded reminder; this ADR is what a planner is mechanically routed to read, and what records the debt a rule cannot carry.
 
 ---
 
 ## References
 
-- `.claude/skills/sprint-development/references/rpc-authorization.md` — the mechanism, guard shape, authoring checklist, and test contract (binding by reference)
+- `.agents/skills/sprint-development/references/rpc-authorization.md` — the mechanism, guard shape, authoring checklist, and test contract (binding by reference)
 - ADR-0001 — Unified API Authentication (the Path A / Path B split this extends)
 - ADR-0011 — Activity-feed actor resolution (the decision BK-49's shipped SQL failed to enforce)
 - `.session/sprint-development-queue/avalanche-2026-07/escalation-log.md` — full traces of the three 2026-07-31 incidents

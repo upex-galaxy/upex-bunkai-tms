@@ -1,6 +1,6 @@
 # Design brief — Bunkai TMS / bk-201-test-plans-milestones
 
-Tool session: NEW project `bunkai-bk-201-test-plans-milestones` (design system `user:bunkai`, MCP-driven Mode A — see `.claude/skills/design-system/references/open-design-app.md` §"Flujo MCP autónomo")
+Tool session: NEW project `bunkai-bk-201-test-plans-milestones` (design system `user:bunkai`, MCP-driven Mode A — see `.agents/skills/design-system/references/open-design-app.md` §"Flujo MCP autónomo")
 
 ## Mission
 

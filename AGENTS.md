@@ -1,6 +1,6 @@
-# CLAUDE.md — AI Persistent Memory
+# AGENTS.md — AI Persistent Memory
 
-> AI memory. Loads EVERY session. Heavy detail → skill `references/`. Project values → `.agents/project.yaml`. Scripts → READ `package.json`.
+> AI memory. Loads EVERY session. Heavy detail → skill `references/`. Project values → `.agents/project.yaml`. Scripts → READ `package.json`. User-facing setup → `README.md` / `docs/`.
 
 ---
 
@@ -8,14 +8,14 @@
 
 1. **CREDENTIALS**: ALWAYS read from `.env`. NEVER hardcode/guess. Example keys: `LOCAL_USER_EMAIL`, `STAGING_USER_PASSWORD`. Add `[Project-specific reminders]` per project (e.g. "SPA + API on different hosts — use correct base URLs").
 2. **PLAN BEFORE CODING**: Make impl plan (`implementation-plan.md` or skill-internal plan) BEFORE code. Flow: Plan → Code → Review.
-3. **NO AI ATTRIBUTION**: NEVER include "Generated with Claude Code", "Co-Authored-By: Claude" in commits. Commits look human-authored.
+3. **NO AI ATTRIBUTION**: NEVER include "Generated with Claude Code", "Co-Authored-By: Claude", or any equivalent authorship/advertising line in commits. Commits look human-authored. ONE scoped exception: a harness session trailer (trailer position ONLY, never subject or body) on commits actually written by an AI session, emitted ONLY when the running harness exposes a transcript pointer — a forensic pointer to the session transcript for root-cause investigation, NOT attribution: names no product, claims no authorship. `Claude-Session: <session-id>` is the only specified format today (Claude Code transcript `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`); OpenCode and Codex sessions omit the trailer entirely. Human-authored commits never carry it. Full contract: `.agents/skills/git-flow-master/references/conventional-commits.md` § Hard rules. The ban stands in full outside this exception.
 4. **CONFIRM BEFORE PUSH TO MAIN**: NEVER push `main` without explicit user confirm.
 5. **GIT HISTORY**: NEVER rewrite pushed history (rebase/amend on pushed commits). NEVER force-push shared branches. NEVER delete remote branches without confirm. ALWAYS add forward (new commits). ALWAYS preserve merge history.
 6. **QUALITY VERIFICATION**: After code changes, verify in order: tests → types → lint. No skip steps.
 7. **FILE OPERATIONS**: ALWAYS read file before edit. Preserve formatting + indent. NEVER overwrite without reading.
-8. **SKILLS-FIRST**: All workflows live in `.claude/skills/`. NEVER paste instructions inline. Invoke matching skill, let it self-load detail. Use `[TAG_TOOL]` pseudocode + `{{VARIABLES}}` for dynamic content.
+8. **SKILLS-FIRST**: All workflows live in `.agents/skills/`. NEVER paste instructions inline. Invoke matching skill, let it self-load detail. Use `[TAG_TOOL]` pseudocode + `{{VARIABLES}}` for dynamic content.
 9. **MCP CREDENTIAL FAILURE = STOP IMMEDIATELY**: MCP fail auth or env var missing (`.mcp.json` use `${VAR}` — Claude Code fail parse if unset; `opencode.jsonc` use `{env:VAR}` — OpenCode silently substitute empty → 401/403 is signal). NO workaround. STOP, tell user exact env var, point to `.env` / `.env.example`, ask fix + **RESTART AGENT SESSION** (env cached at MCP-spawn time, no mid-session refresh).
-10. **SCRIPTS = READ `package.json` DIRECTLY**. NEVER quote build/test/lint commands from this file or any doc — drift kills. Open `package.json` first, then answer.
+10. **SCRIPTS = READ `package.json` DIRECTLY**. NEVER quote build/test/lint commands from this file (`AGENTS.md`) or any doc — drift kills. Open `package.json` first, then answer.
 11. **DEFAULT COMMUNICATION MODE — CAVEMAN**: If `caveman` skill installed user-level (`~/.claude/skills/caveman/`), respond caveman level `full` by default (drop articles, fillers, pleasantries; fragments OK; technical terms exact; code/commits/PRs/security warnings always normal English — built-in boundary). Revert verbose ONLY when user explicitly say "normal mode", "habla normal", "stop caveman", "speak normally", "be verbose", "más detallado" or equivalent. If skill not installed, rule = no-op.
 12. **LANGUAGE DETECTION + MIRRORING**: At start of every conversation, READ FULL USER MESSAGE (not just opening words) to detect user working language. Mirror it in ALL conversational replies (questions, summaries, explanations, status). Repo artifacts ALWAYS English regardless: code, comments, commits, PR titles + bodies, branch names, file names, test names, config values, + any external action artifact (Jira, GitHub issues/PRs/comments, Slack, emails, deploy notes, MCP tool inputs). Override: if user explicitly requests another language for specific artifact ("crea el ticket en español"), honor only for that artifact + keep defaulting English unless re-requested.
 13. **NO GLOBAL DISCARDS (MULTI-SESSION SAFETY)**: PROHIBITED to run repo-wide destructive git commands: `git restore .`, `git checkout -- .`, `git reset --hard`, untargeted `git stash`, `git clean -f`. Multiple agent sessions may share this working tree without worktrees — a global discard silently destroys another session's uncommitted work, unrecoverably. Discard ONLY explicit paths YOU modified in THIS session (`git restore <path>...` / `git stash push <path>...`). Unsure who modified a file → do NOT restore it — ask the user. (Cited by `/git-flow-master` G9 + conflict-resolution as Critical Rule #13.)
@@ -37,6 +37,8 @@
     - **PUBLISH TO THE TICKET, ATTRIBUTED.** Every decision is posted as a Jira comment that names the deciding profile explicitly in its heading — e.g. `## AI Product Owner — Decision: <question>` / `## AI Tech Lead — Decision: <question>` — plus the alternatives scored and the rationale. Future agent runs MUST be able to tell at a glance that the answer came from this same AI team, not from an undisclosed human. **Never post an AI decision styled as human PO sign-off** — that ambiguity is exactly what this rule exists to end. Then resync the cache (`bun run jira:sync-issues get <KEY> --include-comments`).
     - **The ONLY legitimate blockers**, after this rule: (a) a genuine **dependency** — story B must ship before story A is buildable; (b) **missing shift-left refinement** — the story never went through the shift-left process at all, which is a QA-authoring gap, not a question. Record (b) for assignment to whoever (human or their agent) runs shift-left; do not invent the refinement yourself.
     - **Human decides ONLY when explicitly reserved.** The user will say so in-flow ("stop here, I decide this one"), or the ticket itself names a specific human. Absent that, deciding is the AI's job and waiting is the failure mode. Unchanged and NOT overridden by this rule: destructive/irreversible actions, credentials, and pushes to protected branches still follow rules #4, #5 and #13.
+
+19. **HARNESS SURFACES ARE GENERATED**: never hand-edit `CLAUDE.md` (shim), `.claude/skills` (alias), `.claude/commands/*.md`, `.opencode/commands/*.md`. Edit the source (`AGENTS.md`, `.agents/skills/`, `.agents/compatibility/command-aliases.json`, `.agents/hooks/`) and run `bun run agents:compat`. `bun run agents:compat:check` is the gate. Full wiring → §5.5.
 
 ---
 
@@ -105,7 +107,7 @@ Example (same work, different register):
 
 > **Main conversation = command center. Subagents = executors.** Active EVERY session. Not optional.
 >
-> **Sanctioned exceptions** (not violations): a skill MAY define an explicit, user-invoked all-inline (Solo) mode that dispatches no subagents, and MAY pin a step to the session owning a non-delegable resource (browser/extension or session-bound auth). E.g. `/sprint-development` Solo mode + its session-bound live-UI step. Detail → `.claude/skills/agentic-dev-core/references/orchestration-doctrine.md`.
+> **Sanctioned exceptions** (not violations): a skill MAY define an explicit, user-invoked all-inline (Solo) mode that dispatches no subagents, and MAY pin a step to the session owning a non-delegable resource (browser/extension or session-bound auth). E.g. `/sprint-development` Solo mode + its session-bound live-UI step. Detail → `.agents/skills/agentic-dev-core/references/orchestration-doctrine.md`.
 
 **USE SUBAGENTS FOR**: read/write multiple files, MCP ops, research across repos, git ops, verification (tests/types/lint), multi-file edits, long tasks.
 
@@ -139,7 +141,7 @@ Example (same work, different register):
 
 **VALUE PROVENANCE**: Rule #10 generalizes to ALL config. Any claim about project config cites the file it was read from, same turn. NEVER quote skill reference / template / worked example as project state — reference values are illustrative and routinely differ.
 
-**DEEP DETAIL** (subagent-cacheable) → `.claude/skills/agentic-dev-core/references/` (briefing-template, dispatch-patterns, orchestration-doctrine, skill-composition).
+**DEEP DETAIL** (subagent-cacheable) → `.agents/skills/agentic-dev-core/references/` (briefing-template, dispatch-patterns, orchestration-doctrine, skill-composition).
 
 ---
 
@@ -157,7 +159,7 @@ Example (same work, different register):
 | Backlog / story refinement                  | "create epic", "refine acceptance criteria"                                                     | `/product-management`                              | `.context/PBI/epic-tree.md`, `PRD/`                             | `[ISSUE_TRACKER_TOOL]`                       |
 | Sprint-development ticket                   | "implementar esta historia", "trabajar UPEX-XXX"                                                | `/sprint-development`                              | `.context/PBI/epics/EPIC-*/stories/STORY-{TICKET}-*/`           | `[ISSUE_TRACKER_TOOL]` + `[AUTOMATION_TOOL]` |
 | TDD slice / unit tests                      | "write unit tests", "TDD this function"                                                         | `/unit-testing`                                    | function under test, existing tests                             | Code edit                                    |
-| Sync AI memory                              | "sync memory", `/sync-ai-memory`                                                                | `/sync-ai-memory`                                  | `README.md`, this file, `.context/`, `package.json`             | Edit                                         |
+| Sync AI memory                              | "sync memory", `/sync-ai-memory`                                                                | `/sync-ai-memory`                                  | `README.md`, `AGENTS.md`, `.context/`, `package.json`           | Edit                                         |
 | Business map refresh                        | "refresh data map", `/business-*-map`                                                           | `/business-data-map` / `-feature-map` / `-api-map` | Supabase schema, backend code, PRD                              | Read + Write                                 |
 | Git / PR work                               | any git intent                                                                                  | `/git-flow-master` (auto)                          | `git status`, `git log`                                         | `git` + `gh`                                 |
 | Browser action                              | "screenshot", "trace", "record"                                                                 | `/playwright-cli`                                  | —                                                               | Playwright CLI                               |
@@ -169,7 +171,7 @@ Example (same work, different register):
 - `.context/business/domain-glossary.md` — canonical domain terminology (ATC = Acceptance Test Case, KATA, IQL, TMS entities). Any domain term in Jira content, docs, or UI copy MUST match it; anti-glossary lists banned terms.
 - `.context/master-implementation-plan.md` — prioritized roadmap (EPIC/strategy; owned by `/master-implementation-plan`)
 - `.context/dev-roadmap.md` — ticket-level dependency execution roadmap (TICKET/sequence: which story unblocks which, in what execution sprint, gated by which mockup; owned by `/dev-roadmap`)
-- `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`; AI detection/authoring doctrine → `.claude/skills/agentic-dev-core/references/adr-doctrine.md`. NOT for bug fixes, local refactors, or naming tweaks.
+- `.context/ADR/` — Architecture Decision Records. ANY important, hard-to-reverse architecture decision (auth model, error/data-access/tenancy model, cross-cutting invariant) → record as `ADR-NNNN-<slug>.md` before/with implementation. Append-only: supersede, never delete. Template + when-to-write → `.context/ADR/README.md`; AI detection/authoring doctrine → `.agents/skills/agentic-dev-core/references/adr-doctrine.md`. NOT for bug fixes, local refactors, or naming tweaks.
 - `.context/reports/SPRINT-{N}-DEVELOPMENT.md` — cross-ticket dev tracker per sprint (generated/updated by `/sprint-development` batch mode)
 - `.context/PBI/` — Jira-synced cache (see §9). Epics/stories under `epics/`, plus `bugs/`, `tech-stories/`, `tests/`, `improvements/`, `epic-tree.md` index
 - `.agents/project.yaml` — `{{VAR}}` source-of-truth (load ONCE per session, cache)
@@ -179,7 +181,7 @@ Example (same work, different register):
 
 ## 5. SKILLS + COMMANDS + MCPs REGISTRY
 
-### Skills T1 (committed in `.claude/skills/`)
+### Skills T1 (committed in `.agents/skills/`)
 
 | Skill                 | Trigger                       | Purpose                                                                                                                                                                                                                                                                                |
 | --------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -193,28 +195,36 @@ Example (same work, different register):
 | `sprint-development`  | `/sprint-development`         | **Mega-orchestrator**. Per-story Plan → Implement → Review → Staging → Prod (gated).                                                                                                                                                                                                   |
 | `unit-testing`        | `/unit-testing`               | TDD red-green-refactor, mocking, coverage. Composable with `/sprint-development`.                                                                                                                                                                                                      |
 | `git-flow-master`     | (auto on git/PR intents)      | End-to-end Git operator. Auto-detects branching strategy.                                                                                                                                                                                                                              |
+| `autonomous-delivery` | `/autonomous-delivery`        | Scheduled / unattended delivery runs (no human on the line). Phases: Lock → Audit (git is truth, tracker is a hint) → Select genuinely unblocked work → Execute via owning pipeline skill → Close + report. Modes: `story` (1 per run), `bug` (up to 3, sequential), `discovery` (backlog only, never writes code). |
+| `jira-administration` | `/jira-components` · `/jira-instance-migration` | Bounded Jira ADMIN workflows, one mode per run: `components` (reconcile a project's Components against the app's real modules, plan-first) or `instance-migration` (repoint the Atlassian host + regenerate the `.agents/` catalogs). Both sealed behind read-first analysis and explicit approval before any Jira / credential-session / repo mutation. |
+| `project-context`     | `/project-context` (modes `data` · `features` · `api` · `master-plan` · `dev-roadmap`) | Business maps + master implementation plan + dev roadmap; formerly five inline commands. One mode per run: `data` → `.context/business/business-data-map.md`, `features` → `business-feature-map.md`, `api` → `business-api-map.md`, `master-plan` → `.context/master-implementation-plan.md`, `dev-roadmap` → `.context/dev-roadmap.md`. |
+| `sync-ai-memory`      | `/sync-ai-memory`             | Audit + sync README, `AGENTS.md`, CONTEXT.md, docs/, onboarding HTML against current repo state. Skill (formerly a command). Shim guard: operational prose found in `CLAUDE.md` is structural drift → STOP, never propagate. |
+| `playwright-cli`      | `/playwright-cli`             | Browser automation cookbook (Playwright CLI). Resolves `[AUTOMATION_TOOL]`; used by `/sprint-development` live-UI checks + standalone QA capture. |
 | `acli`                | `/acli`                       | Atlassian CLI cookbook (Jira + Confluence). Resolves `[ISSUE_TRACKER_TOOL]`. |
 | `vercel-cli`          | (auto on `vercel` Bash calls) | Vercel CLI cookbook: deploy verification (poll commit SHA + `inspect --wait`), env var sync (`.env` ↔ Preview/Production scopes), build/runtime log streaming, rollback, `.vercel/` linking. Companion to community `/deploy-to-vercel`. |
 
 > **Persistent memory** — `bun run setup` installs Engram via `gentle-ai install --preset minimal`. Active across sessions + compactions per §12 (proactive memory triggers). No other gentle-ai skills installed.
 >
-> **T3 (community project-level)** — frontend/backend skills matched by category at runtime, NOT by literal name. List in `cli/install.ts`. **Activity→bundle co-load map** (which community skills to load TOGETHER per work-type, with PRIMARY/SECONDARY tiers to bound token cost): `.claude/skills/agentic-dev-core/references/skill-composition-strategy.md` §4.4 — enforced by `/sprint-development` Stage 2 (Composable callees). Experimental in this repo; evaluate before promoting to boilerplate.
+> **T3 (community project-level)** — frontend/backend skills matched by category at runtime, NOT by literal name. List in `cli/install.ts`. **Activity→bundle co-load map** (which community skills to load TOGETHER per work-type, with PRIMARY/SECONDARY tiers to bound token cost): `.agents/skills/agentic-dev-core/references/skill-composition-strategy.md` §4.4 — enforced by `/sprint-development` Stage 2 (Composable callees). Experimental in this repo; evaluate before promoting to boilerplate.
 >
 > **T4 (community user-level)** — repo-agnostic skills, auto-discovered at runtime, **ASK before load** per strategy §3.2.
 >
-> Layout: T1 repo skills → `.claude/skills/<slug>/` (committed). T3/T4 community skills via `bunx skills add` → `.agents/skills/<slug>/` (gitignored, default CLI behavior).
+> Layout: T1 repo skills → `.agents/skills/<slug>/` (committed source). T3 community skills (`bunx skills add`) install into the SAME `.agents/skills/` store; T4 user-level skills stay harness-specific (`~/.claude/skills/`, and the equivalent for each host). Claude Code discovers the whole store through the generated `.claude/skills` alias (§5.5); OpenCode and Codex read `.agents/skills/` natively.
 
-### Slash commands (utilities, 7)
+### Slash commands (utilities, 8)
+
+Each command is a transport-only alias declared in `.agents/compatibility/command-aliases.json` and generated into `.claude/commands/` and `.opencode/commands/` by `bun run agents:compat`; the body lives in the target skill (`project-context` modes `data | features | api | master-plan | dev-roadmap`, `sync-ai-memory`, `jira-administration` modes). Codex has no wrapper layer: invoke the skill + mode directly.
 
 | Command                       | Purpose                                                                                        |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `/sync-ai-memory`             | Audit + sync README, CLAUDE.md, CONTEXT.md, docs/, onboarding HTML against current repo state. |
-| `/business-data-map`          | Refresh `.context/business/business-data-map.md` (entities, flows, state machines).            |
-| `/business-feature-map`       | Refresh `.context/business/business-feature-map.md` (CRUD matrix, UI inventory).               |
-| `/business-api-map`           | Refresh `.context/business/business-api-map.md` (auth model, endpoints, architecture).         |
-| `/master-implementation-plan` | Refresh `.context/master-implementation-plan.md` (prioritized feature roadmap — EPIC/strategy).|
-| `/dev-roadmap`                | Refresh `.context/dev-roadmap.md` (ticket-level dependency execution roadmap — TICKET/sequence). |
-| `/jira-instance-migration`    | Repoint the repo at a new Atlassian instance (`.env` + `.agents/project.yaml` + machine-global `acli` session) and regenerate the `.agents/` catalogs the migration invalidated. Takes source + target instance as args; asks for whatever is missing. |
+| `/sync-ai-memory`             | Alias → skill `sync-ai-memory`. Audit + sync README, `AGENTS.md`, CONTEXT.md, docs/, onboarding HTML against current repo state. |
+| `/business-data-map`          | Alias → skill `project-context` mode `data`. Refresh `.context/business/business-data-map.md` (entities, flows, state machines).            |
+| `/business-feature-map`       | Alias → skill `project-context` mode `features`. Refresh `.context/business/business-feature-map.md` (CRUD matrix, UI inventory).               |
+| `/business-api-map`           | Alias → skill `project-context` mode `api`. Refresh `.context/business/business-api-map.md` (auth model, endpoints, architecture).         |
+| `/master-implementation-plan` | Alias → skill `project-context` mode `master-plan`. Refresh `.context/master-implementation-plan.md` (prioritized feature roadmap — EPIC/strategy).|
+| `/dev-roadmap`                | Alias → skill `project-context` mode `dev-roadmap`. Refresh `.context/dev-roadmap.md` (ticket-level dependency execution roadmap — TICKET/sequence). |
+| `/jira-instance-migration`    | Alias → skill `jira-administration` mode `instance-migration`. Repoint the repo at a new Atlassian instance (`.env` + `.agents/project.yaml` + machine-global `acli` session) and regenerate the `.agents/` catalogs the migration invalidated. Takes source + target instance as args; asks for whatever is missing. |
+| `/jira-components`            | Alias → skill `jira-administration` mode `components`. Reconcile a Jira project's Components against the app's real functional modules, plan-first (`scripts/sync-jira-components.ts`, dry run by default, `--apply` only after explicit approval). |
 
 ### MCPs (configured in `.mcp.json`)
 
@@ -224,6 +234,48 @@ Example (same work, different register):
 | Context7 | Library / framework / SDK / API / CLI official docs | `[DOCS_TOOL]` primary. **MANDATORY** for any lib / framework / SDK / API / CLI doc lookup (React, Next, Prisma, Tailwind, Express). PREFER OVER built-in `WebSearch` / `WebFetch` — Context7 current versioned docs; built-in stale blog posts. |
 | Supabase | DB queries, schema, project state               | `[DB_TOOL]` primary                     |
 | n8n      | Workflow automation, integrations               | `[AUTOMATION_FLOWS_TOOL]`               |
+| Playwright | Browser automation (MCP fallback)             | `[AUTOMATION_TOOL]` fallback — `/playwright-cli` is primary |
+| DBHub    | Read-only SQL through the QA inspector role (`dbhub.toml`, Supabase session pooler) | `[DB_TOOL]` for QA inspection. Config file committed with `${VAR}` placeholders; values in `.env` (`DBHUB_*`) |
+
+---
+
+## 5.5 MULTI-HARNESS: ONE SOURCE, THREE CONSUMERS
+
+> This repo runs on **Claude Code, OpenCode, and Codex (CLI + Desktop)**. There is exactly ONE copy of every instruction and every skill. Where the harnesses genuinely differ (MCP file format, hook API, slash-command existence) each keeps a THIN versioned adapter. Nothing is duplicated.
+
+**INSTRUCTIONS.** `AGENTS.md` (this file) is the only instruction body. OpenCode and Codex load it natively. Claude Code loads `CLAUDE.md`, which is **exactly** `@AGENTS.md` plus one newline — a documented import, not a symlink, so it survives a Windows checkout. NEVER write operational prose into `CLAUDE.md`: that is structural drift, and `sync-ai-memory` stops rather than propagating it.
+
+| Surface | Claude Code | OpenCode | Codex CLI + Desktop |
+|---|---|---|---|
+| Instructions | `CLAUDE.md` → `@AGENTS.md` **[generated shim]** | `AGENTS.md` (native) | `AGENTS.md` (native) |
+| Skills | `.claude/skills` **[generated alias]** | `.agents/skills/` (native) | `.agents/skills/` (native) |
+| Commands | `.claude/commands/*.md` **[generated]** | `.opencode/commands/*.md` **[generated]** | none — invoke the skill + mode directly |
+| Hook | `.claude/settings.json` → `UserPromptSubmit` | `.opencode/plugins/personality-reinject.js` | `.codex/hooks.json` → `UserPromptSubmit` |
+| MCP | `.mcp.json` | `opencode.jsonc` | `.codex/config.toml` |
+
+**GENERATED vs VERSIONED (hard rule, = Critical Rule #19).** Bold `[generated]` cells above are OUTPUT. NEVER hand-edit one, and never commit `.claude/skills` (gitignored). Edit the source, then regenerate:
+
+| Generated artifact | Its source | Regenerate |
+|---|---|---|
+| `CLAUDE.md` (one-line `@AGENTS.md` shim, never prose) | `AGENTS.md` | `bun run agents:compat` |
+| `.claude/skills` (POSIX symlink / Windows junction, gitignored, never hand-edited) | `.agents/skills/` | `bun run agents:compat` |
+| 8 Claude + 8 OpenCode command wrappers (`.claude/commands/*.md`, `.opencode/commands/*.md`) | `.agents/compatibility/command-aliases.json` | `bun run agents:compat` |
+
+`bun run agents:compat:check` validates the whole contract: shim bytes, alias target, both wrapper sets byte-for-byte against the manifest, hook adapters, and MCP parity. A wrapper that grew a body fails as `contains workflow prose`.
+
+**COMMAND ALIASES ARE TRANSPORT, NOT WORKFLOW.** Each manifest entry names a target skill + mode; the wrapper only selects and forwards `$ARGUMENTS`. `agents:compat:check` rejects an alias whose target skill or declared mode does not exist. Alias table → §5. The manifest is synced 1:1 by `bun run up` (component `agent-compatibility`): a project-specific alias added there is overwritten on the next sync — keep project commands as skill modes and re-add the alias after syncing.
+
+**HOOK: one emitter, three adapters.** `.agents/hooks/` holds the personality-reinject contract text once. Claude Code (`.claude/settings.json`) and Codex (`.codex/hooks.json`) execute it as a `UserPromptSubmit` command hook; OpenCode imports the constant from the thin plugin `.opencode/plugins/personality-reinject.js`. Contract enforced by `cli/lib/agent-compatibility-contracts.ts`: no absolute personal paths, no duplicated hook file.
+
+**MCP: one declared set, three formats, semantic parity.** The canonical server set is whatever `.mcp.json` declares: every server there must exist in `opencode.jsonc` and `.codex/config.toml` with the same `.env` dependencies and the same literal env settings, and a server present in one host only fails naming the server and the host. Parity is checked by NORMALIZING each native format (JSON / JSONC / TOML) into a common shape — transport, command, args, url, env vars, enabled — then comparing. The boilerplate's own four (`context7`, `tavily`, `supabase`, `n8n`) additionally get a strict per-host shape check whenever the project declares them; any other server (here `playwright`, `dbhub`) gets the generic check only. Env references keep each host's own syntax: `${VAR}` (`.mcp.json`), `{env:VAR}` (`opencode.jsonc`), `env_vars` (`.codex/config.toml`); Critical Rule #9 applies to all three. Bunkai's declared set: `context7`, `tavily`, `supabase`, `n8n`, `playwright`, `dbhub`.
+
+**HARNESS-SPECIFIC GOTCHAS.**
+
+- **Codex trust**: project `.codex/` config and hooks load ONLY in a trusted repository. Trust is runtime state that cannot be verified by reading files.
+- **Codex Desktop** consumes the same repository config as the CLI. No second convention, no extra directory.
+- **OpenCode hook API** is experimental: re-verify on OpenCode upgrades. Claude Code and Codex sit on stable hook APIs.
+- **Harness plugins stay harness-specific**: Engram and caveman are Claude Code plugins; the rules that mention them (§1 #11, §12) are no-ops on a host where the plugin is absent.
+- **Launch with the `bun run <harness>` wrappers** in `package.json` (`claude`, `opencode`, `codex`) — each wraps `dotenv -o -e .env`, which forces `.env` to WIN over an inherited process variable. Launching the bare executable skips that and can leave a stale inherited value shadowing the file (§7).
 
 ---
 
@@ -357,7 +409,7 @@ Folder layout per work type is governed by `.agents/jira-required.yaml` → `wor
 
 ## 10. STACK QUICK-REFERENCE (TypeScript + DRY)
 
-> Full TS conventions in feature dev-guide (Discovery output via `/project-foundation`) if present, else fallback `.claude/skills/agentic-dev-core/references/typescript-patterns.md`. LOAD `/sprint-development` before writing or reviewing feature code.
+> Full TS conventions in feature dev-guide (Discovery output via `/project-foundation`) if present, else fallback `.agents/skills/agentic-dev-core/references/typescript-patterns.md`. LOAD `/sprint-development` before writing or reviewing feature code.
 
 | Pattern        | Rule                                                                       |
 | -------------- | -------------------------------------------------------------------------- |
@@ -377,7 +429,7 @@ Folder layout per work type is governed by `.agents/jira-required.yaml` → `wor
 
 ## 11. GIT WORKFLOW — POINTERS
 
-Git / PR work → `/git-flow-master` auto-loads. Details in `.claude/skills/git-flow-master/` + `docs/workflows/git-flow.md` if present.
+Git / PR work → `/git-flow-master` auto-loads. Details in `.agents/skills/git-flow-master/` + `docs/workflows/git-flow.md` if present.
 
 ### Git Strategy
 

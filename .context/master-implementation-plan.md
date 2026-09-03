@@ -528,7 +528,7 @@ Features with ambiguous scope, pending technical decisions, or competing approac
 
 ## 11. Pre-ship checklist (applies to every feature before merging to main)
 
-Adapted from the project's CLAUDE.md §1 + behavior layer + `/sprint-development` Review stage gates. Ordered by what is most often skipped first.
+Adapted from the project's AGENTS.md §1 + behavior layer + `/sprint-development` Review stage gates. Ordered by what is most often skipped first.
 
 - Verify the feature is covered by an ATC chain that anchors to a US + AC (Bunkai's own structural rule applies to itself).
 - Verify env vars consumed by the feature are documented in `.env.example` and `.agents/project.yaml` (Sprint 0 ships the linter).

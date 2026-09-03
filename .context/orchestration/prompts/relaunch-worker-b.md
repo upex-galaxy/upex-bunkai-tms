@@ -48,11 +48,11 @@ wrong. Two generations before you left handoffs in the same file. Read it.
 5. `escalation-log.md` and `merge-log.md` in that same directory. **Read the escalation log in full,
    do not skim** — a ruling written an hour ago by a peer session governs you, and the one failure
    this run keeps repeating is asking a question that file already answered.
-6. `.claude/skills/agentic-dev-core/references/decision-protocol.md` — binding, and NEW since
+6. `.agents/skills/agentic-dev-core/references/decision-protocol.md` — binding, and NEW since
    generation 2 launched. See "How you decide things" below.
-7. `.claude/skills/sprint-development/references/rpc-authorization.md` +
+7. `.agents/skills/sprint-development/references/rpc-authorization.md` +
    `.context/ADR/ADR-0012-rpc-authorization-invariant.md` — binding before any migration. See below.
-8. `.claude/skills/sprint-development/references/live-ui-identity.md` — binding, plus the two rulings
+8. `.agents/skills/sprint-development/references/live-ui-identity.md` — binding, plus the two rulings
    below.
 9. The BK-47 implementation plan:
    `.context/PBI/epics/EPIC-BK-44-coverage-traceability/stories/STORY-BK-47-tms-coverage-compute-time-to-green-per-user-story-/implementation-plan.md`
@@ -152,7 +152,7 @@ see coming. A cleaner stopping point is the end of a slice, not the middle of on
 
 ## How you decide things — NEW since generation 2
 
-`.claude/skills/agentic-dev-core/references/decision-protocol.md` is binding. It exists because this
+`.agents/skills/agentic-dev-core/references/decision-protocol.md` is binding. It exists because this
 run produced two contradictory answers to one settled question within a few hours. The order is the
 substance:
 
@@ -177,7 +177,7 @@ that is not recorded did not happen.
 
 If a story writes or changes a Postgres function taking a caller-supplied identity or scope parameter
 (`p_actor_user_id`, `p_workspace_id`, or similar), read
-`.claude/skills/sprint-development/references/rpc-authorization.md` and
+`.agents/skills/sprint-development/references/rpc-authorization.md` and
 `.context/ADR/ADR-0012-rpc-authorization-invariant.md` during planning, not at review time. The
 Stage 1 plan must answer that reference's six questions or Stage 2 is blocked.
 
@@ -273,7 +273,7 @@ a second answer obtained by asking cold is not an override.
 - **`public/openapi.json` is committed and statically served — it never regenerates itself.** Any new
   `route.openapi.ts` needs `bun run openapi:gen` + commit in the SAME PR. This will bite your Slice 2.
 - **Editing a Compact Rule in a `SKILL.md` does nothing until `bun run skills:registry` regenerates
-  `.claude/skills/REGISTRY.md`.** That registry is what reaches a subagent's briefing — a rule that
+  `.agents/skills/REGISTRY.md`.** That registry is what reaches a subagent's briefing — a rule that
   never reached it never reached any executor. Discovered 2026-08-01 while wiring the decision protocol
   and the RPC gate; both are in the registry now. `bun run skills:registry:check` is part of
   `repo:check`, so a stale registry also fails CI.
