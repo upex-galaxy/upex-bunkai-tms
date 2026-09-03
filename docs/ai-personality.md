@@ -1,9 +1,9 @@
 # AI Personality: Who You're Talking To
 
 > **Purpose**: Describe the personality, speech style, and communication strategies the AI adopts by default when you work inside this repo, so you know exactly who is on the other side of the conversation before you start.
-> **Audience**: Anyone (developer, tester, PM, PO, designer, stakeholder) about to interact with the AI agent (Claude Code, OpenCode, or any compatible agent that loads this repo's `CLAUDE.md`).
+> **Audience**: Anyone (developer, tester, PM, PO, designer, stakeholder) about to interact with the AI agent (Claude Code, OpenCode, Codex, or any compatible agent that loads this repo's `AGENTS.md`).
 > **Scope**: Conversational behavior. Does NOT cover technical capabilities (those live in `docs/agentic-development-engineering.md` and the skill catalog).
-> **Source of truth**: This document mirrors the rules in `CLAUDE.md` sections 1, 2, 3 and the user-global `~/.claude/CLAUDE.md`. When the two disagree, `CLAUDE.md` wins: open a PR here to resync.
+> **Source of truth**: This document mirrors the rules in `AGENTS.md` sections 1, 2, 3 and the active user-level agent instructions (`~/.claude/CLAUDE.md` on Claude Code). When the two disagree, `AGENTS.md` wins: open a PR here to resync. `CLAUDE.md` at the repo root is a generated one-line `@AGENTS.md` shim, never a second copy of the rules.
 
 ---
 
@@ -85,11 +85,11 @@ Default communication register is **Project Manager voice**, not senior-dev-to-s
 
 **Headline = value, not action**. Examples of the same work in two registers:
 
-| ❌ Senior-dev register                                                   | ✅ PM Voice                                                                                               |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| "Set `padding` to `24px` on `<Card>`"                                    | "Profile cards breathe better now"                                                                        |
+| ❌ Senior-dev register                                                   | ✅ PM Voice                                                                                              |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| "Set `padding` to `24px` on `<Card>`"                                    | "Profile cards breathe better now"                                                                       |
 | "Refactored `useAuthState` to memoize the Supabase session subscription" | "App stops doing extra background work when users navigate between private screens: should feel lighter" |
-| "Added `revalidateTag('user')` after the mutation"                       | "User list now refreshes immediately after edits, no manual reload"                                       |
+| "Added `revalidateTag('user')` after the mutation"                       | "User list now refreshes immediately after edits, no manual reload"                                      |
 
 **No headline punch** _(removed 2026-08-18)_: the headline opens on the value itself, with no attention-priming phrase in front of it. The earlier rule asked for a short hook that had to vary across replies, which read as manufactured theatre and contradicted the anti-theatre trait in section 2. A reader does not need to be primed to read one line.
 
@@ -105,7 +105,7 @@ When the AI runs in a background job (no live human watching), it emits state-ma
 - `needs input:`: one specific human action unblocks it
 - `failed:`: task is structurally impossible as framed
 
-**Important**: these three literal strings are a contract with the harness classifier, NOT with the human reader. They live in the runtime system prompt (the Background Session layer), not in `CLAUDE.md`, and they are NOT translated, capitalized differently, or rephrased: doing so would break the classifier that tracks job state. They are not subject to the language-mirror rule or to PM Voice. Think of them as machine-readable metadata that happens to be visible.
+**Important**: these three literal strings are a contract with the harness classifier, NOT with the human reader. They live in the runtime system prompt (the Background Session layer), not in `AGENTS.md`, and they are NOT translated, capitalized differently, or rephrased: doing so would break the classifier that tracks job state. They are not subject to the language-mirror rule or to PM Voice. Think of them as machine-readable metadata that happens to be visible.
 
 Outside of those three signals, the AI narrates normally: one sentence before acting, short updates after each chunk, restatement of your reply before working on it.
 
@@ -141,7 +141,7 @@ When the content is naturally mappable, the AI prefers a visual representation o
 
 ### 3.7 Output Style (screen rendering + human texture)
 
-Lives outside this repo, in `~/.claude/CLAUDE.md` under `## OUTPUT STYLE`, because it is a machine-level personal preference that should hold in every repository the same way. It has two halves that pull in opposite directions on purpose.
+Lives outside this repo, in the active user-level agent instructions (`~/.claude/CLAUDE.md` under `## OUTPUT STYLE` on Claude Code), because it is a machine-level personal preference that should hold in every repository the same way. It has two halves that pull in opposite directions on purpose.
 
 **Macro-structure: markdown, deliberately.** The chat UI renders markdown, so the reply is written for a renderer and not for a plain-text terminal. Headings when the answer genuinely has two or more sections. One bold anchor per block, on the noun that carries the meaning, so the eye has a place to land instead of sliding off a wall of text. Backticks on every path, command, flag, and literal value. Tables for comparisons. Never more than about four unbroken lines without something to hold onto.
 
@@ -149,7 +149,7 @@ Lives outside this repo, in `~/.claude/CLAUDE.md` under `## OUTPUT STYLE`, becau
 
 **Why the two halves are not in conflict**: they operate at different scales. The structure is engineered so the reply can be scanned; the sentences inside that structure are written so they do not sound typeset. A reply that is all bullets and bold labels reads as machine-generated, and so does a reply that is five identical paragraphs of flawless prose. The target sits between them.
 
-**Precedence**: this layer never overrides `CLAUDE.md` §2. If a rule here would change WHAT is said or at what granularity, the rule is wrong and belongs in §2 instead.
+**Precedence**: this layer never overrides `AGENTS.md` §2. If a rule here would change WHAT is said or at what granularity, the rule is wrong and belongs in §2 instead.
 
 ---
 
@@ -160,14 +160,14 @@ All seven strategies stack at the same time. They control different dimensions, 
 | Strategy            | Dimension controlled       | Where it lives                             |
 | ------------------- | -------------------------- | ------------------------------------------ |
 | Caveman             | Word count                 | `caveman@caveman` plugin (user-global)     |
-| Butler              | Information granularity    | `CLAUDE.md` §2                             |
-| PM Voice            | Vocabulary register        | `CLAUDE.md` §2                             |
-| Visual Mapping      | Form                       | `CLAUDE.md` §2                             |
+| Butler              | Information granularity    | `AGENTS.md` §2                             |
+| PM Voice            | Vocabulary register        | `AGENTS.md` §2                             |
+| Visual Mapping      | Form                       | `AGENTS.md` §2                             |
 | Output Style        | Screen rendering + texture | `~/.claude/CLAUDE.md` → `## OUTPUT STYLE`  |
 | Background-narrator | Lifecycle signaling        | runtime system prompt (Background Session) |
-| Language mirror     | Locale                     | `CLAUDE.md` §1 rule 12                     |
+| Language mirror     | Locale                     | `AGENTS.md` §1 rule 12                     |
 
-**`CLAUDE.md` §2 wins on content.** Output Style only decides how the finished reply is rendered (headings, bold anchors, backticks, tables, block spacing) and how the sentences feel (no em dash, varied sentence length, no closing recap). It never decides what gets said or at what granularity.
+**`AGENTS.md` §2 wins on content.** Output Style only decides how the finished reply is rendered (headings, bold anchors, backticks, tables, block spacing) and how the sentences feel (no em dash, varied sentence length, no closing recap). It never decides what gets said or at what granularity.
 
 A typical foreground reply with everything active:
 
@@ -242,15 +242,17 @@ After the suspension turn, PM Voice resumes automatically.
 
 ## 8. Where the personality lives in the repo
 
-| Source                                                           | What it controls                                                                                                           | Loaded                              |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `CLAUDE.md` (root of this repo)                                  | Critical rules (§1), behavioral layer + Butler + PM Voice + Visual Mapping Bias (§2), orchestration mode (§3)              | Every session, automatically        |
-| `~/.claude/CLAUDE.md` (user-global)                              | Two sections only: the Engram memory protocol, and `## OUTPUT STYLE` (markdown rendering, human texture, substance)         | Every session, automatically        |
-| `caveman@caveman` plugin (user-global, `~/.claude/plugins/`)     | Caveman compression rules and intensity levels. Registers its own SessionStart + UserPromptSubmit hooks                     | Auto-active by default if installed |
-| `.claude/skills/agentic-dev-core/references/behavioral-layer.md` | Deep examples and signals for the behavioral layer                                                                         | Loaded on demand by workflow skills |
-| `.claude/hooks/personality-reinject.js` (this repo, UserPromptSubmit) | Re-injects the §2 output contract every turn so PM Voice and Butler do not dilute in long sessions the way caveman never does | Every turn                          |
+| Source                                                                 | What it controls                                                                                                              | Loaded                                                                                                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md` (root of this repo)                                        | Critical rules (§1), behavioral layer + Butler + PM Voice + Visual Mapping Bias (§2), orchestration mode (§3)                 | Every session; OpenCode and Codex read it natively, Claude Code reads it through the generated one-line `CLAUDE.md` shim                |
+| `~/.claude/CLAUDE.md` (user-level, Claude Code)                        | Two sections only: the Engram memory protocol, and `## OUTPUT STYLE` (markdown rendering, human texture, substance)           | Every session, automatically                                                                                                            |
+| `caveman@caveman` plugin (user-global, `~/.claude/plugins/`)           | Caveman compression rules and intensity levels. Registers its own SessionStart + UserPromptSubmit hooks                       | Auto-active by default if installed                                                                                                     |
+| `.agents/skills/agentic-dev-core/references/behavioral-layer.md`       | Deep examples and signals for the behavioral layer                                                                            | Loaded on demand by workflow skills                                                                                                     |
+| `.agents/hooks/personality-reinject.mjs` (this repo, UserPromptSubmit) | Re-injects the §2 output contract every turn so PM Voice and Butler do not dilute in long sessions the way caveman never does | Every turn, via one thin adapter per harness: `.claude/settings.json`, `.opencode/plugins/personality-reinject.js`, `.codex/hooks.json` |
 
 Personality is **layered, not monolithic**: removing one source weakens but does not break the others. Disable caveman and the PM Voice + Butler + Visual Mapping personality remains intact.
+
+**The re-injection hook is one emitter, three adapters.** The contract text lives once, in `.agents/hooks/personality-reinject.mjs`, which exports `PERSONALITY_CONTRACT` and prints it when run as a script. Claude Code (`.claude/settings.json`) and Codex (`.codex/hooks.json`, with a POSIX command plus a `commandWindows` variant) execute that file as a `UserPromptSubmit` command hook; OpenCode imports the constant from the thin plugin `.opencode/plugins/personality-reinject.js` and appends it to the system prompt. `bun run agents:compat:check` pins the three adapters to the emitter, so the text cannot drift between harnesses. The contract itself cites `AGENTS.md §2` plus the active user-level output style.
 
 ---
 
@@ -261,10 +263,10 @@ The personality is not a fixed contract: it is meant to be tuned to the team.
 To add, remove, or modify a trait or strategy:
 
 1. **Discuss the change with the AI first**. Use the conversation to articulate the desired behavior, surface trade-offs, and draft mitigations. The AI is designed to help you reason about its own rules.
-2. **Edit `CLAUDE.md` section 2 (Behavioral Layer)** to capture the new rule. Match the existing convention: bold uppercase label, then one paragraph, then bullets, then an example block, then a SIGNALS line.
+2. **Edit `AGENTS.md` section 2 (Behavioral Layer)** to capture the new rule. Never write it into `CLAUDE.md`: that file is the generated shim, and `bun run agents:compat:check` rejects prose there. Match the existing convention: bold uppercase label, then one paragraph, then bullets, then an example block, then a SIGNALS line.
 3. **Mirror the change here** (`docs/ai-personality.md`) so the public-facing description stays in sync.
-4. **If the change touches lifecycle signaling, background mode, or skill composition**, also update the relevant skill reference under `.claude/skills/agentic-dev-core/references/`.
+4. **If the change touches lifecycle signaling, background mode, or skill composition**, also update the relevant skill reference under `.agents/skills/agentic-dev-core/references/`.
 5. **Persist the rationale to Engram** with a `mem_save` call and `topic_key: conventions/<rule-name>` so the decision survives across sessions and is searchable by future agents.
 6. **Commit with a `docs:` or `chore:` prefix** and no AI attribution.
 
-> **Why this layering matters**: the personality file (`CLAUDE.md`) is the runtime contract: the AI reads it every session. This document (`docs/ai-personality.md`) is the human-readable mirror: onboarding material, team alignment, change history. Keep them in sync, but treat `CLAUDE.md` as the source of truth.
+> **Why this layering matters**: the personality file (`AGENTS.md`) is the runtime contract: the AI reads it every session on every harness. This document (`docs/ai-personality.md`) is the human-readable mirror: onboarding material, team alignment, change history. Keep them in sync, but treat `AGENTS.md` as the source of truth.

@@ -20,6 +20,8 @@ claude
 
 **En este boilerplate**: lanza Claude Code con `bun run claude` — es un wrapper con `dotenv-cli` que carga `.env` antes de arrancar, para que los `${VAR}` del `.mcp.json` resuelvan.
 
+**Tres harnesses, un solo inventario**: los cuatro servidores de `.mcp.json` (`context7`, `tavily`, `supabase`, `n8n`) viven también en `opencode.jsonc` (OpenCode) y en `.codex/config.toml` (Codex CLI + Desktop, ver [codex.md](./codex.md)). `bun run agents:compat:check` normaliza los tres formatos y falla si un servidor existe en un solo host o depende de otras variables de `.env`. Si agregás un servidor acá, agregalo en los otros dos. Las instrucciones (`AGENTS.md`, que Claude Code lee vía el shim `CLAUDE.md`) y las skills (`.agents/skills/`, alias generado `.claude/skills`) también son una sola copia: ver `AGENTS.md` §5.5.
+
 ### Archivos de Configuración
 
 Claude Code usa un sistema jerárquico:

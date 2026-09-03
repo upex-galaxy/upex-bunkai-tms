@@ -16,9 +16,21 @@ import * as path from 'node:path';
 
 import pc from 'picocolors';
 import { parseEnvFile } from './install';
+import {
+  checkAgentCompatibility,
+  COMMAND_ALIAS_MANIFEST,
+  repairClaudeSkillsAlias,
+  repairCommandWrappers,
+} from './lib/agent-compatibility.ts';
 import * as tui from './lib/tui';
 import { cleanupTempDir, detectGitVersion, gitVersionMeetsMin, runUpdate } from './lib/updater-core';
 import { makeProtectedDriftHook } from './lib/updater-drift';
+import {
+  applyHarnessMigration,
+  describeHarnessMigration,
+  MIGRATION_BACKUP_DIR,
+  planHarnessMigration,
+} from './lib/updater-harness-migration.ts';
 import { groupIgnoreLines } from './lib/updater-ignore';
 import { makePbiCacheMigrationHook } from './lib/updater-pbi';
 import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifest';
@@ -35,7 +47,30 @@ const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.gitattributes'];
 // a bootstrap-only entry. Keep it to files the boilerplate genuinely owns.
 const AGENTS_FRAMEWORK_FILES = ['README.md'];
 const AGENTS_BOOTSTRAP_FILES = ['project.yaml', 'jira-fields.json', 'jira-workflows.json', 'jira-link-types.json', 'jira-required.yaml'];
+// The `agents` component is a file-list of the `.agents/` ROOT on purpose: the
+// subtrees (`skills/`, `hooks/`, `compatibility/`) belong to `agent-compatibility`
+// and the registry validator rejects two components claiming one path.
+const AGENTS_ROOT_FILES = [...AGENTS_FRAMEWORK_FILES, ...AGENTS_BOOTSTRAP_FILES];
 const CLAUDE_CONFIG_FILES = ['settings.json'];
+// `.codex/` is bootstrapOnly: `config.toml` is the Codex MCP registry (the pair of
+// `.mcp.json` / `opencode.jsonc`, both on the protected watchlist) and ships ONCE.
+// The hook adapter carries no project state and keeps flowing.
+const CODEX_FRAMEWORK_FILES = ['hooks.json'];
+
+/** Canonical cross-harness skill source. Claude consumes it through an alias. */
+const SKILLS_CANONICAL_DIR = '.agents/skills';
+
+// Generated surfaces: the sync never delivers, overwrites, or reports these, and
+// the afterApply hooks rebuild them from their sources on every run.
+//  - CLAUDE.md: the one-line `@AGENTS.md` shim (written by the cross-harness
+//    migration for legacy repos, by the scaffold for fresh ones). Its source is
+//    AGENTS.md, which IS on the watchlist.
+//  - .agents/skills/REGISTRY.md: built by `bun run skills:registry` from the
+//    repo's own installed skill set, including local community skills.
+// `.claude/skills` (alias) is gitignored and never in upstream, so it needs no
+// entry; `.claude/commands` + `.opencode/commands` DO sync (component `commands`)
+// and are then re-rendered from `.agents/compatibility/command-aliases.json`.
+const GENERATED_PATHS = ['CLAUDE.md', `${SKILLS_CANONICAL_DIR}/REGISTRY.md`];
 
 const MCP_TEMPLATE_AGENTS = ['claude', 'opencode', 'codex', 'gemini'] as const;
 type McpAgent = typeof MCP_TEMPLATE_AGENTS[number];
@@ -51,10 +86,17 @@ const DEPRECATED_FILES: DeprecatedFile[] = [
   { path: '.prompts/setup/kata-architecture-adaptation.md', component: 'prompts', reason: 'renamed to test-framework-adaptation.md', deprecatedSince: '2026-04-28' },
 ];
 
-const COMPONENTS: Component[] = [
-  { name: 'claude', type: 'directory', paths: ['.claude/skills', '.claude/commands'] },
-  { name: 'claude-config', type: 'file-list', paths: ['.claude'], files: CLAUDE_CONFIG_FILES },
-  { name: 'agents', type: 'mixed', paths: ['.agents'], bootstrapOnly: false },
+export const COMPONENTS: Component[] = [
+  // One source, three harnesses: skills, the hook emitter, the command-alias
+  // manifest and the OpenCode hook adapter. `.claude/skills` is NOT here: it is
+  // the generated alias, rebuilt by the afterApply compatibility hook.
+  { name: 'agent-compatibility', type: 'directory', paths: [SKILLS_CANONICAL_DIR, '.agents/hooks', '.agents/compatibility', '.opencode/plugins'] },
+  // Generated wrappers for both hosts. Synced so a consumer receives new aliases,
+  // then re-rendered from the manifest so a hand edit never survives a run.
+  { name: 'commands', type: 'directory', paths: ['.claude/commands', '.opencode/commands'] },
+  { name: 'agent-root-config', type: 'file-list', paths: ['.claude'], files: CLAUDE_CONFIG_FILES },
+  { name: 'codex-config', type: 'directory', paths: ['.codex'], bootstrapOnly: true, frameworkFiles: CODEX_FRAMEWORK_FILES },
+  { name: 'agents', type: 'file-list', paths: ['.agents'], files: AGENTS_ROOT_FILES },
   { name: 'scripts', type: 'directory', paths: ['scripts'] },
   { name: 'cli', type: 'directory', paths: ['cli'] },
   { name: 'docs', type: 'directory', paths: ['docs'] },
@@ -86,7 +128,14 @@ const isMcpAgent = (v: string): v is McpAgent => (MCP_TEMPLATE_AGENTS as readonl
 function parseArgs(args: string[]): ParsedArgs {
   const out: ParsedArgs = { commands: [], help: false, dryRun: false, rollback: false, auto: false, force: false, updateMcpTemplate: null };
   const valid = new Set(COMPONENTS.map(c => c.name).concat(['all', 'help', 'rollback']));
-  const aliases: Record<string, string> = { prompts: 'claude', books: 'claude', guidelines: 'context' };
+  // Pre-cross-harness component names still typed from muscle memory.
+  const aliases: Record<string, string> = {
+    'claude': 'agent-compatibility',
+    'claude-config': 'agent-root-config',
+    'prompts': 'agent-compatibility',
+    'books': 'agent-compatibility',
+    'guidelines': 'context',
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === 'help' || a === '--help' || a === '-h') { out.help = true; }
@@ -120,6 +169,20 @@ USO:
 COMPONENTES: ${COMPONENTS.map(c => c.name).join(', ')}
 ATAJOS:      all, rollback, help
 
+PREFLIGHT CROSS-HARNESS (automatico, una sola vez, ANTES de sincronizar):
+  Si el proyecto todavia guarda sus instrucciones en CLAUDE.md, sus skills en
+  .claude/skills/ y el hook en .claude/hooks/, la migracion los mueve a
+  AGENTS.md, .agents/skills/ y ${MIGRATION_BACKUP_DIR}/ antes de tocar
+  ningun componente. Corre con cualquier subcomando, porque sin ella el sync
+  dejaria al proyecto sin instrucciones. No borra nada: lo que no se mueve queda
+  en ${MIGRATION_BACKUP_DIR}/ (gitignored). Es idempotente y con
+  --dry-run solo muestra el plan.
+
+SUPERFICIES GENERADAS (nunca se sincronizan ni se reportan como drift):
+  CLAUDE.md (shim \`@AGENTS.md\`), .claude/skills (alias a .agents/skills),
+  .claude/commands/*.md y .opencode/commands/*.md (wrappers). Tras cada sync se
+  regeneran con la misma logica de \`bun run agents:compat\`.
+
 FLAGS:
   --auto                          Modo no-interactivo: sincroniza TODO el
                                   boilerplate (copia archivos nuevos +
@@ -138,7 +201,8 @@ FLAGS:
 EJEMPLOS:
   bun up                                    # Flujo interactivo (5 fases)
   bun up scripts                            # Un solo componente
-  bun up claude agents                      # Multiples componentes
+  bun up agent-compatibility commands       # Multiples componentes
+  bun up codex-config                       # Solo el adaptador de Codex
   bun up --auto                             # CI mode (seguro, preserva lo tuyo)
   bun up --force                            # Forzar todo del upstream (sin preguntar)
   bun up --dry-run                          # Preview
@@ -555,17 +619,21 @@ async function upsertAutomationIdentityBlock(
 // content hash under `.template/upstream-sha/`. One nudge per upstream change,
 // never on dry-run (the whole afterApply hook is skipped there).
 //
-// `CLAUDE.md` keeps its legacy marker path so repos that already received the
-// old single-file advisory are not re-nudged on the first run after this port.
+// `AGENTS.md` (formerly `CLAUDE.md`, promoted by the cross-harness migration)
+// keeps the legacy `claude-md.upstream.sha` marker path so repos that already
+// received the old single-file advisory are not re-nudged on the first run
+// after the rename. The marker file name is also listed in `.gitignore`, which
+// is synced to consumers: renaming it would orphan every existing marker.
 
 const PROTECTED_WATCHLIST: ProtectedWatchEntry[] = [
-  { path: 'CLAUDE.md', reason: 'per-project AI memory (identity, env URLs, custom rules)', markerPath: '.template/claude-md.upstream.sha' },
+  { path: 'AGENTS.md', reason: 'per-project AI memory (identity, env URLs, custom rules); CLAUDE.md is only a generated shim onto it', markerPath: '.template/claude-md.upstream.sha' },
   { path: '.agents/project.yaml', reason: 'per-project identity + env map, but upstream keeps ADDING structural blocks (e.g. git_strategy). A project scaffolded before a block existed never learns it should have one.' },
   { path: '.agents/jira-required.yaml', reason: 'methodology manifest: upstream owns the baseline work_types + field slugs, the project owns its fallbacks and omissions. It is the INPUT to jira:sync-workflows, which catalogs only the work_types declared in it — a stale manifest silently regenerates a truncated jira-workflows.json and still exits 0.' },
   { path: 'tsconfig.json', reason: 'path aliases are the contract every synced file imports through — a new upstream alias breaks synced code in a project whose tsconfig never learned it.' },
   { path: 'eslint.config.js', reason: 'lint rules evolve upstream and .husky/pre-commit (which IS synced) runs eslint against this local config.' },
   { path: '.mcp.json', reason: 'MCP registry with project-specific servers/vars' },
   { path: 'opencode.jsonc', reason: 'OpenCode MCP registry (paired with .mcp.json)' },
+  { path: '.codex/config.toml', reason: 'Codex MCP registry (paired with .mcp.json / opencode.jsonc; `agents:compat:check` enforces parity across the three)' },
 ];
 
 // NOT on the watchlist, deliberately — do not "fix" this asymmetry:
@@ -574,8 +642,10 @@ const PROTECTED_WATCHLIST: ProtectedWatchEntry[] = [
 //    are pure per-INSTANCE data. The upstream copies describe the boilerplate
 //    authors' own Jira workspace. Advising a downstream project to merge them
 //    would write field IDs from a workspace it has no relation to.
-//  - `.claude/skills/REGISTRY.md`, `bun.lock` are generated artefacts;
+//  - `.agents/skills/REGISTRY.md`, `bun.lock` are generated artefacts;
 //    upstream's copy carries no information for a downstream repo.
+//  - `CLAUDE.md` is generated too (see GENERATED_PATHS): its only legitimate
+//    content is `@AGENTS.md`, so "drift" there is a defect, not a merge.
 //  - `CONTEXT.md` is a synced component (`context-engineering`), so it needs no
 //    advisory — it arrives on its own.
 
@@ -645,13 +715,101 @@ function composeHooks(
 // after a sync that added or changed skills.
 function makeSkillsRegistryHook(sink: ReportSink): (summary: RunSummary) => Promise<void> {
   return async (summary: RunSummary): Promise<void> => {
-    if (!summary.applied.some(a => a.entry.path.startsWith('.claude/skills/'))) { return; }
-    sink.step('Regenerando `.claude/skills/REGISTRY.md` (skills cambiaron)…');
+    if (!summary.applied.some(a => a.entry.path.startsWith(`${SKILLS_CANONICAL_DIR}/`))) { return; }
+    sink.step(`Regenerando \`${SKILLS_CANONICAL_DIR}/REGISTRY.md\` (skills cambiaron)…`);
     const res = spawnSync('bun', ['run', 'skills:registry'], { stdio: 'inherit' });
     if (res.status !== 0) {
       sink.warn('No se pudo regenerar REGISTRY.md. Ejecuta `bun run skills:registry` manualmente.');
     }
   };
+}
+
+// --- AGENT COMPATIBILITY (afterApply hook) ---
+//
+// Same engine as `bun run agents:compat`, imported from `cli/lib` so it travels
+// with the self-updating `cli` component. Runs after EVERY apply, not only when
+// skills changed: the alias is gitignored (a fresh clone has none), the
+// wrappers are re-rendered from the manifest, and the check reports anything
+// the sync could not fix (a consumer's `.claude/settings.json` kept under
+// --auto still pointing at the old hook, an MCP server added to one host only).
+// Reports, never throws: the sync already landed, and a failed contract is
+// something the user fixes with `bun run agents:compat`, not something to hide
+// behind a generic "hook failed".
+function makeAgentCompatibilityHook(sink: ReportSink): (summary: RunSummary) => Promise<void> {
+  return async (): Promise<void> => {
+    sink.step('Regenerando superficies de Claude/OpenCode (alias .claude/skills, wrappers de comandos)…');
+    const alias = repairClaudeSkillsAlias();
+    let wrappersWritten = 0;
+    if (fs.existsSync(COMMAND_ALIAS_MANIFEST)) {
+      wrappersWritten = repairCommandWrappers();
+    }
+    else {
+      sink.warn(`Sin ${COMMAND_ALIAS_MANIFEST}: los wrappers de comandos no se regeneraron (llega con el componente agent-compatibility).`);
+    }
+    const check = checkAgentCompatibility();
+    if (check.ok) {
+      sink.step(`Compatibilidad lista: alias ${alias.status}; ${wrappersWritten} wrapper(s) actualizado(s).`);
+      return;
+    }
+    sink.warn('La compatibilidad agéntica quedó incompleta:');
+    for (const error of check.errors) { sink.warn(`  - ${error}`); }
+    sink.step('Revisa lo anterior y ejecuta `bun run agents:compat` (o `agents:compat:check` para solo validar).');
+  };
+}
+
+// --- CROSS-HARNESS MIGRATION (preflight) ---
+
+/**
+ * Reports what the cross-harness migration did, or exits with an actionable
+ * message when it refuses. Nothing is deleted either way: content moves to its
+ * canonical home or is archived under `.template/pre-agents-migration/`.
+ */
+function runHarnessMigration(sink: ReportSink, dryRun: boolean): void {
+  const plan = planHarnessMigration();
+  if (!plan.needed && plan.blockers.length === 0) { return; }
+
+  tui.log.info('Migración cross-harness (Claude → Claude + OpenCode + Codex):');
+  for (const line of describeHarnessMigration(plan)) { tui.log.message(`  · ${line}`); }
+
+  // --dry-run must still SHOW this. Without it the preview would suggest the
+  // project's memory is untouched while a real run promotes it to AGENTS.md
+  // BEFORE syncing anything.
+  if (dryRun) {
+    if (plan.blockers.length > 0) {
+      tui.log.warn(`Bloqueantes que detendrían la migración:\n  - ${plan.blockers.join('\n  - ')}`);
+    }
+    tui.log.message('  (--dry-run: nada de lo anterior se aplicó. La corrida real lo hace ANTES de sincronizar.)');
+    return;
+  }
+
+  try {
+    const result = applyHarnessMigration(process.cwd(), plan);
+    if (!result.applied) { return; }
+    if (result.promotedInstructions) {
+      sink.step('AGENTS.md creado desde CLAUDE.md; CLAUDE.md ahora es el shim `@AGENTS.md`.');
+    }
+    if (result.movedSkills.length > 0) {
+      sink.step(`${result.movedSkills.length} skill(s) movidas a ${SKILLS_CANONICAL_DIR}/: ${result.movedSkills.join(', ')}`);
+    }
+    if (result.archivedSkills.length > 0) {
+      sink.warn(`${result.archivedSkills.length} skill(s) archivadas en ${MIGRATION_BACKUP_DIR}/skills/ porque ${SKILLS_CANONICAL_DIR} ya tenía ese nombre: ${result.archivedSkills.join(', ')}`);
+    }
+    if (result.archivedLegacyHook) {
+      sink.step(`Hook legacy .claude/hooks/personality-reinject.js archivado en ${MIGRATION_BACKUP_DIR}/hooks/.`);
+    }
+    if (result.unindexedFiles > 0) {
+      sink.step(`${result.unindexedFiles} entrada(s) de .claude/skills quitadas del índice de git (solo el índice; el contenido ya vive en ${SKILLS_CANONICAL_DIR}/).`);
+    }
+    if (result.ignoredEntriesAdded.length > 0) {
+      sink.step(`.gitignore: añadido ${result.ignoredEntriesAdded.join(', ')}.`);
+    }
+    tui.log.message(`  Copia de seguridad: ${MIGRATION_BACKUP_DIR}/ (gitignored). Revísala antes de borrarla.`);
+  }
+  catch (error) {
+    tui.log.error(error instanceof Error ? error.message : String(error));
+    tui.log.warn('El update se detuvo ANTES de tocar nada. Resuelve lo anterior y vuelve a correr `bun run up`.');
+    process.exit(1);
+  }
 }
 
 // --- SINK ---
@@ -868,6 +1026,14 @@ async function main(): Promise<void> {
 
   const sink = buildSink();
 
+  // Cross-harness migration: runs BEFORE any component is synced, on purpose.
+  // A repo scaffolded when instructions lived in CLAUDE.md and skills in
+  // .claude/skills/ must reach the canonical layout FIRST: AGENTS.md is on the
+  // watchlist (never synced), so nothing downstream would ever create it, and
+  // the compatibility hook refuses a real .claude/skills directory. Idempotent:
+  // a migrated repo plans nothing. Under --dry-run it reports the plan only.
+  runHarnessMigration(sink, parsed.dryRun);
+
   const cfg: UpdaterConfig = {
     templateRepo: TEMPLATE_REPO,
     cliVersion: CLI_VERSION,
@@ -888,10 +1054,9 @@ async function main(): Promise<void> {
     deprecatedFiles: DEPRECATED_FILES,
     bootstrapOnlyPaths: AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`),
     agentsFrameworkFiles: AGENTS_FRAMEWORK_FILES,
-    // Generated, per-repo file inside the `claude` component (which owns
-    // .claude/skills) — never synced; each repo rebuilds it from its own
-    // installed skill set (regenerated in afterApply below).
-    excludePaths: ['.claude/skills/REGISTRY.md'],
+    // Generated surfaces (see GENERATED_PATHS): never synced, never reported;
+    // the afterApply hooks below rebuild them from their sources.
+    excludePaths: GENERATED_PATHS,
     // The boilerplate's own material — never delivered to consumers. Mirrored
     // in TEMPLATE_EXCLUDES (packages/create-agentic-dev/src/prepare.ts); see
     // the REPO_ONLY_PATHS comment for per-entry reachability reasoning.
@@ -909,6 +1074,9 @@ async function main(): Promise<void> {
         ? undefined
         : composeHooks(
             sink,
+            // Alias + wrappers first: a Claude Code session opened right after
+            // the sync must already resolve skills through `.claude/skills`.
+            makeAgentCompatibilityHook(sink),
             makeSkillsRegistryHook(sink),
             async () => detectEnvVarDrift(TEMP_DIR, sink, parsed.auto),
             async () => upsertGitStrategyBlock(TEMP_DIR, sink, parsed.auto),
@@ -918,7 +1086,7 @@ async function main(): Promise<void> {
             makePbiCacheMigrationHook({ promptOutPath: path.join(process.cwd(), PBI_MIGRATION_PROMPT_PATH) }, sink),
             // Generalized successor to the old CLAUDE.md-only advisory: same
             // one-nudge-per-upstream-change semantics, now across the whole
-            // PROTECTED_WATCHLIST. CLAUDE.md keeps its legacy sha marker.
+            // PROTECTED_WATCHLIST. AGENTS.md keeps the legacy CLAUDE.md marker.
             makeProtectedDriftHook({
               entries: PROTECTED_WATCHLIST,
               tempDir: TEMP_DIR,
@@ -950,11 +1118,14 @@ async function main(): Promise<void> {
   tui.outro(parsed.dryRun ? 'Dry-run completado.' : 'Sincronizacion completada.');
 }
 
-main().catch((err: unknown) => {
-  if (err instanceof Error && err.name === 'ExitPromptError') {
-    tui.cancel('Aborted by user.');
-    process.exit(130);
-  }
-  tui.log.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+// Guarded so tests can import COMPONENTS without kicking off a sync.
+if (import.meta.main) {
+  main().catch((err: unknown) => {
+    if (err instanceof Error && err.name === 'ExitPromptError') {
+      tui.cancel('Aborted by user.');
+      process.exit(130);
+    }
+    tui.log.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });
+}

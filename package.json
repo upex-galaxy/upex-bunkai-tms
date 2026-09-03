@@ -36,8 +36,8 @@
     "db:qa-roles": "bun scripts/provision-qa-roles.ts",
     "release:check": "bun scripts/check-release-readiness.ts",
     "test": "bun test",
-    "repo:check": "bun run format:check && bun run lint:check && bun run types:check && bun run vars:check && bun run vars:env:check && bun run skills:check && bun run skills:registry:check && bun run openapi:check",
-    "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run vars:env:check && bun run skills:check && bun run skills:registry:check && bun run openapi:check",
+    "repo:check": "bun run format:check && bun run lint:check && bun run types:check && bun run vars:check && bun run vars:env:check && bun run skills:check && bun run skills:registry:check && bun run openapi:check && bun run agents:compat:check",
+    "repo:fix": "bun run format:fix && bun run lint:fix && bun run types:check && bun run vars:check && bun run vars:env:check && bun run skills:check && bun run skills:registry:check && bun run openapi:check && bun run agents:compat:check",
     "clean": "rm -rf node_modules dist .next",
     "prepare": "husky",
     "claude": "dotenv -o -e .env -- claude",
@@ -47,7 +47,10 @@
     "git:policy": "bun scripts/git-policy.ts",
     "jira:url": "bun scripts/atlassian-url.ts",
     "context:hydrate": "bun scripts/sync-jira-issues.ts pull --include-comments",
-    "jira:components": "bun scripts/sync-jira-components.ts"
+    "jira:components": "bun scripts/sync-jira-components.ts",
+    "agents:compat": "bun scripts/agent-compatibility.ts",
+    "agents:compat:check": "bun scripts/agent-compatibility.ts --check",
+    "codex": "dotenv -o -e .env -- codex"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
