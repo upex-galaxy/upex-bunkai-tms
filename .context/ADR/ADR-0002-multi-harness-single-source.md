@@ -7,6 +7,8 @@
 - **Supersedes:** —
 - **Superseded by:** —
 
+> **Bunkai delta (2026-09-03).** This ADR is the upstream record, synced verbatim from `agentic-dev-boilerplate@aa87fe8` and adopted as-is. Where Bunkai differs: the MCP set is **six** servers (`context7`, `tavily`, `supabase`, `n8n`, `playwright`, `dbhub`), not four; the store holds 16 T1 skills (the 14 upstream ones plus `autonomous-delivery`, `jira-administration`) plus `playwright-cli` and 27 committed community skills; the "harness surfaces are generated" rule is Critical Rule **#19** in `AGENTS.md` (#15 upstream); the implementation plan referenced below lives in the upstream repository, not here. The `.claude/skills` alias is regenerated locally with `bun run agents:compat`.
+
 ---
 
 ## Context

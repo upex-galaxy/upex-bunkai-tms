@@ -132,21 +132,23 @@ export interface QaConfig {
 }
 
 // ---------------------------------------------------------------------------
-// MCP config blocks — reproduced verbatim from the committed .mcp.json (Claude)
-// and opencode.jsonc (OpenCode). No secrets: every placeholder expands from
-// .env at MCP spawn time. Claude uses ${VAR}; OpenCode uses {env:VAR}.
+// MCP config blocks. dbhub mirrors the committed .mcp.json (Claude) and
+// opencode.jsonc (OpenCode); openapi and postman are OPT-IN examples for QA
+// engineers, the repo does not declare them (no env contract in .env.example).
+// No secrets: every placeholder expands from .env at MCP spawn time. Claude
+// uses ${VAR}; OpenCode uses {env:VAR}.
 // ---------------------------------------------------------------------------
 
 const dbhubClaude = `// Claude Code → .mcp.json
 "dbhub": {
   "command": "bunx",
-  "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
+  "args": ["-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"]
 }`;
 
 const dbhubOpencode = `// OpenCode → opencode.jsonc
 "dbhub": {
   "type": "local",
-  "command": ["bunx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
+  "command": ["bunx", "-y", "@bytebase/dbhub@1.2.3", "--config", "dbhub.toml"],
   "enabled": true
 }`;
 

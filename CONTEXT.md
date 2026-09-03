@@ -118,9 +118,9 @@ The repo runs on **Claude Code, OpenCode, and Codex (CLI + Desktop)**. There is 
 
 **Hook.** `.agents/hooks/personality-reinject.mjs` holds the contract text once. Claude Code and Codex run it as a `UserPromptSubmit` command hook (the Codex adapter ships a POSIX and a PowerShell command); OpenCode imports the constant from a thin plugin. The contract is enforced by `cli/lib/agent-compatibility-contracts.ts`: no absolute personal paths, no duplicated hook file.
 
-**MCP.** The same four servers (`context7`, `tavily`, `supabase`, `n8n`) exist in all three configs. Parity is checked semantically: each native format (JSON / JSONC / TOML) is normalized into a common shape and compared on the `.env` variables each server depends on, so adding a server to one host only is a failure. Codex cannot expand `${VAR}` inside `args`, so `.codex/config.toml` reaches `tavily` over HTTP with `bearer_token_env_var` and passes `supabase` env-only auth.
+**MCP.** The same six servers (`context7`, `tavily`, `supabase`, `n8n`, `playwright`, `dbhub`) exist in all three configs (the boilerplate ships the first four; Bunkai adds `playwright` and `dbhub`, see `AGENTS.md` §5.5). Parity is checked semantically: each native format (JSON / JSONC / TOML) is normalized into a common shape and compared on the `.env` variables each server depends on, so adding a server to one host only is a failure. Codex cannot expand `${VAR}` inside `args`, so `.codex/config.toml` reaches `tavily` over HTTP with `bearer_token_env_var` and passes `supabase` env-only auth.
 
-**Generated versus versioned (hard rule, `AGENTS.md` Critical Rule #15).** Every bold `[generated]` cell above is output. Edit the source, then regenerate:
+**Generated versus versioned (hard rule, `AGENTS.md` Critical Rule #19; upstream numbers it #15).** Every bold `[generated]` cell above is output. Edit the source, then regenerate:
 
 | Generated artifact                                  | Its source                                   | Regenerate              |
 | --------------------------------------------------- | -------------------------------------------- | ----------------------- |
@@ -370,7 +370,7 @@ Curated, repo-specific. The full list of generic rules lives in `AGENTS.md` — 
 6. **Don't include AI attribution in commits** (`Co-Authored-By: Claude`, etc.) — commits must look human-authored.
 7. **Don't push to `main` without explicit user confirmation.**
 8. **Don't conflate `.context/` (facts) with `.agents/skills/` (workflows)** — adding a workflow under `.context/` will not auto-trigger.
-9. **Don't write prose into `CLAUDE.md` or hand-edit a generated wrapper** — `CLAUDE.md` is the `@AGENTS.md` shim, `.claude/skills` is an alias, and `.claude/commands/*.md` / `.opencode/commands/*.md` come from the alias manifest. Edit the source and run `bun run agents:compat` (`AGENTS.md` Critical Rule #15).
+9. **Don't write prose into `CLAUDE.md` or hand-edit a generated wrapper** — `CLAUDE.md` is the `@AGENTS.md` shim, `.claude/skills` is an alias, and `.claude/commands/*.md` / `.opencode/commands/*.md` come from the alias manifest. Edit the source and run `bun run agents:compat` (`AGENTS.md` Critical Rule #19).
 
 ---
 
