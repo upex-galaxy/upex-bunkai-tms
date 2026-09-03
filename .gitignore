@@ -154,3 +154,12 @@ cookies.txt
 .context/PBI/*
 !.context/PBI/README.md
 !.context/PBI/templates/
+
+# ===== Cross-harness generated artifacts =====
+# Generated alias onto .agents/skills. Never edit or commit it.
+.claude/skills
+# Local recovery copy written by the cross-harness migration.
+.template/pre-agents-migration/
+
+# ----- 2026-09-03 (sync) -----
+.agents/skills/*-workspace/
