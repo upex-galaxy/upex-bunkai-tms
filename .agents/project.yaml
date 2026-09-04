@@ -63,6 +63,8 @@ external_consumers:
   - report_channel # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
   - escalation_channel # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Autonomy (clean-stop sequence, primary notification path) — never resolved through {{VAR}} templating
   - escalation_log # key of the structured `autonomous_delivery:` block, read directly by .claude/skills/autonomous-delivery/SKILL.md §Configuration — never resolved through {{VAR}} templating
+  - updater # key of the structured `updater:` block, read directly by cli/update-boilerplate.ts (resolveProtectedWatchlist) at the start of every `bun run up`, never resolved through {{VAR}} templating
+  - protected_paths # key of the structured `updater:` block, read directly by cli/lib/updater-drift.ts (projectProtectedPaths), never resolved through {{VAR}} templating
 
 # Per-environment config. Add/remove environments freely (production, dev, qa, uat, etc.).
 # Each environment must define ALL three keys: web_url, api_url, db_project_ref.
@@ -177,3 +179,14 @@ autonomous_delivery:
   # Posted via the Slack MCP tool (slack_send_message), which authenticates as the operator's own user, not a
   # bot. Wired 2026-08-07 (operator decision, made live in session).
   escalation_log: .session/autonomous-delivery/escalation-log.md # append-only, shared across modes.
+
+# Files `bun run up` must keep as THIS project's own. Read by `cli/update-boilerplate.ts`
+# at the start of every run and merged into the protected watchlist (AGENTS.md,
+# .agents/project.yaml, .mcp.json, .claude/settings.json, .husky/pre-commit,
+# .husky/pre-push, ...): a listed path is never overwritten, is delivered once from
+# upstream when missing, and shows a drift row with hunk evidence when upstream's
+# copy changes. List a SYNCED file you merged by hand (the parity row "project edit
+# overwritten" names the path to add); repo-relative FILE paths only, no directories,
+# nothing under .git. An invalid entry is reported and ignored. Empty by default.
+updater:
+  protected_paths: [] # e.g. [scripts/lint-vars.ts, .agents/skills/acli/SKILL.md]
