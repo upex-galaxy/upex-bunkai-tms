@@ -48,6 +48,11 @@ export default antfu({
     // MCP reference templates — syntax-sensitive opt-in configs. Linting them
     // (e.g. toml/array-bracket-newline) corrupts the layout users copy from.
     'docs/mcp/**',
+    // Supabase Database types written by `bun run types:gen`
+    // (scripts/gen-supabase-types.ts). Large machine-generated snake_case
+    // file — linting it produces noise and `eslint --fix` would diverge it
+    // from the generator's byte-identical output guarantee.
+    'lib/types/supabase.ts',
   ],
 
   // Custom rules
@@ -114,5 +119,63 @@ export default antfu({
         message: 'Do not call auth.getUser() in API routes. Authenticate via the gateway: withApiHandler(handler, { auth: \'required\' }) and read identity with getAuth(ctx). See ADR-0001.',
       },
     ],
+  },
+}).append({
+  // --- cli/ IMPORT CLOSURE (updater self-update invariant) ---
+  //
+  // `cli/` is the updater's self-update component: `runUpdate` refreshes those
+  // files in place and re-execs the process BEFORE any other component is
+  // synced (cli/lib/updater-core.ts, "SELF-UPDATE (before Phase 2)"). A repo
+  // several releases behind therefore runs the NEW `cli/` against its OWN, old
+  // copy of every sibling directory.
+  //
+  // So an import that escapes `cli/` is not a style question: it bricks the
+  // update path for anyone jumping more than one release. It happened in the
+  // QA boilerplate: `cli/` imported `../scripts/agent-compatibility.ts`, the
+  // re-exec died on `Cannot find module`, and `bun run up`, `up --rollback`,
+  // `setup` and `setup:doctor` all went down together, since the failure is at
+  // module load and the rollback path shares the same entrypoint.
+  //
+  // Shared code goes in `cli/lib/`. A `scripts/` file that needs it imports
+  // FROM `cli/` (that direction is safe: `scripts/` is synced later, never
+  // re-exec'd mid-run).
+  name: 'boilerplate/cli-import-closure',
+  files: ['cli/**/*.ts'],
+  rules: {
+    'no-restricted-imports': ['error', {
+      patterns: [{
+        group: [
+          '../scripts/**',
+          '../../scripts/**',
+          '../../../scripts/**',
+          '../../../../scripts/**',
+          '../packages/**',
+          '../../packages/**',
+          '../../../packages/**',
+          '../../../../packages/**',
+          '../api/**',
+          '../../api/**',
+          '../../../api/**',
+          '../../../../api/**',
+          '../src/**',
+          '../../src/**',
+          '../../../src/**',
+          '../../../../src/**',
+          '../config/**',
+          '../../config/**',
+          '../../../config/**',
+          '../../../../config/**',
+          '../tests/**',
+          '../../tests/**',
+          '../../../tests/**',
+          '../../../../tests/**',
+          '@/*',
+          '@api/*',
+          '@schemas/*',
+          '@utils/*',
+        ],
+        message: 'cli/ must be import-closed: the updater re-execs the new cli/ before other components are synced, so an import that escapes cli/ breaks `bun run up` for repos more than one release behind. Move the shared module into cli/lib/ instead.',
+      }],
+    }],
   },
 });
