@@ -75,7 +75,7 @@ Declares WHICH account browser and HTTP automation logs in as when validating a 
 
 **Why it exists.** "Use credentials from `.env`" says where values live, not which identity is legitimate. Without a declared slot, an agent asked to validate a UI story will improvise — and the shortest path to a session is usually a privileged one (a service-role key, an admin user-management API, a generated login link), which means acting as, or against, a real account.
 
-**Rules.** Fail-closed: slot unset, variable missing from `.env`, or `scope` unset → `/sprint-development` STOPS before any authenticated action and reports what to provision. Automation always authenticates through the app's OWN login path; privileged bypasses and impersonation are prohibited outright. Full contract, prohibition list, and dispatch requirements: `.claude/skills/sprint-development/references/live-ui-identity.md`.
+**Rules.** Fail-closed: slot unset, variable missing from `.env`, or `scope` unset → `/sprint-development` STOPS before any authenticated action and reports what to provision. Automation always authenticates through the app's OWN login path; privileged bypasses and impersonation are prohibited outright. Full contract, prohibition list, and dispatch requirements: `.agents/skills/sprint-development/references/live-ui-identity.md`.
 
 **Detectability.** Register the chosen variable names in `cli/lib/variables-manifest.ts` so `bun run vars:env:check` and the doctor flag a missing identity before a sprint starts rather than mid-run. The boilerplate ships `QA_E2E_USER_EMAIL` / `QA_E2E_USER_PASSWORD` as defaults; rename in both places if your project uses different names.
 
@@ -191,7 +191,7 @@ When the methodology evolves and needs a brand-new canonical status or transitio
 | `bun run jira:sync-workflows` | Discover Jira workflows (statuses + transitions per `work_type`) → write `jira-workflows.json`. Interactive on first run for slugs that don't auto-resolve. Flags: `--force` (re-prompt for already-mapped slugs), `--allow-collisions`, `--dry-run`, `--verbose`, `--json`, `--help`. |
 | `bun run jira:sync-link-types` | Discover Jira issue link types → write `jira-link-types.json`.                                                                                                                       |
 | `bun run jira:check`       | Compare `jira-required.yaml` vs `jira-fields.json` (custom fields) AND vs `jira-workflows.json` (work types, statuses, transitions) → setup report. Flags: `--json` (machine-readable), `--verbose` (include OK rows), `--help`. Exits 1 if any required field, `work_type`, status or transition is missing or mismatched. |
-| `bun run vars:check`       | Validate every `{{VAR}}`, `{{jira.<slug>}}`, `{{jira.<slug>.<option>}}`, `{{jira.work_type.*}}`, `{{jira.status.*}}` and `{{jira.transition.*}}` reference across `.claude/skills/`, `.claude/commands/`, `.context/`, `CLAUDE.md`. Exits 1 if any are undeclared.                                      |
+| `bun run vars:check`       | Validate every `{{VAR}}`, `{{jira.<slug>}}`, `{{jira.<slug>.<option>}}`, `{{jira.work_type.*}}`, `{{jira.status.*}}` and `{{jira.transition.*}}` reference across `.agents/skills/`, `.claude/commands/`, `.context/`, `AGENTS.md`. Exits 1 if any are undeclared.                                      |
 
 ## Troubleshooting
 
@@ -213,7 +213,7 @@ These produce false-positive `DECLARED_BUT_UNUSED` warnings. To silence them, ad
 ```yaml
 external_consumers:
   - default_env # consumed by the AI resolver + scripts/agents-setup.ts (process.env.DEFAULT_ENV)
-  - design_md_path # read by yq in .claude/skills/design-system/references/getdesign-matcher.md
+  - design_md_path # read by yq in .agents/skills/design-system/references/getdesign-matcher.md
 ```
 
 If you forget the comment, `vars:check` fails with `EXTERNAL_CONSUMER_UNDOCUMENTED` to prevent the allowlist from rotting silently.

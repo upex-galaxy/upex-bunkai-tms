@@ -107,12 +107,21 @@ const MANIFEST_PATH = join(REPO_ROOT, '.agents', 'jira-required.yaml');
  * Administer permission from being blocked: they can still pull a working
  * `jira-fields.json` even though it reflects upex-galaxy's workspace, not theirs.
  *
- * Hardcoded per-repo (QA vs DEV) so the update path is trivial:
- * `bun up` re-syncs this script from upstream and the URL travels with it.
+ * Points at agentic-qa-boilerplate, NOT at this repo. The field catalog
+ * describes the shared Jira instance, and both boilerplates use the same
+ * slugs for it, so there is exactly one correct file and it should have
+ * exactly one home. Sourcing it per-repo is what let this repo ship 71-era
+ * ids for a day after the QA side had already been corrected: two copies of
+ * one truth drift the moment only one of them is refreshed. The QA side owns
+ * it because that is where the catalogs are verified (`jira:check --live`,
+ * which this repo does not have yet).
+ *
+ * `jira-link-types.json` is deliberately NOT sourced this way — see the
+ * constant in sync-jira-link-types.ts.
  *
  * Pinned to `main` so `--upex` always means "current UPEX standard".
  */
-const UPEX_UPSTREAM_URL = 'https://raw.githubusercontent.com/upex-galaxy/agentic-dev-boilerplate/main/.agents/jira-fields.json';
+const UPEX_UPSTREAM_URL = 'https://raw.githubusercontent.com/upex-galaxy/agentic-qa-boilerplate/main/.agents/jira-fields.json';
 
 /**
  * Stderr marker the installer (`cli/install.ts` Phase 5) parses to register

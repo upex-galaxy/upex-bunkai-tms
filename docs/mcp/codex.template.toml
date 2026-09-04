@@ -1,18 +1,89 @@
 # ============================================
-# CONFIGURACIÓN GLOBAL DE MCPs PARA CODEX CLI
+# TEMPLATE DE MCPs PARA CODEX CLI + CODEX DESKTOP
 # ============================================
-# Ubicación: ~/.codex/config.toml
-# O por proyecto: .codex/config.toml (proyectos trusted)
+# Este archivo es una copia DERIVADA de `.codex/config.toml` (commiteado en la
+# raíz del repo y verificado en paridad con `.mcp.json` / `opencode.jsonc` por
+# `bun run agents:compat:check`) más servidores opt-in que el repo no activa.
 #
-# NOTA: Reemplaza {{VARIABLE}} con valores reales (tokens, API keys)
-# Los ejemplos de URLs son de referencia, ajustar según tu proyecto
+# Un checkout de este proyecto NO necesita copiar nada: `.codex/config.toml` ya
+# trae los cuatro servidores canónicos. Usá este template para:
+#   - un config global en ~/.codex/config.toml (fuera de este repo), o
+#   - sumar un bloque opt-in a `.codex/config.toml` (y a los otros dos hosts,
+#     o el gate de paridad falla).
+#
+# `.codex/` de proyecto solo se carga en un repositorio trusted.
+#
+# REGLA DE SECRETOS: Codex NO expande `${VAR}` en `args` ni en `[X.env]`. Los
+# secretos viajan POR NOMBRE: `env_vars = ["VAR"]` (stdio) o
+# `bearer_token_env_var = "VAR"` (HTTP), y Codex los lee del entorno que
+# `bun run codex` carga desde .env. Los `{{VARIABLE}}` de abajo son marcadores
+# de búsqueda-y-reemplazo para valores que NO son secretos (URLs, rutas).
 #
 # IMPORTANTE: Para OAuth en servidores HTTP, habilitar:
 # experimental_use_rmcp_client = true
 
+[shell_environment_policy]
+inherit = "core"
+
 # ============================================
-# SERVIDORES STDIO (LOCALES)
+# SERVIDORES CANÓNICOS (idénticos a .codex/config.toml)
 # ============================================
+
+[mcp_servers.context7]
+command = "bunx"
+enabled = true
+args = [
+  "-y",
+  "@upstash/context7-mcp",
+]
+
+# Streamable HTTP con la key como bearer: el túnel mcp-remote que usan
+# .mcp.json / opencode.jsonc existe solo para meter ${TAVILY_API_KEY} en la URL,
+# y Codex no puede interpolarla ahí.
+[mcp_servers.tavily]
+url = "https://mcp.tavily.com/mcp/"
+bearer_token_env_var = "TAVILY_API_KEY"
+enabled = true
+
+# @supabase/mcp-server-supabase lee SUPABASE_ACCESS_TOKEN del entorno cuando
+# falta --access-token (fallback documentado), así que el token se reenvía en
+# vez de interpolarse. Las otras tres viajan bajo su nombre de .env.
+[mcp_servers.supabase]
+command = "bunx"
+enabled = true
+args = [
+  "-y",
+  "@supabase/mcp-server-supabase@latest",
+]
+env_vars = [
+  "SUPABASE_ACCESS_TOKEN",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_SECRET_KEY",
+]
+
+[mcp_servers.n8n]
+command = "npx"
+enabled = true
+args = [
+  "-y",
+  "n8n-mcp",
+]
+env_vars = [
+  "N8N_API_URL",
+  "N8N_API_KEY",
+]
+
+[mcp_servers.n8n.env]
+MCP_MODE = "stdio"
+LOG_LEVEL = "error"
+DISABLE_CONSOLE_OUTPUT = "true"
+
+# ============================================
+# SERVIDORES OPT-IN (no activos en este repo)
+# ============================================
+# Copiá el bloque a `.codex/config.toml` y replicalo en .mcp.json y
+# opencode.jsonc antes de correr `bun run agents:compat:check`.
 
 [mcp_servers.playwright]
 command = "npx"
@@ -44,10 +115,15 @@ args = [
   "dynamic"
 ]
 
+# API_HEADERS lleva el bearer dentro del valor y Codex no lo interpola: exportá
+# API_HEADERS="Authorization:Bearer <token>" completo en el entorno.
+env_vars = [
+  "API_HEADERS",
+]
+
 [mcp_servers.openapi.env]
 API_BASE_URL = "https://staging-upexsoloq.vercel.app/api"
 OPENAPI_SPEC_PATH = "https://staging-upexsoloq.vercel.app/api/openapi"
-API_HEADERS = "Authorization:Bearer {{API_BEARER_TOKEN}}"
 
 [mcp_servers.sql]
 command = "npx"
@@ -66,31 +142,6 @@ args = [
   "mcp"
 ]
 
-[mcp_servers.supabase]
-command = "npx"
-args = [
-  "-y",
-  "@supabase/mcp-server-supabase@latest"
-]
-
-[mcp_servers.supabase.env]
-SUPABASE_ACCESS_TOKEN = "{{SUPABASE_ACCESS_TOKEN}}"
-
-[mcp_servers.context7]
-command = "npx"
-args = [
-  "-y",
-  "@upstash/context7-mcp"
-]
-
-[mcp_servers.tavily]
-command = "npx"
-args = [
-  "-y",
-  "mcp-remote",
-  "https://mcp.tavily.com/mcp/?tavilyApiKey={{TAVILY_API_KEY}}"
-]
-
 [mcp_servers.slack]
 command = "npx"
 args = [
@@ -100,8 +151,11 @@ args = [
   "stdio"
 ]
 
+env_vars = [
+  "SLACK_MCP_XOXP_TOKEN",
+]
+
 [mcp_servers.slack.env]
-SLACK_MCP_XOXP_TOKEN = "{{SLACK_MCP_XOXP_TOKEN}}"
 SLACK_MCP_ADD_MESSAGE_TOOL = "true"
 SLACK_MCP_USERS_CACHE = "$HOME/.codex/mcp-cache/slack/"
 SLACK_MCP_CHANNELS_CACHE = "$HOME/.codex/mcp-cache/slack/"
@@ -110,8 +164,9 @@ SLACK_MCP_CHANNELS_CACHE = "$HOME/.codex/mcp-cache/slack/"
 command = "uvx"
 args = [ "nanobanana-mcp-server@latest" ]
 
-[mcp_servers.nanobanana.env]
-GEMINI_API_KEY = "{{GEMINI_API_KEY}}"
+env_vars = [
+  "GEMINI_API_KEY",
+]
 
 # ============================================
 # ATLASSIAN - USANDO MCP-REMOTE (RECOMENDADO)

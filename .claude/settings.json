@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/personality-reinject.js\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.agents/hooks/personality-reinject.mjs\"",
             "timeout": 5,
             "statusMessage": "Loading output contract..."
           }
@@ -100,6 +100,10 @@
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1"
   },
   "includeCoAuthoredBy": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "context7",

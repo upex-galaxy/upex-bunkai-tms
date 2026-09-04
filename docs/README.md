@@ -6,7 +6,16 @@ Bienvenido a la documentación del **AI-Driven Project Starter**.
 
 Esta documentación está orientada a **humanos** — para aprender conceptos, entender metodologías y seguir guías paso a paso.
 
-> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `CLAUDE.md` y `CONTEXT.md` en la raíz del repo. El resto del comportamiento de la AI vive en skills (`.claude/skills/`) y commands (`.claude/commands/`).
+> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `AGENTS.md` y `CONTEXT.md` en la raíz del repo (`CLAUDE.md` es solo un shim de una línea, `@AGENTS.md`, para que Claude Code llegue al mismo archivo). El resto del comportamiento de la AI vive en skills (`.agents/skills/`, leídas por Claude Code, OpenCode y Codex) y en los slash commands generados (`.claude/commands/`, `.opencode/commands/`), que son alias hacia una skill y un modo.
+
+---
+
+## Arquitectura
+
+| Documento                                                                                             | Descripción                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Una fuente, tres harnesses](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) | Cómo el mismo repositorio corre en Claude Code, OpenCode y Codex desde una sola fuente: qué es canónico, qué se genera, y qué pasa al actualizar un proyecto creado antes del cambio. Página publicada, con diagramas. |
+| [ADR-0002](../.context/ADR/ADR-0002-multi-harness-single-source.md)                                   | Registro de la decisión (contexto, alternativas descartadas, consecuencias). En inglés.                                                                                                                                |
 
 ---
 
@@ -25,7 +34,7 @@ docs/
 │   ├── jira-setup-guide.md       # Configurar Jira/Atlassian
 │   └── mcp/                      # Guías per-cliente MCP (claude-code, gemini-cli, …)
 │
-├── mcp/                          # Templates copy-pasteables de MCP (.mcp.json, opencode.json, …)
+├── mcp/                          # Templates opt-in de MCP para hosts sin adapter (gemini-cli, cursor, …)
 │
 ├── workflows/                    # Flujos de trabajo
 │   ├── environments.md           # Ambientes dev, staging, prod
@@ -104,27 +113,29 @@ Lee la [Metodología IQL](./methodology/IQL-methodology.md) para entender las fa
 - [Ambientes](./workflows/environments.md) para etapas de deployment
 - `bun up --help` para sincronizar este boilerplate upstream
 
-### 4. Usar Skills y Commands de Claude Code
+### 4. Usar Skills y Commands
 
-El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.claude/skills/`. Cada skill se invoca con `/<nombre>` (por ejemplo `/sprint-development`, `/project-foundation`). Lista completa en `CLAUDE.md` sección **Skills**.
+El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.agents/skills/`, la única copia que leen Claude Code, OpenCode y Codex. Cada skill se invoca con `/<nombre>` (por ejemplo `/sprint-development`, `/project-foundation`). Lista completa en `AGENTS.md` sección **Skills**. Los slash commands (`/business-data-map`, `/sync-ai-memory`, etc.) son alias generados hacia una skill y un modo; en Codex no hay wrappers, se invoca la skill directamente.
 
 ---
 
-## Relación con `.context/` y `.claude/`
+## Relación con `.context/`, `.agents/` y los adapters por harness
 
-| Directorio          | Audiencia | Propósito                                                           |
-| ------------------- | --------- | ------------------------------------------------------------------- |
-| `docs/`             | Humanos   | Aprendizaje, tutoriales, referencia                                 |
-| `.context/`         | AI        | Memoria persistente del proyecto (PRD, SRS, business map, PBI)      |
-| `.claude/skills/`   | AI        | Workflows ejecutables (skills auto-cargadas por Claude Code)        |
-| `.claude/commands/` | AI        | Slash commands de utilidad (`/sync-ai-memory`, `/business-*`, etc.) |
-| `CLAUDE.md`         | AI        | Operational context cargado en cada sesión                          |
+| Directorio / archivo                         | Audiencia | Propósito                                                                                   |
+| -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------- |
+| `docs/`                                      | Humanos   | Aprendizaje, tutoriales, referencia                                                         |
+| `.context/`                                  | AI        | Memoria persistente del proyecto (PRD, SRS, business map, PBI, ADR)                         |
+| `.agents/skills/`                            | AI        | Workflows ejecutables: la única copia, leída por los tres harnesses                         |
+| `.agents/compatibility/command-aliases.json` | AI        | Manifiesto de alias: fuente de todos los slash commands generados                           |
+| `.claude/`, `.opencode/`, `.codex/`          | AI        | Adapters por harness (hook, MCP, wrappers generados). Nunca una segunda copia del contenido |
+| `AGENTS.md`                                  | AI        | Operational context cargado en cada sesión, en cualquier harness                            |
+| `CLAUDE.md`                                  | AI        | Shim de una línea (`@AGENTS.md`) para Claude Code. Generado, nunca lleva prosa              |
 
 **Regla general**:
 
 - Si un humano necesita **aprender** algo → `docs/`
 - Si la AI necesita **recordar** algo del proyecto → `.context/`
-- Si la AI necesita **ejecutar** un workflow → `.claude/skills/`
+- Si la AI necesita **ejecutar** un workflow → `.agents/skills/`
 
 ---
 
@@ -133,8 +144,8 @@ El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejec
 Para agregar documentación:
 
 1. **Educacional / Tutorial** → Agregar al subdirectorio apropiado de `docs/`
-2. **Workflow ejecutable para AI** → Crear o editar una skill en `.claude/skills/<nombre>/SKILL.md`
-3. **Slash command de utilidad** → Crear o editar un command en `.claude/commands/<nombre>.md`
+2. **Workflow ejecutable para AI** → Crear o editar una skill en `.agents/skills/<nombre>/SKILL.md`
+3. **Slash command de utilidad** → Declarar el alias en `.agents/compatibility/command-aliases.json` y correr `bun run agents:compat` (los wrappers en `.claude/commands/` y `.opencode/commands/` se generan; no se editan a mano)
 
 ### Agregar Nuevas Arquitecturas
 
@@ -145,4 +156,4 @@ Para agregar documentación:
 
 ---
 
-**Última actualización**: 2026-08-22
+**Última actualización**: 2026-09-03

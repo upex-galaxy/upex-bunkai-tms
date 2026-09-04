@@ -4,17 +4,21 @@
  *
  * Drives the end-to-end setup flow:
  *   1. Detect gentle-ai (presence + version)
- *   2. Detect agents (Claude Code / OpenCode) and prompt selection
+ *   2. Detect agents (Claude Code / OpenCode / Codex) and prompt selection
  *   3. Optionally install Engram persistent memory via gentle-ai (--preset minimal)
  *   4. Wire `.env` for MCP servers + offer direnv autoload
- *      (`.mcp.json` and `opencode.jsonc` are committed with ${VAR}/{env:VAR}
- *      expansion — installer only ensures `.env` has the required values)
+ *      (`.mcp.json`, `opencode.jsonc` and `.codex/config.toml` are committed
+ *      with ${VAR} / {env:VAR} / env-var-name forwarding — installer only
+ *      ensures `.env` has the union of values the selected harnesses need)
+ *   4b. Repair cross-harness compatibility: the generated `.claude/skills`
+ *      alias and the command wrappers (`cli/lib/agent-compatibility.ts`)
  *   5. Verify external CLIs (bun, gh, supabase, vercel, resend, acli,
  *      playwright-cli, jq) — `which`-check only; no auto-install (Rule 4:
  *      OS-dependent installs are deferred to upstream docs)
  *   6. Persist `.template/installer.state.json` for idempotency (gitignored)
  *
  * Env:
+ *   INSTALL_AGENTS=claude-code,opencode,codex   Comma-list of agents to configure (non-interactive)
  *   INSTALL_SKIP_DIRENV=1             Skip direnv autoload sub-step
  *   INSTALL_FORCE_AGENTS_SETUP=1      Force re-run of gentle-ai skill install (Step 5)
  *   INSTALL_FORCE_COMMUNITY_SKILLS=1  Force re-run of community skills install (Step 6)
@@ -32,6 +36,11 @@ import { dirname, join, resolve } from 'node:path';
 
 import { checkbox, password } from '@inquirer/prompts';
 import {
+  checkAgentCompatibility,
+  repairClaudeSkillsAlias,
+  repairCommandWrappers,
+} from './lib/agent-compatibility.ts';
+import {
   resolveAtlassianInstance,
   toSiteSlug,
   writeAtlassianUrlToYaml,
@@ -43,7 +52,7 @@ import { nextStepsVars, varsFor } from './lib/variables-manifest.ts';
 // Types
 // ============================================================================
 
-type AgentId = 'claude-code' | 'opencode';
+export type AgentId = 'claude-code' | 'opencode' | 'codex';
 
 type InstallStatus = 'installed' | 'skipped' | 'failed';
 
@@ -58,9 +67,13 @@ interface GentleAiInfo {
   status: 'installed' | 'missing' | 'skipped' | 'incompatible'
 }
 
-interface AgentDetection {
+export interface AgentDetection {
   claudeCode: boolean
   opencode: boolean
+  /** `codex` executable on PATH. */
+  codexCli: boolean
+  /** `.codex/config.toml` present in the repo — Codex Desktop reads it without a CLI. */
+  codexConfigured: boolean
 }
 
 interface GithubRemoteInfo {
@@ -104,6 +117,7 @@ const STATE_PATH = join(REPO_ROOT, '.template', 'installer.state.json');
 const MARKER_PATH = join(REPO_ROOT, '.template', 'installer.lock.json');
 const CLAUDE_MCP_PATH = join(REPO_ROOT, '.mcp.json');
 const OPENCODE_CONFIG_PATH = join(REPO_ROOT, 'opencode.jsonc');
+const CODEX_CONFIG_PATH = join(REPO_ROOT, '.codex', 'config.toml');
 const ENV_PATH = join(REPO_ROOT, '.env');
 const ENV_EXAMPLE_PATH = join(REPO_ROOT, '.env.example');
 
@@ -116,6 +130,38 @@ const CANONICAL_MCPS = ['context7', 'tavily', 'supabase', 'n8n'] as const;
 interface CommunitySkill {
   package: string
   skill?: string // omit or '*' to install all skills from the package
+}
+
+/**
+ * Canonical project-level skill store. `bunx skills add` (project level, no
+ * `--agent`) writes the skill body here; Claude Code reaches it through the
+ * generated `.claude/skills` alias, OpenCode and Codex read it natively.
+ */
+export const PROJECT_SKILL_DESTINATION = '.agents/skills';
+
+/**
+ * Argument list for one `bunx skills add` call.
+ *
+ * Project level deliberately passes NO `--agent`: the body must land once in
+ * `.agents/skills/` (the canonical store every harness reads). Passing
+ * `--agent` there would make the CLI create per-harness copies or a REAL
+ * `.claude/skills/` directory, which collides with the directory-level alias
+ * `repairRepositoryCompatibility()` maintains. User level (`--global`) has no
+ * canonical store, so it keeps one `--agent` per selected harness.
+ */
+export function buildCommunitySkillArgs(
+  item: CommunitySkill,
+  level: 'project' | 'global',
+  agents: AgentId[],
+): string[] {
+  const args = ['skills', 'add', item.package];
+  if (item.skill && item.skill !== '*') { args.push('--skill', item.skill); }
+  if (level === 'global') {
+    args.push('--global');
+    for (const agent of agents) { args.push('--agent', agent); }
+  }
+  args.push('--yes');
+  return args;
 }
 
 // Community skills installed at PROJECT level (`bunx skills add`).
@@ -279,9 +325,10 @@ const AUTO_NON_INTERACTIVE
   = !process.argv.includes('--non-interactive') && !process.stdin.isTTY;
 const SKIP_DIRENV = process.env.INSTALL_SKIP_DIRENV === '1';
 const FORCE_AGENTS_SETUP = process.env.INSTALL_FORCE_AGENTS_SETUP === '1';
-// --sync-skills: standalone repair mode — re-installs community skills targeting
-// the selected agent(s) so they land in each agent's own skills dir (e.g. Claude
-// Code's `.claude/skills/`). Implies a forced community re-run.
+// --sync-skills: standalone repair mode — re-installs community skills so
+// project skills land in the canonical `.agents/skills/` store (reachable by
+// Claude Code through the generated `.claude/skills` alias) and user-level
+// skills reach every selected harness. Implies a forced community re-run.
 const SYNC_SKILLS = process.argv.includes('--sync-skills');
 const FORCE_COMMUNITY_SKILLS = process.env.INSTALL_FORCE_COMMUNITY_SKILLS === '1' || SYNC_SKILLS;
 const FORCE_GITHUB_REMOTE = process.env.INSTALL_FORCE_GITHUB_REMOTE === '1';
@@ -487,48 +534,79 @@ async function handleMissingGentleAi(): Promise<'show-and-exit' | 'skip'> {
 // Step 4 — detect agents
 // ============================================================================
 
-async function detectAgents(): Promise<AgentDetection> {
-  const claudePath = join(homedir(), '.claude');
-  const opencodePath = join(homedir(), '.config', 'opencode');
+const AGENT_DOCS: Record<AgentId, string> = {
+  'claude-code': 'https://docs.claude.com/en/docs/claude-code',
+  'opencode': 'https://opencode.ai/docs',
+  'codex': 'https://developers.openai.com/codex/',
+};
 
-  const [claude, opencode] = await Promise.all([
-    stat(claudePath).then(
-      s => s.isDirectory(),
-      () => false,
-    ),
-    stat(opencodePath).then(
-      s => s.isDirectory(),
-      () => false,
-    ),
+/**
+ * Detect which harnesses this machine (and this repo) can run.
+ *
+ * Claude Code and OpenCode count as present when their user config directory
+ * exists OR the executable is on PATH. Codex is two independent signals: the
+ * `codex` CLI on PATH, and `.codex/config.toml` in the repo — Codex Desktop
+ * reads the repository config with no CLI installed, so a configured repo is a
+ * valid Codex target on its own. Every input is injectable for tests.
+ */
+export async function detectAgents(options: {
+  home?: string
+  root?: string
+  binaryExists?: (binary: string) => boolean
+} = {}): Promise<AgentDetection> {
+  const home = options.home ?? homedir();
+  const root = options.root ?? REPO_ROOT;
+  const binaryExists = options.binaryExists ?? (binary => which(binary) !== null);
+  const claudePath = join(home, '.claude');
+  const opencodePath = join(home, '.config', 'opencode');
+
+  const [claudeDirectory, opencodeDirectory] = await Promise.all([
+    stat(claudePath).then(s => s.isDirectory(), () => false),
+    stat(opencodePath).then(s => s.isDirectory(), () => false),
   ]);
 
-  return { claudeCode: claude, opencode };
+  return {
+    claudeCode: claudeDirectory || binaryExists('claude'),
+    opencode: opencodeDirectory || binaryExists('opencode'),
+    codexCli: binaryExists('codex'),
+    codexConfigured: existsSync(join(root, '.codex', 'config.toml')),
+  };
 }
 
 /**
- * `INSTALL_AGENTS=claude-code,opencode` — non-interactive override for the
- * agent selection prompt. Unknown entries are dropped.
+ * `INSTALL_AGENTS=claude-code,opencode,codex` — non-interactive override for
+ * the agent selection prompt. Unknown entries are dropped, duplicates collapse.
  */
-function parseAgentsEnv(): AgentId[] | null {
-  const raw = process.env.INSTALL_AGENTS;
+export function parseAgentsEnv(raw = process.env.INSTALL_AGENTS): AgentId[] | null {
   if (!raw) { return null; }
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-  const valid: AgentId[] = [];
+  const valid = new Set<AgentId>();
   for (const p of parts) {
-    if (p === 'claude-code' || p === 'opencode') { valid.push(p); }
+    if (p === 'claude-code' || p === 'opencode' || p === 'codex') { valid.add(p); }
   }
-  return valid;
+  return [...valid];
+}
+
+export function describeAgentDetection(detected: AgentDetection): string {
+  const codex = detected.codexCli
+    ? 'CLI found; Desktop uses the repository config'
+    : detected.codexConfigured
+      ? 'repository configured for Desktop; CLI not found'
+      : 'not found';
+  return `Claude Code: ${detected.claudeCode ? 'found' : 'not found'} | OpenCode: ${detected.opencode ? 'found' : 'not found'} | Codex: ${codex}`;
 }
 
 async function promptAgentSelection(detected: AgentDetection): Promise<AgentId[]> {
   // A validation, not a prompt — it must run in both modes. Skipping it in
   // non-interactive mode would let the installer proceed with zero agents and
   // silently configure nothing.
-  if (!detected.claudeCode && !detected.opencode) {
-    log.error('No agents detected. Install Claude Code (~/.claude/) or OpenCode (~/.config/opencode/) and rerun.');
-    log.dim('  Claude Code : https://docs.claude.com/claude-code');
-    log.dim('  OpenCode    : https://opencode.ai');
-    log.dim('After installing one (or both), re-run: bun run setup');
+  const codexAvailable = detected.codexCli || detected.codexConfigured;
+  if (!detected.claudeCode && !detected.opencode && !codexAvailable) {
+    log.error('No agent executable or Codex repository configuration detected.');
+    log.dim(`  Claude Code : ${AGENT_DOCS['claude-code']}`);
+    log.dim(`  OpenCode    : ${AGENT_DOCS.opencode}`);
+    log.dim(`  Codex       : ${AGENT_DOCS.codex}`);
+    log.dim('After installing at least one, re-run: bun run setup');
     process.exit(1);
   }
 
@@ -542,26 +620,31 @@ async function promptAgentSelection(detected: AgentDetection): Promise<AgentId[]
     const out: AgentId[] = [];
     if (detected.claudeCode) { out.push('claude-code'); }
     if (detected.opencode) { out.push('opencode'); }
+    if (codexAvailable) { out.push('codex'); }
     return out;
   }
 
-  if (detected.claudeCode && !detected.opencode) {
-    const ok = await tui.confirm({ message: 'Detected Claude Code. Configure for it?', initialValue: true });
-    if (tui.isCancel(ok)) { throw Object.assign(new Error('Aborted by user.'), { name: 'ExitPromptError' }); }
-    return ok ? ['claude-code'] : [];
-  }
-
-  if (detected.opencode && !detected.claudeCode) {
-    const ok = await tui.confirm({ message: 'Detected OpenCode. Configure for it?', initialValue: true });
-    if (tui.isCancel(ok)) { throw Object.assign(new Error('Aborted by user.'), { name: 'ExitPromptError' }); }
-    return ok ? ['opencode'] : [];
-  }
-
+  // Every harness is listed so the user sees what else the repo supports; an
+  // undetected one is disabled with its install docs instead of hidden.
+  const choice = (id: AgentId, name: string, available: boolean, detail?: string) => ({
+    name: available ? `${name}${detail ? ` (${detail})` : ''}` : name,
+    value: id,
+    checked: available,
+    disabled: available ? false : `not detected — ${AGENT_DOCS[id]}`,
+  });
   const selected = await checkbox<AgentId>({
-    message: 'Detected both agents. Which to configure?',
+    message: 'Which detected agents should this repository support?',
     choices: [
-      { name: 'Claude Code', value: 'claude-code', checked: true },
-      { name: 'OpenCode', value: 'opencode', checked: true },
+      choice('claude-code', 'Claude Code', detected.claudeCode, 'executable/config found'),
+      choice('opencode', 'OpenCode', detected.opencode, 'executable/config found'),
+      choice(
+        'codex',
+        'Codex',
+        codexAvailable,
+        detected.codexCli
+          ? 'CLI found; Desktop uses the same repository config'
+          : 'Desktop target: repository configured, CLI not found',
+      ),
     ],
     required: true,
   });
@@ -697,20 +780,12 @@ async function installCommunitySkills(
       log.dim(`  skipping ${slug} (already installed)`);
       continue;
     }
-    // Install into each selected agent's skills directory via `--agent`. Claude
-    // Code only discovers skills under `.claude/skills/` (plus ~/.claude/skills/,
-    // plugins, and --add-dir) — it NEVER scans `.agents/skills/`. Without an
-    // explicit `--agent`, `bunx skills add` writes only to `.agents/skills/` (the
-    // agent-agnostic store read by Copilot/OpenCode/Warp), so the skills stay
-    // invisible to Claude Code. Passing the selected agents lands each skill where
-    // that agent actually loads it.
-    const args = ['skills', 'add', item.package];
-    if (item.skill && item.skill !== '*') {
-      args.push('--skill', item.skill);
-    }
-    if (level === 'global') { args.push('--global'); }
-    for (const agent of agents) { args.push('--agent', agent); }
-    args.push('--yes');
+    // Project level: body lands once in `.agents/skills/` (PROJECT_SKILL_DESTINATION);
+    // Claude Code reads it through the `.claude/skills` alias that
+    // `repairRepositoryCompatibility()` restores right after this step (the CLI
+    // may leave a per-skill symlink shim there, which the repair reclaims).
+    // User level: one `--agent` per selected harness — see buildCommunitySkillArgs.
+    const args = buildCommunitySkillArgs(item, level, agents);
     const result = tryRun('bunx', args);
     if (result.ok) {
       log.success(`  installed: ${slug}`);
@@ -746,16 +821,53 @@ function stripJsoncComments(input: string): string {
     .replace(/^\s*\/\/.*$/gm, '');
 }
 
-async function discoverRequiredEnvVars(agents: AgentId[]): Promise<string[]> {
+/**
+ * Codex never expands `${VAR}`: `.codex/config.toml` forwards secrets BY NAME
+ * through `env_vars = [...]` and `bearer_token_env_var = "..."`. Those names are
+ * the Codex side of the env contract. `[mcp_servers.X.env]` tables hold literal
+ * settings (log level, mode flags) and are deliberately NOT collected.
+ */
+function collectCodexMcpEnvVars(value: unknown, seen: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) { collectCodexMcpEnvVars(entry, seen); }
+    return;
+  }
+  if (!value || typeof value !== 'object') { return; }
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === 'bearer_token_env_var' && typeof entry === 'string') { seen.add(entry); }
+    else if (key === 'env_vars' && Array.isArray(entry)) {
+      for (const name of entry) { if (typeof name === 'string') { seen.add(name); } }
+    }
+    else if (key === 'env') { continue; }
+    else { collectCodexMcpEnvVars(entry, seen); }
+  }
+}
+
+/**
+ * Union of the `.env` names the selected harnesses' committed MCP configs
+ * depend on. Each host declares them differently (`${VAR}` in `.mcp.json`,
+ * `{env:VAR}` in `opencode.jsonc`, forwarded names in `.codex/config.toml`).
+ */
+export async function discoverRequiredEnvVars(
+  agents: AgentId[],
+  root = REPO_ROOT,
+): Promise<string[]> {
   const seen = new Set<string>();
-  if (agents.includes('claude-code') && existsSync(CLAUDE_MCP_PATH)) {
-    const content = await readFile(CLAUDE_MCP_PATH, 'utf8');
+  const claudeMcpPath = root === REPO_ROOT ? CLAUDE_MCP_PATH : join(root, '.mcp.json');
+  const openCodeConfigPath = root === REPO_ROOT ? OPENCODE_CONFIG_PATH : join(root, 'opencode.jsonc');
+  const codexConfigPath = root === REPO_ROOT ? CODEX_CONFIG_PATH : join(root, '.codex', 'config.toml');
+  if (agents.includes('claude-code') && existsSync(claudeMcpPath)) {
+    const content = await readFile(claudeMcpPath, 'utf8');
     for (const m of content.matchAll(MCP_VAR_PATTERN)) { seen.add(m[1]); }
   }
-  if (agents.includes('opencode') && existsSync(OPENCODE_CONFIG_PATH)) {
-    const raw = await readFile(OPENCODE_CONFIG_PATH, 'utf8');
+  if (agents.includes('opencode') && existsSync(openCodeConfigPath)) {
+    const raw = await readFile(openCodeConfigPath, 'utf8');
     const content = stripJsoncComments(raw);
     for (const m of content.matchAll(OPENCODE_VAR_PATTERN)) { seen.add(m[1]); }
+  }
+  if (agents.includes('codex') && existsSync(codexConfigPath)) {
+    const parsed = Bun.TOML.parse(await readFile(codexConfigPath, 'utf8'));
+    collectCodexMcpEnvVars(parsed, seen);
   }
   return [...seen].sort();
 }
@@ -862,7 +974,7 @@ async function configureMcps(agents: AgentId[], state: InstallState): Promise<vo
 
   const required = await discoverRequiredEnvVars(agents);
   if (required.length === 0) {
-    log.warn('No env-var placeholders found in .mcp.json or opencode.jsonc.');
+    log.warn('No env-var placeholders found in .mcp.json, opencode.jsonc or .codex/config.toml.');
     state.pendingEnvVars = [];
     return;
   }
@@ -1183,7 +1295,7 @@ async function offerDirenvAutoload(): Promise<void> {
 
   if (!info.installed) {
     log.info('direnv not installed (optional).');
-    log.dim('  Launch agents with: bun claude  /  bun opencode  (dotenv-cli loads .env automatically).');
+    log.dim('  Launch agents with: bun claude  /  bun opencode  /  bun codex  (dotenv-cli loads .env automatically).');
     log.dim(`  Or install direnv for shell autoload: ${installHintForPlatform()}`);
     return;
   }
@@ -1197,7 +1309,7 @@ async function offerDirenvAutoload(): Promise<void> {
     true,
   );
   if (!proceed) {
-    log.dim('  Skipped. Launch agents with: bun claude  /  bun opencode.');
+    log.dim('  Skipped. Launch agents with: bun claude  /  bun opencode  /  bun codex.');
     return;
   }
   const result = tryRun('direnv', ['allow', REPO_ROOT]);
@@ -1206,7 +1318,7 @@ async function offerDirenvAutoload(): Promise<void> {
     log.dim(`  Reminder: add this to your shell rc if not already done: ${shellHookHint(info)}`);
   }
   else {
-    log.warn('direnv allow failed. Launch agents with: bun claude  /  bun opencode.');
+    log.warn('direnv allow failed. Launch agents with: bun claude  /  bun opencode  /  bun codex.');
     log.dim(`  ${(result.stderr || result.stdout).trim().slice(0, 200)}`);
   }
 }
@@ -1265,11 +1377,19 @@ function verifyExternalClis(state: InstallState): CliResult[] {
 // Step 9 — persist state
 // ============================================================================
 
+/** Drop unknown / duplicated agent ids from a persisted state file. */
+export function migrateAgentIds(value: unknown): AgentId[] {
+  if (!Array.isArray(value)) { return []; }
+  return [...new Set(value.filter((agent): agent is AgentId =>
+    agent === 'claude-code' || agent === 'opencode' || agent === 'codex'))];
+}
+
 async function loadPriorState(): Promise<InstallState | null> {
   if (!existsSync(STATE_PATH)) { return null; }
   try {
     const raw = await readFile(STATE_PATH, 'utf8');
     const parsed = JSON.parse(raw) as InstallState;
+    parsed.agents = migrateAgentIds(parsed.agents);
     // Back-fill postInstall for state files written before this field existed.
     parsed.postInstall ??= {
       agentsSetup: 'pending',
@@ -1295,8 +1415,9 @@ async function writeInstallState(state: InstallState): Promise<void> {
   log.success(`Wrote ${STATE_PATH}`);
 }
 
-function buildInitialState(prior: InstallState | null): InstallState {
+export function buildInitialState(prior: InstallState | null): InstallState {
   if (prior && prior.version === 1) {
+    prior.agents = migrateAgentIds(prior.agents);
     prior.steps ??= {};
     prior.postInstall ??= {
       agentsSetup: 'pending',
@@ -1327,6 +1448,54 @@ function buildInitialState(prior: InstallState | null): InstallState {
       jiraCheck: 'pending',
     },
   };
+}
+
+export function launchCommandsForAgents(agents: AgentId[]): string[] {
+  return agents.map(agent => agent === 'claude-code' ? 'bun run claude' : `bun run ${agent}`);
+}
+
+// ============================================================================
+// Step 6b — repository compatibility (Claude skills alias + command wrappers)
+// ============================================================================
+
+/**
+ * Restore the generated cross-harness artifacts and prove the contract holds.
+ *
+ * `.claude/skills` becomes the directory-level alias to `.agents/skills`
+ * (reclaiming the per-skill symlink shim `bunx skills add` leaves behind), the
+ * command wrappers under `.claude/commands` / `.opencode/commands` are
+ * regenerated from `.agents/compatibility/command-aliases.json`, and the full
+ * check (hooks, MCP parity, shim) runs afterwards. Throws with the check's
+ * errors when something the repair cannot fix (a hand-edited config, a missing
+ * canonical file) is still out of contract.
+ */
+export function repairRepositoryCompatibility(
+  root = REPO_ROOT,
+  platform: NodeJS.Platform = process.platform,
+): { alias: ReturnType<typeof repairClaudeSkillsAlias>, wrappersWritten: number } {
+  const alias = repairClaudeSkillsAlias(root, platform);
+  const wrappersWritten = repairCommandWrappers(root);
+  const check = checkAgentCompatibility(root, platform);
+  if (!check.ok) {
+    throw new Error(`Agent compatibility repair incomplete:\n${check.errors.join('\n')}`);
+  }
+  return { alias, wrappersWritten };
+}
+
+/**
+ * Installer-facing wrapper: never aborts the run. A compatibility failure here
+ * is real but not a reason to lose the env / Jira steps that follow — doctor
+ * reports it and `bun run agents:compat` repairs it later.
+ */
+function runRepositoryCompatibility(): void {
+  try {
+    const compatibility = repairRepositoryCompatibility();
+    log.success(`Repository compatibility ready (${compatibility.wrappersWritten} wrapper update(s); Claude skills alias ${compatibility.alias.status}).`);
+  }
+  catch (err) {
+    log.error(`Repository compatibility is out of contract — ${(err as Error).message ?? String(err)}`);
+    log.dim('  Fix the reported files, then run: bun run agents:compat   (bun run setup:doctor shows the current state)');
+  }
 }
 
 // ============================================================================
@@ -2241,8 +2410,10 @@ function printClosingSummary(state: InstallState): void {
   stepNum++;
 
   process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Open the agent${COLORS.reset}\n`);
-  process.stdout.write(`    ${COLORS.cyan}claude${COLORS.reset}                       ${COLORS.dim}(or: bun claude — works without direnv)${COLORS.reset}\n`);
-  process.stdout.write(`    ${COLORS.dim}Launches your AI in this project's context.${COLORS.reset}\n\n`);
+  process.stdout.write(`    ${COLORS.cyan}bun run claude${COLORS.reset}      ${COLORS.dim}(dotenv-cli loads .env — works without direnv)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.cyan}bun run opencode${COLORS.reset}    ${COLORS.dim}(dotenv-cli loads .env)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.cyan}bun run codex${COLORS.reset}       ${COLORS.dim}(CLI; Codex Desktop opens this same repository)${COLORS.reset}\n`);
+  process.stdout.write(`    ${COLORS.dim}All three read AGENTS.md + .agents/skills/. Codex Desktop needs repository trust before hooks run.${COLORS.reset}\n\n`);
   stepNum++;
 
   process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Define + scaffold${COLORS.reset}\n`);
@@ -2252,7 +2423,7 @@ function printClosingSummary(state: InstallState): void {
 
   process.stdout.write(`${circled[stepNum]}  ${COLORS.bold}Sync project memory${COLORS.reset}\n`);
   process.stdout.write(`    ${COLORS.cyan}/sync-ai-memory${COLORS.reset}\n`);
-  process.stdout.write(`    ${COLORS.dim}AFTER foundation + bootstrap exist. Updates README, CLAUDE.md, and other docs from the new project state.${COLORS.reset}\n\n`);
+  process.stdout.write(`    ${COLORS.dim}AFTER foundation + bootstrap exist. Updates README, AGENTS.md, and other docs from the new project state.${COLORS.reset}\n\n`);
 
   // 4c.1 — NEXT STEPS (non-critical vars). Critical tool creds (Atlassian,
   // Resend, Tavily) were prompted above. These are NOT asked at install and NOT
@@ -2308,11 +2479,12 @@ function printClosingSummary(state: InstallState): void {
   const caveman = process.platform === 'win32'
     ? 'npx -y github:JuliusBrussee/caveman --no-hooks'
     : 'curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/install.sh | bash -s -- --no-hooks';
-  process.stdout.write('→  Install caveman skill (token compression, ~30s):\n');
+  process.stdout.write('→  Install caveman skill (Claude Code only — token compression, ~30s):\n');
   process.stdout.write(`     ${COLORS.cyan}${caveman}${COLORS.reset}\n`);
   process.stdout.write(`     ${COLORS.dim}--no-hooks avoids a duplicate hook registration — see INSTALLER.md.${COLORS.reset}\n`);
+  process.stdout.write(`     ${COLORS.dim}OpenCode and Codex do not load caveman; they get the shared personality hook (.agents/hooks/) instead.${COLORS.reset}\n`);
 
-  process.stdout.write('→  Warp terminal users — install Claude Code plugin:\n');
+  process.stdout.write('→  Warp terminal users — install Claude Code plugin (Claude Code only):\n');
   process.stdout.write(`     ${COLORS.cyan}/plugin install warp@claude-code-warp${COLORS.reset}\n`);
   process.stdout.write(`     ${COLORS.dim}Docs: https://docs.warp.dev/agent-platform/cli-agents/claude-code/${COLORS.reset}\n`);
 
@@ -2491,9 +2663,7 @@ async function main(): Promise<void> {
     process.stdout.write(`${tui.headline('agentic-dev-boilerplate — sync community skills')}\n\n`);
     await verifyRepoRoot();
     const detected = await detectAgents();
-    log.info(
-      `Claude Code: ${detected.claudeCode ? 'found' : 'not found'} | OpenCode: ${detected.opencode ? 'found' : 'not found'}`,
-    );
+    log.info(describeAgentDetection(detected));
     const agents = await promptAgentSelection(detected);
     if (agents.length === 0) {
       log.warn('No agents selected — nothing to sync.');
@@ -2503,6 +2673,7 @@ async function main(): Promise<void> {
     state.agents = agents;
     await installCommunitySkills(agents, state, 'project');
     await installCommunitySkills(agents, state, 'global');
+    runRepositoryCompatibility();
     await writeInstallState(state);
     log.success(`Community skills synced to: ${agents.join(', ')}.`);
     process.exit(0);
@@ -2568,9 +2739,7 @@ async function main(): Promise<void> {
 
   tui.section('Step 4: Detecting agents');
   const detected = await detectAgents();
-  log.info(
-    `Claude Code: ${detected.claudeCode ? 'found' : 'not found'} | OpenCode: ${detected.opencode ? 'found' : 'not found'}`,
-  );
+  log.info(describeAgentDetection(detected));
   const agents = await promptAgentSelection(detected);
   state.agents = agents;
   if (agents.length === 0) {
@@ -2604,6 +2773,12 @@ async function main(): Promise<void> {
   tui.section('Step 6: Installing community skills via bunx skills CLI');
   await installCommunitySkills(agents, state, 'project');
   await installCommunitySkills(agents, state, 'global');
+
+  // Step 6b — runs on EVERY install, right after the step that can leave a
+  // per-skill shim in `.claude/skills/`, so an aborted run later on still
+  // leaves Claude Code able to see the canonical skills.
+  tui.section('Step 6b: Repository compatibility (Claude skills alias + command wrappers)');
+  runRepositoryCompatibility();
 
   // ── PHASE 3 — CONFIGURATION ──────────────────────────────────────────────
   tui.phaseHeader(3, 'CONFIGURATION');

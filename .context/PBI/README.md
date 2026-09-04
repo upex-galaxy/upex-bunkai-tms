@@ -2,7 +2,7 @@
 
 Per-epic and per-story workspace shared by `/product-management` (backlog + AC refinement) and `/sprint-development` (story-level dev loop).
 
-> **This tree is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Module = Epic (1:1). **Jira is the source of truth; every `[SYNC]` `.md` here is a read-only cache.** NEVER hand-write a Jira-mirrored file — author the content, push it to the Jira field (or fallback comment), run the sync, then read the materialized file back. Rebuild the whole tree with `bun run context:hydrate`. Authoritative tier rules also live in `CLAUDE.md` §9.
+> **This tree is a GITIGNORED CACHE of Jira, owned by `scripts/sync-jira-issues.ts`.** Module = Epic (1:1). **Jira is the source of truth; every `[SYNC]` `.md` here is a read-only cache.** NEVER hand-write a Jira-mirrored file — author the content, push it to the Jira field (or fallback comment), run the sync, then read the materialized file back. Rebuild the whole tree with `bun run context:hydrate`. Authoritative tier rules also live in `AGENTS.md` §9.
 
 ## Why the cache is not committed
 
@@ -20,7 +20,7 @@ Every path under `.context/PBI/` is exactly **one** of these. Check the tier bef
 
 `[LOCAL]` files may be hand-written, but **nothing downstream may depend on one existing**: a `[LOCAL]` file lives only on the machine that made it. A skill that needs the content on another machine — or in a later session — must put it somewhere durable instead:
 
-- **Durable session state** → `.session/sprint-development/<JIRA-KEY>/progress.md`. That is what `/sprint-development`'s Phase 0 resume contract reads (per `.claude/skills/agentic-dev-core/references/session-management.md`) — never the PBI copy.
+- **Durable session state** → `.session/sprint-development/<JIRA-KEY>/progress.md`. That is what `/sprint-development`'s Phase 0 resume contract reads (per `.agents/skills/agentic-dev-core/references/session-management.md`) — never the PBI copy.
 - **Durable evidence** → Jira (attach it to the issue, or a structured comment).
 
 Rule of thumb: if a PM could read it and have an opinion, it goes to Jira. If it drives a resume or a cross-session workflow, it goes to `.session/`. If neither, it is `[LOCAL]` and losing it must cost nothing.
@@ -73,7 +73,7 @@ Every `[SYNC]` file's content originates in Jira. The flow is always **author �
 2. `/sprint-development` authors the story implementation plan, pushes it to the Story's `{{jira.spec_implementation_plan}}` field (feature plan → the Epic's `{{jira.feature_implementation_plan}}`), runs the sync, then reads back `implementation-plan.md` / `feature-implementation-plan.md`.
 3. If a custom field is absent on the instance, the skill writes the content as a structured Jira comment (`## <label>`, per `.agents/jira-required.yaml` → `fallback:`); the sync then emits a pointer stub for that field's `.md`. Never block on a missing field.
 
-Full topic-key conventions for engram persistence: `.claude/skills/agentic-dev-core/references/topic-key-conventions.md`.
+Full topic-key conventions for engram persistence: `.agents/skills/agentic-dev-core/references/topic-key-conventions.md`.
 
 ## Detailed reads go through the sync
 
@@ -105,4 +105,4 @@ Issues are created in Jira before the local folder, so folder names always use r
 
 ## Cross-session resumability
 
-DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume check, per `.claude/skills/agentic-dev-core/references/session-management.md`) plus the synced story folder and engram — see `CLAUDE.md` §9. Nothing in the resume path reads a `[LOCAL]` file.
+DEV uses **Jira** (canonical content, via the sync) + **engram** (session memory) as cross-session state. `/sprint-development` rehydrates from `.session/sprint-development/<JIRA-KEY>/progress.md` (Phase 0 resume check, per `.agents/skills/agentic-dev-core/references/session-management.md`) plus the synced story folder and engram — see `AGENTS.md` §9. Nothing in the resume path reads a `[LOCAL]` file.

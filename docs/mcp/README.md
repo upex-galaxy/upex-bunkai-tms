@@ -1,16 +1,28 @@
 # MCP Configuration Templates
 
-This directory contains **pre-configured MCP server templates** for different AI CLI tools.
+This directory contains **pre-configured MCP server templates** for different AI CLI tools, plus the syntax reference for each host's env-var expansion.
+
+## Runtime configs committed in this repo
+
+The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `AGENTS.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same four servers (`context7`, `tavily`, `supabase`, `n8n`):
+
+| Harness             | Committed config     | Env-var syntax                                      | Launcher (loads `.env` first) |
+| ------------------- | -------------------- | --------------------------------------------------- | ----------------------------- |
+| Claude Code         | `.mcp.json`          | `${VAR}` inside args / env values                   | `bun run claude`              |
+| OpenCode            | `opencode.jsonc`     | `{env:VAR}` inside command / environment values     | `bun run opencode`            |
+| Codex CLI + Desktop | `.codex/config.toml` | `env_vars = ["VAR"]` / `bearer_token_env_var` by name | `bun run codex`               |
+
+`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The four servers above additionally get a strict per-host shape check when declared; a project that declares a different set (say `playwright` instead of `n8n`) passes on the generic check alone. Gemini CLI and Cursor have no runtime adapter: they stay template-only below. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
 
 ## Available Templates
 
-| File                     | For Tool    | Format | Description                         |
-| ------------------------ | ----------- | ------ | ----------------------------------- |
-| `claude.template.json`   | Claude Code | JSON   | `.mcp.json` in project root         |
-| `opencode.template.json` | OpenCode    | JSON   | `opencode.json` in project root     |
-| `codex.template.toml`    | Codex CLI   | TOML   | `~/.codex/config.toml` or `.codex/` |
-| `gemini.template.json`   | Gemini CLI  | JSON   | `~/.gemini/settings.json`           |
-| `dbhub.example.toml`     | DBHub (SQL) | TOML   | `dbhub.toml` in project root        |
+| File                     | For Tool    | Format | Description                                                                                          |
+| ------------------------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `claude.template.json`   | Claude Code | JSON   | `.mcp.json` in project root                                                                          |
+| `opencode.template.json` | OpenCode    | JSON   | `opencode.jsonc` in project root                                                                     |
+| `codex.template.toml`    | Codex CLI   | TOML   | Derived from the committed `.codex/config.toml` (same four servers) plus opt-in extras with `{{VAR}}` |
+| `gemini.template.json`   | Gemini CLI  | JSON   | `~/.gemini/settings.json` (template only, no runtime adapter in this repo)                           |
+| `dbhub.example.toml`     | DBHub (SQL) | TOML   | `dbhub.toml` in project root                                                                         |
 
 ## Variable Format
 
@@ -23,19 +35,21 @@ Templates use `{{VARIABLE}}` as a universal **find-and-replace placeholder** —
 
 ### Native env-var syntax (for strategy B)
 
-| Tool        | Syntax                       | Example           | Missing-var behavior                 |
-| ----------- | ---------------------------- | ----------------- | ------------------------------------ |
-| Claude Code | `${VAR}` / `${VAR:-default}` | `${API_TOKEN}`    | **Fails to parse the config** (safe) |
-| OpenCode    | `{env:VAR}`                  | `{env:API_TOKEN}` | Substitutes empty string (footgun)   |
-| Codex CLI   | `${VAR}`                     | `${API_TOKEN}`    | Depends on field                     |
-| Gemini CLI  | `$VAR` / `${VAR}`            | `$API_TOKEN`      | Depends on field                     |
+| Tool        | Syntax                                                                        | Example                       | Missing-var behavior                                          |
+| ----------- | ----------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| Claude Code | `${VAR}` / `${VAR:-default}`                                                  | `${API_TOKEN}`                | **Fails to parse the config** (safe)                          |
+| OpenCode    | `{env:VAR}`                                                                   | `{env:API_TOKEN}`             | Substitutes empty string (footgun)                            |
+| Codex CLI   | `env_vars = ["VAR"]` (stdio) / `bearer_token_env_var = "VAR"` (HTTP), by name | `env_vars = ["API_TOKEN"]`    | Variable is not forwarded; the server fails at auth (401/403) |
+| Gemini CLI  | `$VAR` / `${VAR}`                                                             | `$API_TOKEN`                  | Depends on field                                              |
+
+Codex never expands `${VAR}` inside `args` or `env` values, so a placeholder there is passed to the server as literal text. The committed `.codex/config.toml` therefore forwards every secret by name and adapts two servers: `tavily` runs as Streamable HTTP with `bearer_token_env_var = "TAVILY_API_KEY"` (the `mcp-remote` tunnel in `.mcp.json` only exists to put the key in a URL), and `supabase` drops `--access-token` in favour of `SUPABASE_ACCESS_TOKEN` in `env_vars`, which the package reads as its documented fallback. `[mcp_servers.X.env]` tables hold literal settings only. Details in [`mcp-configuration-guide.md`](./mcp-configuration-guide.md) § Codex CLI.
 
 For strategy B, also need a `.env` loader so the agent process has the vars at spawn time:
 
-- Cross-platform: `bun claude` / `bun opencode` (`dotenv-cli` wrapper in `package.json`)
+- Cross-platform: `bun run claude` / `bun run opencode` / `bun run codex` (`dotenv -o -e .env` wrappers in `package.json`; `-o` makes `.env` win over an inherited shell variable)
 - Mac/Linux optional: a `.envrc` with `dotenv_if_exists .env` + `direnv allow`
 
-**Working example**: see `.mcp.json`, `opencode.jsonc`, and `.env.example` in this repo's root.
+**Working example**: see `.mcp.json`, `opencode.jsonc`, `.codex/config.toml`, and `.env.example` in this repo's root.
 
 Common `{{VAR}}` placeholders found in templates:
 
@@ -81,10 +95,10 @@ cp docs/mcp/claude.template.json .mcp.json
 **For OpenCode**:
 
 ```bash
-cp docs/mcp/opencode.template.json opencode.json
+cp docs/mcp/opencode.template.json opencode.jsonc
 ```
 
-**For Codex CLI**:
+**For Codex CLI**: this repo already ships `.codex/config.toml` with the four canonical servers, so nothing to copy for a project checkout. The template is for the opt-in extras (copy a single `[mcp_servers.X]` block into `.codex/config.toml`) or for a machine-wide config:
 
 ```bash
 mkdir -p ~/.codex
@@ -151,17 +165,19 @@ Run your agent and verify with:
 
 ## Key Differences by Tool
 
-| Feature        | Claude         | OpenCode         | Codex          | Gemini       |
-| -------------- | -------------- | ---------------- | -------------- | ------------ |
-| Root key       | `mcpServers`   | `mcp`            | `mcp_servers`  | `mcpServers` |
-| Command        | string         | array            | string         | string       |
-| Env vars       | `env`          | `environment`    | `[server.env]` | `env`        |
-| Remote type    | `type: "http"` | `type: "remote"` | `url`          | `httpUrl`    |
-| Enable/disable | N/A            | `enabled`        | `enabled`      | N/A          |
+| Feature        | Claude         | OpenCode         | Codex                                                   | Gemini       |
+| -------------- | -------------- | ---------------- | ------------------------------------------------------- | ------------ |
+| Root key       | `mcpServers`   | `mcp`            | `mcp_servers`                                           | `mcpServers` |
+| Command        | string         | array            | string                                                  | string       |
+| Env vars       | `env`          | `environment`    | `env_vars` (forwarded by name) + `[server.env]` (literals) | `env`        |
+| Secret in URL  | `${VAR}`       | `{env:VAR}`      | not possible: `url` + `bearer_token_env_var`            | `$VAR`       |
+| Remote type    | `type: "http"` | `type: "remote"` | `url`                                                   | `httpUrl`    |
+| Enable/disable | N/A            | `enabled`        | `enabled`                                               | N/A          |
 
 ## Security
 
 - **Templates** (this folder) = Safe for git, uses `{{VAR}}` placeholders
+- **Active configs** (`.mcp.json`, `opencode.jsonc`, `.codex/config.toml`) = committed, reference env vars only; secrets live in `.env` (gitignored)
 - **Literal-secret copies** (strategy A) = NOT for git — add them to `.gitignore` yourself; there is no automatic pattern covering them
 - `dbhub.toml` is **COMMITTED** (`${VAR}` placeholders, no secrets — same convention as `.mcp.json` / `opencode.jsonc`); only `dbhub.local.toml` (literal-secret overrides) is ignored
 

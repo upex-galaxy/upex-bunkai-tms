@@ -131,7 +131,7 @@ N8N_API_URL · N8N_API_KEY
 | **See the repo's mental model before touching anything** (~30 min) | `bun run onboarding` — opens `docs/onboarding.html` with sidebar nav                                                                                                                                    |
 | **Methodology / philosophy / extension guide** (~25 min)           | [`docs/agentic-development-engineering.md`](docs/agentic-development-engineering.md)                                                                                                                    |
 | **Troubleshooting the installer**                                  | [`INSTALLER.md`](INSTALLER.md)                                                                                                                                                                          |
-| **You're an AI agent**                                             | [`CLAUDE.md`](CLAUDE.md) (operational rules) + [`CONTEXT.md`](CONTEXT.md) (knowledge map)                                                                                                               |
+| **You're an AI agent**                                             | [`AGENTS.md`](AGENTS.md) (operational rules) + [`CONTEXT.md`](CONTEXT.md) (knowledge map)                                                                                                               |
 
 > First-timers, use the scaffolder. It handles tarball download, git scrub, rename, `bun install`, and the interactive installer in one shot. The manual clone is for people hacking on the boilerplate itself.
 
@@ -268,7 +268,7 @@ bun install
 cp .env.example .env   # then fill in the values
 ```
 
-> Foundation files (`.agents/`, `scripts/`, `CLAUDE.md`) ship with the repo — no bootstrap step needed. À la carte adoption of individual skills is not supported.
+> Foundation files (`.agents/`, `scripts/`, `AGENTS.md`) ship with the repo — no bootstrap step needed. À la carte adoption of individual skills is not supported.
 
 > End-users building a new project should NOT clone manually — use `bunx create-agentic-dev@latest` so git history is scrubbed and the project is renamed automatically.
 
@@ -311,11 +311,11 @@ After running `/project-foundation` and `/project-bootstrap`, you can also run `
 
 ### Skill tiers (T1–T4)
 
-Every skill belongs to one of three tiers. Each tier has different discovery and load rules. Full contract: [`.claude/skills/agentic-dev-core/references/skill-composition-strategy.md`](.claude/skills/agentic-dev-core/references/skill-composition-strategy.md).
+Every skill belongs to one of three tiers. Each tier has different discovery and load rules. Full contract: [`.agents/skills/agentic-dev-core/references/skill-composition-strategy.md`](.agents/skills/agentic-dev-core/references/skill-composition-strategy.md).
 
 | Tier | What                          | Location                                         | Load behavior                                               |
 | ---- | ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| T1   | Project-owned (this repo)     | `.claude/skills/`                                | Silent — load on trigger                                    |
+| T1   | Project-owned (this repo)     | `.agents/skills/`                                | Silent — load on trigger                                    |
 | T3   | Community project-level       | Installed by `install.ts` `PROJECT_LEVEL_SKILLS` | Silent if matched by category                               |
 | T4   | Community user-level (global) | Installed by `install.ts` `USER_LEVEL_SKILLS`    | **ASK** user before load (cross-project, not always wanted) |
 
@@ -325,7 +325,7 @@ Validation: `bun run skills:check` checks tier coherence (orphan categories, tie
 
 | Command                       | Purpose                                                                                           |
 | ----------------------------- | ------------------------------------------------------------------------------------------------- |
-| `/sync-ai-memory`             | Audit + sync README, CLAUDE.md, CONTEXT.md, docs/, and onboarding HTML against current repo state |
+| `/sync-ai-memory`             | Audit + sync README, AGENTS.md, CONTEXT.md, docs/, and onboarding HTML against current repo state |
 | `/business-data-map`          | Generate or update `.context/business/business-data-map.md`                                       |
 | `/business-feature-map`       | Generate or update `.context/business/business-feature-map.md`                                    |
 | `/business-api-map`           | Generate or update `.context/business/business-api-map.md`                                        |
@@ -355,7 +355,7 @@ packages/
 cli/                      # install.ts, update-boilerplate.ts, doctor, helpers consumed by bun scripts
 scripts/                  # CLI tooling: lint-vars, jira-sync, etc.
 templates/                # Files copied into bootstrapped projects by /project-bootstrap
-CLAUDE.md                 # Project memory loaded every AI session
+AGENTS.md                 # Project memory loaded every AI session
 CONTEXT.md                # Context Engineering canonical reference
 DESIGN.md                 # Visual identity spec (Google Labs, generated by /design-system)
 INSTALLER.md              # Contract for `bun run setup` — what each installer layer does
@@ -424,7 +424,7 @@ Skills declare `compatibility: [claude-code, copilot, cursor, codex, opencode]` 
 
 ## Future hooks
 
-Room for per-phase model routing, an explicit skill registry, Engram-style cross-session memory, and CI-validated cross-agent portability. Notes in `CLAUDE.md`.
+Room for per-phase model routing, an explicit skill registry, Engram-style cross-session memory, and CI-validated cross-agent portability. Notes in `AGENTS.md`.
 
 <br />
 

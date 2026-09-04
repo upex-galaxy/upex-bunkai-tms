@@ -4,7 +4,7 @@
 > repo**, not on this one. It carries two independent changes: (A) removing `discovery`'s synchronous
 > approval gate, and (B) adding Claude-session provenance to commits, PRs and worktrees.
 >
-> **Why it has to run upstream.** `bun run up` treats upstream as canonical for `.claude/skills/**`:
+> **Why it has to run upstream.** `bun run up` treats upstream as canonical for `.agents/skills/**`:
 > a locally-diverged file is overwritten wholesale in every mode, with no preserve list and no
 > per-file opt-out (`cli/lib/updater-core.ts:1263-1272`, `:2326-2331`; `cli/update-boilerplate.ts:52-68`,
 > `:801`). Editing the skills here first is work that the next update deletes.
@@ -22,7 +22,7 @@
 
 ```
 You are working on `upex-galaxy/agentic-dev-boilerplate`, which is the canonical upstream for a
-family of downstream project repos. Everything under `.claude/skills/**` here is overwritten onto
+family of downstream project repos. Everything under `.agents/skills/**` here is overwritten onto
 those repos by their `bun run up`, so changes must land here to be real.
 
 Two independent changes. Do them as TWO SEPARATE BRANCHES and TWO SEPARATE PRs — they have different
@@ -58,15 +58,15 @@ log, and reports the keys. The operator vetoes by closing or deleting the ticket
 reads as a standing ruling. A user story sitting in `Backlog` is cheaper to close than the idle time
 the gate cost.
 
-This aligns `discovery` with `CLAUDE.md`'s AI-led decision-authority rule, which the gate had been a
+This aligns `discovery` with `AGENTS.md`'s AI-led decision-authority rule, which the gate had been a
 standing exception to.
 
 FILES — the gate is encoded in exactly ONE file upstream. Verified: `grep -rn "pending-decision"`
-across `.claude/skills/` hits only `autonomous-delivery/SKILL.md`. The three files under
+across `.agents/skills/` hits only `autonomous-delivery/SKILL.md`. The three files under
 `autonomous-delivery/references/` contain no mention of `pending-decision`, `awaiting_reply`,
 `approval gate`, or `synchronous`. Do not go hunting elsewhere; do confirm the grep yourself.
 
-A1. `.claude/skills/autonomous-delivery/SKILL.md` — the exception section, ~L461-481.
+A1. `.agents/skills/autonomous-delivery/SKILL.md` — the exception section, ~L461-481.
 
     Anchor (heading, note the em dash and the typographic apostrophe):
 
@@ -92,7 +92,7 @@ A1. `.claude/skills/autonomous-delivery/SKILL.md` — the exception section, ~L4
     it: `created-log.md` (not `pending-decision.md`) must be the one real file the next fire reads,
     not a copy trapped in a removed worktree.
 
-A2. `.claude/skills/autonomous-delivery/SKILL.md` — hazard H19, ~L524, in the inline H1-H20 table.
+A2. `.agents/skills/autonomous-delivery/SKILL.md` — hazard H19, ~L524, in the inline H1-H20 table.
 
     Current row:
 
@@ -106,7 +106,7 @@ A2. `.claude/skills/autonomous-delivery/SKILL.md` — hazard H19, ~L524, in the 
     (Note for whoever edits this: despite its name, `references/hazard-catalogue.md` contains no `H*`
     IDs at all — the H-table lives inline in `SKILL.md`. H19 has exactly one home.)
 
-A3. `.claude/skills/autonomous-delivery/SKILL.md` — anti-pattern A18, ~L548.
+A3. `.agents/skills/autonomous-delivery/SKILL.md` — anti-pattern A18, ~L548.
 
     Current text names the gate as the one sanctioned exception:
 
@@ -115,11 +115,11 @@ A3. `.claude/skills/autonomous-delivery/SKILL.md` — anti-pattern A18, ~L548.
     Remove the parenthetical exception entirely and extend A18 to ALL THREE modes. No mode parks
     waiting for a reply anymore.
 
-A4. `.claude/skills/autonomous-delivery/SKILL.md` — ~L217, the Phase 0a paragraph explaining why
+A4. `.agents/skills/autonomous-delivery/SKILL.md` — ~L217, the Phase 0a paragraph explaining why
     `discovery` skips worktree isolation. It currently justifies this by `pending-decision.md`.
     Re-point the justification at `created-log.md`. Same conclusion, correct reason.
 
-A5. `.claude/skills/autonomous-delivery/SKILL.md` — the §Configuration block, ~L92 and ~L101.
+A5. `.agents/skills/autonomous-delivery/SKILL.md` — the §Configuration block, ~L92 and ~L101.
 
         discovery_definitions: 2 # NEW user stories drafted + created per run — gated on synchronous chat approval.
         ... # NOT a mailbox. Discovery's proposal approval is synchronous, in that routine's own chat, never a reply here.
@@ -159,7 +159,7 @@ time and was 1.2 MB of exactly the needed context.
 Transcripts live at `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`. The missing link is only ever
 the session id. A running session knows its own id.
 
-B1. `.claude/skills/git-flow-master/references/pr-templating.md` — the PR body template.
+B1. `.agents/skills/git-flow-master/references/pr-templating.md` — the PR body template.
 
     `## Traceability` appears TWICE in this file and BOTH must be updated:
       - the template inside the ```markdown fence, ~L41-46
@@ -193,7 +193,7 @@ B1. `.claude/skills/git-flow-master/references/pr-templating.md` — the PR body
     State explicitly in the placeholder rules that this is provenance for debugging, not authorship
     attribution, and that a human-opened PR simply drops both lines.
 
-B2. `.claude/skills/git-flow-master/references/conventional-commits.md` — the commit trailer.
+B2. `.agents/skills/git-flow-master/references/conventional-commits.md` — the commit trailer.
 
     THIS IS THE DELICATE ONE. The file currently BANS exactly this shape, twice:
 
@@ -203,7 +203,7 @@ B2. `.claude/skills/git-flow-master/references/conventional-commits.md` — the 
 
       - Hard rules, L142:
 
-            1. **No AI attribution.** Never include `Generated with Claude Code`, `Co-Authored-By: Claude <…>`, or any equivalent line. Commits look human-authored. (Critical Reminder #4 in `CLAUDE.md`.)
+            1. **No AI attribution.** Never include `Generated with Claude Code`, `Co-Authored-By: Claude <…>`, or any equivalent line. Commits look human-authored. (Critical Reminder #4 in `AGENTS.md`.)
 
     The operator's decision, verbatim in intent: the no-AI-attribution rule STAYS and is good. A
     session trailer is not attribution — it is a forensic pointer for root-cause investigation. Write
@@ -225,7 +225,7 @@ B2. `.claude/skills/git-flow-master/references/conventional-commits.md` — the 
       - It is omitted entirely from human-authored commits.
       - It never appears in the subject line or body — trailer only.
 
-    First: OPEN the boilerplate's own `CLAUDE.md`, find the numbered critical rule this line cites
+    First: OPEN the boilerplate's own `AGENTS.md`, find the numbered critical rule this line cites
     (numbering differs across repos — downstream it is #3, this file cites #4), and carve the SAME
     exception there, worded consistently. If the two disagree, the stricter one wins in practice and
     the trailer never gets written. Cite the actual number you find; do not trust the `#4` above.
@@ -233,7 +233,7 @@ B2. `.claude/skills/git-flow-master/references/conventional-commits.md` — the 
     The subject-line regex at L20 constrains only the subject, so no regex change is needed. Confirm
     that yourself rather than taking my word for it.
 
-B3. `.claude/skills/git-flow-master/references/worktrees.md` — a worktree registry.
+B3. `.agents/skills/git-flow-master/references/worktrees.md` — a worktree registry.
 
     Verified: NO registry, manifest, inventory or ledger exists in this file today (zero hits for any
     of those words across its 216 lines). This is new content, not an edit.
@@ -264,7 +264,7 @@ B4. Consider whether `git-flow-master/SKILL.md` needs a pointer to any of the ab
 
 VERIFY BEFORE PR: render the PR body template by hand for a fake session and confirm both the
 template and the worked example agree; and confirm the amended hard rule and the boilerplate
-`CLAUDE.md` rule say the same thing.
+`AGENTS.md` rule say the same thing.
 
 ================================================================================
 DELIVERY
@@ -290,8 +290,8 @@ prompt quoted, and whether the boilerplate ships a routine-prompt template (item
 
 ## After it merges — downstream
 
-1. `bun run up` in the downstream repo to pull the new `.claude/skills/**`.
-2. Re-verify: `grep -rn "pending-decision\|awaiting_reply" .claude/skills/` should return only the
+1. `bun run up` in the downstream repo to pull the new `.agents/skills/**`.
+2. Re-verify: `grep -rn "pending-decision\|awaiting_reply" .agents/skills/` should return only the
    intentional do-not-reintroduce note.
 3. The live routine prompt at `~/.claude/scheduled-tasks/product-discovery--new-stories--epics/SKILL.md`
    was already rewritten locally on 2026-08-18 and is NOT managed by `bun run up` — it needs no

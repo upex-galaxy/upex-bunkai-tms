@@ -7,6 +7,13 @@
  * AI agents driving the setup: parse the JSON, take action on each
  * pending_actions entry, then re-run until status === "ok".
  *
+ * Besides env vars / direnv / deps it diagnoses the cross-harness contract
+ * (`agent_compatibility`): AGENTS.md + the CLAUDE.md shim, the canonical
+ * `.agents/skills` store + its Claude alias, the generated command wrappers,
+ * the three hook adapters and MCP parity across `.mcp.json` / `opencode.jsonc`
+ * / `.codex/config.toml`. Codex repository TRUST is runtime state no file
+ * check can verify, so it is always a WARN row, never a FAIL.
+ *
  * Usage:
  *   bun run setup:doctor              # human-readable summary
  *   bun run setup:doctor --json       # machine-readable JSON
@@ -34,6 +41,16 @@ import { homedir } from 'node:os';
 
 import { join, resolve } from 'node:path';
 import {
+  declaredMcpIds,
+  validateHookCompatibility,
+  validateMcpParity,
+} from './lib/agent-compatibility-contracts.ts';
+import {
+  checkAgentCompatibility,
+  commandWrapperCounts,
+  validateCanonicalSources,
+} from './lib/agent-compatibility.ts';
+import {
   formatInstanceMismatchWarning,
   resolveAtlassianInstance,
 } from './lib/atlassian-instance.ts';
@@ -52,6 +69,7 @@ const REPO_ROOT = resolve(import.meta.dir, '..');
 const ENV_PATH = join(REPO_ROOT, '.env');
 const MCP_PATH = join(REPO_ROOT, '.mcp.json');
 const OPENCODE_PATH = join(REPO_ROOT, 'opencode.jsonc');
+const CODEX_CONFIG_PATH = join(REPO_ROOT, '.codex', 'config.toml');
 const NODE_MODULES_DOTENV = join(REPO_ROOT, 'node_modules', 'dotenv-cli');
 // --preflight mode resolves install.ts's only third-party import.
 const INQUIRER_MARKER = join(REPO_ROOT, 'node_modules', '@inquirer', 'prompts', 'package.json');
@@ -214,6 +232,30 @@ interface DirenvState {
   rc_file?: string
 }
 
+export interface AgentCompatibilityDiagnostic {
+  /** Every file-verifiable part of the contract holds (alias, wrappers, hooks, MCP parity, shim). */
+  file_correct: boolean
+  errors: string[]
+  instructions: {
+    agents_md: boolean
+    claude_shim: boolean
+    canonical_skills: boolean
+    claude_alias: boolean
+  }
+  command_wrappers: { expected: number, claude: number, opencode: number, ok: boolean }
+  hooks: { claude: boolean, opencode: boolean, codex: boolean, ok: boolean }
+  mcp: { expected_servers: number, claude: boolean, opencode: boolean, codex: boolean, parity: boolean }
+  codex: {
+    config_exists: boolean
+    cli_detected: boolean
+    repository_configured: boolean
+    desktop_uses_repository_config: true
+    trust_required: true
+    /** Trust is granted inside Codex at runtime; no file on disk records it. */
+    trust_status: 'required-not-verifiable'
+  }
+}
+
 /**
  * Resolution state of the Atlassian site host. `source` distinguishes the
  * versioned yaml (the intended answer) from the transitional `ATLASSIAN_URL`
@@ -241,6 +283,8 @@ interface DoctorReport {
   legacy_jira_cred_keys: string[]
   mcp_json_exists: boolean
   opencode_jsonc_exists: boolean
+  codex_config_exists: boolean
+  agent_compatibility: AgentCompatibilityDiagnostic
   deps_installed: boolean
   direnv: DirenvState
   pending_actions: PendingAction[]
@@ -364,6 +408,79 @@ function compareVersion(a: readonly number[], b: readonly number[]): number {
 }
 
 // ----------------------------------------------------------------------------
+// Cross-harness compatibility
+// ----------------------------------------------------------------------------
+
+/**
+ * Read-only diagnosis of the compatibility contract for `root`. Splits the
+ * engine's flat error list into per-surface booleans so the human table can
+ * point at the failing surface, and keeps file correctness apart from Codex
+ * CLI availability (a machine fact) and repository trust (runtime state).
+ */
+export function diagnoseAgentCompatibility(
+  root: string,
+  options: { platform?: NodeJS.Platform, codexCliDetected?: boolean } = {},
+): AgentCompatibilityDiagnostic {
+  const platform = options.platform ?? process.platform;
+  const compatibility = checkAgentCompatibility(root, platform);
+  const canonicalErrors = validateCanonicalSources(root);
+  const hookErrors = validateHookCompatibility(root);
+  const mcpErrors = validateMcpParity(root);
+  let wrappers = { expected: 0, claude: 0, opencode: 0 };
+  try { wrappers = commandWrapperCounts(root); }
+  catch { /* compatibility.errors already carries the manifest diagnostics */ }
+  let expectedServers = 0;
+  try { expectedServers = declaredMcpIds(root).length; }
+  catch { /* mcpErrors already carries the .mcp.json diagnostics */ }
+
+  const hasHookError = (needle: string): boolean => hookErrors.some(error => error.includes(needle));
+  const hasMcpError = (needle: string): boolean => mcpErrors.some(error => error.includes(needle));
+  const codexConfigExists = existsSync(join(root, '.codex', 'config.toml'));
+  const codexHooksExist = existsSync(join(root, '.codex', 'hooks.json'));
+  const claudeShimError = canonicalErrors.some(error => error.includes('CLAUDE.md'));
+  const agentsError = canonicalErrors.some(error => error.includes('Canonical instructions'));
+  const skillsError = canonicalErrors.some(error => error.includes('Canonical skills'));
+
+  return {
+    file_correct: compatibility.ok,
+    errors: [...new Set(compatibility.errors)],
+    instructions: {
+      agents_md: !agentsError,
+      claude_shim: !claudeShimError,
+      canonical_skills: !skillsError,
+      claude_alias: compatibility.alias.status === 'valid',
+    },
+    command_wrappers: {
+      ...wrappers,
+      ok: wrappers.expected > 0
+        && wrappers.claude === wrappers.expected
+        && wrappers.opencode === wrappers.expected,
+    },
+    hooks: {
+      claude: !hasHookError('.claude/settings.json'),
+      opencode: !hasHookError('opencode.jsonc') && !hasHookError('.opencode/plugins'),
+      codex: codexHooksExist && !hasHookError('.codex/hooks.json') && !hasHookError('.codex/config.toml'),
+      ok: hookErrors.length === 0,
+    },
+    mcp: {
+      expected_servers: expectedServers,
+      claude: !hasMcpError('.mcp.json'),
+      opencode: !hasMcpError('opencode.jsonc'),
+      codex: codexConfigExists && !hasMcpError('.codex/config.toml'),
+      parity: mcpErrors.length === 0,
+    },
+    codex: {
+      config_exists: codexConfigExists,
+      cli_detected: options.codexCliDetected ?? tryRun('codex', ['--version']).ok,
+      repository_configured: codexConfigExists && codexHooksExist,
+      desktop_uses_repository_config: true,
+      trust_required: true,
+      trust_status: 'required-not-verifiable',
+    },
+  };
+}
+
+// ----------------------------------------------------------------------------
 // Main check
 // ----------------------------------------------------------------------------
 
@@ -380,6 +497,8 @@ async function runDoctor(): Promise<DoctorReport> {
     legacy_jira_cred_keys: [],
     mcp_json_exists: existsSync(MCP_PATH),
     opencode_jsonc_exists: existsSync(OPENCODE_PATH),
+    codex_config_exists: existsSync(CODEX_CONFIG_PATH),
+    agent_compatibility: diagnoseAgentCompatibility(REPO_ROOT),
     deps_installed: existsSync(NODE_MODULES_DOTENV),
     direnv: { installed: false },
     pending_actions: [],
@@ -482,7 +601,7 @@ async function runDoctor(): Promise<DoctorReport> {
     report.pending_actions.push({
       type: 'system_install',
       target: 'direnv',
-      hint: 'Optional. Without direnv, launch with `bun claude` / `bun opencode` (wrapper). Install if you want `claude` to work directly via shell autoload.',
+      hint: 'Optional. Without direnv, launch with `bun run claude` / `bun run opencode` / `bun run codex` (wrapper). Install if you want the executables to work directly via shell autoload.',
       where: installCommandForPlatform(),
     });
   }
@@ -520,6 +639,23 @@ async function runDoctor(): Promise<DoctorReport> {
       hint: 'opencode.jsonc is missing. Restore from git — it is the committed OpenCode config.',
     });
   }
+  if (!report.codex_config_exists) {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'git restore .codex/config.toml',
+      hint: '.codex/config.toml is missing. Restore from git — it is the committed Codex (CLI + Desktop) config.',
+    });
+  }
+
+  // Cross-harness contract. Repository trust is NOT a pending action: it lives
+  // inside Codex, and nothing on disk can prove or disprove it.
+  if (!report.agent_compatibility.file_correct) {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun run agents:compat',
+      hint: `Repair the generated compatibility artifacts (Claude skills alias + command wrappers), then restore any canonical/config file doctor still reports: ${report.agent_compatibility.errors.join('; ')}`,
+    });
+  }
 
   if (report.pending_actions.length > 0) {
     report.status = 'needs-action';
@@ -554,10 +690,22 @@ function printHuman(report: DoctorReport): void {
   process.stdout.write('\n');
 
   // File + dep checks as a table
+  const compat = report.agent_compatibility;
+  const hostList = (hosts: { claude: boolean, opencode: boolean, codex: boolean }): string =>
+    (['claude', 'opencode', 'codex'] as const).map(host => `${host}:${hosts[host] ? 'ok' : 'FAIL'}`).join(' ');
   const checks: string[][] = [
     ['.env file', report.env_file_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
     ['.mcp.json', report.mcp_json_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
     ['opencode.jsonc', report.opencode_jsonc_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ['.codex/config.toml', report.codex_config_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ['AGENTS.md + CLAUDE.md shim', compat.instructions.agents_md && compat.instructions.claude_shim ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ['Canonical .agents/skills + Claude alias', compat.instructions.canonical_skills && compat.instructions.claude_alias ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    [`Command wrappers (${compat.command_wrappers.expected} Claude + ${compat.command_wrappers.expected} OpenCode)`, compat.command_wrappers.ok ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${compat.command_wrappers.claude}/${compat.command_wrappers.opencode} of ${compat.command_wrappers.expected}`],
+    ['Hook adapters (Claude/OpenCode/Codex)', compat.hooks.ok ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.hooks)}`],
+    [`MCP parity (${compat.mcp.expected_servers} servers x 3 harnesses)`, compat.mcp.parity ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.mcp)}`],
+    ['Codex repository config (config.toml + hooks.json)', compat.codex.repository_configured ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ['Codex CLI executable', compat.codex.cli_detected ? tui.statusIcon('ok') : `${tui.statusIcon('warn')} not on PATH; Desktop still reads the repository config`],
+    ['Codex repository trust', `${tui.statusIcon('warn')} required; runtime state, not file-verifiable`],
     ['node_modules', report.deps_installed ? tui.statusIcon('ok') : tui.statusIcon('fail')],
     [`direnv binary${report.direnv.version ? ` (${report.direnv.version})` : ''}`, report.direnv.installed ? tui.statusIcon('ok') : tui.statusIcon('warn')],
   ];
@@ -597,6 +745,14 @@ function printHuman(report: DoctorReport): void {
     process.stdout.write(`  ${COLORS.dim}acli and the sync scripts read ATLASSIAN_* directly; the Atlassian MCP server is opt-in via docs/mcp/.${COLORS.reset}\n\n`);
   }
 
+  if (compat.errors.length > 0) {
+    tui.section('Cross-harness compatibility errors');
+    for (const error of compat.errors) {
+      process.stdout.write(`  ${tui.statusIcon('fail')} ${error}\n`);
+    }
+    process.stdout.write(`  ${COLORS.dim}Generated artifacts: bun run agents:compat. Canonical/config files: fix by hand, then re-run doctor.${COLORS.reset}\n\n`);
+  }
+
   if (report.pending_actions.length > 0) {
     tui.section('Pending actions');
     for (const action of report.pending_actions) {
@@ -610,7 +766,10 @@ function printHuman(report: DoctorReport): void {
   }
   else {
     process.stdout.write('\n');
-    process.stdout.write(`${tui.successBox(['All green. Launch agent: bun claude  /  bun opencode'])}\n`);
+    process.stdout.write(`${tui.successBox([
+      'All file checks green. Launch: bun run claude  /  bun run opencode  /  bun run codex',
+      'Codex Desktop reads the same repository config; approve repository trust there before hooks run.',
+    ])}\n`);
   }
 }
 
@@ -693,4 +852,4 @@ async function main(): Promise<void> {
   }
 }
 
-void main();
+if (import.meta.main) { void main(); }

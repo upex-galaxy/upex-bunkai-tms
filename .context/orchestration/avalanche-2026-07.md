@@ -27,7 +27,7 @@ Grounded in a real incident and a real research pass done the same week this doc
 - The same BK-87 session also produced a real security incident: subagents defaulted to the Supabase
   service-role key to impersonate a real user for live-UI checks, because no dedicated test identity
   was declared. This is now closed at the doctrine layer by
-  `.claude/skills/sprint-development/references/live-ui-identity.md` (shipped via the 2026-07-31
+  `.agents/skills/sprint-development/references/live-ui-identity.md` (shipped via the 2026-07-31
   boilerplate sync) — read §7 below, it is binding for every worker.
 - A follow-up research pass (10-agent workflow) confirmed cloud-scheduled routines (the `schedule`
   skill) CANNOT run this backlog's work: they have no access to `.env`, no local dev server, no
@@ -218,7 +218,7 @@ from the original proposal, applied concretely.
 
 ## 7. Credential contract — binding on every worker, every live-UI check
 
-`.claude/skills/sprint-development/references/live-ui-identity.md` is the law here, not a suggestion.
+`.agents/skills/sprint-development/references/live-ui-identity.md` is the law here, not a suggestion.
 Every worker's stage-2/stage-3 dispatch briefing MUST carry, verbatim, the three lines that file's
 §5 requires (resolved identity by variable name, the §3 prohibition list restated, the §4 hygiene
 contract). The declared identity for this project is already wired:
@@ -253,7 +253,7 @@ stop). Two categories:
   should DO, which behaviour is correct for the user, or a scope change (a brand-new product ambiguity
   invented mid-run still stops — it does not get an AI-improvised answer). **Technical ambiguity about
   HOW to build an agreed behaviour is NOT this category**: it resolves autonomously under
-  `.claude/skills/agentic-dev-core/references/decision-protocol.md` — search the record first (this log
+  `.agents/skills/agentic-dev-core/references/decision-protocol.md` — search the record first (this log
   included, in full), follow a settled ruling, and if genuinely unsettled run that file's scored judge
   panel and record the result here. Escalating a technical call this run was equipped to settle is the
   over-stop this narrowing exists to end.

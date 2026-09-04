@@ -157,7 +157,7 @@ Then `bun run setup:doctor --json` to confirm.
 | fish       | `direnv hook fish \| source`              | `~/.config/fish/config.fish`                     |
 | PowerShell | `Invoke-Expression "$(direnv hook pwsh)"` | `$PROFILE` (requires direnv 2.37+, experimental) |
 
-`.mcp.json` (Claude Code) and `opencode.jsonc` are committed with `${VAR}` / `{env:VAR}` placeholders. Real values live in `.env` (gitignored). If a server returns 401/403 at first call, the matching env var is missing — see `CLAUDE.md` Critical Reminder #12 (stop, fix `.env`, restart the agent session).
+`.mcp.json` (Claude Code) and `opencode.jsonc` are committed with `${VAR}` / `{env:VAR}` placeholders. Real values live in `.env` (gitignored). If a server returns 401/403 at first call, the matching env var is missing — see `AGENTS.md` Critical Reminder #12 (stop, fix `.env`, restart the agent session).
 
 ---
 
@@ -187,7 +187,7 @@ Revert triggers (EN + ES): `"normal mode"`, `"habla normal"`, `"stop caveman"`, 
 
 Docs: <https://github.com/JuliusBrussee/caveman>
 
-If caveman is **not** installed, `CLAUDE.md` §1 #13 becomes a no-op and the agent writes normal terse output. No errors, no degraded behavior.
+If caveman is **not** installed, `AGENTS.md` §1 #13 becomes a no-op and the agent writes normal terse output. No errors, no degraded behavior.
 
 ### ccstatusline — Claude Code statusline configurator
 
@@ -239,7 +239,7 @@ When `bun run setup` runs the gentle-ai branch (Engram only, repeated per agent)
 
 ## What stays local (committed in this repo)
 
-Skills that are workflow-specific to this boilerplate live in `.claude/skills/` and are committed to the repo. They install with the clone — no external installer required.
+Skills that are workflow-specific to this boilerplate live in `.agents/skills/` and are committed to the repo. They install with the clone — no external installer required.
 
 | Skill                 | Trigger                       | Why it stays local                                                                                                                                                                        |
 | --------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -287,7 +287,7 @@ A subtle bit of confusion lives in the Playwright ecosystem. There are **three d
 
 1. **`@playwright/test`** — a devDep test runner library, installed per-project. It produces no global binary. `which playwright` finds nothing even when this package is installed.
 2. **`@playwright/cli`** — a global agent-driven CLI. Installs as the binary `playwright-cli`. This is what powers the `/playwright-cli` skill in this repo.
-3. **`/playwright-cli`** — the local workflow skill in `.claude/skills/playwright-cli/`. It calls the `playwright-cli` binary from `@playwright/cli`.
+3. **`/playwright-cli`** — the local workflow skill in `.agents/skills/playwright-cli/`. It calls the `playwright-cli` binary from `@playwright/cli`.
 
 The installer verifies (2). If you need the test runner (1) for E2E suites, add it per-project: `bun add -D @playwright/test`.
 
@@ -304,7 +304,7 @@ Three reasons:
 ## Troubleshooting
 
 - **gentle-ai not detected after install** — re-run `bun run setup`. The detector probes `which gentle-ai` plus `gentle-ai version`; if either fails the installer falls back to "skip gentle-ai" branch. Confirm the binary is on PATH (`which gentle-ai` should return a path under `/usr/local/bin/`, `~/bin/`, `~/go/bin/`, or a Homebrew prefix).
-- **MCPs returning 401/403** — the matching env var in `.env` is unset or wrong. `.mcp.json` (Claude) and `opencode.jsonc` are committed with `${VAR}` / `{env:VAR}` expansion; real values live in `.env`. Open `.env`, fill the var, and **restart the agent session** — env vars are read once at MCP-server spawn time. See `CLAUDE.md` Critical Reminder #12.
+- **MCPs returning 401/403** — the matching env var in `.env` is unset or wrong. `.mcp.json` (Claude) and `opencode.jsonc` are committed with `${VAR}` / `{env:VAR}` expansion; real values live in `.env`. Open `.env`, fill the var, and **restart the agent session** — env vars are read once at MCP-server spawn time. See `AGENTS.md` Critical Reminder #12.
 - **MCPs not loading at all** — confirm you launched the agent via `bun claude` / `bun opencode` (wraps with `dotenv-cli`), or that direnv autoload is active (`direnv status` shows your `.envrc` allowed). Launching `claude` directly without either path means MCP placeholders never get expanded.
 - **`direnv allow` produced `dotenv_if_exists: command not found`** — this would mean the `.envrc` is using a newer direnv feature than your version supports. The committed `.envrc` uses portable POSIX loading (works on direnv 2.21+), so if you see this, your `.envrc` has been edited locally — restore it from `git checkout .envrc`.
 - **Skills not appearing in autocomplete** — restart Claude Code (or your agent of choice). MCP and skill configs are cached at agent startup.
@@ -330,7 +330,7 @@ What you keep: every workflow skill committed in this repo (`/sprint-development
 ## See also
 
 - [.scratch/plans/GENTLE-AI-RESEARCH.md](./.scratch/plans/GENTLE-AI-RESEARCH.md) — full research doc on the gentle-ai ecosystem (commands, components, agent matrix)
-- [CLAUDE.md § Onboarding](./CLAUDE.md) — quick-start entry point for `bun run setup`
+- [AGENTS.md § Onboarding](./AGENTS.md) — quick-start entry point for `bun run setup`
 - [README.md](./README.md) — project overview and Quick Start
 - [docs/setup/README.md](./docs/setup/README.md) — index of remaining setup guides (Jira, MCPs)
 

@@ -2,7 +2,7 @@
 
 - **Status:** Superseded by ADR-0015 <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-08-20
-- **Deciders:** AI Product Owner + AI Tech Lead (joint, per `CLAUDE.md` Critical Rule #18 — this project is AI-led and has no human PO; the operator directed that the decision be recorded before the mockup, not after)
+- **Deciders:** AI Product Owner + AI Tech Lead (joint, per `AGENTS.md` Critical Rule #18 — this project is AI-led and has no human PO; the operator directed that the decision be recorded before the mockup, not after)
 - **Tags:** tenancy, data-lifecycle, irreversible-action, gdpr, cross-cutting-invariant
 - **Story:** BK-512 (Delete a workspace I own)
 - **Supersedes:** — (extends the tenancy model established in ADR-0001; pairs with BK-508, workspace data export)

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted — Not yet implemented <!-- Proposed | Accepted | Superseded by ADR-MMMM | Deprecated -->
 - **Date:** 2026-08-27
-- **Deciders:** AI Product Owner + AI Tech Lead (joint, per `CLAUDE.md` Critical Rule #18 and `.agents/project.yaml` → `decision_authority.product: decide`). **No human reviewed this decision.** It was produced by a four-lens scored panel run by the unattended `story` delivery routine and must not be read as human product-owner or architect sign-off.
+- **Deciders:** AI Product Owner + AI Tech Lead (joint, per `AGENTS.md` Critical Rule #18 and `.agents/project.yaml` → `decision_authority.product: decide`). **No human reviewed this decision.** It was produced by a four-lens scored panel run by the unattended `story` delivery routine and must not be read as human product-owner or architect sign-off.
 - **Tags:** tenancy, data-lifecycle, irreversible-action, gdpr, cross-cutting-invariant
 - **Story:** BK-512 (Delete a workspace I own); pairs with BK-508 (workspace data export)
 - **Supersedes:** ADR-0013

@@ -11,7 +11,7 @@ what this project's specifics are.
 
 **1. Pull the skill.** `autonomous-delivery` lives in `agentic-dev-boilerplate` (commit `41cb39a`).
 It is not in this repo yet. Run the boilerplate updater and confirm
-`.claude/skills/autonomous-delivery/SKILL.md` exists afterward. Nothing below works until it does.
+`.agents/skills/autonomous-delivery/SKILL.md` exists afterward. Nothing below works until it does.
 
 **2. Add the config block** to `.agents/project.yaml`. Defaults are deliberately conservative:
 
@@ -369,7 +369,7 @@ plus its first stories still consumes the same cap of 2 definitions.
 DECIDE PRODUCT QUESTIONS — DO NOT ESCALATE THEM
 
 Whether to build something, and which of two similarly-good candidates wins, is YOUR call, made on
-the evidence, under `CLAUDE.md` Rule #18. Use the decision protocol: enumerate 2-4 candidates, score
+the evidence, under `AGENTS.md` Rule #18. Use the decision protocol: enumerate 2-4 candidates, score
 them against explicit criteria (product value, consistency with existing precedent, implementation
 cost, reversibility, risk), pick the highest scorer, and write the reasoning into the run report. A
 decision without alternatives considered and a score is a guess, not a decision.

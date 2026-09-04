@@ -41,7 +41,7 @@ Both back stories at/above QA handoff, so per the user's rule their screen must 
   (workspace `mobile`) has **0 ATCs**, so chips show 0 and there's nothing to filter — build it but
   verify against a project that has ATCs with varied statuses (may need to seed, or wait for real data).
 - Tokens are frozen — reuse `.status-chip` / `.dot` / chip styles already aligned in `app/globals.css`.
-  Follow CLAUDE.md Rule #15 + master-design-plan §2/§4.
+  Follow AGENTS.md Rule #15 + master-design-plan §2/§4.
 
 ## Verify (Playwright + magic-link auth — proven recipe)
 
