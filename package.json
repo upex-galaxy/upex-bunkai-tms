@@ -47,7 +47,10 @@
     "git:policy": "bun scripts/git-policy.ts",
     "jira:url": "bun scripts/atlassian-url.ts",
     "context:hydrate": "bun scripts/sync-jira-issues.ts pull --include-comments",
-    "jira:components": "bun scripts/sync-jira-components.ts"
+    "jira:components": "bun scripts/sync-jira-components.ts",
+    "agents:compat": "bun scripts/agent-compatibility.ts",
+    "agents:compat:check": "bun scripts/agent-compatibility.ts --check",
+    "codex": "dotenv -o -e .env -- codex"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

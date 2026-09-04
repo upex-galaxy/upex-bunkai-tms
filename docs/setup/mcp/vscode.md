@@ -4,6 +4,8 @@
 
 > 💡 Para conceptos generales de MCP, consulta [MCP - Guía General](./README.md)
 
+> ⚠️ **En este boilerplate, VS Code con GitHub Copilot no tiene adapter en runtime.** Los harnesses soportados con config commiteada y verificada en paridad son Claude Code (`.mcp.json`), OpenCode (`opencode.jsonc`) y Codex CLI + Desktop (`.codex/config.toml`); ver la matriz en [README](./README.md). Esta guía es referencia manual: si la usás, replicá a mano los servidores que declara `.mcp.json` (en el boilerplate: `context7`, `tavily`, `supabase`, `n8n`) y no esperes que `bun run agents:compat:check` los vea.
+
 ---
 
 ## 🚀 Quick Start

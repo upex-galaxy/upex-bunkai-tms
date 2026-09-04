@@ -12,10 +12,10 @@ Outputs of `/project-foundation` Phase 2 — Architecture (Product side). Turns 
 | `user-journeys.md`       | Happy paths, alternate flows, edge cases per persona             |
 
 Skill references that drive generation:
-- `.claude/skills/project-foundation/references/prd-executive-summary.md`
-- `.claude/skills/project-foundation/references/prd-personas.md`
-- `.claude/skills/project-foundation/references/prd-mvp-scope.md`
-- `.claude/skills/project-foundation/references/prd-user-journeys.md`
+- `.agents/skills/project-foundation/references/prd-executive-summary.md`
+- `.agents/skills/project-foundation/references/prd-personas.md`
+- `.agents/skills/project-foundation/references/prd-mvp-scope.md`
+- `.agents/skills/project-foundation/references/prd-user-journeys.md`
 
 ## Outcome
 

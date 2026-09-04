@@ -1595,7 +1595,7 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                 target="_blank"
                 rel="noopener"
                 ><code>docs/ai-personality.md</code></a
-              >. It mirrors the runtime contract defined in <code>CLAUDE.md</code> sections 1–3.
+              >. It mirrors the runtime contract defined in <code>AGENTS.md</code> sections 1–3.
             </div>
           </section>
 
@@ -1642,7 +1642,7 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                       (subagents, decisions, references).
                     </td>
                     <td>
-                      <code>.claude/skills/&lt;name&gt;/SKILL.md</code> + <code>references/</code>
+                      <code>.agents/skills/&lt;name&gt;/SKILL.md</code> + <code>references/</code>
                     </td>
                     <td>
                       The AI auto-activates when your prompt matches the skill's triggers.
@@ -1666,9 +1666,19 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                         <span class="type-name">Command</span>
                       </div>
                     </td>
-                    <td>Single-file markdown for one-shot, focused utilities.</td>
-                    <td><code>.claude/commands/&lt;name&gt;.md</code></td>
-                    <td>You explicitly type <code>/&lt;name&gt;</code>. No auto-trigger.</td>
+                    <td>
+                      Generated transport alias: selects a skill + mode and forwards your arguments.
+                      Holds no workflow of its own.
+                    </td>
+                    <td>
+                      Source <code>.agents/compatibility/command-aliases.json</code>; generated
+                      wrappers at <code>.claude/commands/&lt;name&gt;.md</code> and
+                      <code>.opencode/commands/&lt;name&gt;.md</code>
+                    </td>
+                    <td>
+                      You explicitly type <code>/&lt;name&gt;</code> (Claude Code, OpenCode). Codex
+                      has no wrapper layer: name the skill + mode. No auto-trigger.
+                    </td>
                   </tr>
                   <tr>
                     <td>
@@ -1703,6 +1713,25 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
               it on every AI session; commands use the same resolver; scripts read the YAML and
               write back to it. See <a href="#section-6">§6 Circuit 1</a> for the full resolution
               flow.
+            </p>
+
+            <p>
+              <strong>One source, three harnesses.</strong> Everything in the table exists once:
+              instructions in <code>AGENTS.md</code>, skills in <code>.agents/skills/</code>,
+              command aliases in <code>.agents/compatibility/command-aliases.json</code>. OpenCode
+              and Codex (CLI + Desktop) read the first two natively. Claude Code reaches them
+              through generated shims: <code>CLAUDE.md</code> is exactly <code>@AGENTS.md</code>,
+              and <code>.claude/skills</code> is a gitignored symlink (junction on Windows) onto the
+              store. The command wrappers under <code>.claude/commands/</code> and
+              <code>.opencode/commands/</code> are generated too. Never hand-edit a generated
+              surface: edit the source, run <code>bun run agents:compat</code>, and let
+              <code>bun run agents:compat:check</code> verify (<code>AGENTS.md</code> §5.5). Where
+              the harnesses genuinely differ, each keeps a thin adapter: MCP in
+              <code>.mcp.json</code> / <code>opencode.jsonc</code> /
+              <code>.codex/config.toml</code>, the personality hook in
+              <code>.claude/settings.json</code> / <code>.opencode/plugins/</code> /
+              <code>.codex/hooks.json</code>. Launch with <code>bun run claude</code>,
+              <code>bun run opencode</code> or <code>bun run codex</code>.
             </p>
           </section>
 
@@ -1921,18 +1950,20 @@ git clone … &amp;&amp; bun install &amp;&amp; bun run setup</pre
                       for gentle-ai (Engram) + 4 canonical MCPs + external CLIs) →
                       <code>bun run agents:setup</code> → <code>bun run jira:sync-fields</code> →
                       <code>bun run jira:check</code>. Foundation files (<code>.agents/</code>,
-                      <code>scripts/</code>, <code>CLAUDE.md</code>) ship with the cloned repo — à
+                      <code>scripts/</code>, <code>AGENTS.md</code>) ship with the cloned repo — à
                       la carte adoption of individual skills is not supported.
                     </dd>
                     <dt>Produces</dt>
                     <dd>
-                      A populated <code>.agents/project.yaml</code>, <code>CLAUDE.md</code>, the
-                      foundation scripts (<code>agents-setup</code>, <code>lint-vars</code>,
-                      <code>sync-jira-fields</code>, <code>check-jira-setup</code>) wired into
-                      <code>package.json</code>, the workspace catalog at
-                      <code>.agents/jira-fields.json</code> (custom field IDs), and the
-                      <code>.mcp.json</code> with credentials for Tavily, Context7, Supabase, n8n
-                      (the Atlassian MCP is opt-in — see <code>docs/mcp/</code>).
+                      A populated <code>.agents/project.yaml</code>, the canonical
+                      <code>AGENTS.md</code>, the foundation scripts (<code>agents-setup</code>,
+                      <code>lint-vars</code>, <code>sync-jira-fields</code>,
+                      <code>check-jira-setup</code>) wired into <code>package.json</code>, the
+                      workspace catalog at <code>.agents/jira-fields.json</code> (custom field IDs),
+                      and the three MCP configs (<code>.mcp.json</code>,
+                      <code>opencode.jsonc</code>, <code>.codex/config.toml</code>) referencing the
+                      <code>.env</code> keys for Tavily, Context7, Supabase, n8n (the Atlassian MCP
+                      is opt-in — see <code>docs/mcp/</code>).
                     </dd>
                     <dt>When to repeat</dt>
                     <dd>
@@ -2072,7 +2103,7 @@ bun run vars:check           # validate placeholders</code></pre>
                   <dl>
                     <dt>Trigger</dt>
                     <dd>
-                      When <code>.context/</code>, <code>CLAUDE.md</code>, or
+                      When <code>.context/</code>, <code>AGENTS.md</code>, or
                       <code>.agents/</code> drifts from reality (the project shipped new modules,
                       new Jira fields, new endpoints).
                     </dd>
@@ -2082,7 +2113,7 @@ bun run vars:check           # validate placeholders</code></pre>
                       <ul>
                         <li>
                           <code>/sync-ai-memory</code> — audit + patch the 5 always-included docs
-                          (<code>README.md</code>, <code>CLAUDE.md</code>, <code>CONTEXT.md</code>,
+                          (<code>README.md</code>, <code>AGENTS.md</code>, <code>CONTEXT.md</code>,
                           <code>INSTALLER.md</code>,
                           <code>docs/agentic-development-engineering.md</code>) plus the standalone
                           HTML <code>docs/onboarding.html</code> and any auto-detected
@@ -2996,7 +3027,7 @@ bun run vars:check           # validate placeholders</code></pre>
             </div>
 
             <p class="small muted">
-              The full mapping is the source of truth in <code>CLAUDE.md</code> § 6.5; the CLI names
+              The full mapping is the source of truth in <code>AGENTS.md</code> § 6.5; the CLI names
               match exactly the <code>EXTERNAL_CLIS</code> constant in <code>cli/install.ts</code>.
               Today this is a rule-based gate (system prompt instruction); a future
               <code>PreToolUse</code> hook can enforce it.
@@ -3042,8 +3073,9 @@ bun run vars:check           # validate placeholders</code></pre>
             <h2><span class="num">8.</span>Cheat sheet — "I want X, I run Y"</h2>
 
             <p>
-              Every command below exists in <code>.claude/skills/</code>,
-              <code>.claude/commands/</code>, or <code>package.json</code>. None are placeholders.
+              Every command below exists in <code>.agents/skills/</code>, in the generated
+              <code>.claude/commands/</code> / <code>.opencode/commands/</code> aliases, or in
+              <code>package.json</code>. None are placeholders.
             </p>
 
             <div class="table-wrap">
@@ -3164,9 +3196,10 @@ bun run vars:check           # validate placeholders</code></pre>
             <h2><span class="num">9.</span>Skills catalog</h2>
 
             <p>
-              Every skill that ships in <code>.claude/skills/</code>. Some you invoke directly;
-              others (the tool skills and the foundation) load automatically when a workflow skill
-              needs them.
+              Every skill that ships in <code>.agents/skills/</code> (read natively by OpenCode and
+              Codex, through the generated <code>.claude/skills</code> alias by Claude Code). Some
+              you invoke directly; others (the tool skills and the foundation) load automatically
+              when a workflow skill needs them.
             </p>
 
             <p class="small muted">
@@ -3200,7 +3233,7 @@ bun run vars:check           # validate placeholders</code></pre>
                   Passive reference host for shared doctrine (briefing template, dispatch patterns,
                   orchestration, skill-composition strategy, behavioral layer, model routing, skill
                   resolver, topic-key conventions, TypeScript patterns). Loaded on demand by
-                  workflow skills — not invoked directly. Foundation files (<code>CLAUDE.md</code>,
+                  workflow skills — not invoked directly. Foundation files (<code>AGENTS.md</code>,
                   <code>.agents/</code>, <code>scripts/</code>) ship with the cloned repo.
                 </p>
               </article>
@@ -3355,7 +3388,7 @@ bun run vars:check           # validate placeholders</code></pre>
                   <em>Strategy Setup</em> operation ("set up our git strategy", "bootstrap
                   branching") bootstraps a flow on a fresh repo: runs a decision questionnaire,
                   materializes only the long-lived branches that flow needs (ff-sync, never force),
-                  and writes a runbook into <code>CLAUDE.md</code>.
+                  and writes a runbook into <code>AGENTS.md</code>.
                 </p>
               </article>
 
@@ -3400,7 +3433,7 @@ bun run vars:check           # validate placeholders</code></pre>
               repo — policy is to commit only skills we maintain (T1). Community skills (Anthropic,
               Vercel Labs, Supabase, shadcn, Microsoft Playwright, etc.) are installed by
               <code>bun run setup</code> from upstream, either at
-              <strong>project level</strong> (T3, into <code>.claude/skills/</code> on your clone)
+              <strong>project level</strong> (T3, into <code>.agents/skills/</code> on your clone)
               or at <strong>user level</strong> (T4, into <code>~/.claude/skills/</code> for any
               project). Examples that get installed: <code>frontend-design</code>,
               <code>next-best-practices</code>, <code>next-cache-components</code>,
@@ -3494,15 +3527,19 @@ bun run vars:check           # validate placeholders</code></pre>
               <div>
                 <h3>Commands</h3>
                 <p class="muted small">
-                  Single-file markdown at <code>.claude/commands/&lt;name&gt;.md</code>. Invoke with
-                  <code>/&lt;name&gt;</code>.
+                  Generated transport aliases. The source is
+                  <code>.agents/compatibility/command-aliases.json</code>; the wrappers at
+                  <code>.claude/commands/&lt;name&gt;.md</code> and
+                  <code>.opencode/commands/&lt;name&gt;.md</code> are written by
+                  <code>bun run agents:compat</code>, never hand-edited. Invoke with
+                  <code>/&lt;name&gt;</code>; on Codex, name the target skill + mode instead.
                 </p>
                 <ul class="list-plain">
                   <li>
                     <code>/sync-ai-memory</code>
                     <span class="muted"
                       >Audit + patch the 5 always-included docs (<code>README.md</code>,
-                      <code>CLAUDE.md</code>, <code>CONTEXT.md</code>, <code>INSTALLER.md</code>,
+                      <code>AGENTS.md</code>, <code>CONTEXT.md</code>, <code>INSTALLER.md</code>,
                       <code>docs/agentic-development-engineering.md</code>) plus the standalone HTML
                       <code>docs/onboarding.html</code> and auto-detected high-frequency markdown.
                       Preserves human-authored structure.</span
@@ -3582,18 +3619,28 @@ bun run vars:check           # validate placeholders</code></pre>
                     >
                   </li>
                   <li>
-                    <code>bun run claude</code> / <code>bun run opencode</code>
+                    <code>bun run claude</code> / <code>bun run opencode</code> /
+                    <code>bun run codex</code>
                     <span class="muted"
-                      >Cross-platform launchers — wrap <code>claude</code> /
-                      <code>opencode</code> with <code>dotenv-cli</code> so every
-                      <code>.env</code> key is loaded before the agent (and its MCP servers)
-                      starts.</span
+                      >Cross-platform launchers — wrap <code>claude</code> / <code>opencode</code> /
+                      <code>codex</code> with <code>dotenv-cli</code> so every <code>.env</code> key
+                      is loaded before the agent (and its MCP servers) starts.</span
                     >
                   </li>
                   <li>
                     <code>bun run agents:setup</code>
                     <span class="muted"
                       >Interactive walkthrough that fills <code>.agents/project.yaml</code>.</span
+                    >
+                  </li>
+                  <li>
+                    <code>bun run agents:compat</code> / <code>bun run agents:compat:check</code>
+                    <span class="muted"
+                      >Regenerate / verify the harness surfaces: the <code>CLAUDE.md</code> shim,
+                      the <code>.claude/skills</code> alias, the 8 + 8 command wrappers, the three
+                      hook adapters and MCP parity across <code>.mcp.json</code> /
+                      <code>opencode.jsonc</code> / <code>.codex/config.toml</code>. The check runs
+                      inside <code>repo:check</code> and the pre-push hook.</span
                     >
                   </li>
                   <li>
@@ -3711,7 +3758,7 @@ bun run vars:check           # validate placeholders</code></pre>
                   <tr>
                     <td><code>/sync-ai-memory</code></td>
                     <td>
-                      <code>README</code>, <code>CLAUDE.md</code>, <code>CONTEXT.md</code>,
+                      <code>README</code>, <code>AGENTS.md</code>, <code>CONTEXT.md</code>,
                       <code>INSTALLER.md</code>, this page
                     </td>
                     <td>
@@ -3816,7 +3863,7 @@ bun run vars:check           # validate placeholders</code></pre>
               </li>
               <li>
                 <strong>Engram</strong> (persistent memory) — installed by gentle-ai, used
-                proactively per CLAUDE.md §12.
+                proactively per AGENTS.md §12.
               </li>
               <li>
                 <strong>Engram (MCP persistent memory)</strong>: not a skill — an MCP server that
@@ -3865,8 +3912,8 @@ bun run vars:check           # validate placeholders</code></pre>
                   the next session starts blind.
                 </p>
                 <p class="small muted">
-                  Full protocol: global <code>CLAUDE.md</code> § Engram. Installed by gentle-ai at
-                  user level — not committed in this repo.
+                  Full protocol: user-level <code>~/.claude/CLAUDE.md</code> § Engram. Installed by
+                  gentle-ai at user level — not committed in this repo, Claude Code only.
                 </p>
               </div>
             </div>
@@ -3877,7 +3924,11 @@ bun run vars:check           # validate placeholders</code></pre>
             <h2><span class="num">12.</span>MCPs available</h2>
 
             <p>
-              The four canonical MCPs are configured by <code>bun run setup</code>. Each one fills a
+              The MCP servers declared in <code>.mcp.json</code> (four in the boilerplate) are
+              configured by <code>bun run setup</code>. Each one is declared once per harness format
+              (<code>.mcp.json</code> for Claude Code, <code>opencode.jsonc</code> for OpenCode,
+              <code>.codex/config.toml</code> for Codex) and
+              <code>bun run agents:compat:check</code> keeps the three in parity. Each one fills a
               specific need:
             </p>
 
@@ -3942,7 +3993,10 @@ bun run vars:check           # validate placeholders</code></pre>
                 <strong>Skills</strong> = play scripts for the AI (multi-act, with characters that
                 delegate).
               </li>
-              <li><strong>Commands</strong> = single-act utilities you type by name.</li>
+              <li>
+                <strong>Commands</strong> = generated aliases you type by name; each one forwards to
+                a skill + mode (Claude Code and OpenCode; Codex names the skill directly).
+              </li>
               <li>
                 <strong>Scripts</strong> (<code>bun run …</code>) = what YOU run in the terminal to
                 keep the fuel (<code>.agents/project.yaml</code> + Jira fields) healthy.
@@ -3996,13 +4050,15 @@ bun run vars:check           # validate placeholders</code></pre>
               </li>
               <li>
                 <a
-                  href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/CLAUDE.md"
+                  href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/AGENTS.md"
                   target="_blank"
                   rel="noopener"
-                  ><code>CLAUDE.md</code></a
+                  ><code>AGENTS.md</code></a
                 >
                 — canonical project memory + Tool Resolution table mapping
-                <code>[TAG_TOOL]</code> pseudocode to concrete CLIs / MCPs.
+                <code>[TAG_TOOL]</code> pseudocode to concrete CLIs / MCPs. Read natively by
+                OpenCode and Codex; Claude Code loads it through the one-line
+                <code>CLAUDE.md</code> shim.
               </li>
               <li>
                 <a
@@ -4156,10 +4212,10 @@ bun run vars:check           # validate placeholders</code></pre>
               </li>
               <li>
                 <a
-                  href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.claude/skills/agentic-dev-core/SKILL.md"
+                  href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.agents/skills/agentic-dev-core/SKILL.md"
                   target="_blank"
                   rel="noopener"
-                  ><code>.claude/skills/agentic-dev-core/SKILL.md</code></a
+                  ><code>.agents/skills/agentic-dev-core/SKILL.md</code></a
                 >
                 — foundation reference host internals (passive doctrine library cited by other
                 skills).
@@ -4220,11 +4276,11 @@ bun run vars:check           # validate placeholders</code></pre>
           </a>
           <a
             class="footer-card"
-            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/CLAUDE.md"
+            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/AGENTS.md"
             target="_blank"
             rel="noopener"
           >
-            <span class="footer-card-title">CLAUDE.md</span>
+            <span class="footer-card-title">AGENTS.md</span>
             <span class="footer-card-desc">Canonical project memory + Tool Resolution table.</span>
           </a>
           <a
@@ -4240,7 +4296,7 @@ bun run vars:check           # validate placeholders</code></pre>
           </a>
           <a
             class="footer-card"
-            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.claude/skills/sprint-development/SKILL.md"
+            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.agents/skills/sprint-development/SKILL.md"
             target="_blank"
             rel="noopener"
           >
@@ -4249,7 +4305,7 @@ bun run vars:check           # validate placeholders</code></pre>
           </a>
           <a
             class="footer-card"
-            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.claude/skills/agentic-dev-core/SKILL.md"
+            href="https://github.com/upex-galaxy/agentic-dev-boilerplate/blob/main/.agents/skills/agentic-dev-core/SKILL.md"
             target="_blank"
             rel="noopener"
           >

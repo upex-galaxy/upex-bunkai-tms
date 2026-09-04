@@ -66,13 +66,13 @@ Every file in `.context/` has an owner. Do not edit auto-generated files by hand
 | `PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/context.md`, `progress.md`, `evidence/` | **[LOCAL]** — dev-authored, hand-written     | Machine-local, disposable; nothing downstream may depend on these existing. Durable session state lives under `.session/` instead; durable evidence goes to Jira. |
 | `PBI/README.md`, `PBI/templates/`      | Hand-maintained     | **[COMMIT]** — the only paths under `PBI/` actually tracked in git                  |
 
-Plan history for a story lives in the Jira field's own edit history (plus engram), not in git log — the files above are a regenerable read cache, never a commit target. Full tier rules: `.context/PBI/README.md` and `CLAUDE.md` §9. Full topic-key conventions: `.claude/skills/agentic-dev-core/references/topic-key-conventions.md`.
+Plan history for a story lives in the Jira field's own edit history (plus engram), not in git log — the files above are a regenerable read cache, never a commit target. Full tier rules: `.context/PBI/README.md` and `AGENTS.md` §9. Full topic-key conventions: `.agents/skills/agentic-dev-core/references/topic-key-conventions.md`.
 
 ## Minimum viable context
 
 A brand-new project that wants productive AI sessions should produce, in order:
 
-1. Clone the full boilerplate — `.agents/`, scripts, and `CLAUDE.md` ship at the repo root. No bootstrap step.
+1. Clone the full boilerplate — `.agents/`, scripts, and `AGENTS.md` ship at the repo root. No bootstrap step.
 2. `/project-foundation` — Constitution → PRD → SRS → Discovery outputs.
 3. `/product-management` — Seed initial backlog (epics + foundational stories) under `PBI/`.
 
@@ -81,6 +81,6 @@ After that, `/sprint-development` operates per ticket and fills in `PBI/epics/EP
 ## References
 
 - Repo architecture: `CONTEXT.md` (root) — canonical Context Engineering map
-- Project memory: `CLAUDE.md` (root) — generated/synced via `/sync-ai-memory`
-- Skill cookbook: `.claude/skills/*/SKILL.md` (also indexed in `.claude/skills/REGISTRY.md`)
-- Topic keys for engram: `.claude/skills/agentic-dev-core/references/topic-key-conventions.md`
+- Project memory: `AGENTS.md` (root) — generated/synced via `/sync-ai-memory`
+- Skill cookbook: `.agents/skills/*/SKILL.md` (also indexed in `.agents/skills/REGISTRY.md`)
+- Topic keys for engram: `.agents/skills/agentic-dev-core/references/topic-key-conventions.md`

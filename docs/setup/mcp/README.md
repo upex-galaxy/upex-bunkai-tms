@@ -10,7 +10,7 @@
 
 ### Cliente MCP
 
-La aplicación que usa el modelo de IA (Gemini CLI, Claude Code, GitHub Copilot, etc.)
+La aplicación que usa el modelo de IA (Claude Code, OpenCode, Codex, Gemini CLI, GitHub Copilot, etc.)
 
 ### Servidor MCP
 
@@ -358,14 +358,27 @@ export API_KEY="mi-clave-secreta"
 - **GitHub MCP Registry**: https://github.com/modelcontextprotocol/servers
 - **Awesome MCP Servers**: https://github.com/punkpeye/awesome-mcp-servers
 
+### Configs en este repo
+
+Este boilerplate corre sobre tres harnesses desde una sola fuente de instrucciones y skills (`AGENTS.md` + `.agents/skills/`). El inventario MCP (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`) existe una vez por formato de host, commiteado en el repo y verificado en paridad por `bun run agents:compat:check`. Los demás clientes solo tienen template o configuración manual: no hay adapter en runtime.
+
+| Harness                      | Config MCP                                               | Sintaxis de env vars                             | Launcher           |
+| ---------------------------- | -------------------------------------------------------- | ------------------------------------------------ | ------------------ |
+| Claude Code                  | `.mcp.json` (commiteada)                                 | `${VAR}`                                         | `bun run claude`   |
+| OpenCode                     | `opencode.jsonc` (commiteada)                            | `{env:VAR}`                                      | `bun run opencode` |
+| Codex CLI + Desktop          | `.codex/config.toml` (commiteada; requiere repo trusted) | `env_vars` / `bearer_token_env_var` (por nombre) | `bun run codex`    |
+| Gemini CLI                   | solo template opt-in: `docs/mcp/gemini.template.json`    | `$VAR`                                           | manual             |
+| GitHub Copilot CLI / VS Code | manual, según las guías de abajo                         | según la herramienta                             | manual             |
+
 ### Herramientas Especificas
 
 Para configuraciones especificas por herramienta, consulta:
 
 - [Claude Code](./claude-code.md)
-- [Gemini CLI](./gemini-cli.md)
-- [GitHub Copilot CLI](./copilot-cli.md)
-- [VS Code con GitHub Copilot](./vscode.md)
+- [Codex CLI + Desktop](./codex.md)
+- [Gemini CLI](./gemini-cli.md) (solo template, sin adapter en runtime)
+- [GitHub Copilot CLI](./copilot-cli.md) (manual)
+- [VS Code con GitHub Copilot](./vscode.md) (manual)
 
 ---
 

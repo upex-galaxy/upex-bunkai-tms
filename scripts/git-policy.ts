@@ -381,7 +381,7 @@ function verify(gs: GitStrategy, slug: string, stamp: boolean): number {
     log.warn('Declared policy does not match the host.');
     log.dim('Fix the host:  bun run git:policy apply --yes');
     log.dim('Fix the yaml:  edit .agents/project.yaml -> git_strategy.policy, then re-run verify');
-    log.dim('Accept it:     record WHY in this project\'s CLAUDE.md -> ## Git Strategy');
+    log.dim('Accept it:     record WHY in this project\'s AGENTS.md -> ## Git Strategy');
     return 1;
   }
 

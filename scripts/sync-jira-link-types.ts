@@ -118,7 +118,15 @@ const MANIFEST_PATH = join(REPO_ROOT, '.agents', 'jira-required.yaml');
  * flag is mainly a convenience for users who want the UPEX standard without
  * running the script against their own workspace.
  *
- * Hardcoded per-repo (QA vs DEV) so `bun up` re-syncs the URL with the script.
+ * Stays on THIS repo, unlike the fields and workflows catalogs, which are
+ * sourced from agentic-qa-boilerplate. Those two use the same slugs on both
+ * sides, so one file serves both. This one does not: this repo declares
+ * `causes` and `tested_by` (jira-required.yaml, consumed by the
+ * product-management skill) and the QA side does not, while the QA side maps
+ * the same Jira link type under the slug `problem_incident`. The catalog is a
+ * methodology-slug -> workspace-entity mapping, and the slugs diverge here, so
+ * pulling the QA copy would silently delete two declared link types.
+ *
  * Pinned to `main` so `--upex` always means "current UPEX standard".
  */
 const UPEX_UPSTREAM_URL = 'https://raw.githubusercontent.com/upex-galaxy/agentic-dev-boilerplate/main/.agents/jira-link-types.json';

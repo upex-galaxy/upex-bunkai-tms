@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "wrapperHosts": ["claude", "opencode"],
+  "aliases": [
+    {
+      "alias": "business-api-map",
+      "skill": "project-context",
+      "mode": "api",
+      "description": "Generate or refresh the business-level API map (auth model, critical journeys, architecture, integrations).",
+      "argumentHint": "[project-path-or-module]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    },
+    {
+      "alias": "business-data-map",
+      "skill": "project-context",
+      "mode": "data",
+      "description": "Generate or refresh the business data map (entities, flows, state machines, automatic processes).",
+      "argumentHint": "[project-path-or-module]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    },
+    {
+      "alias": "business-feature-map",
+      "skill": "project-context",
+      "mode": "features",
+      "description": "Generate or refresh the business feature inventory (CRUD matrix, endpoints, UI, integrations, flags).",
+      "argumentHint": "[module-or-domain]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    },
+    {
+      "alias": "dev-roadmap",
+      "skill": "project-context",
+      "mode": "dev-roadmap",
+      "description": "Generate or refresh the ticket-level dependency execution roadmap (which story unblocks which).",
+      "argumentHint": "[master-sprint-or-epic-key]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    },
+    {
+      "alias": "jira-components",
+      "skill": "jira-administration",
+      "mode": "components",
+      "description": "Plan and reconcile Jira Components against the app's real modules after explicit approval.",
+      "argumentHint": "[project-key] [target-source]",
+      "forwardArguments": true,
+      "mutability": "external-write-after-approval"
+    },
+    {
+      "alias": "jira-instance-migration",
+      "skill": "jira-administration",
+      "mode": "instance-migration",
+      "description": "Repoint the repo at a new Atlassian instance and regenerate the Jira catalogs after explicit approval.",
+      "argumentHint": "[source-host] [target-host]",
+      "forwardArguments": true,
+      "mutability": "external-and-local-write-after-approval"
+    },
+    {
+      "alias": "master-implementation-plan",
+      "skill": "project-context",
+      "mode": "master-plan",
+      "description": "Generate or refresh the dependency-cascaded, value-prioritized master implementation plan.",
+      "argumentHint": "[project-path-module-or-epic]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    },
+    {
+      "alias": "sync-ai-memory",
+      "skill": "sync-ai-memory",
+      "mode": "sync",
+      "description": "Audit and patch AI-consumed docs (AGENTS.md, README, CONTEXT, INSTALLER, docs, onboarding HTML) in place after approval.",
+      "argumentHint": "[repository-path]",
+      "forwardArguments": true,
+      "mutability": "local-write-after-approval"
+    }
+  ]
+}

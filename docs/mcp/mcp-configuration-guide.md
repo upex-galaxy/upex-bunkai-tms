@@ -25,8 +25,10 @@ Esta guía explica cómo configurar MCP (Model Context Protocol) servers para di
 | Herramienta     | Archivo Config  | Ubicación                    | Formato |
 | --------------- | --------------- | ---------------------------- | ------- |
 | **Claude Code** | `.mcp.json`     | Root del proyecto            | JSON    |
-| **OpenCode**    | `opencode.json` | Root o `~/.config/opencode/` | JSON    |
-| **Codex CLI**   | `config.toml`   | `~/.codex/` o `.codex/`      | TOML    |
+| **OpenCode**    | `opencode.jsonc` | Root o `~/.config/opencode/` | JSONC   |
+| **Codex CLI**   | `config.toml`   | `~/.codex/` o `.codex/` (proyecto: solo si el repo es trusted) | TOML    |
+
+**En este repo** los tres primeros están commiteados con el mismo conjunto de servidores (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`): `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`. `bun run agents:compat:check` los normaliza y compara tomando como conjunto canónico el que declara `.mcp.json`: un servidor que falte en otro host, o que exista en un solo host, falla el gate; esos cuatro reciben además un chequeo estricto de forma por host cuando el proyecto los declara, y cualquier otro servidor (por ejemplo `playwright`) solo el chequeo genérico de variables de `.env`. Gemini CLI queda como template opt-in, sin adapter en runtime.
 | **Gemini CLI**  | `settings.json` | `~/.gemini/`                 | JSON    |
 
 ### Diferencias Clave
@@ -35,7 +37,8 @@ Esta guía explica cómo configurar MCP (Model Context Protocol) servers para di
 | -------------- | -------------- | ---------------- | ------------------ | ------------ |
 | Root key       | `mcpServers`   | `mcp`            | `mcp_servers`      | `mcpServers` |
 | Command type   | string         | array            | string             | string       |
-| Env vars key   | `env`          | `environment`    | `env` (tabla TOML) | `env`        |
+| Env vars key   | `env`          | `environment`    | `env_vars` (por nombre) + `[server.env]` (literales) | `env`        |
+| Secreto en URL | `${VAR}`       | `{env:VAR}`      | imposible: `url` + `bearer_token_env_var` | `$VAR`       |
 | Remote type    | `type: "http"` | `type: "remote"` | `url`              | `httpUrl`    |
 | Enable/disable | N/A            | `enabled`        | `enabled`          | N/A          |
 
@@ -60,11 +63,12 @@ Los archivos en este directorio usan `{{VARIABLE}}` solo como marcador de "busca
 | ----------- | ------------------------------------------ | ------------------------------------- | ------------------------------------- |
 | Claude Code | `${VAR}` o `${VAR:-default}`               | `${API_TOKEN}` / `${HOST:-localhost}` | **Falla al parsear el config** (safe) |
 | OpenCode    | `{env:VAR}`                                | `{env:API_TOKEN}`                     | Sustituye string vacío (footgun)      |
-| Codex CLI   | `${VAR}` / `bearer_token_env_var = "NAME"` | `${API_TOKEN}`                        | Depende del campo                     |
+| Codex CLI   | `env_vars = ["NAME"]` (stdio) / `bearer_token_env_var = "NAME"` (HTTP). NO expande `${VAR}` | `env_vars = ["API_TOKEN"]`           | La var no se reenvía; el server falla en auth (401/403) |
 | Gemini CLI  | `$VAR` o `${VAR}`                          | `$API_TOKEN`                          | Depende del campo                     |
 
 **Campos donde la expansión funciona (Claude Code):** `command`, `args`, `env`, `url`, `headers`.
 **Campos donde la expansión funciona (OpenCode):** `headers`, `oauth`, y en la práctica también `command`, `environment`, `url` cuando se prueba.
+**Campos donde la expansión funciona (Codex):** ninguno. Un `${VAR}` dentro de `args` o de `[server.env]` llega al server como texto literal. Los secretos se reenvían por nombre (`env_vars`, `bearer_token_env_var`); ver la sección Codex CLI más abajo.
 
 ### Patrón Recomendado: Config Committeable con `.env`
 
@@ -74,13 +78,14 @@ Para configs compartidos con el equipo (NO commitear credenciales pero SÍ commi
 2. Reemplazá cada `{{VAR}}` por la sintaxis nativa de tu herramienta:
    - Claude: `{{TAVILY_API_KEY}}` → `${TAVILY_API_KEY}`
    - OpenCode: `{{TAVILY_API_KEY}}` → `{env:TAVILY_API_KEY}`
+   - Codex: sacá el placeholder del `args` / `env` y declará el nombre en `env_vars = ["TAVILY_API_KEY"]` (stdio) o `bearer_token_env_var = "TAVILY_API_KEY"` (HTTP)
 3. Guardá los valores reales en un archivo `.env` (gitignored)
 4. Cargá `.env` antes de lanzar el agente:
-   - Cross-platform: `bun claude` / `bun opencode` (wrapper con `dotenv-cli`)
+   - Cross-platform: `bun run claude` / `bun run opencode` / `bun run codex` (wrappers `dotenv -o -e .env`; el `-o` hace que `.env` gane sobre una variable heredada del shell)
    - Mac/Linux opcional: `.envrc` con `dotenv_if_exists .env` + `direnv`
-5. Commiteá el `.mcp.json` / `opencode.jsonc` resultantes — sin secretos, listos para el equipo
+5. Commiteá el `.mcp.json` / `opencode.jsonc` / `.codex/config.toml` resultantes — sin secretos, listos para el equipo. Corré `bun run agents:compat:check` para confirmar que los tres declaran los mismos servidores con las mismas variables de `.env`.
 
-**Ejemplos vivos**: el repositorio `agentic-dev-boilerplate` ya usa este patrón. Ver `.mcp.json` (Claude) + `opencode.jsonc` (OpenCode) + `.env.example` en la raíz.
+**Ejemplos vivos**: el repositorio `agentic-dev-boilerplate` ya usa este patrón. Ver `.mcp.json` (Claude) + `opencode.jsonc` (OpenCode) + `.codex/config.toml` (Codex) + `.env.example` en la raíz.
 
 > **⚠️ Regla crítica con env-var expansion**: si un MCP server falla al arrancar o devuelve 401/403, lo más probable es que una env var no está cargada. **Salí del agente, corregí `.env`, y volvé a entrar** — las env vars se leen una sola vez al spawnear el MCP.
 
@@ -238,7 +243,9 @@ claude mcp add-json --scope=user my-server '{"command":"npx","args":[...]}'
 
 ### Archivo: `config.toml`
 
-**Ubicación:** `~/.codex/config.toml` (global) o `.codex/config.toml` (proyecto)
+**Ubicación:** `~/.codex/config.toml` (global) o `.codex/config.toml` (proyecto). El de proyecto solo se carga si Codex confía en el repositorio (trust): la confianza es estado de runtime, no un archivo, así que `bun run setup:doctor` la reporta como WARN y no puede verificarla leyendo el disco.
+
+**En este boilerplate**: `.codex/config.toml` ya viene commiteado con los mismos servidores que declara `.mcp.json` y `.codex/hooks.json` con el hook de personalidad. Codex CLI y Codex Desktop leen el mismo archivo. Lanzá con `bun run codex`, que carga `.env` antes de arrancar. Guía completa: [`docs/setup/mcp/codex.md`](../setup/mcp/codex.md).
 
 ### Estructura Básica
 
@@ -255,6 +262,43 @@ API_KEY = "tu-api-key-aqui"
 [mcp_servers.remote-server]
 url = "https://mcp.example.com/mcp"
 bearer_token_env_var = "TOKEN_ENV_VAR"
+```
+
+### Por qué Codex no expande `${VAR}` (y cómo lo resuelve este repo)
+
+Codex no interpola placeholders dentro de `args` ni dentro de los valores de `[mcp_servers.X.env]`: un `${TAVILY_API_KEY}` escrito ahí llega al server como texto literal. La única forma de pasar un secreto es **por nombre**, y Codex lo toma del entorno del proceso (el que carga `bun run codex` desde `.env`):
+
+- `env_vars = ["NOMBRE", ...]` en un server stdio: reenvía esas variables al proceso hijo tal cual están en el entorno.
+- `bearer_token_env_var = "NOMBRE"` en un server HTTP: envía `Authorization: Bearer <valor>` leyendo esa variable.
+- `[mcp_servers.X.env]` queda solo para settings literales (`MCP_MODE = "stdio"`, `LOG_LEVEL = "error"`).
+
+Eso obliga a dos adaptaciones respecto de `.mcp.json` / `opencode.jsonc`, ambas commiteadas en `.codex/config.toml`:
+
+| Server     | Claude / OpenCode                                                   | Codex                                                                                                  | Por qué                                                                                                                                       |
+| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tavily`   | stdio `mcp-remote https://mcp.tavily.com/mcp/?tavilyApiKey=${VAR}`  | `url = "https://mcp.tavily.com/mcp/"` + `bearer_token_env_var = "TAVILY_API_KEY"`                     | El túnel `mcp-remote` existe solo para meter la key en la URL; sin interpolación no hay forma de armarla, y el endpoint acepta bearer directo. |
+| `supabase` | `--access-token ${SUPABASE_ACCESS_TOKEN}` en `args`                 | sin `--access-token`; `SUPABASE_ACCESS_TOKEN` (más URL y keys) declaradas en `env_vars`                | `@supabase/mcp-server-supabase` lee `SUPABASE_ACCESS_TOKEN` del entorno cuando falta el flag (fallback documentado).                          |
+
+`context7` y `n8n` no cambian de forma: `context7` no necesita secreto y `n8n` ya recibía todo por `env`, que en Codex pasa a `env_vars` (`N8N_API_URL`, `N8N_API_KEY`) más una tabla `.env` con los literales. `bun run agents:compat:check` compara **los nombres de variables de `.env`** de los que depende cada host, no la forma del comando, así que estas adaptaciones pasan el gate.
+
+Bloques reales de `.codex/config.toml` de este repo:
+
+```toml
+[mcp_servers.tavily]
+url = "https://mcp.tavily.com/mcp/"
+bearer_token_env_var = "TAVILY_API_KEY"
+enabled = true
+
+[mcp_servers.supabase]
+command = "bunx"
+enabled = true
+args = ["-y", "@supabase/mcp-server-supabase@latest"]
+env_vars = [
+  "SUPABASE_ACCESS_TOKEN",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_SECRET_KEY",
+]
 ```
 
 ### Comandos Útiles
@@ -580,7 +624,7 @@ url = "https://mcp.postman.com/mcp"
 bearer_token_env_var = "POSTMAN_API_KEY"
 ```
 
-> **Nota:** Para Codex, exporta la variable de entorno: `export POSTMAN_API_KEY=PMAK-...`
+> **Nota:** Para Codex, la variable tiene que existir en el entorno del proceso: `export POSTMAN_API_KEY=PMAK-...`, o agregala a `.env` y lanzá con `bun run codex`.
 
 #### Gemini CLI (`settings.json`)
 

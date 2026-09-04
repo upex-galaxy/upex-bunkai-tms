@@ -12,10 +12,10 @@ Outputs of `/project-foundation` Phase 2 — Architecture (Software side). Turns
 | `api-contracts.yaml`       | OpenAPI 3.0 endpoint definitions per domain                                   |
 
 Skill references that drive generation:
-- `.claude/skills/project-foundation/references/srs-functional.md`
-- `.claude/skills/project-foundation/references/srs-non-functional.md`
-- `.claude/skills/project-foundation/references/srs-architecture.md`
-- `.claude/skills/project-foundation/references/srs-api-contracts.md`
+- `.agents/skills/project-foundation/references/srs-functional.md`
+- `.agents/skills/project-foundation/references/srs-non-functional.md`
+- `.agents/skills/project-foundation/references/srs-architecture.md`
+- `.agents/skills/project-foundation/references/srs-api-contracts.md`
 
 ## Notes
 

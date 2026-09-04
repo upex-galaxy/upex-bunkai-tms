@@ -339,7 +339,7 @@ export const VAR_MANIFEST: VarSpec[] = [
   // The account browser/HTTP automation logs in as while validating a story
   // against the running app. Declared BY NAME in `.agents/project.yaml` →
   // `testing.automation_identity`; the contract + the prohibition list live in
-  // `.claude/skills/sprint-development/references/live-ui-identity.md`.
+  // `.agents/skills/sprint-development/references/live-ui-identity.md`.
   //
   // These two names are the RECOMMENDED DEFAULTS, tracked here so `vars:check` /
   // doctor surface a missing automation identity BEFORE a sprint instead of a
