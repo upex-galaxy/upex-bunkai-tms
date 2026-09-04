@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { validateComponentRegistry } from './lib/updater-core.ts';
-import { COMPONENTS, parseArgs, runGate, summarizeGates } from './update-boilerplate.ts';
+import { COMPONENTS, parseArgs, resolveProtectedWatchlist, runGate, summarizeGates } from './update-boilerplate.ts';
 
 const temporaryRoots: string[] = [];
 
@@ -33,6 +33,38 @@ describe('component registry', () => {
     // `.claude` itself is never a directory component: `commands` owns
     // `.claude/commands`, the alias `.claude/skills` is generated.
     expect(COMPONENTS.filter(c => c.type !== 'file-list').flatMap(c => c.paths)).not.toContain('.claude');
+  });
+});
+
+describe('protected watchlist', () => {
+  test('the husky hooks are watched (project gates), the identity files are structural, and a project without the block adds nothing', () => {
+    const root = temporaryRoot();
+    const warnings: string[] = [];
+    const watchlist = resolveProtectedWatchlist(root, m => warnings.push(m));
+    expect(warnings).toEqual([]);
+    const byPath = Object.fromEntries(watchlist.map(e => [e.path, e]));
+    expect(byPath['.husky/pre-commit']).toMatchObject({ reason: 'project gates live here', source: 'upstream' });
+    expect(byPath['.husky/pre-push']).toMatchObject({ reason: 'project gates live here', source: 'upstream' });
+    expect(byPath['.agents/project.yaml']?.structural).toBe(true);
+    expect(byPath['.agents/jira-required.yaml']?.structural).toBe(true);
+    expect(byPath['.claude/settings.json']?.structural).toBeUndefined();
+    expect(watchlist.every(e => e.source === 'upstream')).toBe(true);
+    // The husky component still owns the directory: the hooks are protected by path, not unsynced.
+    expect(COMPONENTS.find(c => c.name === 'husky')).toMatchObject({ type: 'directory', paths: ['.husky'] });
+  });
+
+  test('updater.protected_paths joins the watchlist; invalid entries are reported in Spanish and ignored', () => {
+    const root = temporaryRoot();
+    mkdirSync(join(root, '.agents'), { recursive: true });
+    writeFileSync(join(root, '.agents', 'project.yaml'), 'updater:\n  protected_paths:\n    - scripts/lint-vars.ts\n    - .husky/pre-push\n    - ../outside.ts\n    - .git/config\n');
+    const warnings: string[] = [];
+    const watchlist = resolveProtectedWatchlist(root, m => warnings.push(m));
+    expect(watchlist.filter(e => e.source === 'project').map(e => e.path)).toEqual(['scripts/lint-vars.ts']);
+    expect(watchlist.filter(e => e.path === '.husky/pre-push')).toHaveLength(1);
+    expect(warnings).toEqual([
+      'updater.protected_paths (.agents/project.yaml): entrada ignorada "../outside.ts": outside the repo (`..` segment).',
+      'updater.protected_paths (.agents/project.yaml): entrada ignorada ".git/config": under .git.',
+    ]);
   });
 });
 

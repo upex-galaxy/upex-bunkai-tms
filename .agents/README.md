@@ -15,7 +15,7 @@ The directory has two roles:
 
 | File                  | What it is                                                                                                                                                                       | Who edits it                             | How to regenerate                                                            |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `project.yaml`        | Human-edited project config: project name, repo paths, URLs, MCP server names, issue-tracker metadata, default env. ALSO holds the `git_strategy:` block (this repo's git workflow — read by `git-flow-master`; see §"`git_strategy`" below). | You (project owner) / `git-flow-master` | Edit by hand. The `git_strategy:` block is filled by `git-flow-master` Strategy Setup, NOT by `agents:setup`. |
+| `project.yaml`        | Human-edited project config: project name, repo paths, URLs, MCP server names, issue-tracker metadata, default env. ALSO holds the `git_strategy:` block (this repo's git workflow — read by `git-flow-master`; see §"`git_strategy`" below) and the `updater:` block (files `bun run up` must keep as the project's own; see §"`updater`" below). | You (project owner) / `git-flow-master` | Edit by hand. The `git_strategy:` block is filled by `git-flow-master` Strategy Setup, NOT by `agents:setup`. |
 | `jira-fields.json`    | Auto-generated catalog of every custom field in your Jira workspace, keyed by canonical slug. Each entry has `id`, `type`, optional `name`, `options`, `system`, `provider`.     | Generated only — **do not edit by hand** | `bun run jira:sync-fields`                                                   |
 | `jira-workflows.json` | Auto-generated catalog of work-type workflows, statuses, and transitions resolved against your Jira workspace. Companion to `jira-fields.json` for the work_types substrate.     | Generated only — **do not edit by hand** | `bun run jira:sync-workflows`                                                |
 | `jira-link-types.json` | Auto-generated catalog of every issue link type in your Jira workspace (e.g. `blocks`, `relates`, `is caused by`), keyed by canonical slug. Each entry has `id`, `name`, `outward`, `inward`, `exists_in_workspace`. | Generated only — **do not edit by hand** | `bun run jira:sync-link-types`                                               |
@@ -61,6 +61,22 @@ The persisted source of truth for **this repository's** git workflow lives as th
 | `meta.policy_source` | enum | `verified` / `accepted` / `declared`. `verified` = host matches the yaml exactly; `accepted` = every divergence is formally listed in `policy.accepted_divergences`; with `declared`, the skill never states what the remote requires — it says "declared, not verified". |
 
 **Policy drift.** `policy:` is intent; the hosting platform is enforcement. They drift (someone tightens protection in the UI, or the block was filled before the remote existed). `git-flow-master` reconciles them once per session at the first push / PR / merge intent, reports any mismatch with both values, and lets YOU decide whether to align the file, change the host, or accept the divergence. It never edits the block on its own.
+
+## `updater` (block inside `project.yaml`)
+
+`bun run up` never overwrites the files on its protected watchlist (`AGENTS.md`, `.agents/project.yaml`, `.agents/jira-required.yaml`, `tsconfig.json`, `eslint.config.js`, `.mcp.json`, `opencode.jsonc`, `.codex/config.toml`, `.claude/settings.json`, `.husky/pre-commit`, `.husky/pre-push`): a watched file inside a synced component is delivered once when missing, then it is project-owned, and when upstream's copy changes the parity report shows a drift row with evidence (keys, headings or hunks) instead of touching it. The `updater:` block lets a project extend that list.
+
+```yaml
+updater:
+  protected_paths: # repo-relative FILE paths; empty by default
+    - scripts/lint-vars.ts
+    - .agents/skills/acli/SKILL.md
+```
+
+- **When to list a path**: a synced file you merged by hand and want to keep across syncs. The parity row `project edit overwritten; backup: .backups/...` names exactly that situation and ends with the fix (`add the path to updater.protected_paths in .agents/project.yaml so the next sync keeps your merge`); the saved `parity-plan.md` repeats it under the row as the YAML to paste.
+- **Semantics**: identical to the upstream watchlist. Never overwritten (also under `--auto` and `--force`), delivered once from upstream when the file is missing locally, included in the sparse checkout so its upstream copy can be diffed, one drift row per upstream change (marker under `.template/upstream-sha/`).
+- **Validation**: a path outside the repo (absolute, `..`), under `.git`, a directory, or a non-string is reported at the start of the run (`updater.protected_paths (.agents/project.yaml): entrada ignorada "...": <reason>.`) and ignored; the run continues. Duplicates and paths already on the upstream watchlist are folded silently.
+- **Bootstrap-only**: `project.yaml` is never synced, so the list is entirely yours. Both keys are allowlisted in `external_consumers` (not `{{VAR}}` sources).
 
 ## `testing.automation_identity` (block inside `project.yaml`)
 

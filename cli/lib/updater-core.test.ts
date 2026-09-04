@@ -415,3 +415,65 @@ describe('detectLocalEdits (3-way: local vs the upstream copy at the lock cursor
     expect(detectLocalEdits(template, [SKILLS], {}, [], reconciled, local).size).toBe(0);
   });
 });
+
+describe('watched files inside a synced component (.husky hooks, updater.protected_paths)', () => {
+  // Live finding (Bunkai, second run): `.husky/pre-push` carried a committed
+  // project merge and every `--auto` force-applied upstream's copy over it,
+  // then re-raised the same "project edit overwritten" row. A watched path is
+  // fed into `bootstrapOnlyPaths`: delivered once when missing, never
+  // overwritten; the rest of the component keeps syncing.
+  const husky: Component = { name: 'husky', type: 'directory', paths: ['.husky'] };
+  const scripts: Component = { name: 'scripts', type: 'directory', paths: ['scripts'] };
+  const protectedPaths = ['.husky/pre-commit', '.husky/pre-push', 'scripts/lint-vars.ts'];
+
+  function template(): string {
+    const dir = temporaryRoot();
+    git(dir, ['init', '--quiet', '--initial-branch=main']);
+    git(dir, ['config', 'user.email', 'test@example.com']);
+    git(dir, ['config', 'user.name', 'test']);
+    write(dir, '.husky/pre-commit', '#!/bin/sh\nbunx lint-staged\n');
+    write(dir, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\n');
+    write(dir, '.husky/_/husky.sh', 'helper v2\n');
+    write(dir, 'scripts/lint-vars.ts', 'upstream lint-vars\n');
+    write(dir, 'scripts/other.ts', 'upstream other\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '--quiet', '-m', 'upstream']);
+    return dir;
+  }
+
+  test('a project edit on a watched hook is never offered as diverged; the helper next to it still syncs', () => {
+    const upstream = template();
+    const project = temporaryRoot();
+    write(project, '.husky/pre-commit', '#!/bin/sh\nbunx lint-staged\n');
+    write(project, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\nbun run e2e\n'); // project gate
+    write(project, '.husky/_/husky.sh', 'helper v1\n'); // lags upstream
+    const entries = reconcileComponentsByContent(upstream, [husky], project, protectedPaths);
+    expect(entries.map(e => [e.path, e.classification])).toEqual([['.husky/_/husky.sh', 'locally-diverged']]);
+    expect(isBootstrapOnlyFile('.husky/pre-push', husky, protectedPaths)).toBe(true);
+    expect(isBootstrapOnlyFile('.husky/_/husky.sh', husky, protectedPaths)).toBe(false);
+    // Without the watchlist the same edit would be overwritten ('theirs').
+    expect(reconcileComponentsByContent(upstream, [husky], project, []).map(e => e.path).sort()).toEqual(['.husky/_/husky.sh', '.husky/pre-push']);
+  });
+
+  test('a synced file the project listed in updater.protected_paths behaves the same', () => {
+    const upstream = template();
+    const project = temporaryRoot();
+    write(project, 'scripts/lint-vars.ts', 'project merge of lint-vars\n');
+    write(project, 'scripts/other.ts', 'upstream other\n');
+    expect(reconcileComponentsByContent(upstream, [scripts], project, protectedPaths)).toEqual([]);
+    write(project, 'scripts/other.ts', 'stale other\n');
+    expect(reconcileComponentsByContent(upstream, [scripts], project, protectedPaths).map(e => [e.path, e.classification])).toEqual([['scripts/other.ts', 'locally-diverged']]);
+  });
+
+  test('a watched path absent locally is delivered once from upstream', () => {
+    const upstream = template();
+    const project = temporaryRoot();
+    write(project, '.husky/_/husky.sh', 'helper v2\n');
+    const entries = reconcileComponentsByContent(upstream, [husky], project, protectedPaths);
+    expect(entries.map(e => [e.path, e.classification]).sort()).toEqual([['.husky/pre-commit', 'new-upstream'], ['.husky/pre-push', 'new-upstream']]);
+    expect(classifyFile({ component: 'husky', path: '.husky/pre-push', status: 'A', fromSha: '', toSha: 'x', added: 1, removed: 0, isBinary: false, templateOldSha: null, templateNewSha: 'x' }, upstream, project, [husky], protectedPaths)).toBe('new-upstream');
+    // Once present, a later upstream change never reaches it.
+    write(project, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\n');
+    expect(classifyFile({ component: 'husky', path: '.husky/pre-push', status: 'M', fromSha: '', toSha: 'y', added: 1, removed: 0, isBinary: false, templateOldSha: 'x', templateNewSha: 'y' }, upstream, project, [husky], protectedPaths)).toBe('unchanged');
+  });
+});

@@ -13,6 +13,7 @@ import {
   collectParityFindings,
   compatErrorSuggestion,
   compatErrorSurface,
+  configEntries,
   configKeyDelta,
   configKeys,
   describeWatchedFile,
@@ -20,11 +21,14 @@ import {
   diffStats,
   markdownSectionDelta,
   persistArchivedSkillMarkers,
+  protectNote,
   readGitStrategyStamp,
   renderParityReport,
   runVerdict,
   strictVerdict,
+  structuralEvidence,
   SURFACE_ORDER,
+  watchedFileEvidence,
 } from './updater-parity.ts';
 
 const temporaryRoots: string[] = [];
@@ -140,17 +144,63 @@ describe('section-level evidence', () => {
   });
 
   test('key delta separates upstream additions from project-only keys', () => {
-    expect(configKeyDelta(['a', 'b.x'], ['a', 'b.y'])).toEqual({ added: ['b.y'], projectOnly: ['b.x'] });
+    expect(configKeyDelta(['a', 'b.x'], ['a', 'b.y'])).toEqual({ added: ['b.y'], projectOnly: ['b.x'], changed: [] });
+    // With values (Maps) the shared keys whose values differ are named; a top
+    // key with object children is judged through its children only.
+    const mine = configEntries('{"a":1,"b":{"x":1,"y":[1]},"c":{"z":1}}', 'x.json')!;
+    const theirs = configEntries('{"a":2,"b":{"x":1,"y":[2]},"c":{"z":1}}', 'x.json')!;
+    expect(configKeyDelta(mine, theirs)).toEqual({ added: [], projectOnly: [], changed: ['a', 'b.y'] });
   });
 
   test('watched-file evidence names sections for markdown and keys for config, plus hunk counts', () => {
     const diff = '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new\n@@ -5 +5 @@\n+added\n';
     expect(diffStats(diff)).toEqual({ hunks: 2, added: 2, removed: 1 });
     const md = describeWatchedFile('AGENTS.md', '## A\n\nx\n', '## A\n\ny\n\n## B\n\nz\n', diff);
-    expect(md).toBe('upstream added 1 heading(s): "B"; changed 1: "A"; 2 hunks (+2/-1)');
+    expect(md).toBe('port upstream additions only: "B"; keep project bodies at: "A"; 2 hunks (+2/-1)');
     const json = describeWatchedFile('.mcp.json', '{"mcpServers":{"a":{}}}', '{"mcpServers":{"a":{},"b":{}}}', diff);
-    expect(json).toBe('upstream added key(s): "mcpServers.b"; 2 hunks (+2/-1)');
-    expect(describeWatchedFile('eslint.config.js', 'a', 'b', diff)).toBe('content differs; 2 hunks (+2/-1)');
+    expect(json).toBe('upstream added 1 key: "mcpServers.b"; nothing project-only; 2 hunks (+2/-1)');
+    expect(describeWatchedFile('eslint.config.js', 'a', 'b', diff)).toBe('content differs (no key structure): review the hunks in the saved file; 2 hunks (+2/-1)');
+  });
+
+  test('cost signal: the verb follows what porting upstream adds and what it costs the project', () => {
+    // Live finding (Bunkai): tsconfig.json read `merge` with no cost signal,
+    // while applying upstream literally would have dropped the Next.js keys.
+    const diff = '--- a\n+++ b\n@@ -1 +1 @@\n-old\n+new\n';
+    const row = (project: string, upstream: string, file = 'x.json'): [string, string] => {
+      const e = watchedFileEvidence(file, project, upstream, diff);
+      return [e.suggested, e.evidence.replace(/; 1 hunk \(\+1\/-1\)$/, '')];
+    };
+    // Both: port the additions, keep the project's own keys.
+    expect(row('{"compilerOptions":{"jsx":"preserve","paths":{}}}', '{"compilerOptions":{"paths":{},"allowJs":true},"include":[]}'))
+      .toEqual(['merge', 'port upstream additions only: "compilerOptions.allowJs", "include"; keep project-only key: "compilerOptions.jsx"']);
+    // Only upstream additions, nothing else differs: nothing to lose.
+    expect(row('{"a":{"x":1}}', '{"a":{"x":1,"y":2}}')).toEqual(['take upstream', 'upstream added 1 key: "a.y"; nothing project-only']);
+    // Upstream additions next to project values at shared keys: port the additions only.
+    expect(row('{"a":{"x":1}}', '{"a":{"x":2,"y":2}}')).toEqual(['merge', 'port upstream additions only: "a.y"; keep project values at: "a.x"']);
+    // Only project-only keys: nothing to port.
+    expect(row('{"a":{"x":1},"mine":{}}', '{"a":{"x":1}}')).toEqual(['keep project', 'project-only key: "mine"; upstream adds nothing']);
+    expect(row('{"a":{"x":1},"mine":{}}', '{"a":{"x":2}}')).toEqual(['merge', 'keep project-only key: "mine"; values differ at: "a.x" (port what you want)']);
+    // Same keys: the changed values are named, never a bare merge.
+    expect(row('{"a":{"x":1}}', '{"a":{"x":2}}')).toEqual(['merge', 'same keys, values differ at: "a.x" (port what you want, keep the rest)']);
+    expect(row('{"a":{"x":1}}', '{ "a": { "x": 1 } }')).toEqual(['keep project', 'same keys and values; formatting or comments differ']);
+    // Markdown: the same table over headings.
+    expect(row('## A\n\nx\n\n## MINE\n\nm\n', '## A\n\nx\n\n## B\n\nb\n', 'AGENTS.md'))
+      .toEqual(['merge', 'port upstream additions only: "B"; keep project-only heading: "MINE"']);
+    expect(row('## A\n\nx\n', '## A\n\nx\n\n## B\n\nb\n', 'AGENTS.md')).toEqual(['take upstream', 'upstream added 1 heading: "B"; nothing project-only']);
+    expect(row('## A\n\nx\n\n## MINE\n\nm\n', '## A\n\nx\n', 'AGENTS.md')).toEqual(['keep project', 'project-only heading: "MINE"; upstream adds nothing']);
+    expect(row('## A\n\nx\n', '## A\n\ny\n', 'AGENTS.md')).toEqual(['merge', 'same headings, body differs in 1: "A" (port what you want, keep the rest)']);
+    // TOML and YAML carry values too.
+    expect(row('[a]\nx = 1\n', '[a]\nx = 2\n', 'c.toml')[1]).toBe('same keys, values differ at: "a.x" (port what you want, keep the rest)');
+    expect(row('a:\n  x: 1\n', 'a:\n  x: 1\n  y: 2\n', 'p.yaml')).toEqual(['take upstream', 'upstream added 1 key: "a.y"; nothing project-only']);
+  });
+
+  test('structural (identity) files: a row only for upstream additions, labelled informational; values are never compared', () => {
+    expect(structuralEvidence('.agents/project.yaml', 'project:\n  name: acme\n', 'project:\n  name: null\n')).toBeNull();
+    expect(structuralEvidence('.agents/project.yaml', 'project:\n  name: acme\n  extra: 1\n', 'project:\n  name: null\n')).toBeNull();
+    expect(structuralEvidence('.agents/project.yaml', 'project:\n  name: acme\n', 'project:\n  name: null\nupdater:\n  protected_paths: []\n'))
+      .toBe('informational: upstream added 2 keys: "updater", "updater.protected_paths"; merge = add the new keys, values are project identity and never compared');
+    expect(structuralEvidence('x.md', '## A\n\nmine\n', '## A\n\ntheirs\n')).toBeNull();
+    expect(structuralEvidence('x.md', '## A\n', '## A\n\n## B\n')).toBe('informational: upstream added 1 heading: "B"; merge = add the new headings, values are project identity and never compared');
   });
 });
 
@@ -203,15 +253,16 @@ describe('collectParityFindings', () => {
     expect(agents.surface).toBe('instructions');
     expect(agents.blocking).toBe(false);
     expect(agents.suggested).toBe('merge');
-    expect(agents.evidence).toContain('upstream added 1 heading(s): "5.5 MULTI-HARNESS"');
-    expect(agents.evidence).toContain('changed 1: "1. RULES"');
-    expect(agents.evidence).toContain('project-only 1: "9. ACME ONLY"');
+    expect(agents.evidence).toContain('port upstream additions only: "5.5 MULTI-HARNESS"');
+    expect(agents.evidence).toContain('keep project-only heading: "9. ACME ONLY"');
+    expect(agents.evidence).toContain('body differs in 1: "1. RULES"');
     expect(agents.evidence).toMatch(/\d+ hunks? \(\+\d+\/-\d+\)$/);
     expect(agents.diff).toContain('@@');
 
     const settings = byPath('.claude/settings.json');
     expect(settings.surface).toBe('hooks');
-    expect(settings.evidence).toContain('upstream added key(s): "permissions.deny", "env"');
+    expect(settings.evidence).toContain('port upstream additions only: "permissions.deny", "env"; keep project values at: "permissions.allow"');
+    expect(settings.suggested).toBe('merge');
     expect(settings.diff).toContain('-      "Bash(bun *)"');
 
     // MCP set errors fold into one row per host, and the watched-file drift on
@@ -220,7 +271,7 @@ describe('collectParityFindings', () => {
     const codex = byPath('.codex/config.toml');
     expect(codex.surface).toBe('mcp');
     expect(codex.blocking).toBe(true);
-    expect(codex.evidence).toMatch(/^missing: n8n \(declared in \.mcp\.json\); only here: acme \(not in \.mcp\.json\): declare them in \.mcp\.json and opencode\.jsonc, or remove them; upstream added key\(s\): "mcp_servers\.n8n"; project-only key\(s\): "mcp_servers\.acme"; \d+ hunks? \(\+\d+\/-\d+\)$/);
+    expect(codex.evidence).toMatch(/^missing: n8n \(declared in \.mcp\.json\); only here: acme \(not in \.mcp\.json\): declare them in \.mcp\.json and opencode\.jsonc, or remove them; port upstream additions only: "mcp_servers\.n8n"; keep project-only key: "mcp_servers\.acme"; \d+ hunks? \(\+\d+\/-\d+\)$/);
     // Following `take upstream` literally would delete `acme`, the project's own
     // server: a row naming project-only content always suggests `merge`.
     expect(codex.suggested).toBe('merge');
@@ -356,8 +407,8 @@ describe('renderParityReport', () => {
     expect(prompt).toContain('WAIT for a decision per row');
     expect(prompt).toContain('(keep project | take upstream | merge) BEFORE editing anything');
     expect(prompt).toContain('| # | Surface | File | What differs (evidence) | Suggested |');
-    expect(prompt).toContain('| 1 | Instructions | AGENTS.md | upstream added 1 heading(s): "5.5 MULTI-HARNESS"');
-    expect(prompt).toMatch(/\| MCP \| \.codex\/config\.toml \| missing: n8n \(declared in \.mcp\.json\); only here: acme \(not in \.mcp\.json\): declare them in \.mcp\.json and opencode\.jsonc, or remove them; upstream added key\(s\): "mcp_servers\.n8n"[^|]* \| merge \(BLOCKING\) \|/);
+    expect(prompt).toContain('| 1 | Instructions | AGENTS.md | port upstream additions only: "5.5 MULTI-HARNESS"');
+    expect(prompt).toMatch(/\| MCP \| \.codex\/config\.toml \| missing: n8n \(declared in \.mcp\.json\); only here: acme \(not in \.mcp\.json\): declare them in \.mcp\.json and opencode\.jsonc, or remove them; port upstream additions only: "mcp_servers\.n8n"[^|]* \| merge \(BLOCKING\) \|/);
     expect(prompt).toContain('`take upstream` is suggested only where the project lacks the content entirely');
     expect(prompt.trimEnd().endsWith('Post-merge: bun run agents:compat && bun run agents:compat:check && bun run repo:check')).toBe(true);
     // Scannable: never the diff itself, never rule numbers.
@@ -484,7 +535,7 @@ describe('never a destructive default for project-only content', () => {
     expect(findings.find(f => f.path === '.codex/config.toml')?.suggested).toBe('take upstream');
     const opencode = findings.find(f => f.path === 'opencode.jsonc')!;
     expect(opencode.suggested).toBe('merge');
-    expect(opencode.evidence).toContain('project-only key(s): "mcp.dbhub"');
+    expect(opencode.evidence).toContain('keep project-only key: "mcp.dbhub"');
     expect(opencode.blocking).toBe(true);
     // Any other compat contract still takes upstream's shape (no project content involved).
     expect(collectParityFindings({ ...base(root, upstream), compatErrors: ['claude hook command must be exactly: node x'] })[0].suggested).toBe('take upstream');
@@ -516,14 +567,68 @@ describe('rows the diff-based table could not see before', () => {
     expect(skill.surface).toBe('skills');
     expect(skill.suggested).toBe('merge');
     expect(skill.blocking).toBe(false);
-    expect(skill.evidence).toBe('project edit overwritten; backup: .backups/update-1/.agents/skills/acli/SKILL.md; 1 hunk (+1/-1) vs applied');
+    expect(skill.evidence).toBe('project edit overwritten; backup: .backups/update-1/.agents/skills/acli/SKILL.md; 1 hunk (+1/-1) vs applied; add the path to updater.protected_paths in .agents/project.yaml so the next sync keeps your merge');
+    expect(skill.note).toBe(protectNote('.agents/skills/acli/SKILL.md'));
     expect(skill.diff).toContain('-project body');
     expect(skill.diff).toContain('+upstream body');
     expect(findings.find(f => f.path === 'scripts/x.ts')?.surface).toBe('components');
-    expect(findings.find(f => f.path === 'docs/gone.md')?.evidence).toBe('project edit overwritten; backup: none; backup unavailable');
+    expect(findings.find(f => f.path === 'docs/gone.md')?.evidence).toBe('project edit overwritten; backup: none; backup unavailable; add the path to updater.protected_paths in .agents/project.yaml so the next sync keeps your merge');
     const body = buildParityFileBody(findings, META);
     expect(body).toContain('### 1. .agents/skills/acli/SKILL.md');
     expect(body).toContain('-project body');
+    // The saved file repeats the fix under every overwritten-edit row, as the YAML to paste.
+    expect(body).toContain('    updater:\n      protected_paths:\n        - .agents/skills/acli/SKILL.md');
+    expect(body).toContain('### 3. docs/gone.md');
+    expect(body).toContain('        - docs/gone.md');
+  });
+
+  test('a structural drift entry: informational row for upstream additions only, no row for value differences', () => {
+    const root = temporaryRoot();
+    const upstream = temporaryRoot();
+    write(root, '.agents/project.yaml', 'project:\n  project_name: acme\ngit_strategy:\n  strategy: solo-main\n  meta:\n    strategy_source: chosen\n');
+    write(upstream, '.agents/project.yaml', 'project:\n  project_name: null\ngit_strategy:\n  strategy: solo-main\n  meta:\n    strategy_source: inherited\n');
+    write(root, '.agents/jira-required.yaml', 'required:\n  severity:\n    type: option\n');
+    write(upstream, '.agents/jira-required.yaml', 'required:\n  severity:\n    type: option\n  priority:\n    type: option\n');
+    const findings = collectParityFindings({
+      ...base(root, upstream),
+      drift: [{ path: '.agents/project.yaml', reason: 'identity', structural: true }, { path: '.agents/jira-required.yaml', reason: 'manifest', structural: true }],
+    });
+    // project.yaml differs only in values (and the git stamp is `chosen`): nothing at all.
+    expect(findings.filter(f => f.path === '.agents/project.yaml')).toEqual([]);
+    const jira = findings.find(f => f.path === '.agents/jira-required.yaml')!;
+    expect(jira.surface).toBe('instructions');
+    expect(jira.suggested).toBe('merge');
+    expect(jira.blocking).toBe(false);
+    expect(jira.evidence).toBe('informational: upstream added 1 key: "required.priority"; merge = add the new keys, values are project identity and never compared');
+    expect(jira.diff).toContain('+  priority:');
+  });
+
+  test('a drifted file without key structure (a husky hook) reads its hunks; the row is never blocking', () => {
+    const root = temporaryRoot();
+    const upstream = temporaryRoot();
+    write(root, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\nbun run e2e\n');
+    write(upstream, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\n');
+    const findings = collectParityFindings({ ...base(root, upstream), drift: [{ path: '.husky/pre-push', reason: 'project gates live here' }] });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].surface).toBe('components');
+    expect(findings[0].suggested).toBe('merge');
+    expect(findings[0].blocking).toBe(false);
+    expect(findings[0].evidence).toBe('content differs (no key structure): review the hunks in the saved file; 1 hunk (+0/-1)');
+    expect(findings[0].diff).toContain('-bun run e2e');
+    // A project-declared path sits on Skills (under .agents/skills/) or Componentes, never on Instrucciones.
+    write(root, '.agents/skills/acli/SKILL.md', '## A\n\n## Project note\n');
+    write(upstream, '.agents/skills/acli/SKILL.md', '## A\n');
+    write(root, 'scripts/x.ts', 'mine\n');
+    write(upstream, 'scripts/x.ts', 'theirs\n');
+    const declared = collectParityFindings({ ...base(root, upstream), drift: [
+      { path: '.agents/skills/acli/SKILL.md', reason: 'declared', source: 'project' },
+      { path: 'scripts/x.ts', reason: 'declared', source: 'project' },
+    ] });
+    expect(declared.map(f => [f.path, f.surface, f.suggested])).toEqual([
+      ['.agents/skills/acli/SKILL.md', 'skills', 'keep project'],
+      ['scripts/x.ts', 'components', 'merge'],
+    ]);
+    expect(declared[0].evidence).toBe('project-only heading: "Project note"; upstream adds nothing; 1 hunk (+0/-2)');
   });
 
   test('a package.json key kept at the project value: one row per key, both values in the file body only', () => {

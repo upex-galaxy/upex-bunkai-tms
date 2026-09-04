@@ -25,12 +25,18 @@
  * Rules: no finding without evidence (a heading, a key, a server id, a count);
  * ids are sequential per run; the prompt speaks in headings and sections,
  * never in rule numbers. Full diffs go to the saved file, never to the terminal.
+ * A `merge` on a watched file always says what to port and what to keep (the
+ * upstream additions vs the project-only keys or sections); a structural
+ * (identity) file compares keys only and fires, labelled `informational`, for
+ * upstream additions alone.
  */
 
 import type { CompatibilityErrorGroup } from './agent-compatibility.ts';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+import { parse as parseYaml } from 'yaml';
 
 import { stripJsonComments } from './agent-compatibility-contracts.ts';
 import { COMMAND_ALIAS_MANIFEST, COMMAND_ALIAS_PROJECT_MANIFEST, compatibilityErrorGroup, undeclaredCommandWrappers } from './agent-compatibility.ts';
@@ -63,6 +69,8 @@ export interface ParityFinding {
   diff?: string
   /** Plain-text detail (gate output, the two package.json values), written to the saved file when there is no diff. */
   detail?: string
+  /** A follow-up the saved file repeats under the row (how to keep a merge on the next sync). */
+  note?: string
 }
 
 /** A synced file the project had edited that this run overwrote (`RunSummary.localEditsOverwritten`). */
@@ -100,6 +108,10 @@ export interface GateResult {
 export interface ParityDriftInput {
   path: string
   reason: string
+  /** Compare keys only (project identity file): a row for upstream additions, none for value differences. */
+  structural?: boolean
+  /** `project` = declared in `updater.protected_paths`: a synced component file, so its row sits on Skills or Componentes. */
+  source?: 'upstream' | 'project'
 }
 
 export interface HeldBackComponent {
@@ -208,6 +220,20 @@ function otherMcpHostFiles(host: string): string {
 
 const MAX_NAMES = 3;
 
+/** Appended to every overwritten-edit row: the one-line fix that makes the next sync keep the merge. */
+export const PROTECT_HINT = 'add the path to updater.protected_paths in .agents/project.yaml so the next sync keeps your merge';
+
+/** The same fix, spelled out as the YAML to paste, repeated under the row in the saved file. */
+export function protectNote(filePath: string): string {
+  return [
+    `Keep this merge on the next sync: ${PROTECT_HINT}:`,
+    '',
+    '    updater:',
+    '      protected_paths:',
+    `        - ${filePath}`,
+  ].join('\n');
+}
+
 // ============================================================================
 // DIFF HELPERS
 // ============================================================================
@@ -310,32 +336,42 @@ export function markdownSectionDelta(project: string, upstream: string): Section
 }
 
 /**
- * Keys of a structured config, two levels deep (`top`, `top.child` when the
- * child is a plain object). Two levels is where MCP registries, permission
- * blocks and `git_strategy` live; deeper is noise.
+ * Entries of a structured config, two levels deep (`top`, `top.child` when the
+ * child is a plain object), key -> value. Two levels is where MCP registries,
+ * permission blocks and `git_strategy` live; deeper is noise. YAML falls back
+ * to a line scan (keys only) when the parser rejects the text.
  */
-export function configKeys(text: string, filePath: string): string[] | null {
+export function configEntries(text: string, filePath: string): Map<string, unknown> | null {
   const ext = path.extname(filePath).toLowerCase();
   let parsed: unknown;
   try {
     if (ext === '.json') { parsed = JSON.parse(text); }
     else if (ext === '.jsonc') { parsed = JSON.parse(stripJsonComments(text).replace(/,(\s*[}\]])/g, '$1')); }
     else if (ext === '.toml') { parsed = Bun.TOML.parse(text); }
-    else if (ext === '.yaml' || ext === '.yml') { return yamlKeys(text); }
+    else if (ext === '.yaml' || ext === '.yml') {
+      try { parsed = parseYaml(text); }
+      catch { return new Map(yamlKeys(text).map(k => [k, undefined])); }
+    }
     else { return null; }
   }
   catch {
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) { return null; }
-  const keys: string[] = [];
+  const entries = new Map<string, unknown>();
   for (const [top, value] of Object.entries(parsed as Record<string, unknown>)) {
-    keys.push(top);
+    entries.set(top, value);
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      for (const child of Object.keys(value as Record<string, unknown>)) { keys.push(`${top}.${child}`); }
+      for (const [child, childValue] of Object.entries(value as Record<string, unknown>)) { entries.set(`${top}.${child}`, childValue); }
     }
   }
-  return keys;
+  return entries;
+}
+
+/** Keys of a structured config, two levels deep (see `configEntries`). */
+export function configKeys(text: string, filePath: string): string[] | null {
+  const entries = configEntries(text, filePath);
+  return entries ? [...entries.keys()] : null;
 }
 
 /** Top-level and first-nested YAML keys (block style, 2-space indent), no parser needed. */
@@ -354,49 +390,121 @@ function yamlKeys(text: string): string[] {
 export interface KeyDelta {
   added: string[]
   projectOnly: string[]
+  /** Keys both copies have with a different value (a top key whose children differ counts through its children only). */
+  changed: string[]
 }
 
-export function configKeyDelta(projectKeys: string[], upstreamKeys: string[]): KeyDelta {
-  const mine = new Set(projectKeys);
-  const theirs = new Set(upstreamKeys);
-  return {
-    added: [...theirs].filter(k => !mine.has(k)),
-    projectOnly: [...mine].filter(k => !theirs.has(k)),
-  };
+/** Stable serialization for value comparison (key order of objects normalized). */
+function stableValue(value: unknown): string {
+  if (typeof value !== 'object' || value === null) { return JSON.stringify(value) ?? 'undefined'; }
+  if (Array.isArray(value)) { return `[${value.map(stableValue).join(',')}]`; }
+  const obj = value as Record<string, unknown>;
+  return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${stableValue(obj[k])}`).join(',')}}`;
+}
+
+/**
+ * Upstream additions, project-only keys, and keys whose values differ. Given
+ * plain key lists (no values) `changed` stays empty.
+ */
+export function configKeyDelta(project: readonly string[] | ReadonlyMap<string, unknown>, upstream: readonly string[] | ReadonlyMap<string, unknown>): KeyDelta {
+  const mine = project instanceof Map ? project : new Map((project as readonly string[]).map(k => [k, undefined]));
+  const theirs = upstream instanceof Map ? upstream : new Map((upstream as readonly string[]).map(k => [k, undefined]));
+  const withValues = project instanceof Map && upstream instanceof Map;
+  const added = [...theirs.keys()].filter(k => !mine.has(k));
+  const projectOnly = [...mine.keys()].filter(k => !theirs.has(k));
+  const changed: string[] = [];
+  if (withValues) {
+    for (const [key, value] of theirs) {
+      if (!mine.has(key)) { continue; }
+      // A top key with object children is judged through its children.
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) { continue; }
+      if (stableValue(mine.get(key)) !== stableValue(value)) { changed.push(key); }
+    }
+  }
+  return { added, projectOnly, changed };
 }
 
 export interface WatchedFileEvidence {
   evidence: string
   /** The project has headings or keys upstream lacks: `take upstream` would delete them. */
   projectOnly: boolean
+  /** The cost-aware verb: what porting upstream would add, and what it would cost the project. */
+  suggested: ParitySuggestion
+}
+
+/**
+ * Verb + evidence for one watched file from what the two copies share and
+ * lack. `unit` names the structure compared ("key" / "heading"). Never a bare
+ * `merge`: the evidence says what to port and what to keep.
+ */
+function costSignal(unit: string, added: string[], projectOnly: string[], changed: string[]): { parts: string[], suggested: ParitySuggestion } {
+  const units = (n: number): string => `${unit}${n === 1 ? '' : 's'}`;
+  const changedNote = unit === 'heading' ? `body differs in ${changed.length}: ${listNames(changed)}` : `values differ at: ${listNames(changed)}`;
+  if (added.length > 0 && projectOnly.length > 0) {
+    const parts = [`port upstream additions only: ${listNames(added)}`, `keep project-only ${units(projectOnly.length)}: ${listNames(projectOnly)}`];
+    if (changed.length > 0) { parts.push(changedNote); }
+    return { parts, suggested: 'merge' };
+  }
+  if (added.length > 0) {
+    if (changed.length === 0) { return { parts: [`upstream added ${added.length} ${units(added.length)}: ${listNames(added)}`, 'nothing project-only'], suggested: 'take upstream' }; }
+    return { parts: [`port upstream additions only: ${listNames(added)}`, `keep project ${unit === 'heading' ? 'bodies' : 'values'} at: ${listNames(changed)}`], suggested: 'merge' };
+  }
+  if (projectOnly.length > 0) {
+    if (changed.length === 0) { return { parts: [`project-only ${units(projectOnly.length)}: ${listNames(projectOnly)}`, 'upstream adds nothing'], suggested: 'keep project' }; }
+    return { parts: [`keep project-only ${units(projectOnly.length)}: ${listNames(projectOnly)}`, `${changedNote} (port what you want)`], suggested: 'merge' };
+  }
+  if (changed.length > 0) { return { parts: [`same ${units(2)}, ${changedNote} (port what you want, keep the rest)`], suggested: 'merge' }; }
+  return { parts: [`same ${units(2)} and ${unit === 'heading' ? 'bodies' : 'values'}; formatting or comments differ`], suggested: 'keep project' };
 }
 
 /** Evidence for a watched file, from its two copies plus the diff. */
 export function watchedFileEvidence(filePath: string, project: string, upstream: string, diff: string): WatchedFileEvidence {
   const stats = formatStats(diffStats(diff));
-  const parts: string[] = [];
+  let parts: string[];
   let projectOnly = false;
+  let suggested: ParitySuggestion = 'merge';
   if (path.extname(filePath).toLowerCase() === '.md') {
     const delta = markdownSectionDelta(project, upstream);
-    if (delta.added.length > 0) { parts.push(`upstream added ${delta.added.length} heading(s): ${listNames(delta.added)}`); }
-    if (delta.changed.length > 0) { parts.push(`changed ${delta.changed.length}: ${listNames(delta.changed)}`); }
-    if (delta.removed.length > 0) { parts.push(`project-only ${delta.removed.length}: ${listNames(delta.removed)}`); projectOnly = true; }
-    if (parts.length === 0) { parts.push('same headings, body differs'); }
+    projectOnly = delta.removed.length > 0;
+    ({ parts, suggested } = costSignal('heading', delta.added, delta.removed, delta.changed));
   }
   else {
-    const mine = configKeys(project, filePath);
-    const theirs = configKeys(upstream, filePath);
+    const mine = configEntries(project, filePath);
+    const theirs = configEntries(upstream, filePath);
     if (mine && theirs) {
       const delta = configKeyDelta(mine, theirs);
-      if (delta.added.length > 0) { parts.push(`upstream added key(s): ${listNames(delta.added)}`); }
-      if (delta.projectOnly.length > 0) { parts.push(`project-only key(s): ${listNames(delta.projectOnly)}`); projectOnly = true; }
-      if (parts.length === 0) { parts.push('same keys, values differ'); }
+      projectOnly = delta.projectOnly.length > 0;
+      ({ parts, suggested } = costSignal('key', delta.added, delta.projectOnly, delta.changed));
     }
     else {
-      parts.push('content differs');
+      // No key structure (a shell hook, a JS config): the hunks are the evidence.
+      parts = ['content differs (no key structure): review the hunks in the saved file'];
     }
   }
-  return { evidence: `${parts.join('; ')}; ${stats}`, projectOnly };
+  return { evidence: `${parts.join('; ')}; ${stats}`, projectOnly, suggested };
+}
+
+/**
+ * Structure-only comparison for a project identity file: keys or headings
+ * upstream added, nothing else. `null` when upstream added nothing (a value
+ * difference is project identity, not drift: no row).
+ */
+export function structuralEvidence(filePath: string, project: string, upstream: string): string | null {
+  let added: string[];
+  let unit: string;
+  if (path.extname(filePath).toLowerCase() === '.md') {
+    added = markdownSectionDelta(project, upstream).added;
+    unit = 'heading';
+  }
+  else {
+    const mine = configEntries(project, filePath);
+    const theirs = configEntries(upstream, filePath);
+    if (!mine || !theirs) { return null; }
+    added = configKeyDelta(mine, theirs).added;
+    unit = 'key';
+  }
+  if (added.length === 0) { return null; }
+  return `informational: upstream added ${added.length} ${unit}${added.length === 1 ? '' : 's'}: ${listNames(added)}; merge = add the new ${unit}s, values are project identity and never compared`;
 }
 
 /** One evidence sentence for a watched file, from its two copies plus the diff. */
@@ -454,9 +562,12 @@ function readIfExists(filePath: string): string | null {
   catch { return null; }
 }
 
-function watchedSurface(filePath: string): ParitySurface {
+function watchedSurface(filePath: string, source: 'upstream' | 'project' = 'upstream'): ParitySurface {
   if (filePath === '.mcp.json' || filePath === 'opencode.jsonc' || filePath === '.codex/config.toml') { return 'mcp'; }
   if (filePath === '.claude/settings.json') { return 'hooks'; }
+  if (filePath.startsWith('.agents/skills/')) { return 'skills'; }
+  // Synced component files kept as the project's own (.husky hooks, a declared path).
+  if (filePath.startsWith('.husky/') || source === 'project') { return 'components'; }
   return 'instructions';
 }
 
@@ -533,18 +644,27 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
   // 1. Watched files that drifted: section-level evidence, full diff for the
   //    file. Kept aside until the compat errors are known: a compat error on
   //    the same path folds the drift into its (blocking) row.
+  //    A structural entry (project identity) fires only for upstream
+  //    additions, labelled `informational`, and its keys are the evidence; a
+  //    value-only difference is no row at all.
   const drifted = new Map<string, Omit<ParityFinding, 'id'> & { projectOnly: boolean }>();
   for (const entry of input.drift) {
     const project = readIfExists(path.join(input.root, entry.path));
     const upstream = readIfExists(path.join(input.upstreamDir, entry.path));
     if (project === null || upstream === null) { continue; }
     const diff = diffNoIndex(path.join(input.root, entry.path), path.join(input.upstreamDir, entry.path));
-    const { evidence, projectOnly } = watchedFileEvidence(entry.path, project, upstream, diff);
+    if (entry.structural) {
+      const evidence = structuralEvidence(entry.path, project, upstream);
+      if (evidence === null) { continue; }
+      drifted.set(entry.path, { surface: watchedSurface(entry.path, entry.source), path: entry.path, evidence, suggested: 'merge', blocking: false, diff, projectOnly: true });
+      continue;
+    }
+    const { evidence, projectOnly, suggested } = watchedFileEvidence(entry.path, project, upstream, diff);
     drifted.set(entry.path, {
-      surface: watchedSurface(entry.path),
+      surface: watchedSurface(entry.path, entry.source),
       path: entry.path,
       evidence,
-      suggested: 'merge',
+      suggested,
       blocking: false,
       diff,
       projectOnly,
@@ -671,7 +791,9 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
   }
 
   // 7. Synced files the project had edited and this run overwrote: the edit
-  //    lives in the backup; the row says where, and how far the two are apart.
+  //    lives in the backup; the row says where, how far the two are apart,
+  //    and how to keep the merge next time (`updater.protected_paths`). A
+  //    path already protected never reaches here: it is never overwritten.
   for (const edit of input.localEdits ?? []) {
     const current = path.join(input.root, edit.path);
     const backupRel = edit.backupPath ? path.relative(input.root, edit.backupPath).replace(/\\/g, '/') : null;
@@ -682,10 +804,11 @@ export function collectParityFindings(input: ParityInput): ParityFinding[] {
     findings.push({
       surface: edit.path.startsWith('.agents/skills/') ? 'skills' : 'components',
       path: edit.path,
-      evidence: `project edit overwritten; backup: ${backupRel ?? 'none'}; ${diff ? `${formatStats(stats)} vs applied` : 'backup unavailable'}`,
+      evidence: `project edit overwritten; backup: ${backupRel ?? 'none'}; ${diff ? `${formatStats(stats)} vs applied` : 'backup unavailable'}; ${PROTECT_HINT}`,
       suggested: 'merge',
       blocking: false,
       diff: diff || undefined,
+      note: protectNote(edit.path),
     });
   }
 
@@ -790,6 +913,7 @@ export function buildParityPrompt(findings: ParityFinding[], meta: ParityMeta): 
     `Full diffs per row live in ${meta.promptFile}${copies}.`,
     'Rows marked BLOCKING failed a compatibility contract and must be resolved for `bun run agents:compat:check` to pass.',
     '`take upstream` is suggested only where the project lacks the content entirely; a row naming project-only servers, keys, headings or edits suggests `merge` (its backup or values are in the saved file).',
+    'A `merge` row says what to port (upstream additions) and what to keep (project-only). A row labelled `informational` is a project identity file compared by keys only: merge = add the listed keys, never the values.',
     '',
     '| # | Surface | File | What differs (evidence) | Suggested |',
     '|---|---|---|---|---|',
@@ -801,15 +925,13 @@ export function buildParityPrompt(findings: ParityFinding[], meta: ParityMeta): 
 
 export function buildParityFileBody(findings: ParityFinding[], meta: ParityMeta): string {
   const today = new Date().toISOString().slice(0, 10);
-  const evidence = findings.filter(f => f.diff || f.detail).flatMap(f => [
+  const evidence = findings.filter(f => f.diff || f.detail || f.note).flatMap(f => [
     `### ${f.id}. ${f.path}`,
     '',
     f.evidence,
     '',
-    f.diff ? '```diff' : '```text',
-    (f.diff ?? f.detail ?? '').trimEnd(),
-    '```',
-    '',
+    ...(f.diff || f.detail ? [f.diff ? '```diff' : '```text', (f.diff ?? f.detail ?? '').trimEnd(), '```', ''] : []),
+    ...(f.note ? [f.note, ''] : []),
   ]);
   return [
     '# Parity plan — AI review prompt',

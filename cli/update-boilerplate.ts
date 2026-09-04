@@ -32,7 +32,7 @@ import {
   suggestCommitMessage,
   UPDATER_UPSTREAM_DIR_ENV,
 } from './lib/updater-core';
-import { detectProtectedDrift, persistMarkers } from './lib/updater-drift';
+import { detectProtectedDrift, mergeProtectedWatchlist, persistMarkers, readProjectProtectedPaths } from './lib/updater-drift';
 import {
   applyHarnessMigration,
   describeHarnessMigration,
@@ -57,7 +57,7 @@ import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifes
 // --- CONFIGURATION ---
 // Not tied to the lock schema (`schemaVersion: 7` stays): it stamps the lock's
 // `cliVersion` and the ignore-file sentinel header, which is matched by prefix.
-const CLI_VERSION = '8.1';
+const CLI_VERSION = '8.2';
 // `UPEX_TEMPLATE_REPO` points the updater at another source: a fork, or a LOCAL
 // clone (absolute path / file:// URL, cloned with plain git, no gh session) to
 // exercise an unpublished boilerplate branch against a consumer repo.
@@ -143,6 +143,9 @@ export const COMPONENTS: Component[] = [
   { name: 'context', type: 'directory', paths: ['.context'], bootstrapOnly: true, frameworkFiles: ['README.md'], frameworkFilesExcept: ['.context/ADR/README.md'] },
   { name: 'context-engineering', type: 'file-list', paths: ['.'], files: ['CONTEXT.md'] },
   { name: 'vscode', type: 'directory', paths: ['.vscode'] },
+  // `.husky/pre-commit` and `.husky/pre-push` are on PROTECTED_WATCHLIST (the
+  // project's gates live there): delivered once when missing, never
+  // overwritten. Anything else under `.husky/` (the `_/` helpers) keeps syncing.
   { name: 'husky', type: 'directory', paths: ['.husky'] },
   { name: 'tooling', type: 'file-list', paths: ['.'], files: TOOLING_FILES },
   // .env.example carries no secrets (every value is empty / placeholder) so it
@@ -243,12 +246,20 @@ REPORTE DE PARIDAD (al final de cada corrida, incluido --dry-run):
   (gitignored, un solo uso; con --dry-run no se guarda). "take upstream" solo
   se sugiere cuando al proyecto le falta ese contenido por completo: una fila
   con servidores, claves, secciones o ediciones que solo tiene el proyecto
-  sugiere "merge", nunca un reemplazo. Los archivos protegidos (AGENTS.md,
-  .agents/project.yaml, .mcp.json, .claude/settings.json, …) nunca se
-  sobrescriben: solo aparecen en ese reporte. .claude/settings.json y .codex/
-  se entregan UNA vez si faltan. Un archivo sincronizado que el proyecto habia
-  editado y la corrida sobrescribio gana una fila (backup en .backups/). Las
-  claves de package.json que se mantienen locales ganan una fila cada una.
+  sugiere "merge", nunca un reemplazo, y una fila "merge" siempre dice que
+  portar (lo que upstream agrego) y que conservar (lo que solo tiene el
+  proyecto). Los archivos protegidos (AGENTS.md, .agents/project.yaml,
+  .mcp.json, .claude/settings.json, .husky/pre-commit, .husky/pre-push, …)
+  nunca se sobrescriben: solo aparecen en ese reporte. .claude/settings.json,
+  .codex/ y los hooks de .husky/ se entregan UNA vez si faltan. El proyecto
+  suma sus propias rutas protegidas en .agents/project.yaml ->
+  updater.protected_paths (archivos sincronizados que fusiono a mano): mismo
+  trato que la lista de upstream. Un archivo sincronizado que el proyecto
+  habia editado y la corrida sobrescribio gana una fila (backup en .backups/)
+  que dice como protegerlo. .agents/project.yaml y .agents/jira-required.yaml
+  se comparan solo por estructura: fila "informational" cuando upstream agrego
+  claves, ninguna fila por valores distintos. Las claves de package.json que
+  se mantienen locales ganan una fila cada una.
   Una corrida que no aplica nada deja el arbol byte-identico (el lock no se
   reescribe solo para cambiar la fecha). Un abort (arbol sucio, lock corrupto,
   clone fallido, migracion o self-update rechazados) termina en "Abortado." y
@@ -775,15 +786,40 @@ async function upsertAutomationIdentityBlock(
 
 const PROTECTED_WATCHLIST: ProtectedWatchEntry[] = [
   { path: 'AGENTS.md', reason: 'per-project AI memory (identity, env URLs, custom rules); CLAUDE.md is only a generated shim onto it', markerPath: '.template/claude-md.upstream.sha' },
-  { path: '.agents/project.yaml', reason: 'per-project identity + env map, but upstream keeps ADDING structural blocks (e.g. git_strategy). A project scaffolded before a block existed never learns it should have one.' },
-  { path: '.agents/jira-required.yaml', reason: 'methodology manifest: upstream owns the baseline work_types + field slugs, the project owns its fallbacks and omissions. It is the INPUT to jira:sync-workflows, which catalogs only the work_types declared in it — a stale manifest silently regenerates a truncated jira-workflows.json and still exits 0.' },
+  // `structural`: project identity. Only keys upstream ADDED make a row
+  // (informational); a value that differs from upstream's own scaffold never does.
+  { path: '.agents/project.yaml', reason: 'per-project identity + env map, but upstream keeps ADDING structural blocks (e.g. git_strategy). A project scaffolded before a block existed never learns it should have one.', structural: true },
+  { path: '.agents/jira-required.yaml', reason: 'methodology manifest: upstream owns the baseline work_types + field slugs, the project owns its fallbacks and omissions. It is the INPUT to jira:sync-workflows, which catalogs only the work_types declared in it — a stale manifest silently regenerates a truncated jira-workflows.json and still exits 0.', structural: true },
   { path: 'tsconfig.json', reason: 'path aliases are the contract every synced file imports through — a new upstream alias breaks synced code in a project whose tsconfig never learned it.' },
   { path: 'eslint.config.js', reason: 'lint rules evolve upstream and .husky/pre-commit (which IS synced) runs eslint against this local config.' },
   { path: '.mcp.json', reason: 'MCP registry with project-specific servers/vars' },
   { path: 'opencode.jsonc', reason: 'OpenCode MCP registry (paired with .mcp.json)' },
   { path: '.codex/config.toml', reason: 'Codex MCP registry (paired with .mcp.json / opencode.jsonc; `agents:compat:check` enforces parity across the three)' },
   { path: '.claude/settings.json', reason: 'project permissions and hook wiring; never overwritten' },
+  // Synced component (`husky`) files that carry the project's own gates. Before
+  // 8.2 every run force-applied upstream's copy over a committed merge and
+  // re-raised the same row forever. Same delivery as `.claude/settings.json`:
+  // once when missing (bootstrapOnlyPaths below), then project-owned.
+  { path: '.husky/pre-commit', reason: 'project gates live here' },
+  { path: '.husky/pre-push', reason: 'project gates live here' },
 ];
+
+/**
+ * The watchlist this run enforces: the upstream entries above plus every
+ * valid path the project declared in `.agents/project.yaml` ->
+ * `updater.protected_paths` (a synced file it merged by hand and wants kept).
+ * Project entries get the same treatment as upstream ones: never overwritten,
+ * delivered once when missing, drift row with hunk evidence, sparse checkout.
+ * An invalid entry (outside the repo, under `.git`, a directory, not a
+ * string) is reported and ignored, never fatal.
+ */
+export function resolveProtectedWatchlist(cwd: string, warn: (message: string) => void = () => {}): ProtectedWatchEntry[] {
+  const declared = readProjectProtectedPaths(cwd);
+  for (const r of declared.rejected) {
+    warn(`updater.protected_paths (.agents/project.yaml): entrada ignorada "${r.value}": ${r.reason}.`);
+  }
+  return mergeProtectedWatchlist(PROTECTED_WATCHLIST, declared.paths);
+}
 
 // NOT on the watchlist, deliberately — do not "fix" this asymmetry:
 //
@@ -1051,10 +1087,10 @@ export function summarizeGates(gates: readonly GateResult[]): string | null {
   }).join('; ');
 }
 
-function makeParityHook(sink: ReportSink, priorLockSha: string, dryRun: boolean): (summary: RunSummary) => Promise<void> {
+function makeParityHook(sink: ReportSink, priorLockSha: string, dryRun: boolean, watchlist: readonly ProtectedWatchEntry[]): (summary: RunSummary) => Promise<void> {
   return async (summary: RunSummary): Promise<void> => {
     const cwd = process.cwd();
-    const drifted = detectProtectedDrift(PROTECTED_WATCHLIST, UPSTREAM_DIR, cwd);
+    const drifted = detectProtectedDrift(watchlist, UPSTREAM_DIR, cwd);
     // Markers FIRST: one nudge per upstream change even if the user ignores
     // it. A dry-run persists nothing: the real run will nudge.
     if (!dryRun) { persistMarkers(drifted, cwd); }
@@ -1085,7 +1121,7 @@ function makeParityHook(sink: ReportSink, priorLockSha: string, dryRun: boolean)
     const findings = collectParityFindings({
       root: cwd,
       upstreamDir: UPSTREAM_DIR,
-      drift: drifted.map(d => ({ path: d.path, reason: d.reason })),
+      drift: drifted.map(d => ({ path: d.path, reason: d.reason, structural: d.structural === true, source: d.source })),
       compatErrors,
       archivedSkills,
       archivedSkillsDir,
@@ -1476,6 +1512,10 @@ async function main(): Promise<void> {
   const updaterOwnedPaths = migration ? harnessMigrationTouchedPaths(migration) : [];
   // Lock cursor BEFORE this run advances it: the parity prompt names both shas.
   const priorLockSha = readLock(process.cwd()).templateCommit;
+  // Upstream watchlist + the project's own `updater.protected_paths`. Feeds the
+  // never-overwrite rule (bootstrapOnlyPaths), the sparse checkout and the
+  // drift rows below.
+  const watchlist = resolveProtectedWatchlist(process.cwd(), msg => sink.warn(msg));
 
   const cfg: UpdaterConfig = {
     templateRepo: TEMPLATE_REPO,
@@ -1495,7 +1535,15 @@ async function main(): Promise<void> {
       { path: 'package.json', sections: ['scripts', 'devDependencies', 'dependencies', 'lint-staged'] },
     ],
     deprecatedFiles: DEPRECATED_FILES,
-    bootstrapOnlyPaths: [...AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`), '.agents/compatibility/command-aliases.project.json'],
+    // Every watched path is project-owned inside a synced component too:
+    // delivered once when missing, never overwritten (`.husky/pre-push`, a
+    // path from `updater.protected_paths`). Paths no component owns are
+    // simply never walked.
+    bootstrapOnlyPaths: [
+      ...AGENTS_BOOTSTRAP_FILES.map(f => `.agents/${f}`),
+      '.agents/compatibility/command-aliases.project.json',
+      ...watchlist.map(e => e.path),
+    ],
     agentsFrameworkFiles: AGENTS_FRAMEWORK_FILES,
     // Generated surfaces (see GENERATED_PATHS): never synced, never reported;
     // the afterApply hooks below rebuild them from their sources.
@@ -1506,7 +1554,7 @@ async function main(): Promise<void> {
     repoOnlyPaths: REPO_ONLY_PATHS,
     // Watchlist files are NOT synced — included in the sparse clone only so
     // the protected-drift hook can read their upstream copies.
-    sparseExtraPaths: PROTECTED_WATCHLIST.map(e => e.path),
+    sparseExtraPaths: watchlist.map(e => e.path),
     selfUpdateComponent: 'cli',
     promptFile: PARITY_PROMPT_PATH,
     hooks: {
@@ -1519,7 +1567,7 @@ async function main(): Promise<void> {
         ? composeHooks(
             sink,
             async () => { runFacts.envNewKeys = computeEnvNewKeys(UPSTREAM_DIR); },
-            makeParityHook(sink, priorLockSha, true),
+            makeParityHook(sink, priorLockSha, true, watchlist),
           )
         : composeHooks(
             sink,
@@ -1538,7 +1586,7 @@ async function main(): Promise<void> {
             // AGENTS.md keeps the legacy CLAUDE.md marker), the compat check,
             // the gates, the migration archive and the rest into the single
             // parity report main() prints after runUpdate returns.
-            makeParityHook(sink, priorLockSha, false),
+            makeParityHook(sink, priorLockSha, false, watchlist),
           ),
     },
   };
