@@ -6,7 +6,7 @@
 # `bun run agents:compat:check`) más servidores opt-in que el repo no activa.
 #
 # Un checkout de este proyecto NO necesita copiar nada: `.codex/config.toml` ya
-# trae los cuatro servidores canónicos. Usá este template para:
+# trae los mismos servidores que declara `.mcp.json`. Usá este template para:
 #   - un config global en ~/.codex/config.toml (fuera de este repo), o
 #   - sumar un bloque opt-in a `.codex/config.toml` (y a los otros dos hosts,
 #     o el gate de paridad falla).

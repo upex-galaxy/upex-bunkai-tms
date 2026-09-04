@@ -28,7 +28,7 @@ Esta guía explica cómo configurar MCP (Model Context Protocol) servers para di
 | **OpenCode**    | `opencode.jsonc` | Root o `~/.config/opencode/` | JSONC   |
 | **Codex CLI**   | `config.toml`   | `~/.codex/` o `.codex/` (proyecto: solo si el repo es trusted) | TOML    |
 
-**En este repo** los tres primeros están commiteados con los mismos cuatro servidores (`context7`, `tavily`, `supabase`, `n8n`): `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`. `bun run agents:compat:check` los normaliza y compara tomando como conjunto canónico el que declara `.mcp.json`: un servidor que falte en otro host, o que exista en un solo host, falla el gate; esos cuatro reciben además un chequeo estricto de forma por host cuando el proyecto los declara, y cualquier otro servidor (por ejemplo `playwright`) solo el chequeo genérico de variables de `.env`. Gemini CLI queda como template opt-in, sin adapter en runtime.
+**En este repo** los tres primeros están commiteados con el mismo conjunto de servidores (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`): `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`. `bun run agents:compat:check` los normaliza y compara tomando como conjunto canónico el que declara `.mcp.json`: un servidor que falte en otro host, o que exista en un solo host, falla el gate; esos cuatro reciben además un chequeo estricto de forma por host cuando el proyecto los declara, y cualquier otro servidor (por ejemplo `playwright`) solo el chequeo genérico de variables de `.env`. Gemini CLI queda como template opt-in, sin adapter en runtime.
 | **Gemini CLI**  | `settings.json` | `~/.gemini/`                 | JSON    |
 
 ### Diferencias Clave
@@ -245,7 +245,7 @@ claude mcp add-json --scope=user my-server '{"command":"npx","args":[...]}'
 
 **Ubicación:** `~/.codex/config.toml` (global) o `.codex/config.toml` (proyecto). El de proyecto solo se carga si Codex confía en el repositorio (trust): la confianza es estado de runtime, no un archivo, así que `bun run setup:doctor` la reporta como WARN y no puede verificarla leyendo el disco.
 
-**En este boilerplate**: `.codex/config.toml` ya viene commiteado con los cuatro servidores canónicos y `.codex/hooks.json` con el hook de personalidad. Codex CLI y Codex Desktop leen el mismo archivo. Lanzá con `bun run codex`, que carga `.env` antes de arrancar. Guía completa: [`docs/setup/mcp/codex.md`](../setup/mcp/codex.md).
+**En este boilerplate**: `.codex/config.toml` ya viene commiteado con los mismos servidores que declara `.mcp.json` y `.codex/hooks.json` con el hook de personalidad. Codex CLI y Codex Desktop leen el mismo archivo. Lanzá con `bun run codex`, que carga `.env` antes de arrancar. Guía completa: [`docs/setup/mcp/codex.md`](../setup/mcp/codex.md).
 
 ### Estructura Básica
 

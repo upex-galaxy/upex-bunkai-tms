@@ -10,9 +10,12 @@ import { isInside } from './lib/agent-compatibility.ts';
 import {
   applyHarnessMigration,
   describeHarnessMigration,
+  HARNESS_MIGRATION_RESULT_ENV,
+  harnessMigrationTouchedPaths,
   LEGACY_CLAUDE_HOOK,
   MIGRATION_BACKUP_DIR,
   planHarnessMigration,
+  readHarnessMigrationResultFromEnv,
 } from './lib/updater-harness-migration.ts';
 
 const temporaryRoots: string[] = [];
@@ -31,6 +34,16 @@ function write(root: string, relativePath: string, contents: string): void {
   const destination = join(root, relativePath);
   mkdirSync(dirname(destination), { recursive: true });
   writeFileSync(destination, contents);
+}
+
+/**
+ * Cast through `unknown`, never straight to `NodeJS.ProcessEnv`: this file is
+ * synced into downstream projects, and a Next.js host makes `NODE_ENV` a
+ * REQUIRED `ProcessEnv` property, under which the direct cast fails `tsc`
+ * (TS2352). Guarded by `cli/updater-host-types.test.ts`.
+ */
+function fakeEnv(vars: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return vars as unknown as NodeJS.ProcessEnv;
 }
 
 /**
@@ -332,5 +345,84 @@ describe('cross-harness migration apply', () => {
     expect(applyHarnessMigration(root).applied).toBe(false);
     expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(PROJECT_MEMORY);
     expect(lstatSync(join(root, '.claude/skills')).isSymbolicLink()).toBe(true);
+  });
+});
+
+describe('settings hook repoint + touched paths', () => {
+  // `.claude/settings.json` is protected (never synced), so once the migration
+  // archives the emitter nobody else would repoint the hook command: Claude Code
+  // would run a hook whose file no longer exists, on every prompt.
+  const LEGACY_SETTINGS = JSON.stringify({
+    permissions: { allow: ['Bash(bun *)', 'Bash(acme-deploy *)'], deny: ['Bash(sudo *)'] },
+    hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/${LEGACY_CLAUDE_HOOK}"`, timeout: 5 }] }] },
+    enabledMcpjsonServers: ['acme'],
+  }, null, 2);
+
+  test('repoints ONLY the legacy hook path and keeps every project permission verbatim', () => {
+    const root = legacyConsumer();
+    write(root, '.claude/settings.json', LEGACY_SETTINGS);
+
+    const plan = planHarnessMigration(root);
+    expect(plan.repointsSettingsHook).toBe(true);
+    expect(describeHarnessMigration(plan).join('\n')).toContain('.claude/settings.json: hook command repointed');
+
+    const result = applyHarnessMigration(root, plan);
+    expect(result.repointedSettingsHook).toBe(true);
+
+    const after = readFileSync(join(root, '.claude/settings.json'), 'utf8');
+    expect(after).toBe(LEGACY_SETTINGS.split(LEGACY_CLAUDE_HOOK).join('.agents/hooks/personality-reinject.mjs'));
+    expect(after).toContain('Bash(acme-deploy *)');
+    expect(after).toContain('"enabledMcpjsonServers"');
+    expect(after).not.toContain(LEGACY_CLAUDE_HOOK);
+
+    // Idempotent: a second plan has nothing left to repoint.
+    expect(planHarnessMigration(root).repointsSettingsHook).toBe(false);
+  });
+
+  test('a settings file already on the canonical emitter is never rewritten', () => {
+    const root = legacyConsumer();
+    const canonical = LEGACY_SETTINGS.split(LEGACY_CLAUDE_HOOK).join('.agents/hooks/personality-reinject.mjs');
+    write(root, '.claude/settings.json', canonical);
+    const result = applyHarnessMigration(root);
+    expect(result.repointedSettingsHook).toBe(false);
+    expect(readFileSync(join(root, '.claude/settings.json'), 'utf8')).toBe(canonical);
+  });
+
+  test('touched paths name exactly what the migration wrote, so the dirty-tree guard can exempt them', () => {
+    const root = legacyConsumer();
+    write(root, '.claude/settings.json', LEGACY_SETTINGS);
+    write(root, '.agents/skills/sprint-development/SKILL.md', 'canonical\n');
+    git(root, ['init', '--quiet']);
+
+    const result = applyHarnessMigration(root);
+    expect(harnessMigrationTouchedPaths(result).sort()).toEqual([
+      '.agents/skills/acme-internal',
+      '.claude/hooks/personality-reinject.js',
+      '.claude/settings.json',
+      '.claude/skills',
+      '.gitignore',
+      MIGRATION_BACKUP_DIR,
+      'AGENTS.md',
+      'CLAUDE.md',
+    ].sort());
+
+    // Nothing applied → nothing touched.
+    expect(harnessMigrationTouchedPaths(applyHarnessMigration(root))).toEqual([]);
+  });
+
+  test('an applied result survives the trip through the re-exec child\'s environment', () => {
+    const root = legacyConsumer();
+    write(root, '.agents/skills/sprint-development/SKILL.md', 'canonical\n');
+    const result = applyHarnessMigration(root);
+    expect(result.archivedSkills).toEqual(['sprint-development']);
+
+    const env = fakeEnv({ [HARNESS_MIGRATION_RESULT_ENV]: JSON.stringify(result) });
+    expect(readHarnessMigrationResultFromEnv(env)).toEqual(result);
+    // The child's own guard exemptions come from the same result.
+    expect(harnessMigrationTouchedPaths(readHarnessMigrationResultFromEnv(env)!)).toEqual(harnessMigrationTouchedPaths(result));
+
+    expect(readHarnessMigrationResultFromEnv(fakeEnv())).toBeNull();
+    expect(readHarnessMigrationResultFromEnv(fakeEnv({ [HARNESS_MIGRATION_RESULT_ENV]: '{not json' }))).toBeNull();
+    expect(readHarnessMigrationResultFromEnv(fakeEnv({ [HARNESS_MIGRATION_RESULT_ENV]: '{"applied":"yes"}' }))).toBeNull();
   });
 });

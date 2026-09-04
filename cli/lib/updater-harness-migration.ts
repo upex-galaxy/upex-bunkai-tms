@@ -56,6 +56,10 @@ export const MIGRATION_BACKUP_DIR = '.template/pre-agents-migration';
  */
 export const LEGACY_CLAUDE_HOOK = '.claude/hooks/personality-reinject.js';
 
+/** Where the emitter lives now; `.claude/settings.json` must point here. */
+export const CANONICAL_HOOK_EMITTER = '.agents/hooks/personality-reinject.mjs';
+export const CLAUDE_SETTINGS_FILE = '.claude/settings.json';
+
 /** What the instruction files need. */
 export type InstructionsAction
   /** `AGENTS.md` already exists and `CLAUDE.md` is the shim (or absent): nothing to do. */
@@ -85,6 +89,13 @@ export interface HarnessMigrationPlan {
   replacesClaudeSkillsDirectory: boolean
   /** True when the Claude-only hook copy still exists and must be archived. */
   archivesLegacyHook: boolean
+  /**
+   * True when `.claude/settings.json` still names the legacy hook path. That file
+   * is project-owned (protected watchlist, never synced), so nothing downstream
+   * would repoint it: archiving the emitter without this leaves Claude Code
+   * running a hook command whose file no longer exists, on every prompt.
+   */
+  repointsSettingsHook: boolean
   needed: boolean
   /** Non-empty when the migration must refuse instead of guessing. */
   blockers: string[]
@@ -102,6 +113,52 @@ export interface HarnessMigrationResult {
   unindexedFiles: number
   /** `.gitignore` entries appended so the generated artifacts stay out of the repo. */
   ignoredEntriesAdded: string[]
+  /** True when the hook command in `.claude/settings.json` was repointed to the canonical emitter. */
+  repointedSettingsHook: boolean
+}
+
+/**
+ * Env var through which the wrapper hands an applied migration result to the
+ * self-update re-exec child (JSON of `HarnessMigrationResult`). The child plans
+ * nothing (the repo is migrated by then), yet it owns the end-of-run report:
+ * without this it would neither list what THIS run archived nor know that the
+ * `.claude/skills` alias must wait for the migration commit.
+ */
+export const HARNESS_MIGRATION_RESULT_ENV = 'UPEX_UPDATER_MIGRATION_RESULT';
+
+/** Parse the result a parent process serialized, or null when absent or malformed. */
+export function readHarnessMigrationResultFromEnv(env: NodeJS.ProcessEnv = process.env): HarnessMigrationResult | null {
+  const raw = env[HARNESS_MIGRATION_RESULT_ENV];
+  if (!raw) { return null; }
+  try {
+    const parsed = JSON.parse(raw) as Partial<HarnessMigrationResult>;
+    if (typeof parsed !== 'object' || parsed === null || typeof parsed.applied !== 'boolean' || !Array.isArray(parsed.archivedSkills)) {
+      return null;
+    }
+    return parsed as HarnessMigrationResult;
+  }
+  catch {
+    return null;
+  }
+}
+
+/**
+ * Repo-relative paths an applied migration wrote, moved or unindexed. The
+ * updater's dirty-tree guard exempts exactly these: a tree that was clean before
+ * `bun run up` must not be refused because the preflight did its job.
+ */
+export function harnessMigrationTouchedPaths(result: HarnessMigrationResult): string[] {
+  if (!result.applied) { return []; }
+  const paths = new Set<string>();
+  if (result.promotedInstructions) { paths.add('AGENTS.md'); paths.add('CLAUDE.md'); }
+  if (result.plan.instructions === 'normalize-shim') { paths.add('CLAUDE.md'); }
+  if (result.plan.replacesClaudeSkillsDirectory) { paths.add('.claude/skills'); }
+  for (const skill of result.movedSkills) { paths.add(`.agents/skills/${skill}`); }
+  if (result.archivedLegacyHook) { paths.add(LEGACY_CLAUDE_HOOK); }
+  if (result.repointedSettingsHook) { paths.add(CLAUDE_SETTINGS_FILE); }
+  if (result.ignoredEntriesAdded.length > 0) { paths.add('.gitignore'); }
+  paths.add(MIGRATION_BACKUP_DIR);
+  return [...paths];
 }
 
 /**
@@ -255,13 +312,15 @@ export function planHarnessMigration(root = process.cwd()): HarnessMigrationPlan
   }
 
   const archivesLegacyHook = isRealFile(join(resolvedRoot, LEGACY_CLAUDE_HOOK));
+  const repointsSettingsHook = settingsNameLegacyHook(resolvedRoot);
 
   const needed = instructions === 'promote-claude-md'
     || instructions === 'normalize-shim'
     || skillsToMove.length > 0
     || skillsToArchive.length > 0
     || replacesClaudeSkillsDirectory
-    || archivesLegacyHook;
+    || archivesLegacyHook
+    || repointsSettingsHook;
 
   return {
     instructions,
@@ -270,9 +329,15 @@ export function planHarnessMigration(root = process.cwd()): HarnessMigrationPlan
     skillsShimLinks,
     replacesClaudeSkillsDirectory,
     archivesLegacyHook,
+    repointsSettingsHook,
     needed,
     blockers,
   };
+}
+
+function settingsNameLegacyHook(root: string): boolean {
+  const settings = join(root, CLAUDE_SETTINGS_FILE);
+  return isRealFile(settings) && readFileSync(settings, 'utf8').includes(LEGACY_CLAUDE_HOOK);
 }
 
 /** One human-readable line per action the plan will take. */
@@ -299,6 +364,9 @@ export function describeHarnessMigration(plan: HarnessMigrationPlan): string[] {
   if (plan.archivesLegacyHook) {
     lines.push(`${LEGACY_CLAUDE_HOOK} -> ${MIGRATION_BACKUP_DIR}/hooks/ (archived; the emitter now lives in .agents/hooks/)`);
   }
+  if (plan.repointsSettingsHook) {
+    lines.push(`${CLAUDE_SETTINGS_FILE}: hook command repointed to ${CANONICAL_HOOK_EMITTER} (path substring only; permissions and every other key untouched)`);
+  }
   return lines;
 }
 
@@ -323,6 +391,7 @@ export function applyHarnessMigration(
     backupDir: null,
     unindexedFiles: 0,
     ignoredEntriesAdded: [],
+    repointedSettingsHook: false,
   };
 
   if (plan.blockers.length > 0) {
@@ -379,6 +448,15 @@ export function applyHarnessMigration(
     archivedLegacyHook = true;
   }
 
+  // Surgical string replacement, not a rewrite: the file holds the project's
+  // permissions and is never synced, so only the stale path may change.
+  let repointedSettingsHook = false;
+  if (plan.repointsSettingsHook) {
+    const settings = join(resolvedRoot, CLAUDE_SETTINGS_FILE);
+    writeFileSync(settings, readFileSync(settings, 'utf8').split(LEGACY_CLAUDE_HOOK).join(CANONICAL_HOOK_EMITTER));
+    repointedSettingsHook = true;
+  }
+
   // Must happen while `.claude/skills` is gone and BEFORE the compatibility hook
   // puts a symlink there: git cannot rewrite an index entry behind one.
   const unindexedFiles = unindexLegacySkillTree(resolvedRoot);
@@ -396,5 +474,6 @@ export function applyHarnessMigration(
     backupDir,
     unindexedFiles,
     ignoredEntriesAdded,
+    repointedSettingsHook,
   };
 }

@@ -33,6 +33,7 @@
  * Side effects: none. This script never edits files or installs anything.
  */
 
+import type { CompatibilityCheck, CompatibilityErrorGroup } from './lib/agent-compatibility.ts';
 import type { AtlassianUrlSource } from './lib/atlassian-instance.ts';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -48,6 +49,8 @@ import {
 import {
   checkAgentCompatibility,
   commandWrapperCounts,
+  describeAliasStatus,
+  groupCompatibilityErrors,
   validateCanonicalSources,
 } from './lib/agent-compatibility.ts';
 import {
@@ -236,6 +239,10 @@ export interface AgentCompatibilityDiagnostic {
   /** Every file-verifiable part of the contract holds (alias, wrappers, hooks, MCP parity, shim). */
   file_correct: boolean
   errors: string[]
+  /** Errors bucketed per surface, so "alias pending" and "MCP drift" never read as one flat failure. */
+  errors_by_surface: Array<{ group: CompatibilityErrorGroup, label: string, errors: string[] }>
+  /** The alias on its own, whatever the verdict: `deferred` is expected right after the migration. */
+  alias: CompatibilityCheck['alias']
   instructions: {
     agents_md: boolean
     claude_shim: boolean
@@ -444,6 +451,8 @@ export function diagnoseAgentCompatibility(
   return {
     file_correct: compatibility.ok,
     errors: [...new Set(compatibility.errors)],
+    errors_by_surface: groupCompatibilityErrors([...new Set(compatibility.errors)]),
+    alias: compatibility.alias,
     instructions: {
       agents_md: !agentsError,
       claude_shim: !claudeShimError,
@@ -747,8 +756,14 @@ function printHuman(report: DoctorReport): void {
 
   if (compat.errors.length > 0) {
     tui.section('Cross-harness compatibility errors');
-    for (const error of compat.errors) {
-      process.stdout.write(`  ${tui.statusIcon('fail')} ${error}\n`);
+    // The alias line stands on its own: right after the migration it is
+    // deferred on purpose, and that must not read as one more broken contract.
+    process.stdout.write(`  ${tui.statusIcon(compat.alias.status === 'valid' ? 'ok' : compat.alias.status === 'deferred' ? 'warn' : 'fail')} ${describeAliasStatus(compat.alias)}\n`);
+    for (const bucket of compat.errors_by_surface) {
+      process.stdout.write(`  ${COLORS.bold}${bucket.label}${COLORS.reset}\n`);
+      for (const error of bucket.errors) {
+        process.stdout.write(`    ${tui.statusIcon('fail')} ${error}\n`);
+      }
     }
     process.stdout.write(`  ${COLORS.dim}Generated artifacts: bun run agents:compat. Canonical/config files: fix by hand, then re-run doctor.${COLORS.reset}\n\n`);
   }
