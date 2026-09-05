@@ -360,7 +360,7 @@ export API_KEY="mi-clave-secreta"
 
 ### Configs en este repo
 
-Este boilerplate corre sobre tres harnesses desde una sola fuente de instrucciones y skills (`AGENTS.md` + `.agents/skills/`). El inventario MCP (`context7`, `tavily`, `supabase`, `n8n`) existe una vez por formato de host, commiteado en el repo y verificado en paridad por `bun run agents:compat:check`. Los demás clientes solo tienen template o configuración manual: no hay adapter en runtime.
+Este boilerplate corre sobre tres harnesses desde una sola fuente de instrucciones y skills (`AGENTS.md` + `.agents/skills/`). El inventario MCP (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`) existe una vez por formato de host, commiteado en el repo y verificado en paridad por `bun run agents:compat:check`. Los demás clientes solo tienen template o configuración manual: no hay adapter en runtime.
 
 | Harness                      | Config MCP                                               | Sintaxis de env vars                             | Launcher           |
 | ---------------------------- | -------------------------------------------------------- | ------------------------------------------------ | ------------------ |

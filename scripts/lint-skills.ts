@@ -8,6 +8,10 @@
  *                                not in install.ts (any tier) and not in skill-registry slugs.
  *   3. TIER-MISMATCH   (ERROR) — Expected matches table annotates a skill as `(T2)`
  *                                or similar but install.ts says different tier.
+ *                                install.ts is the tier authority for community
+ *                                skills: one committed inside `.agents/skills/`
+ *                                (projects commit them) keeps its install.ts tier
+ *                                and is never reclassified as T1.
  *   4. MISSING-SECTION (ERROR) — Skill declares `complementary_categories` but has
  *                                no `## Composable Skills` heading (sprint-development
  *                                is exempt — uses `## SDD Composition`).
@@ -68,7 +72,9 @@ import { parse as parseYaml } from 'yaml';
 // Configuration
 // -----------------------------------------------------------------------------
 
-const REPO_ROOT = join(import.meta.dir, '..');
+// `LINT_SKILLS_ROOT` exists for the regression tests (fixture repos); every
+// normal run resolves the repo from this file's location.
+const REPO_ROOT = process.env.LINT_SKILLS_ROOT ?? join(import.meta.dir, '..');
 const SKILLS_DIR = join(REPO_ROOT, '.agents/skills');
 const STRATEGY_DOC = join(SKILLS_DIR, 'agentic-dev-core/references/skill-composition-strategy.md');
 const INSTALL_TS = join(REPO_ROOT, 'cli/install.ts');
@@ -723,19 +729,23 @@ function main() {
 
   // Discover T1 skills (folders in .agents/skills/)
   const t1 = new Set<string>();
+  const committedCommunity = new Set<string>();
   for (const e of readdirSync(SKILLS_DIR)) {
     // Symlinked entries (community skills linked from .agents/skills) are NOT
     // T1 — their tier comes from install.ts. Mirrors the symlink-awareness in
     // build-skill-registry.ts so tier classification stays consistent.
     if (lstatSync(join(SKILLS_DIR, e)).isSymbolicLink()) { continue; }
-    // Community skills installed with `bunx skills add` share the same store as
-    // real directories (and may be committed). Their tier is what install.ts
-    // declares, never their location.
-    if (t2.has(e) || t3.has(e) || t4.has(e)) { continue; }
     const skillFile = join(SKILLS_DIR, e, 'SKILL.md');
-    try { if (statSync(skillFile).isFile()) { t1.add(e); } }
-    catch { /* skip */ }
+    try { if (!statSync(skillFile).isFile()) { continue; } }
+    catch { continue; }
+    // A community skill committed as a real directory in the store (downstream
+    // projects commit their `bunx skills add` output) is still the tier
+    // install.ts says. Classifying it T1 made every `(T3)` annotation that
+    // cites it a TIER-MISMATCH.
+    if (t2.has(e) || t3.has(e) || t4.has(e)) { committedCommunity.add(e); continue; }
+    t1.add(e);
   }
+
   const vocab = extractCategoryVocab();
 
   // Check 8: duplicate across tiers
@@ -832,7 +842,10 @@ function main() {
 
   const t1Sorted = [...t1].sort();
   console.log('\nlint-skills — skill composition system audit');
-  console.log(`Scanning ${SKILLS_DIR.replace(`${REPO_ROOT}/`, '')} ... ${t1.size} T1 skills`);
+  const communityNote = committedCommunity.size > 0
+    ? ` (+ ${committedCommunity.size} community skills committed in the store, tiers from cli/install.ts)`
+    : '';
+  console.log(`Scanning ${SKILLS_DIR.replace(`${REPO_ROOT}/`, '')} ... ${t1.size} T1 skills${communityNote}`);
   console.log(`Reading ${STRATEGY_DOC.replace(`${REPO_ROOT}/`, '')} §4.1 ... ${vocab.size} categories`);
   console.log(`Reading cli/install.ts ... ${t2.size} T2, ${t3.size} T3, ${t4.size} T4\n`);
 

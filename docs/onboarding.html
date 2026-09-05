@@ -3924,11 +3924,12 @@ bun run vars:check           # validate placeholders</code></pre>
             <h2><span class="num">12.</span>MCPs available</h2>
 
             <p>
-              The four canonical MCPs are configured by <code>bun run setup</code>. Each one is
-              declared once per harness format (<code>.mcp.json</code> for Claude Code,
-              <code>opencode.jsonc</code> for OpenCode, <code>.codex/config.toml</code> for Codex)
-              and <code>bun run agents:compat:check</code> keeps the three in parity. Each one fills
-              a specific need:
+              The MCP servers declared in <code>.mcp.json</code> (four in the boilerplate) are
+              configured by <code>bun run setup</code>. Each one is declared once per harness format
+              (<code>.mcp.json</code> for Claude Code, <code>opencode.jsonc</code> for OpenCode,
+              <code>.codex/config.toml</code> for Codex) and
+              <code>bun run agents:compat:check</code> keeps the three in parity. Each one fills a
+              specific need:
             </p>
 
             <div class="table-wrap">

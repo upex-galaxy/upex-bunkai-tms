@@ -30,7 +30,7 @@ Codex no necesita ningún shim: consume las dos fuentes canónicas directamente.
 | Skills        | `.agents/skills/<name>/SKILL.md` + `references/` | Nativo. Una sola copia commiteada; Claude Code llega por el alias generado `.claude/skills`.                                                                                                                      |
 | Comandos      | ninguno                                          | Codex no tiene capa de wrappers. Donde en Claude Code / OpenCode tipeás `/dev-roadmap`, acá pedís la skill + modo: "load skill `project-context` mode `dev-roadmap`". La tabla de aliases está en `AGENTS.md` §5. |
 | Hook          | `.codex/hooks.json`                              | `UserPromptSubmit` ejecuta `.agents/hooks/personality-reinject.mjs` (el mismo emisor que usan los otros dos harnesses) desde la raíz de git. Trae `command` POSIX y `commandWindows`.                             |
-| MCP           | `.codex/config.toml`                             | Cuatro servidores (`context7`, `tavily`, `supabase`, `n8n`) en formato Codex. Paridad con `.mcp.json` y `opencode.jsonc` verificada por `bun run agents:compat:check`.                                            |
+| MCP           | `.codex/config.toml`                             | Los servidores que declara `.mcp.json` (en el boilerplate `context7`, `tavily`, `supabase`, `n8n`) en formato Codex. Paridad con `.mcp.json` y `opencode.jsonc` verificada por `bun run agents:compat:check`.     |
 
 Los ocho aliases de comando (`/sync-ai-memory`, `/business-data-map`, `/business-feature-map`, `/business-api-map`, `/master-implementation-plan`, `/dev-roadmap`, `/jira-instance-migration`, `/jira-components`) resuelven así:
 

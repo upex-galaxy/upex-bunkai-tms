@@ -4,7 +4,7 @@ This directory contains **pre-configured MCP server templates** for different AI
 
 ## Runtime configs committed in this repo
 
-The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `AGENTS.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same four servers (`context7`, `tavily`, `supabase`, `n8n`):
+The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/skills/`, see `AGENTS.md` §5.5). The MCP inventory is the one surface that genuinely differs per host, so it exists once per format, committed, with the same server set on every host: whatever `.mcp.json` declares (`context7`, `tavily`, `supabase`, `n8n` out of the box):
 
 | Harness             | Committed config     | Env-var syntax                                      | Launcher (loads `.env` first) |
 | ------------------- | -------------------- | --------------------------------------------------- | ----------------------------- |
@@ -12,7 +12,7 @@ The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/
 | OpenCode            | `opencode.jsonc`     | `{env:VAR}` inside command / environment values     | `bun run opencode`            |
 | Codex CLI + Desktop | `.codex/config.toml` | `env_vars = ["VAR"]` / `bearer_token_env_var` by name | `bun run codex`               |
 
-`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The four servers above additionally get a strict per-host shape check when declared; a project that declares a different set (say `playwright` instead of `n8n`) passes on the generic check alone. Gemini CLI and Cursor have no runtime adapter: they stay template-only below. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
+`bun run agents:compat:check` normalizes the three files into one shape (transport, command, args, url, env vars, enabled) and compares them. The canonical set is whatever `.mcp.json` declares: a server missing from another host, present in one host only, or depending on a different set of `.env` variables, fails the check (it runs inside `repo:check` and the pre-push hook). The four ids the boilerplate ships additionally get a strict per-host shape check when the project declares them; a project that declares a different set (say `playwright` instead of `n8n`) passes on the generic check alone. Gemini CLI and Cursor have no runtime adapter: they stay template-only below. `.codex/config.toml` is read only in a repository Codex trusts; `bun run setup:doctor` warns about that.
 
 ## Available Templates
 
@@ -20,7 +20,7 @@ The boilerplate runs on three harnesses from one source (`AGENTS.md` + `.agents/
 | ------------------------ | ----------- | ------ | ---------------------------------------------------------------------------------------------------- |
 | `claude.template.json`   | Claude Code | JSON   | `.mcp.json` in project root                                                                          |
 | `opencode.template.json` | OpenCode    | JSON   | `opencode.jsonc` in project root                                                                     |
-| `codex.template.toml`    | Codex CLI   | TOML   | Derived from the committed `.codex/config.toml` (same four servers) plus opt-in extras with `{{VAR}}` |
+| `codex.template.toml`    | Codex CLI   | TOML   | Derived from the committed `.codex/config.toml` (same server set) plus opt-in extras with `{{VAR}}`   |
 | `gemini.template.json`   | Gemini CLI  | JSON   | `~/.gemini/settings.json` (template only, no runtime adapter in this repo)                           |
 | `dbhub.example.toml`     | DBHub (SQL) | TOML   | `dbhub.toml` in project root                                                                         |
 
@@ -98,7 +98,7 @@ cp docs/mcp/claude.template.json .mcp.json
 cp docs/mcp/opencode.template.json opencode.jsonc
 ```
 
-**For Codex CLI**: this repo already ships `.codex/config.toml` with the four canonical servers, so nothing to copy for a project checkout. The template is for the opt-in extras (copy a single `[mcp_servers.X]` block into `.codex/config.toml`) or for a machine-wide config:
+**For Codex CLI**: this repo already ships `.codex/config.toml` with every server `.mcp.json` declares, so nothing to copy for a project checkout. The template is for the opt-in extras (copy a single `[mcp_servers.X]` block into `.codex/config.toml`) or for a machine-wide config:
 
 ```bash
 mkdir -p ~/.codex

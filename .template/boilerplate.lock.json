@@ -6,18 +6,18 @@
     "cli": "9b3ca62ff01ab27a4f3e8a7dcf0db87f3f489604",
     "claude": "babed50e23cf3db1d2b4dac69eb784fbba3979d7",
     "claude-config": "5d669f4a1cba9db64be243efd2a46925ac0b03df",
-    "agents": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
+    "agents": "2815ca05d87c4d4eca75fb63f3792039644eb137",
     "agents-docs": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
-    "scripts": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
-    "docs": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
+    "scripts": "2815ca05d87c4d4eca75fb63f3792039644eb137",
+    "docs": "2815ca05d87c4d4eca75fb63f3792039644eb137",
     "context": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
-    "context-engineering": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
+    "context-engineering": "2815ca05d87c4d4eca75fb63f3792039644eb137",
     "docs-mcp": "1e22849a1704ce8a11a4416e42251654e14c6b7c",
     "vscode": "15e3f146fa35430dace91063493f73763bc0af10",
     "husky": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "tooling": "15e3f146fa35430dace91063493f73763bc0af10",
-    "env-template": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
-    "agent-compatibility": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
+    "env-template": "2815ca05d87c4d4eca75fb63f3792039644eb137",
+    "agent-compatibility": "2815ca05d87c4d4eca75fb63f3792039644eb137",
     "commands": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "agent-root-config": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45",
     "codex-config": "aa87fe8382e4249fb4f64a2861c12754c0a8fc45"
@@ -25,7 +25,7 @@
   "syncedComponents": [],
   "ignoreFileSync": {
     ".gitignore": {
-      "lastSyncedSha": "bc477b3f503fed5875044fdb30e11964d4058818",
+      "lastSyncedSha": "f3962ec6a3b582a136807961b35af97ab5f9744b",
       "appendedLines": [
         "dbhub.toml",
         ".claude/scheduled_tasks.lock",
@@ -41,7 +41,8 @@
         ".context/PBI/*",
         "!.context/PBI/README.md",
         "!.context/PBI/templates/",
-        ".agents/skills/*-workspace/"
+        ".agents/skills/*-workspace/",
+        ".template/last-apply.json"
       ]
     },
     ".prettierignore": {
@@ -58,8 +59,8 @@
       ]
     }
   },
-  "cliVersion": "7.0",
-  "lastSyncedAt": "2026-09-03T19:09:18.845Z",
+  "cliVersion": "8.3",
+  "lastSyncedAt": "2026-09-04T16:49:16.770Z",
   "variableSystemVersion": 1,
   "packageJsonSync": {
     "package.json": {
