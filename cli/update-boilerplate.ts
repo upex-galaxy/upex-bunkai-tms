@@ -58,7 +58,7 @@ import { DEPRECATED_VARS, parseDotEnvExampleKeys } from './lib/variables-manifes
 // --- CONFIGURATION ---
 // Not tied to the lock schema (`schemaVersion: 7` stays): it stamps the lock's
 // `cliVersion` and the ignore-file sentinel header, which is matched by prefix.
-const CLI_VERSION = '8.3';
+const CLI_VERSION = '8.4';
 // `UPEX_TEMPLATE_REPO` points the updater at another source: a fork, or a LOCAL
 // clone (absolute path / file:// URL, cloned with plain git, no gh session) to
 // exercise an unpublished boilerplate branch against a consumer repo.
@@ -438,13 +438,15 @@ interface RunFacts {
   aliasDeferred: boolean
   /** Post-apply quality gates (`types:check`, `lint:check`); empty when skipped. */
   gates: GateResult[]
+  /** Why `gates` stayed empty this run: nothing to say when gates actually ran (even a fail leaves at least one `GateResult`). */
+  gatesSkippedReason: 'no-gates' | 'no-changes' | null
   /** A no-op run left the previous run's prompt file untouched. */
   promptKept: boolean
   /** `.context/PBI/` paths still tracked in git, and where the migration recipe was saved. */
   pbiCache: PbiCacheFact | null
   parity: { findings: ParityFinding[], report: ParityReport } | null
 }
-const runFacts: RunFacts = { compat: null, envNewKeys: [], migration: null, migrationPlanned: false, aliasDeferred: false, gates: [], promptKept: false, pbiCache: null, parity: null };
+const runFacts: RunFacts = { compat: null, envNewKeys: [], migration: null, migrationPlanned: false, aliasDeferred: false, gates: [], gatesSkippedReason: null, promptKept: false, pbiCache: null, parity: null };
 
 // --- ENV-VAR DRIFT DETECTION (afterApply hook) ---
 /**
@@ -971,7 +973,7 @@ function makeAgentCompatibilityHook(sink: ReportSink): (summary: RunSummary) => 
   };
 }
 
-// --- PARITY REPORT (afterApply hook, last) ---
+// --- PARITY REPORT (afterApply hook) ---
 //
 // Folds everything the run learned into ONE set of findings: watched files
 // that drifted (with sha markers so each upstream change nudges once), compat
@@ -980,7 +982,9 @@ function makeAgentCompatibilityHook(sink: ReportSink): (summary: RunSummary) => 
 // git_strategy provenance. Runs while the upstream clone is still on disk. The
 // rendered table + prompt are printed by main() AFTER runUpdate returns, so
 // they are the last thing on screen; the prompt (with full diffs) is saved to
-// `.agents/prompts/parity-plan.md`.
+// `.agents/prompts/parity-plan.md`. Not the last hook in the chain any more:
+// `makeSkillsRegistryHook` runs after it, so REGISTRY.md reflects whatever
+// `.agents/skills/` looks like once this hook (and every other one) is done.
 
 function readLock(cwd: string): { templateCommit: string, perComponentCommit: Record<string, string> } {
   try {
@@ -1061,7 +1065,8 @@ export function runGate(script: string, cwd: string, applied: readonly string[],
 
 function makeGatesHook(sink: ReportSink, enabled: boolean): (summary: RunSummary) => Promise<void> {
   return async (summary: RunSummary): Promise<void> => {
-    if (!enabled || summary.applied.length === 0) { return; }
+    if (!enabled) { runFacts.gatesSkippedReason = 'no-gates'; return; }
+    if (summary.applied.length === 0) { runFacts.gatesSkippedReason = 'no-changes'; return; }
     const cwd = process.cwd();
     const scripts = packageScripts(cwd);
     const applied = summary.applied.map(a => a.entry.path);
@@ -1091,18 +1096,41 @@ export function summarizeGates(gates: readonly GateResult[]): string | null {
   }).join('; ');
 }
 
+/**
+ * The `Gates:` line for the closing box, including the skip reason when no
+ * gate ran at all: a bare missing line reads as "nothing to say" when it
+ * actually means "nothing ran", `--no-gates` and "no-op run" alike. Real
+ * gate results (even a single failed one) always win over a skip reason.
+ */
+export function gatesSummaryLine(gates: readonly GateResult[], skippedReason: RunFacts['gatesSkippedReason']): string | null {
+  const summary = summarizeGates(gates);
+  if (summary) { return summary; }
+  if (skippedReason === 'no-gates') { return 'omitidas (--no-gates)'; }
+  if (skippedReason === 'no-changes') { return 'omitidas (sin cambios)'; }
+  return null;
+}
+
 function makeParityHook(sink: ReportSink, priorLockSha: string, dryRun: boolean, watchlist: readonly ProtectedWatchEntry[]): (summary: RunSummary) => Promise<void> {
   return async (summary: RunSummary): Promise<void> => {
     const cwd = process.cwd();
     // A freshly declared `updater.protected_paths` entry gets its marker
     // seeded and no row (the project just merged it by hand); the row comes
-    // with the next upstream change.
-    const { advised: drifted, seeded } = splitFirstProjectAdvice(detectProtectedDrift(watchlist, UPSTREAM_DIR, cwd));
+    // with the next upstream change. Same treatment, different reason, for
+    // ANY first-advice entry whose upstream copy hasn't moved since the
+    // project's own lock cursor, first-run noise on a migrated repo, not a
+    // new upstream change to review.
+    const { advised: drifted, seeded, seededNoUpstreamChange } = splitFirstProjectAdvice(
+      detectProtectedDrift(watchlist, UPSTREAM_DIR, cwd),
+      { tempDir: UPSTREAM_DIR, lockCursor: priorLockSha || null },
+    );
     // Markers FIRST: one nudge per upstream change even if the user ignores
     // it. A dry-run persists nothing: the real run will nudge.
-    if (!dryRun) { persistMarkers([...drifted, ...seeded], cwd); }
+    if (!dryRun) { persistMarkers([...drifted, ...seeded, ...seededNoUpstreamChange], cwd); }
     if (seeded.length > 0) {
       sink.step(`${seeded.length} ruta(s) recién protegidas en updater.protected_paths sin fila esta vez (${seeded.map(s => s.path).join(', ')}); la fila llega con el próximo cambio upstream.`);
+    }
+    if (seededNoUpstreamChange.length > 0) {
+      sink.step(`${seededNoUpstreamChange.length} ruta(s) vigiladas sin cambio upstream desde el cursor; markers sembrados sin fila.`);
     }
 
     const lock = readLock(cwd);
@@ -1208,7 +1236,7 @@ function printEndOfRun(summary: RunSummary, dryRun: boolean): void {
     `Avanzados:    ${summary.componentsAdvanced.join(', ') || '(ninguno)'}`,
     `Retenidos:    ${summary.componentsHeldBack.join(', ') || '(ninguno)'}`,
   ];
-  const gates = summarizeGates(runFacts.gates);
+  const gates = gatesSummaryLine(runFacts.gates, runFacts.gatesSkippedReason);
   if (gates) { lines.push(`Gates:        ${gates}`); }
   // A no-op run over a clean tree has nothing to commit; a no-op over the
   // previous sync's uncommitted output still does.
@@ -1587,7 +1615,6 @@ async function main(): Promise<void> {
             // Alias + wrappers first: a Claude Code session opened right after
             // the sync must already resolve skills through `.claude/skills`.
             makeAgentCompatibilityHook(sink),
-            makeSkillsRegistryHook(sink),
             makeGatesHook(sink, !parsed.noGates),
             async () => detectEnvVarDrift(UPSTREAM_DIR, sink, parsed.auto),
             async () => upsertGitStrategyBlock(UPSTREAM_DIR, sink, parsed.auto),
@@ -1596,11 +1623,18 @@ async function main(): Promise<void> {
             // file, one parity row points at it; the hook NEVER mutates the
             // git index.
             makePbiCacheMigrationHook({ promptOutPath: path.join(process.cwd(), PBI_MIGRATION_PROMPT_PATH) }, sink, (fact) => { runFacts.pbiCache = fact; }),
-            // LAST: folds the watchlist drift (one nudge per upstream change;
+            // Folds the watchlist drift (one nudge per upstream change;
             // AGENTS.md keeps the legacy CLAUDE.md marker), the compat check,
             // the gates, the migration archive and the rest into the single
             // parity report main() prints after runUpdate returns.
             makeParityHook(sink, priorLockSha, false, watchlist),
+            // VERY LAST: rebuilds REGISTRY.md from whatever `.agents/skills/`
+            // looks like once every other hook (parity included) has run. A
+            // skill the parity hook just reported as "project edit
+            // overwritten" still regenerates from the upstream content the
+            // sync applied; that row's evidence tells the user to rerun this
+            // same script by hand after they restore their own edit.
+            makeSkillsRegistryHook(sink),
           ),
     },
   };
