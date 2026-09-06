@@ -1,4 +1,18 @@
+import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
+
+// BK-399 — the canonical value sets are declared once in `lib/atcs/validation`
+// and re-used here so the published contract can never drift from the Zod
+// schema the route actually enforces (or from the DB CHECKs in migration 0087).
+const ATC_TECHNIQUES_ENUM = [...ATC_TECHNIQUES] as [string, ...string[]];
+const ATC_PRIORITIES_ENUM = [...ATC_PRIORITIES] as [string, ...string[]];
+
+// The omission-clears wording is shared verbatim with the PATCH body: on this
+// PUT-style payload an omitted key is NOT "leave unchanged", it is "clear",
+// exactly as `tags` already behaves. Matching is byte-exact and case-sensitive
+// — a case-mismatched or whitespace-padded value is rejected 422, never coerced.
+const CLEARS_ON_OMISSION_TECHNIQUE = 'Optional test-design technique. Omitted keys are cleared, not merged: sending `null` or omitting the key stores "not specified" (SQL NULL). Exact display label, case-sensitive, not trimmed.';
+const CLEARS_ON_OMISSION_PRIORITY = 'Optional ATC priority (distinct from Bug severity). Omitted keys are cleared, not merged: sending `null` or omitting the key stores "not specified" (SQL NULL). Exact display label, case-sensitive, not trimmed.';
 
 const AtcStepSchema = z
   .object({
@@ -27,6 +41,8 @@ const AtcSchema = z
     slug: z.string().describe('`<module-slug>/atc-<8 hex>`. Computed once at creation, immutable across edits.'),
     title: z.string(),
     layer: z.enum(['UI', 'API', 'Unit']),
+    technique: z.enum(ATC_TECHNIQUES_ENUM).nullable().describe('BK-399 — test-design technique that produced this ATC. `null` means "not specified"; it is never defaulted to a real value.'),
+    priority: z.enum(ATC_PRIORITIES_ENUM).nullable().describe('BK-399 — ATC priority (distinct from Bug severity). `null` means "not specified".'),
     version: z.number().int().describe('Monotonic per ATC. Starts at 1, +1 per edit.'),
     status: z.enum(['pass', 'fail', 'blocked', 'skipped', 'running', 'unrun']),
     tags: z.array(z.string()),
@@ -57,6 +73,8 @@ const CreateBodySchema = z
     user_story_id: z.string().uuid(),
     acceptance_criterion_ids: z.array(z.string().uuid()).min(1).describe('≥1; all must belong to user_story_id.'),
     layer: z.enum(['UI', 'API', 'Unit']),
+    technique: z.enum(ATC_TECHNIQUES_ENUM).nullable().optional().describe(CLEARS_ON_OMISSION_TECHNIQUE),
+    priority: z.enum(ATC_PRIORITIES_ENUM).nullable().optional().describe(CLEARS_ON_OMISSION_PRIORITY),
     tags: z.array(z.string()).max(10).optional(),
     steps: z.array(StepInput).min(1),
     assertions: z.array(AssertionInput).optional(),
@@ -78,8 +96,8 @@ registry.registerPath({
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'User story or module not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'Slug collision (`slug_collision`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
-export { AtcSchema };
+export { ATC_PRIORITIES_ENUM, ATC_TECHNIQUES_ENUM, AtcSchema, CLEARS_ON_OMISSION_PRIORITY, CLEARS_ON_OMISSION_TECHNIQUE };
