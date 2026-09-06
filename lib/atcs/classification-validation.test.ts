@@ -103,6 +103,27 @@ describe('bK-399 — AtcWriteBodySchema.priority', () => {
   });
 });
 
+describe('bK-399 — write body strictness is symmetric across both fields', () => {
+  // The per-field describes above each assert their own accept/reject cases;
+  // this table exists so the SAME failure modes are provably covered for BOTH
+  // fields. A case added to one field and not the other shows up here as a
+  // missing row, not as silence.
+  const REJECTED_WRITES: [string, Record<string, string>][] = [
+    ['technique outside the set', { technique: 'Mutation Testing' }],
+    ['priority outside the set', { priority: 'Urgent' }],
+    ['technique in lower case', { technique: 'boundary value analysis' }],
+    ['priority in lower case', { priority: 'high' }],
+    ['technique in upper case', { technique: 'BOUNDARY VALUE ANALYSIS' }],
+    ['priority in upper case', { priority: 'HIGH' }],
+    ['technique padded with whitespace', { technique: ' Pairwise ' }],
+    ['priority padded with whitespace', { priority: ' High ' }],
+  ];
+
+  test.each(REJECTED_WRITES)('rejects %s — no folding, no trimming', (_label, override) => {
+    expect(AtcWriteBodySchema.safeParse(writeBody(override)).success).toBe(false);
+  });
+});
+
 describe('bK-399 — AtcUpdateBodySchema inherits both fields', () => {
   test('carries a set technique and priority through the PATCH body', () => {
     const parsed = AtcUpdateBodySchema.parse(
@@ -138,27 +159,24 @@ describe('bK-399 — AtcSearchQuerySchema narrows', () => {
     expect(parsed.priority).toBeUndefined();
   });
 
-  test('rejects an out-of-set value', () => {
-    expect(AtcSearchQuerySchema.safeParse({
-      query: 'login',
-      project_id: VALID_PROJECT_ID,
-      technique: 'Exploratory',
-    }).success).toBe(false);
-  });
+  // Both fields, both failure modes. Asserting case-folding on one field and
+  // trimming on the other would leave half the strictness contract unproven per
+  // field — and the two narrows are independent enum declarations, so a `.trim()`
+  // or a `.toLowerCase()` could be added to one without the other ever noticing.
+  const REJECTED_NARROWS: [string, Record<string, string>][] = [
+    ['technique outside the set', { technique: 'Exploratory' }],
+    ['priority outside the set', { priority: 'P1' }],
+    ['technique with mismatched case', { technique: 'pairwise' }],
+    ['priority with mismatched case', { priority: 'critical' }],
+    ['technique padded with whitespace', { technique: 'Pairwise ' }],
+    ['priority padded with whitespace', { priority: ' Critical' }],
+  ];
 
-  test('rejects a case-mismatched value (same strictness as layer)', () => {
+  test.each(REJECTED_NARROWS)('rejects %s — strict match, same as layer', (_label, narrow) => {
     expect(AtcSearchQuerySchema.safeParse({
       query: 'login',
       project_id: VALID_PROJECT_ID,
-      priority: 'critical',
-    }).success).toBe(false);
-  });
-
-  test('rejects a whitespace-padded value — no trim on this field', () => {
-    expect(AtcSearchQuerySchema.safeParse({
-      query: 'login',
-      project_id: VALID_PROJECT_ID,
-      technique: 'Pairwise ',
+      ...narrow,
     }).success).toBe(false);
   });
 

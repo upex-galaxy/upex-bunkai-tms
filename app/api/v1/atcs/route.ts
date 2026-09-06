@@ -36,6 +36,11 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     userStoryId: body.user_story_id,
     title: body.title.trim(),
     layer: body.layer,
+    // BK-399 — optional classification. The schema defaults both to null, so an
+    // omitted key creates the ATC "not specified" rather than dropping the field
+    // silently between the parsed body and the RPC.
+    technique: body.technique,
+    priority: body.priority,
     tags: body.tags,
     steps: sanitizeAtcSteps(body.steps),
     assertions: sanitizeAtcAssertions(body.assertions),

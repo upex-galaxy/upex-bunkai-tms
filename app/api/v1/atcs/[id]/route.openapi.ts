@@ -1,5 +1,11 @@
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
-import { AtcSchema } from '../route.openapi';
+import {
+  ATC_PRIORITIES_ENUM,
+  ATC_TECHNIQUES_ENUM,
+  AtcSchema,
+  CLEARS_ON_OMISSION_PRIORITY,
+  CLEARS_ON_OMISSION_TECHNIQUE,
+} from '../route.openapi';
 
 const StepInput = z.object({
   position: z.number().int().describe('Integer, strictly increasing from 1.'),
@@ -16,6 +22,8 @@ const UpdateBodySchema = z
   .object({
     title: z.string().min(3).max(200).describe('3-200 characters after trimming leading/trailing whitespace (BK-622).'),
     layer: z.enum(['UI', 'API', 'Unit']),
+    technique: z.enum(ATC_TECHNIQUES_ENUM).nullable().optional().describe(CLEARS_ON_OMISSION_TECHNIQUE),
+    priority: z.enum(ATC_PRIORITIES_ENUM).nullable().optional().describe(CLEARS_ON_OMISSION_PRIORITY),
     tags: z.array(z.string()).max(10).optional(),
     steps: z.array(StepInput).min(1),
     assertions: z.array(AssertionInput).optional(),
@@ -44,7 +52,7 @@ registry.registerPath({
   path: '/api/v1/atcs/{id}',
   tags: ['ATCs'],
   summary: 'Edit an ATC (full replace of steps and assertions)',
-  description: 'Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test\'s next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.',
+  description: 'Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared, and so are omitted `technique` / `priority` (BK-399: an omitted key stores `null` = not specified, it does not preserve the previous value). An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test\'s next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam, VersionParam],
   request: { body: { required: false, content: { 'application/json': { schema: UpdateBodySchema } } } },
@@ -66,6 +74,6 @@ registry.registerPath({
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'ATC not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'Version conflict (code `conflict`, `details.reason: version_conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
