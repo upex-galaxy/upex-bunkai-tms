@@ -100,4 +100,33 @@ describe('mapAtcRpcError', () => {
     expect(err.details).toEqual({ reason: 'check_constraint_violation' });
     expect(err.message).not.toContain('atcs_tags_max_10');
   });
+
+  // BK-399 — the two classification CHECKs (migration 0087). These fire only
+  // for a caller that reaches the RPC without passing through
+  // AtcWriteBodySchema (a direct PostgREST call, or the web editor's
+  // saveAtcAction server action), so the specific reason has to come from the
+  // constraint name rather than a ZodError.
+  test('BK-399: 23514 on atcs_technique_allowed → 422 with reason technique_invalid', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_technique_allowed"',
+    }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'technique_invalid' });
+    expect(err.message).toContain('Equivalence Partitioning');
+    expect(err.message).not.toContain('violates check constraint');
+  });
+
+  test('BK-399: 23514 on atcs_priority_allowed → 422 with reason priority_invalid', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_priority_allowed"',
+    }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'priority_invalid' });
+    expect(err.message).toContain('Critical, High, Medium, Low');
+    expect(err.message).not.toContain('violates check constraint');
+  });
 });
