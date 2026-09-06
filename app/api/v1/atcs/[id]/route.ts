@@ -92,6 +92,11 @@ export const PATCH = withApiHandler(async (request: NextRequest, ctx) => {
     ifMatch,
     title: body.title.trim(),
     layer: body.layer,
+    // BK-399 — optional classification, full-replace like `tags`: an explicit
+    // null AND an omitted key both clear the stored value (the schema defaults
+    // to null), matching this endpoint's documented PUT-style semantics above.
+    technique: body.technique,
+    priority: body.priority,
     tags: body.tags,
     steps: sanitizeAtcSteps(body.steps),
     assertions: sanitizeAtcAssertions(body.assertions),
