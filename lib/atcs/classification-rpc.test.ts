@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { createClient } from '@supabase/supabase-js';
 import { SQL } from 'bun';
@@ -517,5 +519,85 @@ describePg('BK-399 — the TypeScript value sets and the SQL CHECK constraints a
     finally {
       await sql.end();
     }
+  });
+});
+
+describe('bK-399 — the TypeScript value sets and the MIGRATION SOURCE agree', () => {
+  // WHY THIS EXISTS ALONGSIDE THE LIVE-DATABASE BLOCK ABOVE. That block reads
+  // `pg_constraint` on the SHARED project, so it proves what is deployed — and
+  // only that. A CHECK repaired by hand against that project (or a migration
+  // applied out of band) keeps it green while the file that a fresh environment
+  // actually replays still carries the wrong list. The failure then appears on
+  // the next `supabase db reset`, in CI, or on a new developer's machine: the
+  // constant offers a value the rebuilt database rejects. It also SKIPS whenever
+  // POSTGRES_URL is absent, which is the normal state of a CI job with no DB
+  // credentials — the exact run where a bad migration would otherwise sail past.
+  //
+  // So this block asserts the same parity against `0087_atc_classification.sql`
+  // ITSELF. No database, no env gate: it always runs. The two are complementary,
+  // not redundant — the live check catches a drifted DEPLOYMENT, this one
+  // catches a drifted MIGRATION, and neither can see the other's failure.
+  //
+  // Order-independent, exactly like its sibling: declaration order is a UI
+  // contract asserted in classification-validation.test.ts. What has to match
+  // here is the SET and the exact casing of each member.
+  const MIGRATIONS_DIR = resolve(process.cwd(), 'supabase/migrations');
+  const MIGRATION_FILE = '0087_atc_classification.sql';
+
+  // The `check (...)` body of a named table constraint, paren-matched from the
+  // `add constraint <name>` that introduces it. Paren matching (not a
+  // line-oriented grep) because the body spans lines and nests one level.
+  function migrationAllowedValues(constraint: string): string[] {
+    const source = readFileSync(join(MIGRATIONS_DIR, MIGRATION_FILE), 'utf8');
+    const declaration = source.indexOf(`add constraint ${constraint}`);
+    const check = declaration === -1 ? -1 : source.indexOf('check (', declaration);
+    const open = requirePrecondition(
+      check === -1 ? null : source.indexOf('(', check),
+      `${MIGRATION_FILE} must declare \`add constraint ${constraint} check (...)\``,
+    );
+
+    let depth = 0;
+    let close = -1;
+    for (let index = open; index < source.length; index += 1) {
+      if (source[index] === '(') { depth += 1; }
+      if (source[index] === ')') {
+        depth -= 1;
+        if (depth === 0) { close = index; break; }
+      }
+    }
+    const body = requirePrecondition(
+      close === -1 ? null : source.slice(open, close + 1),
+      `unbalanced parentheses in the ${constraint} CHECK`,
+    );
+    // Same extraction as the live-database sibling: every single-quoted literal
+    // in the rendered predicate, with SQL's doubled-quote escape undone.
+    return [...body.matchAll(/'((?:[^']|'')*)'/g)].map(match => match[1].replace(/''/g, '\''));
+  }
+
+  it('atcs_technique_allowed in the migration lists exactly ATC_TECHNIQUES, byte for byte', () => {
+    expect(migrationAllowedValues('atcs_technique_allowed').sort()).toEqual([...ATC_TECHNIQUES].sort());
+  });
+
+  it('atcs_priority_allowed in the migration lists exactly ATC_PRIORITIES, byte for byte', () => {
+    expect(migrationAllowedValues('atcs_priority_allowed').sort()).toEqual([...ATC_PRIORITIES].sort());
+  });
+
+  it('admits NULL in the migration too — "not specified" is allowed by the CHECK, not tolerated by accident', () => {
+    const source = readFileSync(join(MIGRATIONS_DIR, MIGRATION_FILE), 'utf8');
+    expect(source).toContain('technique is null');
+    expect(source).toContain('priority is null');
+  });
+
+  it('is the ONLY migration that defines these constraints — otherwise parsing 0087 proves nothing', () => {
+    // A later migration that drops and recreates either CHECK would make the
+    // assertions above describe a superseded file while still passing. This
+    // names the offender instead, and is the moment to point MIGRATION_FILE at it.
+    const elsewhere = readdirSync(MIGRATIONS_DIR)
+      .filter(name => name.endsWith('.sql') && name !== MIGRATION_FILE)
+      .filter((name) => {
+        const body = readFileSync(join(MIGRATIONS_DIR, name), 'utf8');
+        return body.includes('atcs_technique_allowed') || body.includes('atcs_priority_allowed');
+      });
+    expect(elsewhere).toEqual([]);
   });
 });
