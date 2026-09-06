@@ -8,6 +8,25 @@ import { z } from 'zod';
 
 export const ATC_LAYERS = ['UI', 'API', 'Unit'] as const;
 
+// BK-399 — ATC classification. Both are OPTIONAL: unset is SQL NULL, never a
+// sentinel string ('Not specified' is presentation copy only). The stored value
+// IS the display label, byte-for-byte and case-sensitive, exactly like `layer`
+// above (0004_atcs.sql:60) — see the DB CHECKs `atcs_technique_allowed` /
+// `atcs_priority_allowed` in migration 0087.
+//
+// Declaration order is canonical and must be reproduced verbatim by every
+// surface (editor select, filter select, OpenAPI enum, CHECK constraint, docs).
+// Priority is severity-DESCENDING, never alphabetical.
+export const ATC_TECHNIQUES = [
+  'Equivalence Partitioning',
+  'Boundary Value Analysis',
+  'State Transition',
+  'Decision Table',
+  'Pairwise',
+] as const;
+
+export const ATC_PRIORITIES = ['Critical', 'High', 'Medium', 'Low'] as const;
+
 // Per-field content budget (UTF-8 bytes ≈ 2 KB Markdown). Enforced with
 // byteLength (not Zod `.max`, which counts UTF-16 units) so multibyte input is
 // measured the same way as every sibling write route.
@@ -39,6 +58,14 @@ export const AtcWriteBodySchema = z.object({
   // chars) at write time, tripping the DB's `atcs_title_min_length` CHECK.
   title: z.string().trim().min(ATC_TITLE_MIN).max(ATC_TITLE_MAX),
   layer: z.enum(ATC_LAYERS),
+  // BK-399 — optional classification. `.nullable().optional().default(null)`
+  // means an explicit `null` AND an omitted key both clear the stored value,
+  // matching how `tags` already behaves under this endpoint's documented
+  // PUT-style full replace. No `.trim()` and no case folding: a padded or
+  // case-mismatched value is REJECTED (422), never coerced — the same
+  // strictness `layer` has carried since BK-18.
+  technique: z.enum(ATC_TECHNIQUES).nullable().optional().default(null),
+  priority: z.enum(ATC_PRIORITIES).nullable().optional().default(null),
   tags: z.array(z.string()).max(MAX_ATC_TAGS).optional().default([]),
   steps: z.array(AtcStepInputSchema).min(1),
   assertions: z.array(AtcAssertionInputSchema).optional().default([]),
