@@ -104,6 +104,20 @@ export interface ImportJob {
 export type AtcLayer = 'UI' | 'API' | 'Unit';
 export type AtcStatus = 'pass' | 'fail' | 'blocked' | 'skipped' | 'running' | 'unrun';
 
+// BK-399 — ATC classification. Literal unions, mirroring how `AtcLayer` above
+// restates `ATC_LAYERS` rather than importing it: this module is a dependency-
+// free entity-shape stub that every client component pulls in, and deriving
+// from `@lib/atcs/validation` would drag zod into that graph. The duplication
+// is guarded — `lib/atcs/classification-round-trip.test.ts` fails if these
+// unions ever drift from `ATC_TECHNIQUES` / `ATC_PRIORITIES`.
+export type AtcTechnique
+  = | 'Equivalence Partitioning'
+    | 'Boundary Value Analysis'
+    | 'State Transition'
+    | 'Decision Table'
+    | 'Pairwise';
+export type AtcPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+
 export interface Atc {
   id: Uuid
   project_id: Uuid
@@ -115,6 +129,10 @@ export interface Atc {
   version: number
   status: AtcStatus
   tags: string[]
+  // BK-399 — both optional; NULL is the stored "not specified" state. There is
+  // no sentinel string: `Not specified` is presentation copy only.
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
   created_at: Timestamp
   updated_at: Timestamp
   archived_at: Timestamp | null

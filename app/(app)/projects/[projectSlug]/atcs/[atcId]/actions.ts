@@ -1,5 +1,6 @@
 'use server';
 
+import type { AtcPriority, AtcTechnique } from '@lib/types';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
 import { TAG_CAP_MESSAGE, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
@@ -14,6 +15,15 @@ export interface SaveAtcActionInput {
   title: string
   layer: string
   tags: string[]
+  // BK-399 — REQUIRED keys carrying a nullable value, deliberately not
+  // `technique?:`. `bunkai_update_atc` writes `technique = p_technique`
+  // UNCONDITIONALLY and the parameter defaults to null, so a caller that simply
+  // omits the field silently NULLs a classification the user set through the
+  // API — a version bump and an `atc.updated` event for a value nobody asked to
+  // clear. Making the keys required turns that omission into a compile error at
+  // every call site instead of a data-loss bug at runtime.
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
   userStoryId: string
   stepsMarkdown: string
   assertionsYaml: string
@@ -31,8 +41,8 @@ export type SaveAtcActionResult
 // affected_test_ids (the legacy bunkai_save_atc never emitted, so UI edits were
 // invisible to search reindex / future notifications). user_story_id is immutable
 // on edit (the RPC ignores it; the editor locks the story selector), so only the
-// title/layer/tags/steps/assertions and the AC bindings within the fixed story
-// change. Optimistic locking is left off here (ifMatch null = last-write-wins),
+// title/layer/technique/priority/tags/steps/assertions and the AC bindings
+// within the fixed story change. Optimistic locking is left off here (ifMatch null = last-write-wins),
 // matching the editor's current single-user save UX.
 export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcActionResult> {
   if (!input.userStoryId) {
@@ -67,6 +77,10 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
     title: input.title.trim(),
     layer: input.layer,
     tags: input.tags,
+    // BK-399 — full-replace, exactly like `layer` and `tags` above. These two
+    // MUST travel on every save: see the note on SaveAtcActionInput.
+    technique: input.technique,
+    priority: input.priority,
     steps: sanitizeAtcSteps(parseStepsMarkdown(input.stepsMarkdown)),
     assertions: sanitizeAtcAssertions(parseAssertionsYaml(input.assertionsYaml)),
     acIds: input.acIds,

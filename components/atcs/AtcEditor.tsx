@@ -1,6 +1,6 @@
 'use client';
 
-import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcStep, Module, UserStory } from '@lib/types';
+import type { AcceptanceCriterion, Atc, AtcAssertion, AtcLayer, AtcPriority, AtcStep, AtcTechnique, Module, UserStory } from '@lib/types';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
@@ -10,6 +10,8 @@ import { Input } from '@components/ui/input';
 import { assertionsToYaml, stepsToMarkdown } from '@lib/atc-parse';
 import { canAddTag, TAG_CAP_MESSAGE, tagCapReached, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
 import { duplicateAtc } from '@lib/atcs/duplicate-client';
+import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
+import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Files, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -36,6 +38,12 @@ export interface AtcSaveInput {
   title: string
   layer: string
   tags: string[]
+  // BK-399 — REQUIRED keys, nullable values. `bunkai_update_atc` full-replaces
+  // both columns on every call, so an editor that forgets to send them clears a
+  // classification the user set elsewhere. Required keys make that omission a
+  // type error here rather than silent data loss at save time.
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
   userStoryId: string
   stepsMarkdown: string
   assertionsYaml: string
@@ -79,6 +87,11 @@ export function AtcEditor({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [title, setTitle] = useState(atc.title);
   const [layer, setLayer] = useState<AtcLayer>(atc.layer);
+  // BK-399 — seeded from the LOADED ATC so an existing classification survives
+  // a save that never touches these controls. `null` renders (and round-trips
+  // as) the unset state.
+  const [technique, setTechnique] = useState<AtcTechnique | null>(atc.technique);
+  const [priority, setPriority] = useState<AtcPriority | null>(atc.priority);
   const [tags, setTags] = useState<string[]>(atc.tags);
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState<string | null>(null);
@@ -129,6 +142,8 @@ export function AtcEditor({
         projectSlug,
         title: title.trim(),
         layer,
+        technique,
+        priority,
         tags,
         userStoryId: storyId,
         stepsMarkdown: stepsMd,
@@ -276,14 +291,54 @@ export function AtcEditor({
               </label>
             </header>
 
-            <div className="grid grid-cols-[1fr_auto] items-end gap-3">
-              <div>
+            {/* Attribute row. BK-399 slots Technique + Priority in beside the
+                existing Module box and Layer segmented control (master-design-plan
+                §5 D41). The container moved from a two-column grid to a wrapping
+                flex row so four attributes degrade by wrapping instead of
+                overflowing at a narrow viewport — same `gap-3`, same order of
+                appearance for the two that were already here. */}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1">
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Module
                 </span>
                 <div className="inline-flex h-8 items-center gap-2 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1">
                   {modulePath}
                 </div>
+              </div>
+              <div>
+                <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Technique
+                </span>
+                <select
+                  data-testid="atc-technique-select"
+                  value={technique ?? ''}
+                  onChange={e => setTechnique((e.target.value || null) as AtcTechnique | null)}
+                  className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                >
+                  {/* First option === the unset display AND the clear-to-unset
+                      affordance (PO ruling Q2 + Q6). `value=""` maps to NULL. */}
+                  <option value="">{ATC_UNSPECIFIED_LABEL}</option>
+                  {ATC_TECHNIQUES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Priority
+                </span>
+                <select
+                  data-testid="atc-priority-select"
+                  value={priority ?? ''}
+                  onChange={e => setPriority((e.target.value || null) as AtcPriority | null)}
+                  className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                >
+                  <option value="">{ATC_UNSPECIFIED_LABEL}</option>
+                  {ATC_PRIORITIES.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
@@ -444,6 +499,8 @@ export function AtcEditor({
           id={atc.id}
           status={atc.status}
           layer={layer}
+          technique={technique}
+          priority={priority}
           breadcrumb={moduleSegments}
           title={title}
           story={selectedStory}
