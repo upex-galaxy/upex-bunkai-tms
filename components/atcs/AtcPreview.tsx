@@ -1,7 +1,8 @@
 'use client';
 
-import type { AcceptanceCriterion, AtcLayer, AtcStatus, AtcUsageReport, UserStory } from '@lib/types';
+import type { AcceptanceCriterion, AtcLayer, AtcPriority, AtcStatus, AtcTechnique, AtcUsageReport, UserStory } from '@lib/types';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
+import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
 import { atcUsageLabel, formatPositions } from '@lib/atcs/usage';
 import { Check, ListChecks, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,6 +18,10 @@ interface AtcPreviewProps {
   id: string | null
   status: AtcStatus | null
   layer: AtcLayer
+  // BK-399 — the ATC's read surface. `null` renders the verbatim
+  // `Not specified`, which is what AC-03 and AC-08 assert on.
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
   breadcrumb: string[]
   title: string
   story: UserStory | null
@@ -31,6 +36,8 @@ export function AtcPreview({
   id,
   status,
   layer,
+  technique,
+  priority,
   breadcrumb,
   title,
   story,
@@ -80,6 +87,23 @@ export function AtcPreview({
             <h2 className="text-lg font-bold leading-snug text-fg-0">
               {title.trim() || <span className="text-fg-4">Untitled ATC</span>}
             </h2>
+          </div>
+
+          {/* BK-399 — classification. Always rendered, both for a saved ATC and
+              a draft: the whole point of AC-08 is that "nobody has classified
+              this yet" is an EXPLICIT state on the read surface, not a missing
+              row a reader has to infer. */}
+          <div className="flex flex-col gap-1.5">
+            <PreviewAttribute
+              label="Technique"
+              value={technique}
+              testId="atc-preview-technique"
+            />
+            <PreviewAttribute
+              label="Priority"
+              value={priority}
+              testId="atc-preview-priority"
+            />
           </div>
 
           {/* linked story + acs */}
@@ -223,6 +247,31 @@ function useAtcUsage(id: string | null): AtcUsageReport | null {
   }, [id]);
 
   return usage;
+}
+
+// BK-399 — one classification row: the field label plus its value, or the
+// verbatim unset copy in the muted foreground token so "unset" reads as a real
+// state rather than a value someone typed.
+function PreviewAttribute({
+  label,
+  value,
+  testId,
+}: {
+  label: string
+  value: string | null
+  testId: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <PreviewLabel>{label}</PreviewLabel>
+      <span
+        data-testid={testId}
+        className={value === null ? 'text-sm text-fg-4' : 'text-sm text-fg-1'}
+      >
+        {value ?? ATC_UNSPECIFIED_LABEL}
+      </span>
+    </div>
+  );
 }
 
 function PreviewLabel({ children }: { children: React.ReactNode }) {

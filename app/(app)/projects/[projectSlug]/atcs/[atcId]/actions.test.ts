@@ -38,6 +38,11 @@ function baseInput(overrides: Partial<SaveAtcActionInput> = {}): SaveAtcActionIn
     projectSlug: 'demo-project',
     title: 'A valid ATC title',
     layer: 'UI',
+    // BK-399 — required keys carrying a nullable value. They are not optional
+    // on purpose: `bunkai_update_atc` full-replaces both columns, so a call
+    // site that omits them silently clears a stored classification.
+    technique: null,
+    priority: null,
     tags: [],
     userStoryId: '22222222-2222-4222-8222-222222222222',
     stepsMarkdown: '1. Do the thing',

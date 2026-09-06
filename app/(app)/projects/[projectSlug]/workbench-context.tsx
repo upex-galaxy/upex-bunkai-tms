@@ -1,8 +1,10 @@
 'use client';
 
+import type { AtcListFilters } from '@lib/atcs/list-filters';
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
+import { EMPTY_ATC_LIST_FILTERS } from '@lib/atcs/list-filters';
 import { shortSlug } from '@lib/utils';
 import { useParams, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -63,6 +65,14 @@ interface WorkbenchContextValue extends WorkbenchData {
   testTagFilter: string | null
   filteredTestIds: string[] | null
   setTestTagFilter: (tag: string | null, ids: string[] | null) => void
+  // BK-399 — the ATC table's technique / priority / layer facets. They live
+  // here, not inside AtcTable, so switching workbench views or opening an ATC
+  // and coming back does not silently drop the filter the user set. Not
+  // URL-synced: no deep-link requirement in scope, matching the same call
+  // BugsListView made for its own filters.
+  atcFilters: AtcListFilters
+  setAtcFilters: (patch: Partial<AtcListFilters>) => void
+  resetAtcFilters: () => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null);
@@ -145,6 +155,14 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     setTagFilter(tag);
     setFilteredTestIds(ids);
   }, []);
+  // BK-399 — ATC list facets. Stable setter identities so the table can list
+  // them as effect/callback dependencies without re-running every render.
+  const [atcFilters, setAtcFiltersState] = useState<AtcListFilters>(EMPTY_ATC_LIST_FILTERS);
+  const setAtcFilters = useCallback(
+    (patch: Partial<AtcListFilters>) => setAtcFiltersState(prev => ({ ...prev, ...patch })),
+    [],
+  );
+  const resetAtcFilters = useCallback(() => setAtcFiltersState(EMPTY_ATC_LIST_FILTERS), []);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId
       ? findTab(rows, tests, runLabels, projectSlug, 'atc', activeAtcId)
@@ -214,6 +232,9 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     testTagFilter,
     filteredTestIds,
     setTestTagFilter,
+    atcFilters,
+    setAtcFilters,
+    resetAtcFilters,
   };
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;

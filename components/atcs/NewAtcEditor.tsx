@@ -1,6 +1,7 @@
 'use client';
 
-import type { AcceptanceCriterion, AtcLayer, UserStory } from '@lib/types';
+import type { ParsedAssertion } from '@lib/atc-parse';
+import type { AcceptanceCriterion, AtcLayer, AtcPriority, AtcTechnique, UserStory } from '@lib/types';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
 import { AuthoringFormatHint } from '@components/atcs/AuthoringFormatHint';
@@ -19,6 +20,8 @@ import {
   TITLE_MESSAGE,
   titleValid,
 } from '@lib/atcs/builder-guards';
+import { ATC_UNSPECIFIED_LABEL } from '@lib/atcs/list-filters';
+import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { cn } from '@lib/utils';
 import { ChevronLeft, Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -70,6 +73,37 @@ interface CreatedAtcBody {
   atc?: { id?: string }
 }
 
+// BK-399 — the create half of THE DATA-LOSS GUARD (its update half lives on
+// `SaveAtcActionInput` in the ATC editor's server action, with the same
+// reasoning spelled out there).
+//
+// `technique` and `priority` are REQUIRED keys carrying a nullable value,
+// deliberately not `technique?:`. Without this declaration the POST body was an
+// untyped inline object literal: deleting `technique,` from it compiled, linted
+// and passed every test in the chain, while every ATC created through the web
+// editor stored NULL for a classification its author picked and watched render
+// in the preview. `AtcCreateBodySchema` defaults both to null, so the server
+// cannot tell the omission from a deliberate "not specified" and answers 201.
+//
+// The literal below is bound to this type with `satisfies`, so dropping a key
+// is a `bun run types:check` failure at the call site rather than silent data
+// loss at runtime.
+interface NewAtcRequestBody {
+  // The form's own `validationError()` gate guarantees both are set before the
+  // request is built; the type mirrors the state it is assembled from rather
+  // than re-narrowing, and the API rejects a null with 422 either way.
+  module_id: string | null
+  user_story_id: string | null
+  title: string
+  layer: AtcLayer
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
+  tags: string[]
+  steps: { position: number, content: string, input_data: string | null, expected: string | null }[]
+  assertions: ParsedAssertion[]
+  acceptance_criterion_ids: string[]
+}
+
 const LAYERS: AtcLayer[] = ['UI', 'API', 'Unit'];
 
 // Maps the BK-18 error envelope (code + details.reason) to a user-facing string.
@@ -113,6 +147,10 @@ export function NewAtcEditor({
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [layer, setLayer] = useState<AtcLayer>('UI');
+  // BK-399 — a new ATC starts unclassified; both stay null until the author
+  // picks something, and null is sent as an explicit null (never omitted).
+  const [technique, setTechnique] = useState<AtcTechnique | null>(null);
+  const [priority, setPriority] = useState<AtcPriority | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [moduleId, setModuleId] = useState<string | null>(initialModuleId);
@@ -211,11 +249,13 @@ export function NewAtcEditor({
           user_story_id: storyId,
           title: title.trim(),
           layer,
+          technique,
+          priority,
           tags,
           steps,
           assertions,
           acceptance_criterion_ids: acIds,
-        }),
+        } satisfies NewAtcRequestBody),
       });
 
       if (!response.ok) {
@@ -307,8 +347,13 @@ export function NewAtcEditor({
               </label>
             </header>
 
-            <div className="grid grid-cols-[1fr_auto] items-end gap-3">
-              <div>
+            {/* Attribute row. BK-399 slots Technique + Priority in beside the
+                existing Module picker and Layer segmented control, matching
+                AtcEditor's row one-for-one (master-design-plan §5 D41). Wrapping
+                flex, not a fixed two-column grid, so four attributes degrade by
+                wrapping at a narrow viewport. */}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex-1">
                 <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
                   Module
                   <span className="ml-1 font-normal text-fg-3">required</span>
@@ -327,6 +372,40 @@ export function NewAtcEditor({
                     <option key={m.id} value={m.id}>
                       {m.path}
                     </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Technique
+                </span>
+                <select
+                  data-testid="atc-technique-select"
+                  value={technique ?? ''}
+                  onChange={e => setTechnique((e.target.value || null) as AtcTechnique | null)}
+                  className="h-8 min-w-[220px] rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                >
+                  {/* First option === the unset display AND the clear-to-unset
+                      affordance (PO ruling Q2 + Q6). `value=""` maps to NULL. */}
+                  <option value="">{ATC_UNSPECIFIED_LABEL}</option>
+                  {ATC_TECHNIQUES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="mb-1 block font-mono text-xs font-semibold uppercase tracking-wider text-fg-2">
+                  Priority
+                </span>
+                <select
+                  data-testid="atc-priority-select"
+                  value={priority ?? ''}
+                  onChange={e => setPriority((e.target.value || null) as AtcPriority | null)}
+                  className="h-8 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 font-mono text-sm text-fg-1 hover:border-stroke-3 focus:border-accent focus:outline-none"
+                >
+                  <option value="">{ATC_UNSPECIFIED_LABEL}</option>
+                  {ATC_PRIORITIES.map(p => (
+                    <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
               </div>
@@ -497,6 +576,8 @@ export function NewAtcEditor({
           id={null}
           status={null}
           layer={layer}
+          technique={technique}
+          priority={priority}
           breadcrumb={moduleSegments}
           title={title}
           story={selectedStory}
