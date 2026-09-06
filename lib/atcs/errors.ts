@@ -1,5 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
-import { ATC_TITLE_MIN } from '@lib/atcs/validation';
+import { ATC_PRIORITIES, ATC_TECHNIQUES, ATC_TITLE_MIN } from '@lib/atcs/validation';
 
 // BK-18 — map a bunkai_create_atc / bunkai_update_atc / bunkai_get_atc RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise custom
@@ -19,6 +19,21 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
       if (constraint === 'atcs_title_min_length') {
         throw new ApiError('validation_failed', `Title must be at least ${ATC_TITLE_MIN} characters after trimming leading/trailing whitespace.`, {
           details: { reason: 'title_too_short' },
+        });
+      }
+      // BK-399 — the two classification CHECKs (migration 0087). Same shape as
+      // the title branch above: a caller that reaches the RPC without passing
+      // through AtcWriteBodySchema (direct PostgREST, or the web editor's
+      // saveAtcAction) still gets the canonical 422 with a specific reason
+      // instead of the generic check-constraint fallthrough.
+      if (constraint === 'atcs_technique_allowed') {
+        throw new ApiError('validation_failed', `Technique must be one of: ${ATC_TECHNIQUES.join(', ')}.`, {
+          details: { reason: 'technique_invalid' },
+        });
+      }
+      if (constraint === 'atcs_priority_allowed') {
+        throw new ApiError('validation_failed', `Priority must be one of: ${ATC_PRIORITIES.join(', ')}.`, {
+          details: { reason: 'priority_invalid' },
         });
       }
       throw new ApiError('validation_failed', 'The request failed a database validation rule.', {

@@ -94,6 +94,11 @@ export interface CreateAtcArgs {
   steps: AtcStepInput[]
   assertions: AtcAssertionInput[]
   acIds: string[]
+  // BK-399 — optional classification. Omitting either is identical to passing
+  // null: the RPC parameter defaults to null and the column is written NULL
+  // ("not specified"). Full-replace, exactly like `tags`.
+  technique?: string | null
+  priority?: string | null
 }
 
 export async function createAtc(supabase: Client, args: CreateAtcArgs) {
@@ -107,6 +112,12 @@ export async function createAtc(supabase: Client, args: CreateAtcArgs) {
     p_steps: args.steps as unknown as Json,
     p_assertions: args.assertions as unknown as Json,
     p_ac_ids: args.acIds,
+    // BK-399 — `text default null` on the widened 11-arg signature (migration
+    // 0087), so an omitted key and an explicit null are equivalent: the column
+    // is written NULL ("not specified"). Same `?? undefined` shape as every
+    // other optional-param call site in this file.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 
@@ -120,6 +131,10 @@ export interface UpdateAtcArgs {
   steps: AtcStepInput[]
   assertions: AtcAssertionInput[]
   acIds: string[]
+  // BK-399 — see CreateAtcArgs. Omission clears, matching the PATCH route's
+  // documented PUT-style full replace.
+  technique?: string | null
+  priority?: string | null
 }
 
 export async function updateAtc(supabase: Client, args: UpdateAtcArgs) {
@@ -135,6 +150,9 @@ export async function updateAtc(supabase: Client, args: UpdateAtcArgs) {
     p_steps: args.steps as unknown as Json,
     p_assertions: args.assertions as unknown as Json,
     p_ac_ids: args.acIds,
+    // BK-399 — see createAtc above; identical `text default null` contract.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 
@@ -175,6 +193,10 @@ export interface SearchAtcsArgs {
   moduleId?: string | null
   layer?: string | null
   limit?: number
+  // BK-399 — optional classification narrows. Absent means "no narrow"; there
+  // is no null-sentinel (searching for "unspecified" is client-side only).
+  technique?: string | null
+  priority?: string | null
 }
 
 export async function searchAtcs(supabase: Client, args: SearchAtcsArgs) {
@@ -185,6 +207,10 @@ export async function searchAtcs(supabase: Client, args: SearchAtcsArgs) {
     p_module_id: args.moduleId ?? undefined,
     p_layer: args.layer ?? undefined,
     p_limit: args.limit ?? undefined,
+    // BK-399 — optional narrows on the widened 8-arg signature (migration
+    // 0087). Absent means "no narrow", same as p_module_id / p_layer above.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 

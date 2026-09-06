@@ -6,8 +6,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 // guard for the two SECURITY DEFINER search RPCs that shipped granted to
 // `authenticated` with a caller-supplied, never-bound actor id:
 //
-//   * public.bunkai_search_atcs(uuid, text, uuid, uuid, text, int)  — 0027
+//   * public.bunkai_search_atcs(uuid, text, uuid, uuid, text, int, text, text)
+//                                                                    — 0027, widened by 0087
 //   * public.bunkai_filter_tests_by_tag(uuid, text)                  — 0030
+//
+// BK-399 WIDENED THE FIRST ONE. Migration 0087 dropped the 6-arg signature and
+// created an 8-arg one (`p_technique`, `p_priority`, both `default null`). A
+// `drop function` discards the old signature's grants, and Postgres grants
+// EXECUTE to PUBLIC by default on every newly created function — so BK-635's
+// fix had to be re-emitted for the new signature or it would have silently
+// reopened. This guard therefore targets the 8-arg function explicitly: calling
+// it with the old 6-argument list would still resolve (the new parameters have
+// defaults) and would keep passing while testing a signature that no longer
+// exists as written.
 //
 // This file covers BOTH because they share one defect and one migration
 // (0082_bk635_search_rpc_actor_bind_and_grant_revoke). It lives beside
@@ -129,6 +140,10 @@ describeSession('BK-635 — the two search RPCs are unreachable from a real auth
       p_module_id: null,
       p_layer: null,
       p_limit: 20,
+      // BK-399 — the two narrows the 0087 signature added. Named explicitly so
+      // this call cannot silently fall back to a defaulted 6-arg resolution.
+      p_technique: null,
+      p_priority: null,
     });
 
     expect(data).toBeNull();
@@ -183,7 +198,10 @@ describePg('BK-635 — the actor bind fires at step 0 and preserves the NULL-uid
     }
   }
 
-  const atcCall = `select public.bunkai_search_atcs('${NOBODY_UUID}'::uuid, 'login', '${NOBODY_PROJECT_UUID}'::uuid, null, null, 20)`;
+  // Eight positional arguments — the 0087 signature, spelled out. A six-argument
+  // call would resolve through the new defaults and would not prove which
+  // function the database actually holds.
+  const atcCall = `select public.bunkai_search_atcs('${NOBODY_UUID}'::uuid, 'login', '${NOBODY_PROJECT_UUID}'::uuid, null, null, 20, null, null)`;
   const tagCall = `select public.bunkai_filter_tests_by_tag('${NOBODY_UUID}'::uuid, 'smoke')`;
 
   it(`${ATC_SEARCH_RPC}: a populated auth.uid() that disagrees with p_actor_user_id raises 42501`, async () => {
@@ -209,14 +227,22 @@ describePg('BK-635 — the actor bind fires at step 0 and preserves the NULL-uid
       select p.proname,
              coalesce(array_to_string(p.proacl, ' | '), '') as acl,
              position('auth.uid()' in p.prosrc)  as guard_pos,
-             position('from public.' in p.prosrc) as first_read_pos
+             position('from public.' in p.prosrc) as first_read_pos,
+             p.pronargs as nargs
         from pg_proc p
         join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
          and p.proname in (${ATC_SEARCH_RPC}, ${TAG_FILTER_RPC})
     `;
 
+    // Exactly two rows: one overload each. BK-399's `drop function` on the
+    // 6-arg signature is load-bearing (0067's precedent) — a surviving old
+    // overload would show up here as a third row, and PostgREST's named-argument
+    // calls would keep landing on the stale, unrevoked body.
     expect(rows.length).toBe(2);
+    const atcRow = rows.find((row: { proname: string }) => row.proname === ATC_SEARCH_RPC);
+    expect(atcRow).toBeDefined();
+    expect(Number(atcRow.nargs)).toBe(8);
     for (const row of rows) {
       // Step 0: the bind is present AND sits ahead of every table read, so
       // nothing can leak through a branch taken before it (ADR-0012).

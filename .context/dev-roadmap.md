@@ -814,7 +814,7 @@ to keep §3/§6 reconciled against what has actually landed.
 **BK-398 shipped and recorded.** PR #173 (`feature/BK-398-command-palette`) merged to `origin/staging`,
 merge commit `3f6816f`, ancestry-verified — full detail in §3.1's new BK-7 addendum above and the
 edge-mapping TODO entry, both updated in place rather than left as a dangling "outstanding" item.
-BK-399 remains outstanding and unchanged: still `Backlog`, no §8 screen-map row, no edge identified.
+BK-399 remains outstanding and unchanged: still `Backlog`, no §8 screen-map row, no edge identified. **Superseded 2026-09-06 — every clause above is now stale, recorded here rather than deleted (append-only).** Live status is `In Progress` (was `Ready For Dev` at pickup, shift-left applied 2026-09-04, labels `shift-left-2026-09-04` / `shift-left-reviewed`); it acquired a `master-design-plan.md` §8 row that was 🔒 mockup-gated and is now `✅ ratified` against §5 **D41**; and it carries **no Jira issue links at all**, so the "no edge identified" clause is not a gap in this document but the correct state — BK-399 has no hard blocker. One genuine edge WAS identified during pickup and belongs in §3: BK-399 delivers the project-scoped **Layer filter** on the workbench ATC table, which `Scope` wrongly assumed already existed; that overlaps the facet surface BK-441 owns on the workspace-scoped `/atcs` index, so **BK-441 must be re-scoped to exclude the layer facet on the project workbench**, or the two will collide. Full reasoning in the AI Product Owner decision comment on BK-399 (Q7c).
 
 **Five edge-mapping gaps closed** — BK-315, BK-269, BK-268, and epics BK-183 and BK-70 existed in
 `.context/PBI/epic-tree.md` but had zero mentions anywhere in this document (verified: 0 grep hits

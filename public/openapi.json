@@ -1021,6 +1021,23 @@
             "type": "string",
             "enum": ["UI", "API", "Unit"]
           },
+          "technique": {
+            "type": ["string", "null"],
+            "enum": [
+              "Equivalence Partitioning",
+              "Boundary Value Analysis",
+              "State Transition",
+              "Decision Table",
+              "Pairwise",
+              null
+            ],
+            "description": "BK-399 — test-design technique that produced this ATC. `null` means \"not specified\"; it is never defaulted to a real value."
+          },
+          "priority": {
+            "type": ["string", "null"],
+            "enum": ["Critical", "High", "Medium", "Low", null],
+            "description": "BK-399 — ATC priority (distinct from Bug severity). `null` means \"not specified\"."
+          },
           "version": {
             "type": "integer",
             "description": "Monotonic per ATC. Starts at 1, +1 per edit."
@@ -1075,6 +1092,8 @@
           "slug",
           "title",
           "layer",
+          "technique",
+          "priority",
           "version",
           "status",
           "tags",
@@ -1153,6 +1172,23 @@
           "layer": {
             "type": "string",
             "enum": ["UI", "API", "Unit"]
+          },
+          "technique": {
+            "type": ["string", "null"],
+            "enum": [
+              "Equivalence Partitioning",
+              "Boundary Value Analysis",
+              "State Transition",
+              "Decision Table",
+              "Pairwise",
+              null
+            ],
+            "description": "Optional test-design technique. Omitted keys are cleared, not merged: sending `null` or omitting the key stores \"not specified\" (SQL NULL). Exact display label, case-sensitive, not trimmed."
+          },
+          "priority": {
+            "type": ["string", "null"],
+            "enum": ["Critical", "High", "Medium", "Low", null],
+            "description": "Optional ATC priority (distinct from Bug severity). Omitted keys are cleared, not merged: sending `null` or omitting the key stores \"not specified\" (SQL NULL). Exact display label, case-sensitive, not trimmed."
           },
           "tags": {
             "type": "array",
@@ -1236,6 +1272,23 @@
           "layer": {
             "type": "string",
             "enum": ["UI", "API", "Unit"]
+          },
+          "technique": {
+            "type": ["string", "null"],
+            "enum": [
+              "Equivalence Partitioning",
+              "Boundary Value Analysis",
+              "State Transition",
+              "Decision Table",
+              "Pairwise",
+              null
+            ],
+            "description": "Optional test-design technique. Omitted keys are cleared, not merged: sending `null` or omitting the key stores \"not specified\" (SQL NULL). Exact display label, case-sensitive, not trimmed."
+          },
+          "priority": {
+            "type": ["string", "null"],
+            "enum": ["Critical", "High", "Medium", "Low", null],
+            "description": "Optional ATC priority (distinct from Bug severity). Omitted keys are cleared, not merged: sending `null` or omitting the key stores \"not specified\" (SQL NULL). Exact display label, case-sensitive, not trimmed."
           },
           "tags": {
             "type": "array",
@@ -6043,7 +6096,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits).",
+            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -6174,7 +6227,7 @@
       "patch": {
         "tags": ["ATCs"],
         "summary": "Edit an ATC (full replace of steps and assertions)",
-        "description": "Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared. An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test's next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.",
+        "description": "Bearer `atc:write` (or cookie session). PUT-style full replace — omitted children are cleared, and so are omitted `technique` / `priority` (BK-399: an omitted key stores `null` = not specified, it does not preserve the previous value). An empty body is a 200 no-op (no version bump, no event). `user_story_id`, `module_id`, and `slug` are immutable. BK-21: edits propagate automatically to every Test that chains the ATC (Tests reference it by id, never copy its content), visible on the Test's next read. The response reports `affected_test_count` (DISTINCT chaining Tests — a Test that chains the ATC at multiple positions counts once; 0 for a no-op). Emits an `atc.updated` event carrying the in-transaction `affected_test_ids`.",
         "security": [
           {
             "cookieAuth": []
@@ -6289,7 +6342,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits).",
+            "description": "Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -6384,7 +6437,7 @@
       "get": {
         "tags": ["ATCs"],
         "summary": "Search ATCs by title and tags",
-        "description": "Bearer `atc:read` (or cookie session). Project-scoped full-text search over ATC title + tags, ranked by relevance with a 7-day recency tie-break, optionally narrowed by a module subtree and/or layer. Results are restricted to the caller's active workspace memberships AND to the required `project_id`; a project outside those memberships returns no rows. Zero matches return an empty `items` array (never 404).",
+        "description": "Bearer `atc:read` (or cookie session). Project-scoped full-text search over ATC title + tags, ranked by relevance with a 7-day recency tie-break, optionally narrowed by a module subtree, layer, technique and/or priority (BK-399) — every narrow is ANDed with the others. `query` and `project_id` remain REQUIRED: this is a search endpoint, not a list endpoint, so a classification narrow alone is not a valid request. Results are restricted to the caller's active workspace memberships AND to the required `project_id`; a project outside those memberships returns no rows. Zero matches return an empty `items` array (never 404).",
         "security": [
           {
             "cookieAuth": []
@@ -6434,6 +6487,34 @@
             },
             "required": false,
             "name": "layer",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Equivalence Partitioning",
+                "Boundary Value Analysis",
+                "State Transition",
+                "Decision Table",
+                "Pairwise"
+              ],
+              "description": "BK-399 — narrow to one test-design technique. Exact display label, case-sensitive, not trimmed (URL-encode the spaces, e.g. `technique=Decision+Table`). Absent means no narrow; there is no sentinel for \"not specified\", so ATCs with a NULL technique are unreachable through this parameter."
+            },
+            "required": false,
+            "description": "BK-399 — narrow to one test-design technique. Exact display label, case-sensitive, not trimmed (URL-encode the spaces, e.g. `technique=Decision+Table`). Absent means no narrow; there is no sentinel for \"not specified\", so ATCs with a NULL technique are unreachable through this parameter.",
+            "name": "technique",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["Critical", "High", "Medium", "Low"],
+              "description": "BK-399 — narrow to one ATC priority (distinct from Bug severity). Same strictness and same absence semantics as `technique`."
+            },
+            "required": false,
+            "description": "BK-399 — narrow to one ATC priority (distinct from Bug severity). Same strictness and same absence semantics as `technique`.",
+            "name": "priority",
             "in": "query"
           },
           {
@@ -6490,7 +6571,7 @@
             }
           },
           "422": {
-            "description": "Validation failed (empty/missing query, missing/invalid project_id, bad limit, bad layer).",
+            "description": "Validation failed (empty/missing query, missing/invalid project_id, bad limit, bad layer, unrecognized technique / priority).",
             "content": {
               "application/json": {
                 "schema": {

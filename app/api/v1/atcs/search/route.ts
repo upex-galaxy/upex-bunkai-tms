@@ -17,7 +17,13 @@ import { searchAtcs } from '@lib/supabase/rpc';
 //   ?project_id=<uuid>  required — scopes the search to one project
 //   ?module_id=<uuid>   optional — narrows to that module's subtree
 //   ?layer=UI|API|Unit  optional
+//   ?technique=<label>  optional — BK-399, exact display label, case-sensitive
+//   ?priority=<label>   optional — BK-399, same strictness
 //   ?limit=<1..50>      optional, default 20 (out of range → 422 validation)
+//
+// BK-399 — `query` and `project_id` stay REQUIRED. The two classification
+// params narrow a search; they do not turn this into a list endpoint, and there
+// is no null-sentinel for "unspecified" (that filter is client-side only).
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal } = getAuth(ctx);
@@ -31,6 +37,8 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
     projectId: query.project_id,
     moduleId: query.module_id ?? null,
     layer: query.layer ?? null,
+    technique: query.technique ?? null,
+    priority: query.priority ?? null,
     limit: query.limit,
   });
   if (error) {
