@@ -1,5 +1,6 @@
 'use client';
 
+import type { ParsedAssertion } from '@lib/atc-parse';
 import type { AcceptanceCriterion, AtcLayer, AtcPriority, AtcTechnique, UserStory } from '@lib/types';
 import { AnchoringPanel } from '@components/atcs/AnchoringPanel';
 import { AtcPreview } from '@components/atcs/AtcPreview';
@@ -70,6 +71,37 @@ interface ApiErrorBody {
 
 interface CreatedAtcBody {
   atc?: { id?: string }
+}
+
+// BK-399 — the create half of THE DATA-LOSS GUARD (its update half lives on
+// `SaveAtcActionInput` in the ATC editor's server action, with the same
+// reasoning spelled out there).
+//
+// `technique` and `priority` are REQUIRED keys carrying a nullable value,
+// deliberately not `technique?:`. Without this declaration the POST body was an
+// untyped inline object literal: deleting `technique,` from it compiled, linted
+// and passed every test in the chain, while every ATC created through the web
+// editor stored NULL for a classification its author picked and watched render
+// in the preview. `AtcCreateBodySchema` defaults both to null, so the server
+// cannot tell the omission from a deliberate "not specified" and answers 201.
+//
+// The literal below is bound to this type with `satisfies`, so dropping a key
+// is a `bun run types:check` failure at the call site rather than silent data
+// loss at runtime.
+interface NewAtcRequestBody {
+  // The form's own `validationError()` gate guarantees both are set before the
+  // request is built; the type mirrors the state it is assembled from rather
+  // than re-narrowing, and the API rejects a null with 422 either way.
+  module_id: string | null
+  user_story_id: string | null
+  title: string
+  layer: AtcLayer
+  technique: AtcTechnique | null
+  priority: AtcPriority | null
+  tags: string[]
+  steps: { position: number, content: string, input_data: string | null, expected: string | null }[]
+  assertions: ParsedAssertion[]
+  acceptance_criterion_ids: string[]
 }
 
 const LAYERS: AtcLayer[] = ['UI', 'API', 'Unit'];
@@ -223,7 +255,7 @@ export function NewAtcEditor({
           steps,
           assertions,
           acceptance_criterion_ids: acIds,
-        }),
+        } satisfies NewAtcRequestBody),
       });
 
       if (!response.ok) {

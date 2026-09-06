@@ -64,12 +64,20 @@ describe('matchesAtcListFilters', () => {
     const f = filters({ technique: ATC_FILTER_UNSPECIFIED });
     expect(matchesAtcListFilters(row({ technique: null }), f)).toBe(true);
     expect(matchesAtcListFilters(row({ technique: 'Pairwise' }), f)).toBe(false);
+    // NULL, and nothing else falsy. The implementation says `value === null`,
+    // which is right — but the PROPERTY was unguarded: refactoring the branch to
+    // `!value` passed every other case in this file while quietly making `''`
+    // "not specified". An empty string is not the unset state; it is an
+    // out-of-set value the CHECK constraint would reject on the way in, and a
+    // row carrying one must not be dressed up as unclassified in the list.
+    expect(matchesAtcListFilters(row({ technique: '' as never }), f)).toBe(false);
   });
 
   it('matches unspecified priority the same way', () => {
     const f = filters({ priority: ATC_FILTER_UNSPECIFIED });
     expect(matchesAtcListFilters(row({ priority: null }), f)).toBe(true);
     expect(matchesAtcListFilters(row({ priority: 'High' }), f)).toBe(false);
+    expect(matchesAtcListFilters(row({ priority: '' as never }), f)).toBe(false);
   });
 
   // Q9 / E1 — the stored value IS the display label, case-sensitive. A facet

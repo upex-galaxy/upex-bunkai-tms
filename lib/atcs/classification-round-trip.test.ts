@@ -33,8 +33,39 @@ function source(relativePath: string): string {
   return readFileSync(join(repoRoot, relativePath), 'utf8');
 }
 
+// The object literal that follows `marker`, brace-matched to its own closing
+// brace.
+//
+// `source.slice(source.indexOf(marker))` — what this used to do — slices to the
+// END OF FILE, so the "payload" it asserts on is every remaining line of the
+// module. Any later mention of the forwarded key satisfies it: a destructuring
+// below the call site, a comment quoting the line, an unrelated object with a
+// `technique` field. The guard then passes with the forwarding deleted, which is
+// precisely the failure it was written to catch. Matching the braces bounds the
+// assertion to the literal actually being sent.
+function objectLiteralAfter(source: string, marker: string): string {
+  const at = source.indexOf(marker);
+  if (at === -1) {
+    throw new Error(`[classification-round-trip] \`${marker}\` not found — the scan is looking at the wrong thing, or the call site moved.`);
+  }
+  const open = source.indexOf('{', at + marker.length - 1);
+  if (open === -1) {
+    throw new Error(`[classification-round-trip] \`${marker}\` is not followed by an object literal.`);
+  }
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === '{') { depth += 1; }
+    if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) { return source.slice(open, index + 1); }
+    }
+  }
+  throw new Error(`[classification-round-trip] unbalanced braces after \`${marker}\`.`);
+}
+
 const SAVE_ACTION = 'app/(app)/projects/[projectSlug]/atcs/[atcId]/actions.ts';
 const EDITOR = 'components/atcs/AtcEditor.tsx';
+const NEW_EDITOR = 'components/atcs/NewAtcEditor.tsx';
 
 describe('aTC classification save round-trip', () => {
   const actions = source(SAVE_ACTION);
@@ -49,8 +80,7 @@ describe('aTC classification save round-trip', () => {
   });
 
   it('forwards both fields from the action input into the update RPC call', () => {
-    const call = actions.slice(actions.indexOf('await updateAtc(supabase, {'));
-    expect(call).not.toBe('');
+    const call = objectLiteralAfter(actions, 'await updateAtc(supabase, {');
     expect(call).toContain('technique: input.technique');
     expect(call).toContain('priority: input.priority');
   });
@@ -75,10 +105,61 @@ describe('aTC editor classification state', () => {
   });
 
   it('sends both fields on every save', () => {
-    const payload = editor.slice(editor.indexOf('const result = await onSave({'));
-    expect(payload).not.toBe('');
+    const payload = objectLiteralAfter(editor, 'const result = await onSave({');
     expect(payload).toContain('technique,');
     expect(payload).toContain('priority,');
+  });
+});
+
+// THE CREATE PATH — the same defect, previously unguarded on BOTH legs.
+//
+// The POST body was an untyped inline object inside `JSON.stringify({…})`, so
+// there was no required-key type to violate; and the scan above reads only
+// `actions.ts` and `AtcEditor.tsx`, so it never looked here. Deleting
+// `technique,` / `priority,` from that literal compiled, linted and passed every
+// test in the chain — while every ATC created through the web editor stored NULL
+// for a classification its author had picked and watched render in the preview.
+// `AtcCreateBodySchema` defaults both to null, so the server answers 201 and
+// nothing anywhere reports a loss.
+//
+// Both legs are closed the way the update path closes them: a declared body type
+// whose classification keys are REQUIRED and nullable (omission is a
+// `types:check` failure), and this scan over the literal that is actually sent.
+describe('aTC create editor classification payload', () => {
+  const editor = source(NEW_EDITOR);
+
+  it('declares both classification fields as required keys on the POST body type', () => {
+    // Required, not optional: `technique?:` would let the literal drop the key
+    // and still type-check, which is exactly the failure this guards.
+    expect(editor).toContain('technique: AtcTechnique | null');
+    expect(editor).toContain('priority: AtcPriority | null');
+    expect(editor).not.toContain('technique?: AtcTechnique');
+    expect(editor).not.toContain('priority?: AtcPriority');
+  });
+
+  it('binds the POST body to that type, so a dropped key fails types:check', () => {
+    // Without the binding the declaration is decoration: an untyped object
+    // literal satisfies no interface, however carefully the interface is
+    // written.
+    const payload = objectLiteralAfter(editor, 'body: JSON.stringify({');
+    expect(editor.slice(editor.indexOf('body: JSON.stringify({')))
+      .toContain(`${payload} satisfies NewAtcRequestBody`);
+  });
+
+  it('sends both fields in the POST body', () => {
+    const payload = objectLiteralAfter(editor, 'body: JSON.stringify({');
+    expect(payload).toContain('technique,');
+    expect(payload).toContain('priority,');
+  });
+
+  it('never hardcodes a cleared classification in the POST body', () => {
+    // A literal null here would ship "not specified" over the user's choice just
+    // as effectively as an omission, while looking deliberate in review. (The
+    // `useState(null)` seeds are correct on this path — a NEW ATC does start
+    // unclassified — so the assertion is scoped to the payload, not the file.)
+    const payload = objectLiteralAfter(editor, 'body: JSON.stringify({');
+    expect(payload).not.toContain('technique: null');
+    expect(payload).not.toContain('priority: null');
   });
 });
 
