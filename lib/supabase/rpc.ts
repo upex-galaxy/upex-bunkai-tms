@@ -84,28 +84,6 @@ export interface AtcAssertionInput {
   content: string
 }
 
-// BK-399 — the two classification RPC parameters, shared by createAtc and
-// updateAtc. Both are `text default null` on the widened 11-arg signatures
-// (migration 0087), so an omitted key and an explicit null are equivalent: the
-// column is written NULL ("not specified").
-//
-// TYPE NOTE. `lib/types/supabase.ts` is generated from the LIVE shared Supabase
-// project (scripts/gen-supabase-types.ts reads the remote schema; this repo has
-// no local stack), so it cannot carry `p_technique` / `p_priority` until 0087
-// has been applied there. Spreading this helper's explicitly-typed return into
-// the `.rpc()` argument object is what keeps the call site honest in the
-// meantime — an inline literal would be excess-property-checked against the
-// stale Args type. Once 0087 is applied and `bun run types:gen` is re-run, the
-// generated Args type covers both keys and this helper can be inlined.
-function atcClassificationArgs(
-  args: { technique?: string | null, priority?: string | null },
-): { p_technique?: string, p_priority?: string } {
-  return {
-    p_technique: args.technique ?? undefined,
-    p_priority: args.priority ?? undefined,
-  };
-}
-
 export interface CreateAtcArgs {
   actorUserId: string
   moduleId: string
@@ -134,7 +112,12 @@ export async function createAtc(supabase: Client, args: CreateAtcArgs) {
     p_steps: args.steps as unknown as Json,
     p_assertions: args.assertions as unknown as Json,
     p_ac_ids: args.acIds,
-    ...atcClassificationArgs(args),
+    // BK-399 — `text default null` on the widened 11-arg signature (migration
+    // 0087), so an omitted key and an explicit null are equivalent: the column
+    // is written NULL ("not specified"). Same `?? undefined` shape as every
+    // other optional-param call site in this file.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 
@@ -167,7 +150,9 @@ export async function updateAtc(supabase: Client, args: UpdateAtcArgs) {
     p_steps: args.steps as unknown as Json,
     p_assertions: args.assertions as unknown as Json,
     p_ac_ids: args.acIds,
-    ...atcClassificationArgs(args),
+    // BK-399 — see createAtc above; identical `text default null` contract.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 
@@ -222,7 +207,10 @@ export async function searchAtcs(supabase: Client, args: SearchAtcsArgs) {
     p_module_id: args.moduleId ?? undefined,
     p_layer: args.layer ?? undefined,
     p_limit: args.limit ?? undefined,
-    ...atcClassificationArgs(args),
+    // BK-399 — optional narrows on the widened 8-arg signature (migration
+    // 0087). Absent means "no narrow", same as p_module_id / p_layer above.
+    p_technique: args.technique ?? undefined,
+    p_priority: args.priority ?? undefined,
   });
 }
 
