@@ -76,7 +76,7 @@ interface Fixture {
   workspaceId: string
   projectAId: string
   projectBId: string
-  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc' | 'moduleMix' | 'skipped' | 'blocked' | 'failed', string>
+  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc' | 'moduleMix' | 'skipped' | 'blocked' | 'failed' | 'passedThenSkipped', string>
   atcIds: string[]
   acIds: string[]
   userStoryIds: string[]
@@ -158,6 +158,11 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'skipped' as const, path: 'skipped', name: 'Skipped only' },
       { key: 'blocked' as const, path: 'blocked', name: 'Blocked only' },
       { key: 'failed' as const, path: 'failed', name: 'Failed only' },
+      // BK-1081 accepted consequence (AI PO decision A1, point-in-time): an ATC
+      // that PASSED in an earlier run and was SKIPPED in its latest run reads
+      // not_run. The earlier 'passed' row lives in a second, back-dated Run
+      // seeded below.
+      { key: 'passedThenSkipped' as const, path: 'passed-then-skipped', name: 'Passed then skipped' },
     ];
     const { data: seededModules, error: modulesError } = await db
       .from('modules')
@@ -190,6 +195,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'skipped', moduleId: moduleIds.skipped },
       { key: 'blocked', moduleId: moduleIds.blocked },
       { key: 'failed', moduleId: moduleIds.failed },
+      { key: 'passedThenSkipped', moduleId: moduleIds.passedThenSkipped },
       { key: 'b', moduleId: moduleB.id as string },
     ];
     const { data: seededStories, error: storiesError } = await db
@@ -233,6 +239,9 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'skipped', moduleKey: 'skipped' as const, storyKey: 'skipped', archived: false, runStatus: 'skipped' as string | null },
       { key: 'blocked', moduleKey: 'blocked' as const, storyKey: 'blocked', archived: false, runStatus: 'blocked' as string | null },
       { key: 'failed', moduleKey: 'failed' as const, storyKey: 'failed', archived: false, runStatus: 'failed' as string | null },
+      // Latest run = the main (now) Run: skipped. Its earlier 'passed' row is
+      // seeded separately in the back-dated Run below.
+      { key: 'passedThenSkipped', moduleKey: 'passedThenSkipped' as const, storyKey: 'passedThenSkipped', archived: false, runStatus: 'skipped' as string | null },
     ];
     const { data: seededAtcs, error: atcsError } = await db
       .from('atcs')
@@ -295,6 +304,7 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { atcKey: 'skipped', acKey: 'skipped' },
       { atcKey: 'blocked', acKey: 'blocked' },
       { atcKey: 'failed', acKey: 'failed' },
+      { atcKey: 'passedThenSkipped', acKey: 'passedThenSkipped' },
     ];
     const { error: linkError } = await db
       .from('atc_acceptance_criteria')
@@ -367,6 +377,37 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
         status: r.status,
       })));
     if (runAtcsError) { throw runAtcsError; }
+
+    // Back-dated earlier Run (one hour before the main Run) holding the
+    // passedThenSkipped ATC's 'passed' result, so its MOST RECENT row
+    // (atc_real_status orders by runs.started_at desc) is the main Run's
+    // 'skipped' row. Cascades away with Project A like the main Run.
+    const { data: earlierRun, error: earlierRunError } = await db
+      .from('runs')
+      .insert({
+        workspace_id: anchor.workspace_id,
+        project_id: projectAId,
+        test_id: createdTestId,
+        environment_id: environmentA.id as string,
+        test_title: `${PREFIX} test`,
+        status: 'passed',
+        executor_mode: 'human',
+        start_token: `${PREFIX}-run-earlier`,
+        started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      })
+      .select('id')
+      .single();
+    if (earlierRunError) { throw earlierRunError; }
+    const { error: earlierRunAtcError } = await db
+      .from('run_atcs')
+      .insert({
+        run_id: earlierRun.id as string,
+        atc_id: atcIdByKey.get('passedThenSkipped')!,
+        position: 1,
+        atc_title: `${PREFIX} atc passedThenSkipped`,
+        status: 'passed',
+      });
+    if (earlierRunAtcError) { throw earlierRunAtcError; }
 
     fixture = {
       actorUserId: anchor.user_id,
@@ -470,11 +511,11 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     expect(mod.ac_uncovered).toBe(1);
   });
 
-  // BK-1081 — REQUIRES MIGRATION 0090 APPLIED to the target database. Until
-  // it is, the live RPC still runs 0050 (only 'pending' = not run) and the
-  // two not_run assertions below FAIL by design: they are the regression
-  // proof for the fix, not flaky tests. Decision: BK-1083 / BK-46 comment
-  // "AI Product Owner — Decision: BK-46 coverage run-status semantics".
+  // BK-1081 — regression proof for migration 0090 (applied after review per
+  // AGENTS.md Rule #20). Against a database still on 0050 (only 'pending' =
+  // not run) the not_run assertions below fail, which is the point. Decision:
+  // BK-1083 / BK-46 comment "AI Product Owner — Decision: BK-46 coverage
+  // run-status semantics".
   it('[requires 0090] an AC whose only ATC was SKIPPED in its latest run is not_run, not executed', async () => {
     if (!fixture) { return warn(); }
     const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
@@ -488,6 +529,15 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     if (!fixture) { return warn(); }
     const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
     const mod = findModule(page, fixture.moduleIds.blocked);
+    expect(mod.status).toBe('not_run');
+    expect(mod.ac_not_run).toBe(1);
+    expect(mod.ac_executed).toBe(0);
+  });
+
+  it('[requires 0090] an ATC that PASSED in an earlier run but was SKIPPED in its latest run is not_run (point-in-time, decision A1)', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.passedThenSkipped);
     expect(mod.status).toBe('not_run');
     expect(mod.ac_not_run).toBe(1);
     expect(mod.ac_executed).toBe(0);
