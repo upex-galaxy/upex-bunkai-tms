@@ -7361,7 +7361,7 @@
             }
           },
           "503": {
-            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
+            "description": "The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; which configuration is missing is logged server-side only. Returned before any checkout session row is created.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7452,7 +7452,7 @@
             }
           },
           "503": {
-            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
+            "description": "The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; the missing configuration is logged server-side only.",
             "content": {
               "application/json": {
                 "schema": {
