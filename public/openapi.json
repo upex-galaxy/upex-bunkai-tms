@@ -4806,11 +4806,11 @@
           },
           "ac_executed": {
             "type": "integer",
-            "description": "How many of `ac_bound` are currently verified: at least one ATC is linked AND no linked ATC is still pending in its most recent run. POINT-IN-TIME, NOT CUMULATIVE — this is not a count of criteria that have ever been executed. Each ATC resolves to the status of its most recent run only, and adding an ATC to a newly created run resets it to pending, so this figure legitimately falls when a team opens a regression run and rises again as they work through it. Always <= `ac_bound`."
+            "description": "How many of `ac_bound` are currently verified: at least one ATC is linked AND every linked ATC was actually exercised (`passed` or `failed`) in its most recent run; `pending`, `skipped` and `blocked` do not count as executed. POINT-IN-TIME, NOT CUMULATIVE — this is not a count of criteria that have ever been executed. Each ATC resolves to the status of its most recent run only, and adding an ATC to a newly created run resets it to pending, so this figure legitimately falls when a team opens a regression run and rises again as they work through it. Always <= `ac_bound`."
           },
           "ac_not_run": {
             "type": "integer",
-            "description": "Bound but not currently verified — `ac_bound - ac_executed`: at least one linked ATC is pending in its most recent run. Kept as its own figure because \"test cases exist but are not verified right now\" is a different problem from \"no test cases exist\", and a single coverage percentage hides the difference. Note this does NOT mean \"never executed\": an ATC with a long execution history returns to this bucket as soon as it joins a new run."
+            "description": "Bound but not currently verified — `ac_bound - ac_executed`: at least one linked ATC is `pending`, `skipped` or `blocked` in its most recent run (or has never been in a run). Kept as its own figure because \"test cases exist but are not verified right now\" is a different problem from \"no test cases exist\", and a single coverage percentage hides the difference. Note this does NOT mean \"never executed\": an ATC with a long execution history returns to this bucket as soon as it joins a new run."
           },
           "ac_uncovered": {
             "type": "integer",

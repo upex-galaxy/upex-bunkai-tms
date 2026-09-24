@@ -20,11 +20,12 @@ import { reportProjectCoverage } from '@lib/supabase/rpc';
 // WHERE "COVERED" IS DEFINED — NOT HERE
 // -------------------------------------
 // This module computes NO coverage state of its own. Every per-AC verdict comes
-// from `bunkai_report_project_coverage` (0048, corrected by 0050), the SAME
+// from `bunkai_report_project_coverage` (0048, corrected by 0050 and 0090), the SAME
 // SECURITY DEFINER RPC that backs `/api/v1/projects/{id}/coverage` and the
 // project Metrics screen (BK-46). That RPC owns the three-way state — uncovered
 // (zero linked non-archived ATCs) / not_run (>=1 linked ATC, at least one whose
-// most recent `run_atcs` row is still `pending`) / executed — together with the
+// most recent `run_atcs` row is not `passed`/`failed`: pending, skipped or
+// blocked, or no run at all — BK-1081) / executed — together with the
 // PO's Q1/Q2/Q3 rulings behind it and every archived-entity exclusion.
 //
 // Re-deriving those rules in TypeScript would have produced a second, subtly
@@ -146,8 +147,9 @@ export interface WorkspaceCoverageRollup {
   acTotal: number
   // ...of which have at least one non-archived ATC linked (run or not).
   acBound: number
-  // ...of which have at least one linked ATC AND no linked ATC whose MOST
-  // RECENT run is still pending. Point-in-time, not cumulative — see the
+  // ...of which have at least one linked ATC AND every linked ATC was
+  // executed (`passed` or `failed`) in its MOST RECENT run; pending, skipped
+  // and blocked do not count (BK-1081). Point-in-time, not cumulative — see the
   // "EXECUTED IS POINT-IN-TIME" note above before reading this as "has ever
   // been run".
   acExecuted: number
