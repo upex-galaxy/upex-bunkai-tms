@@ -12436,7 +12436,7 @@
             }
           },
           "403": {
-            "description": "Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler).",
+            "description": "Any of: the PAT lacks the `workspace:admin` capability (`details.reason: missing_capability`); the PAT is not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`details.reason: not_workspace_owner`, stricter than admin). A PAT from headless sign-in never carries `workspace:admin` (ADR-0005): an owner automating checkout mints a workspace-scoped token via `POST /api/v1/tokens` with `workspace_id` set to this workspace and `scopes` including `workspace:admin`.",
             "content": {
               "application/json": {
                 "schema": {
