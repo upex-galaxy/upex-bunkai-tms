@@ -10,6 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //   * an AC with >=1 linked ATC, at least one 'unrun' -> 'not_run' (Q3 union
 //     rule — a second, 'passed' ATC on the SAME AC does not clear it)
 //   * an AC with >=1 linked ATC, none 'unrun' -> 'executed'
+//   * BK-1081 (migration 0090): an ATC whose latest run is 'skipped' or
+//     'blocked' is NOT executed (-> 'not_run'); 'failed' still is
 //   * a module whose every AC is 'executed' -> 'fully_covered'
 //   * an ATC that is archived does not count as coverage at all (treated as
 //     if the link did not exist)
@@ -74,7 +76,7 @@ interface Fixture {
   workspaceId: string
   projectAId: string
   projectBId: string
-  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc' | 'moduleMix', string>
+  moduleIds: Record<'uncovered' | 'notRun' | 'executed' | 'mixed' | 'noAcs' | 'archivedAtc' | 'moduleMix' | 'skipped' | 'blocked' | 'failed', string>
   atcIds: string[]
   acIds: string[]
   userStoryIds: string[]
@@ -150,6 +152,12 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'noAcs' as const, path: 'no-acs', name: 'No ACs' },
       { key: 'archivedAtc' as const, path: 'archived-atc', name: 'Archived ATC only' },
       { key: 'moduleMix' as const, path: 'module-mix', name: 'Module Mix (precedence)' },
+      // BK-1081 (migration 0090): one module per non-pending terminal run
+      // status, each with a single AC whose only ATC ended its latest run in
+      // that status. skipped/blocked must read not_run; failed stays executed.
+      { key: 'skipped' as const, path: 'skipped', name: 'Skipped only' },
+      { key: 'blocked' as const, path: 'blocked', name: 'Blocked only' },
+      { key: 'failed' as const, path: 'failed', name: 'Failed only' },
     ];
     const { data: seededModules, error: modulesError } = await db
       .from('modules')
@@ -179,6 +187,9 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'archivedAtc', moduleId: moduleIds.archivedAtc },
       { key: 'moduleMixUncovered', moduleId: moduleIds.moduleMix },
       { key: 'moduleMixNotRun', moduleId: moduleIds.moduleMix },
+      { key: 'skipped', moduleId: moduleIds.skipped },
+      { key: 'blocked', moduleId: moduleIds.blocked },
+      { key: 'failed', moduleId: moduleIds.failed },
       { key: 'b', moduleId: moduleB.id as string },
     ];
     const { data: seededStories, error: storiesError } = await db
@@ -219,6 +230,9 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { key: 'mixedUnrun', moduleKey: 'mixed' as const, storyKey: 'mixed', archived: false, runStatus: null as string | null },
       { key: 'archived', moduleKey: 'archivedAtc' as const, storyKey: 'archivedAtc', archived: true, runStatus: 'passed' as string | null },
       { key: 'moduleMixNotRun', moduleKey: 'moduleMix' as const, storyKey: 'moduleMixNotRun', archived: false, runStatus: null as string | null },
+      { key: 'skipped', moduleKey: 'skipped' as const, storyKey: 'skipped', archived: false, runStatus: 'skipped' as string | null },
+      { key: 'blocked', moduleKey: 'blocked' as const, storyKey: 'blocked', archived: false, runStatus: 'blocked' as string | null },
+      { key: 'failed', moduleKey: 'failed' as const, storyKey: 'failed', archived: false, runStatus: 'failed' as string | null },
     ];
     const { data: seededAtcs, error: atcsError } = await db
       .from('atcs')
@@ -278,6 +292,9 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
       { atcKey: 'moduleMixNotRun', acKey: 'moduleMixNotRun' },
       { atcKey: 'mixedUnrun', acKey: 'mixed' },
       { atcKey: 'archived', acKey: 'archivedAtc' },
+      { atcKey: 'skipped', acKey: 'skipped' },
+      { atcKey: 'blocked', acKey: 'blocked' },
+      { atcKey: 'failed', acKey: 'failed' },
     ];
     const { error: linkError } = await db
       .from('atc_acceptance_criteria')
@@ -451,6 +468,38 @@ describeOrSkip('BK-46 — bunkai_report_project_coverage isolation + coverage-st
     const mod = findModule(page, fixture.moduleIds.archivedAtc);
     expect(mod.status).toBe('uncovered');
     expect(mod.ac_uncovered).toBe(1);
+  });
+
+  // BK-1081 — REQUIRES MIGRATION 0090 APPLIED to the target database. Until
+  // it is, the live RPC still runs 0050 (only 'pending' = not run) and the
+  // two not_run assertions below FAIL by design: they are the regression
+  // proof for the fix, not flaky tests. Decision: BK-1083 / BK-46 comment
+  // "AI Product Owner — Decision: BK-46 coverage run-status semantics".
+  it('[requires 0090] an AC whose only ATC was SKIPPED in its latest run is not_run, not executed', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.skipped);
+    expect(mod.status).toBe('not_run');
+    expect(mod.ac_not_run).toBe(1);
+    expect(mod.ac_executed).toBe(0);
+  });
+
+  it('[requires 0090] an AC whose only ATC was BLOCKED in its latest run is not_run, not executed', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.blocked);
+    expect(mod.status).toBe('not_run');
+    expect(mod.ac_not_run).toBe(1);
+    expect(mod.ac_executed).toBe(0);
+  });
+
+  it('a FAILED latest run still counts as executed coverage (coverage and health are separate axes)', async () => {
+    if (!fixture) { return warn(); }
+    const page = await reportCoverage(fixture.projectAId, fixture.actorUserId);
+    const mod = findModule(page, fixture.moduleIds.failed);
+    expect(mod.status).toBe('fully_covered');
+    expect(mod.ac_executed).toBe(1);
+    expect(mod.ac_not_run).toBe(0);
   });
 
   it('a module with zero User Stories/ACs is no_acs, not an error', async () => {
