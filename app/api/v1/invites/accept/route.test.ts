@@ -32,8 +32,14 @@ interface Fixture {
   workspace: { deleted_at: string | null } | null
 }
 
+interface EqCall { table: string, column: string, value: unknown }
+
 // Minimal `.from(t).select().eq().maybeSingle()` chain keyed by table name.
-function fakeDb(f: Fixture): SupabaseClient<Database> {
+// The `workspaces` row is only returned when the lookup is keyed by the
+// invite's OWN workspace_id (`.eq('id', invite.workspace_id)`); any other key
+// resolves to no row, so a mis-keyed liveness check cannot pass the live-
+// workspace cases by accident. Every `.eq()` is recorded in `calls`.
+function fakeDb(f: Fixture, calls: EqCall[] = []): SupabaseClient<Database> {
   const rows: Record<string, unknown> = {
     workspace_invite_secrets: f.secret,
     workspace_invites: f.invite,
@@ -41,10 +47,24 @@ function fakeDb(f: Fixture): SupabaseClient<Database> {
   };
   return {
     from: (table: string) => {
+      const mine: EqCall[] = [];
       const chain = {
         select: () => chain,
-        eq: () => chain,
-        maybeSingle: async () => ({ data: rows[table] ?? null, error: null }),
+        eq: (column: string, value: unknown) => {
+          const call = { table, column, value };
+          mine.push(call);
+          calls.push(call);
+          return chain;
+        },
+        maybeSingle: async () => {
+          if (table === 'workspaces') {
+            const keyedByInviteWorkspace = mine.length === 1
+              && mine[0].column === 'id'
+              && mine[0].value === f.invite?.workspace_id;
+            return { data: keyedByInviteWorkspace ? f.workspace : null, error: null };
+          }
+          return { data: rows[table] ?? null, error: null };
+        },
       };
       return chain;
     },
@@ -124,12 +144,14 @@ describe('resolveRedeemableInvite — AC-14 non-disclosure (BK-988)', () => {
     expect(live).toEqual({ status: 409, body: { error: { code: 'conflict', message: 'Invite has been revoked.' } } });
   });
 
-  it('a valid pending invite to a live workspace resolves', async () => {
+  it('a valid pending invite to a live workspace resolves, and liveness is looked up by the invite\'s own workspace_id', async () => {
+    const calls: EqCall[] = [];
     const result = await resolveRedeemableInvite(fakeDb({
       secret: { invite_id: INVITE_ID },
       invite: invite(),
       workspace: { deleted_at: null },
-    }), 'hash');
+    }, calls), 'hash');
     expect(result).toEqual({ id: INVITE_ID, workspace_id: WORKSPACE_ID, email: 'invitee@example.com', role: 'member' });
+    expect(calls.filter(c => c.table === 'workspaces')).toEqual([{ table: 'workspaces', column: 'id', value: WORKSPACE_ID }]);
   });
 });
