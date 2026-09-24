@@ -27,13 +27,35 @@
 --   bunkai_atc_usage                         (0029)  -> P0002 (404)
 --   bunkai_rename_environment                (0063)  -> P0002 (404)
 --   bunkai_delete_environment                (0063)  -> P0002 (404)
+--   bunkai_search_atcs                       (0087)  -> empty result
+--   bunkai_search_tests                      (0081)  -> empty result
+--   bunkai_filter_tests_by_tag               (0082)  -> empty result
+--   bunkai_notification_digest_candidates    (0078)  -> no digest rows
 --
--- The three helpers are called by ~47 DEFINER RPCs (Tests, Runs, run steps,
--- run history/reports, Bugs, ATC create/update/duplicate, coverage and
--- traceability reports, export), so fixing them closes all of those at once.
--- atc_usage and the two environment RPCs inline their own membership check
--- (they never called a helper), and they are three of the four repro paths
--- in BK-991, so they are amended here too.
+-- The three helpers are called by 22 DEFINER RPCs (latest definitions
+-- before this file): Test read/create/reorder/tags, Run create/read/finish/
+-- abort/step-mark/history, Bug create/list, ATC get/create/update/duplicate,
+-- environment create, and the coverage, defect-heatmap, recovery-cycle,
+-- project-runs and story-traceability reports. Fixing the helpers closes all
+-- 22 at once.
+--
+-- The other seven functions never called a helper. Each has its own inline
+-- `workspace_members` join, found by auditing every SECURITY DEFINER function
+-- whose latest definition joins `workspace_members` and has no `deleted_at`
+-- check. atc_usage and the two environment RPCs are three of the four BK-991
+-- repro paths. The two search RPCs and tag filter list ATCs/Tests, which
+-- AC-07 also requires to be out of reach. The digest feed would keep emailing
+-- ex-members about unread notifications, and AC-07 says notifications stop
+-- at the same instant. For each of the seven, the body is copied verbatim
+-- from its latest definition and only the `workspaces` join plus
+-- `deleted_at is null` is added.
+--
+-- Audited and left unchanged: bunkai_assign_bug (0054) gates through the
+-- auth.uid() helpers bunkai_is_workspace_member / bunkai_can_write_workspace,
+-- which 0084 already made deleted-aware, and its only inline read is the
+-- assignee lookup inside that already-authorized workspace.
+-- bunkai_leave_workspace (0044) and bunkai_bugs_check_consistency (0054
+-- trigger) expose no entity data.
 --
 -- `create or replace` preserves each function's existing ACL (including the
 -- qa_inspector_* grants from 0085/0086/0088), so nothing is dropped and no
@@ -362,3 +384,349 @@ $$;
 
 revoke execute on function public.bunkai_delete_environment(uuid, uuid) from public, anon;
 grant execute on function public.bunkai_delete_environment(uuid, uuid) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 7. bunkai_search_atcs (latest: 0087, 8-arg signature) — body copied from
+--    0087 verbatim, including the step-0 actor bind; only the workspaces join
+--    and `w.deleted_at is null` are added.
+-- ---------------------------------------------------------------------------
+create or replace function public.bunkai_search_atcs(
+  p_actor_user_id uuid,
+  p_query         text,
+  p_project_id    uuid,
+  p_module_id     uuid    default null,
+  p_layer         text    default null,
+  p_limit         int     default 20,
+  p_technique     text    default null,
+  p_priority      text    default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_query        tsquery;
+  v_module_path  text;
+  v_module_proj  uuid;
+  v_limit        int;
+  v_result       jsonb;
+begin
+  -- 0. Actor bind (BK-635). A NULL auth.uid() is the trusted server-side rail
+  --    (admin client / PAT), for which p_actor_user_id is the only identity
+  --    available. A present-but-different uid is a spoof attempt.
+  if auth.uid() is not null and p_actor_user_id <> auth.uid() then
+    raise exception 'actor mismatch' using errcode = '42501';
+  end if;
+
+  -- Defensive clamp (the route validates 1..50 via zod, but the RPC is a public
+  -- contract: keep it self-consistent if called directly).
+  v_limit := least(greatest(coalesce(p_limit, 20), 1), 50);
+
+  -- Build the tsquery with the SAME regconfig as the index (0004 = 'english').
+  -- Single token → prefix-aware autocomplete (`tok:*`); multi-word → plainto
+  -- (AND semantics, no prefix). A blank/whitespace query produces a NULL
+  -- tsquery, which matches nothing — but the route already rejects empty input
+  -- with 400 before reaching here (BK-20 AC5).
+  if p_query is null or btrim(p_query) = '' then
+    return '[]'::jsonb;
+  end if;
+
+  if array_length(regexp_split_to_array(btrim(p_query), '\s+'), 1) = 1 then
+    -- to_tsquery requires a sanitized lexeme; strip tsquery operator chars so
+    -- raw user input can never form a malformed query, then append `:*`.
+    v_query := to_tsquery('english', regexp_replace(btrim(p_query), '[:&|!()<>*]', '', 'g') || ':*');
+  else
+    v_query := plainto_tsquery('english', p_query);
+  end if;
+
+  if v_query is null then
+    return '[]'::jsonb;
+  end if;
+
+  -- Resolve the module subtree filter (when provided) to a path prefix. A
+  -- non-existent / cross-workspace module_id leaves v_module_path null → the
+  -- predicate below excludes everything → empty result (BK-20 AC3.2).
+  if p_module_id is not null then
+    select m.path, m.project_id
+      into v_module_path, v_module_proj
+      from public.modules m
+      where m.id = p_module_id and m.archived_at is null;
+  end if;
+
+  select coalesce(jsonb_agg(row_json order by rank desc, updated_at desc), '[]'::jsonb)
+    into v_result
+  from (
+    select
+      jsonb_build_object(
+        'id', a.id,
+        'slug', a.slug,
+        'title', a.title,
+        'layer', a.layer,
+        'status', a.status,
+        'module_path', m.path
+      ) as row_json,
+      ts_rank(a.tsv, v_query)
+        * exp(-greatest(0, extract(epoch from (now() - a.updated_at))) / 604800.0) as rank,
+      a.updated_at
+    from public.atcs a
+    join public.modules m on m.id = a.module_id
+    join public.projects p on p.id = a.project_id
+    join public.workspaces w on w.id = p.workspace_id
+    join public.workspace_members wm on wm.workspace_id = p.workspace_id
+    where a.archived_at is null
+      and a.tsv @@ v_query
+      and a.project_id = p_project_id
+      and wm.user_id = p_actor_user_id
+      and wm.status = 'active'
+      -- BK-991: a soft-deleted workspace is out of reach (ADR-0015).
+      and w.deleted_at is null
+      -- Module subtree: the module itself or any descendant in the same project.
+      and (
+        p_module_id is null
+        or (
+          v_module_path is not null
+          and m.project_id = v_module_proj
+          and (m.path = v_module_path or m.path like v_module_path || '/%')
+        )
+      )
+      -- Optional layer narrow (BK-20 SG4).
+      and (p_layer is null or a.layer = p_layer)
+      -- Optional classification narrows (BK-399). Narrowing conjuncts in the
+      -- SAME where clause as the membership scope — they can only shrink an
+      -- already-authorized result set, never widen it.
+      and (p_technique is null or a.technique = p_technique)
+      and (p_priority  is null or a.priority  = p_priority)
+    order by rank desc, a.updated_at desc
+    limit v_limit
+  ) ranked;
+
+  return v_result;
+end;
+$$;
+
+revoke execute on function public.bunkai_search_atcs(
+  uuid, text, uuid, uuid, text, int, text, text
+) from public, anon, authenticated;
+grant  execute on function public.bunkai_search_atcs(
+  uuid, text, uuid, uuid, text, int, text, text
+) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 8. bunkai_search_tests (latest: 0081) — body copied from 0081 verbatim;
+--    only the workspaces join and `w.deleted_at is null` are added.
+-- ---------------------------------------------------------------------------
+create or replace function public.bunkai_search_tests(
+  p_actor_user_id uuid,
+  p_query         text,
+  p_project_id    uuid,
+  p_limit         int default 20
+) returns jsonb
+language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_query  text;
+  v_limit  int;
+  v_result jsonb;
+begin
+  if auth.uid() is not null and p_actor_user_id <> auth.uid() then
+    raise exception 'actor mismatch' using errcode = '42501';
+  end if;
+
+  v_limit := least(greatest(coalesce(p_limit, 20), 1), 50);
+  v_query := btrim(coalesce(p_query, ''));
+  if v_query = '' then
+    return '[]'::jsonb;
+  end if;
+
+  select coalesce(jsonb_agg(row_json order by created_at desc), '[]'::jsonb)
+    into v_result
+  from (
+    select
+      jsonb_build_object(
+        'id', t.id,
+        'title', t.title,
+        'tags', coalesce(to_jsonb(t.tags), '[]'::jsonb)
+      ) as row_json,
+      t.created_at
+    from public.tests t
+    join public.workspaces w on w.id = t.workspace_id
+    join public.workspace_members wm on wm.workspace_id = t.workspace_id
+    where wm.user_id = p_actor_user_id
+      and wm.status = 'active'
+      -- BK-991: a soft-deleted workspace is out of reach (ADR-0015).
+      and w.deleted_at is null
+      -- Same ALL-match posture as bunkai_add_tests_to_plan: a Test whose
+      -- chain spans two projects is not a member of either search result set
+      -- — searching in Project A must not surface a Test that
+      -- bunkai_add_tests_to_plan would then reject with 45604.
+      and exists (
+        select 1 from public.test_steps ts
+        where ts.test_id = t.id
+      )
+      and not exists (
+        select 1
+        from public.test_steps ts
+        join public.atcs a on a.id = ts.atc_id
+        where ts.test_id = t.id
+          and a.project_id <> p_project_id
+      )
+      and (
+        t.title ilike '%' || v_query || '%'
+        or exists (select 1 from unnest(t.tags) as tag where tag ilike '%' || v_query || '%')
+      )
+    order by t.created_at desc
+    limit v_limit
+  ) matched;
+
+  return v_result;
+end;
+$$;
+
+revoke execute on function public.bunkai_search_tests(uuid, text, uuid, int) from public, anon, authenticated;
+grant  execute on function public.bunkai_search_tests(uuid, text, uuid, int) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 9. bunkai_filter_tests_by_tag (latest: 0082) — body copied from 0082
+--    verbatim; only the workspaces join and `w.deleted_at is null` are added.
+-- ---------------------------------------------------------------------------
+create or replace function public.bunkai_filter_tests_by_tag(
+  p_actor_user_id uuid,
+  p_tag           text
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_tag    text;
+  v_result jsonb;
+begin
+  -- 0. Actor bind (BK-635). Same contract as bunkai_search_atcs above: NULL
+  --    auth.uid() is the trusted server-side rail (admin client / PAT); a
+  --    present-but-different uid is a spoof attempt.
+  if auth.uid() is not null and p_actor_user_id <> auth.uid() then
+    raise exception 'actor mismatch' using errcode = '42501';
+  end if;
+
+  -- Normalize the lookup tag the SAME way stored tags are normalized, so a
+  -- caller passing `Smoke` matches the stored `smoke` (reserved-lowercase).
+  v_tag := (public.bunkai_normalize_test_tags(array[coalesce(p_tag, '')]))[1];
+  if v_tag is null then
+    return '[]'::jsonb;
+  end if;
+
+  select coalesce(jsonb_agg(row_json order by created_at desc), '[]'::jsonb)
+    into v_result
+  from (
+    select
+      jsonb_build_object(
+        'id', t.id,
+        'title', t.title,
+        'tags', coalesce(to_jsonb(t.tags), '[]'::jsonb),
+        'step_count', (select count(*) from public.test_steps ts where ts.test_id = t.id)
+      ) as row_json,
+      t.created_at
+    from public.tests t
+    join public.workspaces w on w.id = t.workspace_id
+    join public.workspace_members wm on wm.workspace_id = t.workspace_id
+    where wm.user_id = p_actor_user_id
+      and wm.status = 'active'
+      -- BK-991: a soft-deleted workspace is out of reach (ADR-0015).
+      and w.deleted_at is null
+      and t.tags @> array[v_tag]
+    order by t.created_at desc
+  ) ranked;
+
+  return v_result;
+end;
+$$;
+
+revoke execute on function public.bunkai_filter_tests_by_tag(uuid, text) from public, anon, authenticated;
+grant  execute on function public.bunkai_filter_tests_by_tag(uuid, text) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 10. bunkai_notification_digest_candidates (latest: 0078) — the digest cron
+--     would otherwise keep emailing ex-members about a soft-deleted
+--     workspace's unread notifications during the grace window. Body copied
+--     from 0078 verbatim; only the workspaces join is added.
+-- ---------------------------------------------------------------------------
+create or replace function public.bunkai_notification_digest_candidates()
+returns table (
+  recipient_user_id uuid,
+  recipient_email    text,
+  workspace_id       uuid,
+  project_id         uuid,
+  project_name       text,
+  project_slug       text,
+  notification_id    uuid,
+  event_type         text,
+  entity_type        text,
+  entity_id          uuid,
+  payload            jsonb,
+  created_at         timestamptz
+)
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select
+    n.recipient_user_id,
+    u.email,
+    n.workspace_id,
+    p.id,
+    p.name,
+    p.slug,
+    n.id,
+    n.event_type,
+    n.entity_type,
+    n.entity_id,
+    n.payload,
+    n.created_at
+  from public.notifications n
+  join public.workspace_members wm
+    on wm.workspace_id = n.workspace_id
+   and wm.user_id = n.recipient_user_id
+   and wm.status = 'active'
+  -- BK-991: no digest for a soft-deleted workspace (AC-07: notifications
+  -- stop at the same instant as read access).
+  join public.workspaces w
+    on w.id = n.workspace_id
+   and w.deleted_at is null
+  join auth.users u
+    on u.id = n.recipient_user_id
+   and u.email is not null
+  left join public.runs r
+    on n.entity_type = 'run' and r.id = n.entity_id
+  left join public.bugs b
+    on n.entity_type = 'bug' and b.id = n.entity_id
+  join public.projects p
+    on p.id = coalesce(r.project_id, b.project_id)
+  where n.read_at is null
+    and n.created_at >= now() - interval '90 days'
+    and n.event_type in (
+      'run.finished', 'run.aborted',
+      'bug.assigned', 'bug.reassigned', 'bug.status_changed'
+    )
+    and not exists (
+      select 1
+        from public.notification_preferences np
+        where np.user_id = n.recipient_user_id
+          and np.channel = 'email'
+          and np.enabled = false
+          and np.event_type = case
+                when n.event_type like 'run.%' then 'run_lifecycle'
+                when n.event_type like 'bug.%' then 'bug_lifecycle'
+              end
+    )
+  order by n.recipient_user_id, p.name, n.created_at desc;
+$$;
+
+revoke execute on function public.bunkai_notification_digest_candidates() from public;
+revoke execute on function public.bunkai_notification_digest_candidates() from anon;
+revoke execute on function public.bunkai_notification_digest_candidates() from authenticated;
+grant  execute on function public.bunkai_notification_digest_candidates() to service_role;
