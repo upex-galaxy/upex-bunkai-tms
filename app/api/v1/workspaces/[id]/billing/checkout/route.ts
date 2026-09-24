@@ -3,7 +3,7 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { assertWorkspaceContext } from '@lib/api/principal';
-import { beginBillingCheckout } from '@lib/billing/checkout';
+import { assertCheckoutOwner, beginBillingCheckout } from '@lib/billing/checkout';
 import { z } from 'zod';
 
 // POST /api/v1/workspaces/{id}/billing/checkout — start a self-serve
@@ -42,6 +42,13 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { seat_quantity: seatQuantity } = CheckoutBodySchema.parse(payload);
+
+  // BK-829: the owner gate runs BEFORE the idempotency row is written. That
+  // insert carries `workspace_id` under an FK, so running it first answered
+  // 422 for a non-existent workspace while a foreign one got 403 from the
+  // owner gate: an existence oracle. Here both get the identical 403
+  // `not_workspace_owner`. beginBillingCheckout re-checks (defense in depth).
+  await assertCheckoutOwner(db, workspaceId);
 
   const begin = await beginIdempotentRequest({
     headers: request.headers,

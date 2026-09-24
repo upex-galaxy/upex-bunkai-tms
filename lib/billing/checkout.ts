@@ -78,13 +78,15 @@ export interface BeginBillingCheckoutResult {
   url: string
 }
 
-// BK-230 — the checkout POST route's business logic. Owner-only (verified
-// here via bunkai_is_workspace_owner, using the caller's own RLS-scoped
-// client — defense in depth: this runs BEFORE any Stripe call, so an
-// unauthorized caller never causes a Stripe session to be created at all).
-export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Promise<BeginBillingCheckoutResult> {
-  const { db, workspaceId, userId, seatQuantity, idempotencyKey } = args;
-
+// BK-829 — the owner gate for starting a checkout, and the route's
+// non-disclosure boundary. `bunkai_is_workspace_owner` answers `false` both
+// for a workspace the caller does not own AND for one that does not exist, so
+// every such caller gets this same 403 `not_workspace_owner` (same status,
+// message and details). The route calls this BEFORE `beginIdempotentRequest`:
+// that call inserts an `idempotency_keys` row whose `workspace_id` FK used to
+// answer 422 for an unknown id while a foreign one got 403 here, which let
+// any signed-in user probe whether a workspace id exists.
+export async function assertCheckoutOwner(db: Client, workspaceId: string): Promise<void> {
   const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
   if (ownerCheck.error) {
     throw new ApiError('internal_error', ownerCheck.error.message);
@@ -94,6 +96,16 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
       details: { reason: 'not_workspace_owner' },
     });
   }
+}
+
+// BK-230 — the checkout POST route's business logic. Owner-only (verified
+// here via bunkai_is_workspace_owner, using the caller's own RLS-scoped
+// client — defense in depth: this runs BEFORE any Stripe call, so an
+// unauthorized caller never causes a Stripe session to be created at all).
+export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Promise<BeginBillingCheckoutResult> {
+  const { db, workspaceId, userId, seatQuantity, idempotencyKey } = args;
+
+  await assertCheckoutOwner(db, workspaceId);
 
   const { data: overviewData, error: overviewError } = await getWorkspaceBillingOverview(db, workspaceId);
   if (overviewError) {

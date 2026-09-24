@@ -151,3 +151,55 @@ describe('POST billing/checkout — PAT access (BK-828)', () => {
     expect(body.error.details?.reason).toBe('not_workspace_owner');
   });
 });
+
+// ---------------------------------------------------------------------------
+// BK-829 — non-disclosure. A signed-in caller who does not own the target
+// must get the SAME response whether the workspace exists (foreign) or not.
+// Pre-fix, the idempotency insert ran first and its `workspace_id` FK answered
+// 422 for an unknown id, while a foreign id reached the owner gate's 403.
+// ---------------------------------------------------------------------------
+
+describe('POST billing/checkout — workspace-existence non-disclosure (BK-829)', () => {
+  const NON_EXISTENT_WORKSPACE = '44444444-4444-4444-8444-444444444444';
+
+  function cookieNonMember(): Principal {
+    return {
+      userId: USER_ID,
+      workspaceId: null,
+      capabilities: [...principalModule.ALL_CAPABILITIES],
+      via: 'cookie',
+      tokenId: null,
+      // `bunkai_is_workspace_owner` is false for both a foreign and an
+      // unknown workspace — that is exactly what the route must not undo.
+      db: dbWithOwnership(false),
+    };
+  }
+
+  async function errorOf(response: Response): Promise<{ status: number, error: Omit<ErrorBody['error'], 'request_id'> }> {
+    const body = await response.json() as { error: ErrorBody['error'] & { request_id?: string } };
+    const { request_id: _requestId, ...error } = body.error;
+    return { status: response.status, error };
+  }
+
+  test('a foreign workspace and a non-existent workspace answer an identical 403 `not_workspace_owner`', async () => {
+    asPrincipal(cookieNonMember());
+    // Reproduce the pre-fix FK behaviour: if the route ever reached the
+    // idempotency insert for the unknown id, it would answer 422 and the
+    // two responses below would differ.
+    const { ApiError } = await import('@lib/api/error-envelope');
+    beginIdempotentSpy.mockImplementation((async (args: { workspaceId: string }) => {
+      if (args.workspaceId === NON_EXISTENT_WORKSPACE) {
+        throw new ApiError('validation_failed', 'workspace_id does not reference an existing workspace.');
+      }
+      return { isReplay: false, token: { key: 'k', userId: USER_ID, endpoint: 'e', rowId: 'r' } };
+    }) as never);
+
+    const foreign = await errorOf(await POST(checkoutRequest(OTHER_WORKSPACE)));
+    const missing = await errorOf(await POST(checkoutRequest(NON_EXISTENT_WORKSPACE)));
+
+    expect(foreign.status).toBe(403);
+    expect(foreign.error.details?.reason).toBe('not_workspace_owner');
+    expect(missing).toEqual(foreign);
+    expect(beginIdempotentSpy).not.toHaveBeenCalled();
+  });
+});
