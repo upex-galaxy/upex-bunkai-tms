@@ -7,8 +7,9 @@ import { assertCheckoutOwner, beginBillingCheckout } from '@lib/billing/checkout
 import { z } from 'zod';
 
 // POST /api/v1/workspaces/{id}/billing/checkout — start a self-serve
-// Community -> Cloud upgrade (BK-230). Owner-only (bunkai_is_workspace_owner,
-// enforced in lib/billing/checkout.ts BEFORE any Stripe call — an
+// Community -> Cloud upgrade (BK-230). Owner-only (bunkai_is_workspace_owner
+// via `assertCheckoutOwner`, called in this route BEFORE the idempotency row
+// is written (BK-829) and again inside beginBillingCheckout — an
 // unauthorized caller never causes a Stripe session to be created).
 //
 // `Idempotency-Key` is REQUIRED (ADR-0002's contract, same wiring as
@@ -87,9 +88,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // workspace:admin (ADR-0006): a money-moving, owner-only write, same
 // capability class as the invites admin routes. Pairs with
 // assertWorkspaceContext above per that ADR's binding invariant. The
-// stricter owner-vs-admin distinction is enforced inside
-// beginBillingCheckout (bunkai_is_workspace_owner) — workspace:admin is the
-// TS-layer scope floor, not the full authorization story.
+// stricter owner-vs-admin distinction is enforced by assertCheckoutOwner
+// (bunkai_is_workspace_owner), in this route before idempotency and again in
+// beginBillingCheckout — workspace:admin is the TS-layer scope floor, not
+// the full authorization story.
 }, { auth: 'required', requires: ['workspace:admin'] });
 
 function extractWorkspaceId(request: NextRequest): string {

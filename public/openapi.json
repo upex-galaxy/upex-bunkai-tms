@@ -12476,7 +12476,7 @@
             }
           },
           "502": {
-            "description": "The payment processor rejected or failed the Checkout Session request (`upstream_error`). Generic client message; the upstream detail is logged server-side only.",
+            "description": "The payment processor rejected or failed the Checkout Session request (`upstream_error`). Generic client message; the upstream detail is logged server-side only. The Idempotency-Key is not stored on this failure, but Stripe's own request idempotency is keyed on it, so a retry must use a NEW Idempotency-Key.",
             "content": {
               "application/json": {
                 "schema": {
