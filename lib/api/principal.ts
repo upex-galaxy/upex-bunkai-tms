@@ -81,9 +81,16 @@ export async function resolveIdentity(request: NextRequest): Promise<Principal> 
 // Throws 403 unless the principal holds the capability. Cookie sessions hold the
 // full set (see ALL_CAPABILITIES), so this only constrains PAT callers in
 // practice — but it is enforced uniformly for both.
+//
+// BK-828: `details` makes this rejection machine-distinguishable from a
+// route's own role gate (e.g. billing checkout's `not_workspace_owner`) — both
+// are 403 `forbidden`, and a client could otherwise only tell them apart by
+// parsing the message. Additive: the message is unchanged.
 export function requireCapability(principal: Principal, capability: Capability): void {
   if (!principal.capabilities.includes(capability)) {
-    throw new ApiError('forbidden', `Missing required capability: ${capability}`);
+    throw new ApiError('forbidden', `Missing required capability: ${capability}`, {
+      details: { reason: 'missing_capability', required_capability: capability },
+    });
   }
 }
 

@@ -2043,7 +2043,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorEnvelope"];
                     };
                 };
-                /** @description Stripe is not configured for this environment (`payment_processor_unavailable`). */
+                /** @description The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; which configuration is missing is logged server-side only. Returned before any checkout session row is created. */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2136,7 +2136,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorEnvelope"];
                     };
                 };
-                /** @description Stripe is not configured for this environment (`payment_processor_unavailable`). */
+                /** @description The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; the missing configuration is logged server-side only. */
                 503: {
                     headers: {
                         [name: string]: unknown;

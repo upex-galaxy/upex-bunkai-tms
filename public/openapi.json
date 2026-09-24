@@ -12348,7 +12348,7 @@
             }
           },
           "503": {
-            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
+            "description": "The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; the missing configuration is logged server-side only.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12436,7 +12436,7 @@
             }
           },
           "403": {
-            "description": "Any of: missing `workspace:admin` capability / PAT not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`not_workspace_owner` — stricter than admin, checked inside the handler).",
+            "description": "Any of: the PAT lacks the `workspace:admin` capability (`details.reason: missing_capability`); the PAT is not bound to this workspace (ADR-0006); or the caller is not the workspace OWNER (`details.reason: not_workspace_owner`, stricter than admin). A workspace that does not exist answers this same `not_workspace_owner` response (identical status and body), so the endpoint never discloses whether a workspace id exists. A PAT from headless sign-in never carries `workspace:admin` (ADR-0005): an owner automating checkout mints a workspace-scoped token via `POST /api/v1/tokens` with `workspace_id` set to this workspace and `scopes` including `workspace:admin`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12446,7 +12446,7 @@
             }
           },
           "404": {
-            "description": "Workspace not found.",
+            "description": "Workspace billing overview unavailable after the owner check passed (not reachable for a workspace the caller does not own, or one that does not exist: those answer 403 `not_workspace_owner`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -12475,8 +12475,18 @@
               }
             }
           },
+          "502": {
+            "description": "The payment processor rejected or failed the Checkout Session request (`upstream_error`). Generic client message; the upstream detail is logged server-side only. The Idempotency-Key is not stored on this failure, but Stripe's own request idempotency is keyed on it, so a retry must use a NEW Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "503": {
-            "description": "Stripe is not configured for this environment (`payment_processor_unavailable`).",
+            "description": "The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; which configuration is missing is logged server-side only. Returned before any checkout session row is created.",
             "content": {
               "application/json": {
                 "schema": {
