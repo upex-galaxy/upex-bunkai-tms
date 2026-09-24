@@ -25,4 +25,9 @@ describe('coveragePercent', () => {
   test('an empty workspace is null, never 0', () => {
     expect(coveragePercent(0, 0)).toBeNull();
   });
+
+  test('a non-finite input is null, never NaN', () => {
+    expect(coveragePercent(Number.NaN, 200)).toBeNull();
+    expect(coveragePercent(199, Number.POSITIVE_INFINITY)).toBeNull();
+  });
 });

@@ -239,6 +239,11 @@ describe('percentLabel', () => {
     expect(percentLabel(0, 12)).toBe('0%');
     expect(percentLabel(12, 12)).toBe('100%');
   });
+
+  test('a non-finite input renders "—", never "NaN%"', () => {
+    expect(percentLabel(Number.NaN, 10)).toBe('—');
+    expect(percentLabel(5, Number.POSITIVE_INFINITY)).toBe('—');
+  });
 });
 
 describe('buildNoCoverageDisplayList', () => {

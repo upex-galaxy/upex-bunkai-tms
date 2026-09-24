@@ -28,4 +28,12 @@ describe('clampedPercent', () => {
   test('a zero denominator is null, never 0 or NaN', () => {
     expect(clampedPercent(0, 0)).toBeNull();
   });
+
+  test('a non-finite input is null, so "NaN%" can never render', () => {
+    expect(clampedPercent(Number.NaN, 10)).toBeNull();
+    expect(clampedPercent(5, Number.NaN)).toBeNull();
+    expect(clampedPercent(Number.POSITIVE_INFINITY, 10)).toBeNull();
+    expect(clampedPercent(5, Number.POSITIVE_INFINITY)).toBeNull();
+    expect(clampedPercent(Number.NEGATIVE_INFINITY, 10)).toBeNull();
+  });
 });

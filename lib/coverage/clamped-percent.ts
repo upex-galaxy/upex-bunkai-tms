@@ -8,10 +8,11 @@
 // [1, 99], so 199/200 reads 99% (a gap still exists) and 1/201 reads 1% (real
 // coverage exists). PO policy recorded on BK-881, 2026-09-05.
 //
-// `null` — never `0`, never `NaN` — when the denominator is 0: nothing to
-// measure is not the same as measuring zero.
+// `null` — never `0`, never `NaN` — when the denominator is 0 or either input
+// is not a finite number: nothing to measure is not the same as measuring
+// zero, and a caller must never be able to render "NaN%".
 export function clampedPercent(numerator: number, denominator: number): number | null {
-  if (denominator === 0) {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
     return null;
   }
   if (numerator === 0) {
