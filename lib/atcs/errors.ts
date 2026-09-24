@@ -1,5 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
-import { ATC_PRIORITIES, ATC_TECHNIQUES, ATC_TITLE_MIN } from '@lib/atcs/validation';
+import { ATC_LAYERS, ATC_PRIORITIES, ATC_TECHNIQUES, ATC_TITLE_MIN } from '@lib/atcs/validation';
 
 // BK-18 — map a bunkai_create_atc / bunkai_update_atc / bunkai_get_atc RPC error
 // (Postgres SQLSTATE) to the canonical API envelope. The RPCs raise custom
@@ -34,6 +34,14 @@ export function mapAtcRpcError(error: { code?: string, message: string }): never
       if (constraint === 'atcs_priority_allowed') {
         throw new ApiError('validation_failed', `Priority must be one of: ${ATC_PRIORITIES.join(', ')}.`, {
           details: { reason: 'priority_invalid' },
+        });
+      }
+      // BK-886 — the `layer` CHECK is declared inline in 0004_atcs.sql, so
+      // Postgres auto-names it `atcs_layer_check`. Without this branch a bad
+      // layer from the web editor fell to the generic fallthrough below.
+      if (constraint === 'atcs_layer_check') {
+        throw new ApiError('validation_failed', `Layer must be one of: ${ATC_LAYERS.join(', ')}.`, {
+          details: { reason: 'layer_invalid' },
         });
       }
       throw new ApiError('validation_failed', 'The request failed a database validation rule.', {
