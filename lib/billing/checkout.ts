@@ -89,7 +89,7 @@ export interface BeginBillingCheckoutResult {
 export async function assertCheckoutOwner(db: Client, workspaceId: string): Promise<void> {
   const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
   if (ownerCheck.error) {
-    throw new ApiError('internal_error', ownerCheck.error.message);
+    throw internalDbError('bunkai_is_workspace_owner failed', ownerCheck.error);
   }
   if (!ownerCheck.data) {
     throw new ApiError('forbidden', 'Only the workspace owner can start a plan upgrade.', {
@@ -109,7 +109,7 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
 
   const { data: overviewData, error: overviewError } = await getWorkspaceBillingOverview(db, workspaceId);
   if (overviewError) {
-    throw new ApiError('internal_error', overviewError.message);
+    throw internalDbError('bunkai_workspace_billing_overview failed', overviewError);
   }
   if (!overviewData || !isWorkspaceBillingOverviewShape(overviewData)) {
     throw new ApiError('not_found', 'Workspace not found.');
@@ -167,7 +167,7 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
         details: { reason: 'checkout_already_open' },
       });
     }
-    throw new ApiError('internal_error', insertError?.message ?? 'Failed to start checkout.');
+    throw internalDbError('billing_checkout_sessions insert failed', insertError ?? { message: 'no row returned' });
   }
 
   let session: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['create']>>;
@@ -250,7 +250,7 @@ async function reuseOpenCheckoutSession(
     .maybeSingle();
 
   if (error) {
-    throw new ApiError('internal_error', error.message);
+    throw internalDbError('billing_checkout_sessions open-row lookup failed', error);
   }
   if (!openRow) {
     return null;
@@ -316,9 +316,19 @@ async function reuseOpenCheckoutSession(
     .eq('id', openRow.id)
     .eq('status', 'open');
   if (expireError) {
-    throw new ApiError('internal_error', expireError.message);
+    throw internalDbError('billing_checkout_sessions expire failed', expireError);
   }
   return null;
+}
+
+// BK-827 review — same rule for database failures: Postgres/PostgREST text
+// (constraint names, column names, RLS detail) is for the server log, never
+// the response body. The upgrade UI renders `error.message` verbatim.
+const INTERNAL_ERROR_MESSAGE = 'Could not process the checkout request. Please try again in a moment.';
+
+function internalDbError(logMessage: string, error: { message: string, code?: string }): ApiError {
+  console.error(logMessage, { error: error.message, code: error.code });
+  return new ApiError('internal_error', INTERNAL_ERROR_MESSAGE);
 }
 
 // BK-827 — maps a failure from a Stripe call to what the CALLER may see. An
@@ -359,7 +369,7 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
 
   const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
   if (ownerCheck.error) {
-    throw new ApiError('internal_error', ownerCheck.error.message);
+    throw internalDbError('bunkai_is_workspace_owner failed', ownerCheck.error);
   }
   if (!ownerCheck.data) {
     throw new ApiError('forbidden', 'Only the workspace owner can cancel a plan upgrade.', {
@@ -377,7 +387,7 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     .maybeSingle();
 
   if (error) {
-    throw new ApiError('internal_error', error.message);
+    throw internalDbError('billing_checkout_sessions open-row lookup failed', error);
   }
   if (!openRow) {
     return;
@@ -454,6 +464,6 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     .eq('id', openRow.id)
     .eq('status', 'open');
   if (updateError) {
-    throw new ApiError('internal_error', updateError.message);
+    throw internalDbError('billing_checkout_sessions cancel update failed', updateError);
   }
 }

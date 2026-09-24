@@ -481,11 +481,11 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
   const BEGIN_ROW_ID = '55555555-5555-5555-5555-555555555555';
   const UPSTREAM_TEXT = 'Invalid API Key provided: sk_live_****bk827; request-id req_bk827leak';
 
-  function ownerCommunityDb(): SupabaseClient<Database> {
+  function ownerCommunityDb(ownerRpcError: { message: string, code: string } | null = null): SupabaseClient<Database> {
     return {
       rpc: async (fn: string) => {
         if (fn === 'bunkai_is_workspace_owner') {
-          return { data: true, error: null };
+          return ownerRpcError ? { data: null, error: ownerRpcError } : { data: true, error: null };
         }
         if (fn === 'bunkai_workspace_billing_overview') {
           return { data: { plan: 'community', active_seats: 1 }, error: null };
@@ -499,7 +499,12 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
   // Covers the three admin chains begin builds when no session is open:
   // reuse lookup (select...maybeSingle -> none), the lock-row insert, and the
   // lock-release update on failure.
-  function fakeBeginAdmin(updates: RecordedUpdate[]): unknown {
+  interface BeginAdminOptions {
+    openRow?: { id: string, stripe_checkout_session_id: string | null, seat_quantity: number, created_at: string } | null
+    insertError?: { message: string, code: string } | null
+  }
+
+  function fakeBeginAdmin(updates: RecordedUpdate[], opts: BeginAdminOptions = {}): unknown {
     return {
       from: (table: string) => {
         if (table !== 'billing_checkout_sessions') {
@@ -508,11 +513,15 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
         return {
           select: () => ({
             eq: () => ({
-              eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+              eq: () => ({ maybeSingle: async () => ({ data: opts.openRow ?? null, error: null }) }),
             }),
           }),
           insert: () => ({
-            select: () => ({ single: async () => ({ data: { id: BEGIN_ROW_ID }, error: null }) }),
+            select: () => ({
+              single: async () => (opts.insertError
+                ? { data: null, error: opts.insertError }
+                : { data: { id: BEGIN_ROW_ID }, error: null }),
+            }),
           }),
           update: (patch: Record<string, unknown>) => {
             const recorded: RecordedUpdate = { patch, filters: [] };
@@ -531,10 +540,10 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
     };
   }
 
-  function beginHandler(): (request: NextRequest) => Promise<Response> {
+  function beginHandler(db: SupabaseClient<Database> = ownerCommunityDb()): (request: NextRequest) => Promise<Response> {
     return withApiHandler(async () => {
       const result = await beginBillingCheckout({
-        db: ownerCommunityDb(),
+        db,
         workspaceId: WORKSPACE_ID,
         userId: '22222222-2222-2222-2222-222222222222',
         seatQuantity: 1,
@@ -601,5 +610,69 @@ describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ url: 'https://checkout.stripe.test/bk827' });
+  });
+
+  // PR #249 review item 2 — the reuse path's `sessions.retrieve` guard.
+  const OPEN_REUSE_ROW = {
+    id: OPEN_ROW_ID,
+    stripe_checkout_session_id: STRIPE_SESSION_ID,
+    seat_quantity: 1,
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  };
+
+  test('reuse path: a Stripe `sessions.retrieve` failure answers 502 without echoing Stripe\'s text, and keeps the open row', async () => {
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates, { openRow: OPEN_REUSE_ROW });
+    stripeRetrieve = async () => { throw new Error(UPSTREAM_TEXT); };
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(502);
+    const raw = await response.text();
+    expect(raw).not.toContain(UPSTREAM_TEXT);
+    expect(raw).not.toContain('req_bk827leak');
+    expect((JSON.parse(raw) as { error: { code: string } }).error.code).toBe('upstream_error');
+    // Unknown Stripe state: the open row is not released.
+    expect(updates).toEqual([]);
+  });
+
+  test('reuse path: an ApiError from the processor keeps its own status (503 passthrough)', async () => {
+    const { ApiError } = await import('@lib/api/error-envelope');
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates, { openRow: OPEN_REUSE_ROW });
+    stripeRetrieve = async () => { throw new ApiError('payment_processor_unavailable', 'Payments are temporarily unavailable. Please try again later.'); };
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(503);
+    expect((await response.json() as { error: { code: string } }).error.code).toBe('payment_processor_unavailable');
+    expect(updates).toEqual([]);
+  });
+
+  // PR #249 review item 1 — database failures must not leak Postgres text.
+  const DB_TEXT = 'duplicate key value violates unique constraint "bk827_secret_constraint" on column internal_col';
+
+  test('a failed owner RPC answers a generic 500 without the database text', async () => {
+    const response = await beginHandler(ownerCommunityDb({ message: DB_TEXT, code: 'XX000' }))(beginRequest());
+
+    expect(response.status).toBe(500);
+    const raw = await response.text();
+    expect(raw).not.toContain('bk827_secret_constraint');
+    expect(raw).not.toContain('internal_col');
+    const body = JSON.parse(raw) as { error: { code: string, message: string } };
+    expect(body.error.code).toBe('internal_error');
+    expect(body.error.message.length).toBeGreaterThan(0);
+  });
+
+  test('a failed lock-row insert (not the 23505 race) answers a generic 500 without the database text', async () => {
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates, { insertError: { message: DB_TEXT, code: '23502' } });
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(500);
+    const raw = await response.text();
+    expect(raw).not.toContain('bk827_secret_constraint');
+    expect((JSON.parse(raw) as { error: { code: string } }).error.code).toBe('internal_error');
   });
 });
