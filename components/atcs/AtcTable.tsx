@@ -4,7 +4,7 @@ import type { AtcFacetValue } from '@lib/atcs/list-filters';
 import type { Atc, AtcLayer, AtcPriority, AtcTechnique } from '@lib/types';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
-import { Button } from '@components/ui/button';
+import { Button, buttonVariants } from '@components/ui/button';
 import {
   ATC_FILTER_UNSPECIFIED,
   ATC_UNSPECIFIED_LABEL,
@@ -20,7 +20,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpRight, Inbox, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpRight, Inbox, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -40,6 +40,16 @@ const LAYER_FILTERS: AtcLayer[] = ['UI', 'API', 'Unit'];
 // with different next actions, so they get different blocks. Copy is the AI
 // Product Owner's Q4 ruling verbatim, adapted one-for-one from
 // `BUGS_LIST_NO_MATCH_DESCRIPTION` with this screen's field names.
+// BK-883 — the never-had-any state. The builder shipped with BK-19, so this
+// copy points at it instead of deferring to a future release. Split by role on the
+// MilestonesListView precedent: a viewer cannot open the builder, so they get
+// a plain statement of fact and no call to action.
+export const ATC_LIST_EMPTY_HINT = 'ATCs are written in the ATC builder';
+export const ATC_LIST_EMPTY_DESCRIPTION_CAN_CREATE
+  = 'Acceptance Test Cases are written in the ATC builder, each anchored to a user story and its acceptance criteria. Create the first one to start covering this project.';
+export const ATC_LIST_EMPTY_DESCRIPTION_READ_ONLY
+  = 'No Acceptance Test Case has been written for this project yet.';
+
 const ATC_LIST_NO_MATCH_TITLE = 'No ATCs match the current filters';
 const ATC_LIST_NO_MATCH_DESCRIPTION
   = 'The combination of technique, priority and layer filters excludes every ATC in this project. This is a valid result, not an error — clear the filters to see everything again.';
@@ -55,7 +65,7 @@ function toFacetValue<T extends string>(raw: string): AtcFacetValue<T> {
 
 export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const { atcFilters, setAtcFilters, resetAtcFilters } = useWorkbench();
+  const { atcFilters, setAtcFilters, resetAtcFilters, canCreate } = useWorkbench();
 
   // Client-side over the rows the workbench already loaded (master-design-plan
   // §5 D41 / AI Tech Lead T3). This is what makes `Not specified` filterable
@@ -162,7 +172,7 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
         <div className="text-xs text-fg-3">
           {atcs.length > 0
             ? 'Click a row title to open the ATC editor'
-            : 'ATCs arrive with the builder next sprint'}
+            : ATC_LIST_EMPTY_HINT}
         </div>
       </div>
 
@@ -289,18 +299,25 @@ export function AtcTable({ atcs, projectSlug }: AtcTableProps) {
             {viewState === 'empty-never' && (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center">
-                  {/* The never-had-any state. Its description is stale since
-                      BK-19 shipped the builder — tracked as BK-883, deliberately
-                      NOT rewritten here (surgical-changes rule). BK-399 only
-                      adds the testid AC-06 needs to tell the two states apart. */}
                   <div
                     data-testid="atc-list-empty"
                     className="mx-auto flex max-w-[380px] flex-col items-center gap-1.5"
                   >
                     <p className="text-sm font-medium text-fg-2">No ATCs yet</p>
                     <p className="text-xs leading-relaxed text-fg-4">
-                      Acceptance Test Cases are assembled in the ATC builder, which ships next sprint. For now, capture expected behaviour as acceptance criteria inside your user stories.
+                      {canCreate ? ATC_LIST_EMPTY_DESCRIPTION_CAN_CREATE : ATC_LIST_EMPTY_DESCRIPTION_READ_ONLY}
                     </p>
+                    {canCreate && (
+                      <Link
+                        href={`/projects/${projectSlug}/atcs/new`}
+                        className={cn(buttonVariants({ size: 'sm' }), 'mt-1')}
+                        data-testid="atc-list-empty-new-atc"
+                      >
+                        <Plus size={11} />
+                        {' '}
+                        New ATC
+                      </Link>
+                    )}
                   </div>
                 </td>
               </tr>
