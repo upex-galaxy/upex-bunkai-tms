@@ -1,5 +1,6 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { clampedPercent } from '@lib/coverage/clamped-percent';
 import {
   HOME_COVERAGE_CACHE_TTL_MS,
   HOME_COVERAGE_MAX_PROJECTS,
@@ -180,15 +181,14 @@ interface SummarizeWorkspaceCoverageParams {
 }
 
 // The one numeric rule behind every coverage percentage this story prints or
-// publishes: whole percent, half-up, and `null` — never `0`, never `NaN` — when
-// there is nothing to measure. `percentLabel` (lib/coverage/coverage-view.ts)
-// is its display twin on the project Metrics screen and rounds identically, so
-// the same workspace cannot round to 78% on one screen and 77% on the other.
+// publishes, delegated to `clampedPercent` (lib/coverage/clamped-percent.ts):
+// whole percent, half-up, clamped to [1, 99] unless the ratio is exactly 0 or
+// exactly 1 (BK-881), and `null` — never `0`, never `NaN` — when there is
+// nothing to measure. `percentLabel` (lib/coverage/coverage-view.ts) is its
+// display twin on the project Metrics screen and uses the same helper, so the
+// same workspace cannot round to 78% on one screen and 77% on the other.
 export function coveragePercent(numerator: number, denominator: number): number | null {
-  if (denominator === 0) {
-    return null;
-  }
-  return Math.round((numerator / denominator) * 100);
+  return clampedPercent(numerator, denominator);
 }
 
 // The `kpis` object of `bunkai_report_project_coverage`'s payload. Declared

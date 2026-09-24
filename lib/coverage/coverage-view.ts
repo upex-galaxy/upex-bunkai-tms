@@ -13,6 +13,8 @@
 // the mockup's `unc > 0` / `nr > 0 && bound > 0` checks exactly — it is NOT
 // a switch over a single mutually-exclusive category.
 
+import { clampedPercent } from '@lib/coverage/clamped-percent';
+
 export type CoverageSegment = 'all' | 'gaps' | 'notrun';
 
 // The shape `bunkai_report_project_coverage` returns per module (Slice 1).
@@ -152,9 +154,12 @@ export function coverageFractionLabel(mod: CoverageModule): string {
 
 // The KPI-row percentages ("AC coverage %", "Executed coverage %"). A zero
 // denominator renders "—", never "0%"/NaN (Technical Decision, Stage 1 plan).
+// `100%` and `0%` are reserved for the exact states; anything in between is
+// clamped to [1, 99] so the tile never reads clean while a gap is listed on
+// the same screen (BK-1082).
 export function percentLabel(numerator: number, denominator: number): string {
-  if (denominator === 0) { return '—'; }
-  return `${Math.round((numerator / denominator) * 100)}%`;
+  const percent = clampedPercent(numerator, denominator);
+  return percent === null ? '—' : `${percent}%`;
 }
 
 // ---------------------------------------------------------------------------
