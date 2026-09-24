@@ -1,34 +1,47 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 
-// BK-991 — DB-level regression guard for migration
+// BK-991: DB-level regression guard for migration
 // 0089_workspace_helpers_deleted_guard.sql. Required by `rpc-authorization.md`
 // §5: a route test that mocks `db.rpc` proves nothing, so this drives the REAL
 // SECURITY DEFINER RPCs the headless routes call, through the service-role
-// client with an explicit actor (the exact contract the admin-client routes
-// use: GET /tests/{id}, GET /runs/{id}, GET /atcs/{id}/usage,
-// PATCH|DELETE /environments/{id}, POST /tests, POST /projects/{id}/environments).
+// client with an explicit actor. That is the exact contract the admin-client
+// routes use: GET /tests/{id}, GET /runs/{id}, GET /atcs/{id}/usage,
+// PATCH|DELETE /environments/{id}, POST /tests, POST /projects/{id}/environments,
+// and the ATC/Test search + tag-filter endpoints.
 //
-// Shape: one throwaway workspace with one of each entity the defect names
-// (ATC, Test, Run, Environment). The actor is an active 'owner' of it. Every
-// RPC is called once while the workspace is live (control: it must succeed)
-// and once after `deleted_at` is stamped (it must refuse with the SAME code
-// the function already gives a non-member — P0002 on read / non-disclosing
-// paths, 42501 on the member+ write helpers).
+// Shape: one throwaway workspace owned by the declared automation identity
+// (`.agents/project.yaml` -> testing.automation_identity -> QA_E2E_USER_EMAIL,
+// resolved through a real password sign-in, never an arbitrary member). It
+// holds one of each entity the defect names (ATC, Test, Run, Environment).
+// Every RPC is called once while the workspace is live, as a positive
+// baseline that must succeed or return the fixture row, and once after
+// `deleted_at` is stamped, where it must refuse with the code the function
+// already gives a non-member or return nothing.
 //
 // REQUIRES MIGRATION 0089 APPLIED. Against a database without it, the
-// "after deletion" assertions fail — that red is the defect.
+// "after deletion" assertions fail; that red is the defect.
 //
-// DB-dependent + env-gated like its siblings: without Supabase service env the
-// suite SKIPS. It writes a throwaway fixture and removes it in afterAll.
+// DB-dependent + env-gated like its siblings: without Supabase + automation
+// identity env the suite SKIPS. The throwaway fixture is removed in a
+// `finally`, so it is cleaned up even when an assertion or a setup insert
+// fails half-way.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const hasEnv = Boolean(url && serviceKey);
+const qaEmail = process.env.QA_E2E_USER_EMAIL;
+const qaPassword = process.env.QA_E2E_USER_PASSWORD;
+const hasEnv = Boolean(url && anonKey && serviceKey && qaEmail && qaPassword);
 
 const describeOrSkip = hasEnv ? describe : describe.skip;
 
-const PREFIX = `bk991-deleted-ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const RAND = Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 8) || 'probe';
+const PREFIX = `bk991-deleted-ws-${Date.now()}-${RAND}`;
+// Distinctive search tokens: letters only so the english tsvector keeps them intact.
+const ATC_TOKEN = `zebraatc${RAND}`;
+const TEST_TOKEN = `zebratest${RAND}`;
+const TAG = `bk991probe${RAND}`;
 
 interface Fixture {
   workspaceId: string
@@ -40,208 +53,259 @@ interface Fixture {
   environmentId: string
 }
 
+type Db = ReturnType<typeof service>;
+
 function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
 }
 
-let fixture: Fixture | null = null;
+async function resolveAutomationUserId(): Promise<string> {
+  const client = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
+  if (error || !data.user) {
+    throw new Error(`automation identity sign-in failed: ${error?.message ?? 'no user'}`);
+  }
+  await client.auth.signOut();
+  return data.user.id;
+}
 
-async function callAll(db: ReturnType<typeof service>, f: Fixture) {
+function ids(rows: unknown): string[] {
+  return ((rows ?? []) as Array<{ id: string }>).map(r => r.id);
+}
+
+async function buildFixture(db: Db, actorId: string, onWorkspace: (f: Fixture) => void): Promise<Fixture> {
+  const { data: ws, error: wsError } = await db
+    .from('workspaces')
+    .insert({ slug: `${PREFIX}-ws`, name: PREFIX, owner_user_id: actorId })
+    .select('id')
+    .single();
+  if (wsError) { throw wsError; }
+  const f: Fixture = { workspaceId: ws.id as string, actorId, projectId: '', atcId: '', testId: '', runId: '', environmentId: '' };
+  // Hand the workspace id to the caller immediately so its `finally` can
+  // clean up even if a later insert throws.
+  onWorkspace(f);
+
+  const { error: wmError } = await db
+    .from('workspace_members')
+    .insert({ workspace_id: f.workspaceId, user_id: actorId, role: 'owner', status: 'active' });
+  if (wmError) { throw wmError; }
+
+  const { data: project, error: projectError } = await db
+    .from('projects')
+    .insert({ workspace_id: f.workspaceId, slug: `${PREFIX}-proj`, name: `${PREFIX} proj` })
+    .select('id')
+    .single();
+  if (projectError) { throw projectError; }
+  f.projectId = project.id as string;
+
+  const { data: mod, error: modError } = await db
+    .from('modules')
+    .insert({ project_id: f.projectId, path: 'bk991', name: 'BK-991' })
+    .select('id')
+    .single();
+  if (modError) { throw modError; }
+
+  const { data: story, error: storyError } = await db
+    .from('user_stories')
+    .insert({ module_id: mod.id, title: `${PREFIX} story` })
+    .select('id')
+    .single();
+  if (storyError) { throw storyError; }
+
+  const { data: atc, error: atcError } = await db
+    .from('atcs')
+    .insert({
+      project_id: f.projectId,
+      module_id: mod.id,
+      user_story_id: story.id,
+      slug: `${PREFIX}-atc`,
+      title: `${ATC_TOKEN} atc`,
+      layer: 'UI',
+      status: 'unrun',
+    })
+    .select('id')
+    .single();
+  if (atcError) { throw atcError; }
+  f.atcId = atc.id as string;
+
+  const { data: test, error: testError } = await db
+    .from('tests')
+    .insert({ workspace_id: f.workspaceId, title: `${TEST_TOKEN} test`, created_by: actorId, tags: [TAG] })
+    .select('id')
+    .single();
+  if (testError) { throw testError; }
+  f.testId = test.id as string;
+
+  const { error: stepError } = await db
+    .from('test_steps')
+    .insert({ test_id: f.testId, atc_id: f.atcId, position: 1 });
+  if (stepError) { throw stepError; }
+
+  const { data: env, error: envError } = await db
+    .from('project_environments')
+    .insert({ project_id: f.projectId, name: `${RAND} env a` })
+    .select('id')
+    .single();
+  if (envError) { throw envError; }
+  f.environmentId = env.id as string;
+
+  const { data: run, error: runError } = await db
+    .from('runs')
+    .insert({
+      workspace_id: f.workspaceId,
+      project_id: f.projectId,
+      test_id: f.testId,
+      environment_id: f.environmentId,
+      status: 'running',
+      executor_mode: 'human',
+      executor_user_id: actorId,
+      test_title: `${TEST_TOKEN} test`,
+      start_token: `${PREFIX}-run`,
+      started_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+  if (runError) { throw runError; }
+  f.runId = run.id as string;
+
+  return f;
+}
+
+async function cleanup(db: Db, f: Fixture) {
+  // Explicit order: test_steps RESTRICT atcs, atcs RESTRICT user_stories,
+  // runs RESTRICT project_environments, so children go first.
+  const steps: Array<[string, () => PromiseLike<{ error: { message: string } | null }>]> = [
+    ['runs', () => db.from('runs').delete().eq('workspace_id', f.workspaceId)],
+    ['tests', () => db.from('tests').delete().eq('workspace_id', f.workspaceId)],
+    ['atcs', () => db.from('atcs').delete().in('project_id', f.projectId ? [f.projectId] : [])],
+    ['project_environments', () => db.from('project_environments').delete().in('project_id', f.projectId ? [f.projectId] : [])],
+    ['projects', () => db.from('projects').delete().eq('workspace_id', f.workspaceId)],
+    ['workspace_members', () => db.from('workspace_members').delete().eq('workspace_id', f.workspaceId)],
+    ['workspaces', () => db.from('workspaces').delete().eq('id', f.workspaceId)],
+  ];
+  for (const [table, run] of steps) {
+    const { error } = await run();
+    if (error) {
+      console.error(`[bk991-deleted-ws] cleanup of "${table}" failed for workspace ${f.workspaceId}: ${error.message}`);
+    }
+  }
+}
+
+async function searches(db: Db, f: Fixture) {
   return {
-    testRead: await db.rpc('bunkai_get_test_expanded', { p_actor_user_id: f.actorId, p_test_id: f.testId }),
-    runRead: await db.rpc('bunkai_get_run_expanded', { p_actor_user_id: f.actorId, p_run_id: f.runId }),
-    atcUsage: await db.rpc('bunkai_atc_usage', { p_actor_user_id: f.actorId, p_atc_id: f.atcId }),
-    envRename: await db.rpc('bunkai_rename_environment', {
-      p_actor_user_id: f.actorId,
-      p_environment_id: f.environmentId,
-      p_name: `${PREFIX.slice(0, 30)} env`,
-    }),
+    atcs: await db.rpc('bunkai_search_atcs', { p_actor_user_id: f.actorId, p_query: ATC_TOKEN, p_project_id: f.projectId }),
+    tests: await db.rpc('bunkai_search_tests', { p_actor_user_id: f.actorId, p_query: TEST_TOKEN, p_project_id: f.projectId }),
+    byTag: await db.rpc('bunkai_filter_tests_by_tag', { p_actor_user_id: f.actorId, p_tag: TAG }),
   };
 }
 
-describeOrSkip('BK-991 — explicit-actor helpers refuse a soft-deleted workspace', () => {
-  beforeAll(async () => {
+describeOrSkip('BK-991: explicit-actor RPCs refuse a soft-deleted workspace', () => {
+  it('live workspace: every RPC works; soft-deleted: every RPC refuses or returns nothing', async () => {
     const db = service();
+    const actorId = await resolveAutomationUserId();
+    let fixture: Fixture | null = null;
 
-    const { data: anyMember, error: memberError } = await db
-      .from('workspace_members')
-      .select('user_id')
-      .eq('status', 'active')
-      .limit(1)
-      .single();
-    if (memberError) { throw memberError; }
-    const actorId = anyMember.user_id as string;
+    try {
+      const f = await buildFixture(db, actorId, (partial) => { fixture = partial; });
 
-    const { data: ws, error: wsError } = await db
-      .from('workspaces')
-      .insert({ slug: `${PREFIX}-ws`, name: PREFIX, owner_user_id: actorId })
-      .select('id')
-      .single();
-    if (wsError) { throw wsError; }
-    const workspaceId = ws.id as string;
-    // Record the fixture as soon as the workspace exists so afterAll can
-    // always clean up, even if a later insert throws.
-    fixture = { workspaceId, actorId, projectId: '', atcId: '', testId: '', runId: '', environmentId: '' };
+      // ---- Positive baseline (workspace live) -----------------------------
+      const testRead = await db.rpc('bunkai_get_test_expanded', { p_actor_user_id: actorId, p_test_id: f.testId });
+      expect(testRead.error).toBeNull();
+      const runRead = await db.rpc('bunkai_get_run_expanded', { p_actor_user_id: actorId, p_run_id: f.runId });
+      expect(runRead.error).toBeNull();
+      const usage = await db.rpc('bunkai_atc_usage', { p_actor_user_id: actorId, p_atc_id: f.atcId });
+      expect(usage.error).toBeNull();
+      const rename = await db.rpc('bunkai_rename_environment', {
+        p_actor_user_id: actorId,
+        p_environment_id: f.environmentId,
+        p_name: `${RAND} env b`,
+      });
+      expect(rename.error).toBeNull();
+      const created = await db.rpc('bunkai_create_test', {
+        p_actor_user_id: actorId,
+        p_workspace_id: f.workspaceId,
+        p_title: `${PREFIX} baseline`,
+        p_atc_ids: [f.atcId],
+      });
+      expect(created.error).toBeNull();
+      const createdEnv = await db.rpc('bunkai_create_environment', {
+        p_actor_user_id: actorId,
+        p_project_id: f.projectId,
+        p_name: `${RAND} env c`,
+      });
+      expect(createdEnv.error).toBeNull();
 
-    const { error: wmError } = await db
-      .from('workspace_members')
-      .insert({ workspace_id: workspaceId, user_id: actorId, role: 'owner', status: 'active' });
-    if (wmError) { throw wmError; }
+      const live = await searches(db, f);
+      expect(live.atcs.error).toBeNull();
+      expect(ids(live.atcs.data)).toContain(f.atcId);
+      expect(live.tests.error).toBeNull();
+      expect(ids(live.tests.data)).toContain(f.testId);
+      expect(live.byTag.error).toBeNull();
+      expect(ids(live.byTag.data)).toContain(f.testId);
 
-    const { data: project, error: projectError } = await db
-      .from('projects')
-      .insert({ workspace_id: workspaceId, slug: `${PREFIX}-proj`, name: `${PREFIX} proj` })
-      .select('id')
-      .single();
-    if (projectError) { throw projectError; }
-    fixture.projectId = project.id as string;
+      // ---- Soft-delete the workspace --------------------------------------
+      const { error: stampError } = await db
+        .from('workspaces')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', f.workspaceId);
+      if (stampError) { throw stampError; }
 
-    const { data: mod, error: modError } = await db
-      .from('modules')
-      .insert({ project_id: fixture.projectId, path: 'bk991', name: 'BK-991' })
-      .select('id')
-      .single();
-    if (modError) { throw modError; }
+      // Read / non-disclosing paths -> P0002 (mapped to 404), no payload.
+      const testGone = await db.rpc('bunkai_get_test_expanded', { p_actor_user_id: actorId, p_test_id: f.testId });
+      expect(testGone.error?.code).toBe('P0002');
+      expect(testGone.data).toBeNull();
+      const runGone = await db.rpc('bunkai_get_run_expanded', { p_actor_user_id: actorId, p_run_id: f.runId });
+      expect(runGone.error?.code).toBe('P0002');
+      expect(runGone.data).toBeNull();
+      const usageGone = await db.rpc('bunkai_atc_usage', { p_actor_user_id: actorId, p_atc_id: f.atcId });
+      expect(usageGone.error?.code).toBe('P0002');
+      expect(usageGone.data).toBeNull();
+      const renameGone = await db.rpc('bunkai_rename_environment', {
+        p_actor_user_id: actorId,
+        p_environment_id: f.environmentId,
+        p_name: `${RAND} env d`,
+      });
+      expect(renameGone.error?.code).toBe('P0002');
 
-    const { data: story, error: storyError } = await db
-      .from('user_stories')
-      .insert({ module_id: mod.id, title: `${PREFIX} story` })
-      .select('id')
-      .single();
-    if (storyError) { throw storyError; }
+      // Environment delete: 404 BEFORE the in-use guard (was 409 "in use").
+      const deleteGone = await db.rpc('bunkai_delete_environment', {
+        p_actor_user_id: actorId,
+        p_environment_id: f.environmentId,
+      });
+      expect(deleteGone.error?.code).toBe('P0002');
 
-    const { data: atc, error: atcError } = await db
-      .from('atcs')
-      .insert({
-        project_id: fixture.projectId,
-        module_id: mod.id,
-        user_story_id: story.id,
-        slug: `${PREFIX}-atc`,
-        title: `${PREFIX} atc`,
-        layer: 'UI',
-        status: 'unrun',
-      })
-      .select('id')
-      .single();
-    if (atcError) { throw atcError; }
-    fixture.atcId = atc.id as string;
+      // Member+ write helpers -> 42501, identical to a non-member caller.
+      const createGone = await db.rpc('bunkai_create_test', {
+        p_actor_user_id: actorId,
+        p_workspace_id: f.workspaceId,
+        p_title: `${PREFIX} blocked`,
+        p_atc_ids: [f.atcId],
+      });
+      expect(createGone.error?.code).toBe('42501');
+      const createEnvGone = await db.rpc('bunkai_create_environment', {
+        p_actor_user_id: actorId,
+        p_project_id: f.projectId,
+        p_name: `${RAND} env e`,
+      });
+      expect(createEnvGone.error?.code).toBe('42501');
 
-    const { data: test, error: testError } = await db
-      .from('tests')
-      .insert({ workspace_id: workspaceId, title: `${PREFIX} test`, created_by: actorId })
-      .select('id')
-      .single();
-    if (testError) { throw testError; }
-    fixture.testId = test.id as string;
+      // Search + tag filter: the deleted workspace's rows are gone.
+      const gone = await searches(db, f);
+      expect(gone.atcs.error).toBeNull();
+      expect(ids(gone.atcs.data)).not.toContain(f.atcId);
+      expect(gone.tests.error).toBeNull();
+      expect(ids(gone.tests.data)).not.toContain(f.testId);
+      expect(gone.byTag.error).toBeNull();
+      expect(ids(gone.byTag.data)).not.toContain(f.testId);
 
-    const { error: stepError } = await db
-      .from('test_steps')
-      .insert({ test_id: fixture.testId, atc_id: fixture.atcId, position: 1 });
-    if (stepError) { throw stepError; }
-
-    const { data: env, error: envError } = await db
-      .from('project_environments')
-      .insert({ project_id: fixture.projectId, name: `${PREFIX.slice(0, 30)} e` })
-      .select('id')
-      .single();
-    if (envError) { throw envError; }
-    fixture.environmentId = env.id as string;
-
-    const { data: run, error: runError } = await db
-      .from('runs')
-      .insert({
-        workspace_id: workspaceId,
-        project_id: fixture.projectId,
-        test_id: fixture.testId,
-        environment_id: fixture.environmentId,
-        status: 'running',
-        executor_mode: 'human',
-        executor_user_id: actorId,
-        test_title: `${PREFIX} test`,
-        start_token: `${PREFIX}-run`,
-        started_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
-    if (runError) { throw runError; }
-    fixture.runId = run.id as string;
-  });
-
-  afterAll(async () => {
-    if (!fixture) { return; }
-    const db = service();
-    const f = fixture;
-    // Explicit order: test_steps RESTRICT atcs, atcs RESTRICT user_stories,
-    // runs RESTRICT project_environments — so children go first.
-    const cleanups: Array<[string, () => PromiseLike<{ error: { message: string } | null }>]> = [
-      ['runs', () => db.from('runs').delete().eq('workspace_id', f.workspaceId)],
-      ['tests', () => db.from('tests').delete().eq('workspace_id', f.workspaceId)],
-      ['atcs', () => db.from('atcs').delete().eq('project_id', f.projectId)],
-      ['project_environments', () => db.from('project_environments').delete().eq('project_id', f.projectId)],
-      ['projects', () => db.from('projects').delete().eq('workspace_id', f.workspaceId)],
-      ['workspace_members', () => db.from('workspace_members').delete().eq('workspace_id', f.workspaceId)],
-      ['workspaces', () => db.from('workspaces').delete().eq('id', f.workspaceId)],
-    ];
-    for (const [table, cleanup] of cleanups) {
-      const { error } = await cleanup();
-      if (error) {
-        console.error(`[bk991-deleted-ws] cleanup of "${table}" failed for workspace ${f.workspaceId}: ${error.message}`);
+      // Nothing was physically removed (ADR-0015: soft-delete only).
+      const { data: stillThere } = await db.from('project_environments').select('id').eq('id', f.environmentId);
+      expect((stillThere ?? []).length).toBe(1);
+    }
+    finally {
+      if (fixture) {
+        await cleanup(db, fixture);
       }
     }
-  });
-
-  it('control: every RPC succeeds while the workspace is live', async () => {
-    const r = await callAll(service(), fixture!);
-    expect(r.testRead.error).toBeNull();
-    expect(r.runRead.error).toBeNull();
-    expect(r.atcUsage.error).toBeNull();
-    expect(r.envRename.error).toBeNull();
-  });
-
-  it('after soft-delete: reads and writes refuse with the non-member code, never data', async () => {
-    const db = service();
-    const f = fixture!;
-    const { error: stampError } = await db
-      .from('workspaces')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', f.workspaceId);
-    if (stampError) { throw stampError; }
-
-    const r = await callAll(db, f);
-    // Read / non-disclosing paths -> P0002 (mapped to 404), no payload.
-    expect(r.testRead.error?.code).toBe('P0002');
-    expect(r.testRead.data).toBeNull();
-    expect(r.runRead.error?.code).toBe('P0002');
-    expect(r.runRead.data).toBeNull();
-    expect(r.atcUsage.error?.code).toBe('P0002');
-    expect(r.atcUsage.data).toBeNull();
-    expect(r.envRename.error?.code).toBe('P0002');
-
-    // Environment delete: 404 BEFORE the in-use guard (was 409 "in use").
-    const envDelete = await db.rpc('bunkai_delete_environment', {
-      p_actor_user_id: f.actorId,
-      p_environment_id: f.environmentId,
-    });
-    expect(envDelete.error?.code).toBe('P0002');
-
-    // Member+ write helpers -> 42501, identical to a non-member caller.
-    const createTest = await db.rpc('bunkai_create_test', {
-      p_actor_user_id: f.actorId,
-      p_workspace_id: f.workspaceId,
-      p_title: `${PREFIX} blocked`,
-      p_atc_ids: [f.atcId],
-    });
-    expect(createTest.error?.code).toBe('42501');
-
-    const createEnv = await db.rpc('bunkai_create_environment', {
-      p_actor_user_id: f.actorId,
-      p_project_id: f.projectId,
-      p_name: 'bk991 blocked',
-    });
-    expect(createEnv.error?.code).toBe('42501');
-
-    // Nothing was physically removed (ADR-0015: soft-delete only).
-    const { data: stillThere } = await db.from('project_environments').select('id').eq('id', f.environmentId);
-    expect((stillThere ?? []).length).toBe(1);
-  });
+  }, 60_000);
 });
