@@ -40,6 +40,10 @@
 
 19. **HARNESS SURFACES ARE GENERATED**: never hand-edit `CLAUDE.md` (shim), `.claude/skills` (alias), `.claude/commands/*.md`, `.opencode/commands/*.md`. Edit the source (`AGENTS.md`, `.agents/skills/`, `.agents/compatibility/command-aliases.json`, the project overlay `.agents/compatibility/command-aliases.project.json` for project-owned aliases, `.agents/hooks/`) and run `bun run agents:compat`. `bun run agents:compat:check` is the gate. Full wiring → §5.5.
 
+20. **MVP PHASE — ONE DATABASE, NO PRODUCTION DATA YET**: Bunkai TMS is an MVP under continuous build. ONE Supabase project (`fmbpikzpkafptqximhxn`) serves local, staging AND "production" (`.agents/project.yaml` → `environments.*.db_project_ref`). It holds NO real customer data. At the official product release, a brand-new clean Supabase project becomes the real production DB.
+    - **Until that release**: applying a reviewed migration (Supabase MCP `apply_migration`, ledger per `supabase/migrations/README.md`) is a normal dev step, NOT a production deploy. Apply it once its PR review is approved, before merge, so staging code and schema stay in sync. Never DDL via `execute_sql`; migrations stay additive/idempotent and the repo files remain the schema source of truth.
+    - **From the release on**: migrations become a gated production action (explicit user approval per apply, prod DB separate from staging). When the new prod DB exists, update this rule and `.agents/project.yaml`.
+
 ---
 
 ## 2. BEHAVIORAL LAYER — HOW AI REASONS
