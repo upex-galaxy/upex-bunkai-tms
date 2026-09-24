@@ -259,16 +259,19 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                       </span>
                     </label>
                   ))}
-                  {scopesErrorMessage && (
-                    <p
-                      id="issue-token-scopes-error"
-                      data-testid="issue-token-scopes-error"
-                      role="alert"
-                      className="text-xs text-signal-fail"
-                    >
-                      {scopesErrorMessage}
-                    </p>
-                  )}
+                  {/* Polite live region, always mounted so the message is
+                      announced when it appears without interrupting typing. */}
+                  <div aria-live="polite">
+                    {scopesErrorMessage && (
+                      <p
+                        id="issue-token-scopes-error"
+                        data-testid="issue-token-scopes-error"
+                        className="text-xs text-signal-fail"
+                      >
+                        {scopesErrorMessage}
+                      </p>
+                    )}
+                  </div>
                 </fieldset>
 
                 <div className="mb-3 flex flex-col gap-1">
