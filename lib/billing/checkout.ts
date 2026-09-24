@@ -111,6 +111,13 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
 
   validateSeatQuantity(seatQuantity, resolveSeatQuantityBounds(overviewData.active_seats));
 
+  // BK-827: resolve the Stripe configuration BEFORE touching
+  // billing_checkout_sessions. An unconfigured environment now answers its
+  // own 503 `payment_processor_unavailable` straight away, without inserting a
+  // row it would immediately have to expire again.
+  const stripe = getStripeClient();
+  const cloudPriceId = getStripeCloudPriceId();
+
   const admin = createAdminClient();
 
   const existing = await reuseOpenCheckoutSession(admin, workspaceId, seatQuantity);
@@ -153,7 +160,7 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
 
   let session: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['create']>>;
   try {
-    session = await getStripeClient().checkout.sessions.create(
+    session = await stripe.checkout.sessions.create(
       {
         mode: 'subscription',
         // Review item 1 (BLOCKER, belt-and-braces): pin the accepted payment
@@ -164,7 +171,7 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
         // === 'paid'` gate is the real fix, this narrows what a customer can
         // even select in the first place.
         payment_method_types: ['card'],
-        line_items: [{ price: getStripeCloudPriceId(), quantity: seatQuantity }],
+        line_items: [{ price: cloudPriceId, quantity: seatQuantity }],
         expires_at: expiresAtUnix,
         client_reference_id: insertedRow.id,
         metadata: {
@@ -190,9 +197,12 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
     // Stripe call failed — release the lock this row was holding so the
     // owner is not stranded, then surface the failure.
     await admin.from('billing_checkout_sessions').update({ status: 'expired' }).eq('id', insertedRow.id).eq('status', 'open');
-    throw raw instanceof Error
-      ? new ApiError('internal_error', `Stripe checkout session creation failed: ${raw.message}`)
-      : new ApiError('internal_error', 'Stripe checkout session creation failed.');
+    // BK-827: this used to interpolate `raw.message` into an `internal_error`
+    // (500), so an unconfigured processor or any upstream Stripe text reached
+    // the response body and the upgrade UI verbatim. An ApiError (the
+    // processor's own 503) keeps its code; anything else is logged
+    // server-side and answered with a generic 502.
+    throw toPaymentProcessorError(raw, 'stripe checkout session create failed', { rowId: insertedRow.id });
   }
 
   if (!session.url) {
@@ -259,7 +269,18 @@ async function reuseOpenCheckoutSession(
     });
   }
 
-  const stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+  // BK-827: guarded like the create call above — an unguarded throw here
+  // reached the caller as `internal_error` carrying Stripe's own text.
+  let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
+  try {
+    stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+  }
+  catch (raw) {
+    throw toPaymentProcessorError(raw, 'stripe checkout session retrieve failed while reusing', {
+      rowId: openRow.id,
+      stripeCheckoutSessionId: openRow.stripe_checkout_session_id,
+    });
+  }
 
   if (stripeSession.status === 'open' && stripeSession.url) {
     return { url: stripeSession.url };
@@ -286,6 +307,18 @@ async function reuseOpenCheckoutSession(
     throw new ApiError('internal_error', expireError.message);
   }
   return null;
+}
+
+// BK-827 — maps a failure from a Stripe call to what the CALLER may see. An
+// ApiError (getStripeClient()'s own `payment_processor_unavailable`) is
+// already client-safe and keeps its status. Anything else is upstream text:
+// log it, never echo it.
+function toPaymentProcessorError(raw: unknown, logMessage: string, logContext: Record<string, unknown>): ApiError {
+  if (raw instanceof ApiError) {
+    return raw;
+  }
+  console.error(logMessage, { ...logContext, error: raw instanceof Error ? raw.message : String(raw) });
+  return new ApiError('upstream_error', 'The payment processor could not start checkout. Please try again in a moment.');
 }
 
 export interface CancelBillingCheckoutArgs {
@@ -360,12 +393,9 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     // processor's error string back is disclosure the caller gains nothing
     // from.
     //
-    // Do not read that as "begin is already safe". It is NOT: its catch at
-    // ~:194 still interpolates `raw.message` into the response, and
-    // `reuseOpenCheckoutSession`'s own `sessions.retrieve()` at ~:262 has no
-    // guard at all. Both are outside BK-638's scope, which names this call
-    // site only, and reuseOpenCheckoutSession belongs to the deferred
-    // double-payable-URL item routed to BK-636.
+    // BK-827 closed the two sibling leaks this note used to flag: begin's
+    // `sessions.create` catch and `reuseOpenCheckoutSession`'s
+    // `sessions.retrieve()` now both go through `toPaymentProcessorError`.
     let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
     try {
       stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);

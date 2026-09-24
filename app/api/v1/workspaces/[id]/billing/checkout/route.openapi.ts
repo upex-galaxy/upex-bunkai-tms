@@ -52,7 +52,8 @@ registry.registerPath({
     404: { description: 'Workspace not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'A checkout session is already open (`checkout_in_progress`) or an Idempotency-Key was reused with a different payload (`conflict`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Workspace is already on Cloud/Enterprise (`plan_not_upgradable`), or `seat_quantity` is out of bounds (`seat_quantity_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    503: { description: 'Stripe is not configured for this environment (`payment_processor_unavailable`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    502: { description: 'The payment processor rejected or failed the Checkout Session request (`upstream_error`). Generic client message; the upstream detail is logged server-side only.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    503: { description: 'The payment processor is unavailable in this environment (`payment_processor_unavailable`). Generic client message; which configuration is missing is logged server-side only. Returned before any checkout session row is created.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

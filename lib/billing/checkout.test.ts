@@ -45,6 +45,12 @@ const TEST_WEBHOOK_SECRET = 'whsec_ci_only_not_a_real_secret';
 const passthroughStripe = new Stripe(TEST_STRIPE_SECRET_KEY);
 
 let stripeRetrieve: StripeRetrieve | null = null;
+// BK-827 — begin-path steering. `stripeCreate` answers
+// `checkout.sessions.create`; `stripeUnavailable`, when set, is thrown by
+// `getStripeClient()` itself (the real module's unconfigured-environment
+// behaviour). Both reset with the others on every test edge.
+let stripeCreate: (() => Promise<{ id: string, url: string | null }>) | null = null;
+let stripeUnavailable: Error | null = null;
 let stripeExpireCalls: string[] = [];
 let adminFactory: (() => unknown) | null = null;
 let adminBuildCount = 0;
@@ -72,12 +78,24 @@ const steerableStripe = new Proxy(passthroughStripe, {
   get(target, prop, receiver) {
     if (prop === 'checkout') {
       const impl = stripeRetrieve;
-      if (!impl) {
+      const createImpl = stripeCreate;
+      if (!impl && !createImpl) {
         throw new Error('checkout.sessions was reached without a test configuring `stripeRetrieve` — refusing to fall through to the real Stripe API');
       }
       return {
         sessions: {
-          retrieve: async (sessionId: string) => impl(sessionId),
+          retrieve: async (sessionId: string) => {
+            if (!impl) {
+              throw new Error('checkout.sessions.retrieve reached without `stripeRetrieve`');
+            }
+            return impl(sessionId);
+          },
+          create: async () => {
+            if (!createImpl) {
+              throw new Error('checkout.sessions.create reached without `stripeCreate`');
+            }
+            return createImpl();
+          },
           expire: async (sessionId: string) => {
             stripeExpireCalls.push(sessionId);
             return { id: sessionId, status: 'expired' };
@@ -91,7 +109,12 @@ const steerableStripe = new Proxy(passthroughStripe, {
 });
 
 void mock.module('@lib/billing/stripe', () => ({
-  getStripeClient: () => steerableStripe,
+  getStripeClient: () => {
+    if (stripeUnavailable) {
+      throw stripeUnavailable;
+    }
+    return steerableStripe;
+  },
   getStripeCloudPriceId: () => 'price_ci_only_not_real',
   getStripeWebhookSecret: () => TEST_WEBHOOK_SECRET,
 }));
@@ -290,6 +313,8 @@ function releaseModuleOverrides(): void {
   // alone leaves the last test's doubles installed for whatever file `bun test`
   // runs next in this same process.
   stripeRetrieve = null;
+  stripeCreate = null;
+  stripeUnavailable = null;
   adminFactory = null;
 }
 
@@ -432,7 +457,7 @@ describe('cancelBillingCheckout — Stripe retrieve() failure (BK-638 defect 2)'
     const { ApiError } = await import('@lib/api/error-envelope');
     const updates: RecordedUpdate[] = [];
     adminFactory = () => fakeAdmin({ id: OPEN_ROW_ID, stripe_checkout_session_id: STRIPE_SESSION_ID }, updates);
-    stripeRetrieve = async () => { throw new ApiError('payment_processor_unavailable', 'The payment processor is not configured for this environment.'); };
+    stripeRetrieve = async () => { throw new ApiError('payment_processor_unavailable', 'Payments are temporarily unavailable. Please try again later.'); };
 
     const response = await cancelHandler()(cancelRequest());
 
@@ -440,5 +465,141 @@ describe('cancelBillingCheckout — Stripe retrieve() failure (BK-638 defect 2)'
     const body = await response.json() as { error: { code: string } };
     expect(body.error.code).toBe('payment_processor_unavailable');
     expect(updates).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BK-827 — beginBillingCheckout error handling. An unconfigured processor, or
+// any failure from Stripe's `sessions.create`, used to surface as a 500
+// `internal_error` whose message carried the raw reason ("...not configured
+// for this environment", or Stripe's own text) straight into the response
+// body and the upgrade UI. Driven through the REAL response pipeline
+// (`withApiHandler`), because the leak only exists in the serialised body.
+// ---------------------------------------------------------------------------
+
+describe('beginBillingCheckout — payment processor failures (BK-827)', () => {
+  const BEGIN_ROW_ID = '55555555-5555-5555-5555-555555555555';
+  const UPSTREAM_TEXT = 'Invalid API Key provided: sk_live_****bk827; request-id req_bk827leak';
+
+  function ownerCommunityDb(): SupabaseClient<Database> {
+    return {
+      rpc: async (fn: string) => {
+        if (fn === 'bunkai_is_workspace_owner') {
+          return { data: true, error: null };
+        }
+        if (fn === 'bunkai_workspace_billing_overview') {
+          return { data: { plan: 'community', active_seats: 1 }, error: null };
+        }
+        throw new Error(`unexpected rpc call: ${fn}`);
+      },
+      from: () => { throw new Error('beginBillingCheckout must not read tables through the caller client'); },
+    } as unknown as SupabaseClient<Database>;
+  }
+
+  // Covers the three admin chains begin builds when no session is open:
+  // reuse lookup (select...maybeSingle -> none), the lock-row insert, and the
+  // lock-release update on failure.
+  function fakeBeginAdmin(updates: RecordedUpdate[]): unknown {
+    return {
+      from: (table: string) => {
+        if (table !== 'billing_checkout_sessions') {
+          throw new Error(`unexpected admin table access: ${table}`);
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+            }),
+          }),
+          insert: () => ({
+            select: () => ({ single: async () => ({ data: { id: BEGIN_ROW_ID }, error: null }) }),
+          }),
+          update: (patch: Record<string, unknown>) => {
+            const recorded: RecordedUpdate = { patch, filters: [] };
+            updates.push(recorded);
+            const link = {
+              eq: (column: string, value: unknown) => {
+                recorded.filters.push([column, value]);
+                return link;
+              },
+              then: (resolve: (result: { error: null }) => unknown) => resolve({ error: null }),
+            };
+            return link;
+          },
+        };
+      },
+    };
+  }
+
+  function beginHandler(): (request: NextRequest) => Promise<Response> {
+    return withApiHandler(async () => {
+      const result = await beginBillingCheckout({
+        db: ownerCommunityDb(),
+        workspaceId: WORKSPACE_ID,
+        userId: '22222222-2222-2222-2222-222222222222',
+        seatQuantity: 1,
+        idempotencyKey: 'test-key-bk827-00000000',
+      });
+      return Response.json(result);
+    }, { auth: 'public' });
+  }
+
+  function beginRequest(): NextRequest {
+    return new NextRequest(`https://app.test/api/v1/workspaces/${WORKSPACE_ID}/billing/checkout`, { method: 'POST' });
+  }
+
+  test('an unconfigured processor answers 503 `payment_processor_unavailable` with a generic message, before any row is written', async () => {
+    const { ApiError } = await import('@lib/api/error-envelope');
+    // The same class of error the real `getStripeClient()` throws, with the
+    // SAME generic message it now uses.
+    stripeUnavailable = new ApiError('payment_processor_unavailable', 'Payments are temporarily unavailable. Please try again later.');
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates);
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(503);
+    const raw = await response.text();
+    expect(raw).not.toContain('not configured');
+    expect(raw).not.toContain('Stripe checkout session creation failed');
+    const body = JSON.parse(raw) as { error: { code: string, message: string } };
+    expect(body.error.code).toBe('payment_processor_unavailable');
+
+    // Config is resolved BEFORE the lock row: nothing inserted, nothing to expire.
+    expect(adminBuildCount).toBe(0);
+    expect(updates).toEqual([]);
+  });
+
+  test('a Stripe `sessions.create` failure answers 502 `upstream_error` without echoing Stripe\'s text, and releases the lock row', async () => {
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates);
+    stripeCreate = async () => { throw new Error(UPSTREAM_TEXT); };
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(502);
+    const raw = await response.text();
+    expect(raw).not.toContain(UPSTREAM_TEXT);
+    expect(raw).not.toContain('sk_live_');
+    expect(raw).not.toContain('req_bk827leak');
+    const body = JSON.parse(raw) as { error: { code: string, message: string } };
+    expect(body.error.code).toBe('upstream_error');
+    expect(body.error.message.length).toBeGreaterThan(0);
+
+    expect(updates).toEqual([{
+      patch: { status: 'expired' },
+      filters: [['id', BEGIN_ROW_ID], ['status', 'open']],
+    }]);
+  });
+
+  test('a successful create still returns the Checkout URL (regression guard for the reordered config lookup)', async () => {
+    const updates: RecordedUpdate[] = [];
+    adminFactory = () => fakeBeginAdmin(updates);
+    stripeCreate = async () => ({ id: 'cs_test_bk827_ok', url: 'https://checkout.stripe.test/bk827' });
+
+    const response = await beginHandler()(beginRequest());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: 'https://checkout.stripe.test/bk827' });
   });
 });
