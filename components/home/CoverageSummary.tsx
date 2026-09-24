@@ -126,7 +126,7 @@ export function CoverageSummaryCard({ rollup }: CoverageSummaryCardProps) {
               data-testid="home-coverage-not-run"
               className="status-chip"
               data-status="skipped"
-              title={`${rollup.acNotRun} acceptance criteria have test cases bound, but at least one of them is still pending in its most recent run`}
+              title={`${rollup.acNotRun} acceptance criteria have test cases bound, but at least one of them was not executed (pending, skipped or blocked) in its most recent run`}
             >
               <span className="font-mono font-semibold">{rollup.acNotRun}</span>
               awaiting execution
