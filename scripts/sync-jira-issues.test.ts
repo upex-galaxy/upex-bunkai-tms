@@ -1,3 +1,9 @@
+import type { Config, SyncOptions } from './sync-jira-issues.ts';
+
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, test } from 'bun:test';
 
 import {
@@ -5,8 +11,10 @@ import {
   classifyQaArtifactEpic,
   DEFAULT_QA_ARTIFACT_LABEL,
   defaultSweepEntries,
+  emptyResult,
   higherAltitudeLabel,
   outOfScopeTypeNames,
+  routeIssueByKey,
 } from './sync-jira-issues.ts';
 
 // ---------------------------------------------------------------------------
@@ -284,5 +292,154 @@ describe('outOfScopeTypeNames', () => {
 
   test('empty when everything present is covered', () => {
     expect(outOfScopeTypeNames(['Story', 'Bug', 'Defect', 'Test'], reg, [])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BK-502 — `--include-comments` silently dropped for non-coverable work types
+//
+// Drives the REAL `routeIssueByKey` -> `syncStandaloneIssue` path (not a
+// standalone helper) against a throwaway HTTP server speaking the Jira REST
+// shapes, and against the project's own `.agents/jira-required.yaml` (loaded
+// internally by `loadRegistry()` — not a fixture). `Bug` and `Test` are
+// declared `coverable: false` there, so both route through the flat,
+// single-file branch that used to ignore `options.includeComments` outright.
+// ---------------------------------------------------------------------------
+
+describe('BK-502 — --include-comments on flat (non-coverable) work types', () => {
+  /** Minimal fake Jira: issue probe/fetch + comment list, keyed by issue key. */
+  function fakeJira(key: string, issueType: string, summary: string, comments: Array<{ author: string, body: string, created: string }>) {
+    return Bun.serve({
+      port: 0,
+      fetch(req) {
+        const url = new URL(req.url);
+        if (url.pathname === `/rest/api/3/issue/${key}/comment`) {
+          return Response.json({
+            total: comments.length,
+            comments: comments.map((c, i) => ({
+              id: String(i),
+              author: { accountId: `acc-${i}`, displayName: c.author },
+              body: c.body,
+              created: c.created,
+              updated: c.created,
+            })),
+          });
+        }
+        if (url.pathname === `/rest/api/3/issue/${key}`) {
+          return Response.json({
+            id: '9001',
+            key,
+            self: url.toString(),
+            fields: {
+              summary,
+              description: null,
+              status: { name: 'Open', statusCategory: { name: 'To Do', colorName: 'blue-gray' } },
+              priority: { name: 'Medium', id: '3' },
+              labels: [],
+              created: '2026-08-01T00:00:00.000Z',
+              updated: '2026-08-01T00:00:00.000Z',
+              reporter: { accountId: 'r', displayName: 'Reporter' },
+              assignee: null,
+              issuetype: { name: issueType, subtask: false },
+              issuelinks: [],
+              components: [],
+            },
+          });
+        }
+        return new Response('not found', { status: 404 });
+      },
+    });
+  }
+
+  function fakeConfig(server: ReturnType<typeof Bun.serve>, outputDir: string): Config {
+    return {
+      baseUrl: server.url.origin,
+      displayUrl: server.url.origin,
+      email: 'test@example.com',
+      apiToken: 'token',
+      project: 'BK',
+      projectKeySource: 'project.yaml',
+      instanceSource: 'project.yaml',
+      instanceWarning: null,
+      outputDir,
+    };
+  }
+
+  function readOnlyFileUnder(dir: string): string {
+    const [name] = readdirSync(dir);
+    return readFileSync(join(dir, name), 'utf-8');
+  }
+
+  test('a Bug (coverable: false) embeds fetched comments in its single flat file', async () => {
+    const key = 'BK-9001';
+    const server = fakeJira(key, 'Bug', 'A flat-file bug', [
+      { author: 'Benjamin Segovia', body: 'QA RETEST: FAILED — reopening.', created: '2026-08-26T10:00:00.000Z' },
+    ]);
+    const outputDir = mkdtempSync(join(tmpdir(), 'bk-502-bug-'));
+    const options: SyncOptions = { issueType: 'stories', includeComments: true, dryRun: false, json: true };
+    const result = emptyResult();
+
+    try {
+      await routeIssueByKey(fakeConfig(server, outputDir), key, options, result);
+    }
+    finally {
+      void server.stop(true);
+    }
+
+    expect(result.warnings).toEqual([]);
+    const content = readOnlyFileUnder(join(outputDir, 'bugs'));
+    expect(content).toContain('## Comments');
+    expect(content).toContain('Benjamin Segovia');
+    expect(content).toContain('QA RETEST: FAILED');
+    // The comment section must land before the sync footer, inside the one file.
+    expect(content.indexOf('## Comments')).toBeLessThan(content.indexOf('_Synced from Jira by sync-jira-issues_'));
+
+    rmSync(outputDir, { recursive: true, force: true });
+  });
+
+  test('a Test (coverable: false, different content strategy) also gets its comments — proves this is registry-driven, not a Bug-only special case', async () => {
+    const key = 'BK-9002';
+    const server = fakeJira(key, 'Test', 'A flat-file test case', [
+      { author: 'QA Bot', body: 'Automation note.', created: '2026-08-20T09:00:00.000Z' },
+    ]);
+    const outputDir = mkdtempSync(join(tmpdir(), 'bk-502-test-'));
+    const options: SyncOptions = { issueType: 'stories', includeComments: true, dryRun: false, json: true };
+    const result = emptyResult();
+
+    try {
+      await routeIssueByKey(fakeConfig(server, outputDir), key, options, result);
+    }
+    finally {
+      void server.stop(true);
+    }
+
+    const content = readOnlyFileUnder(join(outputDir, 'tests'));
+    expect(content).toContain('## Comments');
+    expect(content).toContain('QA Bot');
+
+    rmSync(outputDir, { recursive: true, force: true });
+  });
+
+  test('without --include-comments the flat file carries no Comments section', async () => {
+    const key = 'BK-9003';
+    const server = fakeJira(key, 'Bug', 'Another flat-file bug', [
+      { author: 'Someone', body: 'Should not appear.', created: '2026-08-20T09:00:00.000Z' },
+    ]);
+    const outputDir = mkdtempSync(join(tmpdir(), 'bk-502-off-'));
+    const options: SyncOptions = { issueType: 'stories', includeComments: false, dryRun: false, json: true };
+    const result = emptyResult();
+
+    try {
+      await routeIssueByKey(fakeConfig(server, outputDir), key, options, result);
+    }
+    finally {
+      void server.stop(true);
+    }
+
+    const content = readOnlyFileUnder(join(outputDir, 'bugs'));
+    expect(content).not.toContain('## Comments');
+    expect(content).not.toContain('Should not appear');
+
+    rmSync(outputDir, { recursive: true, force: true });
   });
 });
