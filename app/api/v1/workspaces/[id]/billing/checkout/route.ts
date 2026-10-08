@@ -3,12 +3,13 @@ import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { beginIdempotentRequest, discardIdempotencyResult, recordIdempotencyResult } from '@lib/api/idempotency';
 import { assertWorkspaceContext } from '@lib/api/principal';
-import { beginBillingCheckout } from '@lib/billing/checkout';
+import { assertCheckoutOwner, beginBillingCheckout } from '@lib/billing/checkout';
 import { z } from 'zod';
 
 // POST /api/v1/workspaces/{id}/billing/checkout — start a self-serve
-// Community -> Cloud upgrade (BK-230). Owner-only (bunkai_is_workspace_owner,
-// enforced in lib/billing/checkout.ts BEFORE any Stripe call — an
+// Community -> Cloud upgrade (BK-230). Owner-only (bunkai_is_workspace_owner
+// via `assertCheckoutOwner`, called in this route BEFORE the idempotency row
+// is written (BK-829) and again inside beginBillingCheckout — an
 // unauthorized caller never causes a Stripe session to be created).
 //
 // `Idempotency-Key` is REQUIRED (ADR-0002's contract, same wiring as
@@ -42,6 +43,13 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { seat_quantity: seatQuantity } = CheckoutBodySchema.parse(payload);
+
+  // BK-829: the owner gate runs BEFORE the idempotency row is written. That
+  // insert carries `workspace_id` under an FK, so running it first answered
+  // 422 for a non-existent workspace while a foreign one got 403 from the
+  // owner gate: an existence oracle. Here both get the identical 403
+  // `not_workspace_owner`. beginBillingCheckout re-checks (defense in depth).
+  await assertCheckoutOwner(db, workspaceId);
 
   const begin = await beginIdempotentRequest({
     headers: request.headers,
@@ -80,9 +88,10 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // workspace:admin (ADR-0006): a money-moving, owner-only write, same
 // capability class as the invites admin routes. Pairs with
 // assertWorkspaceContext above per that ADR's binding invariant. The
-// stricter owner-vs-admin distinction is enforced inside
-// beginBillingCheckout (bunkai_is_workspace_owner) — workspace:admin is the
-// TS-layer scope floor, not the full authorization story.
+// stricter owner-vs-admin distinction is enforced by assertCheckoutOwner
+// (bunkai_is_workspace_owner), in this route before idempotency and again in
+// beginBillingCheckout — workspace:admin is the TS-layer scope floor, not
+// the full authorization story.
 }, { auth: 'required', requires: ['workspace:admin'] });
 
 function extractWorkspaceId(request: NextRequest): string {

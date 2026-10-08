@@ -78,6 +78,26 @@ export interface BeginBillingCheckoutResult {
   url: string
 }
 
+// BK-829 — the owner gate for starting a checkout, and the route's
+// non-disclosure boundary. `bunkai_is_workspace_owner` answers `false` both
+// for a workspace the caller does not own AND for one that does not exist, so
+// every such caller gets this same 403 `not_workspace_owner` (same status,
+// message and details). The route calls this BEFORE `beginIdempotentRequest`:
+// that call inserts an `idempotency_keys` row whose `workspace_id` FK used to
+// answer 422 for an unknown id while a foreign one got 403 here, which let
+// any signed-in user probe whether a workspace id exists.
+export async function assertCheckoutOwner(db: Client, workspaceId: string): Promise<void> {
+  const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
+  if (ownerCheck.error) {
+    throw internalDbError('bunkai_is_workspace_owner failed', ownerCheck.error);
+  }
+  if (!ownerCheck.data) {
+    throw new ApiError('forbidden', 'Only the workspace owner can start a plan upgrade.', {
+      details: { reason: 'not_workspace_owner' },
+    });
+  }
+}
+
 // BK-230 — the checkout POST route's business logic. Owner-only (verified
 // here via bunkai_is_workspace_owner, using the caller's own RLS-scoped
 // client — defense in depth: this runs BEFORE any Stripe call, so an
@@ -85,19 +105,11 @@ export interface BeginBillingCheckoutResult {
 export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Promise<BeginBillingCheckoutResult> {
   const { db, workspaceId, userId, seatQuantity, idempotencyKey } = args;
 
-  const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
-  if (ownerCheck.error) {
-    throw new ApiError('internal_error', ownerCheck.error.message);
-  }
-  if (!ownerCheck.data) {
-    throw new ApiError('forbidden', 'Only the workspace owner can start a plan upgrade.', {
-      details: { reason: 'not_workspace_owner' },
-    });
-  }
+  await assertCheckoutOwner(db, workspaceId);
 
   const { data: overviewData, error: overviewError } = await getWorkspaceBillingOverview(db, workspaceId);
   if (overviewError) {
-    throw new ApiError('internal_error', overviewError.message);
+    throw internalDbError('bunkai_workspace_billing_overview failed', overviewError);
   }
   if (!overviewData || !isWorkspaceBillingOverviewShape(overviewData)) {
     throw new ApiError('not_found', 'Workspace not found.');
@@ -110,6 +122,13 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
   }
 
   validateSeatQuantity(seatQuantity, resolveSeatQuantityBounds(overviewData.active_seats));
+
+  // BK-827: resolve the Stripe configuration BEFORE touching
+  // billing_checkout_sessions. An unconfigured environment now answers its
+  // own 503 `payment_processor_unavailable` straight away, without inserting a
+  // row it would immediately have to expire again.
+  const stripe = getStripeClient();
+  const cloudPriceId = getStripeCloudPriceId();
 
   const admin = createAdminClient();
 
@@ -148,12 +167,12 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
         details: { reason: 'checkout_already_open' },
       });
     }
-    throw new ApiError('internal_error', insertError?.message ?? 'Failed to start checkout.');
+    throw internalDbError('billing_checkout_sessions insert failed', insertError ?? { message: 'no row returned' });
   }
 
   let session: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['create']>>;
   try {
-    session = await getStripeClient().checkout.sessions.create(
+    session = await stripe.checkout.sessions.create(
       {
         mode: 'subscription',
         // Review item 1 (BLOCKER, belt-and-braces): pin the accepted payment
@@ -164,7 +183,7 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
         // === 'paid'` gate is the real fix, this narrows what a customer can
         // even select in the first place.
         payment_method_types: ['card'],
-        line_items: [{ price: getStripeCloudPriceId(), quantity: seatQuantity }],
+        line_items: [{ price: cloudPriceId, quantity: seatQuantity }],
         expires_at: expiresAtUnix,
         client_reference_id: insertedRow.id,
         metadata: {
@@ -190,9 +209,12 @@ export async function beginBillingCheckout(args: BeginBillingCheckoutArgs): Prom
     // Stripe call failed — release the lock this row was holding so the
     // owner is not stranded, then surface the failure.
     await admin.from('billing_checkout_sessions').update({ status: 'expired' }).eq('id', insertedRow.id).eq('status', 'open');
-    throw raw instanceof Error
-      ? new ApiError('internal_error', `Stripe checkout session creation failed: ${raw.message}`)
-      : new ApiError('internal_error', 'Stripe checkout session creation failed.');
+    // BK-827: this used to interpolate `raw.message` into an `internal_error`
+    // (500), so an unconfigured processor or any upstream Stripe text reached
+    // the response body and the upgrade UI verbatim. An ApiError (the
+    // processor's own 503) keeps its code; anything else is logged
+    // server-side and answered with a generic 502.
+    throw toPaymentProcessorError(raw, 'stripe checkout session create failed', { rowId: insertedRow.id });
   }
 
   if (!session.url) {
@@ -228,7 +250,7 @@ async function reuseOpenCheckoutSession(
     .maybeSingle();
 
   if (error) {
-    throw new ApiError('internal_error', error.message);
+    throw internalDbError('billing_checkout_sessions open-row lookup failed', error);
   }
   if (!openRow) {
     return null;
@@ -259,7 +281,18 @@ async function reuseOpenCheckoutSession(
     });
   }
 
-  const stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+  // BK-827: guarded like the create call above — an unguarded throw here
+  // reached the caller as `internal_error` carrying Stripe's own text.
+  let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
+  try {
+    stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
+  }
+  catch (raw) {
+    throw toPaymentProcessorError(raw, 'stripe checkout session retrieve failed while reusing', {
+      rowId: openRow.id,
+      stripeCheckoutSessionId: openRow.stripe_checkout_session_id,
+    });
+  }
 
   if (stripeSession.status === 'open' && stripeSession.url) {
     return { url: stripeSession.url };
@@ -283,9 +316,31 @@ async function reuseOpenCheckoutSession(
     .eq('id', openRow.id)
     .eq('status', 'open');
   if (expireError) {
-    throw new ApiError('internal_error', expireError.message);
+    throw internalDbError('billing_checkout_sessions expire failed', expireError);
   }
   return null;
+}
+
+// BK-827 review — same rule for database failures: Postgres/PostgREST text
+// (constraint names, column names, RLS detail) is for the server log, never
+// the response body. The upgrade UI renders `error.message` verbatim.
+const INTERNAL_ERROR_MESSAGE = 'Could not process the checkout request. Please try again in a moment.';
+
+function internalDbError(logMessage: string, error: { message: string, code?: string }): ApiError {
+  console.error(logMessage, { error: error.message, code: error.code });
+  return new ApiError('internal_error', INTERNAL_ERROR_MESSAGE);
+}
+
+// BK-827 — maps a failure from a Stripe call to what the CALLER may see. An
+// ApiError (getStripeClient()'s own `payment_processor_unavailable`) is
+// already client-safe and keeps its status. Anything else is upstream text:
+// log it, never echo it.
+function toPaymentProcessorError(raw: unknown, logMessage: string, logContext: Record<string, unknown>): ApiError {
+  if (raw instanceof ApiError) {
+    return raw;
+  }
+  console.error(logMessage, { ...logContext, error: raw instanceof Error ? raw.message : String(raw) });
+  return new ApiError('upstream_error', 'The payment processor could not start checkout. Please try again in a moment.');
 }
 
 export interface CancelBillingCheckoutArgs {
@@ -314,7 +369,7 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
 
   const ownerCheck = await db.rpc('bunkai_is_workspace_owner', { ws_id: workspaceId });
   if (ownerCheck.error) {
-    throw new ApiError('internal_error', ownerCheck.error.message);
+    throw internalDbError('bunkai_is_workspace_owner failed', ownerCheck.error);
   }
   if (!ownerCheck.data) {
     throw new ApiError('forbidden', 'Only the workspace owner can cancel a plan upgrade.', {
@@ -332,7 +387,7 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     .maybeSingle();
 
   if (error) {
-    throw new ApiError('internal_error', error.message);
+    throw internalDbError('billing_checkout_sessions open-row lookup failed', error);
   }
   if (!openRow) {
     return;
@@ -360,12 +415,9 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     // processor's error string back is disclosure the caller gains nothing
     // from.
     //
-    // Do not read that as "begin is already safe". It is NOT: its catch at
-    // ~:194 still interpolates `raw.message` into the response, and
-    // `reuseOpenCheckoutSession`'s own `sessions.retrieve()` at ~:262 has no
-    // guard at all. Both are outside BK-638's scope, which names this call
-    // site only, and reuseOpenCheckoutSession belongs to the deferred
-    // double-payable-URL item routed to BK-636.
+    // BK-827 closed the two sibling leaks this note used to flag: begin's
+    // `sessions.create` catch and `reuseOpenCheckoutSession`'s
+    // `sessions.retrieve()` now both go through `toPaymentProcessorError`.
     let stripeSession: Awaited<ReturnType<ReturnType<typeof getStripeClient>['checkout']['sessions']['retrieve']>>;
     try {
       stripeSession = await getStripeClient().checkout.sessions.retrieve(openRow.stripe_checkout_session_id);
@@ -412,6 +464,6 @@ export async function cancelBillingCheckout(args: CancelBillingCheckoutArgs): Pr
     .eq('id', openRow.id)
     .eq('status', 'open');
   if (updateError) {
-    throw new ApiError('internal_error', updateError.message);
+    throw internalDbError('billing_checkout_sessions cancel update failed', updateError);
   }
 }
