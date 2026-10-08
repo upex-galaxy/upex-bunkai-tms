@@ -31,12 +31,12 @@ const WorkspaceCoverageSchema = z
       .number()
       .int()
       .nullable()
-      .describe('`ac_bound / ac_total` as a whole percent, rounded half-up. This is the figure the Home Coverage card prints, and it is the same quantity the per-project Metrics screen shows as "AC coverage". NULL — never 0 — when `ac_total` is 0, because a workspace with no acceptance criteria has nothing to measure rather than a failing score.'),
+      .describe('`ac_bound / ac_total` as a whole percent, rounded half-up but clamped to 1-99 unless the ratio is exact: 100 only when `ac_bound = ac_total`, 0 only when `ac_bound` is 0, so the figure never reads fully covered while a gap exists or empty while coverage exists. This is the figure the Home Coverage card prints, and it is the same quantity the per-project Metrics screen shows as "AC coverage". NULL — never 0 — when `ac_total` is 0, because a workspace with no acceptance criteria has nothing to measure rather than a failing score.'),
     executed_coverage_percent: z
       .number()
       .int()
       .nullable()
-      .describe('`ac_executed / ac_total` as a whole percent, rounded half-up — the stricter reading, counting only acceptance criteria whose coverage is verified right now. Matches the per-project Metrics screen\'s "Executed coverage" tile. Inherits `ac_executed`\'s point-in-time semantics, so do NOT treat a drop in this figure as lost coverage: opening a regression run over already-tested criteria lowers it by design. `ac_coverage_percent` is the stable one. NULL when `ac_total` is 0.'),
+      .describe('`ac_executed / ac_total` as a whole percent, rounded half-up with the same 1-99 clamp as `ac_coverage_percent` (100 only when `ac_executed = ac_total`, 0 only when `ac_executed` is 0) — the stricter reading, counting only acceptance criteria whose coverage is verified right now. Matches the per-project Metrics screen\'s "Executed coverage" tile. Inherits `ac_executed`\'s point-in-time semantics, so do NOT treat a drop in this figure as lost coverage: opening a regression run over already-tested criteria lowers it by design. `ac_coverage_percent` is the stable one. NULL when `ac_total` is 0.'),
     modules_total: z
       .number()
       .int()

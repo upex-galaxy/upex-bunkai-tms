@@ -1,10 +1,10 @@
 import type { CoverageModule, CoverageNoCoverageItem } from '@lib/coverage/coverage-view';
 import {
   buildNoCoverageDisplayList,
-  coverageBarFractions,
-  coverageFractionLabel,
   COVERAGE_EMPTY_NO_ACS_DESCRIPTION,
   COVERAGE_EMPTY_NO_ACS_TITLE,
+  coverageBarFractions,
+  coverageFractionLabel,
   filterModulesBySegment,
   hasNoCoverageGaps,
   moduleBoundCount,
@@ -23,28 +23,76 @@ import { describe, expect, test } from 'bun:test';
 // shipped mockup shows ("8 of 8" all, "Coverage gaps 4", "Never run 5").
 
 const MOD_001_FULLY_COVERED: CoverageModule = {
-  module_id: 'mod-001', module_name: 'Authentication', ac_total: 12, ac_uncovered: 0, ac_not_run: 0, ac_executed: 12, status: 'fully_covered',
+  module_id: 'mod-001',
+  module_name: 'Authentication',
+  ac_total: 12,
+  ac_uncovered: 0,
+  ac_not_run: 0,
+  ac_executed: 12,
+  status: 'fully_covered',
 };
 const MOD_002_MIXED: CoverageModule = {
-  module_id: 'mod-002', module_name: 'Checkout', ac_total: 16, ac_uncovered: 2, ac_not_run: 3, ac_executed: 11, status: 'uncovered',
+  module_id: 'mod-002',
+  module_name: 'Checkout',
+  ac_total: 16,
+  ac_uncovered: 2,
+  ac_not_run: 3,
+  ac_executed: 11,
+  status: 'uncovered',
 };
 const MOD_003_BOUND_NEVER_RUN: CoverageModule = {
-  module_id: 'mod-003', module_name: 'Search', ac_total: 6, ac_uncovered: 0, ac_not_run: 6, ac_executed: 0, status: 'not_run',
+  module_id: 'mod-003',
+  module_name: 'Search',
+  ac_total: 6,
+  ac_uncovered: 0,
+  ac_not_run: 6,
+  ac_executed: 0,
+  status: 'not_run',
 };
 const MOD_004_MIXED: CoverageModule = {
-  module_id: 'mod-004', module_name: 'User Profile', ac_total: 10, ac_uncovered: 2, ac_not_run: 1, ac_executed: 7, status: 'uncovered',
+  module_id: 'mod-004',
+  module_name: 'User Profile',
+  ac_total: 10,
+  ac_uncovered: 2,
+  ac_not_run: 1,
+  ac_executed: 7,
+  status: 'uncovered',
 };
 const MOD_005_NO_COVERAGE: CoverageModule = {
-  module_id: 'mod-005', module_name: 'Notifications', ac_total: 8, ac_uncovered: 8, ac_not_run: 0, ac_executed: 0, status: 'uncovered',
+  module_id: 'mod-005',
+  module_name: 'Notifications',
+  ac_total: 8,
+  ac_uncovered: 8,
+  ac_not_run: 0,
+  ac_executed: 0,
+  status: 'uncovered',
 };
 const MOD_006_FULLY_COVERED: CoverageModule = {
-  module_id: 'mod-006', module_name: 'Billing', ac_total: 9, ac_uncovered: 0, ac_not_run: 0, ac_executed: 9, status: 'fully_covered',
+  module_id: 'mod-006',
+  module_name: 'Billing',
+  ac_total: 9,
+  ac_uncovered: 0,
+  ac_not_run: 0,
+  ac_executed: 9,
+  status: 'fully_covered',
 };
 const MOD_007_MIXED: CoverageModule = {
-  module_id: 'mod-007', module_name: 'Audit Export', ac_total: 9, ac_uncovered: 5, ac_not_run: 2, ac_executed: 2, status: 'uncovered',
+  module_id: 'mod-007',
+  module_name: 'Audit Export',
+  ac_total: 9,
+  ac_uncovered: 5,
+  ac_not_run: 2,
+  ac_executed: 2,
+  status: 'uncovered',
 };
 const MOD_008_PARTIAL_NEVER_RUN: CoverageModule = {
-  module_id: 'mod-008', module_name: 'Session Management', ac_total: 5, ac_uncovered: 0, ac_not_run: 2, ac_executed: 3, status: 'not_run',
+  module_id: 'mod-008',
+  module_name: 'Session Management',
+  ac_total: 5,
+  ac_uncovered: 0,
+  ac_not_run: 2,
+  ac_executed: 3,
+  status: 'not_run',
 };
 
 const MOCKUP_MODULES: CoverageModule[] = [
@@ -59,7 +107,13 @@ const MOCKUP_MODULES: CoverageModule[] = [
 ];
 
 const MOD_NO_ACS: CoverageModule = {
-  module_id: 'mod-009', module_name: 'Empty Module', ac_total: 0, ac_uncovered: 0, ac_not_run: 0, ac_executed: 0, status: 'no_acs',
+  module_id: 'mod-009',
+  module_name: 'Empty Module',
+  ac_total: 0,
+  ac_uncovered: 0,
+  ac_not_run: 0,
+  ac_executed: 0,
+  status: 'no_acs',
 };
 
 describe('moduleBoundCount', () => {
@@ -170,6 +224,25 @@ describe('percentLabel', () => {
 
   test('a zero denominator renders "—", never "0%" or NaN', () => {
     expect(percentLabel(0, 0)).toBe('—');
+  });
+
+  test('never renders a clean "100%" while a gap is listed (BK-1082)', () => {
+    expect(percentLabel(199, 200)).toBe('99%');
+    expect(percentLabel(200, 201)).toBe('99%');
+  });
+
+  test('never renders "0%" while coverage exists (BK-1082)', () => {
+    expect(percentLabel(1, 201)).toBe('1%');
+  });
+
+  test('"0%" and "100%" only for the exact states', () => {
+    expect(percentLabel(0, 12)).toBe('0%');
+    expect(percentLabel(12, 12)).toBe('100%');
+  });
+
+  test('a non-finite input renders "—", never "NaN%"', () => {
+    expect(percentLabel(Number.NaN, 10)).toBe('—');
+    expect(percentLabel(5, Number.POSITIVE_INFINITY)).toBe('—');
   });
 });
 
