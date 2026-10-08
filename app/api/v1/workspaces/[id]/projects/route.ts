@@ -4,11 +4,13 @@ import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { isReservedProjectSlug } from '@lib/projects/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
+import { assertCanCreateProject, mapCreateProjectError } from './response';
 
 // POST /api/v1/workspaces/{id}/projects — a workspace member (role >= member)
 // creates a project. The slug is auto-derived from the name and is unique per
-// workspace; a collision returns 409. RLS gates the insert to members, so a
-// non-member's insert is rejected by Postgrest (42501) and mapped to 403.
+// workspace; a collision returns 409. A caller without write access to the
+// workspace (non-member, viewer, or a workspace that does not exist) gets
+// 403 not_a_member from `assertCanCreateProject` before the insert (BK-992).
 //
 // HYBRID error model: every body-rule failure keeps the house `code`
 // (`validation_failed`) but carries a granular `details.reason` so QA can tell
@@ -68,8 +70,11 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     });
   }
 
-  // RLS gates the insert to members with role >= member; non-members receive a
-  // permission error from Postgrest that we map to 403.
+  // BK-992: gate on write access BEFORE the insert. The project-limit trigger
+  // (0077) fires before the RLS WITH CHECK, so without this a non-existent or
+  // foreign workspace surfaced as 422 project_limit_reached instead of 403.
+  await assertCanCreateProject(db, workspaceId);
+
   const { data, error } = await db
     .from('projects')
     .insert({
@@ -82,27 +87,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     .single();
 
   if (error) {
-    // SQLSTATE 23505 = unique_violation on projects(workspace_id, slug).
-    if (error.code === '23505') {
-      throw new ApiError('conflict', 'A project with this slug already exists in the workspace.', {
-        details: { reason: 'slug_duplicate_in_workspace' },
-      });
-    }
-    if (error.code === '42501' || error.message.toLowerCase().includes('row-level security')) {
-      throw new ApiError('forbidden', 'You must be a member of this workspace to create a project.', {
-        details: { reason: 'not_a_member' },
-      });
-    }
-    // 45700 = bunkai_enforce_project_limit_trigger (migration 0077, BK-230):
-    // the workspace's Billing Plan project cap is already at or over its
-    // limit. See lib/billing/plan-tiers.ts for the ladder (Community 3,
-    // Cloud 50, Enterprise unlimited).
-    if (error.code === '45700') {
-      throw new ApiError('project_limit_reached', 'This workspace has reached its Billing Plan\'s project limit. Upgrade to create more projects.', {
-        details: { reason: 'project_limit_reached' },
-      });
-    }
-    throw new ApiError('internal_error', error.message);
+    mapCreateProjectError(error);
   }
 
   return jsonResponse({ project: data }, { status: 201 });
@@ -110,7 +95,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 // `atc:write` rather than minting a new scope. The gateway evaluates the
 // capability before this body runs, so a PAT without `atc:write` never reaches
 // the RLS-gated insert above; a PAT that holds it but whose caller is not a
-// member still fails there on 42501.
+// member is rejected by `assertCanCreateProject` with 403.
 }, { auth: 'required', requires: ['atc:write'] });
 
 function extractWorkspaceId(request: NextRequest): string {
