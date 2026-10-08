@@ -52,6 +52,8 @@ updater:
     - CONTEXT.md # Bunkai facts on top of the synced text: six-server MCP set, Critical Rule #19 numbering
     - .agents/skills/autonomous-delivery/SKILL.md # Bunkai-only 'both files or neither' rule (§8 US->Screen row + dev-roadmap entry), seven recorded instances
     - .env.example # Bunkai-only DBHUB MCP block (dbhub.toml placeholders)
+    - scripts/sync-jira-issues.ts # BK-502 fix: --include-comments for non-coverable types (embedCommentsSection); upstream sync reverted it twice (d383dd3c, a5ba427d)
+    - scripts/sync-jira-issues.test.ts # BK-502 regression tests for the embedded ## Comments section; reverted together with the script
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
