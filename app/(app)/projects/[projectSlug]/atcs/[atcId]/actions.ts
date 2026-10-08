@@ -1,8 +1,10 @@
 'use server';
 
 import type { AtcPriority, AtcTechnique } from '@lib/types';
+import { ApiError } from '@lib/api/error-envelope';
 import { parseAssertionsYaml, parseStepsMarkdown } from '@lib/atc-parse';
 import { TAG_CAP_MESSAGE, TITLE_MESSAGE, titleValid } from '@lib/atcs/builder-guards';
+import { mapAtcRpcError } from '@lib/atcs/errors';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { MAX_ATC_TAGS } from '@lib/atcs/validation';
 import { atcUsage, updateAtc } from '@lib/supabase/rpc';
@@ -87,7 +89,7 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: saveErrorMessage(error) };
   }
 
   revalidatePath(`/projects/${input.projectSlug}/atcs/${input.atcId}`);
@@ -107,4 +109,28 @@ export async function saveAtcAction(input: SaveAtcActionInput): Promise<SaveAtcA
   }
 
   return { ok: true, affectedTestCount };
+}
+
+// Not exported: a 'use server' module may only export async functions.
+const SAVE_ATC_GENERIC_ERROR = 'Could not save the ATC. Try again in a moment.';
+
+// BK-886 — translate a bunkai_update_atc error into a message safe to show in
+// the editor toast. The headless PATCH route already runs every RPC error
+// through mapAtcRpcError; this action used to return `error.message` verbatim,
+// so a CHECK violation surfaced raw Postgres text ("new row for relation
+// "atcs" violates check constraint ...") to the user. Mapped domain errors
+// carry a curated message and pass through; `internal_error` is the mapper's
+// fallthrough and embeds the raw DB message, so it is replaced with a generic
+// one and the original is logged server-side only.
+function saveErrorMessage(error: { code?: string, message: string }): string {
+  try {
+    mapAtcRpcError(error);
+  }
+  catch (err) {
+    if (err instanceof ApiError && err.code !== 'internal_error') {
+      return err.message;
+    }
+  }
+  console.error('[saveAtcAction] unmapped bunkai_update_atc error', { code: error.code, message: error.message });
+  return SAVE_ATC_GENERIC_ERROR;
 }

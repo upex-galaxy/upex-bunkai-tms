@@ -129,4 +129,19 @@ describe('mapAtcRpcError', () => {
     expect(err.message).toContain('Critical, High, Medium, Low');
     expect(err.message).not.toContain('violates check constraint');
   });
+
+  // BK-886 — `layer` is an inline CHECK in 0004_atcs.sql, auto-named by
+  // Postgres as `atcs_layer_check`. Before this branch it fell to the generic
+  // check_constraint_violation reason.
+  test('BK-886: 23514 on atcs_layer_check → 422 with reason layer_invalid', () => {
+    const err = caught(() => mapAtcRpcError({
+      code: '23514',
+      message: 'new row for relation "atcs" violates check constraint "atcs_layer_check"',
+    }));
+    expect(err.code).toBe('validation_failed');
+    expect(err.status).toBe(422);
+    expect(err.details).toEqual({ reason: 'layer_invalid' });
+    expect(err.message).toBe('Layer must be one of: UI, API, Unit.');
+    expect(err.message).not.toContain('violates check constraint');
+  });
 });
