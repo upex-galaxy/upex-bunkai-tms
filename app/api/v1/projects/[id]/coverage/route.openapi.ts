@@ -7,8 +7,10 @@ import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 //
 // Coverage-state model (PO decisions Q1/Q2/Q3): an AC is `uncovered` (zero
 // linked non-archived ATCs), `not_run` (>=1 linked ATC, at least one
-// `unrun`), or `executed` (>=1 linked ATC, none `unrun`). A module is
-// `fully_covered` only when every one of its ACs is `executed`.
+// not run), or `executed` (>=1 linked ATC, every one of them `passed` or
+// `failed` in its most recent run). "Not run" = never in a run, or latest
+// run status `pending`, `skipped` or `blocked` (BK-1081, migration 0090).
+// A module is `fully_covered` only when every one of its ACs is `executed`.
 
 const CoverageKpisSchema = z
   .object({
