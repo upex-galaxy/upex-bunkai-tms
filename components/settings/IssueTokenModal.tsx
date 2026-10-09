@@ -9,7 +9,7 @@ import { ALLOWED_PAT_SCOPES } from '@lib/api/pat';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { copySecret } from '@lib/tokens/copy-to-clipboard';
 import { formatExpiryChoiceDate } from '@lib/tokens/format';
-import { canSubmitIssueForm } from '@lib/tokens/issue-form';
+import { canSubmitIssueForm, scopesError } from '@lib/tokens/issue-form';
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -72,6 +72,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
   const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<Capability[]>([]);
+  const [scopesTouched, setScopesTouched] = useState(false);
   const [workspaceId, setWorkspaceId] = useState('');
   const [expiryChoice, setExpiryChoice] = useState(DEFAULT_EXPIRY_CHOICE);
   const [submitting, setSubmitting] = useState(false);
@@ -93,6 +94,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
     clearCopyResetTimeout();
     setName('');
     setScopes([]);
+    setScopesTouched(false);
     setWorkspaceId('');
     setExpiryChoice(DEFAULT_EXPIRY_CHOICE);
     setCopied(false);
@@ -114,6 +116,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
   }
 
   const toggleScope = (scope: Capability) => {
+    setScopesTouched(true);
     setScopes(prev => (prev.includes(scope) ? prev.filter(s => s !== scope) : [...prev, scope]));
   };
 
@@ -191,6 +194,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
   };
 
   const canSubmit = canSubmitIssueForm({ name, scopes });
+  const scopesErrorMessage = scopesError({ name, scopes, scopesTouched });
 
   return (
     <div
@@ -231,7 +235,11 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                   <p className="text-xs text-fg-3">Lowercase and hyphens. Names the machine that will use it.</p>
                 </div>
 
-                <fieldset className="mb-3 flex flex-col gap-2 border-0 p-0">
+                <fieldset
+                  className="mb-3 flex flex-col gap-2 border-0 p-0"
+                  aria-invalid={scopesErrorMessage ? true : undefined}
+                  aria-describedby={scopesErrorMessage ? 'issue-token-scopes-error' : undefined}
+                >
                   <legend className="mb-1 text-2xs font-medium uppercase tracking-wider text-fg-2">
                     Scopes — at least one
                   </legend>
@@ -251,6 +259,19 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                       </span>
                     </label>
                   ))}
+                  {/* Polite live region, always mounted so the message is
+                      announced when it appears without interrupting typing. */}
+                  <div aria-live="polite">
+                    {scopesErrorMessage && (
+                      <p
+                        id="issue-token-scopes-error"
+                        data-testid="issue-token-scopes-error"
+                        className="text-xs text-signal-fail"
+                      >
+                        {scopesErrorMessage}
+                      </p>
+                    )}
+                  </div>
                 </fieldset>
 
                 <div className="mb-3 flex flex-col gap-1">
@@ -301,6 +322,7 @@ export function IssueTokenModal({ open, onClose, workspaces }: IssueTokenModalPr
                     data-testid="issue-token-create"
                     onClick={() => { void handleCreate(); }}
                     disabled={!canSubmit || submitting}
+                    aria-describedby={scopesErrorMessage ? 'issue-token-scopes-error' : undefined}
                   >
                     {submitting ? 'Creating…' : 'Create token'}
                   </Button>
