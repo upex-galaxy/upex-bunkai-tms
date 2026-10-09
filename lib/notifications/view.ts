@@ -138,3 +138,11 @@ export function resolveNotificationTitle(notification: NotificationTitleInput): 
 export function resolveNotificationUnavailable(entityAvailable: boolean, href: string | null): boolean {
   return !entityAvailable || href === null;
 }
+
+// BK-857 — the sidebar's notification reset (clear list, close panel) must
+// fire only when the active workspace actually changes. Running it on mount
+// closed the panel the `?openNotifications=1` deep link had just opened,
+// because child effects run before parent effects in the same commit.
+export function shouldResetNotificationsOnWorkspaceChange(previousId: string | null, nextId: string | null): boolean {
+  return previousId !== nextId;
+}

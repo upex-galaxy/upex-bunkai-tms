@@ -4,6 +4,7 @@ import {
   resolveNotificationsViewState,
   resolveNotificationTitle,
   resolveNotificationUnavailable,
+  shouldResetNotificationsOnWorkspaceChange,
 } from '@lib/notifications/view';
 import { describe, expect, test } from 'bun:test';
 
@@ -182,5 +183,24 @@ describe('resolveNotificationUnavailable', () => {
 
   test('a standalone bug (entity_available: true, href: null) is unavailable — no route could be resolved for it', () => {
     expect(resolveNotificationUnavailable(true, null)).toBe(true);
+  });
+});
+
+describe('shouldResetNotificationsOnWorkspaceChange (BK-857)', () => {
+  test('mount with the same workspace id does NOT reset (keeps a deep-link-opened panel open)', () => {
+    expect(shouldResetNotificationsOnWorkspaceChange('ws-1', 'ws-1')).toBe(false);
+  });
+
+  test('mount with no active workspace does NOT reset', () => {
+    expect(shouldResetNotificationsOnWorkspaceChange(null, null)).toBe(false);
+  });
+
+  test('switching to a different workspace resets', () => {
+    expect(shouldResetNotificationsOnWorkspaceChange('ws-1', 'ws-2')).toBe(true);
+  });
+
+  test('gaining or losing an active workspace resets', () => {
+    expect(shouldResetNotificationsOnWorkspaceChange(null, 'ws-1')).toBe(true);
+    expect(shouldResetNotificationsOnWorkspaceChange('ws-1', null)).toBe(true);
   });
 });
