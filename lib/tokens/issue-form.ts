@@ -13,3 +13,20 @@ export interface IssueFormState {
 export function canSubmitIssueForm({ name, scopes }: IssueFormState): boolean {
   return name.trim().length > 0 && scopes.length > 0;
 }
+
+// BK-1079 — AC2 of BK-88 asks for an inline error, not only a silently
+// disabled button. Shown once the user has shown intent (typed a name, or
+// touched a scope checkbox) and no scope is selected; before that the
+// fieldset legend's hint is enough and an error on a pristine form is noise.
+export const SCOPES_REQUIRED_MESSAGE = 'At least one scope is required.';
+
+interface ScopesErrorParams extends IssueFormState {
+  scopesTouched: boolean
+}
+
+export function scopesError({ name, scopes, scopesTouched }: ScopesErrorParams): string | null {
+  if (scopes.length > 0) {
+    return null;
+  }
+  return name.trim().length > 0 || scopesTouched ? SCOPES_REQUIRED_MESSAGE : null;
+}
