@@ -12,7 +12,7 @@ import { emailInitials } from '@lib/account/initials';
 import { NO_WORKSPACE_LABEL, roleLabel } from '@lib/account/role-label';
 import { resolveNotificationHref } from '@lib/notifications/entity-routes';
 import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-notifications-channel';
-import { formatUnreadBadgeCount } from '@lib/notifications/view';
+import { formatUnreadBadgeCount, shouldResetNotificationsOnWorkspaceChange } from '@lib/notifications/view';
 import { createRefetchScheduler, shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
 import { createClient } from '@lib/supabase/client';
 import { cn } from '@lib/utils';
@@ -209,7 +209,14 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   // A workspace switch invalidates whatever notification list/state was
   // loaded for the PREVIOUS workspace — reset so a reopen fetches fresh
   // rather than showing another workspace's items.
+  // BK-857 — only on an actual id change, never on mount: child effects run
+  // before parent effects in the same commit, so on a fresh mount (the
+  // client-side redirect after login) OpenInboxFromQuery opened the panel and
+  // this effect closed it again in the same commit.
+  const prevWorkspaceIdRef = useRef(activeWorkspaceId);
   useEffect(() => {
+    if (!shouldResetNotificationsOnWorkspaceChange(prevWorkspaceIdRef.current, activeWorkspaceId)) { return; }
+    prevWorkspaceIdRef.current = activeWorkspaceId;
     notifLoadedRef.current = false;
     setNotifications([]);
     setNotifError(null);
