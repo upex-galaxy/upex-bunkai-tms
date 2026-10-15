@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { SAVED_VIEW_NAME_MAX } from './constants';
+import { validateStateForKind } from './state';
 import {
   SavedViewCreateBodySchema,
   SavedViewListQuerySchema,
@@ -52,6 +53,19 @@ describe('SavedViewNameSchema', () => {
     }
   });
 
+  test('NFC-normalises, so the NFC and NFD spellings of one name are the same name', () => {
+    const nfc = 'caf\u00E9';
+    const nfd = 'cafe\u0301';
+    expect(nfc).not.toBe(nfd);
+    expect(SavedViewNameSchema.parse(nfd)).toBe(nfc);
+    expect(SavedViewNameSchema.parse(nfc)).toBe(nfc);
+  });
+
+  test('counts code points after NFC: 80 decomposed accents fit, 81 do not', () => {
+    expect(SavedViewNameSchema.safeParse('e\u0301'.repeat(80)).success).toBe(true);
+    expect(SavedViewNameSchema.safeParse('e\u0301'.repeat(81)).success).toBe(false);
+  });
+
   test('rejects a non-string', () => {
     expect(SavedViewNameSchema.safeParse(42).success).toBe(false);
   });
@@ -76,6 +90,20 @@ describe('SavedViewCreateBodySchema', () => {
     expect(SavedViewCreateBodySchema.safeParse({ view_kind: 'bugs', state: {} }).success).toBe(false);
     expect(SavedViewCreateBodySchema.safeParse({ view_kind: 'bugs', name: 'x' }).success).toBe(false);
     expect(SavedViewCreateBodySchema.safeParse({ ...valid, state: { severity: ['P1'] } }).success).toBe(false);
+  });
+});
+
+describe('hostile state keys never reach a 500', () => {
+  test('Zod drops an own __proto__ key and keeps the prototype intact', () => {
+    const body = JSON.parse('{"view_kind":"bugs","name":"a","state":{"severity":"P1","__proto__":"x"}}');
+    const parsed = SavedViewCreateBodySchema.parse(body);
+    expect(parsed.state).toEqual({ severity: 'P1' });
+    expect(Object.getPrototypeOf(parsed.state)).toBe(Object.prototype);
+  });
+
+  test('constructor passes the shape check and is refused by the surface rules as state_invalid', () => {
+    const parsed = SavedViewCreateBodySchema.parse(JSON.parse('{"view_kind":"bugs","name":"a","state":{"constructor":"x"}}'));
+    expect(validateStateForKind('bugs', parsed.state)).toEqual({ ok: false, reason: 'state_invalid' });
   });
 });
 

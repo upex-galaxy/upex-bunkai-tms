@@ -62,6 +62,20 @@ describe('resolveRestore', () => {
     expect(result.state).toEqual({ module: MOD_A });
   });
 
+  test.each(['constructor', 'toString', 'hasOwnProperty'])('a stored row holding the inherited name "%s" is dropped, not a crash', (key) => {
+    const result = resolveRestore('bugs', { severity: 'P1', [key]: 'x' });
+    expect(result.state).toEqual({ severity: 'P1' });
+    expect(result.dropped.map(d => d.key)).toEqual([key]);
+  });
+
+  test('an own __proto__ key in a stored row is dropped and the prototype is untouched', () => {
+    const stored = JSON.parse('{"__proto__":"x","outcome":"failed"}') as Record<string, string>;
+    const result = resolveRestore('run_history', stored);
+    expect(result.state).toEqual({ outcome: 'failed' });
+    expect(result.dropped.map(d => d.key)).toEqual(['__proto__']);
+    expect(Object.getPrototypeOf(result.state)).toBe(Object.prototype);
+  });
+
   test('an empty saved state is not reported as fully degraded', () => {
     const result = resolveRestore('bugs', {});
     expect(result).toEqual({ state: {}, dropped: [], allDropped: false });
