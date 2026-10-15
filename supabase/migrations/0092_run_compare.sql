@@ -51,13 +51,6 @@
 alter table public.run_atcs
   add column if not exists source_atc_id uuid;
 
--- Backfill every existing row once. A row whose atc_id is already null stays null
--- and makes any comparison that includes its Run answer the "unreliable" state.
-update public.run_atcs
-set source_atc_id = atc_id
-where source_atc_id is null
-  and atc_id is not null;
-
 -- Write-once by construction: run_atcs has no UPDATE policy and the only updates
 -- (0042, 0067, 0075) set `status`. The trigger only fills a missing key, so
 -- bunkai_create_run (which inserts atc_id) and any seeded fixture are covered
@@ -82,6 +75,16 @@ drop trigger if exists run_atcs_set_source_atc_id on public.run_atcs;
 create trigger run_atcs_set_source_atc_id
   before insert on public.run_atcs
   for each row execute function public.run_atcs_set_source_atc_id();
+
+-- Backfill every existing row once. It runs AFTER the trigger exists, so an apply
+-- that is not wrapped in one transaction (or that is interrupted between statements)
+-- can never leave a row inserted in the gap without a key; the UPDATE is idempotent
+-- and re-running the file repairs any such row. A row whose atc_id is already null
+-- stays null and makes any comparison that includes its Run answer "unreliable".
+update public.run_atcs
+set source_atc_id = atc_id
+where source_atc_id is null
+  and atc_id is not null;
 
 -- ============================================================================
 -- 2. bunkai_compare_run_header — one Run header as jsonb (internal helper)
