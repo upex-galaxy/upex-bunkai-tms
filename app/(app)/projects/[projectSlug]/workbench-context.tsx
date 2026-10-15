@@ -1,12 +1,15 @@
 'use client';
 
 import type { AtcListFilters } from '@lib/atcs/list-filters';
+import type { SavedViewState } from '@lib/saved-views/state';
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { EMPTY_ATC_LIST_FILTERS } from '@lib/atcs/list-filters';
+import { mergeStateIntoParams, stateFromParams } from '@lib/saved-views/state';
+import { workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
 import { shortSlug } from '@lib/utils';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // Client state layer for the project workbench (BK-147). The persistent shell
@@ -73,6 +76,17 @@ interface WorkbenchContextValue extends WorkbenchData {
   atcFilters: AtcListFilters
   setAtcFilters: (patch: Partial<AtcListFilters>) => void
   resetAtcFilters: () => void
+  // BK-443 — the two raw text inputs of the toolbar (ATC search, Test tag) live
+  // here, next to `atcFilters`, so a saved view can set them and the address can
+  // mirror them. Each toolbar control still owns what it DOES with its text.
+  atcQuery: string
+  setAtcQuery: (value: string) => void
+  tagInput: string
+  setTagInput: (value: string) => void
+  // BK-443 — every workbench filter as one canonical saved-view state, and the
+  // way to make the workbench show a given state (opening a view replaces).
+  savedViewState: SavedViewState
+  applySavedViewState: (state: SavedViewState) => void
 }
 
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null);
@@ -130,6 +144,7 @@ function findTab(
 
 export function WorkbenchProvider({ children, ...data }: WorkbenchData & { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { rows, tests, projectSlug } = data;
   const params = useParams<{ atcId?: string, testId?: string, runId?: string }>();
   const activeAtcId = params.atcId ?? null;
@@ -163,6 +178,45 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     [],
   );
   const resetAtcFilters = useCallback(() => setAtcFiltersState(EMPTY_ATC_LIST_FILTERS), []);
+
+  // BK-443 — toolbar text inputs, lifted so they can be saved, restored and
+  // mirrored into the address.
+  const [atcQuery, setAtcQuery] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const savedViewState = workbenchStateFromFilters({ atcQuery, tagInput, atcFilters });
+  const applySavedViewState = useCallback((state: SavedViewState) => {
+    const next = workbenchFiltersFromState(state);
+    setAtcQuery(next.atcQuery);
+    setTagInput(next.tagInput);
+    setAtcFiltersState(next.atcFilters);
+  }, []);
+
+  // BK-443 — the project index address mirrors the workbench filters (the
+  // convention Traceability and Run history follow). Starts empty (SSR-safe),
+  // is hydrated from the address once on mount, and only THEN starts writing:
+  // writing first would erase the params it is about to read. Written with
+  // `history.replaceState` (one history entry per visit), only on the index
+  // route, keeping every foreign param (`?module=` is the Command Palette's).
+  const indexHref = `/projects/${projectSlug}`;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    if (pathname === indexHref) {
+      applySavedViewState(stateFromParams('workbench', new URLSearchParams(window.location.search)));
+    }
+    setHydrated(true);
+    // Mount-only by design; a project switch remounts the provider.
+  }, []);
+  const savedViewKey = JSON.stringify(savedViewState);
+  useEffect(() => {
+    if (!hydrated || pathname !== indexHref) { return; }
+    const params = mergeStateIntoParams('workbench', new URLSearchParams(window.location.search), savedViewState);
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ''}`;
+    if (url !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, '', url);
+    }
+    // `savedViewKey` stands in for `savedViewState`, which is a fresh object each render.
+  }, [hydrated, pathname, indexHref, savedViewKey]);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
     const seed = activeAtcId
       ? findTab(rows, tests, runLabels, projectSlug, 'atc', activeAtcId)
@@ -235,6 +289,12 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     atcFilters,
     setAtcFilters,
     resetAtcFilters,
+    atcQuery,
+    setAtcQuery,
+    tagInput,
+    setTagInput,
+    savedViewState,
+    applySavedViewState,
   };
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
