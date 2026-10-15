@@ -1,5 +1,6 @@
 import type { SavedViewItem } from './view-model';
 import { describe, expect, test } from 'bun:test';
+import { SAVED_VIEW_NAME_MAX } from './constants';
 import {
   afterDelete,
   afterWrite,
@@ -8,11 +9,13 @@ import {
   pruneNotice,
   removeView,
   resolveActiveView,
+  savedViewNameLength,
   sortViews,
   stateKey,
   upsertView,
   visibleNotice,
 } from './menu-state';
+import { SavedViewNameSchema } from './validation';
 
 // BK-443 — derived state of the Saved views control.
 
@@ -165,5 +168,28 @@ describe('nameFieldReducer', () => {
   test('reopening the dialog starts from the given name with no error', () => {
     expect(nameFieldReducer({ name: 'x', error: 'boom' }, { type: 'reset', name: 'Critical bugs' }))
       .toEqual({ name: 'Critical bugs', error: null });
+  });
+});
+
+describe('savedViewNameLength (the dialog counter)', () => {
+  test('trims and counts code points', () => {
+    expect(savedViewNameLength('  Critical bugs  ')).toBe(13);
+    expect(savedViewNameLength('😀😀')).toBe(2);
+  });
+
+  test('counts the NFC form: a decomposed accent is one character, as on the server', () => {
+    expect(savedViewNameLength('cafe\u0301')).toBe(4);
+    expect(savedViewNameLength('caf\u00E9')).toBe(4);
+    // 80 decomposed "é" read as 80 here, not 160.
+    expect(savedViewNameLength('e\u0301'.repeat(80))).toBe(80);
+  });
+
+  test('agrees with the server schema at the boundary, in either spelling', () => {
+    for (const unit of ['e\u0301', '\u00E9', 'x']) {
+      for (const count of [SAVED_VIEW_NAME_MAX, SAVED_VIEW_NAME_MAX + 1]) {
+        const name = unit.repeat(count);
+        expect(savedViewNameLength(name) <= SAVED_VIEW_NAME_MAX).toBe(SavedViewNameSchema.safeParse(name).success);
+      }
+    }
   });
 });
