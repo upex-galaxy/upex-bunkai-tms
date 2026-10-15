@@ -21,7 +21,8 @@ compact_rules: |
   - **Session material is ephemeral.** Cookie jars, `storageState.json`, token files, `.har` captures: session scratch directory only (never the repo tree), deleted BEFORE reporting, disclosed as `secrets_materialized:` + `cleaned:` in the report. Never echo a credential into a report, plan, commit, PR body, or tracker comment.
   - **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
   - **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS unless the table declares `FORCE ROW LEVEL SECURITY` (verify for your schema; never assume it), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. See `references/rpc-authorization.md`.
-  - **The workload forecast gate is fail-closed.** With `risk = High`, `Chain strategy` is accepted ONLY with a verbatim `Decision trace:` citing the git-flow-master chained-PR tree answers. Missing or malformed trace is treated as `pending` and blocks Stage 2. The planner may only emit `pending` — it never picks a strategy itself.
+  - **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/workload-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
+  - **Merging a PR with a ticket key flips the ticket to Ready For QA, and the workflow has no way back.** Merge only into the final target (`staging`), only when truly ready (migrations applied if any, checks green). Never merge a ticket-keyed PR into any intermediate branch.
   - **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's status today.
   - **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
   - **Technical decisions are yours to make — but read the record before you make one.** Search the run's decision/escalation log, `.context/ADR/`, and the ticket plus its siblings BEFORE deciding OR asking. A decision already made is followed and cited, never re-derived; re-asking a settled question — even to a human, asked cold without the prior ruling in front of them — yields a contradiction, not an override. Genuinely unsettled and technical → decide it yourself via a scored judge panel of 3-5 independent lenses, then record the decision AND its scoring rationale where the next agent's search will find it. Escalate ONLY product/business calls, a novel security posture not already ratified, irreversible or destructive actions, and whatever the operator explicitly reserved. See `agentic-dev-core/references/decision-protocol.md`. **Product calls are the one configurable category**: a project that sets `decision_authority.product: decide` in `.agents/project.yaml` (no human PO in the loop) routes them to a scored, attributed decision subagent instead of escalating — read the block, then `decision-protocol.md` §5.1.
@@ -29,7 +30,7 @@ compact_rules: |
   - **Verification cap=3**: lint + types + unit tests in parallel; green before any push.
   - **Atomic commits**, semantic prefixes, no AI-attribution lines, never `--no-verify`, never force-push a pushed branch, never push to `main` without explicit confirmation.
   - **Scope discipline**: touch only what the story states. No "while I'm here" refactors.
-  - **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason.
+  - **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason. A big PR is reviewed commit by commit; fixes land as NEW commits (never amend or force-push pushed history).
 ---
 
 <!-- Model preferences (advisory; dispatchers may use to route) -->
@@ -59,7 +60,8 @@ The same pipeline runs whether the input is a new story, a bug fix, or a resume 
 - **Session material is ephemeral.** Cookie jars, `storageState.json`, token files, `.har` captures: session scratch directory only (never the repo tree), deleted BEFORE reporting, disclosed as `secrets_materialized:` + `cleaned:` in the report. Never echo a credential into a report, plan, commit, PR body, or tracker comment.
 - **Live-UI validation is browser-based at the gate.** A UI story cannot be approved on HTTP-probe evidence alone; Tier 0 probes carry the inner loop and non-visual assertions only (`references/live-ui-validation.md` §7). Never validate against a production build.
 - **A DEFINER function's `WHERE` clause is not authorization.** `SECURITY DEFINER` bypasses RLS unless the table declares `FORCE ROW LEVEL SECURITY` (verify for your schema; never assume it), so a filter on a caller-supplied identity or scope parameter selects rows — it does not decide who may ask. Writing or changing such a function requires BOTH an actor bind at step 0 (`if auth.uid() is not null and auth.uid() <> p_actor_user_id then raise ... errcode 'P0002'`) AND explicit scoping of every returned row; asserting the caller's own membership does NOT scope the result set. First ask whether `SECURITY INVOKER` — or deleting the identity parameter — removes the class instead. Prove it with a DB-integration test that attempts the spoof against the real database: a mocked `db.rpc` proves nothing. See `references/rpc-authorization.md`.
-- **The workload forecast gate is fail-closed.** With `risk = High`, `Chain strategy` is accepted ONLY with a verbatim `Decision trace:` citing the git-flow-master chained-PR tree answers. Missing or malformed trace is treated as `pending` and blocks Stage 2. The planner may only emit `pending` — it never picks a strategy itself.
+- **One PR per user story, always.** Size never splits a story into PRs; the Stage 1 forecast (`references/workload-forecast.md`) is informational and gates nothing. Granularity = atomic commits planned in the forecast `Commit plan` (one responsibility each, tests with their behaviour, every commit green). Merge the PR with a merge commit (`--no-ff`), never squash. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A too-large story is split in the BACKLOG via `/product-management`, never by PR.
+- **Merging a PR with a ticket key flips the ticket to Ready For QA, and the workflow has no way back.** Merge only into the final target (`staging`), only when truly ready (migrations applied if any, checks green). Never merge a ticket-keyed PR into any intermediate branch.
 - **Ticket availability is queried, never read from prose.** Before planning or recommending a ticket, query the tracker live for that ticket and its direct blockers. `.context/dev-roadmap.md` is authoritative for dependency edges and mockup gates, never for current status — a recent timestamp on that file says nothing about a ticket's status today.
 - **Config claims cite the file they came from.** Read `.agents/project.yaml` / `package.json` / `.env.example` before asserting what the project is configured to do. Never quote a value from a skill reference or worked example as project state.
 - **Technical decisions are yours to make — but read the record before you make one.** Search the run's decision/escalation log, `.context/ADR/`, and the ticket plus its siblings BEFORE deciding OR asking. A decision already made is followed and cited, never re-derived; re-asking a settled question — even to a human, asked cold without the prior ruling in front of them — yields a contradiction, not an override. Genuinely unsettled and technical → decide it yourself via a scored judge panel of 3-5 independent lenses, then record the decision AND its scoring rationale where the next agent's search will find it. Escalate ONLY product/business calls, a novel security posture not already ratified, irreversible or destructive actions, and whatever the operator explicitly reserved. See `agentic-dev-core/references/decision-protocol.md`. **Product calls are the one configurable category**: a project that sets `decision_authority.product: decide` in `.agents/project.yaml` (no human PO in the loop) routes them to a scored, attributed decision subagent instead of escalating — read the block, then `decision-protocol.md` §5.1.
@@ -67,7 +69,7 @@ The same pipeline runs whether the input is a new story, a bug fix, or a resume 
 - **Verification cap=3**: lint + types + unit tests in parallel; green before any push.
 - **Atomic commits**, semantic prefixes, no AI-attribution lines, never `--no-verify`, never force-push a pushed branch, never push to `main` without explicit confirmation.
 - **Scope discipline**: touch only what the story states. No "while I'm here" refactors.
-- **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason.
+- **Reviewer findings are adjudicated**, not auto-applied: each is verified against the diff + AC, or dismissed with a one-line reason. A big PR is reviewed commit by commit; fixes land as NEW commits (never amend or force-push pushed history).
 
 **Read full SKILL.md when**: the stage you are running needs its full walkthrough, a gate fires, or the briefing tells you to load the full skill.
 
@@ -368,28 +370,27 @@ Read for guidance:
 
 Output: the plan is authored in-session, then **pushed to the Jira `spec_implementation_plan` field** (story-level) / `feature_implementation_plan` field (epic-level) via `[ISSUE_TRACKER_TOOL]` — or, if the field is absent, a `## Spec Implementation Plan (Dev)` / `## Feature Implementation Plan (Dev)` fallback comment per `.agents/jira-required.yaml`. Then run `bun run jira:sync-issues get <KEY> --include-comments` and read the materialized `implementation-plan.md` / `feature-implementation-plan.md` under the synced PBI tree (read-only cache). Transition Jira `Ready For Dev -> In Progress`.
 
-**Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Forecast Risk from the Workload Forecast block. See `references/sprint-report.md` §Part 2.
+**Sprint report**: if batch mode is active, update the in-flight row for this ticket: Status PENDING → IN_PROGRESS; fill Owner, Path (A or B), Impl Plan link, Forecast Size from the Workload Forecast block. See `references/sprint-report.md` §Part 2.
 
 Persistence: the canonical plan lives in the Jira `spec_implementation_plan` field and is materialized by the sync to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` with topic_key `pbi/{ticket}/implementation-plan`; macro feature plans live in the Jira `feature_implementation_plan` field, materialized to `feature-implementation-plan.md` with topic_key `pbi/{epic}/feature-implementation-plan`. Auto-generated, so `capture_prompt: false`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 #### Workload Forecast (required output of Stage 1)
 
-After the plan is authored, the planner emits a forecast block at the bottom of the plan body (so it lands in the Jira `spec_implementation_plan` field and the synced `implementation-plan.md`) and into the orchestrator turn-summary:
+The delivery unit is **one PR per user story**. Size never splits a story into PRs; granularity lives in atomic commits. After the plan is authored, the planner emits a forecast block at the bottom of the plan body (so it lands in the Jira `spec_implementation_plan` field and the synced `implementation-plan.md`) and into the orchestrator turn-summary:
 
 ```
 ## Review Workload Forecast
 
 Estimated: <X> additions + <Y> deletions = <Z> total lines
-400-line budget risk: Low | Medium | High
-Chain strategy: stacked-to-main | feature-branch-chain | size-exception | pending
-Decision trace: <verbatim Q1/Q2/Q3 answers + resolved leaf, or "n/a (risk not High)">
-Decided by: </git-flow-master §Chained-PR decision tree | n/a>
-Decision needed before apply: Yes | No
+Size: Small | Medium | Large
+Delivery: single-pr
+Commit plan: <ordered list of planned commits: what each contains + which AC it serves; REQUIRED when Medium or Large>
+Review guide: <Medium/Large: order to read the commits + the riskiest commits to scrutinise>
 ```
 
-Algorithm (per-file multipliers, 20% test+docs buffer), risk thresholds (`<200` Low, `200-400` Medium, `>400` High), and chain-strategy options live in `references/workload-forecast.md`.
+Algorithm (per-file multipliers, 20% test+docs buffer), size indicators (`<400` Small, `400-1500` Medium, `>1500` Large; indicators, not limits), size-counting notes (generated code and mechanical diffs) and the commit-plan rules live in `references/workload-forecast.md`.
 
-**The planner emits; it does not decide.** With `risk = High` the planner writes `Chain strategy: pending` and leaves `Decision trace:` empty — picking a strategy is `/git-flow-master`'s job. The **gate** is enforced by the orchestrator at the Stage 1 → Stage 2 boundary and is **fail-closed**: a non-`pending` strategy with a missing, empty, or malformed `Decision trace` is treated as `pending`. A gate keyed on a field its own agent writes is otherwise trivially switched off by emitting a plausible label (`agentic-dev-core/references/orchestration-doctrine.md` → "Gate design").
+**The forecast is informational and gates nothing.** The commit plan orders commits dependencies first (schema/types, domain logic, API, UI, docs), keeps tests with the behaviour they verify, and requires every commit to leave lint, types and tests green. When a story is genuinely too large (Large with independently valuable increments, or more than ~13 story points of real work), the planner records a RECOMMENDATION to split the STORY in the backlog via `/product-management`; it never blocks implementation by default (AGENTS.md Critical Rule #18).
 
 ### Live-UI validation (flow-aware, tool-agnostic)
 
@@ -411,9 +412,7 @@ Mechanics — the identity contract (§0), `[AUTOMATION_TOOL]` resolution, per-t
 
 ### Stage 2: Implementation
 
-**Gate (workload forecast) — fail-closed**: Stage 2 does NOT start if the Stage 1 forecast block reports `risk=High` AND the chain decision is unresolved. **Unresolved** means either `chain_strategy=pending` OR a `chain_strategy` value whose `Decision trace:` is missing, empty, or does not name the tree answers that produced it. Do not accept a bare label: verify the trace before opening the gate.
-
-Resolve by handing off to the `/git-flow-master` skill (Step 4 — chained-PR decision tree + concrete branch plan), which returns the strategy WITH its `Decision trace:` and `Decided by:` lines. Then update the forecast block in the Jira `spec_implementation_plan` field, re-sync (`bun run jira:sync-issues get <KEY>`) so the synced `implementation-plan.md` reflects it, and proceed. See `references/workload-forecast.md` for full gate behavior.
+**Commit plan, not a gate**: Stage 2 implements the Stage 1 `Commit plan` as one atomic commit per entry, on ONE story branch that becomes ONE PR. Nothing in the forecast blocks Stage 2. If the real diff diverges from the plan, update the commit plan (and the Jira `spec_implementation_plan` field, then re-sync) and keep going: never split the story into extra PRs. See `references/workload-forecast.md`.
 
 Pick the right entry point based on ticket type:
 
@@ -428,7 +427,7 @@ Read inline for style + standards:
 - `references/error-handling.md` — public-method fail-fast vs utility silent-fail
 - `references/data-testid-standards.md` — naming + placement of test ids
 
-Verification runs in **parallel cap=3**: lint, typecheck/build, unit tests. Each subagent reports red/green; the orchestrator iterates only when something is red. **Atomic commits**: one commit per logical step, never one giant dump.
+Verification runs in **parallel cap=3**: lint, typecheck/build, unit tests. Each subagent reports red/green; the orchestrator iterates only when something is red. **Atomic commits**: one commit per planned step (one responsibility, conventional prefix, tests with the behaviour they verify, lint + types + tests green at every commit so the history is bisectable), never one giant dump.
 
 **Live-UI check while building (UI stories)**: per the active flow mode (subagent if Orchestrated, inline if Solo), open the running dev server via `[AUTOMATION_TOOL]` and confirm what you build renders correctly against the live UI + design system **as you code** — not after. See the Live-UI validation subsection above. Non-UI stories skip this.
 
@@ -438,7 +437,9 @@ If the work needs TDD on a specific function, hand off to `/unit-testing` mid-im
 
 Push the feature branch and open the PR via the `/git-flow-master` skill (it auto-detects the project's branching strategy — typically `staging` base for the main+integration pattern — and uses title format `feat({{PROJECT_KEY}}-N): <short>`). Jira automation rule should auto-transition the ticket from `In Progress -> In Review` within ~30s of PR creation; if it doesn't, surface a manual-transition warning.
 
-**Sprint report**: update the row: Status IN_PROGRESS → IN_REVIEW; fill PR (#NNN); set Delivery Strategy from the chain decision recorded in the implementation-plan forecast block.
+There is ONE PR per story. For a `Medium` / `Large` forecast the PR body carries the commit list and the review guide from the forecast block (`/git-flow-master` `references/pr-templating.md` § Big PR body); the PR is never split into child PRs.
+
+**Sprint report**: update the row: Status IN_PROGRESS → IN_REVIEW; fill PR (#NNN); set Delivery Strategy to `single-pr` (or `split-into-stories` when the story was split in the backlog).
 
 Review checklist (driven by `references/review-pr.md`):
 
@@ -454,6 +455,8 @@ Review checklist (driven by `references/review-pr.md`):
 Review notes are dev-authored (non-Jira) and persist at `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` with topic_key `pbi/{ticket}/review`. Auto-generated review summaries use `capture_prompt: false`; human-prompted architectural decisions use `capture_prompt: true`. See `agentic-dev-core/references/topic-key-conventions.md`.
 
 **Adversarial review + adjudication (orchestrator-owned).** The reviewer is dispatched as an INDEPENDENT, adversarial agent (fresh context, no stake in the implementation) and returns severity-tagged findings (`BLOCKER | MAJOR | MINOR | NIT`) with `file:line` evidence — it proposes, it does not apply. The orchestrator then **adjudicates each finding** instead of auto-accepting: verify it against the actual diff + AC, mark `legitimate` (apply) or `false-positive` (dismiss WITH a one-line reason). Only `legitimate` findings loop back to Stage 2 via `fix-issues.md`. Record the per-finding verdict in `review.md`. This prevents BOTH rubber-stamping AND blindly churning on reviewer noise. In SOLO mode the orchestrator runs a deliberate fresh-eyes review pass inline, then adjudicates the same way. Architectural rework loops back to Stage 1 with a new spec (rare). See the adjudication contract in `references/review-pr.md`.
+
+**Reviewing a big PR is commit by commit.** For a `Medium` / `Large` PR the reviewer reads the commit list and the forecast `Review guide`, then reviews commit groups in that order, riskiest first. The orchestrator may dispatch several independent reviewers, one per commit group, **sequentially**; findings cite file:line plus the commit sha, and are adjudicated as above. Fixes land as NEW commits on the story branch: never amend, rebase or force-push pushed history. Mechanics: `references/review-pr.md` § Reviewing a large PR.
 
 **Glossary check**: if the story introduced new domain terms or exposed an ambiguous/banned term, flag it in the review notes / PR description for the PM to add to `.context/business/domain-glossary.md` per its change protocol — do NOT edit the glossary from inside implementation.
 
@@ -479,7 +482,11 @@ Algorithm, four `covered_by` shapes with examples, full status legend, the 2FA-l
 
 ### Stage 4: Staging Deploy
 
-Merge the PR (`gh pr merge --squash`) to `staging`. CI runs end-to-end; if green, the staging environment auto-deploys (per the project's CI/CD setup — first-time setup in `references/ci-cd-setup.md`). Jira automation rule should auto-transition the ticket from `In Review -> Ready For QA` within ~30s; if it doesn't, transition manually and surface the gap.
+Merge the story's single PR to `staging` with a **merge commit** (`gh pr merge <N> --merge`, i.e. `--no-ff`), NEVER `--squash` or rebase: the per-commit history must survive on `staging` (AGENTS.md §11). CI runs end-to-end; if green, the staging environment auto-deploys (per the project's CI/CD setup — first-time setup in `references/ci-cd-setup.md`). Jira automation rule should auto-transition the ticket from `In Review -> Ready For QA` within ~30s; if it doesn't, transition manually and surface the gap.
+
+**Jira automation gotcha.** Jira's automation moves the ticket to `Ready For QA` when a PR carrying its key is merged, and the workflow has NO transition back to In Review. So NEVER merge any PR carrying a ticket key into anything but its final target (`staging`) until it is truly ready: migrations applied if any, checks green. With one PR per story, the merge to `staging` is the single event that flips the ticket.
+
+**Migrations inside the PR.** When the PR carries migrations, apply them per Critical Rule #20 after the PR review is approved and BEFORE the merge, so staging code and schema stay in sync. The PR body lists the apply steps.
 
 Read for guidance:
 
@@ -500,7 +507,7 @@ When a story reaches Ready For QA (merged to the integration branch + deployed),
 
 Sync `staging` locally (`git pull origin staging`) and clean up the merged branch. Wait for the user to indicate the next ticket.
 
-**Sprint report**: Status IN_REVIEW → MERGED once the squash-merge lands, then MERGED → STAGING_DEPLOYED after CI smoke passes. Move the row to "Done — This Sprint" once Jira reaches Ready For QA. Append a Session Log entry with date + ticket + transition.
+**Sprint report**: Status IN_REVIEW → MERGED once the merge commit lands on `staging`, then MERGED → STAGING_DEPLOYED after CI smoke passes. Move the row to "Done — This Sprint" once Jira reaches Ready For QA. Append a Session Log entry with date + ticket + transition.
 
 **Hand-off**: QA verification on staging is **out of scope here**. A separate QA workflow picks up from `Ready For QA`.
 
@@ -580,7 +587,7 @@ Dispatch is **Single + Background**: one subagent runs the deploy, a background 
 ### Project-owned (T1)
 
 - **TDD on a function** -> `/unit-testing` skill (composable mid-implementation)
-- **PR creation / merge / branch ops / conflict resolution / chained-PR planning** -> `/git-flow-master` skill
+- **PR creation / merge / branch ops / conflict resolution / commit planning for large changes** -> `/git-flow-master` skill
 - **Backlog item missing or AC unclear** -> `/product-management` skill (refine first, then come back)
 - **Foundation/infrastructure missing** -> `/project-foundation` or `/project-bootstrap`
 
@@ -655,7 +662,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - [ ] Stage 2 verification (lint + types + tests) green; commits atomic
 - [ ] **Live-UI validation** run for any UI story — in the active flow mode (subagent if Orchestrated, inline if Solo) via `[AUTOMATION_TOOL]`; gaps fixed + re-validated; never via a production build; final Stage 3 pass done in a browser, not on HTTP evidence
 - [ ] **Session material cleaned**: every dispatch that authenticated reported `secrets_materialized:` + `cleaned: yes`
-- [ ] **Forecast gate honoured**: `risk=High` proceeded only with a `Decision trace` produced by `/git-flow-master`
+- [ ] **One PR per story**: forecast block present (Size + `Delivery: single-pr`); `Commit plan` + `Review guide` present when Medium/Large; no stacked/chained PRs
 - [ ] Stage 3 PR opened via `/git-flow-master`; Jira auto-transition to `In Review` verified
 - [ ] **Stage 3 findings adjudicated** (legitimate vs false-positive with a reason); only legitimate ones fixed
 - [ ] Stage 3 docs (status-report + release-notes) updated in the PR branch
@@ -687,7 +694,7 @@ If any required var is unset, ensure `.agents/project.yaml` exists (clone the fu
 - **S17.** NEVER improvise an identity to log into a running app. Use the account declared in `.agents/project.yaml` → `testing.automation_identity`; if it is absent or its variable is missing from `.env`, STOP and report. Never substitute another account, never query the database for one, never create one mid-run, never reuse the human's authenticated browser session.
 - **S18.** NEVER obtain a session by bypassing the app's own login path: no service-role / secret / admin keys, no admin user-management APIs, no generated magic or password-reset links, no locally-signed JWTs, no hand-crafted session cookies, no impersonation of any account. If a check seems to require one, that is a finding to surface, not a step to take. See `references/live-ui-identity.md` §3.
 - **S19.** NEVER leave session material on disk. Cookie jars, `storageState.json`, token files, and `.har` captures live in the session scratch directory and are deleted before reporting; the report carries `secrets_materialized:` + `cleaned:`. Never echo a credential value into a report, plan, commit, PR body, or tracker comment.
-- **S20.** NEVER open the workload-forecast gate on a bare `Chain strategy` label. With `risk = High`, the value is accepted only with a `Decision trace` that walks the git-flow-master chained-PR tree; missing, empty, or conclusion-only traces count as `pending` and block Stage 2. The planner never picks the strategy itself.
+- **S20.** NEVER split one story into stacked or chained PRs, and never squash-merge the story's PR. One story = one PR, merged with a merge commit; size is handled with atomic commits and commit-by-commit review. Chained or stacked PRs exist only when the user explicitly asks for them in that run. A story that is too large is split in the BACKLOG via `/product-management`, not by PR.
 - **S21.** NEVER recommend, plan, or start a ticket on the strength of roadmap prose. Query the tracker live for the candidate and its direct blockers first (Phase 0b). `.context/dev-roadmap.md` owns dependency edges and mockup gates; it never owns current status, and a recent timestamp on it is not evidence about any ticket's status today.
 - **S22.** NEVER approve a UI story on HTTP-probe evidence alone. Tier 0 probes cover routes, redirects, and server-rendered markup; layout, computed tokens, client-rendered states, breakpoints, and interactive AC flows require the browser tier (`references/live-ui-validation.md` §7).
 
