@@ -1,7 +1,10 @@
 'use client';
 
 import type { RunHistoryOutcome } from '@lib/runs/history-constants';
+import type { SavedViewState } from '@lib/saved-views/state';
 import type { LucideIcon } from 'lucide-react';
+import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
+import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { formatRunDuration } from '@lib/runs/duration';
@@ -130,6 +133,9 @@ async function fetchRunHistory(
 export function RunHistoryView({ testId, initialPage, initialOutcome, initialError = null }: RunHistoryViewProps) {
   const router = useRouter();
   const pathname = usePathname();
+  // The Test detail route renders inside the project shell, which owns the
+  // project a saved view belongs to.
+  const { projectId } = useWorkbench();
 
   const [outcome, setOutcome] = useState<RunHistoryOutcome | null>(initialOutcome);
   const [items, setItems] = useState<RunHistoryItem[]>(initialPage.items);
@@ -256,6 +262,13 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
     if (next !== null) { params.set('outcome', next); }
     const query = params.toString();
     router.replace(query === '' ? pathname : `${pathname}?${query}`, { scroll: false });
+  };
+
+  // BK-443 — opening a saved view goes through the same path as a chip click,
+  // so state, address and the refetch stay in lockstep. A view that holds no
+  // valid outcome clears the filter.
+  const applySavedState = (saved: SavedViewState) => {
+    applyOutcome(RUN_HISTORY_OUTCOMES.find(o => o === saved.outcome) ?? null);
   };
 
   // Append the next keyset page BELOW the current rows, so the list stays
@@ -398,19 +411,28 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
               One outcome at a time — pick it again or clear to show all
             </span>
 
-            {outcome !== null && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                data-testid="run-history-clear-filter"
-                className="ml-auto"
-                onClick={() => applyOutcome(null)}
-              >
-                <X size={12} />
-                Clear filter
-              </Button>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {/* BK-443 — saved views of this list (project-wide: a Run history
+                  view holds only the outcome filter). */}
+              <SavedViewsMenu
+                projectId={projectId}
+                kind="run_history"
+                currentState={outcome === null ? {} : { outcome }}
+                onApply={applySavedState}
+              />
+              {outcome !== null && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  data-testid="run-history-clear-filter"
+                  onClick={() => applyOutcome(null)}
+                >
+                  <X size={12} />
+                  Clear filter
+                </Button>
+              )}
+            </div>
           </div>
 
           <Card className="overflow-hidden">

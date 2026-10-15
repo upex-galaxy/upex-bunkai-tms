@@ -2,7 +2,7 @@
 
 import { Input } from '@components/ui/input';
 import { Tag, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useWorkbench } from './workbench-context';
 
 // BK-33 — Projects toolbar Test-tag filter, beside the ATC search filter. Type a
@@ -22,8 +22,9 @@ interface FilteredTestRow {
 }
 
 export function TestTagFilter() {
-  const { setTestTagFilter } = useWorkbench();
-  const [value, setValue] = useState('');
+  // BK-443 — the raw text lives in the workbench context (so a saved view can
+  // set it and the address can mirror it); this control still owns the lookup.
+  const { setTestTagFilter, tagInput: value, setTagInput: setValue } = useWorkbench();
 
   // Debounce the tag lookup; an empty (trimmed) value clears the filter and
   // fires no request. AbortController cancels an in-flight fetch. Keyed on the
