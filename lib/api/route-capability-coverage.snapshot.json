@@ -276,6 +276,21 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/projects/[id]/tracker-settings/check/route.ts",
+    "method": "POST",
+    "posture": "required:workspace:admin"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/tracker-settings/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/tracker-settings/route.ts",
+    "method": "PUT",
+    "posture": "required:workspace:admin"
+  },
+  {
     "file": "app/api/v1/route.ts",
     "method": "GET",
     "posture": "public"
