@@ -1,7 +1,7 @@
 'use client';
 
 import type { SaveOutcome } from '@lib/tracker-settings/api-client';
-import type { TrackerCheckResult, TrackerFieldErrors, TrackerFormValues } from '@lib/tracker-settings/form-state';
+import type { TrackerFieldErrors, TrackerFormValues } from '@lib/tracker-settings/form-state';
 import { QueueConfirmDialog } from '@components/tracker-settings/QueueConfirmDialog';
 import { Badge } from '@components/ui/badge';
 import { Button } from '@components/ui/button';
@@ -11,9 +11,12 @@ import { Label } from '@components/ui/label';
 import { Switch } from '@components/ui/switch';
 import { runTrackerCheck, saveTrackerSettings } from '@lib/tracker-settings/api-client';
 import {
+  applyCheckResult,
+  applyEdit,
+  applySaved,
   canRunCheck,
   canSave,
-  checkResultFor,
+  initialCardState,
   normalizeValues,
   READ_ONLY_NOTE,
   validateValues,
@@ -35,9 +38,11 @@ type Busy = 'check' | 'save' | null;
 // "Jira defect sync" card (BK-371, PO Q6): one Card on a single column, existing
 // primitives only. It configures WHERE a Project's defects go; it never sends one.
 export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }: TrackerSettingsFormProps) {
-  const [saved, setSaved] = useState<TrackerFormValues>(initial);
-  const [current, setCurrent] = useState<TrackerFormValues>(initial);
-  const [check, setCheck] = useState<TrackerCheckResult | null>(null);
+  // saved / current / check move together through the pure transitions of
+  // form-state.ts (the check result is cleared on ANY edit and after a save).
+  const [card, setCard] = useState(() => initialCardState(initial));
+  const { saved, current } = card;
+  const visibleCheck = card.check;
   const [busy, setBusy] = useState<Busy>(null);
   const [fieldErrors, setFieldErrors] = useState<TrackerFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -45,10 +50,9 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
   const [queueCount, setQueueCount] = useState<number | null>(null);
 
   const canEdit = canEditProp && !demoted;
-  const visibleCheck = checkResultFor(check, current);
 
   const edit = (patch: Partial<TrackerFormValues>) => {
-    setCurrent(previous => ({ ...previous, ...patch }));
+    setCard(previous => applyEdit(previous, patch));
     setFormError(null);
     setFieldErrors({});
   };
@@ -83,13 +87,12 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     setFormError(null);
     const outcome = await runTrackerCheck({ projectId, values: current });
     setBusy(null);
-    const normalized = normalizeValues(current);
     switch (outcome.kind) {
       case 'result':
-        setCheck({ destinationKey: normalized.destinationKey, issueTypeName: normalized.issueTypeName, ok: outcome.ok, message: outcome.message });
+        setCard(previous => applyCheckResult(previous, { checked: current, ok: outcome.ok, message: outcome.message }));
         break;
       case 'busy':
-        setCheck({ destinationKey: normalized.destinationKey, issueTypeName: normalized.issueTypeName, ok: false, message: outcome.message });
+        setCard(previous => applyCheckResult(previous, { checked: current, ok: false, message: outcome.message }));
         break;
       case 'invalid':
         applyInvalid(outcome.reason, outcome.message);
@@ -102,7 +105,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     }
   };
 
-  const applySaveOutcome = (outcome: SaveOutcome, normalized: TrackerFormValues) => {
+  const applySaveOutcome = (outcome: SaveOutcome, attempted: TrackerFormValues) => {
     switch (outcome.kind) {
       case 'saved': {
         const stored: TrackerFormValues = {
@@ -110,8 +113,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
           issueTypeName: outcome.settings.issueTypeName,
           enabled: outcome.settings.enabled,
         };
-        setSaved(stored);
-        setCurrent(stored);
+        setCard(previous => applySaved(previous, stored));
         setQueueCount(null);
         toast.success(outcome.requeued > 0 ? `Settings saved. ${outcome.requeued} defects queued for Jira.` : 'Settings saved.');
         break;
@@ -123,7 +125,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
         break;
       case 'check_failed':
         setQueueCount(null);
-        setCheck({ destinationKey: normalized.destinationKey, issueTypeName: normalized.issueTypeName, ok: false, message: outcome.message });
+        setCard(previous => applyCheckResult(previous, { checked: attempted, ok: false, message: outcome.message }));
         break;
       case 'invalid':
         setQueueCount(null);
@@ -149,7 +151,7 @@ export function TrackerSettingsForm({ projectId, initial, canEdit: canEditProp }
     setFormError(null);
     const outcome = await saveTrackerSettings({ projectId, values: current, confirmQueueCount });
     setBusy(null);
-    applySaveOutcome(outcome, normalizeValues(current));
+    applySaveOutcome(outcome, current);
   };
 
   const saveEnabled = canSave({ saved, current, canEdit, busy: busy !== null });

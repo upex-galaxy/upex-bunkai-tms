@@ -1,4 +1,5 @@
 import {
+  codePointLength,
   DESTINATION_KEY_PATTERN,
   ISSUE_TYPE_MAX,
   normalizeDestinationKey,
@@ -54,7 +55,7 @@ export function validateValues(values: TrackerFormValues): TrackerFieldErrors {
   else if (!DESTINATION_KEY_PATTERN.test(destinationKey)) {
     errors.destinationKey = TRACKER_SETTINGS_MESSAGES.invalid_destination_key;
   }
-  if (issueTypeName.length < 1 || issueTypeName.length > ISSUE_TYPE_MAX) {
+  if (codePointLength(issueTypeName) < 1 || codePointLength(issueTypeName) > ISSUE_TYPE_MAX) {
     errors.issueTypeName = TRACKER_SETTINGS_MESSAGES.invalid_issue_type;
   }
   return errors;
@@ -70,14 +71,47 @@ export function canRunCheck(args: { current: TrackerFormValues, canEdit: boolean
   return args.canEdit && !args.busy && normalizeValues(args.current).destinationKey !== '';
 }
 
-// A check result belongs to the pair that was checked: any edit of the key or the
-// issue type drops it (AC-2.7). Toggling the switch does not change what was checked.
-export function checkResultFor(result: TrackerCheckResult | null, current: TrackerFormValues): TrackerCheckResult | null {
-  if (result === null) {
-    return null;
+// The card's three linked pieces of state and the ONLY transitions between them,
+// so "the check result is cleared on any edit" (PO Q6, AC-2.7) is one tested rule
+// and not a convention scattered through event handlers.
+export interface TrackerCardState {
+  saved: TrackerFormValues
+  current: TrackerFormValues
+  check: TrackerCheckResult | null
+}
+
+export function initialCardState(initial: TrackerFormValues): TrackerCardState {
+  return { saved: initial, current: initial, check: null };
+}
+
+// ANY edit clears the check result: a key or issue type edit, a Switch toggle, and
+// an edit that is later reverted (the earlier result is never resurrected).
+export function applyEdit(state: TrackerCardState, patch: Partial<TrackerFormValues>): TrackerCardState {
+  return { ...state, current: { ...state.current, ...patch }, check: null };
+}
+
+// A check outcome is recorded only for the pair it was run on. If the form no
+// longer holds that pair, the late answer is dropped instead of shown for a value
+// nobody checked.
+export function applyCheckResult(
+  state: TrackerCardState,
+  args: { checked: TrackerFormValues, ok: boolean, message: string | null },
+): TrackerCardState {
+  const checked = normalizeValues(args.checked);
+  const now = normalizeValues(state.current);
+  if (checked.destinationKey !== now.destinationKey || checked.issueTypeName !== now.issueTypeName) {
+    return { ...state, check: null };
   }
-  const { destinationKey, issueTypeName } = normalizeValues(current);
-  return result.destinationKey === destinationKey && result.issueTypeName === issueTypeName ? result : null;
+  return {
+    ...state,
+    check: { destinationKey: checked.destinationKey, issueTypeName: checked.issueTypeName, ok: args.ok, message: args.message },
+  };
+}
+
+// A successful save adopts the stored values as both the saved and the current
+// ones and clears the check result: it described the form BEFORE the save.
+export function applySaved(state: TrackerCardState, stored: TrackerFormValues): TrackerCardState {
+  return { ...state, saved: stored, current: stored, check: null };
 }
 
 export function toRequestBody(current: TrackerFormValues, confirmQueueCount?: number): Record<string, unknown> {
