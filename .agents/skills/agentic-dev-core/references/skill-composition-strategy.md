@@ -169,7 +169,7 @@ Every sub-agent / skill prompt MUST include:
 
 ## Project Standards
 - Test command: {from project.yaml}
-- Delivery strategy: {single-pr|chained|exception}
+- Delivery: single-pr (one PR per user story; granularity = atomic commits)
 ```
 
 ### 5.3 Decision points the glue layer owns
@@ -177,7 +177,7 @@ Every sub-agent / skill prompt MUST include:
 | Decision        | When                    | How                                                                       |
 | --------------- | ----------------------- | ------------------------------------------------------------------------- |
 | Skill load (T4) | First match per session | Ask user once per skill per session. Cache decision.                      |
-| Workload chain  | Stage 1 forecast        | Sprint-dev `references/workload-forecast.md` owns the chain-strategy gate. |
+| Workload size   | Stage 1 forecast        | Sprint-dev `references/workload-forecast.md` owns the size indicator and commit plan (informational, no gate). |
 
 ---
 
