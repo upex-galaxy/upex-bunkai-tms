@@ -3910,6 +3910,391 @@
         },
         "required": ["reason"]
       },
+      "RunComparison": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RunComparisonCompared"
+          },
+          {
+            "$ref": "#/components/schemas/RunComparisonNoPrevious"
+          },
+          {
+            "$ref": "#/components/schemas/RunComparisonInProgress"
+          },
+          {
+            "$ref": "#/components/schemas/RunComparisonUnreliable"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "state",
+          "mapping": {
+            "compared": "#/components/schemas/RunComparisonCompared",
+            "no_previous": "#/components/schemas/RunComparisonNoPrevious",
+            "in_progress": "#/components/schemas/RunComparisonInProgress",
+            "unreliable": "#/components/schemas/RunComparisonUnreliable"
+          }
+        }
+      },
+      "RunComparisonCompared": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["compared"]
+          },
+          "test": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "title"]
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/RunComparisonCounts"
+          },
+          "nothing_changed": {
+            "type": "boolean",
+            "description": "True only with at least one shared step, nothing Added, Removed or Not comparable, and every shared step an unchanged pass or still failing."
+          },
+          "no_common_steps": {
+            "type": "boolean",
+            "description": "True when the two Runs share no step; every step is then Added or Removed."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunComparisonRow"
+            },
+            "description": "Every step of both Runs, already in display order: groups new_failure, still_failing, newly_fixed, not_comparable, added, removed, unchanged_pass."
+          }
+        },
+        "required": [
+          "state",
+          "test",
+          "environment",
+          "run",
+          "previous",
+          "counts",
+          "nothing_changed",
+          "no_common_steps",
+          "rows"
+        ]
+      },
+      "RunComparisonRunHeader": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "passed", "failed", "aborted"]
+          },
+          "started_at": {
+            "type": "string",
+            "description": "ISO 8601 timestamp."
+          },
+          "finished_at": {
+            "type": ["string", "null"],
+            "description": "null while the Run is running."
+          },
+          "environment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environment_name": {
+            "type": ["string", "null"]
+          },
+          "executor_mode": {
+            "type": "string",
+            "enum": ["human", "agent", "ci"]
+          },
+          "abort_reason": {
+            "type": ["string", "null"],
+            "description": "Set only when the Run was aborted."
+          },
+          "total_steps": {
+            "type": "integer",
+            "description": "Steps in this Run."
+          },
+          "skipped_steps": {
+            "type": "integer",
+            "description": "Steps closed as skipped. For an aborted Run this is the count of steps it never reached."
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "started_at",
+          "finished_at",
+          "environment_id",
+          "environment_name",
+          "executor_mode",
+          "abort_reason",
+          "total_steps",
+          "skipped_steps"
+        ]
+      },
+      "RunComparisonCounts": {
+        "type": "object",
+        "properties": {
+          "new_failure": {
+            "type": "integer"
+          },
+          "still_failing": {
+            "type": "integer"
+          },
+          "newly_fixed": {
+            "type": "integer"
+          },
+          "unchanged_pass": {
+            "type": "integer"
+          },
+          "not_comparable": {
+            "type": "integer"
+          },
+          "shared": {
+            "type": "integer",
+            "description": "Steps present in both Runs: the five outcomes above add up to this."
+          },
+          "added": {
+            "type": "integer",
+            "description": "Steps only in This run, counted apart from the five outcomes."
+          },
+          "removed": {
+            "type": "integer",
+            "description": "Steps only in the Previous run, counted apart from the five outcomes."
+          }
+        },
+        "required": [
+          "new_failure",
+          "still_failing",
+          "newly_fixed",
+          "unchanged_pass",
+          "not_comparable",
+          "shared",
+          "added",
+          "removed"
+        ]
+      },
+      "RunComparisonRow": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "enum": [
+              "new_failure",
+              "still_failing",
+              "newly_fixed",
+              "not_comparable",
+              "added",
+              "removed",
+              "unchanged_pass"
+            ]
+          },
+          "atc_position": {
+            "type": "integer",
+            "description": "Chain position of the ATC, in This run for every group except `removed` (the Previous run)."
+          },
+          "atc_title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "The step text, as it was in This run (the Previous run for `removed`)."
+          },
+          "input_data": {
+            "type": ["string", "null"]
+          },
+          "expected": {
+            "type": ["string", "null"]
+          },
+          "step_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The Run step in This run; null for `removed`."
+          },
+          "previous_step_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "The Run step in the Previous run; null for `added`."
+          },
+          "status": {
+            "type": ["string", "null"],
+            "enum": ["pending", "passed", "failed", "blocked", "skipped", null],
+            "description": "Outcome in This run; null for `removed`."
+          },
+          "previous_status": {
+            "type": ["string", "null"],
+            "enum": ["pending", "passed", "failed", "blocked", "skipped", null],
+            "description": "Outcome in the Previous run; null for `added`."
+          }
+        },
+        "required": [
+          "group",
+          "atc_position",
+          "atc_title",
+          "content",
+          "input_data",
+          "expected",
+          "step_id",
+          "previous_step_id",
+          "status",
+          "previous_status"
+        ]
+      },
+      "RunComparisonNoPrevious": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["no_previous"]
+          },
+          "test": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "title"]
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          },
+          "previous": {
+            "type": "null"
+          }
+        },
+        "required": ["state", "test", "environment", "run", "previous"]
+      },
+      "RunComparisonInProgress": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["in_progress"]
+          },
+          "test": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "title"]
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          },
+          "previous": {
+            "type": "null"
+          }
+        },
+        "required": ["state", "test", "environment", "run", "previous"]
+      },
+      "RunComparisonUnreliable": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["unreliable"]
+          },
+          "test": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "title"]
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/RunComparisonRunHeader"
+          }
+        },
+        "required": ["state", "test", "environment", "run", "previous"]
+      },
       "RunFinishBody": {
         "type": "object",
         "properties": {
@@ -10206,6 +10591,95 @@
           },
           "422": {
             "description": "Validation failed — the reason is shorter than 3 or longer than 500 characters (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/compare": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "Compare a Run against the previous Run of the same Test and Environment",
+        "description": "Bearer `atc:read` (or cookie session). Any active workspace member, viewer included. The Previous run is the latest passed, failed or aborted Run of the same Test and Environment that finished strictly before this Run started. Steps are paired by ATC occurrence plus exact step text; a reworded step appears as Removed and Added. Branch on `state`: `compared`, `no_previous`, `in_progress` and `unreliable` are all HTTP 200, and only `compared` carries a verdict. **A non-compared 200 means \"no verdict\", never \"no new failures\".** Read-only: nothing is written. Non-disclosing: a missing Run, a Run in another workspace and a non-member all return an identical 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The id of the VIEWED Run (This run). The Previous run is resolved by the server.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The comparison, or the reason there is none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunComparison"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (not a UUID).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found (missing, not visible, or foreign workspace; non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The comparison could not be read. Fixed text; the database error is logged server-side only.",
             "content": {
               "application/json": {
                 "schema": {

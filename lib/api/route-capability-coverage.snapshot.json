@@ -291,6 +291,11 @@
     "posture": "required:run:execute"
   },
   {
+    "file": "app/api/v1/runs/[id]/compare/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
     "file": "app/api/v1/runs/[id]/finish/route.ts",
     "method": "POST",
     "posture": "required:run:execute"

@@ -355,6 +355,18 @@ export async function getRunExpanded(supabase: Client, args: { actorUserId: stri
   });
 }
 
+// BK-442 — compare a Run against the previous Run of the same Test and
+// Environment (0092_run_compare.sql). Unlike its sibling Run reads this RPC is
+// SECURITY INVOKER and takes NO identity parameter: row-level security on the
+// caller's own client is the only authorization. Pass the CALLER's RLS-scoped
+// client (the cookie client in a page, `db` from `getAuth(ctx)` in a route),
+// NEVER `createAdminClient()` — the function refuses a caller with no
+// `auth.uid()` (service role bypasses RLS) with the same P0002 a missing Run
+// raises. Returns `{ state, ... }`; see `RunComparison` in lib/runs/compare-view.ts.
+export async function compareRun(supabase: Client, args: { runId: string }) {
+  return supabase.rpc('bunkai_compare_run', { p_run_id: args.runId });
+}
+
 // BK-36 — abort an in-progress Run with a reason. Same explicit-actor contract;
 // the SECURITY DEFINER RPC gates member+ write access, requires status 'running'
 // (else run_not_abortable), trims + bounds the reason (3..500), closes the Run as
