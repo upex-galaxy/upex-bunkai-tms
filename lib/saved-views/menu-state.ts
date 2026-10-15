@@ -1,5 +1,6 @@
 import type { SavedViewState } from './state';
 import type { SavedViewItem } from './view-model';
+import { countCodePoints } from './constants';
 
 // BK-443 — the derived state of the Saved views control as pure functions, so
 // the rules that review findings on earlier stories kept catching ("UI derived
@@ -12,6 +13,13 @@ export function stateKey(state: SavedViewState): string {
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
     .join('&');
+}
+
+// The length the name dialog's counter shows: the name exactly as the server
+// will count it (NFC, then trim, then code points), so a decomposed paste or an
+// accent typed as a combining mark never reads longer here than it is there.
+export function savedViewNameLength(name: string): number {
+  return countCodePoints(name.normalize('NFC').trim());
 }
 
 // A notice (degraded restore, "nothing to save") is about ONE filter state. It
