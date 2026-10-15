@@ -19,7 +19,7 @@ What is true now (verified on `origin/staging`, 2026-10-15):
 - `bunkai_update_atc` deletes and recreates every `atc_steps` row on every save (0087, and the same in 0007, 0021, 0035, 0065). A step id therefore changes at every ATC edit and cannot pair steps across an edit.
 - The PATCH body has no step id, the save is a full replace and the editor is one Markdown block, so the server cannot know which new step is "the same" as an old one.
 - A Test's chain cannot change after creation today (create, reorder and tags only), but `test_steps` has no `unique(test_id, atc_id)`, so the same ATC can appear twice.
-- BK-513 and BK-554 reuse the same pairing rule.
+- BK-513 and BK-554 reuse the same pairing rule (the identity rule, not the one-pair function).
 
 ## Decision
 
@@ -29,8 +29,9 @@ We will identify a step across two Runs by **(ATC occurrence key, exact step tex
 2. **Exact text.** Inside a paired occurrence a step is `(content, input_data, expected)` compared exactly, null equal to empty. A wording repeated inside one occurrence pairs k-th with k-th only when both Runs hold the same number of copies; otherwise every copy is Removed and Added.
 3. **Never guess.** A step that cannot be paired is reported as Removed (only in the Previous run) and Added (only in This run). A reworded step is therefore Removed plus Added in release 1. If any `run_atcs` of either Run has no key, the function answers the `unreliable` state and returns no counts.
 4. **One rulebook.** The status matrix (4 comparable pairs, 12 not comparable), the Previous-run rule and the pairing live only in the function. The page and the API read it and add only words. The function is `SECURITY INVOKER` with no identity parameter (RLS on the caller's own client is the only authorization) and refuses a caller without `auth.uid()`.
+5. **Two new RPCs, both `SECURITY INVOKER`.** `bunkai_compare_run(p_run_id)` is the comparison of exactly ONE pair of Runs (a Run and its Previous run). `bunkai_compare_run_header(p_run_id)` is an internal helper that returns one Run header (id, status, timestamps, Environment, executor, abort reason, step totals) as jsonb under the caller's RLS, and `null` when the Run is not visible. Both are executable by `authenticated` and `service_role`; `anon` is revoked. The helper is a directly callable RPC (PostgREST exposes it) but it reads only what RLS already lets the caller read, takes no identity parameter and is not part of the contract: it may change without a new ADR.
 
-The invariant for future work: **any feature that relates a step in one Run to a step in another Run (BK-513, BK-554, a later flakiness score) must go through this identity rule and this function, never a second pairing.**
+The invariant for future work binds to the **identity rule** (points 1 to 3: occurrence key plus exact text, never a guess), not to `bunkai_compare_run`: any feature that relates a step in one Run to a step in another (BK-513, BK-554, a later flakiness score) must apply that same rule, whether in its own function or by sharing the SQL, and must never invent a second pairing. `bunkai_compare_run` answers one pair; a score over many Runs is not a loop over it.
 
 ## Consequences
 
