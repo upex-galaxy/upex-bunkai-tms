@@ -72,6 +72,41 @@ describe('mapTrackerSettingsRpcError', () => {
     expect(error.message).toContain('Nothing was saved');
   });
 
+  it('logs the raw code and message server-side and keeps the client text fixed', () => {
+    const logged: unknown[][] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => { logged.push(args); };
+    try {
+      const unmapped = caught('XX000', 'relation "bugs" exploded at secret_host');
+      const privilege = caught('42501', 'permission denied for table project_tracker_settings');
+      for (const error of [unmapped, privilege]) {
+        expect(error.status).toBe(500);
+        expect(error.message).toBe('The tracker settings could not be saved.');
+      }
+    }
+    finally {
+      console.error = original;
+    }
+    expect(logged).toHaveLength(2);
+    expect(logged[0][1]).toEqual({ code: 'XX000', message: 'relation "bugs" exploded at secret_host' });
+    expect(logged[1][1]).toEqual({ code: '42501', message: 'permission denied for table project_tracker_settings' });
+  });
+
+  it('does not log the mapped outcomes', () => {
+    const original = console.error;
+    let calls = 0;
+    console.error = () => { calls += 1; };
+    try {
+      caught('45413', 'queue_confirmation_required: 3 defect(s) would be queued');
+      caught('42501', 'forbidden');
+      caught('P0002', 'project_not_found');
+    }
+    finally {
+      console.error = original;
+    }
+    expect(calls).toBe(0);
+  });
+
   it('turns anything else into a 500 without leaking the database message', () => {
     const error = caught('XX000', 'relation "bugs" exploded at secret_host');
     expect(error.status).toBe(500);
