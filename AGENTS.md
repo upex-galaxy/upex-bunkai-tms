@@ -44,6 +44,8 @@
     - **Until that release**: applying a reviewed migration (Supabase MCP `apply_migration`, ledger per `supabase/migrations/README.md`) is a normal dev step, NOT a production deploy. Apply it once its PR review is approved, before merge, so staging code and schema stay in sync. Never DDL via `execute_sql`; migrations stay additive/idempotent and the repo files remain the schema source of truth.
     - **From the release on**: migrations become a gated production action (explicit user approval per apply, prod DB separate from staging). When the new prod DB exists, update this rule and `.agents/project.yaml`.
 
+21. **ONE PR PER USER STORY**: a user story, bug or tech story is delivered as exactly ONE pull request, whatever its size. Size is handled with atomic commits (one responsibility each, tests with their behaviour, every commit green) and commit-by-commit review, never by splitting the PR. Merge it with a merge commit (`--no-ff`), never squash, so the per-commit history survives on `staging`. NEVER stack or chain PRs unless the user explicitly asks for it in that run. A story that is genuinely too large is split in the BACKLOG through `/product-management` (each resulting story gets its own PR), never by PR. Jira moves a story to `Ready For QA` when a PR with its key is merged and has no way back, so a ticket-keyed PR merges only into its final target (`staging`), only when truly ready. Detail: `.agents/skills/git-flow-master/SKILL.md` Step 4, `.agents/skills/sprint-development/references/workload-forecast.md`.
+
 ---
 
 ## 2. BEHAVIORAL LAYER — HOW AI REASONS
@@ -521,7 +523,7 @@ That makes `.agents/project.yaml`'s `direct_push_to_protected: confirm` accurate
 
 - Semantic prefixes: `feat:` / `fix:` / `docs:` / `test:` / `refactor:` / `chore:`
 - One commit = one responsibility. Clear messages.
-- Branch + commit + push + PR + conflict-fix + chained-PR planning all in `/git-flow-master`.
+- Branch + commit + push + PR + conflict-fix + large-change commit planning (one PR per story, §1 #21) all in `/git-flow-master`.
 - See §1 #3-#5 for NO-AI-attribution + push-to-main confirm + git-history rules.
 
 ---
