@@ -2,6 +2,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { ApiError } from '@lib/api/error-envelope';
+import { COMPARE_LOAD_ERROR } from '@lib/runs/compare-view';
 import { describe, expect, it, spyOn } from 'bun:test';
 import { COMPARE_FAILURE_MESSAGE, extractCompareRunId, fetchRunComparison, isUuid } from './response';
 
@@ -81,6 +82,11 @@ describe('extractCompareRunId / isUuid', () => {
 });
 
 describe('fetchRunComparison', () => {
+  it('answers with the same fixed text the screen shows on a failed load (one error copy)', () => {
+    expect(COMPARE_FAILURE_MESSAGE).toBe(COMPARE_LOAD_ERROR);
+    expect(COMPARE_FAILURE_MESSAGE).toBe('Could not compare these runs.');
+  });
+
   it('calls bunkai_compare_run with the Run id and NO identity parameter', async () => {
     const calls: RpcCall[] = [];
     await fetchRunComparison(fakeDb({ data: COMPARED, error: null }, calls), RUN_ID, LOG);
