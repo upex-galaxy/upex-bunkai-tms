@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 import { cn } from '@lib/utils';
-import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, Play } from 'lucide-react';
+import { BarChart3, Bug, ClipboardList, Flag, GitBranch, Library, Play, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -27,6 +27,11 @@ import { usePathname } from 'next/navigation';
 // inventing new navigation, which is what Critical Rule #14 requires of a new
 // project-scoped surface. The segment is `plans`, the route
 // master-design-plan §4.11 names for the screen.
+//
+// BK-371 adds an eighth, Settings — the home of the Project's Jira defect sync.
+// The Settings hub (`lib/settings/nav-items.ts`) is workspace-level and this
+// setting is per Project, so the project sub-nav is where it belongs (PO ruling Q6).
+// Shown to every role; only owners and admins get usable controls.
 //
 // It lives in the persistent project shell (project-shell.tsx), NOT in each
 // page, so it survives navigation across the project's detail routes — the
@@ -54,6 +59,7 @@ const ENTRIES: SubNavEntry[] = [
   { id: 'traceability', label: 'Traceability', icon: GitBranch, segment: 'traceability' },
   { id: 'milestones', label: 'Milestones', icon: Flag, segment: 'milestones' },
   { id: 'plans', label: 'Test Plans', icon: ClipboardList, segment: 'plans' },
+  { id: 'settings', label: 'Settings', icon: Settings, segment: 'settings' },
 ];
 
 function entryHref(projectSlug: string, segment: string | null): string {
