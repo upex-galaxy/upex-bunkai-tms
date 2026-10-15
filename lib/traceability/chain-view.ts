@@ -423,7 +423,7 @@ function isResultFilterValue(value: string): value is RunChipTone {
 
 // Shape AND calendar validity (rejects e.g. `2026-13-45` — the regex alone
 // only checks digit shape, not that month 13 / day 45 exist).
-function isValidDateParam(value: string): boolean {
+export function isValidDateParam(value: string): boolean {
   if (!DATE_PARAM_PATTERN.test(value)) { return false; }
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
