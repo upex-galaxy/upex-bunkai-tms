@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  bugsFiltersDiffer,
   bugsFiltersFromSearchParams,
   bugsFiltersFromState,
   bugsStateFromFilters,
@@ -69,5 +70,27 @@ describe('bugsFiltersFromSearchParams (the server page)', () => {
 
   test('ignores parameters that are not bug filters', () => {
     expect(bugsFiltersFromSearchParams({ view: 'heatmap', story: 'x' }, known)).toEqual(EMPTY_BUGS_FILTERS);
+  });
+});
+
+// Back after opening a bug re-mounts the list from the server props the history
+// entry was rendered with, which can be the UNFILTERED first page while the
+// address (rewritten with replaceState) still carries the filters. The view
+// reconciles on mount: it compares the address with the props it was given.
+describe('bugsFiltersDiffer (mount reconcile)', () => {
+  const known = new Set([MOD]);
+
+  test('stale unfiltered props against a filtered address differ, so the list refetches', () => {
+    const fromAddress = bugsFiltersFromSearchParams({ severity: 'P1', module: MOD }, known);
+    expect(bugsFiltersDiffer(fromAddress, EMPTY_BUGS_FILTERS)).toBe(true);
+  });
+
+  test('props that already match the address do not trigger a refetch', () => {
+    const fromAddress = bugsFiltersFromSearchParams({ status: 'closed,open' }, known);
+    expect(bugsFiltersDiffer(fromAddress, { moduleId: null, statuses: ['open', 'closed'], severities: [] })).toBe(false);
+  });
+
+  test('an address with junk reconciles to unfiltered, matching empty props', () => {
+    expect(bugsFiltersDiffer(bugsFiltersFromSearchParams({ severity: 'P9' }, known), EMPTY_BUGS_FILTERS)).toBe(false);
   });
 });
