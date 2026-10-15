@@ -25,6 +25,12 @@ export type TrackerSettingsValidationReason
     | 'destination_required'
     | 'invalid_issue_type';
 
+// Same unit as the SQL `char_length`: code points, not UTF-16 units (an emoji is
+// 2 units in JS and 1 character in Postgres).
+export function codePointLength(value: string): number {
+  return [...value].length;
+}
+
 // Trim, then upper-case a-z only. Anything else (accents, sharp s, full-width
 // letters) is left alone and therefore fails the pattern.
 export function normalizeDestinationKey(raw: string): string {

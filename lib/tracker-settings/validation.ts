@@ -3,6 +3,7 @@ import type { TrackerSettingsValidationReason } from './rules';
 import { ApiError } from '@lib/api/error-envelope';
 import { z } from 'zod';
 import {
+  codePointLength,
   DEFAULT_ISSUE_TYPE,
   DESTINATION_KEY_PATTERN,
   ISSUE_TYPE_MAX,
@@ -17,6 +18,7 @@ import {
 // cannot drift; this module adds the Zod schemas and the 422 mapping.
 
 export {
+  codePointLength,
   DEFAULT_ISSUE_TYPE,
   DESTINATION_KEY_PATTERN,
   ISSUE_TYPE_MAX,
@@ -46,12 +48,6 @@ const DestinationKeySchema = z
       rejectWith(ctx, 'invalid_destination_key');
     }
   });
-
-// Same unit as the SQL `char_length`: code points, not UTF-16 units (an emoji is
-// 2 units in JS and 1 character in Postgres).
-export function codePointLength(value: string): number {
-  return [...value].length;
-}
 
 const IssueTypeSchema = z
   .string()
