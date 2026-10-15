@@ -3,8 +3,8 @@
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
-import { countCodePoints, SAVED_VIEW_NAME_MAX } from '@lib/saved-views/constants';
-import { createSubmitGuard, nameFieldReducer } from '@lib/saved-views/menu-state';
+import { SAVED_VIEW_NAME_MAX } from '@lib/saved-views/constants';
+import { createSubmitGuard, nameFieldReducer, savedViewNameLength } from '@lib/saved-views/menu-state';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 // BK-443 — the name dialog (save and rename) and the delete confirmation of the
@@ -55,7 +55,7 @@ export function SavedViewNameDialog({ open, title, submitLabel, initialName, onS
     }
   };
 
-  const length = countCodePoints(name.trim());
+  const length = savedViewNameLength(name);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={requestClose}>
