@@ -1,18 +1,19 @@
 'use client';
 
 import type { AtcListFilters } from '@lib/atcs/list-filters';
+import type { AddressWriter } from '@lib/saved-views/address-writer';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { Atc, ModuleTreeNode } from '@lib/types';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { EMPTY_ATC_LIST_FILTERS } from '@lib/atcs/list-filters';
+import { createAddressWriter, isLinkTarget } from '@lib/saved-views/address-writer';
 import { clampSavedViewText } from '@lib/saved-views/constants';
-import { debounce } from '@lib/saved-views/debounce';
 import { stateFromParams } from '@lib/saved-views/state';
-import { workbenchAddress, workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
+import { workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
 import { shortSlug } from '@lib/utils';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 // Client state layer for the project workbench (BK-147). The persistent shell
 // (project-shell.tsx) and the index page both read this. Tabs are route-driven:
@@ -217,18 +218,36 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
     // Mount-only by design; a project switch remounts the provider.
   }, []);
   const savedViewKey = JSON.stringify(savedViewState);
+  // The pending address write, so a navigation that starts from inside this
+  // provider (closing a tab) can cancel it first.
+  const addressWriter = useRef<AddressWriter | null>(null);
   useEffect(() => {
     if (!hydrated || pathname !== indexHref) { return; }
     // Debounced: the text filters change at keystroke rate, and one history
     // call per keystroke is wasteful and throttled by browsers. Saving and
     // restoring read the STATE, never the address, so the delay changes nothing
-    // about them. Leaving the route or unmounting cancels a pending write.
-    const writer = debounce(() => {
-      const url = workbenchAddress(window.location, savedViewState);
-      if (url !== null) { window.history.replaceState(null, '', url); }
-    }, ADDRESS_WRITE_DELAY_MS);
-    writer.call();
-    return writer.cancel;
+    // about them. A replaceState turns into a router restore that DISCARDS a
+    // navigation still pending, so the write is cancelled the moment a link is
+    // clicked, when a tab is closed, and on unmount; and the timer re-checks the
+    // pathname before it writes (see `address-writer.ts`). A cancelled write is
+    // made again by this effect once the member is back on the index route.
+    const writer = createAddressWriter({
+      delayMs: ADDRESS_WRITE_DELAY_MS,
+      indexPath: indexHref,
+      location: () => window.location,
+      replace: (url) => { window.history.replaceState(null, '', url); },
+    });
+    addressWriter.current = writer;
+    const cancelOnLinkClick = (event: MouseEvent) => {
+      if (isLinkTarget(event.target)) { writer.cancel(); }
+    };
+    document.addEventListener('click', cancelOnLinkClick, true);
+    writer.schedule(savedViewState);
+    return () => {
+      writer.cancel();
+      document.removeEventListener('click', cancelOnLinkClick, true);
+      if (addressWriter.current === writer) { addressWriter.current = null; }
+    };
     // `savedViewKey` stands in for `savedViewState`, which is a fresh object each render.
   }, [hydrated, pathname, indexHref, savedViewKey]);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {
@@ -282,6 +301,9 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
         || (kind === 'test' && id === activeTestId)
         || (kind === 'run' && id === activeRunId);
     if (isActive) {
+      // A navigation is about to start: drop a pending address write, which
+      // would otherwise discard it.
+      addressWriter.current?.cancel();
       const neighbour = next[idx] ?? next[idx - 1] ?? null;
       router.push(neighbour ? neighbour.href : `/projects/${projectSlug}`);
     }
