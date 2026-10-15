@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-10-15T11:08:09.020Z`
+> Generated: `2026-10-15T11:09:50.301Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -274,14 +274,15 @@ Skills indexed: 44
 - **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice. Writing the HOST needs it too: `git:policy apply` is a dry run until `--yes`, and refuses outright to remove a guard, lower the approval bar, turn off code-owner review, or widen the merge methods unless `--allow-loosening` is passed for that specific give-up.
 - **`require_code_owner_review: true` with no `CODEOWNERS` file is unsatisfiable, not strict.** Nobody outside the bypass list can clear it, so every merge becomes a bypass. Treat that combination as drift with a named remedy: add the file, or turn the flag off.
 - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
-- **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
+- **One PR per user story, always.** Size never splits a story into PRs: a large change is ONE PR carried by atomic commits (one responsibility, tests with their behaviour, every commit green), with the commit list and a review guide in the PR body. NEVER propose or open stacked/chained PRs unless the user explicitly asks for them in that run. A story too large is split in the backlog via `/product-management`, never by PR.
+- **Merge with a merge commit (`--no-ff`), never squash.** The per-commit history must survive on the target branch. Never merge a PR carrying a ticket key into anything but its final target: Jira's automation flips the ticket to Ready For QA on that merge and the workflow has no way back.
 - **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
 - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
 - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
 - **Stop at PR creation.** Never auto-merge.
 - **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
 
-**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
+**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning the commits of a large change, or when the compact rules above do not settle the operation.
 
 > Source: `.agents/skills/git-flow-master/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
