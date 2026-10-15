@@ -3,7 +3,9 @@ import { describe, expect, test } from 'bun:test';
 import {
   FACET_UNSPECIFIED,
   isStateEmpty,
+  keyLabel,
   mergeStateIntoParams,
+  normalizeValue,
   stateFromParams,
   stateKeys,
   validateStateForKind,
@@ -65,6 +67,20 @@ describe('stateFromParams (lenient)', () => {
   test('drops blank and over-long workbench text', () => {
     const params = new URLSearchParams({ atc_q: '   ', tag: 'x'.repeat(101) });
     expect(stateFromParams('workbench', params)).toEqual({});
+  });
+});
+
+describe('inherited names are not filters', () => {
+  test('normalizeValue and keyLabel treat them as unknown', () => {
+    expect(normalizeValue('bugs', 'constructor', 'x', false)).toBeNull();
+    expect(normalizeValue('bugs', '__proto__', 'x', true)).toBeNull();
+    expect(keyLabel('bugs', 'toString')).toBe('toString');
+  });
+
+  test('mergeStateIntoParams ignores them and stateFromParams never reads them', () => {
+    const merged = mergeStateIntoParams('bugs', new URLSearchParams(), { constructor: 'x', severity: 'P1' });
+    expect(merged.toString()).toBe('severity=P1');
+    expect(stateFromParams('bugs', new URLSearchParams('constructor=x&toString=y'))).toEqual({});
   });
 });
 
@@ -138,6 +154,17 @@ describe('validateStateForKind (strict, on write)', () => {
     expect(validateStateForKind('traceability', { from: '2026-09-30', to: '2026-09-01' })).toEqual({ ok: false, reason: 'date_range_inverted' });
     expect(validateStateForKind('traceability', { from: '2026-09-01' }).ok).toBe(true);
     expect(validateStateForKind('traceability', { from: '2026-09-01', to: '2026-09-01' }).ok).toBe(true);
+  });
+
+  test.each(['constructor', 'toString', 'hasOwnProperty', 'valueOf'])('refuses the inherited name "%s" as an unknown key, never throws', (key) => {
+    expect(validateStateForKind('bugs', { severity: 'P1', [key]: 'x' })).toEqual({ ok: false, reason: 'state_invalid' });
+    expect(validateStateForKind('bugs', JSON.parse(`{"${key}":"x"}`))).toEqual({ ok: false, reason: 'state_invalid' });
+  });
+
+  test('refuses an OWN __proto__ key (as JSON.parse creates it) without touching the prototype', () => {
+    const hostile = JSON.parse('{"__proto__":"x","severity":"P1"}') as Record<string, string>;
+    expect(validateStateForKind('bugs', hostile)).toEqual({ ok: false, reason: 'state_invalid' });
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
   });
 
   test('isStateEmpty distinguishes the two cases', () => {
