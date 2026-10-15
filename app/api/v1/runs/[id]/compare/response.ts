@@ -3,7 +3,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError } from '@lib/api/error-envelope';
 import { logRequest } from '@lib/api/logging';
-import { parseRunComparison } from '@lib/runs/compare-view';
+import { COMPARE_LOAD_ERROR, parseRunComparison } from '@lib/runs/compare-view';
 import { mapRunRpcError } from '@lib/runs/errors';
 import { compareRun } from '@lib/supabase/rpc';
 
@@ -21,7 +21,7 @@ export interface CompareLogContext {
 // Fixed client text for every failure that is not a "not found". The database's own
 // message can name tables, functions and columns, so it goes to the server log with
 // its SQLSTATE and never to the caller.
-export const COMPARE_FAILURE_MESSAGE = 'Could not compare these runs.';
+export const COMPARE_FAILURE_MESSAGE = COMPARE_LOAD_ERROR;
 
 export function isUuid(value: string): boolean {
   return /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value);

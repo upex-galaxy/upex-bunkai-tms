@@ -59,8 +59,6 @@ interface RunCompareViewProps {
   initialError?: string | null
 }
 
-interface ApiErrorBody { error?: { message?: string } }
-
 export function RunCompareView({ projectSlug, runId, initialComparison, initialError = null }: RunCompareViewProps) {
   const [comparison, setComparison] = useState<RunComparison | null>(initialComparison);
   const [error, setError] = useState<string | null>(initialError);
@@ -71,9 +69,10 @@ export function RunCompareView({ projectSlug, runId, initialComparison, initialE
     try {
       const response = await fetch(`/api/v1/runs/${runId}/compare`);
       if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-        // Server copy is rendered VERBATIM — never rephrased client-side.
-        setError(body.error?.message ?? COMPARE_LOAD_ERROR);
+        // One copy for every failed load (first read and every Retry): the status and
+        // the server's own message are for the log, not for a screen that would
+        // otherwise change its wording between attempts.
+        setError(COMPARE_LOAD_ERROR);
         return;
       }
       const parsed = parseRunComparison(await response.json());
@@ -102,6 +101,7 @@ export function RunCompareView({ projectSlug, runId, initialComparison, initialE
           <Link
             href={runHref(projectSlug, runId)}
             data-testid="run-compare-back"
+            aria-label="Back to this run"
             className="inline-flex size-6 shrink-0 items-center justify-center rounded-2 border border-stroke-2 bg-surface-2 text-fg-2 hover:border-stroke-3 hover:bg-surface-3 hover:text-fg-0"
             title="Back to this run"
           >
@@ -260,11 +260,12 @@ function GroupBlock({ block }: { block: CompareGroupBlock }) {
       </ul>
     </>
   );
+  // A real heading (level 2, under the page's h1), with the row count inside it.
   const heading = (
-    <span className="flex items-center gap-2">
-      <span className="text-sm font-semibold text-fg-0">{block.label}</span>
-      <span className="font-mono text-xs text-fg-3">{block.rows.length}</span>
-    </span>
+    <h2 data-testid={`run-compare-heading-${block.group}`} className="flex items-center gap-2 text-sm font-semibold text-fg-0">
+      <span>{block.label}</span>
+      <span className="font-mono text-xs font-normal text-fg-3">{block.rows.length}</span>
+    </h2>
   );
 
   // Unchanged passes starts collapsed: those need no attention. Every other group

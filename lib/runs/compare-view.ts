@@ -90,7 +90,10 @@ export const COMPARE_UNRELIABLE_TITLE = 'These two runs cannot be compared relia
 export const COMPARE_UNRELIABLE_DETAIL = 'Bunkai cannot tell which ATC one of their steps came from, so it shows no comparison instead of a wrong one.';
 export const COMPARE_NO_PREVIOUS_NOTE = 'Runs in other environments are not compared.';
 export const COMPARE_REWORDED_NOTE = 'A step whose wording changed appears as Removed and Added.';
-export const COMPARE_LOAD_ERROR = 'Could not load this comparison.';
+// ONE error copy for every failed load: the first server read, a failed Retry and the
+// API's own fixed 500 text (`COMPARE_FAILURE_MESSAGE` in the route's response.ts is
+// this constant), so the screen never changes its wording between attempts.
+export const COMPARE_LOAD_ERROR = 'Could not compare these runs.';
 
 export function compareNoPreviousMessage(environmentName: string | null): string {
   return `No earlier run of this Test in ${environmentName ?? 'this environment'} to compare with.`;
