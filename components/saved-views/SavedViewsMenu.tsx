@@ -6,7 +6,7 @@ import type { SavedViewState } from '@lib/saved-views/state';
 import type { SavedViewItem } from '@lib/saved-views/view-model';
 import { Button } from '@components/ui/button';
 import { SAVED_VIEW_COPY } from '@lib/saved-views/constants';
-import { resolveActiveView, stateKey, visibleNotice } from '@lib/saved-views/menu-state';
+import { pruneNotice, resolveActiveView, stateKey, visibleNotice } from '@lib/saved-views/menu-state';
 import { resolveRestore, restoreNotice } from '@lib/saved-views/restore';
 import { isStateEmpty } from '@lib/saved-views/state';
 import { Bookmark, Pencil, Trash2 } from 'lucide-react';
@@ -74,6 +74,13 @@ export function SavedViewsMenu({ projectId, kind, currentState, onApply, moduleI
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open, dialog.mode]);
+
+  // A notice belongs to the state it was raised for: drop it for good on the next
+  // filter edit, so it cannot reappear when the filters return to that state.
+  const currentKey = stateKey(currentState);
+  useEffect(() => {
+    setNotice(current => pruneNotice(current, currentState));
+  }, [currentKey]);
 
   const active = resolveActiveView(views, activeId);
   const shownNotice = visibleNotice(notice, currentState);

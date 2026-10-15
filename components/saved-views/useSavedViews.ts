@@ -4,7 +4,7 @@ import type { ViewKind } from '@lib/saved-views/constants';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { SavedViewItem } from '@lib/saved-views/view-model';
 import { SAVED_VIEW_COPY } from '@lib/saved-views/constants';
-import { removeView, upsertView } from '@lib/saved-views/menu-state';
+import { afterDelete, afterWrite } from '@lib/saved-views/menu-state';
 import { useCallback, useRef, useState } from 'react';
 
 // BK-443 — the client side of `/api/v1/projects/{id}/saved-views`: the list for
@@ -38,6 +38,13 @@ export function useSavedViews(projectId: string, kind: ViewKind) {
   const base = `/api/v1/projects/${projectId}/saved-views`;
   const [views, setViews] = useState<SavedViewItem[] | null>(null);
   const [status, setStatus] = useState<SavedViewsStatus>('idle');
+  // Mirrors `views` so a write can tell "no list loaded yet" from "empty list"
+  // without reading render state inside an updater.
+  const viewsRef = useRef<SavedViewItem[] | null>(null);
+  const commit = useCallback((next: SavedViewItem[] | null) => {
+    viewsRef.current = next;
+    setViews(next);
+  }, []);
   // Only the latest load may write: a slow earlier response must not overwrite
   // a newer list (or a view saved in between).
   const latestLoad = useRef(0);
@@ -52,9 +59,9 @@ export function useSavedViews(projectId: string, kind: ViewKind) {
       setStatus('error');
       return;
     }
-    setViews(result.data.items);
+    commit(result.data.items);
     setStatus('ready');
-  }, [base, kind]);
+  }, [base, kind, commit]);
 
   const send = useCallback(async (url: string, method: 'POST' | 'PATCH', body: unknown): Promise<MutationResult> => {
     const result = await call<{ item: SavedViewItem }>(url, {
@@ -65,12 +72,19 @@ export function useSavedViews(projectId: string, kind: ViewKind) {
     if (!result.ok || !result.data) {
       return { ok: false, message: result.ok ? SAVED_VIEW_COPY.unavailable : result.message };
     }
-    // Invalidate any in-flight load that started before this write.
-    latestLoad.current += 1;
-    setViews(current => upsertView(current ?? [], result.data!.item));
-    setStatus('ready');
+    const change = afterWrite(viewsRef.current, result.data.item);
+    if (change.reload) {
+      // No list is loaded (still loading, or its load failed): the one new item
+      // must not become the list or mark it ready. Load the real list instead.
+      void load();
+    }
+    else {
+      // Invalidate any in-flight load that started before this write.
+      latestLoad.current += 1;
+      commit(change.views);
+    }
     return { ok: true, item: result.data.item };
-  }, []);
+  }, [load, commit]);
 
   const create = useCallback(async (name: string, state: SavedViewState) => send(base, 'POST', { view_kind: kind, name, state }), [base, kind, send]);
   const rename = useCallback(async (id: string, name: string) => send(`${base}/${id}`, 'PATCH', { name }), [base, send]);
@@ -79,10 +93,16 @@ export function useSavedViews(projectId: string, kind: ViewKind) {
   const remove = useCallback(async (id: string): Promise<{ ok: true } | { ok: false, message: string }> => {
     const result = await call<unknown>(`${base}/${id}`, { method: 'DELETE' });
     if (!result.ok) { return result; }
-    latestLoad.current += 1;
-    setViews(current => removeView(current ?? [], id));
+    const change = afterDelete(viewsRef.current, id);
+    if (change.reload) {
+      void load();
+    }
+    else {
+      latestLoad.current += 1;
+      commit(change.views);
+    }
     return { ok: true };
-  }, [base]);
+  }, [base, load, commit]);
 
   return { views, status, load, create, rename, replaceState, remove };
 }
