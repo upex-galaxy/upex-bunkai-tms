@@ -56,13 +56,20 @@ const DestinationKeySchema = z
     }
   });
 
+// Same unit as the SQL `char_length`: code points, not UTF-16 units (an emoji is
+// 2 units in JS and 1 character in Postgres).
+function codePointLength(value: string): number {
+  return [...value].length;
+}
+
 const IssueTypeSchema = z
   .string()
   .optional()
   .default(DEFAULT_ISSUE_TYPE)
   .transform(value => value.trim())
   .superRefine((value, ctx) => {
-    if (value.length < 1 || value.length > ISSUE_TYPE_MAX) {
+    const length = codePointLength(value);
+    if (length < 1 || length > ISSUE_TYPE_MAX) {
       rejectWith(ctx, 'invalid_issue_type');
     }
   });

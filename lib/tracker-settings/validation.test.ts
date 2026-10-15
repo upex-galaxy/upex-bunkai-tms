@@ -97,6 +97,12 @@ describe('issue type (AC-9)', () => {
     expect(parseTrackerSettingsBody(TrackerSettingsBodySchema, body('QAS', { issue_type_name: 'x'.repeat(60) })).issue_type_name).toHaveLength(60);
   });
 
+  it('counts code points like the SQL char_length: 60 emoji are accepted, 61 refused', () => {
+    const sixty = '😀'.repeat(60);
+    expect(parseTrackerSettingsBody(TrackerSettingsBodySchema, body('QAS', { issue_type_name: sixty })).issue_type_name).toBe(sixty);
+    expect(reasonOf(() => parseTrackerSettingsBody(TrackerSettingsBodySchema, body('QAS', { issue_type_name: '😀'.repeat(61) })))).toBe('invalid_issue_type');
+  });
+
   it('refuses empty, blank and over-60 values with the frozen copy', () => {
     for (const issueType of ['', '   ', 'x'.repeat(61)]) {
       expect(reasonOf(() => parseTrackerSettingsBody(TrackerSettingsBodySchema, body('QAS', { issue_type_name: issueType })))).toBe('invalid_issue_type');
