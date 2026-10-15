@@ -619,6 +619,38 @@ export async function deleteEnvironment(
   });
 }
 
+// BK-371 — save a Project's Jira defect-sync settings (migration 0091). The
+// SECURITY DEFINER RPC is granted to `service_role` ONLY (ADR-0012), so the
+// `supabase` argument MUST be the admin client; it takes the gateway's
+// `principal.userId` as the explicit actor, binds and authorizes it (owner or
+// admin), validates, upserts, re-queues the Project's stranded Bugs and writes
+// the audit row in one transaction. `confirmQueueCount` is the N the user saw
+// in the confirmation dialog (null when no dialog was shown).
+export interface UpsertProjectTrackerSettingsArgs {
+  actorUserId: string
+  projectId: string
+  destinationProjectKey: string
+  issueTypeName: string
+  enabled: boolean
+  confirmQueueCount?: number | null
+}
+
+export async function upsertProjectTrackerSettings(
+  supabase: Client,
+  args: UpsertProjectTrackerSettingsArgs,
+) {
+  return supabase.rpc('bunkai_upsert_project_tracker_settings', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_destination_project_key: args.destinationProjectKey,
+    p_issue_type_name: args.issueTypeName,
+    p_enabled: args.enabled,
+    ...(args.confirmQueueCount === null || args.confirmQueueCount === undefined
+      ? {}
+      : { p_confirm_queue_count: args.confirmQueueCount }),
+  });
+}
+
 // BK-40 — file a TMS-native bug, either linked to a failed run step or
 // standalone. Same explicit-actor contract as the other wrappers; the
 // SECURITY DEFINER RPC re-validates member+ write access via
