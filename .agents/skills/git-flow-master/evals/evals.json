@@ -52,8 +52,8 @@
     },
     {
       "id": 8,
-      "prompt": "Este cambio va a tocar 800 líneas entre el schema, el backend y el frontend. Cómo lo trozeo en PRs más chicos?",
-      "expected_output": "Skill recognises chained-PR planning intent. Either hands off to /chained-pr (the strategic-decision skill, which is installed in this repo) or walks the inline decision tree from references/branching-strategies.md (Q1 mechanical? Q2 linearly decomposable? Q3 shared scaffolding?). Returns a strategy (stacked-to-main, feature-branch-chain, or size-exception) plus a concrete branch plan.",
+      "prompt": "Este cambio va a tocar 3.000 líneas entre el schema, el backend y el frontend. Cómo lo trozeo en PRs más chicos?",
+      "expected_output": "Skill recognises the large-change intent and applies Step 4 (one PR, many commits). Answers that the story is still ONE PR: size never splits a story into PRs, no size threshold gates anything, and it does NOT propose stacked-to-main, feature-branch-chain or size-exception, nor walk any decision tree. Produces a commit plan ordered by dependency (schema/types, domain logic, API, UI, docs) with tests alongside the behaviour they verify and every commit green, proposes it for OK before committing, and says the PR body will carry the commit list and a review guide (references/pr-templating.md § Big PR body). Mentions merge with a merge commit (never squash). If the story has independently valuable increments, recommends splitting the STORY in the backlog via /product-management instead of splitting the PR.",
       "should_trigger": true,
       "files": []
     },
@@ -96,6 +96,20 @@
       "id": 14,
       "prompt": "configura el flujo de git para este repo nuevo",
       "expected_output": "Strategy Setup runs (Spanish trigger 'configura el flujo de git'). Conversation mirrors Spanish; artifacts (git_strategy block fields in .agents/project.yaml + description) stay English. Step 1 repo state -> Step 2 detection -> if undetermined, present the 7 strategies and ask for one slug (detect-then-questionnaire), then run the applicable Q1/Q2/Q3 gated on the resolved strategy plus Q4 (protection policy, all strategies). Proposes branch creation (never auto-executes), never --force, no AI attribution.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "Open the PR for BK-900. The diff is about 3,000 lines across 14 commits. Split it into a stack of child PRs so each one is under 400 lines, merging each child into a chain-base branch.",
+      "expected_output": "Skill does NOT silently comply. One PR per user story is the rule; stacked or chained PRs are an exception allowed only when the user explicitly asks for them in that run. Because the user did explicitly ask here, the skill confirms the legacy exception once and warns about the Jira gotcha: merging a ticket-keyed child PR into the chain-base fires the Ready For QA automation early and the workflow has no transition back. It recommends the default instead (ONE PR, the 14 commits already form the commit plan, PR body with commit list + review guide) and lets the user choose. No gate, no decision tree, no --squash, no --force, no AI attribution.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 16,
+      "prompt": "Open the PR for BK-901 against staging. It is a big story, about 3,000 lines, 12 commits already made on feature/BK-901-reports.",
+      "expected_output": "Skill opens exactly ONE PR (base staging, from the strategy) and never proposes stacked PRs or a size gate. The body is rendered inline with a Commit list and a Review guide section (references/pr-templating.md § Big PR body), reading order dependency-first with the riskiest commits flagged. States that it merges with a merge commit (never squash), that review is commit by commit, that fixes land as new commits, and that migrations (if any) are applied per Critical Rule #20 after review approval and before the merge. Stops at PR creation, never auto-merges, no AI attribution.",
       "should_trigger": true,
       "files": []
     }

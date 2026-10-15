@@ -51,7 +51,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 3. **Detect carryovers** if `previous_sprint_file` was provided. Scan it for tickets whose status is NOT `PROD_DEPLOYED` / `ABORTED`. For each, check whether it appears in the current sprint; if yes, mark as carryover with prior context; if no, note as "dropped from sprint" and inform the user.
 4. **Build Board Summary** counts (Ready For Dev / In Progress / In Review / Ready For QA / Deployed to Prod / Blocked / Total).
-5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Forecast Risk, Status). Status column is the canonical state machine value, not the Jira label.
+5. **Build In-Flight table** with the 11-column shape below (`#`, Ticket, Type, Title, Priority, Owner, Impl Plan, PR, Delivery Strategy, Forecast Size, Status). Status column is the canonical state machine value, not the Jira label.
 6. **Populate Stats** section from the counts (in-flight, merged, staging-deployed, prod-deployed, blocked, cancelled, carryovers, estimated total LOC from implementation-plan forecasts).
 7. **Write the file** using the framework structure below.
 8. **Append Session Log entry** for the setup pass — date, totals, in-flight IDs, assigned/unassigned counts, carryover IDs, "Created SPRINT-{N}-DEVELOPMENT.md tracker".
@@ -83,9 +83,9 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 > Tickets currently in `In Progress` or `In Review`.
 
-| #   | Ticket | Type               | Title   | Priority   | Owner | Impl Plan | PR        | Delivery Strategy                   | Forecast Risk    | Status                                |
+| #   | Ticket | Type               | Title   | Priority   | Owner | Impl Plan | PR        | Delivery Strategy                   | Forecast Size    | Status                                |
 | --- | ------ | ------------------ | ------- | ---------- | ----- | --------- | --------- | ----------------------------------- | ---------------- | ------------------------------------- |
-| 1   | {ID}   | {Story\|Bug\|Task} | {title} | {priority} | {dev} | {link\|-} | {#NNN\|-} | {stacked\|chain\|single\|exception} | {Low\|Med\|High} | {IN_PROGRESS\|IN_REVIEW\|MERGED\|...} |
+| 1   | {ID}   | {Story\|Bug\|Task} | {title} | {priority} | {dev} | {link\|-} | {#NNN\|-} | {single-pr\|split-into-stories} | {Small\|Med\|Large} | {IN_PROGRESS\|IN_REVIEW\|MERGED\|...} |
 
 #### In-Flight Notes
 
@@ -158,7 +158,7 @@ If the file already exists, warn and ask before overwriting. On regenerate, the 
 
 1. **Dates**: ISO 8601 (`YYYY-MM-DD`). Last Updated is bumped on every write.
 2. **Status column** (In-Flight table): one of `PENDING` / `IN_PROGRESS` / `IN_REVIEW` / `MERGED` / `STAGING_DEPLOYED` / `PROD_DEPLOYED` / `BLOCKED` / `ABORTED`. State machine details below.
-3. **Impl Plan / PR / Delivery Strategy / Forecast Risk columns**: initialized as `-`; filled at the matching stage (see Part 2). Never delete the row even when the ticket becomes irrelevant — move it to `Done — This Sprint` or `Cancelled (Aborted)` instead.
+3. **Impl Plan / PR / Delivery Strategy / Forecast Size columns**: initialized as `-`; filled at the matching stage (see Part 2). Never delete the row even when the ticket becomes irrelevant — move it to `Done — This Sprint` or `Cancelled (Aborted)` instead.
 4. **Priority order** inside In-Flight: the `#` column drives queue ordering — pick the lowest-numbered non-terminal ticket when the user asks "next".
 5. **Session Log**: every state-changing event appends an entry. Entries are NEVER deleted on regenerate (append-only). The Roadmap Generator only adds new entries; it never rewrites historical ones.
 
@@ -175,8 +175,8 @@ Triggered when sprint-dev transitions Jira `Ready For Dev → In Progress`.
 - **Status**: `PENDING` → `IN_PROGRESS`.
 - **Owner**: fill with the dev driving the ticket (defaults to `git config user.name`).
 - **Impl Plan**: link to `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/implementation-plan.md` (synced from the Jira `spec_implementation_plan` field; or topic key `pbi/{ticket}/implementation-plan`).
-- **Forecast Risk**: `Low` / `Medium` / `High`, read from the Workload Forecast block in the implementation plan.
-- **Session Log**: append `### {date} — {ticket} IN_PROGRESS` with a one-line note (forecast risk + any salient context).
+- **Forecast Size**: `Small` / `Medium` / `Large`, read from the Workload Forecast block in the implementation plan.
+- **Session Log**: append `### {date} — {ticket} IN_PROGRESS` with a one-line note (forecast size + any salient context).
 
 ### Stage 3 — Code Review (PR open)
 
@@ -184,14 +184,14 @@ Triggered when sprint-dev opens the PR via `/git-flow-master` and Jira auto-tran
 
 - **Status**: `IN_PROGRESS` → `IN_REVIEW`.
 - **PR**: fill `#NNN`. Construct the link as `<repo-url>/pull/NNN`, where `<repo-url>` is obtained at runtime via `git remote get-url origin` (strip a trailing `.git` if present). Do NOT hardcode the repo URL or read it from `.agents/project.yaml`.
-- **Delivery Strategy**: read from the chain decision recorded in the implementation-plan forecast block (`stacked-to-main` / `feature-branch-chain` / `single-pr` / `size-exception`). Normalize to `stacked` / `chain` / `single` / `exception` for the column.
+- **Delivery Strategy**: `single-pr` by default (one PR per story, always). Use `split-into-stories` only when the story was split in the backlog through `/product-management` (each resulting story then has its own row and its own PR).
 - **Session Log**: append `### {date} — {ticket} IN_REVIEW` with PR number + delivery strategy.
 
 ### Stage 4 — Merge + Staging Deploy
 
 Two sub-transitions: merge and CI smoke.
 
-- On `gh pr merge --squash` landing: **Status** `IN_REVIEW` → `MERGED`. Session Log entry `### {date} — {ticket} MERGED`.
+- On the merge commit (`gh pr merge --merge`) landing: **Status** `IN_REVIEW` → `MERGED`. Session Log entry `### {date} — {ticket} MERGED`.
 - On staging CI smoke passing + auto-deploy fired: **Status** `MERGED` → `STAGING_DEPLOYED`. Session Log entry `### {date} — {ticket} STAGING_DEPLOYED`.
 - When Jira auto-transitions to `Ready For QA`: **move the row** from In-Flight to `Done — This Sprint` (preserve all column values; fill `Merged` / `Staging` date columns). Session Log entry confirming the hand-off.
 
@@ -219,7 +219,7 @@ State definitions:
 - **`PENDING`** — Ticket is in the sprint and queued; not yet pulled. Default state for Queue rows.
 - **`IN_PROGRESS`** — Sprint-dev Stage 1 entered; implementation plan being authored or code being written.
 - **`IN_REVIEW`** — PR opened; reviewer running.
-- **`MERGED`** — PR squash-merged into `staging`; CI not yet green.
+- **`MERGED`** — PR merge-committed into `staging`; CI not yet green.
 - **`STAGING_DEPLOYED`** — Staging CI smoke passed; staging environment auto-deployed; Jira at `Ready For QA`.
 - **`PROD_DEPLOYED`** — Stage 5 succeeded; production live.
 - **`BLOCKED`** — Any active state can move sideways to `BLOCKED` (deploy failure, rollback, dependency block). Fill the row's Blocking column with the cause.

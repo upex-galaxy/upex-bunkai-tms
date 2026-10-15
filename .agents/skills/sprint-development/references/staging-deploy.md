@@ -193,7 +193,7 @@ npm run build
    - ✅ CI checks pasando (verde)
    - ✅ No hay conflictos
 3. Click en "Merge pull request"
-4. Selecciona "Squash and merge" o "Merge commit" según estrategia
+4. Selecciona "Create a merge commit" (NUNCA "Squash and merge" ni "Rebase and merge": el historial por commit debe sobrevivir en `staging`). Un PR por historia: no mergees PRs intermedios con la key del ticket (Jira pasa la historia a Ready For QA al mergear y no hay vuelta atrás)
 5. Confirma merge
 
 **Alternatively, via CLI:**
