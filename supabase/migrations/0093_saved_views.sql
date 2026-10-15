@@ -19,9 +19,33 @@
 --     route's Zod schema; a malformed own row can only hurt its owner and
 --     restore ignores unknown keys.
 --
--- Safe to re-run: every step is guarded. Any row that predates this file is
--- backfilled with a name before `name` becomes NOT NULL (unique by
--- construction, because the old key allowed one row per surface).
+-- Safe to re-run: every step is guarded. Rows that predate this file are
+-- handled in two ways, decided up front:
+--   * a row the new rules can never hold (a `view_kind` outside the four
+--     surfaces, a `state` that is not a non-empty object, or one over 4096
+--     bytes) is DELETED in step 0 before the CHECK constraints are added.
+--     Nothing in app/, components/ or lib/ ever read or wrote this table, so
+--     such a row is unreachable by the product and cannot be repaired into a
+--     meaningful view; keeping it would make the CONSTRAINT step fail and
+--     block the migration.
+--   * every other row is backfilled with a name before `name` becomes
+--     NOT NULL (unique by construction, because the old key allowed one row
+--     per surface).
+--
+-- Names are NFC-normalised by the API (SavedViewNameSchema) so that NFC and
+-- NFD spellings of the same text collide on `name_key`. SQL does not
+-- normalise: a direct PostgREST write bypasses that, and the unique index then
+-- treats two Unicode-equivalent spellings as different names. That is accepted
+-- (owner-only data, no cross-user effect); the API is the supported path.
+
+-- ---------------------------------------------------------------------------
+-- 0. Rows the new rules cannot hold
+-- ---------------------------------------------------------------------------
+delete from public.user_view_state
+where view_kind not in ('traceability', 'run_history', 'bugs', 'workbench')
+   or jsonb_typeof(state) <> 'object'
+   or state = '{}'::jsonb
+   or octet_length(state::text) > 4096;
 
 -- ---------------------------------------------------------------------------
 -- 1. Columns
