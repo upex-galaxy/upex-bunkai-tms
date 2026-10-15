@@ -1,5 +1,6 @@
 import { ATC_LAYERS, ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
 import { describe, expect, test } from 'bun:test';
+import { clampSavedViewText } from './constants';
 import {
   FACET_UNSPECIFIED,
   isStateEmpty,
@@ -30,6 +31,21 @@ describe('drift guard', () => {
     expect(stateKeys('run_history')).toEqual(['outcome']);
     expect(stateKeys('bugs')).toEqual(['module', 'status', 'severity']);
     expect(stateKeys('workbench')).toEqual(['atc_q', 'tag', 'technique', 'priority', 'layer']);
+  });
+});
+
+describe('clampSavedViewText', () => {
+  test('leaves short text alone and cuts at 100 code points, not UTF-16 units', () => {
+    expect(clampSavedViewText('login')).toBe('login');
+    expect(clampSavedViewText('x'.repeat(150))).toHaveLength(100);
+    const emoji = clampSavedViewText('😀'.repeat(150));
+    expect(Array.from(emoji)).toHaveLength(100);
+    expect(emoji).toBe('😀'.repeat(100));
+  });
+
+  test('what the control keeps is never dropped from the state', () => {
+    const typed = clampSavedViewText('q'.repeat(300));
+    expect(stateFromParams('workbench', new URLSearchParams({ atc_q: typed }))).toEqual({ atc_q: typed });
   });
 });
 

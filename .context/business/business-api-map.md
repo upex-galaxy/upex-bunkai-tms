@@ -549,6 +549,17 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 | POST   | `/imports/jira`            | Trigger Jira import (async) | {{PROJECT_KEY}}-009 | Bearer + role (member+) + scope:write | Enqueue Vercel-cron-triggered worker; INSERT `imports` row (Gap G1 in data-map — table not in canonical ERD); returns 202 |
 | GET    | `/imports/{import_job_id}` | Poll import status          | {{PROJECT_KEY}}-009 | Bearer                                | None                                                                                                                      |
 
+### 4.12b Saved views tag (4 endpoints, BK-443)
+
+Named, per-member filter views for four surfaces (`traceability`, `run_history`, `bugs`, `workbench`). Table CRUD through the caller's RLS client (no RPC, no identity parameter); the database enforces ownership, project membership, case-insensitive trimmed name uniqueness, the 25-per-surface cap and the name/state rules (migration `0093`). A view's `state` is the surface's own URL parameter map.
+
+| Method | Path                                         | Summary                                     | FR                  | Auth                       | Side effects                                                                  |
+| ------ | -------------------------------------------- | ------------------------------------------- | ------------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/projects/{id}/saved-views?view_kind=`      | The caller's own views for one surface      | {{PROJECT_KEY}}-032 | `required:atc:read`        | None; at most 25 rows, ordered by case-folded name                            |
+| POST   | `/projects/{id}/saved-views`                 | Save the current filters under a name       | {{PROJECT_KEY}}-032 | `required:atc:write`       | INSERT `user_view_state`; 409 `saved_view_name_taken` / `saved_view_limit_reached`; 404 for a non-member project |
+| PATCH  | `/projects/{id}/saved-views/{viewId}`        | Rename and/or replace the filters it holds  | {{PROJECT_KEY}}-032 | `required:atc:write`       | UPDATE; another member's, another project's or a missing view is the same 404 |
+| DELETE | `/projects/{id}/saved-views/{viewId}`        | Delete one view                             | {{PROJECT_KEY}}-032 | `required:atc:write`       | DELETE; the applied filters are untouched                                      |
+
 ### 4.13 Integrations tag (declared, 0 endpoints — see Gap #2)
 
 The `Integrations` tag is declared in `api-contracts.yaml` but no endpoints exist under it. {{PROJECT_KEY}}-009 + {{PROJECT_KEY}}-028 reference Jira credentials "retrieved from Workspace integration config", implying a settings-layer Server Action path rather than a public Bearer-accessible API. **Open question** below.
