@@ -1,5 +1,6 @@
 'use client';
 
+import type { SavedViewState } from '@lib/saved-views/state';
 import type {
   ActiveFilterChip,
   FilteredCriterion,
@@ -9,8 +10,11 @@ import type {
   TraceabilityFilterState,
   TraceabilityModule,
 } from '@lib/traceability/chain-view';
+import type { ReactNode } from 'react';
+import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
+import { mergeStateIntoParams, stateFromParams } from '@lib/saved-views/state';
 import {
   acNoteLabel,
   activeFilterChips,
@@ -22,6 +26,7 @@ import {
   filterCriteria,
   FILTERED_EMPTY_TITLE,
   filteredEmptyBody,
+  filterStateToParams,
   filterTotals,
   isAcCardHidden,
   isAcUncovered,
@@ -131,7 +136,9 @@ const FilterBar = forwardRef<HTMLDivElement, {
   onFromChange: (value: string) => void
   onToChange: (value: string) => void
   onClear: () => void
-}>(({ state, modules, totals, filtering, onToggleResult, onModuleChange, onFromChange, onToChange, onClear }, ref) => {
+  // BK-443 — the Saved views control, mounted by the view (it owns the filter state).
+  savedViews: ReactNode
+}>(({ state, modules, totals, filtering, onToggleResult, onModuleChange, onFromChange, onToChange, onClear, savedViews }, ref) => {
   const dateInvalid = isDateRangeInverted(state.from, state.to);
   const chips: ActiveFilterChip[] = activeFilterChips(state, modules);
   const rowCount = rowCountLabel(totals, filtering);
@@ -229,9 +236,12 @@ const FilterBar = forwardRef<HTMLDivElement, {
           )}
         </div>
 
-        <span data-testid="traceability-row-count" aria-live="polite" className="ml-auto text-xs text-fg-3">
-          {rowCount}
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          {savedViews}
+          <span data-testid="traceability-row-count" aria-live="polite" className="text-xs text-fg-3">
+            {rowCount}
+          </span>
+        </div>
       </div>
 
       {filtering && (
@@ -379,6 +389,13 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
     const firstToggle = filterBarRef.current?.querySelector<HTMLElement>('[data-testid="traceability-filter-result-pass"]');
     const moduleSelect = filterBarRef.current?.querySelector<HTMLElement>('[data-testid="traceability-filter-module"]');
     (firstToggle ?? moduleSelect)?.focus();
+  }, [applyFilterState]);
+
+  // BK-443 — opening a saved view REPLACES the applied filters (business rule
+  // 5): the saved params become the whole filter state, address included, via
+  // the same `applyFilterState` every other filter edit goes through.
+  const applySavedState = useCallback((saved: SavedViewState) => {
+    applyFilterState(parseFilterStateFromParams(mergeStateIntoParams('traceability', new URLSearchParams(), saved)));
   }, [applyFilterState]);
 
   const retry = useCallback(async () => {
@@ -553,6 +570,15 @@ export function TraceabilityChainView({ projectId, userStoryId, initialPayload, 
                 onFromChange={setFrom}
                 onToChange={setTo}
                 onClear={clearFilters}
+                savedViews={(
+                  <SavedViewsMenu
+                    projectId={projectId}
+                    kind="traceability"
+                    currentState={stateFromParams('traceability', filterStateToParams(filterState))}
+                    onApply={applySavedState}
+                    moduleIds={new Set(modules.map(m => m.id))}
+                  />
+                )}
               />
 
               {zeroMatch
