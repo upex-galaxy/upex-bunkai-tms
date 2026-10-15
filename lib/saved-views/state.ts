@@ -88,17 +88,25 @@ const SPECS: Record<ViewKind, Record<string, KeySpec>> = {
   },
 };
 
+// Only OWN keys are filters. A plain `SPECS[kind][key]` also resolves inherited
+// names (`constructor`, `toString`, `__proto__`, `hasOwnProperty`), which are
+// not filters and would make `spec.normalize` blow up with a TypeError on a
+// hostile or hand-edited state. Every lookup goes through here.
+function specFor(kind: ViewKind, key: string): KeySpec | undefined {
+  return Object.hasOwn(SPECS[kind], key) ? SPECS[kind][key] : undefined;
+}
+
 export function stateKeys(kind: ViewKind): string[] {
   return Object.keys(SPECS[kind]);
 }
 
 export function keyLabel(kind: ViewKind, key: string): string {
-  return SPECS[kind][key]?.label ?? key;
+  return specFor(kind, key)?.label ?? key;
 }
 
 // Canonical value for one key; null when it is unknown or invalid.
 export function normalizeValue(kind: ViewKind, key: string, raw: string, strict: boolean): string | null {
-  const spec = SPECS[kind][key];
+  const spec = specFor(kind, key);
   return spec ? spec.normalize(raw, strict) : null;
 }
 
@@ -128,7 +136,7 @@ export function mergeStateIntoParams(kind: ViewKind, params: URLSearchParams, st
   const merged = new URLSearchParams(params);
   for (const key of stateKeys(kind)) { merged.delete(key); }
   for (const [key, value] of Object.entries(state)) {
-    if (SPECS[kind][key]) { merged.set(key, value); }
+    if (specFor(kind, key)) { merged.set(key, value); }
   }
   return merged;
 }
