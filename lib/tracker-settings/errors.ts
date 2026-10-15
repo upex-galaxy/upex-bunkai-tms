@@ -9,7 +9,12 @@ import { TRACKER_SETTINGS_MESSAGES } from './validation';
 //   P0002  project_not_found              -> 404 not_found (also: spoofed actor,
 //                                            non-member, soft-deleted workspace;
 //                                            deliberately one code, no oracle)
-//   42501  forbidden                      -> 403 forbidden / admin_required. The
+//   42501  forbidden                      -> 403 forbidden / admin_required, ONLY when
+//                                            the message is the function's own
+//                                            'forbidden'. Any other 42501 (a missing
+//                                            table or function privilege, which an
+//                                            INVOKER function can now raise) is a 500,
+//                                            never a 403 that blames the user. The
 //                                            ROUTE proves the Project is visible
 //                                            to the caller through RLS before it
 //                                            lets this reach the client, so a 403
@@ -38,6 +43,9 @@ export function mapTrackerSettingsRpcError(error: { code?: string, message: stri
         details: { reason: 'not_found' },
       });
     case '42501':
+      if (error.message !== 'forbidden') {
+        break;
+      }
       throw new ApiError('forbidden', TRACKER_SETTINGS_MESSAGES.admin_required, {
         details: { reason: 'admin_required' },
       });
@@ -64,6 +72,7 @@ export function mapTrackerSettingsRpcError(error: { code?: string, message: stri
         details: { reason: 'queue_count_mismatch' },
       });
     default:
-      throw new ApiError('internal_error', 'The tracker settings could not be saved.');
+      break;
   }
+  throw new ApiError('internal_error', 'The tracker settings could not be saved.');
 }

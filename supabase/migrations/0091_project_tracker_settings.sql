@@ -18,9 +18,15 @@
 -- BK-371 implementation plan (Jira) and the BK-371 comments (PO Q1-Q6, Dev T1-T9).
 --
 -- RPC AUTHORIZATION (ADR-0012, rpc-authorization.md section 4, the six answers):
---   1. SECURITY DEFINER is required: one transaction spans project_tracker_settings
---      (upsert), bugs (bulk re-queue) and activity_log (audit), and the caller
---      holds no write path on bugs or activity_log under RLS.
+--   1. SECURITY INVOKER is enough, so it is used. The one transaction spans
+--      project_tracker_settings (upsert), bugs (bulk re-queue) and activity_log
+--      (audit), but its only grantee is service_role, which carries BYPASSRLS and
+--      holds the table privileges (granted explicitly below, not left to default
+--      privileges). INVOKER behaves identically for the route and, unlike DEFINER,
+--      bounds any future accidental grant to another role by that role's own RLS
+--      and table privileges instead of running as the owner. ADR-0012 (invariant)
+--      and ADR-0001 (Path A, "where transactional integrity demands an RPC") still
+--      govern: the function is an RPC for integrity, not for privilege.
 --   2. The identity parameter cannot be deleted: the only caller is the
 --      server-side admin client, where auth.uid() is NULL, so the explicit actor
 --      is the only identity that exists. The risk is removed differently: the
@@ -54,9 +60,18 @@
 --
 -- Qualification of QA roles (0085 / 0086 / 0088): the table is created by the
 -- migration owner, so the 0085 default privileges give qa_inspector_* the same
--- table CRUD they hold on every other table. The function is a volatile DEFINER
--- writer, so qa_inspector_ro is revoked explicitly (0088 mechanism). It is NOT
--- granted to `authenticated` or `anon` at all.
+-- table CRUD they hold on every other table. The function is a volatile writer,
+-- so qa_inspector_ro is revoked explicitly (0088 mechanism). It is NOT granted to
+-- `authenticated` or `anon` at all.
+--
+-- Concurrency (BK-371 T6, AI Tech Lead decision "two concurrent first saves"):
+-- every save of one Project is serialised by a transaction-scoped advisory lock
+-- taken right after authorization. Two admins saving at the same moment therefore
+-- run one after the other: the second sees the first's committed row, so it is a
+-- normal update (or a no-change save) and never an error. Without the lock, two
+-- FIRST saves that both confirm N > 0 queued Bugs both counted N, and the loser's
+-- bulk UPDATE found 0 rows and failed with 45414 (a 409). 45414 stays as the guard
+-- for a Bug filed while a save runs: Bug creation is not under this lock.
 
 -- ============================================================================
 -- 1. project_tracker_settings
@@ -140,6 +155,7 @@ create index if not exists bugs_sync_due_idx
 -- ============================================================================
 -- Order of operations (observable behaviour):
 --   0. Actor bind (auth.uid() is not null and differs from p_actor_user_id).
+--   0b. After authorization (step 1): take the per-Project advisory lock.
 --   1. Resolve the Project's workspace (live only) and the actor's active role.
 --      Anything missing -> P0002 project_not_found; a member below owner/admin
 --      -> 42501 forbidden.
@@ -170,7 +186,7 @@ create or replace function public.bunkai_upsert_project_tracker_settings(
 )
 returns jsonb
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -214,6 +230,11 @@ begin
   if v_role not in ('owner', 'admin') then
     raise exception 'forbidden' using errcode = '42501';
   end if;
+
+  -- 1b. Serialise every save of this Project (see the header). Taken only after
+  --     authorization so an unauthorised caller can never hold or probe the lock.
+  --     Released automatically at commit or rollback.
+  perform pg_advisory_xact_lock(hashtextextended('bunkai_project_tracker_settings:' || p_project_id::text, 0));
 
   -- 2. Normalise and validate. translate() upper-cases ASCII letters only, so a
   --    German sharp s never becomes SS (T4). The table CHECK repeats the rule.
@@ -350,16 +371,23 @@ $$;
 
 -- service_role ONLY (BK-43 ruling 12177 D7 precedent, BK-371 T2). `authenticated`
 -- and `anon` are revoked explicitly: Supabase default privileges grant EXECUTE on
--- every new public function to both, which is exactly what makes a DEFINER
--- function with a caller-supplied actor directly callable through PostgREST.
+-- every new public function to both, which is exactly what makes a function with
+-- a caller-supplied actor directly callable through PostgREST.
 revoke execute on function public.bunkai_upsert_project_tracker_settings(uuid, uuid, text, text, boolean, int)
   from public, anon, authenticated;
 grant execute on function public.bunkai_upsert_project_tracker_settings(uuid, uuid, text, text, boolean, int)
   to service_role;
 
+-- INVOKER runs with service_role's own privileges, so they are granted here
+-- explicitly instead of relying on default privileges (idempotent). service_role
+-- bypasses RLS; these are the table privileges the function body needs.
+grant select, insert, update on public.project_tracker_settings to service_role;
+grant select, update on public.bugs to service_role;
+grant select on public.projects, public.workspaces, public.workspace_members to service_role;
+grant insert on public.activity_log to service_role;
+
 -- 0088 mechanism: the 0085 default privilege hands every new function to BOTH QA
--- roles. This one is a volatile DEFINER writer, so the read-only role must not
--- keep it.
+-- roles. This one is a volatile writer, so the read-only role must not keep it.
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
