@@ -66,7 +66,7 @@ registry.registerPath({
   tags: ['Tracker settings'],
   summary: 'Save a Project\'s Jira defect-sync settings',
   description:
-    'Owner or admin only (scope `workspace:admin` plus a live role check). With `enabled: true` the connection check runs first and nothing is saved when it fails (422, `details.reason` `connection_check_failed`). Switching on, or changing the key or issue type while on, queues the Project\'s unsent defects; when that number is above 0 the call answers 409 (`details.reason` `queue_confirmation_required`, `details.queue_count` N) until `confirm_queue_count` equals N. A save that changes nothing writes and queues nothing. Last write wins.',
+    'Owner or admin only (scope `workspace:admin` plus a live role check). With `enabled: true` the connection check runs first and nothing is saved when it fails (422, `details.reason` `connection_check_failed`). Switching on, or changing the key or issue type while on, queues the Project\'s unsent defects; when that number is above 0 the call answers 409 (`details.reason` `queue_confirmation_required`, `details.queue_count` N) until `confirm_queue_count` equals N. A save that changes nothing writes and queues nothing. Last write wins. The check-on-save counts as the person\'s one running check: an overlapping check or save answers 429.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   parameters: [IdParam],
   request: {
@@ -80,6 +80,7 @@ registry.registerPath({
     404: { description: 'Project not found, or not visible to the caller.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     409: { description: 'The save would queue defects and the confirmation is missing or stale (`queue_confirmation_required`, `queue_count_mismatch`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed. `details.reason` is `invalid_destination_key`, `destination_required`, `invalid_issue_type` or `connection_check_failed` (with `details.check` `{ kind, message }`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    429: { description: 'Only with `enabled: true`: a connection check by the same person is already running (`details.reason` `check_in_progress`). Nothing was saved.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 
