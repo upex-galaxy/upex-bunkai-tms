@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-442 — DB-integration guard for the Run comparison
 // (`bunkai_compare_run`, migration 0092_run_compare.sql).
@@ -25,17 +25,23 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //     an anonymous caller get no data;
 //   * read-only: Runs, run_atcs, run_steps and the activity log are identical
 //     before and after comparing;
-//   * the occurrence-key trigger and the backfill rule;
+//   * the occurrence-key trigger (including a Run started through
+//     `bunkai_create_run`) and the backfill rule;
 //   * the 500-step budget (2 seconds, the PO's target).
 //
-// DB-dependent + env-gated. It needs `NEXT_PUBLIC_SUPABASE_URL`,
-// `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `QA_E2E_USER_EMAIL`
-// and `QA_E2E_USER_PASSWORD`, AND migration 0092 applied. When either is missing the
-// whole suite is registered as SKIPPED and says why at module load, so a skipped
-// run can never be mistaken for a pass. Spec Compliance Matrix rows that rest on
-// this suite are `pending-apply` until it has executed against an applied 0092.
-// (Cases that need a second workspace, or an ATC to point at, log and return when
-// that seed state is absent; the log names the proof that run did NOT provide.)
+// FAIL-CLOSED GATE. This file is evidence only when it EXECUTES. It is registered
+// as SKIPPED, with a loud warning at module load, in exactly two legitimate cases:
+//   1. there is no database environment at all (`NEXT_PUBLIC_SUPABASE_URL`,
+//      `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` absent: CI
+//      without DB credentials), or
+//   2. the database answers that `bunkai_compare_run` does not exist (migration
+//      0092 not applied yet).
+// In EVERY other case the suite FAILS instead of passing quietly: a missing
+// automation identity, a failed login, a fixture that cannot be seeded (the suite
+// seeds its OWN two workspaces, it never borrows existing data), or an unexpected
+// answer from the probe. Every test also asserts at least one expectation
+// (`expect.hasAssertions()`), so a test body that returns early cannot pass.
+// A run counts as evidence only if its output shows zero skipped tests.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -43,26 +49,32 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const qaEmail = process.env.QA_E2E_USER_EMAIL;
 const qaPassword = process.env.QA_E2E_USER_PASSWORD;
 
-const hasEnv = Boolean(url && anonKey && serviceKey && qaEmail && qaPassword);
-if (!hasEnv) {
-  console.warn('[compare-isolation] SKIPPED ENTIRELY: needs NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD. No assertion in this file ran.');
+const hasDbEnv = Boolean(url && anonKey && serviceKey);
+if (!hasDbEnv) {
+  console.warn('[compare-isolation] SKIPPED ENTIRELY: no database environment (needs NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY). No assertion in this file ran, so nothing here is evidence about the function.');
 }
 const RPC = 'bunkai_compare_run';
 
 // Is the function deployed? A deployed function answers P0002 to a caller with no
-// session (the service role) for any id; an undeployed one answers "function does
-// not exist" (42883 / PGRST202). Decided at module load so an undeployed function
-// shows up as SKIPPED tests, never as passes that asserted nothing.
+// session (the service role) for any id. "Function does not exist" (42883 /
+// PGRST202) is the one legitimate reason to skip; ANY other answer is a failure of
+// the file itself, never a quiet skip.
 let deployed = false;
-if (hasEnv) {
+if (hasDbEnv) {
   const probe = await createClient(url!, serviceKey!, { auth: { persistSession: false } })
     .rpc(RPC, { p_run_id: '00000000-0000-0000-0000-000000000000' });
-  deployed = probe.error?.code === 'P0002';
-  if (!deployed) {
-    console.warn(`[compare-isolation] SKIPPED ENTIRELY: ${RPC} is not deployed (${probe.error?.code ?? 'no error'}). Apply migration 0092_run_compare.sql. No assertion in this file ran, so nothing here is evidence about the function.`);
+  const code = probe.error?.code ?? 'no error';
+  if (code === 'P0002') {
+    deployed = true;
+  }
+  else if (code === '42883' || code === 'PGRST202') {
+    console.warn(`[compare-isolation] SKIPPED ENTIRELY: ${RPC} is not deployed (${code}). Apply migration 0092_run_compare.sql. No assertion in this file ran, so nothing here is evidence about the function.`);
+  }
+  else {
+    throw new Error(`[compare-isolation] unexpected answer from the ${RPC} deploy probe (${code}: ${probe.error?.message ?? 'no message'}). Expected P0002 (deployed) or 42883/PGRST202 (not deployed).`);
   }
 }
-const describeOrSkip = hasEnv && deployed ? describe : describe.skip;
+const describeOrSkip = hasDbEnv && deployed ? describe : describe.skip;
 const PREFIX = `bk442-compare-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 const BUDGET_MS = 2000;
@@ -92,14 +104,15 @@ interface Comparison {
 }
 interface Fixture {
   workspaceId: string
-  foreignWorkspaceId: string | null
+  foreignWorkspaceId: string
   qaUserId: string
   projectId: string
-  foreignProjectId: string | null
+  foreignProjectId: string
   envIds: { staging: string, production: string }
-  foreignEnvId: string | null
-  createdBy: string
-  foreignTestId: string | null
+  foreignEnvId: string
+  foreignTestId: string
+  atcId: string
+  chainTestId: string
   testRowIds: string[]
 }
 
@@ -107,99 +120,111 @@ function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
 }
 
+// Seeding failures are test failures: every step throws, nothing is swallowed.
+function must<T>(result: { data: T, error: { message: string } | null }, what: string): NonNullable<T> {
+  if (result.error || result.data === null || result.data === undefined) {
+    throw new Error(`[compare-isolation] fixture seed failed at "${what}": ${result.error?.message ?? 'no row returned'}`);
+  }
+  return result.data;
+}
+
 let fixture: Fixture | null = null;
-let skipReason: string | null = null;
 let qa: ReturnType<typeof service>;
 const seededRunIds: string[] = [];
 const keyA = crypto.randomUUID();
 const keyB = crypto.randomUUID();
 
+// A test that runs while the fixture is missing FAILS (it never passes vacuously).
+function need(): Fixture {
+  if (!fixture) {
+    throw new Error('[compare-isolation] the fixture was not seeded (see the beforeAll failure above); refusing to pass.');
+  }
+  return fixture;
+}
+
 describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => {
+  beforeEach(() => {
+    expect.hasAssertions();
+  });
+
   beforeAll(async () => {
+    if (!qaEmail || !qaPassword) {
+      throw new Error('[compare-isolation] QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD are required when a database environment is present (the function is INVOKER: only a real session proves it).');
+    }
     const db = service();
 
     qa = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: signIn, error: signInError } = await qa.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
+    const { data: signIn, error: signInError } = await qa.auth.signInWithPassword({ email: qaEmail, password: qaPassword });
     if (signInError || !signIn.session || !signIn.user) {
-      skipReason = `QA_E2E login failed (${signInError?.message ?? 'no session returned'}). NOTHING in this suite was asserted.`;
-      console.warn(`[compare-isolation] ${skipReason}`);
-      return;
+      throw new Error(`[compare-isolation] QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
     }
     const qaUserId = signIn.user.id;
 
-    const { data: memberships, error: membersError } = await db
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', qaUserId)
-      .eq('status', 'active');
-    if (membersError) { throw membersError; }
-    const own = (memberships ?? []).map(m => m.workspace_id as string);
-    if (own.length === 0) {
-      skipReason = 'the automation identity belongs to no workspace (seed state). NOTHING in this suite was asserted.';
-      console.warn(`[compare-isolation] ${skipReason}`);
-      return;
-    }
-    const workspaceId = own[0];
+    // The suite seeds BOTH workspaces itself. The identity is an active member of
+    // the first one and has no membership at all in the second, so the
+    // cross-workspace refusal never depends on what else lives in the database.
+    const ownWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-own`, name: `${PREFIX} own`, owner_user_id: qaUserId }).select('id').single(), 'own workspace');
+    const workspaceId = ownWs.id as string;
+    must(await db.from('workspace_members').insert({ workspace_id: workspaceId, user_id: qaUserId, role: 'owner', status: 'active' }).select('user_id').single(), 'own membership');
+    const foreignWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-foreign`, name: `${PREFIX} foreign`, owner_user_id: qaUserId }).select('id').single(), 'foreign workspace');
+    const foreignWorkspaceId = foreignWs.id as string;
 
-    const { data: allWorkspaces } = await db.from('workspaces').select('id');
-    const foreignWorkspaceId = (allWorkspaces ?? []).map(w => w.id as string).find(id => !own.includes(id)) ?? null;
-
-    const { data: owner } = await db.from('workspace_members').select('user_id').eq('workspace_id', workspaceId).eq('status', 'active').limit(1).single();
-    const createdBy = (owner?.user_id as string | undefined) ?? qaUserId;
-
-    const { data: project, error: projectError } = await db.from('projects')
-      .insert({ workspace_id: workspaceId, slug: `${PREFIX}-p`, name: `${PREFIX} project` })
-      .select('id')
-      .single();
-    if (projectError) { throw projectError; }
-    const { data: envs, error: envError } = await db.from('project_environments')
+    const project = must(await db.from('projects').insert({ workspace_id: workspaceId, slug: `${PREFIX}-p`, name: `${PREFIX} project` }).select('id').single(), 'project');
+    const envs = must(await db.from('project_environments')
       .insert([{ project_id: project.id, name: 'Staging' }, { project_id: project.id, name: 'Production' }])
-      .select('id, name');
-    if (envError) { throw envError; }
-    let foreignProjectId: string | null = null;
-    let foreignEnvId: string | null = null;
-    let foreignTestId: string | null = null;
-    if (foreignWorkspaceId) {
-      const { data: fOwner } = await db.from('workspace_members').select('user_id').eq('workspace_id', foreignWorkspaceId).eq('status', 'active').limit(1).maybeSingle();
-      const fp = await db.from('projects').insert({ workspace_id: foreignWorkspaceId, slug: `${PREFIX}-f`, name: `${PREFIX} foreign` }).select('id').single();
-      if (!fp.error && fOwner) {
-        foreignProjectId = fp.data.id as string;
-        const fe = await db.from('project_environments').insert({ project_id: foreignProjectId, name: 'Staging' }).select('id').single();
-        const ft = await db.from('tests').insert({ workspace_id: foreignWorkspaceId, title: `${PREFIX} foreign test`, created_by: fOwner.user_id }).select('id').single();
-        foreignEnvId = fe.data?.id as string | undefined ?? null;
-        foreignTestId = ft.data?.id as string | undefined ?? null;
-      }
-    }
+      .select('id, name'), 'environments');
+    const foreignProject = must(await db.from('projects').insert({ workspace_id: foreignWorkspaceId, slug: `${PREFIX}-f`, name: `${PREFIX} foreign project` }).select('id').single(), 'foreign project');
+    const foreignEnv = must(await db.from('project_environments').insert({ project_id: foreignProject.id, name: 'Staging' }).select('id').single(), 'foreign environment');
+    const foreignTest = must(await db.from('tests').insert({ workspace_id: foreignWorkspaceId, title: `${PREFIX} foreign test`, created_by: qaUserId }).select('id').single(), 'foreign test');
+
+    // One REAL ATC with two steps, chained into one Test: the Test a Run is started
+    // on through `bunkai_create_run`, and the ATC the trigger case points at.
+    const moduleRow = must(await db.from('modules').insert({ project_id: project.id, path: 'bk442', name: 'bk442' }).select('id').single(), 'module');
+    const story = must(await db.from('user_stories').insert({ module_id: moduleRow.id, title: `${PREFIX} story` }).select('id').single(), 'user story');
+    const atc = must(await db.from('atcs').insert({
+      project_id: project.id,
+      module_id: moduleRow.id,
+      user_story_id: story.id,
+      slug: `${PREFIX}-atc`,
+      title: `${PREFIX} atc`,
+      layer: 'UI',
+    }).select('id').single(), 'atc');
+    must(await db.from('atc_steps').insert([
+      { atc_id: atc.id, position: 0, content: 'open the page' },
+      { atc_id: atc.id, position: 1, content: 'check the result', expected: 'visible' },
+    ]).select('id'), 'atc steps');
+    const chainTest = must(await db.from('tests').insert({ workspace_id: workspaceId, title: `${PREFIX} chain`, created_by: qaUserId }).select('id').single(), 'chain test');
+    must(await db.from('test_steps').insert({ test_id: chainTest.id, atc_id: atc.id, position: 1 }).select('id').single(), 'chain test step');
 
     fixture = {
       workspaceId,
       foreignWorkspaceId,
       qaUserId,
       projectId: project.id as string,
-      foreignProjectId,
+      foreignProjectId: foreignProject.id as string,
       envIds: {
         staging: envs.find(e => e.name === 'Staging')!.id as string,
         production: envs.find(e => e.name === 'Production')!.id as string,
       },
-      foreignEnvId,
-      createdBy,
-      foreignTestId,
-      testRowIds: foreignTestId ? [foreignTestId] : [],
+      foreignEnvId: foreignEnv.id as string,
+      foreignTestId: foreignTest.id as string,
+      atcId: atc.id as string,
+      chainTestId: chainTest.id as string,
+      testRowIds: [foreignTest.id as string, chainTest.id as string],
     };
   });
 
   afterAll(async () => {
-    if (!fixture) { return; }
+    const f = fixture;
+    if (!f) { return; }
     const db = service();
-    // Runs first: runs.test_id is ON DELETE RESTRICT; run_atcs/run_steps cascade.
-    if (seededRunIds.length > 0) {
-      await db.from('runs').delete().in('id', seededRunIds);
-    }
-    await db.from('runs').delete().like('start_token', `${PREFIX}%`);
-    await db.from('tests').delete().in('id', fixture.testRowIds);
-    const projects = [fixture.projectId, ...(fixture.foreignProjectId ? [fixture.foreignProjectId] : [])];
-    // Project delete cascades project_environments.
-    await db.from('projects').delete().in('id', projects);
+    // Children before parents: runs.test_id and test_steps.atc_id are ON DELETE
+    // RESTRICT; run_atcs/run_steps cascade from runs; the workspaces cascade the rest.
+    await db.from('runs').delete().in('workspace_id', [f.workspaceId, f.foreignWorkspaceId]);
+    await db.from('tests').delete().in('id', f.testRowIds);
+    await db.from('projects').delete().in('id', [f.projectId, f.foreignProjectId]);
+    await db.from('workspace_members').delete().eq('workspace_id', f.workspaceId);
+    await db.from('workspaces').delete().in('id', [f.workspaceId, f.foreignWorkspaceId]);
   });
 
   // ---------------------------------------------------------------- seeding
@@ -209,24 +234,24 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   async function testFor(name: string): Promise<string> {
     const known = testsByName.get(name);
     if (known) { return known; }
-    const { data, error } = await service().from('tests').insert({ workspace_id: fixture!.workspaceId, title: `${PREFIX} ${name}`, created_by: fixture!.createdBy }).select('id').single();
+    const { data, error } = await service().from('tests').insert({ workspace_id: need().workspaceId, title: `${PREFIX} ${name}`, created_by: need().qaUserId }).select('id').single();
     if (error) { throw error; }
     testsByName.set(name, data.id as string);
-    fixture!.testRowIds.push(data.id as string);
+    need().testRowIds.push(data.id as string);
     return data.id as string;
   }
 
   let pairCounter = 0;
   async function seedRun(spec: RunSpec): Promise<string> {
-    const f = fixture!;
+    const f = need();
     const db = service();
     const foreign = spec.workspace === 'foreign';
     const status = spec.status ?? 'passed';
     const { data: run, error } = await db.from('runs').insert({
-      workspace_id: foreign ? f.foreignWorkspaceId! : f.workspaceId,
-      project_id: foreign ? f.foreignProjectId! : f.projectId,
-      test_id: foreign ? f.foreignTestId! : await testFor(spec.test),
-      environment_id: foreign ? f.foreignEnvId! : f.envIds[spec.env ?? 'staging'],
+      workspace_id: foreign ? f.foreignWorkspaceId : f.workspaceId,
+      project_id: foreign ? f.foreignProjectId : f.projectId,
+      test_id: foreign ? f.foreignTestId : await testFor(spec.test),
+      environment_id: foreign ? f.foreignEnvId : f.envIds[spec.env ?? 'staging'],
       status,
       executor_mode: 'human',
       abort_reason: status === 'aborted' ? (spec.abort ?? 'seeded abort') : null,
@@ -284,7 +309,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
 
   // ----------------------------------------------------------------- the rulebook
   it('worked example: five outcomes, counts add up, fixed group order', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { previousId, result } = await pair(
       { atcs: [{ key: keyA, title: 'Add item', steps: steps(['A1', 'passed'], ['A2', 'passed'], ['A3', 'failed']) }, { key: keyB, title: 'Pay', steps: steps(['B1', 'passed'], ['B2', 'failed'], ['B3', 'blocked'], ['B4', 'skipped']) }] },
       { status: 'failed', atcs: [{ key: keyA, title: 'Add item', steps: steps(['A1', 'passed'], ['A2', 'failed'], ['A3', 'failed']) }, { key: keyB, title: 'Pay', steps: steps(['B1', 'passed'], ['B2', 'passed'], ['B3', 'passed'], ['B4', 'passed']) }] },
@@ -308,7 +333,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('classifies all 16 status pairs: 4 comparable, 12 not comparable', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const all: StepStatus[] = ['passed', 'failed', 'blocked', 'skipped'];
     const grid = all.flatMap(p => all.map(t => ({ p, t })));
     const { result } = await pair(
@@ -324,17 +349,27 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('says nothing changed only when every shared step is an unchanged pass or still failing', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const same = [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'failed']) }];
     const { result } = await pair({ atcs: same }, { atcs: same });
     expect([result.nothing_changed, result.counts!.still_failing]).toEqual([true, 1]);
 
     const withNotComparable = await pair({ atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'blocked']) }] }, { atcs: same });
     expect(withNotComparable.result.nothing_changed).toBe(false);
+
+    // Equal shared outcomes plus ONE Added step: the sentence must be absent, the structural change shown.
+    const withAdded = await pair({ atcs: same }, { atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'failed'], ['extra', 'passed']) }] });
+    expect([withAdded.result.counts!.added, withAdded.result.counts!.shared, withAdded.result.counts!.unchanged_pass, withAdded.result.counts!.still_failing]).toEqual([1, 2, 1, 1]);
+    expect(withAdded.result.nothing_changed).toBe(false);
+
+    // Equal shared outcomes plus ONE Removed step: same.
+    const withRemoved = await pair({ atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'failed'], ['gone', 'passed']) }] }, { atcs: same });
+    expect([withRemoved.result.counts!.removed, withRemoved.result.counts!.shared]).toEqual([1, 2]);
+    expect(withRemoved.result.nothing_changed).toBe(false);
   });
 
   it('reports a fully reworded Run as no common step, never as nothing changed', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { result } = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: steps(['old1', 'passed'], ['old2', 'failed']) }] },
       { atcs: [{ key: keyA, title: 'x', steps: steps(['new1', 'passed'], ['new2', 'failed']) }] },
@@ -345,17 +380,19 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('pairs through re-save, move and reorder; only an inserted or deleted step is Added or Removed', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { result } = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: steps(['a', 'passed'], ['b', 'passed'], ['c', 'passed']) }, { key: keyB, title: 'y', steps: steps(['d', 'passed']) }] },
       { atcs: [{ key: keyB, title: 'y renamed', steps: steps(['d', 'passed']) }, { key: keyA, title: 'x', steps: steps(['c', 'passed'], ['NEW', 'failed'], ['a', 'passed']) }] },
     );
     expect([result.counts!.added, result.counts!.removed, result.counts!.unchanged_pass, result.counts!.shared]).toEqual([1, 1, 3, 3]);
+    // One step is shared AND one is Added/Removed: never "nothing changed".
+    expect([result.nothing_changed, result.no_common_steps]).toEqual([false, false]);
     expect(rowsOf(result).filter(r => r.startsWith('added') || r.startsWith('removed'))).toEqual(['added:NEW:->failed', 'removed:b:passed>-']);
   });
 
   it('treats null and empty input/expected as equal and any other change as Removed plus Added', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { result } = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: [{ content: 's', status: 'passed', input: null, expected: '' }, { content: 't', status: 'passed', input: 'in', expected: 'ex1' }] }] },
       { atcs: [{ key: keyA, title: 'x', steps: [{ content: 's', status: 'passed', input: '', expected: null }, { content: 't', status: 'passed', input: 'in', expected: 'ex2' }] }] },
@@ -364,7 +401,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('pairs a repeated ATC 1st-1st and 2nd-2nd and reports an occurrence added at the end as Added (database level)', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const two = (a: StepStatus, b: StepStatus): AtcSpec[] => [{ key: keyA, title: 'x', steps: steps(['s', a]) }, { key: keyA, title: 'x', steps: steps(['s', b]) }];
     const first = await pair({ atcs: two('passed', 'failed') }, { atcs: two('failed', 'failed') });
     expect([first.result.counts!.new_failure, first.result.counts!.still_failing, first.result.counts!.added, first.result.counts!.removed]).toEqual([1, 1, 0, 0]);
@@ -373,7 +410,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('pairs repeated wording only when both Runs hold the same number of copies', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const equal = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: steps(['same', 'passed'], ['same', 'failed'], ['other', 'passed']) }] },
       { atcs: [{ key: keyA, title: 'x', steps: steps(['same', 'failed'], ['same', 'passed'], ['other', 'passed']) }] },
@@ -388,7 +425,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
 
   // ----------------------------------------------------------------- baseline and states
   it('picks the latest earlier Run of the same Test AND Environment, any executor', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     const r1 = await seedRun({ test: 'case9', start: '2026-04-01T09:00:00.000Z', finish: '2026-04-01T09:10:00.000Z', atcs });
     await seedRun({ test: 'case9', env: 'production', start: '2026-04-02T09:00:00.000Z', atcs });
@@ -397,7 +434,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('skips a Run that was still open when the viewed Run started, even if it closed later', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     const r1 = await seedRun({ test: 'case10', start: '2026-05-01T08:00:00.000Z', finish: '2026-05-01T08:30:00.000Z', atcs });
     await seedRun({ test: 'case10', start: '2026-05-01T09:00:00.000Z', finish: '2026-05-01T09:40:00.000Z', atcs });
@@ -406,7 +443,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('never uses an in-progress Run as either side', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     const r1 = await seedRun({ test: 'case11', start: '2026-06-01T08:00:00.000Z', finish: '2026-06-01T08:10:00.000Z', atcs });
     const running = await seedRun({ test: 'case11', status: 'running', start: '2026-06-01T09:00:00.000Z', atcs: [{ key: keyA, title: 'x', steps: steps(['s', 'pending']) }] });
@@ -417,7 +454,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('answers no_previous for the only Run, the oldest Run and a Run whose earlier Runs are elsewhere', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     const only = await seedRun({ test: 'case12', env: 'production', start: '2026-07-01T09:00:00.000Z', finish: '2026-07-01T09:10:00.000Z', atcs });
     const first = await compare(only);
@@ -428,7 +465,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('treats strict "<" on finished versus started, a null finished_at, and equal started_at ties', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     // finished exactly when the viewed Run started: not earlier, so not a Previous run.
     await seedRun({ test: 'case13', env: 'production', start: '2026-08-01T08:00:00.000Z', finish: '2026-08-02T08:00:00.000Z', atcs });
@@ -444,7 +481,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('carries the abort reason and the skipped count, and never calls an unreached step newly fixed', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { previousId, result } = await pair(
       { status: 'aborted', abort: 'environment down', atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'failed'], ['s2', 'skipped'], ['s3', 'skipped']) }] },
       { atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'passed'], ['s3', 'passed']) }] },
@@ -460,7 +497,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('answers unreliable, with no counts, when an ATC occurrence key is missing (database level)', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { result } = await pair(
       { atcs: [{ key: null, title: 'x', steps: steps(['s', 'passed']) }] },
       { atcs: [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }] },
@@ -470,7 +507,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('keeps every shared step not comparable when a Run finished with nothing executed', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const { result } = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'passed']) }] },
       { atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'skipped'], ['s2', 'skipped']) }] },
@@ -480,40 +517,57 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
 
   // ----------------------------------------------------------------- the trigger
   it('fills the occurrence key from atc_id on insert and keeps an explicit key', async () => {
-    if (!fixture) { return warn(); }
+    const f = need();
     const db = service();
-    const { data: atc } = await db.from('atcs').select('id').eq('workspace_id', fixture.workspaceId).limit(1).maybeSingle();
-    const runId = await seedRun({ test: 'case17', start: '2026-10-01T00:00:00.000Z', atcs: [] });
+    const runId = await seedRun({ test: 'trigger', start: '2026-10-01T00:00:00.000Z', atcs: [] });
     const explicit = crypto.randomUUID();
-    const { data: kept, error: keptError } = await db.from('run_atcs')
+    const kept = must(await db.from('run_atcs')
       .insert({ run_id: runId, atc_id: null, source_atc_id: explicit, position: 1, atc_title: 'explicit' })
       .select('source_atc_id')
-      .single();
-    if (keptError) { throw keptError; }
+      .single(), 'explicit key row');
     expect(kept.source_atc_id).toBe(explicit);
-    const { data: bare } = await db.from('run_atcs')
+    const bare = must(await db.from('run_atcs')
       .insert({ run_id: runId, atc_id: null, position: 2, atc_title: 'null stays null' })
       .select('source_atc_id')
-      .single();
-    expect(bare?.source_atc_id).toBeNull();
-    if (!atc) {
-      console.warn('[compare-isolation] skipped the atc_id-to-key case: the workspace has no ATC to point at (seed state).');
-      return;
-    }
-    const { data: filled } = await db.from('run_atcs')
-      .insert({ run_id: runId, atc_id: atc.id as string, position: 3, atc_title: 'filled' })
+      .single(), 'bare row');
+    expect(bare.source_atc_id).toBeNull();
+    // A REAL ATC (seeded by this suite): the key is filled from atc_id.
+    const filled = must(await db.from('run_atcs')
+      .insert({ run_id: runId, atc_id: f.atcId, position: 3, atc_title: 'filled' })
       .select('atc_id, source_atc_id')
-      .single();
-    expect(filled?.source_atc_id).toBe(atc.id as string);
+      .single(), 'filled row');
+    expect(filled.source_atc_id).toBe(f.atcId);
+  });
+
+  it('snapshots the key when a Run is started through bunkai_create_run, and no existing row was left without one', async () => {
+    const f = need();
+    const db = service();
+    const started = await db.rpc('bunkai_create_run', {
+      p_actor_user_id: f.qaUserId,
+      p_test_id: f.chainTestId,
+      p_environment_id: f.envIds.staging,
+      p_executor_mode: 'human',
+      p_start_token: `${PREFIX}-created`,
+    });
+    if (started.error) { throw new Error(`bunkai_create_run failed: ${started.error.message}`); }
+    const runId = (started.data as { id: string }).id;
+    seededRunIds.push(runId);
+    const rows = must(await db.from('run_atcs').select('atc_id, source_atc_id').eq('run_id', runId), 'run_atcs of the started Run');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].atc_id).toBe(f.atcId);
+    expect(rows[0].source_atc_id).toBe(f.atcId);
+
+    // Post-apply backfill check over the WHOLE table: no row may have a non-null
+    // atc_id and no key. A null key with a null atc_id is the legitimate
+    // "unreliable" case and is not counted here.
+    const missing = await db.from('run_atcs').select('id', { count: 'exact', head: true }).is('source_atc_id', null).not('atc_id', 'is', null);
+    if (missing.error) { throw new Error(`backfill check failed: ${missing.error.message}`); }
+    expect(missing.count).toBe(0);
   });
 
   // ----------------------------------------------------------------- access and read-only
   it('gives a Run in a workspace the identity does not belong to the SAME P0002 as a missing Run', async () => {
-    if (!fixture) { return warn(); }
-    if (!fixture.foreignWorkspaceId || !fixture.foreignProjectId || !fixture.foreignEnvId || !fixture.foreignTestId) {
-      console.warn('[compare-isolation] skipped the cross-workspace case: no second workspace with an owner to seed into (seed state). Cross-tenant non-disclosure is NOT proven by this run.');
-      return;
-    }
+    need();
     const foreign = await seedRun({ test: 'case18', workspace: 'foreign', start: '2026-03-01T09:00:00.000Z', atcs: [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }] });
     const [foreignResult, missingResult] = await Promise.all([qa.rpc(RPC, { p_run_id: foreign }), qa.rpc(RPC, { p_run_id: ZERO_UUID })]);
     expect(foreignResult.error?.code).toBe('P0002');
@@ -528,7 +582,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('fails closed for a caller with no session: service role bypasses RLS but gets no data, anon cannot execute', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const atcs = [{ key: keyA, title: 'x', steps: steps(['s', 'passed']) }];
     const own = await seedRun({ test: 'case19', start: '2026-03-10T09:00:00.000Z', atcs });
     const asService = await service().rpc(RPC, { p_run_id: own });
@@ -543,7 +597,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
   });
 
   it('writes nothing: Runs, run_atcs, run_steps and the activity log are identical after comparing', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const db = service();
     const { currentId } = await pair(
       { atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'failed']) }] },
@@ -551,10 +605,10 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
     );
     const snapshot = async () => {
       const [runs, atcs, runSteps, activity] = await Promise.all([
-        db.from('runs').select('*').eq('workspace_id', fixture!.workspaceId).like('start_token', `${PREFIX}%`).order('id'),
+        db.from('runs').select('*').eq('workspace_id', need().workspaceId).like('start_token', `${PREFIX}%`).order('id'),
         db.from('run_atcs').select('*').in('run_id', seededRunIds).order('id'),
         db.from('run_steps').select('*, run_atcs!inner(run_id)').in('run_atcs.run_id', seededRunIds).order('id'),
-        db.from('activity_log').select('id', { count: 'exact', head: true }).eq('workspace_id', fixture!.workspaceId),
+        db.from('activity_log').select('id', { count: 'exact', head: true }).eq('workspace_id', need().workspaceId),
       ]);
       return JSON.stringify([runs.data, atcs.data, runSteps.data, activity.count]);
     };
@@ -566,7 +620,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
 
   // ----------------------------------------------------------------- budget
   it('compares two 500-step Runs within the 2 second budget', async () => {
-    if (!fixture) { return warn(); }
+    need();
     const keys = Array.from({ length: 10 }, () => crypto.randomUUID());
     const build = (flip: (atc: number, step: number) => StepStatus): AtcSpec[] => keys.map((key, a) => ({
       key,
@@ -585,8 +639,3 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
     expect(elapsed).toBeLessThanOrEqual(BUDGET_MS);
   });
 });
-
-// The suite never fails on missing migration / seed state — it says why and passes.
-function warn() {
-  console.warn(`[compare-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
-}
