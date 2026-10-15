@@ -58,7 +58,7 @@ const DestinationKeySchema = z
 
 // Same unit as the SQL `char_length`: code points, not UTF-16 units (an emoji is
 // 2 units in JS and 1 character in Postgres).
-function codePointLength(value: string): number {
+export function codePointLength(value: string): number {
   return [...value].length;
 }
 
