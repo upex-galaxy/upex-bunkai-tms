@@ -105,7 +105,12 @@ export function keyLabel(kind: ViewKind, key: string): string {
 }
 
 // Canonical value for one key; null when it is unknown or invalid.
-export function normalizeValue(kind: ViewKind, key: string, raw: string, strict: boolean): string | null {
+// `raw` is `unknown` on purpose: a stored `state` is jsonb, and a row written
+// straight through PostgREST can hold `{"severity":1}`, `{"tag":null}` or
+// `{"result":["fail"]}`. Anything that is not a string is invalid (dropped on
+// restore, refused on write); the per-key normalizers only ever see strings.
+export function normalizeValue(kind: ViewKind, key: string, raw: unknown, strict: boolean): string | null {
+  if (typeof raw !== 'string') { return null; }
   const spec = specFor(kind, key);
   return spec ? spec.normalize(raw, strict) : null;
 }
@@ -147,7 +152,7 @@ export type StateRefusal = 'state_empty' | 'state_invalid' | 'date_range_inverte
 // and a date range that is not inverted (the live Traceability view ignores an
 // inverted range, so saving one would save a no-op). Returns the canonical
 // state to store.
-export function validateStateForKind(kind: ViewKind, input: SavedViewState): { ok: true, state: SavedViewState } | { ok: false, reason: StateRefusal } {
+export function validateStateForKind(kind: ViewKind, input: Readonly<Record<string, unknown>>): { ok: true, state: SavedViewState } | { ok: false, reason: StateRefusal } {
   const state: SavedViewState = {};
   for (const [key, raw] of Object.entries(input)) {
     const value = normalizeValue(kind, key, raw, true);

@@ -31,11 +31,15 @@ const REASON_MODULE = 'the module was archived or removed';
 const REASON_VALUE = 'it is no longer offered';
 const REASON_PARTIAL = 'some of its values are no longer offered';
 
-export function resolveRestore(kind: ViewKind, saved: SavedViewState, live: LiveOptions = {}): RestoreResult {
+// `saved` is read as untrusted: it is jsonb, and a row written directly through
+// PostgREST can hold values that are not strings. Those drop like any value the
+// product no longer offers.
+export function resolveRestore(kind: ViewKind, saved: Readonly<Record<string, unknown>>, live: LiveOptions = {}): RestoreResult {
   const state: SavedViewState = {};
   const dropped: DroppedFilter[] = [];
+  const entries = typeof saved === 'object' && saved !== null ? Object.entries(saved) : [];
 
-  for (const [key, raw] of Object.entries(saved)) {
+  for (const [key, raw] of entries) {
     const label = keyLabel(kind, key);
     const lenient = normalizeValue(kind, key, raw, false);
     if (lenient === null) {
@@ -52,7 +56,7 @@ export function resolveRestore(kind: ViewKind, saved: SavedViewState, live: Live
     }
   }
 
-  const savedCount = Object.keys(saved).length;
+  const savedCount = entries.length;
   return { state, dropped, allDropped: savedCount > 0 && Object.keys(state).length === 0 };
 }
 

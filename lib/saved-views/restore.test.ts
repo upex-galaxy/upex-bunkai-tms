@@ -76,6 +76,39 @@ describe('resolveRestore', () => {
     expect(Object.getPrototypeOf(result.state)).toBe(Object.prototype);
   });
 
+  const NON_STRING: Array<[string, unknown]> = [['a number', 1], ['null', null], ['an array', ['fail']], ['an object', { a: 1 }], ['a boolean', true]];
+  const KEYS: Array<['traceability' | 'run_history' | 'bugs' | 'workbench', string]> = [
+    ['traceability', 'result'],
+    ['traceability', 'module'],
+    ['traceability', 'from'],
+    ['run_history', 'outcome'],
+    ['bugs', 'severity'],
+    ['bugs', 'status'],
+    ['workbench', 'tag'],
+    ['workbench', 'layer'],
+  ];
+  for (const [kind, key] of KEYS) {
+    test.each(NON_STRING)(`${kind}.${key} stored as %s is dropped with the normal notice, never a throw`, (_label, bad) => {
+      const saved = { [key]: bad } as Record<string, unknown>;
+      const result = resolveRestore(kind, saved);
+      expect(result.state).toEqual({});
+      expect(result.allDropped).toBe(true);
+      expect(result.dropped).toEqual([{ key, label: expect.any(String), reason: 'it is no longer offered' }]);
+      expect(restoreNotice(result)).toBe(SAVED_VIEW_COPY.allDropped);
+    });
+  }
+
+  test('a non-string value next to valid ones drops only itself', () => {
+    const result = resolveRestore('bugs', { severity: 'P1', status: 7 as unknown });
+    expect(result.state).toEqual({ severity: 'P1' });
+    expect(result.dropped.map(d => d.key)).toEqual(['status']);
+    expect(restoreNotice(result)).toBe('The Status filter no longer applies (it is no longer offered). The other saved filters were applied.');
+  });
+
+  test('a stored state that is not an object at all does not throw', () => {
+    expect(resolveRestore('bugs', null as unknown as Record<string, unknown>)).toEqual({ state: {}, dropped: [], allDropped: false });
+  });
+
   test('an empty saved state is not reported as fully degraded', () => {
     const result = resolveRestore('bugs', {});
     expect(result).toEqual({ state: {}, dropped: [], allDropped: false });
