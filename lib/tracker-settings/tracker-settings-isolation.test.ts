@@ -37,9 +37,26 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 //      refused with P0002 while a NULL uid (the service-role rail) still passes
 //      the bind.
 //
-// The migration is applied by the orchestrator AFTER review (Rule #20), so every
-// block detects an absent function / table and SKIPS LOUDLY (a `SKIPPED:` line on
-// stderr). It MUST be re-run after the apply. Missing env also skips.
+// FAIL CLOSED. Exactly two conditions may skip this file, and both are decided ONCE
+// at module level (`describe.skip`, reported as skipped, plus one loud
+// `SKIPPED:` warning on stderr):
+//   1. the environment is incomplete (a required variable is missing), and
+//   2. migration 0091 is not applied (PostgREST answers PGRST202 for the function
+//      or PGRST205 / 42P01 for the table). The migration is applied by the
+//      orchestrator AFTER review (Rule #20), so this is the expected state until then.
+// Everything else is a precondition failure and FAILS the suite instead of passing
+// with nothing asserted: a failed QA_E2E login, a failed seed insert, an unexpected
+// probe answer. Every test starts with `expect.hasAssertions()`, so a body that
+// asserts nothing cannot be green.
+//
+// No seed state is borrowed. The only identity is the declared QA_E2E account; the
+// throwaway workspaces, Projects, Bugs and memberships are all created with the
+// service role, and the "other user" of the actor-bind block is a random uuid
+// (auth.uid() is only compared, never resolved). No user is created.
+//
+// HOW TO READ A GREEN RUN. It clears the `pending-apply` rows of the compliance
+// matrix ONLY if the log shows zero `SKIPPED:` lines and every case ran (none
+// reported as skipped). A run that prints a `SKIPPED:` line proved nothing.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -49,8 +66,6 @@ const qaPassword = process.env.QA_E2E_USER_PASSWORD;
 const pgUrl = process.env.POSTGRES_URL_NON_POOLING ?? process.env.POSTGRES_URL;
 
 const hasEnv = Boolean(url && anonKey && serviceKey && qaEmail && qaPassword);
-const describeDb = hasEnv ? describe : describe.skip;
-const describePg = hasEnv && pgUrl ? describe : describe.skip;
 
 const RPC = 'bunkai_upsert_project_tracker_settings';
 const CONTROL_RPC = 'bunkai_normalize_test_tags';
@@ -82,12 +97,20 @@ function service() {
   return createClient<Database>(url!, serviceKey!, { auth: { persistSession: false } });
 }
 
-function skipped(reason: string): void {
-  console.warn(`SKIPPED: ${reason}`);
+// A precondition the suite needs but does not have is a FAILURE, never a skip.
+function need<T>(value: T | null | undefined, what: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(`Precondition failed: ${what}. This is a failure, not a skip.`);
+  }
+  return value;
 }
 
-// Is the function (and table) deployed? PostgREST answers PGRST202 for an unknown
-// function and 42P01 / PGRST205 for an unknown table.
+// PostgREST answers PGRST202 for an unknown function and PGRST205 (or 42P01) for
+// an unknown table. ONLY these mean "migration 0091 is not applied"; any other
+// answer from the probe is unexpected and throws, so it can never become a skip.
+const ABSENT_FUNCTION = new Set(['PGRST202', '42883']);
+const ABSENT_TABLE = new Set(['PGRST205', '42P01']);
+
 async function deploymentGap(db: Db): Promise<string | null> {
   const probe = await upsertProjectTrackerSettings(db, {
     actorUserId: NOBODY_UUID,
@@ -96,14 +119,60 @@ async function deploymentGap(db: Db): Promise<string | null> {
     issueTypeName: 'Bug',
     enabled: false,
   });
-  if (probe.error && probe.error.code !== 'P0002') {
-    return `${RPC} is not deployed yet (${probe.error.code ?? 'unknown'}). Apply migration 0091_project_tracker_settings.sql, then re-run this suite.`;
+  if (probe.error) {
+    if (probe.error.code && ABSENT_FUNCTION.has(probe.error.code)) {
+      return `${RPC} is not deployed yet (${probe.error.code}). Apply migration 0091_project_tracker_settings.sql, then re-run this suite.`;
+    }
+    if (probe.error.code !== 'P0002') {
+      throw new Error(`Unexpected answer from the ${RPC} deployment probe: ${probe.error.code ?? 'no code'} ${probe.error.message}`);
+    }
   }
   const table = await db.from('project_tracker_settings').select('project_id').limit(1);
   if (table.error) {
-    return `project_tracker_settings is not deployed yet (${table.error.code ?? 'unknown'}). Apply migration 0091_project_tracker_settings.sql, then re-run this suite.`;
+    if (table.error.code && ABSENT_TABLE.has(table.error.code)) {
+      return `project_tracker_settings is not deployed yet (${table.error.code}). Apply migration 0091_project_tracker_settings.sql, then re-run this suite.`;
+    }
+    throw new Error(`Unexpected answer from the project_tracker_settings probe: ${table.error.code ?? 'no code'} ${table.error.message}`);
   }
   return null;
+}
+
+// Decided once, for the whole file.
+const skipWhy: string | null = !hasEnv
+  ? 'a required environment variable is missing (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, QA_E2E_USER_EMAIL, QA_E2E_USER_PASSWORD).'
+  : await deploymentGap(service());
+const pgSkipWhy: string | null = skipWhy ?? (pgUrl ? null : 'POSTGRES_URL is missing, so block (C), the actor bind at step 0, cannot run.');
+if (skipWhy) {
+  console.warn(`SKIPPED: the whole BK-371 DB-integration suite did not run: ${skipWhy} It proves nothing until it runs with zero SKIPPED lines.`);
+}
+else if (pgSkipWhy) {
+  console.warn(`SKIPPED: BK-371 block (C) did not run: ${pgSkipWhy} It proves nothing until it runs with zero SKIPPED lines.`);
+}
+const describeDb = skipWhy ? describe.skip : describe;
+const describePg = pgSkipWhy ? describe.skip : describe;
+
+// Every workspace this file creates, so teardown removes them even when setup
+// failed half way (cascades remove projects, modules, bugs, settings, members and
+// the audit rows that carry the workspace id).
+const trackedWorkspaces: string[] = [];
+
+async function cleanupTracked(): Promise<void> {
+  if (trackedWorkspaces.length === 0) { return; }
+  const ids = trackedWorkspaces.splice(0, trackedWorkspaces.length);
+  const { error } = await service().from('workspaces').delete().in('id', ids);
+  if (error) {
+    throw new Error(`Teardown failed, throwaway workspaces may be left behind (${ids.join(', ')}): ${error.message}`);
+  }
+}
+
+// The declared automation identity, through the app's own password path.
+async function signInQa() {
+  const client = createClient<Database>(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
+  if (error || !data.session || !data.user) {
+    throw new Error(`Precondition failed: QA_E2E login failed (${error?.message ?? 'no session returned'}). This is a failure, not a skip.`);
+  }
+  return { client, userId: data.user.id };
 }
 
 async function seedWorkspace(db: Db, ownerUserId: string, label: string) {
@@ -113,6 +182,7 @@ async function seedWorkspace(db: Db, ownerUserId: string, label: string) {
     .select('id')
     .single();
   if (workspaceError) { throw workspaceError; }
+  trackedWorkspaces.push(workspace.id);
   return workspace.id;
 }
 
@@ -217,18 +287,9 @@ async function resetProject(db: Db, projectId: string) {
 
 describeDb('BK-371 (A) — the settings function is unreachable from a real authenticated session', () => {
   let session: ReturnType<typeof createClient<Database>> | null = null;
-  let skipReason: string | null = null;
 
   beforeAll(async () => {
-    const gap = await deploymentGap(service());
-    if (gap) { skipReason = gap; return; }
-    const client = createClient<Database>(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await client.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
-    if (error || !data.session) {
-      skipReason = `QA_E2E login failed (${error?.message ?? 'no session returned'}).`;
-      return;
-    }
-    session = client;
+    session = (await signInQa()).client;
   });
 
   afterAll(async () => {
@@ -237,13 +298,15 @@ describeDb('BK-371 (A) — the settings function is unreachable from a real auth
   });
 
   it('control: the session client is a genuine authenticated caller', async () => {
-    if (skipReason) { return skipped(skipReason); }
+    expect.hasAssertions();
+    need(session, 'the QA_E2E session');
     const { error } = await session!.rpc(CONTROL_RPC, { p_tags: ['Smoke'] });
     expect(error).toBeNull();
   });
 
   it('refuses a spoofed actor id with 42501 permission denied', async () => {
-    if (skipReason) { return skipped(skipReason); }
+    expect.hasAssertions();
+    need(session, 'the QA_E2E session');
     const { data, error } = await upsertProjectTrackerSettings(session!, {
       actorUserId: NOBODY_UUID,
       projectId: NOBODY_PROJECT_UUID,
@@ -257,7 +320,8 @@ describeDb('BK-371 (A) — the settings function is unreachable from a real auth
   });
 
   it('refuses the session\'s own id too: the grant, not the body, is what refuses (AC-4.6)', async () => {
-    if (skipReason) { return skipped(skipReason); }
+    expect.hasAssertions();
+    need(session, 'the QA_E2E session');
     const { data: userData } = await session!.auth.getUser();
     const { data, error } = await upsertProjectTrackerSettings(session!, {
       actorUserId: userData.user!.id,
@@ -272,8 +336,7 @@ describeDb('BK-371 (A) — the settings function is unreachable from a real auth
 });
 
 describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the real database', () => {
-  let fixture: Fixture | null = null;
-  let skipReason: string | null = null;
+  let fixtureOrNull: Fixture | null = null;
 
   const call = async (
     db: Db,
@@ -289,26 +352,12 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
 
   beforeAll(async () => {
     const db = service();
-    const gap = await deploymentGap(db);
-    if (gap) { skipReason = gap; return; }
-
-    const client = createClient<Database>(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: signIn, error: signInError } = await client.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
-    if (signInError || !signIn.user) {
-      skipReason = `QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`;
-      return;
-    }
-    const qaUserId = signIn.user.id;
+    // The QA identity is both the actor of every case and the owner of the
+    // throwaway workspaces: no second real user is needed, so no seed state is
+    // borrowed. A failed login throws and fails the suite.
+    const { client, userId: qaUserId } = await signInQa();
     await client.auth.signOut();
-
-    const { data: members, error: membersError } = await db.from('workspace_members').select('user_id').eq('status', 'active').limit(50);
-    if (membersError) { throw membersError; }
-    const others = [...new Set((members ?? []).map(m => m.user_id))].filter(id => id !== qaUserId);
-    if (others.length < 1) {
-      skipReason = 'need one real user id other than QA_E2E among active workspace members (seed state).';
-      return;
-    }
-    const ownerUserId = others[0];
+    const ownerUserId = qaUserId;
 
     const workspaceId = await seedWorkspace(db, ownerUserId, 'ws');
     const otherWorkspaceId = await seedWorkspace(db, ownerUserId, 'other');
@@ -316,7 +365,7 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
     const sibling = await seedProject(db, workspaceId, 'sibling');
     const foreign = await seedProject(db, otherWorkspaceId, 'foreign');
 
-    fixture = {
+    fixtureOrNull = {
       workspaceId,
       otherWorkspaceId,
       projectId: main.projectId,
@@ -331,17 +380,14 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   }, 30_000);
 
   afterAll(async () => {
-    if (!fixture) { return; }
-    const db = service();
-    // Cascades from workspaces cover projects, modules, bugs, settings, members.
-    await db.from('workspaces').delete().in('id', [fixture.workspaceId, fixture.otherWorkspaceId]);
-    await db.from('activity_log').delete().in('entity_id', [fixture.projectId, fixture.siblingProjectId, fixture.foreignProjectId]);
+    await cleanupTracked();
   });
 
   // ---- Authorization ------------------------------------------------------
 
   it('refuses a member and a viewer with 42501 and writes nothing (AC-4.2 / 4.3)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     for (const role of ['member', 'viewer'] as const) {
@@ -354,7 +400,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('answers an outsider, a missing Project and a foreign-workspace Project with the SAME P0002 (AC-4.4)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, null);
 
@@ -375,7 +422,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('refuses an admin of a soft-deleted workspace with P0002', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     await db.from('workspaces').update({ deleted_at: new Date().toISOString() }).eq('id', fixture.workspaceId);
@@ -390,7 +438,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('accepts an owner and an admin and returns the stored, normalised values (AC-4.1 / 3.3)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     for (const role of ['owner', 'admin'] as const) {
@@ -404,7 +453,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   // ---- Validation and the table backstop ----------------------------------
 
   it('rejects invalid keys, a missing key and a bad issue type before any write (AC-3.x)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     await setQaRole(db, fixture, 'admin');
@@ -427,7 +477,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('table CHECK is a backstop for any other writer (AC-3.4)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     for (const key of ['qa-1', ' QAS', 'x'.repeat(300)]) {
@@ -443,7 +494,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   // ---- Persistence, defaults and replacement ------------------------------
 
   it('starts with no row, persists on save, replaces the key and keeps one row (AC-6 / 1 / 7)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     await setQaRole(db, fixture, 'admin');
@@ -460,7 +512,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('accepts the same key on two Projects (AC-7.3)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     await resetProject(db, fixture.siblingProjectId);
@@ -472,14 +525,15 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('two parallel FIRST saves that both confirm N > 0 never error: the Bugs are queued once (T6, F6)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     for (const keys of [['QAT', 'QAT'], ['QAT', 'QAU']] as const) {
       const project = await freshProject(db, fixture, 'race');
       const first = await project.bug('open');
       const second = await project.bug('in_progress');
-      const [a, b] = await Promise.all(keys.map(async key => call(db, { actor: fixture!.qaUserId, projectId: project.projectId, key, enabled: true, confirm: 2 })));
+      const [a, b] = await Promise.all(keys.map(async key => call(db, { actor: fixture.qaUserId, projectId: project.projectId, key, enabled: true, confirm: 2 })));
       // The per-Project advisory lock serialises the two saves: the loser sees the
       // winner's committed row and Bugs, so it is a plain update, never 45414.
       expect(a.error).toBeNull();
@@ -493,7 +547,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('two parallel first saves never error: one row, the later write wins (AC-7.2)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await resetProject(db, fixture.projectId);
     await setQaRole(db, fixture, 'admin');
@@ -511,7 +566,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   // ---- Re-queue -----------------------------------------------------------
 
   it('queues exactly the PO Q1 predicate, scoped to this Project (AC-5.1 / 5.3 / 5.4)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     const project = await freshProject(db, fixture, 'matrix');
@@ -563,7 +619,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('a save that changes nothing writes nothing and queues nothing (AC-5.5)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     const project = await freshProject(db, fixture, 'nochange');
@@ -584,7 +641,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('switching off, or changing the key while off, queues nothing (AC-5.6 / 5.7)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     const project = await freshProject(db, fixture, 'off');
@@ -603,7 +661,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('off, on, off, on queues the Bug once, not twice (AC-5.8)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     const project = await freshProject(db, fixture, 'cycle');
@@ -620,7 +679,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('a key or issue type change while ON queues failed Bugs and needs the confirmation (AC-5.2 / 5.10)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     await setQaRole(db, fixture, 'admin');
     const project = await freshProject(db, fixture, 'while-on');
@@ -644,7 +704,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('a Project with zero Bugs enables with no confirmation and reports zero queued (AC-5.9)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     const empty = await seedProject(db, fixture.workspaceId, `empty-${Math.random().toString(36).slice(2, 6)}`);
     await setQaRole(db, fixture, 'admin');
@@ -654,7 +715,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it('writes one audit row per changing save, with actor, old and new values (T8)', async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     const project = await seedProject(db, fixture.workspaceId, `audit-${Math.random().toString(36).slice(2, 6)}`);
     await setQaRole(db, fixture, 'admin');
@@ -680,7 +742,8 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
   });
 
   it(`re-queues a ${LARGE_BACKLOG}-Bug backlog inside ${LARGE_BACKLOG_BUDGET_MS} ms (T5)`, async () => {
-    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the shared fixture (beforeAll did not complete)');
     const db = service();
     const big = await seedProject(db, fixture.workspaceId, `big-${Math.random().toString(36).slice(2, 6)}`);
     await setQaRole(db, fixture, 'admin');
@@ -688,13 +751,13 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
     const chunk = 1000;
     for (let offset = 0; offset < LARGE_BACKLOG; offset += chunk) {
       const rows = Array.from({ length: chunk }, (_, index) => ({
-        workspace_id: fixture!.workspaceId,
+        workspace_id: fixture.workspaceId,
         project_id: big.projectId,
         module_id: big.moduleId,
         title: `${PREFIX} backlog ${offset + index}`,
         severity: 'P3',
         status: 'open',
-        created_by: fixture!.ownerUserId,
+        created_by: fixture.ownerUserId,
       }));
       const { error } = await db.from('bugs').insert(rows);
       if (error) { throw error; }
@@ -714,35 +777,33 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
 
 describePg('BK-371 (C) — the actor bind fires at step 0 and keeps the NULL-uid service-role rail', () => {
   let sql: SQL | null = null;
-  let fixture: { workspaceId: string, projectId: string, adminId: string, otherId: string } | null = null;
-  let skipReason: string | null = null;
+  let fixtureOrNull: { workspaceId: string, projectId: string, adminId: string, otherId: string } | null = null;
 
   const ROLLBACK = 'bk371-rollback-sentinel';
 
   beforeAll(async () => {
     const db = service();
-    const gap = await deploymentGap(db);
-    if (gap) { skipReason = gap; return; }
-    const { data: members } = await db.from('workspace_members').select('user_id').eq('status', 'active').limit(50);
-    const ids = [...new Set((members ?? []).map(m => m.user_id))];
-    if (ids.length < 2) {
-      skipReason = 'need two distinct real user ids among active workspace members (seed state).';
-      return;
-    }
-    const [adminId, otherId] = ids as [string, string];
+    // The QA identity is the admin; the "other" uid only has to differ from it,
+    // because auth.uid() is compared, never resolved. No seed state is borrowed.
+    const { client, userId: adminId } = await signInQa();
+    await client.auth.signOut();
+    const otherId = crypto.randomUUID();
     const workspaceId = await seedWorkspace(db, adminId, 'bind');
     await db.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', adminId);
-    await db.from('workspace_members').insert({ workspace_id: workspaceId, user_id: adminId, role: 'admin', status: 'active' });
+    const { error: memberError } = await db.from('workspace_members').insert({ workspace_id: workspaceId, user_id: adminId, role: 'admin', status: 'active' });
+    if (memberError) { throw memberError; }
     const { projectId } = await seedProject(db, workspaceId, 'bind');
-    fixture = { workspaceId, projectId, adminId, otherId };
+    fixtureOrNull = { workspaceId, projectId, adminId, otherId };
     sql = new SQL(pgUrl!);
   }, 30_000);
 
   afterAll(async () => {
-    await sql?.end();
-    sql = null;
-    if (fixture) {
-      await service().from('workspaces').delete().eq('id', fixture.workspaceId);
+    try {
+      await sql?.end();
+    }
+    finally {
+      sql = null;
+      await cleanupTracked();
     }
   });
 
@@ -756,7 +817,7 @@ describePg('BK-371 (C) — the actor bind fires at step 0 and keeps the NULL-uid
         const claims = sub === null ? '' : JSON.stringify({ sub, role: 'authenticated' });
         await tx`select set_config('request.jwt.claims', ${claims}, true)`;
         try {
-          await tx`select public.bunkai_upsert_project_tracker_settings(${fixture!.adminId}::uuid, ${fixture!.projectId}::uuid, 'QAS', 'Bug', false, null)`;
+          await tx`select public.bunkai_upsert_project_tracker_settings(${need(fixtureOrNull, 'the bind fixture').adminId}::uuid, ${need(fixtureOrNull, 'the bind fixture').projectId}::uuid, 'QAS', 'Bug', false, null)`;
         }
         catch (error) {
           const err = error as { errno?: unknown, code?: unknown, message: string };
@@ -774,7 +835,9 @@ describePg('BK-371 (C) — the actor bind fires at step 0 and keeps the NULL-uid
   }
 
   it('a populated auth.uid() that differs from p_actor_user_id is refused with P0002', async () => {
-    if (!fixture || !sql) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the bind fixture (beforeAll did not complete)');
+    need(sql, 'the direct Postgres connection');
     const refused = await callWithUid(fixture.otherId);
     expect(refused).not.toBeNull();
     expect(refused!.code).toBe('P0002');
@@ -782,18 +845,23 @@ describePg('BK-371 (C) — the actor bind fires at step 0 and keeps the NULL-uid
   });
 
   it('a populated auth.uid() equal to the actor passes the bind', async () => {
-    if (!fixture || !sql) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    const fixture = need(fixtureOrNull, 'the bind fixture (beforeAll did not complete)');
+    need(sql, 'the direct Postgres connection');
     expect(await callWithUid(fixture.adminId)).toBeNull();
   });
 
   it('a NULL auth.uid() (the service-role rail) passes the bind', async () => {
-    if (!fixture || !sql) { return skipped(skipReason ?? 'no fixture'); }
+    expect.hasAssertions();
+    need(fixtureOrNull, 'the bind fixture (beforeAll did not complete)');
+    need(sql, 'the direct Postgres connection');
     expect(await callWithUid(null)).toBeNull();
   });
 
   it('the bind sits BEFORE the first table read, and authenticated / anon hold no EXECUTE', async () => {
-    if (!fixture || !sql) { return skipped(skipReason ?? 'no fixture'); }
-    const [fn] = await sql`
+    expect.hasAssertions();
+    need(fixtureOrNull, 'the bind fixture (beforeAll did not complete)');
+    const [fn] = await need(sql, 'the direct Postgres connection')`
       select pg_get_functiondef(p.oid) as def,
              has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_exec,
              has_function_privilege('anon', p.oid, 'EXECUTE') as anon_exec,
