@@ -1425,6 +1425,10 @@ export interface Database {
       }
       user_view_state: {
         Row: {
+          created_at: string
+          id: string
+          name: string
+          name_key: string | null
           project_id: string
           state: Json
           updated_at: string
@@ -1432,13 +1436,21 @@ export interface Database {
           view_kind: string
         }
         Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          name_key?: never
           project_id: string
-          state?: Json
+          state: Json
           updated_at?: string
-          user_id: string
+          user_id?: string
           view_kind: string
         }
         Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          name_key?: never
           project_id?: string
           state?: Json
           updated_at?: string
