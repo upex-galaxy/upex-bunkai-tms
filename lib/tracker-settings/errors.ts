@@ -74,5 +74,9 @@ export function mapTrackerSettingsRpcError(error: { code?: string, message: stri
     default:
       break;
   }
+  // Unmapped (including a 42501 that is not the function's own `forbidden`): log
+  // the raw code and message server-side for diagnosis, answer a fixed text. The
+  // original message never reaches the client (same convention as mapTestFilterError).
+  console.error('bunkai_upsert_project_tracker_settings RPC failed', { code: error.code, message: error.message });
   throw new ApiError('internal_error', 'The tracker settings could not be saved.');
 }

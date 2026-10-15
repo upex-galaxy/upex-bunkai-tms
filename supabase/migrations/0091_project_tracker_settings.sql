@@ -378,9 +378,19 @@ revoke execute on function public.bunkai_upsert_project_tracker_settings(uuid, u
 grant execute on function public.bunkai_upsert_project_tracker_settings(uuid, uuid, text, text, boolean, int)
   to service_role;
 
--- INVOKER runs with service_role's own privileges, so they are granted here
--- explicitly instead of relying on default privileges (idempotent). service_role
--- bypasses RLS; these are the table privileges the function body needs.
+-- INVOKER runs with service_role's own privileges, so the privileges for every
+-- table and column the function body touches are granted here explicitly instead
+-- of relying on default privileges (all idempotent). service_role bypasses RLS;
+-- these are the table privileges the body needs, nothing more.
+--
+-- The UPDATE on `bugs` also fires its triggers. `bugs_check_consistency` reads
+-- other tables (projects, modules, runs, atcs ...) with privileges service_role
+-- is not granted here: that works only because 0054_bug_assignment_status.sql
+-- re-created `bunkai_bugs_check_consistency()` as SECURITY DEFINER, so the trigger
+-- runs as its owner. This migration depends on that and does not widen anything
+-- for it. `bunkai_set_updated_at` is an INVOKER trigger function that touches no
+-- table. Schema USAGE on `auth` (for auth.uid() in the actor bind) is a Supabase
+-- default for service_role; the verification block below checks it.
 grant select, insert, update on public.project_tracker_settings to service_role;
 grant select, update on public.bugs to service_role;
 grant select on public.projects, public.workspaces, public.workspace_members to service_role;
@@ -403,3 +413,4 @@ $$;
 --   select has_function_privilege('anon',  ...same signature..., 'EXECUTE');                                -- false
 --   select has_function_privilege('qa_inspector_ro', ...same signature..., 'EXECUTE');                      -- false
 --   select has_function_privilege('service_role', ...same signature..., 'EXECUTE');                         -- true
+--   select has_schema_privilege('service_role', 'auth', 'usage');                                             -- true (auth.uid() in the actor bind)
