@@ -21,11 +21,15 @@ export const ViewKindSchema = z.enum(VIEW_KINDS, {
   error: 'view_kind must be one of traceability, run_history, bugs, workbench.',
 });
 
-// `String#trim` (all Unicode whitespace) happens before the checks, so what is
-// stored is what is compared, and the `name = btrim(name)` CHECK always holds.
+// NFC first, then `String#trim` (all Unicode whitespace), both before the
+// checks: what is stored is what is compared, the `name = btrim(name)` CHECK
+// always holds, and the NFC and NFD spellings of one name ("é" as one code
+// point or as "e" plus a combining accent) collide on the unique key instead of
+// coexisting. SQL does not normalise, so a direct PostgREST write is not
+// covered by this; the API is the supported path (see migration 0093's header).
 export const SavedViewNameSchema = z
   .string()
-  .transform(value => value.trim())
+  .transform(value => value.normalize('NFC').trim())
   .superRefine((value, ctx) => {
     if (hasControlCharacter(value)) {
       ctx.addIssue({ code: 'custom', message: 'Name cannot contain control characters.', params: { reason: 'name_invalid' } });

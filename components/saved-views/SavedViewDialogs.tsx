@@ -4,8 +4,8 @@ import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { useModalDismiss } from '@lib/hooks/use-modal-dismiss';
 import { countCodePoints, SAVED_VIEW_NAME_MAX } from '@lib/saved-views/constants';
-import { createSubmitGuard } from '@lib/saved-views/menu-state';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createSubmitGuard, nameFieldReducer } from '@lib/saved-views/menu-state';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 // BK-443 — the name dialog (save and rename) and the delete confirmation of the
 // Saved views control. Hand-built overlay on the same convention as
@@ -26,17 +26,13 @@ interface NameDialogProps {
 
 export function SavedViewNameDialog({ open, title, submitLabel, initialName, onSubmit, onClose, testId }: NameDialogProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [name, setName] = useState(initialName);
-  const [error, setError] = useState<string | null>(null);
+  const [{ name, error }, dispatch] = useReducer(nameFieldReducer, { name: initialName, error: null });
   const [submitting, setSubmitting] = useState(false);
   // A ref, not render state: two clicks in one frame read the same stale state.
   const guard = useMemo(() => createSubmitGuard(), []);
 
   useEffect(() => {
-    if (open) {
-      setName(initialName);
-      setError(null);
-    }
+    if (open) { dispatch({ type: 'reset', name: initialName }); }
   }, [open, initialName]);
 
   const requestClose = () => {
@@ -49,10 +45,9 @@ export function SavedViewNameDialog({ open, title, submitLabel, initialName, onS
   const submit = async () => {
     if (!guard.tryEnter()) { return; }
     setSubmitting(true);
-    setError(null);
     try {
       const message = await onSubmit(name);
-      if (message !== null) { setError(message); }
+      if (message !== null) { dispatch({ type: 'fail', message }); }
     }
     finally {
       guard.leave();
@@ -85,7 +80,7 @@ export function SavedViewNameDialog({ open, title, submitLabel, initialName, onS
           <Input
             autoFocus
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => dispatch({ type: 'edit', name: e.target.value })}
             aria-label="Saved view name"
             aria-invalid={error !== null}
             data-testid={`${testId}-input`}
