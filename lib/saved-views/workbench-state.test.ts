@@ -2,7 +2,7 @@ import type { WorkbenchFilters } from './workbench-state';
 import { ATC_FILTER_UNSPECIFIED } from '@lib/atcs/list-filters';
 import { describe, expect, test } from 'bun:test';
 import { mergeStateIntoParams, stateFromParams } from './state';
-import { EMPTY_WORKBENCH_FILTERS, workbenchFiltersFromState, workbenchStateFromFilters } from './workbench-state';
+import { EMPTY_WORKBENCH_FILTERS, workbenchAddress, workbenchFiltersFromState, workbenchStateFromFilters } from './workbench-state';
 
 // BK-443 — the project workbench's filters as a saved-view state.
 
@@ -71,5 +71,22 @@ describe('the workbench address', () => {
 
   test('a hand-edited address with junk is read leniently', () => {
     expect(stateFromParams('workbench', new URLSearchParams('layer=Mobile&priority=High'))).toEqual({ priority: 'High' });
+  });
+});
+
+describe('workbenchAddress', () => {
+  const at = (search: string) => ({ pathname: '/projects/demo', search });
+
+  test('is null when the address already shows the state, so history is not touched', () => {
+    expect(workbenchAddress(at('?tag=smoke'), { tag: 'smoke' })).toBeNull();
+    expect(workbenchAddress(at(''), {})).toBeNull();
+  });
+
+  test('writes the state and keeps the Command Palette\'s ?module=', () => {
+    expect(workbenchAddress(at('?module=abc'), { tag: 'smoke' })).toBe('/projects/demo?module=abc&tag=smoke');
+  });
+
+  test('an empty state removes the workbench keys but nothing else', () => {
+    expect(workbenchAddress(at('?module=abc&layer=UI&atc_q=login'), {})).toBe('/projects/demo?module=abc');
   });
 });

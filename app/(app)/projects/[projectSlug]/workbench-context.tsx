@@ -6,8 +6,10 @@ import type { Atc, ModuleTreeNode } from '@lib/types';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { EMPTY_ATC_LIST_FILTERS } from '@lib/atcs/list-filters';
-import { mergeStateIntoParams, stateFromParams } from '@lib/saved-views/state';
-import { workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
+import { clampSavedViewText } from '@lib/saved-views/constants';
+import { debounce } from '@lib/saved-views/debounce';
+import { stateFromParams } from '@lib/saved-views/state';
+import { workbenchAddress, workbenchFiltersFromState, workbenchStateFromFilters } from '@lib/saved-views/workbench-state';
 import { shortSlug } from '@lib/utils';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -19,6 +21,10 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 // this provider) stay mounted. Switching projects remounts the provider (the
 // shell is keyed by slug), so tabs reset by construction — out of scope to
 // persist tabs across sessions/devices.
+
+// How long the workbench waits after the last filter change before it rewrites
+// the address.
+const ADDRESS_WRITE_DELAY_MS = 250;
 
 export type WorkbenchView = 'tree' | 'table' | 'mindmap';
 
@@ -181,13 +187,17 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
 
   // BK-443 — toolbar text inputs, lifted so they can be saved, restored and
   // mirrored into the address.
-  const [atcQuery, setAtcQuery] = useState('');
-  const [tagInput, setTagInput] = useState('');
+  const [atcQuery, setAtcQueryRaw] = useState('');
+  const [tagInput, setTagInputRaw] = useState('');
+  // Capped at the control, in code points, so a saved view and the address never
+  // silently drop the tail of what the member typed.
+  const setAtcQuery = useCallback((value: string) => setAtcQueryRaw(clampSavedViewText(value)), []);
+  const setTagInput = useCallback((value: string) => setTagInputRaw(clampSavedViewText(value)), []);
   const savedViewState = workbenchStateFromFilters({ atcQuery, tagInput, atcFilters });
   const applySavedViewState = useCallback((state: SavedViewState) => {
     const next = workbenchFiltersFromState(state);
-    setAtcQuery(next.atcQuery);
-    setTagInput(next.tagInput);
+    setAtcQueryRaw(next.atcQuery);
+    setTagInputRaw(next.tagInput);
     setAtcFiltersState(next.atcFilters);
   }, []);
 
@@ -209,12 +219,16 @@ export function WorkbenchProvider({ children, ...data }: WorkbenchData & { child
   const savedViewKey = JSON.stringify(savedViewState);
   useEffect(() => {
     if (!hydrated || pathname !== indexHref) { return; }
-    const params = mergeStateIntoParams('workbench', new URLSearchParams(window.location.search), savedViewState);
-    const query = params.toString();
-    const url = `${window.location.pathname}${query ? `?${query}` : ''}`;
-    if (url !== `${window.location.pathname}${window.location.search}`) {
-      window.history.replaceState(null, '', url);
-    }
+    // Debounced: the text filters change at keystroke rate, and one history
+    // call per keystroke is wasteful and throttled by browsers. Saving and
+    // restoring read the STATE, never the address, so the delay changes nothing
+    // about them. Leaving the route or unmounting cancels a pending write.
+    const writer = debounce(() => {
+      const url = workbenchAddress(window.location, savedViewState);
+      if (url !== null) { window.history.replaceState(null, '', url); }
+    }, ADDRESS_WRITE_DELAY_MS);
+    writer.call();
+    return writer.cancel;
     // `savedViewKey` stands in for `savedViewState`, which is a fresh object each render.
   }, [hydrated, pathname, indexHref, savedViewKey]);
   const [openTabs, setOpenTabs] = useState<WorkbenchTab[]>(() => {

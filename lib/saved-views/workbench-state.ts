@@ -2,7 +2,7 @@ import type { AtcListFilters } from '@lib/atcs/list-filters';
 import type { AtcLayer, AtcPriority, AtcTechnique } from '@lib/types';
 import type { SavedViewState } from './state';
 import { ATC_FILTER_UNSPECIFIED, EMPTY_ATC_LIST_FILTERS } from '@lib/atcs/list-filters';
-import { FACET_UNSPECIFIED, stateFromParams } from './state';
+import { FACET_UNSPECIFIED, mergeStateIntoParams, stateFromParams } from './state';
 
 // BK-443 — the project workbench's filters as one saved-view state. The
 // workbench keeps them in three places (the ATC search text, the Test tag text,
@@ -51,4 +51,14 @@ export function workbenchFiltersFromState(state: SavedViewState): WorkbenchFilte
       layer: (state.layer as AtcLayer | undefined) ?? null,
     },
   };
+}
+
+// The address the project index should show for `state`: the current address
+// with the workbench keys rewritten and every foreign param kept (`?module=` is
+// the Command Palette's). `null` when the address already is that, so an
+// unchanged state never touches history.
+export function workbenchAddress(location: { pathname: string, search: string }, state: SavedViewState): string | null {
+  const query = mergeStateIntoParams('workbench', new URLSearchParams(location.search), state).toString();
+  const url = `${location.pathname}${query ? `?${query}` : ''}`;
+  return url === `${location.pathname}${location.search}` ? null : url;
 }

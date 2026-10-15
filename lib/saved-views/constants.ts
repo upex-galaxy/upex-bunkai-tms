@@ -36,3 +36,11 @@ export const SAVED_VIEW_COPY = {
 export function countCodePoints(value: string): number {
   return Array.from(value).length;
 }
+
+// The workbench's two free-text filters are capped at the control, in code
+// points, so what the member sees is always what a saved view and the address
+// keep (an over-long value used to be dropped from the state silently).
+export function clampSavedViewText(value: string): string {
+  const points = Array.from(value);
+  return points.length <= SAVED_VIEW_TEXT_MAX ? value : points.slice(0, SAVED_VIEW_TEXT_MAX).join('');
+}
