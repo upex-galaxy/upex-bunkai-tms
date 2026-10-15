@@ -1,8 +1,10 @@
 import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ApiError } from '@lib/api/error-envelope';
+import { ApiError, errorResponse } from '@lib/api/error-envelope';
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { parseSavedViewInput } from './errors';
 import { createSavedView, deleteSavedView, listSavedViews, updateSavedView } from './queries';
+import { SavedViewCreateBodySchema, SavedViewPatchBodySchema } from './validation';
 
 // BK-443 — the saved-views queries, driven with a recording client. The
 // database policies are the real guard (proved in saved-views-rls.test.ts);
@@ -245,5 +247,46 @@ describe('deleteSavedView', () => {
     const e = await failure(async () => deleteSavedView(db, scope));
     expect(e.status).toBe(404);
     expect((e.details as { reason: string }).reason).toBe('saved_view_not_found');
+  });
+});
+
+// The route does exactly this: parse the body, call the query, and let the
+// gateway turn the thrown ApiError into the envelope. A hostile state key must
+// come out as the documented 422, never a 500 leaking JavaScript text.
+describe('hostile state keys answer the documented 422 envelope', () => {
+  const scope = { userId: USER, projectId: PROJECT };
+
+  async function envelopeFor(run: () => Promise<unknown>) {
+    const error = await failure(run);
+    const response = errorResponse(error);
+    return { status: response.status, body: await response.json() as { error: { code: string, message: string, details?: { reason?: string } } } };
+  }
+
+  test.each(['constructor', 'toString', 'hasOwnProperty'])('POST with state key "%s"', async (key) => {
+    const { db, calls } = fakeDb([]);
+    const body = parseSavedViewInput(SavedViewCreateBodySchema, JSON.parse(`{"view_kind":"bugs","name":"x","state":{"${key}":"y"}}`));
+    const { status, body: envelope } = await envelopeFor(async () => createSavedView(db, scope, body));
+    expect(status).toBe(422);
+    expect(envelope.error.code).toBe('validation_failed');
+    expect(envelope.error.details?.reason).toBe('state_invalid');
+    expect(JSON.stringify(envelope)).not.toContain('TypeError');
+    expect(calls).toHaveLength(0);
+  });
+
+  test('POST whose only key is an own __proto__ is the empty-state 422, not a 500', async () => {
+    const { db } = fakeDb([]);
+    const body = parseSavedViewInput(SavedViewCreateBodySchema, JSON.parse('{"view_kind":"bugs","name":"x","state":{"__proto__":"y"}}'));
+    const { status, body: envelope } = await envelopeFor(async () => createSavedView(db, scope, body));
+    expect(status).toBe(422);
+    expect(envelope.error.details?.reason).toBe('state_empty');
+  });
+
+  test('PATCH with state key "constructor" answers 422 after reading the view\'s surface', async () => {
+    const { db, calls } = fakeDb([{ data: { view_kind: 'bugs' }, error: null }]);
+    const body = parseSavedViewInput(SavedViewPatchBodySchema, JSON.parse('{"state":{"constructor":"y"}}'));
+    const { status, body: envelope } = await envelopeFor(async () => updateSavedView(db, { ...scope, viewId: VIEW }, body));
+    expect(status).toBe(422);
+    expect(envelope.error.details?.reason).toBe('state_invalid');
+    expect(calls).toHaveLength(1);
   });
 });
