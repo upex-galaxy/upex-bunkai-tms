@@ -251,6 +251,7 @@
 - **Input**: `view_state` (JSON: active filters, sort, expanded nodes, columns).
 - **Processing**: Upsert `user_view_state` per (user_id, project_id, view_kind).
 - **Output**: 200 `{ ok }`.
+- **Amended by BK-443 (2026-10-15)**: the single-slot upsert above is superseded for filtered lists by NAMED saved views (several per member, project and surface; `POST`/`GET`/`PATCH`/`DELETE` `/api/v1/projects/{id}/saved-views`, see `business-api-map.md` §4.12b). Sort order, expanded nodes and columns are not part of a saved view.
 
 ---
 
