@@ -31,6 +31,15 @@ describe('mapTrackerSettingsRpcError', () => {
     expect((error.details as { reason: string }).reason).toBe('admin_required');
   });
 
+  it('does NOT blame the user for a 42501 that is not the function\'s own forbidden (missing privilege)', () => {
+    for (const message of ['permission denied for table project_tracker_settings', 'permission denied for function bunkai_upsert_project_tracker_settings']) {
+      const error = caught('42501', message);
+      expect(error.status).toBe(500);
+      expect(error.code).toBe('internal_error');
+      expect(error.message).not.toContain('permission');
+    }
+  });
+
   it.each([
     ['45410', 'invalid_destination_key', TRACKER_SETTINGS_MESSAGES.invalid_destination_key],
     ['45411', 'destination_required', TRACKER_SETTINGS_MESSAGES.destination_required],
