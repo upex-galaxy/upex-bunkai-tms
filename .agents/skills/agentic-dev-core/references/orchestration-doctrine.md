@@ -59,7 +59,7 @@ A gate keyed on a value the gated agent itself writes is FAIL-OPEN: the agent ca
 2. Treat a **missing, empty, or malformed citation as the blocking value**, regardless of what the value field says.
 3. Name explicitly WHO may fill the field. When the decision belongs to another skill, the gated agent may only emit the blocking value; only the hand-off may resolve it.
 
-**Observed failure mode**: a planner emitted a plausible chain-strategy label without running the decision tree, which turned off the gate meant to force that very decision.
+**Observed failure mode** (on the former chained-PR forecast gate, since removed in favour of one PR per story): a planner emitted a plausible label without running the decision tree, which turned off the gate meant to force that very decision.
 
 ### Value provenance (config claims cite the file they came from)
 
