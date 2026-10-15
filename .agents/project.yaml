@@ -54,6 +54,17 @@ updater:
     - .env.example # Bunkai-only DBHUB MCP block (dbhub.toml placeholders)
     - scripts/sync-jira-issues.ts # BK-502 fix: --include-comments for non-coverable types (embedCommentsSection); upstream sync reverted it twice (d383dd3c, a5ba427d)
     - scripts/sync-jira-issues.test.ts # BK-502 regression tests for the embedded ## Comments section; reverted together with the script
+    - .agents/skills/sprint-development/SKILL.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/sprint-development/references/workload-forecast.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/sprint-development/references/review-pr.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/sprint-development/references/sprint-report.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/sprint-development/references/staging-deploy.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/git-flow-master/SKILL.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/git-flow-master/references/branching-strategies.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/git-flow-master/references/pr-templating.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/git-flow-master/evals/evals.json # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/agentic-dev-core/references/skill-composition-strategy.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
+    - .agents/skills/agentic-dev-core/references/orchestration-doctrine.md # Bunkai one-PR-per-story doctrine (replaces upstream chained-PR gate)
 
 # Variables declared above that are consumed OUTSIDE the {{TEMPLATE}} system
 # (env vars in scripts/, shell `yq` reads embedded in skill docs, etc.).
