@@ -18,7 +18,7 @@ import {
   BUG_STATUS_VALUES,
   BUGS_LIST_PAGE_SIZE,
 } from '@lib/bugs/constants';
-import { bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
+import { bugsFiltersDiffer, bugsFiltersFromSearchParams, bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
 import {
   BUG_LIST_EMPTY_DESCRIPTION,
   BUG_LIST_EMPTY_TITLE,
@@ -385,6 +385,23 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
     const next = bugsFiltersFromState(saved);
     applyFilters(next.moduleId, new Set(next.statuses), new Set(next.severities));
   };
+
+  // BK-443 — reconcile with the address once on mount. Back after opening a bug
+  // re-mounts this list from the server props its history entry was rendered
+  // with (the unfiltered first page, when the filters were typed in after the
+  // page loaded), while `history.replaceState` left the filtered address in
+  // place. Without this the chips and rows could disagree with the URL.
+  // Mount-only by design, the Traceability pattern.
+  useEffect(() => {
+    const raw: Record<string, string> = {};
+    for (const [key, value] of new URLSearchParams(window.location.search)) {
+      if (!Object.hasOwn(raw, key)) { raw[key] = value; }
+    }
+    const fromAddress = bugsFiltersFromSearchParams(raw, new Set(modules.map(m => m.id)));
+    if (bugsFiltersDiffer(fromAddress, initialFilters)) {
+      applyFilters(fromAddress.moduleId, new Set(fromAddress.statuses), new Set(fromAddress.severities));
+    }
+  }, []);
 
   const toggleStatus = (value: BugStatus) => {
     const next = new Set(statuses);

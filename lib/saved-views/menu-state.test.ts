@@ -1,7 +1,11 @@
 import type { SavedViewItem } from './view-model';
 import { describe, expect, test } from 'bun:test';
 import {
+  afterDelete,
+  afterWrite,
   createSubmitGuard,
+  nameFieldReducer,
+  pruneNotice,
   removeView,
   resolveActiveView,
   sortViews,
@@ -99,5 +103,67 @@ describe('createSubmitGuard', () => {
     guard.tryEnter();
     guard.leave();
     expect(guard.tryEnter()).toBe(true);
+  });
+});
+
+describe('pruneNotice', () => {
+  const raisedForEmpty = { message: 'Nothing to save: apply at least one filter first.', forKey: stateKey({}) };
+
+  test('keeps a notice while the surface holds the state it was raised for', () => {
+    expect(pruneNotice(raisedForEmpty, {})).toBe(raisedForEmpty);
+  });
+
+  test('drops it for good on the next edit, so it cannot come back', () => {
+    // Nothing to save -> the member applies a filter -> then presses Reset.
+    let notice: typeof raisedForEmpty | null = raisedForEmpty;
+    notice = pruneNotice(notice, { severity: 'P1' });
+    expect(notice).toBeNull();
+    notice = pruneNotice(notice, {});
+    expect(notice).toBeNull();
+    expect(visibleNotice(notice, {})).toBeNull();
+  });
+
+  test('covers the degraded-restore notices the same way', () => {
+    const degraded = { message: 'The Module filter no longer applies', forKey: stateKey({ severity: 'P1' }) };
+    expect(pruneNotice(degraded, { severity: 'P1' })).toBe(degraded);
+    expect(pruneNotice(degraded, { severity: 'P2' })).toBeNull();
+  });
+
+  test('is null for no notice', () => {
+    expect(pruneNotice(null, {})).toBeNull();
+  });
+});
+
+describe('afterWrite and afterDelete', () => {
+  test('with a loaded list the write is merged in order and no reload is needed', () => {
+    const change = afterWrite([view('1', 'Alpha'), view('3', 'Gamma')], view('2', 'Beta'));
+    expect(change.views?.map(v => v.name)).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(change.reload).toBe(false);
+  });
+
+  test('with no list loaded the one saved item does not become the list; a reload is asked for', () => {
+    expect(afterWrite(null, view('2', 'Beta'))).toEqual({ views: null, reload: true });
+  });
+
+  test('a delete removes the view from a loaded list and reloads an unloaded one', () => {
+    expect(afterDelete([view('1', 'A'), view('2', 'B')], '1')).toEqual({ views: [view('2', 'B')], reload: false });
+    expect(afterDelete(null, '1')).toEqual({ views: null, reload: true });
+  });
+});
+
+describe('nameFieldReducer', () => {
+  test('a failure shows its message under the current text', () => {
+    expect(nameFieldReducer({ name: 'Taken', error: null }, { type: 'fail', message: 'That name is already used on this list.' }))
+      .toEqual({ name: 'Taken', error: 'That name is already used on this list.' });
+  });
+
+  test('editing the name clears the error raised for the previous text', () => {
+    expect(nameFieldReducer({ name: 'Taken', error: 'That name is already used on this list.' }, { type: 'edit', name: 'Taken 2' }))
+      .toEqual({ name: 'Taken 2', error: null });
+  });
+
+  test('reopening the dialog starts from the given name with no error', () => {
+    expect(nameFieldReducer({ name: 'x', error: 'boom' }, { type: 'reset', name: 'Critical bugs' }))
+      .toEqual({ name: 'Critical bugs', error: null });
   });
 });

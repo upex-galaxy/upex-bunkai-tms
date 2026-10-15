@@ -61,3 +61,9 @@ export function bugsFiltersFromSearchParams(
     moduleId: filters.moduleId !== null && knownModuleIds.has(filters.moduleId) ? filters.moduleId : null,
   };
 }
+
+// Same filters, whatever the order the lists were built in.
+export function bugsFiltersDiffer(a: BugsListFilters, b: BugsListFilters): boolean {
+  const key = (f: BugsListFilters) => JSON.stringify(bugsStateFromFilters(f));
+  return key(a) !== key(b);
+}
