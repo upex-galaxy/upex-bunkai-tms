@@ -79,7 +79,9 @@ interface Fixture {
   wsForeign: string
   projectA: string // in wsOwn, `me` is an active member
   projectB: string // in wsOwn, second project (same-name-other-project case)
-  projectForeign: string // in wsForeign, `me` is NOT a member
+  projectForeign: string // in wsForeign, `me` has no membership row (a removed member)
+  projectSuspended: string // `me` is a member of this workspace with status 'suspended'
+  projectDeleted: string // `me` is an active member, but the workspace is soft-deleted
 }
 
 let service: Db;
@@ -95,18 +97,31 @@ async function must<T>(label: string, p: PromiseLike<{ data: T, error: { message
   return data;
 }
 
-async function seedWorkspace(owner: string, tag: string, memberUserIds: string[]): Promise<string> {
+// Workspaces to soft-delete once their project has been seeded.
+const pendingSoftDelete: string[] = [];
+
+async function seedWorkspace(
+  owner: string,
+  tag: string,
+  members: Array<{ userId: string, status?: 'active' | 'suspended' }>,
+  opts: { softDeleted?: boolean } = {},
+): Promise<string> {
   const ws = await must('workspace insert', service.from('workspaces')
     .insert({ name: `${PREFIX}-${tag}`, slug: `${PREFIX}-${tag}`, owner_user_id: owner })
     .select('id')
     .single());
   createdWorkspaces.push(ws.id);
-  for (const userId of memberUserIds) {
-    // A trigger may already have enrolled the owner: ignore a duplicate.
+  for (const member of members) {
+    // A trigger may already have enrolled the owner: upsert, never duplicate.
     const { error } = await service.from('workspace_members')
-      .upsert({ workspace_id: ws.id, user_id: userId, role: 'owner', status: 'active' }, { onConflict: 'workspace_id,user_id' });
+      .upsert(
+        { workspace_id: ws.id, user_id: member.userId, role: 'owner', status: member.status ?? 'active' },
+        { onConflict: 'workspace_id,user_id' },
+      );
     if (error) { throw new Error(`BK-443 fixture: member upsert failed: ${error.message}`); }
   }
+  // Soft-delete AFTER the projects exist: callers seed their project first.
+  if (opts.softDeleted) { pendingSoftDelete.push(ws.id); }
   return ws.id;
 }
 
@@ -167,8 +182,13 @@ describeOrSkip('BK-443 — saved views enforced by the database', () => {
     }
     const other = others[0].user_id;
 
-    const wsOwn = await seedWorkspace(me, 'own', [me]);
-    const wsForeign = await seedWorkspace(other, 'foreign', [other]);
+    const wsOwn = await seedWorkspace(me, 'own', [{ userId: me }]);
+    const wsForeign = await seedWorkspace(other, 'foreign', [{ userId: other }]);
+    // `workspace_members.status` allows only active | invited | suspended
+    // (0001), so a removed member is either no row (wsForeign) or a suspended
+    // one; a soft-deleted workspace keeps its active membership rows.
+    const wsSuspended = await seedWorkspace(other, 'suspended', [{ userId: other }, { userId: me, status: 'suspended' }]);
+    const wsDeleted = await seedWorkspace(other, 'deleted', [{ userId: other }, { userId: me }], { softDeleted: true });
     fx = {
       me,
       other,
@@ -177,7 +197,13 @@ describeOrSkip('BK-443 — saved views enforced by the database', () => {
       projectA: await seedProject(wsOwn, 'a'),
       projectB: await seedProject(wsOwn, 'b'),
       projectForeign: await seedProject(wsForeign, 'f'),
+      projectSuspended: await seedProject(wsSuspended, 's'),
+      projectDeleted: await seedProject(wsDeleted, 'd'),
     };
+    for (const id of pendingSoftDelete) {
+      const { error } = await service.from('workspaces').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+      if (error) { throw new Error(`BK-443 fixture: soft-delete failed: ${error.message}`); }
+    }
   });
 
   afterAll(async () => {
@@ -278,6 +304,16 @@ describeOrSkip('BK-443 — saved views enforced by the database', () => {
     expect((await insertMine({ project_id: fx.projectA, name: viewName('Big'), state: { tag: 'x'.repeat(4100) } })).error?.code).toBe('23514');
   });
 
+  it('holds the state size boundary exactly: 4096 bytes accepted, 4097 refused', async () => {
+    expect.hasAssertions();
+    // jsonb renders {"tag": "<n chars>"}: 9 bytes of prefix and 2 of suffix around
+    // the value, so an ASCII value of n characters is n + 11 bytes.
+    const inside = await insertMine({ project_id: fx.projectA, view_kind: 'workbench', name: viewName('Edge 4096'), state: { tag: 'x'.repeat(4096 - 11) } });
+    expect(inside.error).toBeNull();
+    const over = await insertMine({ project_id: fx.projectA, view_kind: 'workbench', name: viewName('Edge 4097'), state: { tag: 'x'.repeat(4097 - 11) } });
+    expect(over.error?.code).toBe('23514');
+  });
+
   it('caps a surface at 25 views per member and project (45100 on the 26th)', async () => {
     expect.hasAssertions();
     for (let i = 0; i < 25; i += 1) {
@@ -287,8 +323,14 @@ describeOrSkip('BK-443 — saved views enforced by the database', () => {
     const over = await insertMine({ project_id: fx.projectB, view_kind: 'traceability', name: 'cap-26', state: { result: 'pass' } });
     expect(over.error?.code).toBe('45100');
     // Rename and update stay possible at the cap.
-    const { error } = await mine.from('user_view_state').update({ state: { result: 'fail' } }).eq('project_id', fx.projectB).eq('view_kind', 'traceability').eq('name', 'cap-0');
+    const { data, error } = await mine.from('user_view_state')
+      .update({ state: { result: 'fail' } })
+      .eq('project_id', fx.projectB)
+      .eq('view_kind', 'traceability')
+      .eq('name', 'cap-0')
+      .select('id');
     expect(error).toBeNull();
+    expect(data).toHaveLength(1);
   });
 
   it('holds the cap under 30 parallel inserts: exactly 25 succeed, 5 are refused', async () => {
@@ -329,17 +371,43 @@ describeOrSkip('BK-443 — saved views enforced by the database', () => {
     expect(still.data?.name).not.toBe('hijacked');
   });
 
-  it('hides a view whose project is in a workspace the owner no longer belongs to, even from its owner', async () => {
-    expect.hasAssertions();
-    const id = await seedRowFor(fx.me, fx.projectForeign, viewName('Leftover'));
+  // E3 — a member who loses access keeps a leftover row that nobody may read,
+  // change or delete, the owner of that row included. Three ways to lose access:
+  // the membership row is gone, the membership is suspended, or the workspace
+  // is soft-deleted (the owner stays an active member of a workspace that is
+  // no longer live). Each is seeded with the service role; the row must remain.
+  async function expectLeftoverUntouchable(projectId: string, label: string) {
+    const id = await seedRowFor(fx.me, projectId, viewName(label));
     const read = await mine.from('user_view_state').select('id').eq('id', id);
     expect(read.data).toEqual([]);
     const upd = await mine.from('user_view_state').update({ name: 'revived' }).eq('id', id).select('id');
     expect(upd.data).toEqual([]);
     const del = await mine.from('user_view_state').delete().eq('id', id).select('id');
     expect(del.data).toEqual([]);
-    const still = await service.from('user_view_state').select('id').eq('id', id);
+    const still = await service.from('user_view_state').select('id, name').eq('id', id);
     expect(still.data).toHaveLength(1);
+    expect(still.data![0].name).not.toBe('revived');
+  }
+
+  it('hides a leftover view from its owner once the membership row is gone', async () => {
+    expect.hasAssertions();
+    await expectLeftoverUntouchable(fx.projectForeign, 'Leftover removed');
+  });
+
+  it('hides a leftover view from its owner while the membership is suspended', async () => {
+    expect.hasAssertions();
+    await expectLeftoverUntouchable(fx.projectSuspended, 'Leftover suspended');
+  });
+
+  it('hides a view from its owner when the workspace is soft-deleted, though the membership is active', async () => {
+    expect.hasAssertions();
+    // Guard the fixture itself: the membership really is active and the workspace really is deleted.
+    const project = await must('project lookup', service.from('projects').select('workspace_id').eq('id', fx.projectDeleted).single());
+    const member = await must('membership lookup', service.from('workspace_members').select('status').eq('workspace_id', project.workspace_id).eq('user_id', fx.me).single());
+    const workspace = await must('workspace lookup', service.from('workspaces').select('deleted_at').eq('id', project.workspace_id).single());
+    expect(member.status).toBe('active');
+    expect(workspace.deleted_at).not.toBeNull();
+    await expectLeftoverUntouchable(fx.projectDeleted, 'Leftover deleted workspace');
   });
 
   it('refuses to save a view into a project of a workspace the caller is not in (42501)', async () => {
