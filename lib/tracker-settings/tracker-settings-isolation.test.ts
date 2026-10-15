@@ -471,6 +471,27 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
     expect(b.error).toBeNull();
   });
 
+  it('two parallel FIRST saves that both confirm N > 0 never error: the Bugs are queued once (T6, F6)', async () => {
+    if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
+    const db = service();
+    await setQaRole(db, fixture, 'admin');
+    for (const keys of [['QAT', 'QAT'], ['QAT', 'QAU']] as const) {
+      const project = await freshProject(db, fixture, 'race');
+      const first = await project.bug('open');
+      const second = await project.bug('in_progress');
+      const [a, b] = await Promise.all(keys.map(async key => call(db, { actor: fixture!.qaUserId, projectId: project.projectId, key, enabled: true, confirm: 2 })));
+      // The per-Project advisory lock serialises the two saves: the loser sees the
+      // winner's committed row and Bugs, so it is a plain update, never 45414.
+      expect(a.error).toBeNull();
+      expect(b.error).toBeNull();
+      const requeued = [a, b].map(r => (r.data as { requeued: number }).requeued);
+      expect(requeued.reduce((sum, n) => sum + n, 0)).toBe(2);
+      expect(await settingsRows(db, project.projectId)).toHaveLength(1);
+      expect((await bugState(db, first)).sync_state).toBe('pending');
+      expect((await bugState(db, second)).sync_state).toBe('pending');
+    }
+  });
+
   it('two parallel first saves never error: one row, the later write wins (AC-7.2)', async () => {
     if (!fixture) { return skipped(skipReason ?? 'no fixture'); }
     const db = service();

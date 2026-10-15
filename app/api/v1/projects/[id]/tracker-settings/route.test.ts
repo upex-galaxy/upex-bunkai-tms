@@ -40,26 +40,45 @@ interface ErrorBody {
 interface DbScript {
   project: { id: string, workspace_id: string } | null
   role: string | null
+  // Status of the caller's membership row. Defaults to 'active'; the fake only
+  // answers the role read when the route filtered on a matching status.
+  memberStatus?: string
   settings: { destination_project_key: string, issue_type_name: string, enabled: boolean, updated_at: string } | null
 }
 
+// Every `.eq()` filter the routes applied, by table, for the current test.
+let eqLog: { table: string, column: string, value: unknown }[] = [];
+
 // A caller-client double answering the three reads the routes make. Any other
-// table throws, so a handler that wandered further fails loudly.
+// table throws, so a handler that wandered further fails loudly. The role read is
+// answered ONLY when the route filtered on this user, this workspace and a status
+// equal to the membership's status, so dropping a filter changes the outcome.
 function fakeDb(script: DbScript): Principal['db'] {
   return {
     from: (table: string) => {
-      const answer = {
-        projects: script.project,
-        workspace_members: script.role === null ? null : { role: script.role },
-        project_tracker_settings: script.settings,
-      }[table];
-      if (answer === undefined) {
+      const filters: Record<string, unknown> = {};
+      const answerFor = (): unknown => {
+        if (table === 'projects') { return script.project; }
+        if (table === 'project_tracker_settings') { return script.settings; }
+        if (table === 'workspace_members') {
+          const matches = filters.user_id === USER_ID
+            && filters.workspace_id === WORKSPACE_ID
+            && filters.status === (script.memberStatus ?? 'active');
+          return script.role === null || !matches ? null : { role: script.role };
+        }
+        throw new Error(`unexpected table access: ${table}`);
+      };
+      if (!['projects', 'project_tracker_settings', 'workspace_members'].includes(table)) {
         throw new Error(`unexpected table access: ${table}`);
       }
       const chain: Record<string, unknown> = {};
       chain.select = () => chain;
-      chain.eq = () => chain;
-      chain.maybeSingle = async () => ({ data: answer, error: null });
+      chain.eq = (column: string, value: unknown) => {
+        filters[column] = value;
+        eqLog.push({ table, column, value });
+        return chain;
+      };
+      chain.maybeSingle = async () => ({ data: answerFor(), error: null });
       return chain;
     },
   } as unknown as Principal['db'];
@@ -109,6 +128,7 @@ function asPrincipal(p: Principal): void {
 
 beforeEach(() => {
   spies = [];
+  eqLog = [];
   rpcAnswer = {
     data: {
       project_id: PROJECT_ID,
@@ -191,6 +211,23 @@ describe('PUT tracker-settings: gates (no Jira call, no write before they pass)'
     const body = await response.json() as ErrorBody;
     expect(body.error.details).toEqual({ reason: 'admin_required' });
     expect(body.error.message).toBe('You no longer have permission to change this. Reload to see the current settings.');
+    expect(checkSpy).not.toHaveBeenCalled();
+    expect(rpcSpy).not.toHaveBeenCalled();
+  });
+
+  test('the live-role read filters on this user, this workspace and an ACTIVE membership (F5)', async () => {
+    asPrincipal(principal({ script: {} }));
+    await PUT(request('PUT', putBody()));
+    const roleFilters = eqLog.filter(entry => entry.table === 'workspace_members').map(entry => [entry.column, entry.value]);
+    expect(roleFilters).toContainEqual(['user_id', USER_ID]);
+    expect(roleFilters).toContainEqual(['workspace_id', WORKSPACE_ID]);
+    expect(roleFilters).toContainEqual(['status', 'active']);
+  });
+
+  test('an admin whose membership is no longer active is refused, and nothing runs (F5)', async () => {
+    asPrincipal(principal({ script: { role: 'admin', memberStatus: 'removed' } }));
+    const response = await PUT(request('PUT', putBody({ enabled: true })));
+    expect(response.status).toBe(403);
     expect(checkSpy).not.toHaveBeenCalled();
     expect(rpcSpy).not.toHaveBeenCalled();
   });
@@ -311,6 +348,57 @@ describe('PUT tracker-settings: check on save (PO Q2)', () => {
     asPrincipal(principal({ script: {} }));
     await PUT(request('PUT', putBody({ issue_type_name: '  bug ', enabled: false })));
     expect(lastRpcArgs().issueTypeName).toBe('bug');
+  });
+});
+
+describe('PUT tracker-settings: one Jira check at a time per person (F2)', () => {
+  test('a PUT whose check-on-save overlaps another check by the same person is a 429 check_in_progress and saves nothing', async () => {
+    asPrincipal(principal({ script: {} }));
+    let release: () => void = () => {};
+    checkSpy.mockImplementation((async () => new Promise((resolve) => {
+      release = () => resolve({ ok: true, issueTypeName: 'Bug' });
+    })) as never);
+
+    const first = PUT(request('PUT', putBody({ enabled: true })));
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    const second = await PUT(request('PUT', putBody({ enabled: true })));
+    expect(second.status).toBe(429);
+    const body = await second.json() as ErrorBody;
+    expect(body.error.code).toBe('rate_limited');
+    expect(body.error.details).toEqual({ reason: 'check_in_progress' });
+    expect(checkSpy).toHaveBeenCalledTimes(1);
+    expect(rpcSpy).not.toHaveBeenCalled();
+
+    release();
+    expect((await first).status).toBe(200);
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('a sync-OFF PUT never takes the guard, so it works while a check runs', async () => {
+    asPrincipal(principal({ script: {} }));
+    let release: () => void = () => {};
+    checkSpy.mockImplementation((async () => new Promise((resolve) => {
+      release = () => resolve({ ok: true, issueTypeName: 'Bug' });
+    })) as never);
+    const running = PUT(request('PUT', putBody({ enabled: true })));
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    const off = await PUT(request('PUT', putBody({ enabled: false })));
+    expect(off.status).toBe(200);
+
+    release();
+    await running;
+  });
+
+  test('the guard is released when the check throws, so the next PUT goes through', async () => {
+    asPrincipal(principal({ script: {} }));
+    checkSpy.mockImplementation((async () => {
+      throw new Error('boom');
+    }) as never);
+    expect((await PUT(request('PUT', putBody({ enabled: true })))).status).toBe(500);
+    checkSpy.mockImplementation((async () => ({ ok: true, issueTypeName: 'Bug' })) as never);
+    expect((await PUT(request('PUT', putBody({ enabled: true })))).status).toBe(200);
   });
 });
 

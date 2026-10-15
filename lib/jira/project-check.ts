@@ -1,6 +1,6 @@
 import { ApiError } from '@lib/api/error-envelope';
 import { env } from '@lib/env';
-import { DESTINATION_KEY_PATTERN, ISSUE_TYPE_MAX, TRACKER_SETTINGS_MESSAGES } from '@lib/tracker-settings/validation';
+import { codePointLength, DESTINATION_KEY_PATTERN, ISSUE_TYPE_MAX, TRACKER_SETTINGS_MESSAGES } from '@lib/tracker-settings/validation';
 
 // BK-371 — the connection check behind "Run connection check" and the
 // check-on-save of a sync-ON save. It proves four things and creates nothing:
@@ -89,6 +89,12 @@ function readIssueTypes(body: unknown): { names: string[], truncated: boolean } 
   return { names, truncated: typeof total === 'number' && total > list.length };
 }
 
+// Release the connection of a response whose body is never read. Nothing in a
+// non-200 body (which can echo request content) is ever consumed or surfaced.
+function discardBody(response: Response): void {
+  response.body?.cancel().catch(() => {});
+}
+
 async function parseJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
@@ -111,7 +117,7 @@ export async function checkJiraDestination(
     });
   }
   const wanted = args.issueTypeName.trim();
-  if (wanted.length < 1 || wanted.length > ISSUE_TYPE_MAX) {
+  if (codePointLength(wanted) < 1 || codePointLength(wanted) > ISSUE_TYPE_MAX) {
     throw new ApiError('validation_failed', TRACKER_SETTINGS_MESSAGES.invalid_issue_type, {
       details: { reason: 'invalid_issue_type' },
     });
@@ -144,6 +150,9 @@ export async function checkJiraDestination(
     return fail('unreachable');
   }
 
+  if (response.status !== 200) {
+    discardBody(response);
+  }
   if (response.status === 401) {
     return fail('credential_rejected');
   }
@@ -170,7 +179,7 @@ export async function checkJiraDestination(
   if (match !== undefined) {
     // Decision C (AI Tech Lead): a passing check stores Jira's own spelling.
     const trimmed = match.trim();
-    const issueTypeName = trimmed.length >= 1 && trimmed.length <= ISSUE_TYPE_MAX ? trimmed : wanted;
+    const issueTypeName = codePointLength(trimmed) >= 1 && codePointLength(trimmed) <= ISSUE_TYPE_MAX ? trimmed : wanted;
     return { ok: true, issueTypeName };
   }
   // More types exist than this one page returned: "not found" would be a guess.

@@ -12,6 +12,7 @@ import {
   readTrackerSettings,
   toTrackerSettingsShape,
 } from '@lib/tracker-settings/access';
+import { withCheckGuard } from '@lib/tracker-settings/check-guard';
 import { mapTrackerSettingsRpcError } from '@lib/tracker-settings/errors';
 import { parseTrackerSettingsBody, TrackerSettingsBodySchema } from '@lib/tracker-settings/validation';
 
@@ -22,7 +23,8 @@ import { parseTrackerSettingsBody, TrackerSettingsBodySchema } from '@lib/tracke
 //     one (AC-4.4).
 // PUT /api/v1/projects/{id}/tracker-settings — owner / admin only
 //     (`workspace:admin` + a LIVE role read). With the sync ON it runs the
-//     connection check first and saves nothing when it fails (PO Q2); a save that
+//     connection check first (one check at a time per person, like POST .../check)
+//     and saves nothing when it fails (PO Q2); a save that
 //     would queue N > 0 defects needs `confirm_queue_count` = N (PO Q1), else 409.
 //     The write is `bunkai_upsert_project_tracker_settings` (migration 0091),
 //     granted to service_role only, called with the gateway's principal.userId.
@@ -60,10 +62,13 @@ export const PUT = withApiHandler(async (request: NextRequest, ctx) => {
   // work even when Jira is down, so a sync-off save never calls Jira.
   let issueTypeName = body.issue_type_name;
   if (body.enabled) {
-    const check = await checkJiraDestination({
+    // Same per-person guard as POST .../check (PO Q4, one check at a time): a PUT
+    // must not be a way around it. An overlapping call is the guard's own 429
+    // `rate_limited` / `check_in_progress`; nothing is saved.
+    const check = await withCheckGuard(principal.userId, async () => checkJiraDestination({
       projectKey: body.destination_project_key,
       issueTypeName: body.issue_type_name,
-    });
+    }));
     if (!check.ok) {
       throw new ApiError('validation_failed', check.message, {
         details: { reason: 'connection_check_failed', check: { kind: check.kind, message: check.message } },

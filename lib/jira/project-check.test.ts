@@ -155,6 +155,40 @@ describe('checkJiraDestination: outcomes', () => {
   });
 });
 
+describe('checkJiraDestination: response bodies it does not read (F8)', () => {
+  function cancellable(code: number) {
+    const state = { cancelled: false, pulled: false };
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        state.pulled = true;
+        controller.enqueue(new TextEncoder().encode('internal body that must never surface'));
+      },
+      cancel() {
+        state.cancelled = true;
+      },
+    });
+    return { state, response: new Response(body, { status: code }) };
+  }
+
+  it.each([401, 403, 404, 429, 500, 302])('cancels the unread body of a %p answer', async (code) => {
+    const { state, response } = cancellable(code);
+    const outcome = await run(() => response).result;
+    expect(outcome.ok).toBe(false);
+    expect(JSON.stringify(outcome)).not.toContain('internal body');
+    // `cancel()` is async; give the stream a tick to run it.
+    await new Promise(resolve => setTimeout(resolve, 5));
+    expect(state.cancelled).toBe(true);
+  });
+
+  it('accepts a 60 code point issue type made of astral characters and refuses 61', async () => {
+    const sixty = '😀'.repeat(60);
+    expect((await run(() => json({ issueTypes: [{ name: sixty }] }), { issueTypeName: sixty }).result)).toEqual({ ok: true, issueTypeName: sixty });
+    const { result, calls } = run(() => json({ issueTypes: [] }), { issueTypeName: '😀'.repeat(61) });
+    expect(await rejection(result)).toBeInstanceOf(ApiError);
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('checkJiraDestination: the request it builds', () => {
   it('is a single GET against the createmeta issue types path with the key encoded', async () => {
     const { result, calls } = run(() => json({ issueTypes: [{ name: 'Bug' }] }), { projectKey: 'A1_B' });
