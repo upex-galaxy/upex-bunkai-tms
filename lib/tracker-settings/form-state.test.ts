@@ -1,9 +1,12 @@
-import type { TrackerCheckResult, TrackerFormValues } from './form-state';
+import type { TrackerCardState, TrackerFormValues } from './form-state';
 import { describe, expect, it } from 'bun:test';
 import {
+  applyCheckResult,
+  applyEdit,
+  applySaved,
   canRunCheck,
   canSave,
-  checkResultFor,
+  initialCardState,
   isDirty,
   normalizeValues,
   queueDialogCopy,
@@ -53,23 +56,56 @@ describe('canRunCheck', () => {
   });
 });
 
-describe('checkResultFor (AC-2.7)', () => {
-  const passed: TrackerCheckResult = { destinationKey: 'QAS', issueTypeName: 'Bug', ok: true, message: null };
+describe('the check result is cleared on ANY edit and after a save (PO Q6, AC-2.7, F4)', () => {
+  const checked = (state: TrackerCardState, ok = true) => applyCheckResult(state, { checked: state.current, ok, message: ok ? null : 'Check failed text' });
+  const withCheck = checked(initialCardState(saved));
 
-  it('keeps the result while the checked pair is unchanged, including cosmetic edits', () => {
-    expect(checkResultFor(passed, saved)).toBe(passed);
-    expect(checkResultFor(passed, edit({ destinationKey: ' qas' }))).toBe(passed);
-    expect(checkResultFor(passed, edit({ enabled: true }))).toBe(passed);
+  it('records the result for the pair that was checked', () => {
+    expect(withCheck.check).toEqual({ destinationKey: 'QAS', issueTypeName: 'Bug', ok: true, message: null });
+    expect(checked(initialCardState(saved), false).check).toMatchObject({ ok: false, message: 'Check failed text' });
   });
 
-  it('drops the result as soon as the key or the issue type changes', () => {
-    expect(checkResultFor(passed, edit({ destinationKey: 'QAT' }))).toBeNull();
-    expect(checkResultFor(passed, edit({ issueTypeName: 'Task' }))).toBeNull();
-    expect(checkResultFor(passed, edit({ destinationKey: '' }))).toBeNull();
+  it('a key edit clears it', () => {
+    expect(applyEdit(withCheck, { destinationKey: 'QAT' }).check).toBeNull();
   });
 
-  it('has nothing to drop when there is no result', () => {
-    expect(checkResultFor(null, saved)).toBeNull();
+  it('an issue type edit clears it', () => {
+    expect(applyEdit(withCheck, { issueTypeName: 'Task' }).check).toBeNull();
+  });
+
+  it('a Switch toggle clears it', () => {
+    expect(applyEdit(withCheck, { enabled: true }).check).toBeNull();
+  });
+
+  it('an edit that is reverted does not bring the old result back', () => {
+    const edited = applyEdit(withCheck, { destinationKey: 'QAT' });
+    const reverted = applyEdit(edited, { destinationKey: 'QAS' });
+    expect(reverted.current).toEqual(saved);
+    expect(reverted.check).toBeNull();
+    // toggling twice is also two edits
+    expect(applyEdit(applyEdit(withCheck, { enabled: true }), { enabled: false }).check).toBeNull();
+  });
+
+  it('a successful save adopts the stored values and clears the result', () => {
+    const edited = applyEdit(withCheck, { enabled: true });
+    const rechecked = applyCheckResult(edited, { checked: edited.current, ok: true, message: null });
+    expect(rechecked.check).not.toBeNull();
+    const stored: TrackerFormValues = { destinationKey: 'QAS', issueTypeName: 'Bug', enabled: true };
+    const after = applySaved(rechecked, stored);
+    expect(after.check).toBeNull();
+    expect(after.saved).toEqual(stored);
+    expect(after.current).toEqual(stored);
+  });
+
+  it('a late answer for a pair the form no longer holds is dropped', () => {
+    const state = initialCardState(saved);
+    const edited = applyEdit(state, { destinationKey: 'QAT' });
+    expect(applyCheckResult(edited, { checked: saved, ok: true, message: null }).check).toBeNull();
+  });
+
+  it('cosmetic differences in the checked pair still match (spaces, case)', () => {
+    const state = initialCardState(saved);
+    expect(applyCheckResult(state, { checked: { ...saved, destinationKey: ' qas ' }, ok: true, message: null }).check).not.toBeNull();
   });
 });
 
@@ -85,6 +121,11 @@ describe('validateValues (AC-3 / 9, frozen copy)', () => {
 
   it('asks for a key when it is empty (AC-1.3)', () => {
     expect(validateValues(edit({ destinationKey: '  ' })).destinationKey).toBe('Enter a Jira project key.');
+  });
+
+  it('counts code points like the SQL char_length: 60 emoji are valid, 61 are not (F9)', () => {
+    expect(validateValues(edit({ issueTypeName: '😀'.repeat(60) })).issueTypeName).toBeUndefined();
+    expect(validateValues(edit({ issueTypeName: '😀'.repeat(61) })).issueTypeName).toBe('Issue type must be 1 to 60 characters.');
   });
 
   it('bounds the issue type at 1 to 60 characters', () => {
