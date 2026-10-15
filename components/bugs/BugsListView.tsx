@@ -3,10 +3,13 @@
 import type { BugsListItemResponse, BugsListPageResponse } from '@app/api/v1/bugs/list-response';
 import type { BugRecord } from '@components/bugs/BugFormDialog';
 import type { BugSeverity, BugStatus } from '@lib/bugs/constants';
+import type { BugsListFilters } from '@lib/bugs/filter-params';
 import type { BugAggregates } from '@lib/bugs/list-view';
+import type { SavedViewState } from '@lib/saved-views/state';
 import type { ReactNode } from 'react';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
 import { BugsHeatmapView } from '@components/bugs/BugsHeatmapView';
+import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import {
@@ -15,11 +18,13 @@ import {
   BUG_STATUS_VALUES,
   BUGS_LIST_PAGE_SIZE,
 } from '@lib/bugs/constants';
+import { bugsFiltersFromState, bugsStateFromFilters, EMPTY_BUGS_FILTERS } from '@lib/bugs/filter-params';
 import {
   BUG_LIST_EMPTY_DESCRIPTION,
   BUG_LIST_EMPTY_TITLE,
   formatBugListRow,
 } from '@lib/bugs/list-view';
+import { mergeStateIntoParams } from '@lib/saved-views/state';
 import { cn } from '@lib/utils';
 import { ArrowDown, ArrowRight, Bug, Grid3x3, Inbox, List as ListIcon, ListX, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
@@ -40,10 +45,13 @@ import { toast } from 'sonner';
 // states shape, generalized from RunHistoryView's single-select `outcome`
 // to two independently multi-select fields (status, severity) plus a
 // module scope — Decision 6's OR-within-field/AND-across-fields contract.
-// Unlike RunHistoryView, filters are NOT synced to the URL (no deep-link
-// requirement in this story's scope) — a filter change re-queries directly
-// from its own click handler instead of through a `router.replace` + effect
-// round trip, which is simpler here since there is no URL state to react to.
+// BK-443 — the filters ARE mirrored in the address (`module`, `status`,
+// `severity`), the convention Traceability and Run history already follow, so a
+// reload or a link renders the same narrowed list and a saved view can restore
+// into it. A filter change still re-queries directly from its own click
+// handler; the address is written with `history.replaceState` (never
+// `router.replace`, which would re-render this route's server component for a
+// list that refetches through the API anyway), one history entry per visit.
 
 export interface BugsModuleOption {
   id: string
@@ -83,6 +91,9 @@ interface BugsListViewProps {
   // from this screen.
   workspaceMembers: BugsWorkspaceMemberOption[]
   initialPage: BugsListPageResponse
+  // BK-443 — the filters the address carried when the server rendered
+  // `initialPage`, so the chips and the rows agree on first paint.
+  initialFilters?: BugsListFilters
   // Set when the SERVER-side first-page read failed; the client renders the
   // error block with a Retry that re-queries through the API route.
   initialError?: string | null
@@ -259,7 +270,7 @@ function resolveBugsListViewState(params: { error: boolean, rowCount: number, fi
 
 type BugsScreenView = 'list' | 'heatmap';
 
-export function BugsListView({ projectId, projectSlug, modules, canCreateBug, workspaceMembers, initialPage, initialError = null }: BugsListViewProps) {
+export function BugsListView({ projectId, projectSlug, modules, canCreateBug, workspaceMembers, initialPage, initialFilters = EMPTY_BUGS_FILTERS, initialError = null }: BugsListViewProps) {
   // BK-264 — assign/status-transition are gated by the SAME member+
   // (not-viewer) permission `canCreateBug` already represents (both mutations
   // require the identical write-role RPCs a viewer always fails), so no
@@ -269,8 +280,8 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
 
   // BK-42 — the screen's own List/Heatmap view switch (master-design-plan
   // §4.6). Not persisted/URL-synced — no deep-link requirement in either
-  // story's scope, same reasoning already applied to the List half's own
-  // filters above.
+  // story's scope. (BK-443 gave the List half's filters an address; this
+  // toggle is not a filter and stays out of it.)
   const [view, setView] = useState<BugsScreenView>('list');
   const [items, setItems] = useState<BugsListItemResponse[]>(initialPage.data);
   const [aggregates, setAggregates] = useState<BugAggregates>(initialPage.aggregates);
@@ -285,9 +296,9 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
   const [transitioningId, setTransitioningId] = useState<string | null>(null);
   const [transitionErrorById, setTransitionErrorById] = useState<Record<string, string>>({});
 
-  const [moduleId, setModuleId] = useState<string | null>(null);
-  const [statuses, setStatuses] = useState<Set<BugStatus>>(new Set());
-  const [severities, setSeverities] = useState<Set<BugSeverity>>(new Set());
+  const [moduleId, setModuleId] = useState<string | null>(initialFilters.moduleId);
+  const [statuses, setStatuses] = useState<Set<BugStatus>>(new Set(initialFilters.statuses));
+  const [severities, setSeverities] = useState<Set<BugSeverity>>(new Set(initialFilters.severities));
 
   // First-page error (whole-panel block) vs. append error (inline, load-more
   // control only) — same split as RunHistoryView/ActivityView: an append
@@ -354,11 +365,25 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
     }
   };
 
+  // BK-443 — mirror the filters into the address, keeping every foreign param.
+  const syncFilterUrl = (filters: BugsListFilters) => {
+    const params = mergeStateIntoParams('bugs', new URLSearchParams(window.location.search), bugsStateFromFilters(filters));
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  };
+
   const applyFilters = (nextModuleId: string | null, nextStatuses: Set<BugStatus>, nextSeverities: Set<BugSeverity>) => {
     setModuleId(nextModuleId);
     setStatuses(nextStatuses);
     setSeverities(nextSeverities);
+    syncFilterUrl({ moduleId: nextModuleId, statuses: [...nextStatuses], severities: [...nextSeverities] });
     void runQuery({ moduleId: nextModuleId, statuses: nextStatuses, severities: nextSeverities }, startRequest());
+  };
+
+  // BK-443 — opening a saved view replaces the applied filters (business rule 5).
+  const applySavedState = (saved: SavedViewState) => {
+    const next = bugsFiltersFromState(saved);
+    applyFilters(next.moduleId, new Set(next.statuses), new Set(next.severities));
   };
 
   const toggleStatus = (value: BugStatus) => {
@@ -640,19 +665,27 @@ export function BugsListView({ projectId, projectSlug, modules, canCreateBug, wo
                   </div>
                 </div>
 
-                {filtersActive && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    data-testid="bugs-list-reset-filters"
-                    className="ml-auto"
-                    onClick={resetFilters}
-                  >
-                    <X size={12} />
-                    Reset filters
-                  </Button>
-                )}
+                <div className="ml-auto flex items-center gap-2">
+                  <SavedViewsMenu
+                    projectId={projectId}
+                    kind="bugs"
+                    currentState={bugsStateFromFilters({ moduleId, statuses: [...statuses], severities: [...severities] })}
+                    onApply={applySavedState}
+                    moduleIds={new Set(modules.map(m => m.id))}
+                  />
+                  {filtersActive && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      data-testid="bugs-list-reset-filters"
+                      onClick={resetFilters}
+                    >
+                      <X size={12} />
+                      Reset filters
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Counts panel — severity/status breakdown over the FULL filtered
