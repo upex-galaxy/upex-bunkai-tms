@@ -176,9 +176,11 @@ async function signInQa() {
 }
 
 async function seedWorkspace(db: Db, ownerUserId: string, label: string) {
+  // plan 'cloud': the default 'community' plan caps a workspace at 3 Projects
+  // (bunkai_enforce_project_limit, 0077) and this suite seeds more than that.
   const { data: workspace, error: workspaceError } = await db
     .from('workspaces')
-    .insert({ slug: `${PREFIX}-${label}`, name: `${PREFIX}-${label}`, owner_user_id: ownerUserId })
+    .insert({ slug: `${PREFIX}-${label}`, name: `${PREFIX}-${label}`, owner_user_id: ownerUserId, plan: 'cloud' })
     .select('id')
     .single();
   if (workspaceError) { throw workspaceError; }
