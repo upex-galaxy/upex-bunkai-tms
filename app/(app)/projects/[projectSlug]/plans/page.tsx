@@ -2,8 +2,9 @@ import type { TestPlanListItem } from '@components/test-plans/TestPlansListView'
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlansListSkeleton, TestPlansListView } from '@components/test-plans/TestPlansListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { resolveActivityActors } from '@lib/supabase/rpc';
+import { plansProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
+import { parsePlansProgress } from '@lib/test-plans/progress-view';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -108,6 +109,12 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
     }
   }
 
+  // BK-204 — one batch RPC for the whole list (same rulebook as the detail), with
+  // the caller's own client. A failed answer leaves every mini bar as a dash.
+  const progressByPlanId = planIds.length > 0
+    ? parsePlansProgress((await plansProgress(supabase, { planIds })).data)
+    : new Map();
+
   const testPlans: TestPlanListItem[] = planRows.map(row => ({
     id: row.id,
     name: row.name,
@@ -115,6 +122,7 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
     goal: row.goal,
     status: row.status as TestPlanStatus,
     testCount: testCountByPlanId.get(row.id) ?? 0,
+    progress: progressByPlanId.get(row.id) ?? null,
     creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
   }));
 
