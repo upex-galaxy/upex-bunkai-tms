@@ -405,6 +405,8 @@ export interface Database {
           created_by: string | null
           description: string | null
           evidence_urls: string[]
+          external_issue_key: string | null
+          external_issue_url: string | null
           id: string
           module_id: string
           project_id: string
@@ -413,6 +415,13 @@ export interface Database {
           severity: string
           status: string
           steps_to_reproduce: string
+          sync_attempts: number
+          sync_claimed_at: string | null
+          sync_last_attempt_at: string | null
+          sync_last_error: string | null
+          sync_next_attempt_at: string | null
+          sync_state: string
+          synced_at: string | null
           title: string
           updated_at: string
           workspace_id: string
@@ -424,6 +433,8 @@ export interface Database {
           created_by?: string | null
           description?: string | null
           evidence_urls?: string[]
+          external_issue_key?: string | null
+          external_issue_url?: string | null
           id?: string
           module_id: string
           project_id: string
@@ -432,6 +443,13 @@ export interface Database {
           severity: string
           status?: string
           steps_to_reproduce?: string
+          sync_attempts?: number
+          sync_claimed_at?: string | null
+          sync_last_attempt_at?: string | null
+          sync_last_error?: string | null
+          sync_next_attempt_at?: string | null
+          sync_state?: string
+          synced_at?: string | null
           title: string
           updated_at?: string
           workspace_id: string
@@ -443,6 +461,8 @@ export interface Database {
           created_by?: string | null
           description?: string | null
           evidence_urls?: string[]
+          external_issue_key?: string | null
+          external_issue_url?: string | null
           id?: string
           module_id?: string
           project_id?: string
@@ -451,6 +471,13 @@ export interface Database {
           severity?: string
           status?: string
           steps_to_reproduce?: string
+          sync_attempts?: number
+          sync_claimed_at?: string | null
+          sync_last_attempt_at?: string | null
+          sync_last_error?: string | null
+          sync_next_attempt_at?: string | null
+          sync_state?: string
+          synced_at?: string | null
           title?: string
           updated_at?: string
           workspace_id?: string
@@ -951,6 +978,44 @@ export interface Database {
           },
         ]
       }
+      project_tracker_settings: {
+        Row: {
+          created_at: string
+          destination_project_key: string
+          enabled: boolean
+          issue_type_name: string
+          project_id: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          destination_project_key: string
+          enabled?: boolean
+          issue_type_name?: string
+          project_id: string
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          destination_project_key?: string
+          enabled?: boolean
+          issue_type_name?: string
+          project_id?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'project_tracker_settings_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: true
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       projects: {
         Row: {
           created_at: string
@@ -993,6 +1058,7 @@ export interface Database {
           id: string
           position: number
           run_id: string
+          source_atc_id: string | null
           status: string
         }
         Insert: {
@@ -1001,6 +1067,7 @@ export interface Database {
           id?: string
           position: number
           run_id: string
+          source_atc_id?: string | null
           status?: string
         }
         Update: {
@@ -1009,6 +1076,7 @@ export interface Database {
           id?: string
           position?: number
           run_id?: string
+          source_atc_id?: string | null
           status?: string
         }
         Relationships: [
@@ -1766,6 +1834,8 @@ export interface Database {
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_compare_run: { Args: { p_run_id: string }, Returns: Json }
+      bunkai_compare_run_header: { Args: { p_run_id: string }, Returns: Json }
       bunkai_create_atc: {
         Args: {
           p_ac_ids: string[]
@@ -2162,6 +2232,17 @@ export interface Database {
           p_goal?: string
           p_name: string
           p_test_plan_id: string
+        }
+        Returns: Json
+      }
+      bunkai_upsert_project_tracker_settings: {
+        Args: {
+          p_actor_user_id: string
+          p_confirm_queue_count?: number
+          p_destination_project_key: string
+          p_enabled: boolean
+          p_issue_type_name: string
+          p_project_id: string
         }
         Returns: Json
       }

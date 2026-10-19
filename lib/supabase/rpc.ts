@@ -355,6 +355,18 @@ export async function getRunExpanded(supabase: Client, args: { actorUserId: stri
   });
 }
 
+// BK-442 — compare a Run against the previous Run of the same Test and
+// Environment (0092_run_compare.sql). Unlike its sibling Run reads this RPC is
+// SECURITY INVOKER and takes NO identity parameter: row-level security on the
+// caller's own client is the only authorization. Pass the CALLER's RLS-scoped
+// client (the cookie client in a page, `db` from `getAuth(ctx)` in a route),
+// NEVER `createAdminClient()` — the function refuses a caller with no
+// `auth.uid()` (service role bypasses RLS) with the same P0002 a missing Run
+// raises. Returns `{ state, ... }`; see `RunComparison` in lib/runs/compare-view.ts.
+export async function compareRun(supabase: Client, args: { runId: string }) {
+  return supabase.rpc('bunkai_compare_run', { p_run_id: args.runId });
+}
+
 // BK-36 — abort an in-progress Run with a reason. Same explicit-actor contract;
 // the SECURITY DEFINER RPC gates member+ write access, requires status 'running'
 // (else run_not_abortable), trims + bounds the reason (3..500), closes the Run as
@@ -616,6 +628,38 @@ export async function deleteEnvironment(
   return supabase.rpc('bunkai_delete_environment', {
     p_actor_user_id: args.actorUserId,
     p_environment_id: args.environmentId,
+  });
+}
+
+// BK-371 — save a Project's Jira defect-sync settings (migration 0091). The
+// SECURITY INVOKER RPC is granted to `service_role` ONLY (ADR-0012), so the
+// `supabase` argument MUST be the admin client; it takes the gateway's
+// `principal.userId` as the explicit actor, binds and authorizes it (owner or
+// admin), validates, upserts, re-queues the Project's stranded Bugs and writes
+// the audit row in one transaction. `confirmQueueCount` is the N the user saw
+// in the confirmation dialog (null when no dialog was shown).
+export interface UpsertProjectTrackerSettingsArgs {
+  actorUserId: string
+  projectId: string
+  destinationProjectKey: string
+  issueTypeName: string
+  enabled: boolean
+  confirmQueueCount?: number | null
+}
+
+export async function upsertProjectTrackerSettings(
+  supabase: Client,
+  args: UpsertProjectTrackerSettingsArgs,
+) {
+  return supabase.rpc('bunkai_upsert_project_tracker_settings', {
+    p_actor_user_id: args.actorUserId,
+    p_project_id: args.projectId,
+    p_destination_project_key: args.destinationProjectKey,
+    p_issue_type_name: args.issueTypeName,
+    p_enabled: args.enabled,
+    ...(args.confirmQueueCount === null || args.confirmQueueCount === undefined
+      ? {}
+      : { p_confirm_queue_count: args.confirmQueueCount }),
   });
 }
 

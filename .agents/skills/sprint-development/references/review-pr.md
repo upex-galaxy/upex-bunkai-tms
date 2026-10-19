@@ -615,3 +615,13 @@ The orchestrator verifies each finding against the **actual diff + AC** and reco
 3. Record the full per-finding verdict table in `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/review.md` (topic_key `pbi/{ticket}/review`).
 4. In **SOLO** mode the orchestrator runs a deliberate fresh-eyes review pass inline, then adjudicates with the same table.
 5. Architectural rework (rare) does not loop to Stage 2 — it loops to Stage 1 with a new spec (+ ADR if the decision is architectural and hard to reverse).
+
+### Reviewing a large PR (commit by commit)
+
+A story is always ONE PR, however big (see `workload-forecast.md`). A `Medium` or `Large` PR is reviewed **commit by commit**, not as one undifferentiated diff:
+
+1. **Read the plan first.** The reviewer gets the commit list (`git log --oneline origin/<base>..HEAD`) plus the `Commit plan` and `Review guide` from the forecast block (also in the PR body). Reading order follows the guide; riskiest commits get scrutiny first.
+2. **Review commit groups.** Each commit is one responsibility and leaves lint, types and tests green, so each can be read and judged on its own (`git show <sha>`). For a `Large` PR the orchestrator may dispatch several reviewers, one per commit group (for example schema + domain, API, UI + docs), **sequentially** (never in parallel). Every reviewer is independent and adversarial, per the contract above, and receives the AC plus the full commit list for context.
+3. **Findings cite the commit.** Each finding carries `file:line` AND the commit sha it belongs to, so the fix lands in the right place.
+4. **Adjudicate as before.** The orchestrator merges the groups' findings into one verdict table and adjudicates each (legitimate / false-positive with a reason). Then one final pass checks that the commits compose: no commit breaks an earlier one, and the assembled diff still matches the AC.
+5. **Fixes are NEW commits** on the story branch (`fix(<KEY>): ...`, or a `fixup` described in plain words). Never amend, rebase or force-push pushed history. The merge commit on `staging` preserves the whole sequence.

@@ -79,6 +79,34 @@ Do not pad sections. Empty sections invite skim-reads.
 
 ---
 
+## Big PR body (Medium / Large changes)
+
+A story is always ONE PR, however large. When the forecast size is `Medium` or `Large` (`/sprint-development` `references/workload-forecast.md`), the body helps the reviewer read the PR commit by commit. Add these two sections between `## Changes` and `## Test Plan`:
+
+```markdown
+## Commit list
+
+1. `<sha>` {type}({ISSUE-KEY}): {what this commit contains} (AC-{n})
+2. `<sha>` ...
+
+## Review guide
+
+- Read order: {commit numbers, dependencies first}
+- Scrutinise first: {riskiest commits: security, migrations, data integrity, shared contracts}
+- Skim: {mechanical or generated commits, with the reason}
+- Migrations: {apply steps per Critical Rule #20, run after review approval and before the merge; "none" otherwise}
+```
+
+Rules:
+
+- `## Commit list` mirrors the branch (`git log --reverse --oneline origin/{base}..HEAD`): one line per commit, in order. It replaces the usual one-bullet-per-commit `<<CHANGES>>` content, so do not list the commits twice.
+- The `Commit plan` and `Review guide` come from the forecast block in the story's implementation plan. If the real history diverged from the plan, the PR body describes the real history.
+- The title and base follow the normal rules. There is ONE PR: never open child PRs for the commit groups.
+- The PR is merged with a merge commit (`--no-ff`), never squash.
+- Fixes requested in review are pushed as NEW commits and appended to the commit list; never amend or force-push.
+
+---
+
 ## Base branch — resolved from strategy
 
 | Strategy           | Default PR base                                                  | Notes                                                           |
@@ -166,7 +194,7 @@ Always show the rendered body and base branch to the user **before** running `gh
 ## After creation
 
 - Return the PR URL.
-- Surface the next step: _"Review the PR. Once approved, merge via the GitHub UI or run `gh pr merge {number} --squash --delete-branch`."_
+- Surface the next step: _"Review the PR. Once approved, merge via the GitHub UI or run `gh pr merge {number} --merge --delete-branch` (merge commit, never squash, so the per-commit history survives)."_
 - **Do not auto-merge.** Merging is an explicit, separate action by the user.
 
 ---

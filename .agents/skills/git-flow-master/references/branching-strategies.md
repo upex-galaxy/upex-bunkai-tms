@@ -14,7 +14,7 @@ Seven strategies are supported. Each one tells the skill where new branches star
 6. [`github-flow`](#github-flow)
 7. [`gitlab-flow`](#gitlab-flow)
 8. [Detection algorithm — combined view](#detection-algorithm)
-9. [Chained-PR decision tree](#chained-pr-decision-tree)
+9. [One PR per story](#one-pr-per-story)
 10. [Strategy comparison matrix](#strategy-comparison-matrix)
 
 ---
@@ -282,46 +282,23 @@ git_strategy:
 
 ---
 
-## Chained-PR decision tree
+## One PR per story
 
-When a planned change estimates `> 400 changed lines` (additions + deletions), apply this decision tree before opening PRs.
+Every strategy above delivers a user story (bug, tech story) as **ONE pull request**. Size never changes that: no line count splits a story into several PRs, and there is no decision tree to walk. A large change is carried by **atomic commits** inside the single PR and reviewed commit by commit.
 
-```
-Q1: Is the change mostly mechanical (rename, formatter, generated code, vendor update)?
-├─ Yes → size-exception (requires explicit user override + Why size-exception: rationale)
-└─ No  → continue to Q2
+| Situation                                              | What to do                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Small change                                           | One PR, one or two commits.                                                                                  |
+| Medium / large change (hundreds to thousands of lines) | One PR, a commit plan ordered by dependency (schema/types, domain, API, UI, docs), a review guide in the body. |
+| Mechanical or generated bulk (rename, formatter, codegen) | One PR; isolate the bulk in its own commit(s) so the reviewer can skim them.                              |
+| Story genuinely too large (independent increments, or > ~13 points) | Split the STORY in the backlog via `/product-management`; each resulting story gets its own PR. Never split by PR. |
+| User explicitly asks for stacked / chained PRs         | Exception only. Do it for that run, name the dependency chain in every PR body, and see the Jira note below. |
 
-Q2: Is the change linearly decomposable into 2–4 independent slices, each <400 lines,
-    where the strategy's default base safely contains slice N without slices N+1..M?
-├─ Yes → stacked-to-main
-└─ No  → continue to Q3
+Merge method: the story's PR merges into the strategy's default base with a **merge commit (`--no-ff`)**, never squash or rebase, so the per-commit history survives.
 
-Q3: Does the change have shared scaffolding (new types, new base classes, new schemas)
-    that multiple later slices depend on, where partial merges to base would break things?
-├─ Yes → feature-branch-chain
-└─ No  → re-decompose. Send the planner back to story breakdown.
-         A monolithic non-mechanical change without shared scaffolding is a planning smell.
-```
+**Jira note.** Jira's automation moves a story to `Ready For QA` when a PR carrying its key is merged, and the workflow has no transition back. Merge a ticket-keyed PR only into its final target and only when truly ready. One story = one PR makes that merge a single event.
 
-**Answering it is the deliverable, not the label.** Callers gate on this decision and reject a bare strategy name. Record each answer with the concrete reason from this change, stop at the leaf, and return the three-line block defined in `SKILL.md` Step 4 → "Return contract":
-
-```
-Chain strategy: feature-branch-chain
-Decision trace: Q1=No (new domain logic, not a rename or formatter run) ·
-                Q2=No (slice 2 cannot compile without the types added in slice 1) ·
-                Q3=Yes (shared schema + base client consumed by slices 2-4) → feature-branch-chain
-Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
-```
-
-A `Yes` at Q1 ends the walk: write `Q2=n/a · Q3=n/a`. Answers that do not lead to the stated leaf, or a "trace" that only repeats the conclusion, are malformed and count as no decision.
-
-**Strategy outputs**:
-
-- `stacked-to-main` — 2 to 4 PRs, each branched off the strategy's default base. Each PR is self-contained; base always works after each merge.
-- `feature-branch-chain` — one long-lived integration branch cut from the strategy's default base; child PRs merge into it; final PR merges integration into base.
-- `size-exception` — single PR with explicit `Why size-exception:` line. Reviewer told upfront not to read line-by-line.
-
-The chosen plan is a **contract** for execution. If the actual diff exceeds the estimate, re-invoke the decision — do not silently up-budget.
+How to cut commits, the commit plan and how to open a big PR: `SKILL.md` Step 4 and `pr-templating.md` § Big PR body.
 
 ---
 

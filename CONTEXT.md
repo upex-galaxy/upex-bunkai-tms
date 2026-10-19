@@ -229,7 +229,7 @@ The repo composes work into three layers, in order of how often each runs:
 ```
 /sprint-development           → Planning → Implementation → Code Review → Staging → (gated) Production
                         └── /unit-testing (composable, optional TDD slice)
-/git-flow-master      → Branch, commit, push, PR, conflicts, chained-PR planning (auto-adapts to strategy)
+/git-flow-master      → Branch, commit, push, PR, conflicts, large-change commit planning (auto-adapts to strategy)
 ```
 
 ### Meta-SDD (Spec-Driven Development) — for substantial changes

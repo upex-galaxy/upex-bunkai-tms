@@ -16,7 +16,7 @@ import { SavedViewDeleteDialog, SavedViewNameDialog } from './SavedViewDialogs';
 import { useSavedViews } from './useSavedViews';
 
 // BK-443 — the Saved views control, one component mounted in each surface's own
-// filter toolbar (master-design-plan §5 D42). A trigger button opens a popover
+// filter toolbar (master-design-plan §5 D44). A trigger button opens a popover
 // of the member's views for THIS surface; opening one replaces the applied
 // filters; the footer saves the current filters or updates the active view.
 //
