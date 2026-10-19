@@ -4,6 +4,7 @@ import { TestPlanDetailSkeleton, TestPlanDetailView } from '@components/test-pla
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { planProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
+import { canClosePlan } from '@lib/test-plans/close-view';
 import { parsePlanProgress } from '@lib/test-plans/progress-view';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -55,7 +56,7 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   // workspace the cookie currently makes active.
   const { data: row, error } = await supabase
     .from('test_plans')
-    .select('id, project_id, workspace_id, name, description, goal, status, created_by, created_at')
+    .select('id, project_id, workspace_id, name, description, goal, status, created_by, created_at, verdict, summary, closed_by, closed_at, progress_snapshot')
     .eq('id', planId)
     .maybeSingle();
   if (error || !row) { notFound(); }
@@ -85,6 +86,11 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   // control that appears and then fails is its own defect.
   const canEdit = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
+  // BK-207 — Close and Reopen are offered to the plan's creator (while they still hold
+  // write access) and to admins / owners of the PLAN'S workspace. Presentation only:
+  // the RPCs re-derive the role live on every call.
+  const canClose = canClosePlan({ role: memberRow?.role, isCreator: row.created_by === user.id });
+
   // BK-203 — the plan's member tests, joined with `tests` for title/tags.
   const { data: memberRows } = await supabase
     .from('test_plan_tests')
@@ -98,7 +104,11 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
   )];
   // Union with the plan's own creator so ONE resolveActivityActors call
   // covers both labels — no second RPC round trip.
-  const allActorIds = [...new Set([...addedByIds, ...(row.created_by ? [row.created_by] : [])])];
+  const allActorIds = [...new Set([
+    ...addedByIds,
+    ...(row.created_by ? [row.created_by] : []),
+    ...(row.closed_by ? [row.closed_by] : []),
+  ])];
 
   const emailById = new Map<string, string>();
   if (allActorIds.length > 0) {
@@ -130,22 +140,37 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
     status: row.status as TestPlanStatus,
     creatorLabel,
     createdAtLabel: row.created_at.slice(0, 10),
+    verdict: row.verdict,
+    summary: row.summary,
+    closedByLabel: row.closed_by ? (emailById.get(row.closed_by) ?? '') : '',
+    closedAtIso: row.closed_at,
   };
 
   // BK-204 — one RPC per view (ratified fetch-on-view). It runs with the caller's
   // own RLS-scoped client, never the admin client. A failed or malformed answer
   // degrades to a page with a "Progress unavailable" notice: the identity and the
   // member table are still correct and must not disappear with it.
-  const { data: progressData, error: progressError } = await planProgress(supabase, { planId: row.id });
-  const progress = parsePlanProgress(progressData);
+  //
+  // BK-207 — a closed plan shows the progress it froze at close time and does not read
+  // the live one (nothing may move after the close). A closed row with no usable
+  // snapshot (seeded directly, never closed through the RPC) falls back to the live read.
+  const frozenProgress = row.status === 'closed' ? parsePlanProgress(row.progress_snapshot) : null;
+  let progress = frozenProgress;
+  let progressUnavailable = false;
+  if (!frozenProgress) {
+    const { data: progressData, error: progressError } = await planProgress(supabase, { planId: row.id });
+    progress = parsePlanProgress(progressData);
+    progressUnavailable = progressError != null;
+  }
 
   return (
     <TestPlanDetailView
       testPlan={testPlan}
       initialTests={initialTests}
       progress={progress}
-      progressUnavailable={progressError != null}
+      progressUnavailable={progressUnavailable}
       canEdit={canEdit}
+      canClose={canClose}
     />
   );
 }

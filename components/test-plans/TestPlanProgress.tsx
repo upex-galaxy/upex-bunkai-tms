@@ -37,7 +37,9 @@ export function TestPlanProgressUnavailable() {
   );
 }
 
-export function TestPlanProgress({ summary }: { summary: PlanProgressSummary }) {
+// `frozen` marks the snapshot a closed plan stored at close time (BK-207): same card, same
+// numbers the database froze, with copy that says they no longer move.
+export function TestPlanProgress({ summary, frozen = false }: { summary: PlanProgressSummary, frozen?: boolean }) {
   const view = buildProgressView(summary);
 
   if (view.state === 'empty') {
@@ -96,8 +98,10 @@ export function TestPlanProgress({ summary }: { summary: PlanProgressSummary }) 
               </span>
             ))}
           </div>
-          <span className="text-xs text-fg-3">
-            Computed from the latest run outcome of each member test · refreshed on view.
+          <span data-testid="test-plan-progress-note" className="text-xs text-fg-3">
+            {frozen
+              ? 'Frozen at close time · the latest run outcome of each member test when the plan was closed.'
+              : 'Computed from the latest run outcome of each member test · refreshed on view.'}
           </span>
         </div>
       </div>
