@@ -98,7 +98,9 @@ declare
   v_workspace_id uuid;
   v_status       text;
   v_created_by   uuid;
-  v_verdict      text := btrim(coalesce(p_verdict, ''));
+  -- Same whitespace class as the summary trim below (space, tab, newline, vertical tab,
+  -- form feed, CR, NBSP): a whitespace-only verdict is 'missing' (45604), not 'invalid'.
+  v_verdict      text := regexp_replace(coalesce(p_verdict, ''), '^[\t\n\v\f\r  ]+|[\t\n\v\f\r  ]+$', '', '', 'g');
   v_summary      text;
   v_snapshot     jsonb;
   v_row          public.test_plans%rowtype;
@@ -255,3 +257,25 @@ $$;
 
 revoke execute on function public.bunkai_reopen_test_plan(uuid) from public, anon;
 grant  execute on function public.bunkai_reopen_test_plan(uuid) to authenticated;
+
+-- 0088/0091 mechanism: the 0085 default privilege hands every new function to BOTH QA
+-- roles. These two are volatile SECURITY DEFINER writers, so the read-only inspection
+-- role must not keep them. Guarded: the role exists on the shared database only.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'qa_inspector_ro') then
+    revoke all on function public.bunkai_close_test_plan(uuid, text, text) from qa_inspector_ro;
+    revoke all on function public.bunkai_reopen_test_plan(uuid) from qa_inspector_ro;
+  end if;
+end
+$$;
+
+-- Verification (run by hand after the apply; expected result on each line):
+--   select has_function_privilege('authenticated',
+--            'public.bunkai_close_test_plan(uuid,text,text)', 'EXECUTE');    -- true
+--   select has_function_privilege('anon',
+--            'public.bunkai_close_test_plan(uuid,text,text)', 'EXECUTE');    -- false
+--   select has_function_privilege('qa_inspector_ro',
+--            'public.bunkai_close_test_plan(uuid,text,text)', 'EXECUTE');    -- false
+--   select has_function_privilege('qa_inspector_ro',
+--            'public.bunkai_reopen_test_plan(uuid)', 'EXECUTE');             -- false

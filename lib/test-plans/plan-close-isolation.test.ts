@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { SQL } from 'bun';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-207 — DB-integration guard for closing and reopening a Test Plan
@@ -402,7 +403,7 @@ describeOrSkip('BK-207 — close and reopen a plan against the real database', (
 
   // ----------------------------------------------------------- the contract
   it('rejects a missing verdict with 45604 and writes nothing', async () => {
-    for (const verdict of [null, '', '   ']) {
+    for (const verdict of [null, '', '   ', '\t', '\n', '\u00A0', ' \t\n\u00A0 ']) {
       const planId = await newPlan();
       const { error } = await close(planId, verdict, 'a summary is not a verdict');
       expect(error?.code).toBe('45604');
@@ -451,6 +452,35 @@ describeOrSkip('BK-207 — close and reopen a plan against the real database', (
     expect((await close(own, 'passed', null, service())).error?.code).toBe('P0002');
     expect((await reopen(own, service())).error?.code).toBe('P0002');
     await expectUntouchedOpen(own);
+  });
+
+  it('keeps the writers away from anon and from the read-only QA role (privileges)', async () => {
+    const pgUrl = process.env.POSTGRES_URL_NON_POOLING ?? process.env.POSTGRES_URL;
+    if (!pgUrl) {
+      throw new Error('[plan-close-isolation] POSTGRES_URL(_NON_POOLING) is missing, so the function privileges cannot be checked; refusing to pass.');
+    }
+    const sql = new SQL(pgUrl);
+    try {
+      const rows = await sql`
+        select p.proname,
+               has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_exec,
+               has_function_privilege('anon', p.oid, 'EXECUTE') as anon_exec,
+               case when exists (select 1 from pg_roles where rolname = 'qa_inspector_ro')
+                    then has_function_privilege('qa_inspector_ro', p.oid, 'EXECUTE')
+                    else false end as qa_ro_exec
+          from pg_proc p
+         where p.pronamespace = 'public'::regnamespace
+           and p.proname in (${CLOSE_RPC}, ${REOPEN_RPC})`;
+      expect(rows.length).toBe(2);
+      for (const row of rows) {
+        expect(row.auth_exec).toBe(true);
+        expect(row.anon_exec).toBe(false);
+        expect(row.qa_ro_exec).toBe(false);
+      }
+    }
+    finally {
+      await sql.end();
+    }
   });
 
   it('is not executable by anon', async () => {
