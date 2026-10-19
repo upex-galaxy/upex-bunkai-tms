@@ -134,10 +134,18 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
 
   // BK-204 — one RPC per view (ratified fetch-on-view). It runs with the caller's
   // own RLS-scoped client, never the admin client. A failed or malformed answer
-  // degrades to a page without progress: the identity and the member table are
-  // still correct and must not disappear with it.
-  const { data: progressData } = await planProgress(supabase, { planId: row.id });
+  // degrades to a page with a "Progress unavailable" notice: the identity and the
+  // member table are still correct and must not disappear with it.
+  const { data: progressData, error: progressError } = await planProgress(supabase, { planId: row.id });
   const progress = parsePlanProgress(progressData);
 
-  return <TestPlanDetailView testPlan={testPlan} initialTests={initialTests} progress={progress} canEdit={canEdit} />;
+  return (
+    <TestPlanDetailView
+      testPlan={testPlan}
+      initialTests={initialTests}
+      progress={progress}
+      progressUnavailable={progressError != null}
+      canEdit={canEdit}
+    />
+  );
 }

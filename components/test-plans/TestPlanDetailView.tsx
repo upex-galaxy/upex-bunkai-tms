@@ -5,7 +5,7 @@ import type { TestPlanMemberTest } from '@components/test-plans/TestPlanTestsTab
 import type { PlanProgress } from '@lib/test-plans/progress-view';
 import { TestPickerDialog } from '@components/test-plans/TestPickerDialog';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
-import { TestPlanProgress } from '@components/test-plans/TestPlanProgress';
+import { TestPlanProgress, TestPlanProgressUnavailable } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlanTestsTable } from '@components/test-plans/TestPlanTestsTable';
 import { Button } from '@components/ui/button';
@@ -46,6 +46,8 @@ interface TestPlanDetailViewProps {
   // (fetch-on-view: no polling, no push). null when that read failed: the strip
   // and the outcome columns are then left out instead of showing a guess.
   progress: PlanProgress | null
+  // True when the progress read errored, as opposed to a plan with nothing to show.
+  progressUnavailable?: boolean
   // Member+ gate — a viewer sees the detail read-only, Edit AND the
   // Add/Remove tests controls structurally absent (business-rules.md, AC 4.4,
   // AC 5.1). The server RPCs re-check the live role on every write
@@ -55,7 +57,7 @@ interface TestPlanDetailViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlanDetailView({ testPlan, initialTests, progress, canEdit }: TestPlanDetailViewProps) {
+export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit }: TestPlanDetailViewProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [tests, setTests] = useState<TestPlanMemberTest[]>(initialTests);
@@ -194,7 +196,7 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, canEdit }
           )}
 
           {/* The close flow is still absent — BK-207, not shipped. */}
-          {progress && <TestPlanProgress summary={progress} />}
+          {progress ? <TestPlanProgress summary={progress} /> : progressUnavailable && <TestPlanProgressUnavailable />}
           <TestPlanTestsTable
             planId={testPlan.id}
             tests={tests}

@@ -21,6 +21,22 @@ const SEGMENT_CLASS: Record<PlanOutcome, string> = {
   not_run: 'bg-signal-skipped',
 };
 
+// Shown in place of the progress card when the progress read failed.
+export function TestPlanProgressUnavailable() {
+  return (
+    <Card>
+      <div
+        data-testid="test-plan-progress-unavailable"
+        role="status"
+        className="flex items-center gap-2 px-4 py-4 text-sm text-fg-3"
+      >
+        <LineChart size={16} className="shrink-0" />
+        Progress unavailable
+      </div>
+    </Card>
+  );
+}
+
 export function TestPlanProgress({ summary }: { summary: PlanProgressSummary }) {
   const view = buildProgressView(summary);
 
@@ -91,7 +107,21 @@ export function TestPlanProgress({ summary }: { summary: PlanProgressSummary }) 
 
 // The list's miniature of the same bar. A plan with no member tests has nothing to
 // draw: a dash, like every other empty cell in that table.
-export function PlanMiniBar({ planId, summary }: { planId: string, summary: PlanProgressSummary | null }) {
+// `unavailable` marks a failed progress read, so it is not mistaken for an empty plan.
+export function PlanMiniBar({ planId, summary, unavailable = false }: { planId: string, summary: PlanProgressSummary | null, unavailable?: boolean }) {
+  if (unavailable && summary === null) {
+    return (
+      <span
+        data-testid={`test-plan-mini-bar-unavailable-${planId}`}
+        role="img"
+        aria-label="Progress unavailable"
+        title="Progress unavailable"
+        className="text-sm text-fg-4"
+      >
+        —
+      </span>
+    );
+  }
   if (summary === null || summary.member_count === 0) {
     return <span data-testid={`test-plan-mini-bar-empty-${planId}`} className="text-sm text-fg-4">—</span>;
   }

@@ -1,5 +1,6 @@
 import type { TestPlanListItem } from '@components/test-plans/TestPlansListView';
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
+import type { PlanProgressSummary } from '@lib/test-plans/progress-view';
 import { TestPlansListSkeleton, TestPlansListView } from '@components/test-plans/TestPlansListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { plansProgress, resolveActivityActors } from '@lib/supabase/rpc';
@@ -110,10 +111,15 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
   }
 
   // BK-204 — one batch RPC for the whole list (same rulebook as the detail), with
-  // the caller's own client. A failed answer leaves every mini bar as a dash.
-  const progressByPlanId = planIds.length > 0
-    ? parsePlansProgress((await plansProgress(supabase, { planIds })).data)
-    : new Map();
+  // the caller's own client. A failed answer leaves every mini bar as a dash that
+  // reads "Progress unavailable", distinct from an empty plan.
+  let progressUnavailable = false;
+  let progressByPlanId = new Map<string, PlanProgressSummary>();
+  if (planIds.length > 0) {
+    const { data: progressData, error: progressError } = await plansProgress(supabase, { planIds });
+    progressUnavailable = progressError != null;
+    progressByPlanId = parsePlansProgress(progressData);
+  }
 
   const testPlans: TestPlanListItem[] = planRows.map(row => ({
     id: row.id,
@@ -131,6 +137,7 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
       projectId={project.id}
       projectSlug={project.slug}
       testPlans={testPlans}
+      progressUnavailable={progressUnavailable}
       canCreate={canCreate}
     />
   );
