@@ -1,5 +1,5 @@
 import { ApiError } from '@lib/api/error-envelope';
-import { mapAttachmentRpcError } from '@lib/runs/attachment-errors';
+import { evidenceRefusalError, mapAttachmentRpcError } from '@lib/runs/attachment-errors';
 import { describe, expect, test } from 'bun:test';
 
 // BK-593 - the attachment RPC error mapper. SQLSTATE 45216-45219 plus 42501 / P0002 / 22023.
@@ -70,5 +70,23 @@ describe('mapAttachmentRpcError', () => {
     expect([invalid.code, invalid.status]).toEqual(['validation_failed', 422]);
     const other = capture({ code: 'XX000', message: 'boom' });
     expect([other.code, other.status, other.message]).toEqual(['internal_error', 500, 'boom']);
+  });
+});
+
+describe('evidenceRefusalError', () => {
+  test('maps each refusal to its status, envelope code and machine reason', () => {
+    const cases: Array<[Parameters<typeof evidenceRefusalError>[0], number, string, string]> = [
+      ['unsupported_type', 415, 'unsupported_media_type', 'unsupported_media_type'],
+      ['too_large', 413, 'file_too_large', 'file_too_large'],
+      ['empty', 422, 'validation_failed', 'empty_file'],
+      ['invalid_image', 422, 'validation_failed', 'content_mismatch'],
+      ['type_mismatch', 422, 'validation_failed', 'content_mismatch'],
+      ['animated', 422, 'validation_failed', 'animated_image'],
+      ['invalid_filename', 422, 'validation_failed', 'invalid_filename'],
+    ];
+    for (const [refusal, status, code, reason] of cases) {
+      const err = evidenceRefusalError(refusal, 'copy');
+      expect([err.status, err.code, err.message, err.details]).toEqual([status, code, 'copy', { reason }]);
+    }
   });
 });

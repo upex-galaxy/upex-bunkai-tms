@@ -1,5 +1,6 @@
+import type { EvidenceRefusal } from '@lib/storage/evidence-policy';
 import { ApiError } from '@lib/api/error-envelope';
-import { EVIDENCE_MESSAGES } from '@lib/storage/evidence-policy';
+import { EVIDENCE_MESSAGES, EVIDENCE_REFUSAL_HTTP } from '@lib/storage/evidence-policy';
 
 // BK-593 - map a run step attachment RPC error (Postgres SQLSTATE) to the canonical API
 // envelope. The RPCs raise the runs-domain 452xx block (45216 attachment_run_closed, 45217
@@ -56,4 +57,12 @@ function limitExceeded(hint: string | null): ApiError {
       // file_bytes (size outside 1 byte..10 MiB): the route answers 413/422 first.
       return new ApiError('attachment_limit_exceeded', EVIDENCE_MESSAGES.too_large, { details: { reason: 'file_bytes' } });
   }
+}
+
+// BK-593 - a route-level evidence refusal (content decided before or after the bytes arrived)
+// as the envelope: 413 file_too_large, 415 unsupported_media_type, 422 validation_failed with
+// the machine reason (empty_file | content_mismatch | animated_image | invalid_filename).
+export function evidenceRefusalError(refusal: EvidenceRefusal, message: string): ApiError {
+  const http = EVIDENCE_REFUSAL_HTTP[refusal];
+  return new ApiError(http.code, message, { status: http.status, details: { reason: http.reason } });
 }

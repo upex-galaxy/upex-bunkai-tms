@@ -341,6 +341,16 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/runs/[id]/steps/[stepId]/attachments/[attachmentId]/commit/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
+    "file": "app/api/v1/runs/[id]/steps/[stepId]/attachments/route.ts",
+    "method": "POST",
+    "posture": "required:run:execute"
+  },
+  {
     "file": "app/api/v1/runs/[id]/steps/[stepId]/mark/route.ts",
     "method": "POST",
     "posture": "required:run:execute"
