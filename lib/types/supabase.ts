@@ -1327,6 +1327,7 @@ export interface Database {
           done_at: string | null
           id: number
           last_error: string | null
+          not_before: string
           path: string
           reason: string
         }
@@ -1337,6 +1338,7 @@ export interface Database {
           done_at?: string | null
           id?: never
           last_error?: string | null
+          not_before?: string
           path: string
           reason: string
         }
@@ -1347,6 +1349,7 @@ export interface Database {
           done_at?: string | null
           id?: never
           last_error?: string | null
+          not_before?: string
           path?: string
           reason?: string
         }

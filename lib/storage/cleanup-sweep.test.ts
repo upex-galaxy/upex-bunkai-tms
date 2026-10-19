@@ -42,6 +42,7 @@ function fake(opts: {
       builder.is = (c: string) => { selectFilters.push(`is:${c}`); return builder; };
       builder.not = () => builder;
       builder.lt = (c: string) => { selectFilters.push(`lt:${c}`); return builder; };
+      builder.lte = (c: string, v: unknown) => { selectFilters.push(`lte:${c}:${String(v)}`); return builder; };
       builder.gte = (c: string) => { selectFilters.push(`gte:${c}`); return builder; };
       builder.order = () => builder;
       builder.limit = () => builder;
@@ -79,6 +80,8 @@ describe('runStorageCleanupSweep', () => {
     // only open rows below the attempt cap are read
     expect(f.selectFilters).toContain('is:done_at');
     expect(f.selectFilters).toContain('lt:attempts');
+    // held-back entries (not_before in the future) are not read
+    expect(f.selectFilters).toContain(`lte:not_before:${now.toISOString()}`);
   });
 
   it('keeps a failed batch queued: counts an attempt per row and records the error, never marks done', async () => {

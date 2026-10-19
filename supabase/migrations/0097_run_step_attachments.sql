@@ -115,11 +115,15 @@ create table if not exists public.storage_cleanup_queue (
   attempts    int  not null default 0,
   last_error  text,
   created_at  timestamptz not null default now(),
+  -- The sweep ignores a row until this instant. A signed upload URL lives 2 hours and a
+  -- replayed PUT after the row was deleted would recreate the object, so the entry for an
+  -- attachment object is held back until its token is dead (ADR-0019).
+  not_before  timestamptz not null default now(),
   done_at     timestamptz
 );
 
 create index if not exists storage_cleanup_queue_open_idx
-  on public.storage_cleanup_queue (created_at) where done_at is null;
+  on public.storage_cleanup_queue (not_before) where done_at is null;
 
 alter table public.storage_cleanup_queue enable row level security;
 
@@ -130,6 +134,9 @@ grant select, insert, update, delete on public.storage_cleanup_queue to service_
 -- AFTER DELETE on the attachment table: a remove, a Run delete and a workspace deletion
 -- (both cascade through run_steps) all enqueue their object with no extra code. Pending rows
 -- are enqueued too: the object may exist even though the row was never committed.
+-- not_before = created_at + 2h05m (token lifetime plus margin): the inline delete done by the
+-- route is only a fast path, the queued entry is what finally removes an object a replayed
+-- PUT recreated. Rows older than that are due immediately.
 create or replace function public.bunkai_enqueue_run_step_attachment_cleanup()
 returns trigger
 language plpgsql
@@ -137,11 +144,12 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.storage_cleanup_queue (bucket, path, reason)
+  insert into public.storage_cleanup_queue (bucket, path, reason, not_before)
   values (
     'run-evidence',
     old.storage_path,
-    case when old.status = 'pending' then 'pending_discarded' else 'attachment_deleted' end
+    case when old.status = 'pending' then 'pending_discarded' else 'attachment_deleted' end,
+    greatest(now(), old.created_at + interval '2 hours 5 minutes')
   );
   return old;
 end;

@@ -6,7 +6,7 @@ import { expirePendingRunStepAttachments } from '@lib/supabase/rpc';
 // idempotent steps, safe to run twice the same day:
 //   1. expire pending uploads whose window lapsed (their rows are deleted, which enqueues
 //      their objects through the AFTER DELETE trigger);
-//   2. drain the outbox: delete each queued object from its bucket, mark the row done on
+//   2. drain the outbox: delete each queued object whose `not_before` has passed from its bucket, mark the row done on
 //      success, count an attempt and keep the error on failure (retried by the next sweep,
 //      parked after MAX_ATTEMPTS and reported as `stuck`);
 //   3. purge outbox rows that finished more than a week ago.
@@ -51,6 +51,8 @@ export async function runStorageCleanupSweep(
     .select('id, bucket, path, attempts')
     .is('done_at', null)
     .lt('attempts', CLEANUP_MAX_ATTEMPTS)
+    // Held-back entries (a signed upload URL could still recreate the object) wait for their turn.
+    .lte('not_before', now.toISOString())
     .order('id', { ascending: true })
     .limit(batch);
   if (open.error) {

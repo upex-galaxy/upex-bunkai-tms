@@ -116,6 +116,7 @@ interface AttachmentRow {
   status: string
   created_by: string | null
   committed_at: string | null
+  created_at: string
   expires_at: string | null
 }
 
@@ -629,6 +630,26 @@ describeOrSkip('BK-593 - run step attachments against the real database', () => 
     expect(q).toHaveLength(1);
     expect(q[0].reason).toBe('pending_discarded');
     expect(await history(run.stepIds[0], 'run_step.attachment_removed')).toHaveLength(0);
+  }, SEED_TIMEOUT);
+
+  it('holds the queued object back until the signed upload URL (2 h) is dead, and releases an old row at once', async () => {
+    const run = await seedRun();
+    const { attachment, storage_path: young } = await initOk(run);
+    const createdAt = new Date((await row(attachment.id))!.created_at).getTime();
+    expect((await remove(attachment.id)).error).toBeNull();
+    const heldRows = await service().from('storage_cleanup_queue').select('not_before').eq('path', young);
+    expect(heldRows.error).toBeNull();
+    const held = new Date(heldRows.data![0].not_before as string).getTime();
+    // created_at + 2h05m (a few ms of clock skew between the two reads is fine)
+    expect(Math.abs(held - (createdAt + 125 * 60_000))).toBeLessThan(5_000);
+    expect(held).toBeGreaterThan(Date.now() + 2 * 3_600_000);
+
+    const oldId = await seedAttachment(run, 0, { status: 'committed' });
+    const oldPath = (await row(oldId))!.storage_path;
+    must(await service().from('run_step_attachments').update({ created_at: new Date(Date.now() - 3 * 3_600_000).toISOString() }).eq('id', oldId).select('id'), 'age row');
+    expect((await remove(oldId)).error).toBeNull();
+    const dueRows = await service().from('storage_cleanup_queue').select('not_before').eq('path', oldPath);
+    expect(new Date(dueRows.data![0].not_before as string).getTime()).toBeLessThanOrEqual(Date.now() + 5_000);
   }, SEED_TIMEOUT);
 
   it('refuses everyone but the uploader with 45219 not_uploader, an owner included', async () => {
