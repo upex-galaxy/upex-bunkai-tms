@@ -40,6 +40,11 @@ describe('formatLastRun', () => {
     expect(formatLastRun('2026-07-29T11:52:00+00:00')).toBe('2026-07-29 11:52');
   });
 
+  test('a non-UTC offset is normalised to UTC before formatting', () => {
+    expect(formatLastRun('2026-07-29T01:30:00+02:00')).toBe('2026-07-28 23:30');
+    expect(formatLastRun('2026-07-29T11:52:00-05:00')).toBe('2026-07-29 16:52');
+  });
+
   test('a never-run row shows a dash', () => {
     expect(formatLastRun(null)).toBe('—');
   });

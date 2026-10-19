@@ -79,7 +79,11 @@ export function chipToken(outcome: PlanOutcome): 'pass' | 'fail' | 'aborted' | '
 // has no time: a dash.
 export function formatLastRun(iso: string | null): string {
   if (iso === null) { return '—'; }
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+  // Normalise to UTC first: the RPC may answer with any offset ('+02:00') and a plain slice would show that offset's wall clock.
+  const utc = new Date(iso);
+  if (Number.isNaN(utc.getTime())) { return '—'; }
+  const normalised = utc.toISOString();
+  return `${normalised.slice(0, 10)} ${normalised.slice(11, 16)}`;
 }
 
 export interface ProgressSegment { outcome: PlanOutcome, count: number, widthPct: number }
