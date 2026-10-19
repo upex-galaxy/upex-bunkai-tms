@@ -261,7 +261,7 @@ describeOrSkip('BK-593 - run step attachments against the real database', () => 
   }
 
   async function setRunStatus(runId: string, status: RunStatus) {
-    must(await service().from('runs').update({ status, finished_at: status === 'running' ? null : new Date().toISOString() }).eq('id', runId).select('id'), `run status ${status}`);
+    must(await service().from('runs').update({ status, finished_at: status === 'running' ? null : new Date().toISOString(), abort_reason: status === 'aborted' ? 'fixture abort' : null }).eq('id', runId).select('id'), `run status ${status}`);
   }
 
   async function init(run: SeededRun, stepIndex = 0, opts: { filename?: string, type?: string, size?: number, client?: typeof qa } = {}) {
