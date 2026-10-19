@@ -2,10 +2,11 @@
 
 import type { PlanVerdict } from '@lib/test-plans/close-validation';
 import { Button } from '@components/ui/button';
-import { PLAN_SUMMARY_MAX, PLAN_VERDICTS, planSummaryLength } from '@lib/test-plans/close-validation';
+import { normalizePlanSummary, PLAN_SUMMARY_MAX, PLAN_VERDICTS, planSummaryLength } from '@lib/test-plans/close-validation';
 import { notRunWarning, verdictChipToken, verdictLabel } from '@lib/test-plans/close-view';
 import { cn } from '@lib/utils';
 import { AlertTriangle, Lock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 // BK-207 — the "Close plan" confirmation dialog: a required verdict (passed | failed),
@@ -31,6 +32,7 @@ interface ApiErrorBody {
 }
 
 export function CloseTestPlanDialog({ open, onClose, planId, planName, notRunCount, onClosed }: CloseTestPlanDialogProps) {
+  const router = useRouter();
   const [verdict, setVerdict] = useState<PlanVerdict | null>(null);
   const [summary, setSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +41,9 @@ export function CloseTestPlanDialog({ open, onClose, planId, planName, notRunCou
   if (!open) { return null; }
 
   const warning = notRunCount === null ? null : notRunWarning(notRunCount);
-  const summaryLength = planSummaryLength(summary);
+  // The bound applies AFTER trimming (same rule as the server), so a trailing newline
+  // never counts against the 4000 characters.
+  const summaryLength = planSummaryLength(normalizePlanSummary(summary) ?? '');
   const summaryTooLong = summaryLength > PLAN_SUMMARY_MAX;
 
   const dismiss = () => {
@@ -49,6 +53,13 @@ export function CloseTestPlanDialog({ open, onClose, planId, planName, notRunCou
     setSummary('');
     setError(null);
     onClose();
+  };
+
+  // A stray click outside must not wipe a typed outcome summary or a chosen verdict;
+  // Cancel stays the explicit way to discard.
+  const backdropDismiss = () => {
+    if (summary !== '' || verdict !== null) { return; }
+    dismiss();
   };
 
   const confirm = async () => {
@@ -70,6 +81,8 @@ export function CloseTestPlanDialog({ open, onClose, planId, planName, notRunCou
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
         setError(body.error?.message ?? 'Could not close the plan.');
         setSubmitting(false);
+        // 409: the plan changed under us (already closed elsewhere). Re-read the real state.
+        if (response.status === 409) { router.refresh(); }
         return;
       }
       setSubmitting(false);
@@ -84,7 +97,7 @@ export function CloseTestPlanDialog({ open, onClose, planId, planName, notRunCou
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={dismiss}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={backdropDismiss}>
       <div
         data-testid="close-plan-dialog"
         role="dialog"

@@ -13,6 +13,19 @@ import { describe, expect, test } from 'bun:test';
 // the real write path (and the SQLSTATE contract) is exercised against the live
 // database in `plan-close-isolation.test.ts`.
 
+describe('planSummaryLength on the trimmed summary (the dialog counter)', () => {
+  test('4000 characters plus a trailing newline is within the bound', () => {
+    const typed = `${'a'.repeat(PLAN_SUMMARY_MAX)}\n`;
+    expect(planSummaryLength(typed)).toBe(PLAN_SUMMARY_MAX + 1);
+    expect(planSummaryLength(normalizePlanSummary(typed) ?? '')).toBe(PLAN_SUMMARY_MAX);
+    expect(TestPlanCloseBodySchema.safeParse({ verdict: 'passed', summary: typed }).success).toBe(true);
+  });
+
+  test('whitespace-only counts as zero', () => {
+    expect(planSummaryLength(normalizePlanSummary('  \n\t ') ?? '')).toBe(0);
+  });
+});
+
 describe('normalizePlanSummary', () => {
   test('trims the edges and keeps inner whitespace untouched', () => {
     expect(normalizePlanSummary('  one known flaky test,\n accepted  ')).toBe('one known flaky test,\n accepted');
