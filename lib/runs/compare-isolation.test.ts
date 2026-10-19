@@ -366,7 +366,7 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
     const withRemoved = await pair({ atcs: [{ key: keyA, title: 'x', steps: steps(['s1', 'passed'], ['s2', 'failed'], ['gone', 'passed']) }] }, { atcs: same });
     expect([withRemoved.result.counts!.removed, withRemoved.result.counts!.shared]).toEqual([1, 2]);
     expect(withRemoved.result.nothing_changed).toBe(false);
-  });
+  }, 60_000);
 
   it('reports a fully reworded Run as no common step, never as nothing changed', async () => {
     need();
@@ -637,5 +637,5 @@ describeOrSkip('BK-442 — bunkai_compare_run against the real database', () => 
     console.warn(`[compare-isolation] 500-step comparison: ${elapsed.toFixed(0)} ms round trip (budget ${BUDGET_MS} ms), ${result.rows?.length ?? 0} rows.`);
     expect(result.counts!.shared).toBe(500);
     expect(elapsed).toBeLessThanOrEqual(BUDGET_MS);
-  });
+  }, 60_000);
 });
