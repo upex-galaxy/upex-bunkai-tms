@@ -100,7 +100,7 @@ declare
   v_created_by   uuid;
   -- Same whitespace class as the summary trim below (space, tab, newline, vertical tab,
   -- form feed, CR, NBSP): a whitespace-only verdict is 'missing' (45604), not 'invalid'.
-  v_verdict      text := regexp_replace(coalesce(p_verdict, ''), '^[\t\n\v\f\r  ]+|[\t\n\v\f\r  ]+$', '', '', 'g');
+  v_verdict      text := regexp_replace(coalesce(p_verdict, ''), '^[\t\n\v\f\r  ]+|[\t\n\v\f\r  ]+$', '', 'g');
   v_summary      text;
   v_snapshot     jsonb;
   v_row          public.test_plans%rowtype;
