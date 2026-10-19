@@ -35,6 +35,16 @@
     "posture": "public"
   },
   {
+    "file": "app/api/v1/admin/storage-cleanup/route.ts",
+    "method": "GET",
+    "posture": "public"
+  },
+  {
+    "file": "app/api/v1/admin/storage-cleanup/route.ts",
+    "method": "POST",
+    "posture": "public"
+  },
+  {
     "file": "app/api/v1/atcs/[id]/duplicate/route.ts",
     "method": "POST",
     "posture": "required:atc:write"
