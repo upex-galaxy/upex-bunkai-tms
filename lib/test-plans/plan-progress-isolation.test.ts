@@ -115,6 +115,9 @@ function must<T>(result: { data: T, error: { message: string } | null }, what: s
 let fixture: Fixture | null = null;
 let qa: ReturnType<typeof service>;
 const planIds: string[] = [];
+// Every workspace id is recorded the moment it is inserted, so teardown still cleans
+// when beforeAll throws midway (the `fixture` object only exists once seeding ends).
+const createdWorkspaceIds: string[] = [];
 
 // A test that runs while the fixture is missing FAILS (it never passes vacuously).
 function need(): Fixture {
@@ -148,9 +151,11 @@ describeOrSkip('BK-204 — plan progress against the real database', () => {
     // cross-workspace refusal never depends on what else lives in the database.
     const ownWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-own`, name: `${PREFIX} own`, owner_user_id: qaUserId, plan: 'cloud' }).select('id').single(), 'own workspace');
     const workspaceId = ownWs.id as string;
+    createdWorkspaceIds.push(workspaceId);
     must(await db.from('workspace_members').insert({ workspace_id: workspaceId, user_id: qaUserId, role: 'owner', status: 'active' }).select('user_id').single(), 'own membership');
     const foreignWs = must(await db.from('workspaces').insert({ slug: `${PREFIX}-foreign`, name: `${PREFIX} foreign`, owner_user_id: qaUserId, plan: 'cloud' }).select('id').single(), 'foreign workspace');
     const foreignWorkspaceId = foreignWs.id as string;
+    createdWorkspaceIds.push(foreignWorkspaceId);
 
     const project = must(await db.from('projects').insert({ workspace_id: workspaceId, slug: `${PREFIX}-p`, name: `${PREFIX} project` }).select('id').single(), 'project');
     const env = must(await db.from('project_environments').insert({ project_id: project.id, name: 'Staging' }).select('id').single(), 'environment');
@@ -170,17 +175,26 @@ describeOrSkip('BK-204 — plan progress against the real database', () => {
   });
 
   afterAll(async () => {
-    const f = fixture;
-    if (!f) { return; }
+    if (createdWorkspaceIds.length === 0) { return; }
     const db = service();
+    const ws = createdWorkspaceIds;
     // Children before parents: runs.test_id is ON DELETE RESTRICT; test_plan_tests
-    // cascades from plans and tests; the workspaces cascade the rest.
-    await db.from('runs').delete().in('workspace_id', [f.workspaceId, f.foreignWorkspaceId]);
-    await db.from('test_plans').delete().in('workspace_id', [f.workspaceId, f.foreignWorkspaceId]);
-    await db.from('tests').delete().in('workspace_id', [f.workspaceId, f.foreignWorkspaceId]);
-    await db.from('projects').delete().in('id', [f.projectId, f.foreignProjectId]);
-    await db.from('workspace_members').delete().eq('workspace_id', f.workspaceId);
-    await db.from('workspaces').delete().in('id', [f.workspaceId, f.foreignWorkspaceId]);
+    // cascades from plans and tests; the workspaces cascade the rest. A delete that
+    // fails is collected and thrown, never swallowed: leftover fixtures must be loud.
+    const failures: string[] = [];
+    const attempt = async (what: string, op: PromiseLike<{ error: { message: string } | null }>) => {
+      const { error } = await op;
+      if (error) { failures.push(`${what}: ${error.message}`); }
+    };
+    await attempt('runs', db.from('runs').delete().in('workspace_id', ws));
+    await attempt('test_plans', db.from('test_plans').delete().in('workspace_id', ws));
+    await attempt('tests', db.from('tests').delete().in('workspace_id', ws));
+    await attempt('projects', db.from('projects').delete().in('workspace_id', ws));
+    await attempt('workspace_members', db.from('workspace_members').delete().in('workspace_id', ws));
+    await attempt('workspaces', db.from('workspaces').delete().in('id', ws));
+    if (failures.length > 0) {
+      throw new Error(`[plan-progress-isolation] teardown left fixtures behind (${PREFIX}): ${failures.join('; ')}`);
+    }
   });
 
   // ---------------------------------------------------------------- seeding
@@ -318,6 +332,20 @@ describeOrSkip('BK-204 — plan progress against the real database', () => {
     const p = await progress(plan);
     expect(outcomes(p)).toEqual(['failed', 'passed']);
     expect(p.passed_pct).toBe(50);
+  });
+
+  it('equal started_at on both runs: the greater run id wins, whatever the statuses', async () => {
+    const plan = await newPlan();
+    const same = '2026-05-01T09:00:00.000Z';
+    const [testId] = await seedMembers(plan, [[run('passed', same), run('failed', same)]]);
+    const { data: seeded, error } = await service().from('runs').select('id, status').eq('test_id', testId);
+    if (error) { throw error; }
+    expect(seeded).toHaveLength(2);
+    // uuid order in Postgres is bytewise, i.e. lowercase-hex string order
+    const winner = [...seeded].sort((x, y) => (x.id < y.id ? 1 : -1))[0];
+    const p = await progress(plan);
+    expect(p.tests[0].run_id).toBe(winner.id);
+    expect(p.tests[0].outcome).toBe(winner.status);
   });
 
   it('a running latest run shows in progress and overrides an older finished run; a newer finished run overrides an older running one', async () => {
