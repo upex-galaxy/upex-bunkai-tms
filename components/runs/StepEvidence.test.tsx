@@ -32,7 +32,9 @@ function render(props: Partial<Parameters<typeof StepEvidence>[0]> = {}) {
       runStatus="running"
       canAttach
       attachments={[]}
+      currentUserId="me"
       onAdded={() => undefined}
+      onRemoved={() => undefined}
       testSuffix="1-0"
       {...props}
     />,
@@ -68,5 +70,30 @@ describe('StepEvidence', () => {
     expect(html).toContain('10 / 10');
     expect(html).toContain('disabled=""');
     expect(html).toContain('This step already holds the maximum evidence (10 images or 50 MiB).');
+  });
+});
+
+describe('StepEvidence thumbnails and remove', () => {
+  it('draws a thumbnail per image from the authorized content route, with its name and size', () => {
+    const html = render({ attachments: [att('a1', { byte_size: 1536 })] });
+    expect(html).toContain('src="/api/v1/runs/r1/steps/s1/attachments/a1/content"');
+    expect(html).toContain('alt="a1.png"');
+    expect(html).toContain('aria-label="Open a1.png"');
+    expect(html).toContain('1.5 KiB');
+  });
+
+  it('shows Remove only on the uploader\'s own images while the Run is running', () => {
+    const own = att('mine', { created_by: 'me' });
+    const theirs = att('theirs', { created_by: 'someone-else' });
+    const running = render({ attachments: [own, theirs] });
+    expect(running).toContain('data-testid="runner-step-attachment-remove-mine"');
+    expect(running).not.toContain('data-testid="runner-step-attachment-remove-theirs"');
+
+    expect(render({ attachments: [own], runStatus: 'passed' })).not.toContain('runner-step-attachment-remove-');
+    expect(render({ attachments: [own], canAttach: false })).not.toContain('runner-step-attachment-remove-');
+  });
+
+  it('does not render the full-size view until an image is opened', () => {
+    expect(render({ attachments: [att('a1')] })).not.toContain('runner-evidence-lightbox');
   });
 });

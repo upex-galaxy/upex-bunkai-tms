@@ -146,6 +146,7 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
       canReportBug={canManageRun}
       canAttach={canManageRun}
       initialAttachments={initialAttachments}
+      currentUserId={user.id}
       atcModuleNames={atcModuleNames}
       linkedBug={linkedBug}
     />

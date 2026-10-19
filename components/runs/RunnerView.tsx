@@ -137,6 +137,8 @@ interface RunnerViewProps {
   // read through RLS; viewers get them read-only.
   canAttach?: boolean
   initialAttachments?: StepAttachment[]
+  // Whose images show a Remove control (the uploader only).
+  currentUserId?: string
 }
 
 // BK-212 Slice 2 — pre-formatted (severity/status label + `.status-chip`
@@ -182,7 +184,7 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = [] }: RunnerViewProps) {
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = [], currentUserId = '' }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -237,6 +239,9 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   const attachmentsByStep = groupAttachmentsByStep(attachments);
   const addAttachment = (attachment: StepAttachment) => {
     setAttachments(list => (list.some(a => a.id === attachment.id) ? list : [...list, attachment]));
+  };
+  const removeAttachment = (attachmentId: string) => {
+    setAttachments(list => list.filter(a => a.id !== attachmentId));
   };
 
   // BK-212 Slice 2 — scroll the deep-linked bug's originating step into view
@@ -937,7 +942,9 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
                             runStatus={view.status}
                             canAttach={canAttach}
                             attachments={attachmentsByStep[s.id] ?? []}
+                            currentUserId={currentUserId}
                             onAdded={addAttachment}
+                            onRemoved={removeAttachment}
                             testSuffix={`${atc.position}-${s.position}`}
                           />
 
