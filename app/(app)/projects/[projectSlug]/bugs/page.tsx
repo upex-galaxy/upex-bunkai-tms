@@ -3,6 +3,7 @@ import { fetchBugsListPage } from '@app/api/v1/bugs/list-response';
 import { BugsListSkeleton, BugsListView } from '@components/bugs/BugsListView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { BUGS_LIST_PAGE_SIZE } from '@lib/bugs/constants';
+import { bugsFiltersFromSearchParams } from '@lib/bugs/filter-params';
 import { createAdminClient } from '@lib/supabase/admin';
 import { resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -13,6 +14,9 @@ import { Suspense } from 'react';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
+  // BK-443 — the list's filters live in the address (`module`, `status`,
+  // `severity`), so a reload or a shared link renders the filtered first page.
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 // BK-41 Slice 3 — the "Bug Reports" list/filter view (`/projects/[projectSlug]/
@@ -26,17 +30,18 @@ interface PageProps {
 // holds, avoids a second hand-duplicated mapping). `BugsListView` owns every
 // later query (filter changes, load older, retry, post-create refresh)
 // through the API route itself — mirrors `RunHistoryView`/`ActivityView`.
-export default async function ProjectBugsPage({ params }: PageProps) {
+export default async function ProjectBugsPage({ params, searchParams }: PageProps) {
   const { projectSlug } = await params;
+  const rawFilters = await searchParams;
 
   return (
     <Suspense fallback={<BugsListSkeleton />}>
-      <ProjectBugsSection projectSlug={projectSlug} />
+      <ProjectBugsSection projectSlug={projectSlug} rawFilters={rawFilters} />
     </Suspense>
   );
 }
 
-async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
+async function ProjectBugsSection({ projectSlug, rawFilters }: { projectSlug: string, rawFilters: Record<string, string | string[] | undefined> }) {
   const supabase = await createClient();
 
   const { data: workspaceRows } = await supabase
@@ -71,6 +76,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
     .is('archived_at', null)
     .order('path', { ascending: true });
   const modules = (modulesData ?? []).map(m => ({ id: m.id, name: m.name, path: m.path }));
+  const initialFilters = bugsFiltersFromSearchParams(rawFilters, new Set(modules.map(m => m.id)));
 
   // Same member+ (not-viewer) gate as ProjectLayout's own `canCreate` and
   // RunnerView's `canReportBug` — a viewer sees the list read-only.
@@ -142,16 +148,16 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
       throw new Error('No session.');
     }
 
-    // Unfiltered defaults — module/status/severity filtering is a client-side
-    // affordance `BugsListView` drives entirely through the API route after
-    // this first paint (mirrors `activity/page.tsx` calling `fetchActivityPage`
-    // directly with the caller's own RLS-scoped `db` client, never
-    // `createAdminClient()` — `bunkai_list_bugs` is SECURITY INVOKER).
+    // First page under the filters the address carries (none by default).
+    // `BugsListView` drives every later query through the API route (mirrors
+    // `activity/page.tsx` calling `fetchActivityPage` directly with the
+    // caller's own RLS-scoped `db` client, never `createAdminClient()` —
+    // `bunkai_list_bugs` is SECURITY INVOKER).
     const page = await fetchBugsListPage(supabase, {
       projectId: project.id,
-      moduleId: null,
-      statuses: null,
-      severities: null,
+      moduleId: initialFilters.moduleId,
+      statuses: initialFilters.statuses.length > 0 ? initialFilters.statuses : null,
+      severities: initialFilters.severities.length > 0 ? initialFilters.severities : null,
       limit: BUGS_LIST_PAGE_SIZE,
       cursorSeverity: null,
       cursorCreatedAt: null,
@@ -166,6 +172,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
         canCreateBug={canCreateBug}
         workspaceMembers={workspaceMembers}
         initialPage={page}
+        initialFilters={initialFilters}
       />
     );
   }
@@ -178,6 +185,7 @@ async function ProjectBugsSection({ projectSlug }: { projectSlug: string }) {
         canCreateBug={canCreateBug}
         workspaceMembers={workspaceMembers}
         initialPage={EMPTY_PAGE}
+        initialFilters={initialFilters}
         initialError="Could not load this Project's bugs."
       />
     );

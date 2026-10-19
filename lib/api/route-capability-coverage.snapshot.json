@@ -261,6 +261,26 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/projects/[id]/saved-views/[viewId]/route.ts",
+    "method": "DELETE",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/saved-views/[viewId]/route.ts",
+    "method": "PATCH",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/saved-views/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/projects/[id]/saved-views/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/projects/[id]/test-plans/route.ts",
     "method": "GET",
     "posture": "required:atc:read"

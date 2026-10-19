@@ -5,6 +5,7 @@ import { shortSlug } from '@lib/utils';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useWorkbench } from './workbench-context';
 
 // BK-20 — Projects toolbar inline filter / autocomplete (master-design-plan
 // §4.3 "Toolbar · Inline filter box"). Type → debounced GET /api/v1/atcs/search
@@ -32,7 +33,13 @@ interface AtcSearchFilterProps {
 const DEBOUNCE_MS = 250;
 
 export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps) {
-  const [value, setValue] = useState('');
+  // BK-443 — the raw text lives in the workbench context (so a saved view can
+  // set it and the address can mirror it); this control still owns the lookup.
+  const { atcQuery: value, setAtcQuery: setValue } = useWorkbench();
+  // The last text the member TYPED. The dropdown opens only while the box holds
+  // that text, so restoring a saved view (which sets the text from outside)
+  // fills the box without popping the dropdown open.
+  const typedValue = useRef<string | null>(null);
   const [results, setResults] = useState<AtcSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,7 +68,7 @@ export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps
         }
         const body = (await res.json()) as { items: AtcSearchResult[] };
         setResults(body.items ?? []);
-        setOpen(true);
+        setOpen(typedValue.current === value);
       }
       catch {
         // Aborted or network error — leave the previous results in place.
@@ -96,7 +103,10 @@ export function AtcSearchFilter({ projectId, projectSlug }: AtcSearchFilterProps
       <Input
         type="search"
         value={value}
-        onChange={e => setValue(e.target.value)}
+        onChange={(e) => {
+          typedValue.current = e.target.value;
+          setValue(e.target.value);
+        }}
         onFocus={() => { if (results.length > 0) { setOpen(true); } }}
         placeholder="Filter ATCs…"
         aria-label="Filter ATCs by name, ID, or tag"

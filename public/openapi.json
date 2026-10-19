@@ -3384,6 +3384,146 @@
         "required": ["passed", "failed"],
         "description": "Counts over the WHOLE filtered set (every row matching the active filters, not just the returned page) — Business Rule #3 / Technical Decision D2. Deliberately the OPPOSITE of RunHistoryTotals: these numbers change as filters narrow. `running` and `aborted` Runs are not counted here (aborted is a terminal outcome but not a pass/fail verdict)."
       },
+      "SavedViewPatchResponse": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/SavedViewItem"
+          }
+        },
+        "required": ["item"]
+      },
+      "SavedViewItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "view_kind": {
+            "type": "string",
+            "enum": ["traceability", "run_history", "bugs", "workbench"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "project_id", "view_kind", "name", "state", "created_at", "updated_at"]
+      },
+      "SavedViewPatchBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New name; same rules as on create. Renaming to its own current name is accepted."
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Replaces the whole stored filter set; same rules as on create."
+          }
+        }
+      },
+      "SavedViewListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavedView"
+            },
+            "description": "The caller's own views for the requested surface, at most 25, ordered by case-folded name then id."
+          }
+        },
+        "required": ["items"]
+      },
+      "SavedView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "view_kind": {
+            "type": "string",
+            "enum": ["traceability", "run_history", "bugs", "workbench"]
+          },
+          "name": {
+            "type": "string",
+            "description": "1–80 characters (code points), trimmed. Unique per member, project and surface, case-insensitive."
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The surface's own URL query parameters, e.g. { \"severity\": \"P1,P2\", \"module\": \"<uuid>\" }. Never empty."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "project_id", "view_kind", "name", "state", "created_at", "updated_at"]
+      },
+      "SavedViewCreateResponse": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/SavedView"
+          }
+        },
+        "required": ["item"]
+      },
+      "SavedViewCreateBody": {
+        "type": "object",
+        "properties": {
+          "view_kind": {
+            "type": "string",
+            "enum": ["traceability", "run_history", "bugs", "workbench"]
+          },
+          "name": {
+            "type": "string",
+            "description": "1–80 characters after trimming; no control characters."
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "At least one filter; keys and values must be valid for the surface."
+          }
+        },
+        "required": ["view_kind", "name", "state"]
+      },
       "TestPlanListResponse": {
         "type": "object",
         "properties": {
@@ -10200,6 +10340,394 @@
           },
           "422": {
             "description": "Validation failed — `date_to` before `date_from`, a `status`/`executor` value outside its enum (incl. `status=running`), or `limit` outside 1..50 (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/saved-views/{viewId}": {
+      "patch": {
+        "tags": ["Saved views"],
+        "summary": "Rename a saved view and/or replace the filters it holds",
+        "description": "Send `name`, `state`, or both; the surface cannot be changed. Another member's view, another project's view and a nonexistent id all return the same 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedViewPatchBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved view updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedViewPatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such saved view for the caller in this project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The new name is already used on this surface.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name length, empty body, invalid or empty state).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Saved views"],
+        "summary": "Delete a saved view",
+        "description": "Removes only the saved view. Another member's view and a nonexistent id return the same 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Saved view deleted."
+          },
+          "400": {
+            "description": "Malformed id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such saved view for the caller in this project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/saved-views": {
+      "get": {
+        "tags": ["Saved views"],
+        "summary": "List my saved views for one surface of a project",
+        "description": "Returns only the caller's own views; another member's views are never visible. A project the caller is not a member of returns an empty list.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "view_kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["traceability", "run_history", "bugs", "workbench"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved views listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedViewListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "view_kind is missing or unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Saved views"],
+        "summary": "Save the filters currently applied under a name",
+        "description": "Requires at least one filter. The name is unique per member, project and surface (case-insensitive, trimmed); a duplicate returns 409 saved_view_name_taken. A member may keep up to 25 views per surface and project; the 26th returns 409 saved_view_limit_reached. A project the caller is not a member of returns 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedViewCreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved view created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedViewCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found (or the caller is not a member).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name already used on this surface, or the 25-view limit is reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed (name length, empty or invalid state, inverted date range, unknown surface).",
             "content": {
               "application/json": {
                 "schema": {

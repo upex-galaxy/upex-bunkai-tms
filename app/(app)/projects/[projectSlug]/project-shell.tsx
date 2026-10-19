@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import type { WorkbenchData, WorkbenchView } from './workbench-context';
 import { Breadcrumb, Topbar } from '@components/layout/Topbar';
+import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { buttonVariants } from '@components/ui/button';
 import { cn } from '@lib/utils';
 import { GitBranch, ListTree, Network, Play, Plus, Table2, X } from 'lucide-react';
@@ -55,6 +56,8 @@ function ShellChrome({ children }: { children: ReactNode }) {
     activeTestId,
     activeRunId,
     closeTab,
+    savedViewState,
+    applySavedViewState,
   } = useWorkbench();
 
   const isDetail = activeAtcId !== null || activeTestId !== null;
@@ -117,6 +120,16 @@ function ShellChrome({ children }: { children: ReactNode }) {
           <>
             <AtcSearchFilter projectId={projectId} projectSlug={projectSlug} />
             <TestTagFilter />
+            {/* BK-443 — saved views of the workbench filters, on the index route
+                only, where the filtered list and the address mirror live. */}
+            {showExportAtcs && (
+              <SavedViewsMenu
+                projectId={projectId}
+                kind="workbench"
+                currentState={savedViewState}
+                onApply={applySavedViewState}
+              />
+            )}
             {showExportAtcs && <ExportAtcsButton projectId={projectId} />}
             <Link
               href={`/projects/${projectSlug}/atcs/new`}
