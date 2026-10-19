@@ -213,9 +213,9 @@ revoke execute on function public.bunkai_run_step_attachment_json(public.run_ste
 -- 5. bunkai_init_run_step_attachment
 -- ============================================================================
 --
--- Order is load-bearing: (1) no session -> P0002; (2) resolve step -> run under FOR UPDATE
--- OF the runs row (missing, or a step of another run -> P0002); (3) not a member -> P0002;
--- (4) not member+ -> 42501; (5) Run not running -> 45216; (6) argument backstops; (7) quotas;
+-- Order is load-bearing: (1) no session -> P0002; (2) resolve step -> workspace with a
+-- lock-free read (missing, or a step of another run -> P0002); (3) not a member -> P0002;
+-- (4) not member+ -> 42501; (5) lock the runs row, Run not running -> 45216; (6) argument backstops; (7) quotas;
 -- (8) insert the pending row. Returns {attachment, storage_path}: the route signs the upload
 -- URL for storage_path and never echoes it to the client.
 
@@ -246,14 +246,15 @@ begin
     raise exception 'run_step_not_found' using errcode = 'P0002';
   end if;
 
-  select r.workspace_id, r.status
-    into v_workspace_id, v_run_status
+  -- Resolve the workspace with a lock-free read and authorize BEFORE taking the runs lock,
+  -- so a caller who is not a writer of that workspace can never queue a row lock on a Run.
+  select r.workspace_id
+    into v_workspace_id
     from public.run_steps rs
     join public.run_atcs ra on ra.id = rs.run_atc_id
     join public.runs r on r.id = ra.run_id
     where rs.id = p_run_step_id
-      and ra.run_id = p_run_id
-    for update of r;
+      and ra.run_id = p_run_id;
   if v_workspace_id is null then
     raise exception 'run_step_not_found' using errcode = 'P0002';
   end if;
@@ -265,6 +266,10 @@ begin
     raise exception 'forbidden' using errcode = '42501';
   end if;
 
+  select r.status into v_run_status from public.runs r where r.id = p_run_id for update;
+  if v_run_status is null then
+    raise exception 'run_step_not_found' using errcode = 'P0002';
+  end if;
   if v_run_status <> 'running' then
     raise exception 'attachment_run_closed' using errcode = '45216';
   end if;
@@ -346,6 +351,8 @@ declare
   v_actor        uuid := auth.uid();
   v_row          public.run_step_attachments%rowtype;
   v_run_id       uuid;
+  v_workspace_id uuid;
+  v_creator      uuid;
   v_run_status   text;
   v_step_count   int;
   v_step_bytes   bigint;
@@ -355,10 +362,14 @@ begin
     raise exception 'attachment_not_found' using errcode = 'P0002';
   end if;
 
-  -- Lock order is runs first, then the attachment row (the sweep only ever locks attachment
-  -- rows, so there is no cycle). The row is re-read AFTER both locks are held.
-  select run_id into v_run_id from public.run_step_attachments where id = p_attachment_id;
-  if v_run_id is null then
+  -- A lock-free read authorizes the caller first, so a non-member never queues a lock on a
+  -- foreign Run. Lock order is then runs, then the attachment row (the sweep only ever locks
+  -- attachment rows, so there is no cycle). The row is re-read AFTER both locks are held.
+  select run_id, workspace_id, created_by into v_run_id, v_workspace_id, v_creator
+    from public.run_step_attachments where id = p_attachment_id;
+  if v_run_id is null
+     or not public.bunkai_is_workspace_member(v_workspace_id)
+     or v_creator is distinct from v_actor then
     raise exception 'attachment_not_found' using errcode = 'P0002';
   end if;
   select status into v_run_status from public.runs where id = v_run_id for update;
@@ -453,16 +464,19 @@ declare
   v_actor      uuid := auth.uid();
   v_row        public.run_step_attachments%rowtype;
   v_run_id     uuid;
+  v_workspace_id uuid;
   v_run_status text;
 begin
   if v_actor is null then
     raise exception 'attachment_not_found' using errcode = 'P0002';
   end if;
 
-  -- Lock order is runs first, then the attachment row (the sweep only ever locks attachment
-  -- rows, so there is no cycle). The row is re-read AFTER both locks are held.
-  select run_id into v_run_id from public.run_step_attachments where id = p_attachment_id;
-  if v_run_id is null then
+  -- A lock-free read authorizes the caller first, so a non-member never queues a lock on a
+  -- foreign Run. Lock order is then runs, then the attachment row (the sweep only ever locks
+  -- attachment rows, so there is no cycle). The row is re-read AFTER both locks are held.
+  select run_id, workspace_id into v_run_id, v_workspace_id
+    from public.run_step_attachments where id = p_attachment_id;
+  if v_run_id is null or not public.bunkai_is_workspace_member(v_workspace_id) then
     raise exception 'attachment_not_found' using errcode = 'P0002';
   end if;
   select status into v_run_status from public.runs where id = v_run_id for update;
