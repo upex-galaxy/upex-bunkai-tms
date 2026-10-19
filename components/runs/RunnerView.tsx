@@ -184,7 +184,10 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = [], currentUserId = '' }: RunnerViewProps) {
+// Stable default: a fresh `[]` per render would re-run the effect that resets the attachments.
+const NO_ATTACHMENTS: StepAttachment[] = [];
+
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = NO_ATTACHMENTS, currentUserId = '' }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
