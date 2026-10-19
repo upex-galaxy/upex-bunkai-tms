@@ -2206,7 +2206,6 @@ export interface Database {
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
-      bunkai_reopen_test_plan: { Args: { p_test_plan_id: string }, Returns: Json }
       bunkai_remove_run_step_attachment: {
         Args: { p_attachment_id: string }
         Returns: Json
@@ -2221,6 +2220,10 @@ export interface Database {
           p_environment_id: string
           p_name: string
         }
+        Returns: Json
+      }
+      bunkai_reopen_test_plan: {
+        Args: { p_test_plan_id: string }
         Returns: Json
       }
       bunkai_reorder_test_steps: {
