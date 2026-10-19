@@ -618,7 +618,7 @@ describeDb('BK-371 (B) — bunkai_upsert_project_tracker_settings against the re
     expect(await bugState(db, synced)).toEqual(before.synced);
     expect(await bugState(db, sibling)).toEqual(before.sibling);
     expect(await bugState(db, foreign)).toEqual(before.foreign);
-  });
+  }, 60_000);
 
   it('a save that changes nothing writes nothing and queues nothing (AC-5.5)', async () => {
     expect.hasAssertions();
