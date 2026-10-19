@@ -367,6 +367,21 @@ export async function compareRun(supabase: Client, args: { runId: string }) {
   return supabase.rpc('bunkai_compare_run', { p_run_id: args.runId });
 }
 
+// BK-204 — Test Plan progress from run outcomes (0094_plan_progress.sql). Both
+// functions are SECURITY INVOKER with NO identity parameter: row-level security on
+// the caller's own client is the only authorization. Pass the CALLER's RLS-scoped
+// client (the cookie client in a page), NEVER `createAdminClient()` — a caller with
+// no `auth.uid()` is refused with P0002. `planProgress` raises P0002 for a missing
+// or invisible plan; `plansProgress` leaves invisible plans out. Shapes:
+// `PlanProgress` / `PlanProgressSummary` in lib/test-plans/progress-view.ts.
+export async function planProgress(supabase: Client, args: { planId: string }) {
+  return supabase.rpc('bunkai_plan_progress', { p_plan_id: args.planId });
+}
+
+export async function plansProgress(supabase: Client, args: { planIds: string[] }) {
+  return supabase.rpc('bunkai_plans_progress', { p_plan_ids: args.planIds });
+}
+
 // BK-36 — abort an in-progress Run with a reason. Same explicit-actor contract;
 // the SECURITY DEFINER RPC gates member+ write access, requires status 'running'
 // (else run_not_abortable), trims + bounds the reason (3..500), closes the Run as

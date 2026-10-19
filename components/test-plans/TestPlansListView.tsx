@@ -1,7 +1,9 @@
 'use client';
 
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
+import type { PlanProgressSummary } from '@lib/test-plans/progress-view';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
+import { PlanMiniBar } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
@@ -22,7 +24,8 @@ import { useState } from 'react';
 //     BK-207, and no plan can be Closed until that story ships)
 //   - the mono `PLAN-001` id column (plans have a uuid, no human-facing key)
 // The "Tests" count column IS rendered — scope.md lists it — and reads the
-// plan's live membership count (BK-203).
+// plan's live membership count (BK-203). BK-204 adds the "Progress" column: a
+// miniature of the detail's stacked bar plus the passed percentage.
 
 export interface TestPlanListItem {
   id: string
@@ -31,6 +34,8 @@ export interface TestPlanListItem {
   goal: string
   status: TestPlanStatus
   testCount: number
+  // BK-204 — null when the progress read failed or the plan is unknown to it.
+  progress: PlanProgressSummary | null
   creatorLabel: string
 }
 
@@ -38,6 +43,8 @@ interface TestPlansListViewProps {
   projectId: string
   projectSlug: string
   testPlans: TestPlanListItem[]
+  // True when the batch progress read errored: every dash then reads "Progress unavailable".
+  progressUnavailable?: boolean
   // Member+ gate — a viewer sees the list with the create action
   // STRUCTURALLY absent, not merely hidden (business-rules.md, AC 4.1).
   canCreate: boolean
@@ -45,7 +52,7 @@ interface TestPlansListViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlansListView({ projectId, projectSlug, testPlans, canCreate }: TestPlansListViewProps) {
+export function TestPlansListView({ projectId, projectSlug, testPlans, progressUnavailable = false, canCreate }: TestPlansListViewProps) {
   const [creating, setCreating] = useState(false);
 
   return (
@@ -122,7 +129,7 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, canCreate
                     <table className="w-full border-collapse">
                       <thead>
                         <tr>
-                          {['Name', 'Goal / release', 'Status', 'Tests', 'Created by'].map(column => (
+                          {['Name', 'Goal / release', 'Status', 'Tests', 'Progress', 'Created by'].map(column => (
                             <th
                               key={column}
                               scope="col"
@@ -135,7 +142,7 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, canCreate
                       </thead>
                       <tbody data-testid="test-plans-rows">
                         {testPlans.map(testPlan => (
-                          <TestPlanRow key={testPlan.id} testPlan={testPlan} projectSlug={projectSlug} />
+                          <TestPlanRow key={testPlan.id} testPlan={testPlan} projectSlug={projectSlug} progressUnavailable={progressUnavailable} />
                         ))}
                       </tbody>
                     </table>
@@ -148,7 +155,7 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, canCreate
   );
 }
 
-function TestPlanRow({ testPlan, projectSlug }: { testPlan: TestPlanListItem, projectSlug: string }) {
+function TestPlanRow({ testPlan, projectSlug, progressUnavailable }: { testPlan: TestPlanListItem, projectSlug: string, progressUnavailable: boolean }) {
   return (
     <tr
       data-testid={`test-plan-row-${testPlan.id}`}
@@ -184,6 +191,9 @@ function TestPlanRow({ testPlan, projectSlug }: { testPlan: TestPlanListItem, pr
           {testPlan.testCount}
         </span>
         <span className="ml-1 text-xs text-fg-3">{testPlan.testCount === 1 ? 'test' : 'tests'}</span>
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        <PlanMiniBar planId={testPlan.id} summary={testPlan.progress} unavailable={progressUnavailable} />
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="text-sm text-fg-2">{testPlan.creatorLabel || UNRESOLVED_CREATOR}</span>

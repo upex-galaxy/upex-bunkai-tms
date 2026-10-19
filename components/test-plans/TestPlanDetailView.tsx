@@ -2,15 +2,19 @@
 
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import type { TestPlanMemberTest } from '@components/test-plans/TestPlanTestsTable';
+import type { PlanProgress } from '@lib/test-plans/progress-view';
 import { TestPickerDialog } from '@components/test-plans/TestPickerDialog';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
+import { TestPlanProgress, TestPlanProgressUnavailable } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlanTestsTable } from '@components/test-plans/TestPlanTestsTable';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
+import { planProgressByTest } from '@lib/test-plans/progress-view';
 import { ChevronLeft, Pencil, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
 // BK-202/BK-203 — the Test Plan detail view (`/projects/[projectSlug]/plans/
 // [planId]`). BK-202 shipped the plan's own identity (name, goal, status,
@@ -18,10 +22,10 @@ import { useState } from 'react';
 // state named the sibling capability — that gap is what BK-203 fills: the
 // member-tests table, the "Add tests" picker, and the live count.
 //
-// The aggregate progress card and the close flow are STILL absent — those
-// belong to BK-204 and BK-207 respectively, neither of which has shipped.
-// Same ratified-by-scope departure from `plan-detail.html` BK-202 already
-// applied (master-design-plan §5 D25): build only what has a data source.
+// BK-204 adds the progress strip under the header and the two outcome columns
+// in the table. The close flow is STILL absent — it belongs to BK-207, which has
+// not shipped. Same ratified-by-scope departure from `plan-detail.html` BK-202
+// already applied (master-design-plan §5 D25): build only what has a data source.
 
 export interface TestPlanDetail {
   id: string
@@ -38,6 +42,12 @@ export interface TestPlanDetail {
 interface TestPlanDetailViewProps {
   testPlan: TestPlanDetail
   initialTests: TestPlanMemberTest[]
+  // BK-204 — the plan's progress, read once per page view by the server page
+  // (fetch-on-view: no polling, no push). null when that read failed: the strip
+  // and the outcome columns are then left out instead of showing a guess.
+  progress: PlanProgress | null
+  // True when the progress read errored, as opposed to a plan with nothing to show.
+  progressUnavailable?: boolean
   // Member+ gate — a viewer sees the detail read-only, Edit AND the
   // Add/Remove tests controls structurally absent (business-rules.md, AC 4.4,
   // AC 5.1). The server RPCs re-check the live role on every write
@@ -47,7 +57,8 @@ interface TestPlanDetailViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlanDetailView({ testPlan, initialTests, canEdit }: TestPlanDetailViewProps) {
+export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit }: TestPlanDetailViewProps) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [tests, setTests] = useState<TestPlanMemberTest[]>(initialTests);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -78,8 +89,13 @@ export function TestPlanDetailView({ testPlan, initialTests, canEdit }: TestPlan
     }
   };
 
+  // Membership changed: the strip and the columns belong to the server read, so
+  // ask the server component to run it again (one RPC per refresh).
+  const progressByTest = useMemo(() => (progress ? planProgressByTest(progress) : null), [progress]);
+
   const handleRemoved = (testId: string) => {
     setTests(prev => prev.filter(t => t.id !== testId));
+    router.refresh();
   };
 
   return (
@@ -179,11 +195,12 @@ export function TestPlanDetailView({ testPlan, initialTests, canEdit }: TestPlan
             />
           )}
 
-          {/* Progress card and close flow are still absent — BK-204 and
-              BK-207 respectively, neither shipped. */}
+          {/* The close flow is still absent — BK-207, not shipped. */}
+          {progress ? <TestPlanProgress summary={progress} /> : progressUnavailable && <TestPlanProgressUnavailable />}
           <TestPlanTestsTable
             planId={testPlan.id}
             tests={tests}
+            progressByTest={progressByTest}
             canEdit={canEditMembership}
             onRemoved={handleRemoved}
           />
@@ -196,7 +213,7 @@ export function TestPlanDetailView({ testPlan, initialTests, canEdit }: TestPlan
         planId={testPlan.id}
         projectId={testPlan.projectId}
         existingTestIds={new Set(tests.map(t => t.id))}
-        onAdded={() => { void refetchTests(); }}
+        onAdded={() => { void refetchTests(); router.refresh(); }}
       />
     </div>
   );
