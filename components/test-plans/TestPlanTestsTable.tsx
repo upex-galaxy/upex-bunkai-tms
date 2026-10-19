@@ -1,6 +1,8 @@
 'use client';
 
+import type { PlanProgressTest } from '@lib/test-plans/progress-view';
 import { Card } from '@components/ui/card';
+import { chipToken, formatLastRun, outcomeLabel } from '@lib/test-plans/progress-view';
 import { FlaskConical, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,6 +13,13 @@ import { useState } from 'react';
 // a separate confirm dialog. No kebab menu: neither the mockup nor any other
 // list in this app uses one for a single row action (AtcChainPicker's own
 // remove is a bare icon button).
+//
+// BK-204 adds the two read-only progress columns, "Latest outcome" (the live
+// `.status-chip`, display-only: no click-through, ratified) and "Last run" (the
+// latest run's `started_at`, a dash when never run). Row order stays BK-203's
+// `created_at asc`: sorting by outcome is out of scope. A member the progress
+// answer does not know yet (just added, answer not refreshed) shows a dash in
+// both columns rather than a guessed "Not run".
 
 export interface TestPlanMemberTest {
   id: string
@@ -22,6 +31,9 @@ export interface TestPlanMemberTest {
 interface TestPlanTestsTableProps {
   planId: string
   tests: TestPlanMemberTest[]
+  // BK-204 — latest-run projection keyed by test id. null when the progress
+  // read failed: the two columns are then left out instead of lying.
+  progressByTest: Map<string, PlanProgressTest> | null
   // Member+ gate — a viewer sees the table with the remove action
   // structurally absent (AC 5.1), and a closed plan hides it too (AC E1).
   canEdit: boolean
@@ -32,7 +44,7 @@ interface ApiErrorBody {
   error?: { message?: string }
 }
 
-export function TestPlanTestsTable({ planId, tests, canEdit, onRemoved }: TestPlanTestsTableProps) {
+export function TestPlanTestsTable({ planId, tests, progressByTest, canEdit, onRemoved }: TestPlanTestsTableProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +103,7 @@ export function TestPlanTestsTable({ planId, tests, canEdit, onRemoved }: TestPl
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {['Name', 'Tags', 'Added by', ...(canEdit ? [''] : [])].map(column => (
+              {['Name', 'Tags', ...(progressByTest ? ['Latest outcome', 'Last run'] : []), 'Added by', ...(canEdit ? [''] : [])].map(column => (
                 <th
                   key={column || 'actions'}
                   scope="col"
@@ -115,6 +127,7 @@ export function TestPlanTestsTable({ planId, tests, canEdit, onRemoved }: TestPl
                       )
                     : <span className="text-sm text-fg-4">—</span>}
                 </td>
+                {progressByTest && <ProgressCells entry={progressByTest.get(test.id)} testId={test.id} />}
                 <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
                   <span className="text-sm text-fg-2">{test.addedByLabel}</span>
                 </td>
@@ -164,5 +177,35 @@ export function TestPlanTestsTable({ planId, tests, canEdit, onRemoved }: TestPl
         </table>
       </div>
     </Card>
+  );
+}
+
+function ProgressCells({ entry, testId }: { entry: PlanProgressTest | undefined, testId: string }) {
+  return (
+    <>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        {entry
+          ? (
+              <span
+                data-testid={`test-plan-test-outcome-${testId}`}
+                className="status-chip"
+                data-status={chipToken(entry.outcome)}
+              >
+                <span className="dot" data-status={chipToken(entry.outcome)} />
+                {outcomeLabel(entry.outcome)}
+              </span>
+            )
+          : <span className="text-sm text-fg-4">—</span>}
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        <span
+          data-testid={`test-plan-test-last-run-${testId}`}
+          className={`font-mono text-xs ${entry?.started_at ? 'text-fg-2' : 'text-fg-4'}`}
+          title={entry?.started_at ?? undefined}
+        >
+          {formatLastRun(entry?.started_at ?? null)}
+        </span>
+      </td>
+    </>
   );
 }

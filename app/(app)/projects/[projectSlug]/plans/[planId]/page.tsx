@@ -2,8 +2,9 @@ import type { TestPlanDetail } from '@components/test-plans/TestPlanDetailView';
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlanDetailSkeleton, TestPlanDetailView } from '@components/test-plans/TestPlanDetailView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
-import { resolveActivityActors } from '@lib/supabase/rpc';
+import { planProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
+import { parsePlanProgress } from '@lib/test-plans/progress-view';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -131,5 +132,12 @@ async function TestPlanDetailSection({ projectSlug, planId }: { projectSlug: str
     createdAtLabel: row.created_at.slice(0, 10),
   };
 
-  return <TestPlanDetailView testPlan={testPlan} initialTests={initialTests} canEdit={canEdit} />;
+  // BK-204 — one RPC per view (ratified fetch-on-view). It runs with the caller's
+  // own RLS-scoped client, never the admin client. A failed or malformed answer
+  // degrades to a page without progress: the identity and the member table are
+  // still correct and must not disappear with it.
+  const { data: progressData } = await planProgress(supabase, { planId: row.id });
+  const progress = parsePlanProgress(progressData);
+
+  return <TestPlanDetailView testPlan={testPlan} initialTests={initialTests} progress={progress} canEdit={canEdit} />;
 }
