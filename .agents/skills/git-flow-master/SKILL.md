@@ -1,6 +1,6 @@
 ---
 name: git-flow-master
-description: "End-to-end Git operator for any branching strategy. Auto-detects the project's strategy (solo-main, main+integration, enterprise multi-branch, trunk-based, GitFlow, GitHub Flow, GitLab Flow) from .git config, branches, and the `git_strategy:` block in `.agents/project.yaml`, then adapts every commit, branch, push, PR, conflict-fix, and chained-PR action to that strategy. Use this skill whenever the user wants to: create a branch (`crear branch`, `new feature branch`, `start work on UPEX-123`), commit changes (`commit this`, `commitear esto`, `make a commit`, `commit and push`), push code (`push`, `push to main`, `push to staging`, `subir cambios`), open a pull request (`create PR`, `open PR`, `abrir PR`, `crear pull request`, `gh pr create`), fix merge conflicts (`fix conflict`, `resolver conflicto`, `merge conflict`, `rebase conflict`, `push rejected`), plan stacked or chained PRs (`stack of PRs`, `chained PRs`, `split this PR`, `PR demasiado grande`), set up or bootstrap a branching strategy on a fresh repo (`set up our git strategy`, `bootstrap branching`, `configura el flujo de git`, `git strategy setup`, `materialize the git flow`, `create the staging branch and write the runbook`), or pick / change / set up a branching strategy (`git flow`, `git strategy`, `branching strategy`, `which git flow do we use`, `set up our git strategy`, `bootstrap branching`, `configura el flujo de git`). Trigger even when the user does not say `git-flow-master` literally — if the work is git-or-PR-shaped, this is the right tool. Do NOT use for: implementing features (use /sprint-development), writing tests (use /unit-testing), product backlog refinement (use /product-management), or general code editing — git-flow-master operates strictly on the version-control layer."
+description: "End-to-end Git operator for any branching strategy. Auto-detects the project's strategy (solo-main, main+integration, enterprise multi-branch, trunk-based, GitFlow, GitHub Flow, GitLab Flow) from .git config, branches, and the `git_strategy:` block in `.agents/project.yaml`, then adapts every commit, branch, push, PR, conflict-fix, and large-change commit-planning action to that strategy. Use this skill whenever the user wants to: create a branch (`crear branch`, `new feature branch`, `start work on UPEX-123`), commit changes (`commit this`, `commitear esto`, `make a commit`, `commit and push`), push code (`push`, `push to main`, `push to staging`, `subir cambios`), open a pull request (`create PR`, `open PR`, `abrir PR`, `crear pull request`, `gh pr create`), fix merge conflicts (`fix conflict`, `resolver conflicto`, `merge conflict`, `rebase conflict`, `push rejected`), plan the commits of a large change and open it as ONE PR (`this PR is too big`, `split this PR`, `PR demasiado grande`), set up or bootstrap a branching strategy on a fresh repo (`set up our git strategy`, `bootstrap branching`, `configura el flujo de git`, `git strategy setup`, `materialize the git flow`, `create the staging branch and write the runbook`), or pick / change / set up a branching strategy (`git flow`, `git strategy`, `branching strategy`, `which git flow do we use`, `set up our git strategy`, `bootstrap branching`, `configura el flujo de git`). Trigger even when the user does not say `git-flow-master` literally — if the work is git-or-PR-shaped, this is the right tool. Do NOT use for: implementing features (use /sprint-development), writing tests (use /unit-testing), product backlog refinement (use /product-management), or general code editing — git-flow-master operates strictly on the version-control layer."
 license: MIT
 compatibility: [claude-code, opencode]
 phase: implementation
@@ -16,7 +16,8 @@ compact_rules: |
   - **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice. Writing the HOST needs it too: `git:policy apply` is a dry run until `--yes`, and refuses outright to remove a guard, lower the approval bar, turn off code-owner review, or widen the merge methods unless `--allow-loosening` is passed for that specific give-up.
   - **`require_code_owner_review: true` with no `CODEOWNERS` file is unsatisfiable, not strict.** Nobody outside the bypass list can clear it, so every merge becomes a bypass. Treat that combination as drift with a named remedy: add the file, or turn the flag off.
   - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
-  - **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
+  - **One PR per user story, always.** Size never splits a story into PRs: a large change is ONE PR carried by atomic commits (one responsibility, tests with their behaviour, every commit green), with the commit list and a review guide in the PR body. NEVER propose or open stacked/chained PRs unless the user explicitly asks for them in that run. A story too large is split in the backlog via `/product-management`, never by PR.
+  - **Merge with a merge commit (`--no-ff`), never squash.** The per-commit history must survive on the target branch. Never merge a PR carrying a ticket key into anything but its final target: Jira's automation flips the ticket to Ready For QA on that merge and the workflow has no way back.
   - **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
   - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
   - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
@@ -36,7 +37,7 @@ model_preferences:
 
 # Git Flow Master — One Skill for Branches, Commits, Pushes, PRs, and Conflicts
 
-This skill is the project's single entry point for everything that happens on the version-control layer: creating branches, writing commits, pushing safely, opening pull requests, resolving conflicts, and planning chained / stacked PRs when a change outgrows the review budget.
+This skill is the project's single entry point for everything that happens on the version-control layer: creating branches, writing commits, pushing safely, opening pull requests, resolving conflicts, and shaping a large change into ONE pull request carried by atomic commits.
 
 It does not assume one branching model. The project may run on `main` only, on `main + staging`, on a multi-branch enterprise layout, or on any of the well-known flows (trunk-based, GitFlow, GitHub Flow, GitLab Flow). The skill **detects** which one is active and adapts every command accordingly. The detection is sticky: once resolved, the strategy is recorded in the `git_strategy:` block of `.agents/project.yaml` so future invocations skip the prompt.
 
@@ -50,7 +51,7 @@ Trigger on any of these intents — even without literal keywords:
 - "commit and push", "subir cambios", "push to main" → commit + push flow
 - "abrí un PR contra staging" → PR creation
 - "tengo conflictos al hacer pull" → conflict resolution
-- "este PR va a quedar enorme" → chained-PR planning hand-off
+- "este PR va a quedar enorme" → large-change commit planning (one PR, many commits; Step 4)
 - "qué estrategia de git usamos en este repo" → strategy detection / persistence
 - "el push fue rechazado" → diagnostic + recovery flow
 
@@ -70,14 +71,15 @@ If the user is asking about feature implementation, test design, product backlog
 - **Report drift, never auto-correct it.** A mismatch between `policy:` and host protection is surfaced with both values and three options; editing `.agents/project.yaml` needs the user's choice. Writing the HOST needs it too: `git:policy apply` is a dry run until `--yes`, and refuses outright to remove a guard, lower the approval bar, turn off code-owner review, or widen the merge methods unless `--allow-loosening` is passed for that specific give-up.
 - **`require_code_owner_review: true` with no `CODEOWNERS` file is unsatisfiable, not strict.** Nobody outside the bypass list can clear it, so every merge becomes a bypass. Treat that combination as drift with a named remedy: add the file, or turn the flag off.
 - **Config examples in `references/` are examples.** Quoting one as a project's real configuration is a defect. Open the project's own file and cite it.
-- **The chained-PR decision travels with its trace.** Return `Chain strategy` + `Decision trace` (verbatim tree answers, each with the reason from this change) + `Decided by`. Callers reject a bare label. This skill is the ONLY authority that may fill those lines.
+- **One PR per user story, always.** Size never splits a story into PRs: a large change is ONE PR carried by atomic commits (one responsibility, tests with their behaviour, every commit green), with the commit list and a review guide in the PR body. NEVER propose or open stacked/chained PRs unless the user explicitly asks for them in that run. A story too large is split in the backlog via `/product-management`, never by PR.
+- **Merge with a merge commit (`--no-ff`), never squash.** The per-commit history must survive on the target branch. Never merge a PR carrying a ticket key into anything but its final target: Jira's automation flips the ticket to Ready For QA on that merge and the workflow has no way back.
 - **Never push to `main` without explicit confirmation**; honour `direct_push_to_protected` on every protected branch.
 - **Never** `--force`, `--force-with-lease`, `--no-verify`, amend, or rebase pushed history on a shared branch unless the user explicitly asks AND the branch is unshared.
 - **Admin bypass may only be OFFERED when `admin_bypass: true`**, and only after re-confirming at runtime that the operator really is an admin and that they accept the specific irreversible action.
 - **Stop at PR creation.** Never auto-merge.
 - **One commit = one responsibility**, conventional prefix, no AI-attribution lines (sole scoped exception: the `Claude-Session: <session-id>` forensic trailer on AI-authored commits — `references/conventional-commits.md` § Hard rules).
 
-**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning a chain, or when the compact rules above do not settle the operation.
+**Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning the commits of a large change, or when the compact rules above do not settle the operation.
 
 ---
 
@@ -377,7 +379,7 @@ gh pr create \
 
 **Surface the review expectation with its provenance.** After creating the PR, state how many approvals stand between it and a merge, and where that number came from: from the Step 1b reconciliation (`policy_source: verified`) say _"the host requires N approving review(s) on `{base}`"_; with `policy_source: declared` say _"declared `require_pr_reviews: N` in `.agents/project.yaml`, not verified against the host"_. A silent assumption here is what turns a "just merge it" into a mid-merge surprise.
 
-**Stop at PR creation.** Merging is the user's explicit next step. Never auto-merge. Surface: _"Review the PR. Once approved, merge via the GitHub UI or run `gh pr merge {number} --squash --delete-branch`."_
+**Stop at PR creation.** Merging is the user's explicit next step. Never auto-merge. Surface: _"Review the PR. Once approved, merge via the GitHub UI or run `gh pr merge {number} --merge --delete-branch` (merge commit, never squash: the per-commit history must survive)."_
 
 ### 3.5 Conflict resolution
 
@@ -469,33 +471,34 @@ git_strategy:
 
 ---
 
-## Step 4 — Chained / stacked PRs (when a change outgrows the budget)
+## Step 4 — Large changes: one PR, many commits
 
-When a planned change estimates `> 400 changed lines` (additions + deletions), the work should be split. The 400-line cognitive review budget is borrowed from industry research (SmartBear, Cisco code-review studies); above it, defect detection drops sharply.
+A large change is still ONE pull request per user story (bug, tech story). Size never splits a story into PRs; granularity lives in **atomic commits** inside that PR, and the reviewer reads the PR commit by commit. A 3,000-line story is one PR with a commit plan, not a stack of PRs, and no size threshold blocks anything.
 
-There are three options:
+### How to cut the commits
 
-1. **`stacked-to-main`** — 2 to 4 small PRs, each branched off the strategy's default base. PRs depend on previous merges. The base always works between merges. Best for linearly decomposable work.
-2. **`feature-branch-chain`** — one long-lived integration branch; child PRs merge into it; one final PR merges it to the strategy's default base. Best for changes with shared scaffolding (new types, new schemas) that would break partial merges.
-3. **`size-exception`** — for mechanical diffs (mass renames, formatter sweeps, generated code, vendor updates). Requires explicit user override and a `Why size-exception:` line in the PR body.
+1. **One responsibility per commit**, conventional prefix + issue key (Step 3.2). Tests stay in the commit of the behaviour they verify.
+2. **Order by dependency, dependencies first**: schema / migrations / types, then domain logic, then API, then UI, then docs.
+3. **Every commit leaves lint, types and tests green**, so the history is bisectable and each commit can be reviewed (and reverted) on its own.
+4. **Isolate the noisy ones.** Generated code (OpenAPI / Supabase types), formatter sweeps and mass renames go in their own commits so a reviewer can skim them.
+5. **The commit plan comes first.** `/sprint-development` Stage 1 writes it in the forecast block (`Commit plan` + `Review guide`). Without one, derive it from the diff grouped by responsibility, and propose it like any commit batch (Step 3.2): wait for OK, then commit one by one.
+6. **Fixes after review are NEW commits.** Never amend, rebase or force-push pushed history.
 
-Walk the chained-PR decision tree inline (see `references/branching-strategies.md` § Chained-PR decision tree). The decision picks one of: `single-pr`, `stacked-to-main`, `feature-branch-chain`, `size-exception`. Once decided, execute the resulting branch plan from this skill.
+### Opening a big PR
 
-### Return contract — the answer travels with its trace
+- Branch, title and base follow Step 3.1 / 3.4 as for any PR. One branch, one PR.
+- The body carries the commit list and a review guide (reading order, riskiest commits first). Template: `references/pr-templating.md` § Big PR body.
+- Migrations travel inside the same PR. They are applied per Critical Rule #20 after the review is approved and before the merge; the PR body lists the apply steps.
+- Merge with a merge commit (`--no-ff`), never squash or rebase, so the commit history survives on the target branch.
+- **Jira gotcha.** Jira's automation moves the ticket to `Ready For QA` when a PR with its key is merged, and the workflow has no transition back. Never merge a ticket-keyed PR into anything but its final target (`staging`), and only when truly ready (migrations applied if any, checks green). With one PR per story, that single merge is the one event that flips the ticket.
 
-Callers gate on this decision (`/sprint-development` blocks Stage 2 on it), and their gate is fail-closed: a bare strategy label is REJECTED. So the decision is never returned alone. Always return:
+### When the story itself is too large
 
-```
-Chain strategy: <stacked-to-main | feature-branch-chain | size-exception | single-pr>
-Decision trace: Q1=<Yes|No> (<one-clause reason>) · Q2=<Yes|No> (<reason>) · Q3=<Yes|No> (<reason>) → <leaf>
-Decided by: /git-flow-master §Chained-PR decision tree (branching-strategies.md)
-```
+If the commit plan shows independently valuable increments, or the story carries more than ~13 points of real work, the remedy is at the backlog level: recommend splitting the STORY in the tracker through `/product-management`; each resulting story gets its own PR. That is a recommendation recorded in the plan. It never blocks implementation and is not a git operation.
 
-Rules: answer the questions in order and stop at the leaf (a `Yes` at Q1 means Q2/Q3 are never asked — write `Q2=n/a · Q3=n/a`). Each answer carries the concrete reason from THIS change, not a restatement of the question. The answers must actually lead to the stated leaf. A trace that only restates the conclusion is malformed and the caller will treat it as no decision.
+### Exception: stacked / chained PRs
 
-**This skill is the only authority that may fill those lines.** A planner or implementer that writes a strategy label without walking the tree has produced a guess, not a decision (see `agentic-dev-core/references/orchestration-doctrine.md` → "Gate design").
-
-The branch plan that comes out of the decision is the **contract** for execution. If the implementation diverges (the actual diff is larger than the estimate), re-invoke the decision — do not silently up-budget the existing strategy.
+Legacy pattern, never offered or proposed by this skill. Do it only when the user explicitly asks for stacked or chained PRs in that run. Then: name the dependency chain in every PR body (G8), and remember that merging a ticket-keyed child PR into an intermediate branch fires the Jira automation early with no way back, so confirm with the user how the key is handled before any child merges.
 
 ---
 
@@ -511,7 +514,8 @@ The branch plan that comes out of the decision is the **contract** for execution
 
 | Situation                                              | Hand off to                                 |
 | ------------------------------------------------------ | ------------------------------------------- |
-| Strategic split of a large change                      | Step 4 (inline decision tree in this skill) |
+| Large change: one PR, many commits               | Step 4 (this skill)                         |
+| Story too large: split it in the backlog         | `/product-management`                       |
 | Per-story dev loop including code review               | `/sprint-development`                       |
 | TDD inside a feature                                   | `/unit-testing`                             |
 | Atlassian (Jira) operations triggered by a commit / PR | `/acli`                                     |
@@ -545,7 +549,7 @@ The branch plan that comes out of the decision is the **contract** for execution
 - **G5.** NEVER push to `main` without explicit user confirmation (Critical Rule #4). Strategy-driven protection applies to every protected branch, not just `main`.
 - **G6.** NEVER bypass pre-commit / pre-push hooks with `--no-verify` to "ship faster" — hooks exist to catch the bug you didn't notice. Fix the hook failure and create a new commit.
 - **G7.** NEVER mix concerns in a single commit (feat + refactor + lint fix bundled together) — atomic commits enable surgical revert and clean blame.
-- **G8.** NEVER stack PRs without naming the dependency chain in the PR body — reviewers can't tell which PR to read first or what each one depends on.
+- **G8.** NEVER split one story into stacked or chained PRs, and never squash-merge its PR, unless the user explicitly asks in that run. Size is handled with atomic commits (Step 4). If stacking IS explicitly requested, name the dependency chain in every PR body so reviewers know which PR to read first.
 - **G9.** NEVER discard working-tree changes globally (`git restore .`, `git checkout -- .`, `git reset --hard`, untargeted `git stash`, `git clean -f`) — when multiple agent sessions share one working tree without worktrees, a global discard destroys another session's uncommitted work with no recovery. Target only the explicit paths this session modified; unclear ownership → stop and ask the user (Critical Rule #13).
 
 ---
@@ -592,7 +596,7 @@ Full lifecycle, multi-session safety rules, the registry contract, and the decis
 
 | File                                 | When to read                                                                                                                                           |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `references/branching-strategies.md` | Full catalogue of the 7 strategies + detection signals + trade-offs + chained-PR decision tree. Read when resolving strategy or planning a chain.      |
+| `references/branching-strategies.md` | Full catalogue of the 7 strategies + detection signals + trade-offs + the one-PR-per-story rule. Read when resolving strategy or shaping a large change.   |
 | `references/strategy-setup.md`       | Strategy Setup (3.6) mechanics: decision questionnaire detail, per-strategy materialization table, ff-sync mechanics (never force), persist sequence, report format. Read when running or re-running Strategy Setup. |
 | `references/conventional-commits.md` | Full type vocabulary, scope rules, breaking-change syntax, mixed-changes precedence. Read when proposing commits.                                      |
 | `references/pr-templating.md`        | PR body template, placeholder rules, label / reviewer / draft conventions, multi-strategy base-branch table. Read when opening a PR.                   |

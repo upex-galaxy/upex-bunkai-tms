@@ -36,7 +36,7 @@ import { useState } from 'react';
 // BK-442 — the Run comparison page body: "Previous run" and "This run" cards, then
 // either a plain statement (no earlier run, in progress, cannot be compared
 // reliably, load error) or the five counts plus Added and Removed and the grouped
-// rows. A spec-only screen (master-design-plan §4.19 / D42): it is built from the
+// rows. A spec-only screen (master-design-plan §4.19 / D43): it is built from the
 // LIVE atoms (Card, `.status-chip`, `buttonVariants`) and the BK-37 states, not from
 // a mockup, and carries no write control.
 //

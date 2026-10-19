@@ -3658,6 +3658,132 @@
         },
         "required": ["id", "title", "severity", "status", "created_at", "run_id", "run_step_id"]
       },
+      "ProjectTrackerCheckResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ProjectTrackerCheckReason"
+          }
+        },
+        "required": ["ok", "reason"]
+      },
+      "ProjectTrackerCheckReason": {
+        "type": ["object", "null"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "not_set_up",
+              "credential_rejected",
+              "project_inaccessible",
+              "issue_type_missing",
+              "unreachable",
+              "jira_busy"
+            ],
+            "description": "Closed list. 404 and 403 from Jira share `project_inaccessible` so existence is not disclosed."
+          },
+          "message": {
+            "type": "string",
+            "description": "Fixed copy; only the key and the typed issue type name are interpolated."
+          }
+        },
+        "required": ["kind", "message"],
+        "description": "Null when ok."
+      },
+      "ProjectTrackerCheckBody": {
+        "type": "object",
+        "properties": {
+          "destination_project_key": {
+            "type": "string",
+            "description": "Trimmed and upper-cased (ASCII) by the server; validated before any request to Jira."
+          },
+          "issue_type_name": {
+            "type": "string",
+            "description": "Trimmed, 1-60 characters. Defaults to \"Bug\"."
+          }
+        },
+        "required": ["destination_project_key"]
+      },
+      "ProjectTrackerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "tracker_settings": {
+            "$ref": "#/components/schemas/ProjectTrackerSettings"
+          }
+        },
+        "required": ["tracker_settings"]
+      },
+      "ProjectTrackerSettings": {
+        "type": "object",
+        "properties": {
+          "destination_project_key": {
+            "type": ["string", "null"],
+            "description": "Jira project key, 2-10 characters, ^[A-Z][A-Z0-9_]{1,9}$. Null when the Project was never configured."
+          },
+          "issue_type_name": {
+            "type": "string",
+            "description": "Jira issue type name, 1-60 characters. \"Bug\" until configured."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the Project's defects are synced to Jira."
+          },
+          "configured": {
+            "type": "boolean",
+            "description": "False when no settings row exists yet (defaults are returned)."
+          },
+          "updated_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "destination_project_key",
+          "issue_type_name",
+          "enabled",
+          "configured",
+          "updated_at"
+        ]
+      },
+      "ProjectTrackerSettingsPutResponse": {
+        "type": "object",
+        "properties": {
+          "tracker_settings": {
+            "$ref": "#/components/schemas/ProjectTrackerSettings"
+          },
+          "requeued": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Defects queued by this save (0 when none)."
+          }
+        },
+        "required": ["tracker_settings", "requeued"]
+      },
+      "ProjectTrackerSettingsPutBody": {
+        "type": "object",
+        "properties": {
+          "destination_project_key": {
+            "type": "string",
+            "description": "Trimmed and upper-cased (ASCII) by the server before validation. Required, even with the sync off."
+          },
+          "issue_type_name": {
+            "type": "string",
+            "description": "Trimmed, 1-60 characters. Defaults to \"Bug\". With the sync ON the stored value is Jira's own spelling."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "confirm_queue_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The number of defects the user saw in the confirmation dialog. Required (and must equal the number the save would queue) when that number is above 0."
+          }
+        },
+        "required": ["destination_project_key", "enabled"]
+      },
       "ApiVersionResponse": {
         "type": "object",
         "properties": {
@@ -10337,6 +10463,308 @@
           },
           "404": {
             "description": "User Story not found. Also returned, byte-identical, for a Story outside the caller's workspaces, or for a Story that does not belong to the `{id}` Project asserted in the URL — no existence leak, never a 403.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/tracker-settings/check": {
+      "post": {
+        "tags": ["Tracker settings"],
+        "summary": "Check the Jira destination of a Project",
+        "description": "Owner or admin only (scope `workspace:admin` plus a live role check): the check asks the shared Jira site whether a key exists, so members and viewers are refused with no request to Jira. One read-only call, a 5 second budget, no retry. One check at a time per person: a concurrent second call answers 429 (`details.reason` `check_in_progress`).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTrackerCheckBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The check ran. `ok: false` carries the reason; it is not an HTTP error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTrackerCheckResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, a token scoped to another workspace, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Malformed key or issue type (`invalid_destination_key`, `destination_required`, `invalid_issue_type`). No request was sent to Jira.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A check by the same person is already running (`details.reason` `check_in_progress`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/tracker-settings": {
+      "get": {
+        "tags": ["Tracker settings"],
+        "summary": "Read a Project's Jira defect-sync settings",
+        "description": "Any workspace member or viewer. A Project that was never configured answers sync off, no destination key and issue type \"Bug\". A Project the caller cannot see answers the same 404 as a missing one.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings (or the defaults).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTrackerSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Tracker settings"],
+        "summary": "Save a Project's Jira defect-sync settings",
+        "description": "Owner or admin only (scope `workspace:admin` plus a live role check). With `enabled: true` the connection check runs first and nothing is saved when it fails (422, `details.reason` `connection_check_failed`). Switching on, or changing the key or issue type while on, queues the Project's unsent defects; when that number is above 0 the call answers 409 (`details.reason` `queue_confirmation_required`, `details.queue_count` N) until `confirm_queue_count` equals N. A save that changes nothing writes and queues nothing. Last write wins. The check-on-save counts as the person's one running check: an overlapping check or save answers 429.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectTrackerSettingsPutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved; the stored values and the number of defects queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTrackerSettingsPutResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing workspace:admin scope, a token scoped to another workspace, or the caller is not an owner or admin (`details.reason` `admin_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found, or not visible to the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The save would queue defects and the confirmation is missing or stale (`queue_confirmation_required`, `queue_count_mismatch`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `details.reason` is `invalid_destination_key`, `destination_required`, `invalid_issue_type` or `connection_check_failed` (with `details.check` `{ kind, message }`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Only with `enabled: true`: a connection check by the same person is already running (`details.reason` `check_in_progress`). Nothing was saved.",
             "content": {
               "application/json": {
                 "schema": {
