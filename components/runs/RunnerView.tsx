@@ -4,7 +4,8 @@ import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
-import { Button } from '@components/ui/button';
+import { Button, buttonVariants } from '@components/ui/button';
+import { compareHref, shouldShowCompareControl } from '@lib/runs/compare-view';
 import {
   isEvidenceLinkOpenable,
   resolveAtcVerdictBadge,
@@ -20,7 +21,7 @@ import {
 import { buildReportBugPrefill, shouldShowReportBugButton } from '@lib/runs/report-bug-view';
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
 import { createClient } from '@lib/supabase/client';
-import { Ban, Bug, Check, ChevronLeft, Flag, Play, Square, X } from 'lucide-react';
+import { Ban, Bug, Check, ChevronLeft, Flag, GitCompareArrows, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -574,6 +575,20 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
             >
               {view.environment_name ?? 'unknown env'}
             </span>
+            {/* BK-442 — compare with the previous run: a READ link, offered to every
+                member including viewers (no role gate), on every passed, failed or
+                aborted run and never while the run is still running. The view tracks
+                live status, so it appears the moment the run closes. */}
+            {shouldShowCompareControl(view.status) && (
+              <Link
+                href={compareHref(projectSlug, view.id)}
+                data-testid="runner-compare-button"
+                className={buttonVariants({ size: 'sm' })}
+              >
+                <GitCompareArrows size={11} />
+                Compare with previous run
+              </Link>
+            )}
             {/* BK-39 — Finish affordance: the positive close (member+, running
                 only). Sits beside Abort; primary/accent variant (Abort is danger). */}
             {showFinish && (

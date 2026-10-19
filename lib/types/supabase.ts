@@ -1058,6 +1058,7 @@ export interface Database {
           id: string
           position: number
           run_id: string
+          source_atc_id: string | null
           status: string
         }
         Insert: {
@@ -1066,6 +1067,7 @@ export interface Database {
           id?: string
           position: number
           run_id: string
+          source_atc_id?: string | null
           status?: string
         }
         Update: {
@@ -1074,6 +1076,7 @@ export interface Database {
           id?: string
           position?: number
           run_id?: string
+          source_atc_id?: string | null
           status?: string
         }
         Relationships: [
@@ -1819,6 +1822,8 @@ export interface Database {
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_compare_run: { Args: { p_run_id: string }, Returns: Json }
+      bunkai_compare_run_header: { Args: { p_run_id: string }, Returns: Json }
       bunkai_create_atc: {
         Args: {
           p_ac_ids: string[]
