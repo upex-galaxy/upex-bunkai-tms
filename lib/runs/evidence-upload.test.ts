@@ -5,9 +5,9 @@ import { uploadStepEvidence } from './evidence-upload';
 // BK-593 - the browser's upload sequence (init -> PUT to Storage -> commit) against a scripted
 // fetch. Nothing here talks to a server or to a bucket.
 
-const PNG = Uint8Array.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0, 0, 0, 0]);
+const PNG = Uint8Array.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0x49, 0x44, 0x41, 0x54, 1, 2, 3, 0, 0, 0, 0]);
 const GIF = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0]);
-const APNG = Uint8Array.from([...PNG, 0, 0, 0, 8, 0x61, 0x63, 0x54, 0x4C, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+const APNG = Uint8Array.from([...PNG.slice(0, 33), 0, 0, 0, 8, 0x61, 0x63, 0x54, 0x4C, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
 const RUN = 'run-1';
 const STEP = 'step-1';
 const ATT = { id: 'att-1', run_id: RUN, run_step_id: STEP, filename: 'shot.png', content_type: 'image/png', byte_size: 33, status: 'pending', created_by: 'me', created_at: 'now', committed_at: null };

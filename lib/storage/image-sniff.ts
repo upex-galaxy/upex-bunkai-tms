@@ -27,12 +27,13 @@ export function sniffImage(bytes: Uint8Array): SniffedImage | null {
 
 // PNG: signature, then a well-formed IHDR chunk first. An `acTL` chunk before the first IDAT
 // marks an APNG; bytes that merely spell "acTL" inside pixel data do not count because the
-// walk stops at the first IDAT.
+// walk stops at the first IDAT. A walk that never reaches IDAT/IEND inside the window is invalid.
 function sniffPng(bytes: Uint8Array): SniffedImage | null {
   if (bytes.length < 16 || readU32be(bytes, 8) !== 13 || ascii(bytes, 12, 4) !== 'IHDR') {
     return null;
   }
   let animated = false;
+  let reachedImageData = false;
   let pos = 8;
   while (pos + 8 <= bytes.length) {
     const length = readU32be(bytes, pos);
@@ -41,9 +42,16 @@ function sniffPng(bytes: Uint8Array): SniffedImage | null {
       animated = true;
     }
     if (type === 'IDAT' || type === 'IEND') {
+      reachedImageData = true;
       break;
     }
     pos += 12 + length;
+  }
+  // The caller only passes a 64 KiB window. If the walk ran out of window before the first
+  // IDAT/IEND (a huge iCCP or text chunk), an acTL further on cannot be ruled out, so the file
+  // cannot be called static: treat it as invalid (an acTL already seen still answers animated).
+  if (!reachedImageData && !animated) {
+    return null;
   }
   return { type: 'image/png', animated };
 }

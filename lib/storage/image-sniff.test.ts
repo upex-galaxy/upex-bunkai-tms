@@ -46,6 +46,14 @@ describe('sniffImage', () => {
     expect(sniffImage(bytes)).toEqual({ type: 'image/png', animated: false });
   });
 
+  it('rejects a PNG whose IDAT is not reached inside the window (large iCCP before a late acTL)', () => {
+    const bigIccp = pngChunk('iCCP', Array.from({ length: 70 * 1024 }, () => 0));
+    const actl = pngChunk('acTL', [0, 0, 0, 2, 0, 0, 0, 0]);
+    const full = Uint8Array.from([...PNG_SIG, ...IHDR, ...bigIccp, ...actl, ...pngChunk('IDAT', [1, 2, 3]), ...pngChunk('IEND', [])]);
+    // what the route actually sees: only the first 64 KiB
+    expect(sniffImage(full.slice(0, 64 * 1024))).toBeNull();
+  });
+
   it('rejects a PNG signature that is not followed by an IHDR chunk', () => {
     expect(sniffImage(Uint8Array.from([...PNG_SIG, ...pngChunk('tEXt', [1, 2, 3])]))).toBeNull();
     expect(sniffImage(Uint8Array.from(PNG_SIG))).toBeNull();
