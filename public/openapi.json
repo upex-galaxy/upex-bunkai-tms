@@ -86,6 +86,10 @@
                   "no_executable_steps",
                   "environment_invalid",
                   "test_outside_plan_project",
+                  "file_too_large",
+                  "unsupported_media_type",
+                  "attachment_limit_exceeded",
+                  "storage_unavailable",
                   "internal_error",
                   "upstream_error"
                 ],

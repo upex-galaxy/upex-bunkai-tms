@@ -62,6 +62,14 @@ export const API_ERROR_CODES = {
   // module_outside_project_subtree above.
   TEST_OUTSIDE_PLAN_PROJECT: 'test_outside_plan_project',
 
+  // Run evidence uploads (BK-593) - route-level refusals that carry their own status:
+  // 413 above the per-file limit, 415 outside PNG/JPEG/WebP, 422 when a step or Run quota
+  // is full, 503 when Storage cannot be reached (safe to retry).
+  FILE_TOO_LARGE: 'file_too_large',
+  UNSUPPORTED_MEDIA_TYPE: 'unsupported_media_type',
+  ATTACHMENT_LIMIT_EXCEEDED: 'attachment_limit_exceeded',
+  STORAGE_UNAVAILABLE: 'storage_unavailable',
+
   // 5xx
   INTERNAL_ERROR: 'internal_error',
   UPSTREAM_ERROR: 'upstream_error',
@@ -95,6 +103,10 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   project_limit_reached: 422,
   payment_processor_unavailable: 503,
   test_outside_plan_project: 422,
+  file_too_large: 413,
+  unsupported_media_type: 415,
+  attachment_limit_exceeded: 422,
+  storage_unavailable: 503,
   internal_error: 500,
   upstream_error: 502,
 };

@@ -1147,3 +1147,47 @@ export async function searchTests(supabase: Client, args: SearchTestsArgs) {
     p_limit: args.limit ?? undefined,
   });
 }
+
+// BK-593 - run step evidence attachments. The three writers are SECURITY DEFINER with NO
+// identity parameter (the actor is auth.uid(), ADR-0012), so each MUST run through the
+// caller's own RLS-scoped client (`getAuth(ctx).db`) - never `createAdminClient()`, whose
+// auth.uid() is null and is refused with P0002.
+export interface InitRunStepAttachmentArgs {
+  runId: string
+  stepId: string
+  filename: string
+  contentType: string
+  byteSize: number
+}
+
+// Authorizes, locks the Run, checks the quotas and inserts a `pending` row. Returns
+// `{ attachment, storage_path }`; the route signs the upload URL for `storage_path` and
+// never echoes the path to the client.
+export async function initRunStepAttachment(supabase: Client, args: InitRunStepAttachmentArgs) {
+  return supabase.rpc('bunkai_init_run_step_attachment', {
+    p_run_id: args.runId,
+    p_run_step_id: args.stepId,
+    p_filename: args.filename,
+    p_content_type: args.contentType,
+    p_byte_size: args.byteSize,
+  });
+}
+
+// `byteSize` is the size the route read from Storage metadata, never the declared one.
+// Idempotent: an already committed row answers with the same body.
+export async function commitRunStepAttachment(supabase: Client, args: { attachmentId: string, byteSize: number }) {
+  return supabase.rpc('bunkai_commit_run_step_attachment', {
+    p_attachment_id: args.attachmentId,
+    p_byte_size: args.byteSize,
+  });
+}
+
+// Uploader only, while the Run is running. Returns `{ id, storage_path, status }`.
+export async function removeRunStepAttachment(supabase: Client, args: { attachmentId: string }) {
+  return supabase.rpc('bunkai_remove_run_step_attachment', { p_attachment_id: args.attachmentId });
+}
+
+// Sweep helper, service role only (EXECUTE is granted to nobody else).
+export async function expirePendingRunStepAttachments(supabase: Client, args: { limit?: number } = {}) {
+  return supabase.rpc('bunkai_expire_pending_run_step_attachments', { p_limit: args.limit ?? 500 });
+}

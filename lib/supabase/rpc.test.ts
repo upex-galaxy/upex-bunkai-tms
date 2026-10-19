@@ -1,4 +1,4 @@
-import { abortRun, finishRun } from '@lib/supabase/rpc';
+import { abortRun, commitRunStepAttachment, expirePendingRunStepAttachments, finishRun, initRunStepAttachment, removeRunStepAttachment } from '@lib/supabase/rpc';
 import { describe, expect, it } from 'bun:test';
 
 // BK-211/12198 — a narrow unit seam for the one thing genuinely new here:
@@ -58,5 +58,37 @@ describe('abortRun', () => {
     const { client, calls } = fakeClient();
     await abortRun(client as never, { actorUserId: 'u1', runId: 'r1', reason: 'Wrong build deployed' });
     expect(calls[0].args.p_via).toBeNull();
+  });
+});
+
+// BK-593 - the attachment wrappers carry NO identity parameter (the actor is auth.uid() inside
+// the SECURITY DEFINER function); this seam proves nothing identity-shaped is ever forwarded.
+describe('run step attachment wrappers', () => {
+  it('init forwards the five arguments and no actor', async () => {
+    const { client, calls } = fakeClient();
+    await initRunStepAttachment(client as never, { runId: 'r1', stepId: 's1', filename: 'a.png', contentType: 'image/png', byteSize: 10 });
+    expect(calls[0]).toEqual({
+      fn: 'bunkai_init_run_step_attachment',
+      args: { p_run_id: 'r1', p_run_step_id: 's1', p_filename: 'a.png', p_content_type: 'image/png', p_byte_size: 10 },
+    });
+  });
+
+  it('commit forwards the attachment id and the size read from Storage', async () => {
+    const { client, calls } = fakeClient();
+    await commitRunStepAttachment(client as never, { attachmentId: 'a1', byteSize: 4321 });
+    expect(calls[0]).toEqual({ fn: 'bunkai_commit_run_step_attachment', args: { p_attachment_id: 'a1', p_byte_size: 4321 } });
+  });
+
+  it('remove forwards only the attachment id', async () => {
+    const { client, calls } = fakeClient();
+    await removeRunStepAttachment(client as never, { attachmentId: 'a1' });
+    expect(calls[0]).toEqual({ fn: 'bunkai_remove_run_step_attachment', args: { p_attachment_id: 'a1' } });
+  });
+
+  it('expire defaults the batch size to 500', async () => {
+    const { client, calls } = fakeClient();
+    await expirePendingRunStepAttachments(client as never);
+    await expirePendingRunStepAttachments(client as never, { limit: 5 });
+    expect(calls.map(c => c.args.p_limit)).toEqual([500, 5]);
   });
 });
