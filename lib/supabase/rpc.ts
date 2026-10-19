@@ -1036,6 +1036,30 @@ export async function updateTestPlan(supabase: Client, args: UpdateTestPlanArgs)
   });
 }
 
+// BK-207 — close and reopen a Test Plan (0095_plan_close.sql). Same posture as
+// create/update: NO p_actor_user_id, auth.uid() is read inside the SECURITY DEFINER
+// function, so call these ONLY through the caller's own RLS-scoped client, never
+// `createAdminClient()` (the service role has no auth.uid() and is refused with P0002).
+export interface CloseTestPlanArgs {
+  testPlanId: string
+  verdict: string
+  // Already normalized (trimmed, null when blank); the RPC re-applies the same rules.
+  summary: string | null
+}
+
+export async function closeTestPlan(supabase: Client, args: CloseTestPlanArgs) {
+  return supabase.rpc('bunkai_close_test_plan', {
+    p_test_plan_id: args.testPlanId,
+    p_verdict: args.verdict,
+    // The generated type says `string | undefined`; an omitted key sends SQL NULL.
+    p_summary: args.summary ?? undefined,
+  });
+}
+
+export async function reopenTestPlan(supabase: Client, args: { testPlanId: string }) {
+  return supabase.rpc('bunkai_reopen_test_plan', { p_test_plan_id: args.testPlanId });
+}
+
 // BK-230 — webhook-only. The caller MUST be createAdminClient() (migration
 // 0077's own comment: the webhook request carries no Supabase session, so
 // this RPC is SECURITY DEFINER and granted to service_role only — passing

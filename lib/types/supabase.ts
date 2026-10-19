@@ -1308,39 +1308,54 @@ export interface Database {
       }
       test_plans: {
         Row: {
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
           description: string
           goal: string
           id: string
           name: string
+          progress_snapshot: Json | null
           project_id: string
           status: string
+          summary: string | null
           updated_at: string
+          verdict: string | null
           workspace_id: string
         }
         Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
           goal?: string
           id?: string
           name: string
+          progress_snapshot?: Json | null
           project_id: string
           status?: string
+          summary?: string | null
           updated_at?: string
+          verdict?: string | null
           workspace_id: string
         }
         Update: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
           goal?: string
           id?: string
           name?: string
+          progress_snapshot?: Json | null
           project_id?: string
           status?: string
+          summary?: string | null
           updated_at?: string
+          verdict?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -1834,6 +1849,10 @@ export interface Database {
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_close_test_plan: {
+        Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }
+        Returns: Json
+      }
       bunkai_compare_run: { Args: { p_run_id: string }, Returns: Json }
       bunkai_compare_run_header: { Args: { p_run_id: string }, Returns: Json }
       bunkai_create_atc: {
@@ -2063,6 +2082,7 @@ export interface Database {
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
+      bunkai_reopen_test_plan: { Args: { p_test_plan_id: string }, Returns: Json }
       bunkai_remove_test_from_plan: {
         Args: { p_test_id: string, p_test_plan_id: string }
         Returns: Json

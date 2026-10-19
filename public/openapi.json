@@ -3563,7 +3563,7 @@
           "status": {
             "type": "string",
             "enum": ["open", "closed"],
-            "description": "A new plan is always \"open\". Closing is a separate capability and is not exposed by this API."
+            "description": "A new plan is always \"open\". A plan is closed with POST /api/v1/test-plans/{id}/close and returned to \"open\" with POST /api/v1/test-plans/{id}/reopen."
           },
           "created_by": {
             "type": ["string", "null"],
@@ -3572,6 +3572,25 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "verdict": {
+            "type": ["string", "null"],
+            "enum": ["passed", "failed", null],
+            "description": "Final verdict recorded at close. Null while the plan is open. Not returned by create or edit."
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Optional plain-text outcome summary recorded at close (at most 4000 characters, trimmed). Null when none was given or the plan is open."
+          },
+          "closed_by": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "User who closed the plan. Null while open."
+          },
+          "closed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the plan was closed. Null while open."
           }
         },
         "required": [
@@ -4650,6 +4669,48 @@
           "project_name",
           "href"
         ]
+      },
+      "TestPlanClosureResponse": {
+        "type": "object",
+        "properties": {
+          "test_plan": {
+            "$ref": "#/components/schemas/ClosedTestPlan"
+          }
+        },
+        "required": ["test_plan"]
+      },
+      "ClosedTestPlan": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TestPlan"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "progress_snapshot": {
+                "type": ["object", "null"],
+                "additionalProperties": {},
+                "description": "Progress at close time, stored verbatim from the plan-progress computation (counts, passed percentage, per-test outcomes). Null while open."
+              }
+            },
+            "required": ["progress_snapshot"]
+          }
+        ]
+      },
+      "TestPlanCloseBody": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["passed", "failed"],
+            "description": "Required. The final verdict of the cycle."
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Optional plain-text outcome summary, at most 4000 characters after trimming. Blank or whitespace-only is stored as empty (null)."
+          }
+        },
+        "required": ["verdict"]
       },
       "TestPlanUpdateResponse": {
         "type": "object",
@@ -10761,6 +10822,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter by status, applied on the server before any paging. Omit for all plans.",
+            "schema": {
+              "type": "string",
+              "enum": ["open", "closed"]
+            }
           }
         ],
         "responses": {
@@ -10775,7 +10846,7 @@
             }
           },
           "400": {
-            "description": "Malformed project id.",
+            "description": "Malformed project id, or a status other than open / closed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12029,6 +12100,202 @@
           },
           "422": {
             "description": "Any of: `q` missing or shorter than 2 characters after trimming; `limit` not an integer in 1..20 (`validation_failed`). ALSO returned — unlike every other workspace-scoped route, which answers 403 — when a Bearer PAT is not bound to any workspace, or when a cookie session has no resolvable active workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-plans/{id}/close": {
+      "post": {
+        "tags": ["Test Plans"],
+        "summary": "Close a test plan",
+        "description": "Closes an open plan with a required verdict (passed or failed) and an optional outcome summary. Allowed for the plan's creator (while they still hold write access) and for workspace admins and owners, re-checked live on every call; a plain member who did not create the plan and a viewer receive 403. Verdict, summary, closer, close time and a frozen copy of the plan's progress are written together, and the plan becomes read-only: edits and membership changes return 409. Closing a plan that is not open returns 409; two simultaneous closes resolve to exactly one success and one 409. A missing verdict is 422 (verdict_required), a verdict outside passed / failed is 422 (verdict_invalid). Non-members receive a non-disclosing 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPlanCloseBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test plan closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanClosureResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id or invalid JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is neither the plan's creator nor an admin / owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The plan is already closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Verdict missing or invalid, or summary longer than 4000 characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-plans/{id}/reopen": {
+      "post": {
+        "tags": ["Test Plans"],
+        "summary": "Reopen a closed test plan",
+        "description": "Returns a closed plan to open. Same permission rule as close (creator or admin / owner). Verdict, summary, closer, close time and the progress snapshot are cleared so the plan returns fully open; the close and reopen entries remain in the plan's history. Reopening a plan that is open returns 409.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test plan reopened.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPlanClosureResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed test plan id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Caller is not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:write scope, or the caller is neither the plan's creator nor an admin / owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Test plan not found (or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The plan is already open.",
             "content": {
               "application/json": {
                 "schema": {

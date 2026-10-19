@@ -3,15 +3,18 @@
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
 import type { TestPlanMemberTest } from '@components/test-plans/TestPlanTestsTable';
 import type { PlanProgress } from '@lib/test-plans/progress-view';
+import { CloseTestPlanDialog } from '@components/test-plans/CloseTestPlanDialog';
 import { TestPickerDialog } from '@components/test-plans/TestPickerDialog';
+import { TestPlanClosedBanner } from '@components/test-plans/TestPlanClosedBanner';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
 import { TestPlanProgress, TestPlanProgressUnavailable } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
 import { TestPlanTestsTable } from '@components/test-plans/TestPlanTestsTable';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader } from '@components/ui/card';
+import { parseVerdict } from '@lib/test-plans/close-view';
 import { planProgressByTest } from '@lib/test-plans/progress-view';
-import { ChevronLeft, Pencil, Plus } from 'lucide-react';
+import { ChevronLeft, Lock, Pencil, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -23,9 +26,11 @@ import { useMemo, useState } from 'react';
 // member-tests table, the "Add tests" picker, and the live count.
 //
 // BK-204 adds the progress strip under the header and the two outcome columns
-// in the table. The close flow is STILL absent — it belongs to BK-207, which has
-// not shipped. Same ratified-by-scope departure from `plan-detail.html` BK-202
-// already applied (master-design-plan §5 D25): build only what has a data source.
+// in the table. BK-207 adds the close flow: a "Close plan" action for the creator or
+// an admin, a confirmation dialog, and the locked presentation of a closed plan (banner
+// with verdict, summary and closed-by line, progress frozen at close time, every
+// editing control removed, Reopen for the creator or an admin). Departures from
+// `plan-detail.html` are recorded in master-design-plan §5 D46.
 
 export interface TestPlanDetail {
   id: string
@@ -37,6 +42,11 @@ export interface TestPlanDetail {
   status: TestPlanStatus
   creatorLabel: string
   createdAtLabel: string
+  // BK-207 — closure data; all null while the plan is open.
+  verdict: string | null
+  summary: string | null
+  closedByLabel: string
+  closedAtIso: string | null
 }
 
 interface TestPlanDetailViewProps {
@@ -53,16 +63,22 @@ interface TestPlanDetailViewProps {
   // AC 5.1). The server RPCs re-check the live role on every write
   // regardless, so this is presentation, never the enforcement point.
   canEdit: boolean
+  // BK-207 — the plan's creator (with write access) or an admin / owner. Offers Close
+  // and Reopen; presentation only, the RPC re-checks the live role on every call.
+  canClose: boolean
 }
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit }: TestPlanDetailViewProps) {
+export function TestPlanDetailView({ testPlan, initialTests, progress, progressUnavailable = false, canEdit, canClose }: TestPlanDetailViewProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [tests, setTests] = useState<TestPlanMemberTest[]>(initialTests);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+
+  const isClosed = testPlan.status === 'closed';
 
   // Membership can only be edited while the plan is Open (AC E1) — hidden
   // entirely, not disabled, matching the viewer treatment above. The server
@@ -139,7 +155,7 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
                   <Button
                     type="button"
                     data-testid="test-plan-detail-add-tests-button"
-                    variant="primary"
+                    variant={canClose ? 'default' : 'primary'}
                     size="sm"
                     disabled={refreshing}
                     onClick={() => setPickerOpen(true)}
@@ -148,7 +164,19 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
                     Add tests
                   </Button>
                 )}
-                {canEdit && !editing && (
+                {canClose && !isClosed && (
+                  <Button
+                    type="button"
+                    data-testid="test-plan-detail-close-button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setCloseOpen(true)}
+                  >
+                    <Lock size={13} />
+                    Close plan
+                  </Button>
+                )}
+                {canEdit && !editing && !isClosed && (
                   <Button
                     type="button"
                     data-testid="test-plan-detail-edit-button"
@@ -195,8 +223,17 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
             />
           )}
 
-          {/* The close flow is still absent — BK-207, not shipped. */}
-          {progress ? <TestPlanProgress summary={progress} /> : progressUnavailable && <TestPlanProgressUnavailable />}
+          {isClosed && (
+            <TestPlanClosedBanner
+              planId={testPlan.id}
+              verdict={parseVerdict(testPlan.verdict)}
+              summary={testPlan.summary}
+              closedByLabel={testPlan.closedByLabel}
+              closedAtIso={testPlan.closedAtIso}
+              canReopen={canClose}
+            />
+          )}
+          {progress ? <TestPlanProgress summary={progress} frozen={isClosed} /> : progressUnavailable && <TestPlanProgressUnavailable />}
           <TestPlanTestsTable
             planId={testPlan.id}
             tests={tests}
@@ -206,6 +243,15 @@ export function TestPlanDetailView({ testPlan, initialTests, progress, progressU
           />
         </div>
       </div>
+
+      <CloseTestPlanDialog
+        open={closeOpen}
+        onClose={() => setCloseOpen(false)}
+        planId={testPlan.id}
+        planName={testPlan.name}
+        notRunCount={progress ? progress.counts.not_run : null}
+        onClosed={() => { setCloseOpen(false); router.refresh(); }}
+      />
 
       <TestPickerDialog
         open={pickerOpen}
