@@ -1,12 +1,16 @@
 'use client';
 
 import type { TestPlanStatus } from '@components/test-plans/TestPlanStatusChip';
+import type { PlanVerdict } from '@lib/test-plans/close-validation';
+import type { PlanStatusFilter } from '@lib/test-plans/close-view';
 import type { PlanProgressSummary } from '@lib/test-plans/progress-view';
 import { TestPlanForm } from '@components/test-plans/TestPlanForm';
 import { PlanMiniBar } from '@components/test-plans/TestPlanProgress';
 import { TestPlanStatusChip } from '@components/test-plans/TestPlanStatusChip';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
+import { verdictChipToken, verdictLabel } from '@lib/test-plans/close-view';
+import { cn } from '@lib/utils';
 import { ClipboardList, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -17,11 +21,13 @@ import { useState } from 'react';
 // Critical Rule #14 live-UI-first): the mockup is the inspiration, the
 // shipped components are the source of truth for how it is built.
 //
-// Deliberately ABSENT versus the mockup, because neither has a data source in
-// this story — the same treatment BK-205 applied to the milestone detail's
-// readiness block (§5 D25), and absence rather than a disabled control:
-//   - the Open/Closed segmented status filter (the BRIEF attributes it to
-//     BK-207, and no plan can be Closed until that story ships)
+// BK-207 adds the All / Open / Closed filter (server-side, `?status=`, links so it
+// survives a reload) and the closed-row treatment: muted row, verdict chip next to the
+// status chip, progress read from the snapshot frozen at close.
+//
+// Deliberately ABSENT versus the mockup, because it has no data source — the same
+// treatment BK-205 applied to the milestone detail's readiness block (§5 D25), and
+// absence rather than a disabled control:
 //   - the mono `PLAN-001` id column (plans have a uuid, no human-facing key)
 // The "Tests" count column IS rendered — scope.md lists it — and reads the
 // plan's live membership count (BK-203). BK-204 adds the "Progress" column: a
@@ -36,6 +42,8 @@ export interface TestPlanListItem {
   testCount: number
   // BK-204 — null when the progress read failed or the plan is unknown to it.
   progress: PlanProgressSummary | null
+  // BK-207 — the final verdict of a closed plan; null while open.
+  verdict: PlanVerdict | null
   creatorLabel: string
 }
 
@@ -45,6 +53,8 @@ interface TestPlansListViewProps {
   testPlans: TestPlanListItem[]
   // True when the batch progress read errored: every dash then reads "Progress unavailable".
   progressUnavailable?: boolean
+  // BK-207 — the active server-side filter; null means All.
+  statusFilter?: PlanStatusFilter | null
   // Member+ gate — a viewer sees the list with the create action
   // STRUCTURALLY absent, not merely hidden (business-rules.md, AC 4.1).
   canCreate: boolean
@@ -52,7 +62,7 @@ interface TestPlansListViewProps {
 
 const UNRESOLVED_CREATOR = 'a workspace member';
 
-export function TestPlansListView({ projectId, projectSlug, testPlans, progressUnavailable = false, canCreate }: TestPlansListViewProps) {
+export function TestPlansListView({ projectId, projectSlug, testPlans, progressUnavailable = false, statusFilter = null, canCreate }: TestPlansListViewProps) {
   const [creating, setCreating] = useState(false);
 
   return (
@@ -87,6 +97,8 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, progressU
             )}
           </div>
 
+          <StatusFilter projectSlug={projectSlug} active={statusFilter} />
+
           {creating && (
             <TestPlanForm
               mode="create"
@@ -104,13 +116,17 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, progressU
                     className="flex flex-col items-center gap-2 px-4 py-8 text-center"
                   >
                     <ClipboardList size={18} className="text-fg-3" />
-                    <span className="text-md font-semibold text-fg-1">No test plans yet</span>
-                    <span className="max-w-[52ch] text-sm text-fg-3">
-                      {canCreate
-                        ? 'A plan groups tests toward a goal — a release, a milestone, a hardening pass — so a cycle runs against an agreed scope instead of ad-hoc.'
-                        : 'No test plan has been created for this project yet.'}
+                    <span className="text-md font-semibold text-fg-1">
+                      {statusFilter ? `No ${statusFilter} test plans` : 'No test plans yet'}
                     </span>
-                    {canCreate && !creating && (
+                    <span className="max-w-[52ch] text-sm text-fg-3">
+                      {statusFilter
+                        ? 'No plan in this project has this status. Switch the filter to see the others.'
+                        : canCreate
+                          ? 'A plan groups tests toward a goal — a release, a milestone, a hardening pass — so a cycle runs against an agreed scope instead of ad-hoc.'
+                          : 'No test plan has been created for this project yet.'}
+                    </span>
+                    {canCreate && !creating && !statusFilter && (
                       <Button
                         type="button"
                         data-testid="test-plans-empty-new-button"
@@ -155,11 +171,43 @@ export function TestPlansListView({ projectId, projectSlug, testPlans, progressU
   );
 }
 
+const FILTER_OPTIONS: { value: PlanStatusFilter | null, label: string }[] = [
+  { value: null, label: 'All' },
+  { value: 'open', label: 'Open' },
+  { value: 'closed', label: 'Closed' },
+];
+
+// Plain links to `?status=`: the filter is a server read, so the URL is the state.
+function StatusFilter({ projectSlug, active }: { projectSlug: string, active: PlanStatusFilter | null }) {
+  return (
+    <nav data-testid="test-plans-status-filter" aria-label="Filter plans by status" className="flex w-fit gap-0.5 rounded-2 border border-stroke-2 bg-surface-1 p-0.5">
+      {FILTER_OPTIONS.map(option => (
+        <Link
+          key={option.label}
+          href={option.value ? `/projects/${projectSlug}/plans?status=${option.value}` : `/projects/${projectSlug}/plans`}
+          data-testid={`test-plans-filter-${option.value ?? 'all'}`}
+          aria-current={active === option.value ? 'page' : undefined}
+          className={cn(
+            'rounded-1 px-2.5 py-1 text-xs font-medium transition-colors duration-token ease-token',
+            active === option.value ? 'bg-surface-3 text-fg-0' : 'text-fg-3 hover:text-fg-1',
+          )}
+        >
+          {option.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 function TestPlanRow({ testPlan, projectSlug, progressUnavailable }: { testPlan: TestPlanListItem, projectSlug: string, progressUnavailable: boolean }) {
   return (
     <tr
       data-testid={`test-plan-row-${testPlan.id}`}
-      className="cursor-pointer transition-colors duration-token ease-token hover:bg-surface-3"
+      data-closed={testPlan.status === 'closed' ? 'true' : undefined}
+      className={cn(
+        'cursor-pointer transition-colors duration-token ease-token hover:bg-surface-3',
+        testPlan.status === 'closed' && 'opacity-70',
+      )}
     >
       <td className="border-t border-stroke-1 px-3 py-1.5">
         <Link
@@ -184,7 +232,15 @@ function TestPlanRow({ testPlan, projectSlug, progressUnavailable }: { testPlan:
           : <span className="text-sm text-fg-4">—</span>}
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
-        <TestPlanStatusChip status={testPlan.status} testId={`test-plan-status-${testPlan.id}`} />
+        <span className="inline-flex items-center gap-1.5">
+          <TestPlanStatusChip status={testPlan.status} testId={`test-plan-status-${testPlan.id}`} />
+          {testPlan.verdict && (
+            <span data-testid={`test-plan-verdict-${testPlan.id}`} className="status-chip" data-status={verdictChipToken(testPlan.verdict)}>
+              <span className="dot" data-status={verdictChipToken(testPlan.verdict)} />
+              {verdictLabel(testPlan.verdict)}
+            </span>
+          )}
+        </span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="font-mono text-xs text-fg-2" data-testid={`test-plan-test-count-${testPlan.id}`}>

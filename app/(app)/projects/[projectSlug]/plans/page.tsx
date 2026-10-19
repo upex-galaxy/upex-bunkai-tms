@@ -5,7 +5,8 @@ import { TestPlansListSkeleton, TestPlansListView } from '@components/test-plans
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { plansProgress, resolveActivityActors } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
-import { parsePlansProgress } from '@lib/test-plans/progress-view';
+import { parseStatusFilter, parseVerdict } from '@lib/test-plans/close-view';
+import { parsePlanProgress, parsePlansProgress } from '@lib/test-plans/progress-view';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -13,6 +14,7 @@ import { Suspense } from 'react';
 
 interface PageProps {
   params: Promise<{ projectSlug: string }>
+  searchParams: Promise<{ status?: string | string[] }>
 }
 
 // BK-202 — the "Test Plans" list view (`/projects/[projectSlug]/plans`, the
@@ -20,17 +22,19 @@ interface PageProps {
 // RLS-scoped PostgREST selects (ADR-0001 Path B; no RPC for list/detail),
 // mirroring the milestones list's workspace/project resolution and
 // member-role derivation.
-export default async function ProjectTestPlansPage({ params }: PageProps) {
+export default async function ProjectTestPlansPage({ params, searchParams }: PageProps) {
   const { projectSlug } = await params;
+  // BK-207 — `?status=open|closed`, server-side, default All; an unknown value is All.
+  const statusFilter = parseStatusFilter((await searchParams).status);
 
   return (
     <Suspense fallback={<TestPlansListSkeleton />}>
-      <ProjectTestPlansSection projectSlug={projectSlug} />
+      <ProjectTestPlansSection projectSlug={projectSlug} statusFilter={statusFilter} />
     </Suspense>
   );
 }
 
-async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string }) {
+async function ProjectTestPlansSection({ projectSlug, statusFilter }: { projectSlug: string, statusFilter: 'open' | 'closed' | null }) {
   const supabase = await createClient();
 
   const { data: workspaceRows } = await supabase
@@ -72,10 +76,16 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
     canCreate = membership != null && membership.role !== 'viewer';
   }
 
-  const { data: rows } = await supabase
+  // The status filter is part of the query itself, so it applies before anything else
+  // (there is no paging on this list today, and a future one inherits the right order).
+  let plansQuery = supabase
     .from('test_plans')
-    .select('id, name, description, goal, status, created_by')
-    .eq('project_id', project.id)
+    .select('id, name, description, goal, status, created_by, verdict, progress_snapshot')
+    .eq('project_id', project.id);
+  if (statusFilter) {
+    plansQuery = plansQuery.eq('status', statusFilter);
+  }
+  const { data: rows } = await plansQuery
     .order('created_at', { ascending: false })
     .order('id', { ascending: false });
 
@@ -99,6 +109,14 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
   // rather than a denormalized counter column, which would be a second write
   // path to keep in sync with test_plan_tests.
   const planIds = planRows.map(row => row.id);
+  // BK-207 — a closed plan reads the progress it froze at close time. Only plans without
+  // a usable snapshot (open ones) go to the live batch read.
+  const frozenProgressByPlanId = new Map<string, PlanProgressSummary>();
+  for (const row of planRows) {
+    const frozen = row.status === 'closed' ? parsePlanProgress(row.progress_snapshot) : null;
+    if (frozen) { frozenProgressByPlanId.set(row.id, frozen); }
+  }
+  const liveProgressPlanIds = planIds.filter(id => !frozenProgressByPlanId.has(id));
   const testCountByPlanId = new Map<string, number>();
   if (planIds.length > 0) {
     const { data: memberships } = await supabase
@@ -115,8 +133,8 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
   // reads "Progress unavailable", distinct from an empty plan.
   let progressUnavailable = false;
   let progressByPlanId = new Map<string, PlanProgressSummary>();
-  if (planIds.length > 0) {
-    const { data: progressData, error: progressError } = await plansProgress(supabase, { planIds });
+  if (liveProgressPlanIds.length > 0) {
+    const { data: progressData, error: progressError } = await plansProgress(supabase, { planIds: liveProgressPlanIds });
     progressUnavailable = progressError != null;
     progressByPlanId = parsePlansProgress(progressData);
   }
@@ -128,7 +146,8 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
     goal: row.goal,
     status: row.status as TestPlanStatus,
     testCount: testCountByPlanId.get(row.id) ?? 0,
-    progress: progressByPlanId.get(row.id) ?? null,
+    progress: frozenProgressByPlanId.get(row.id) ?? progressByPlanId.get(row.id) ?? null,
+    verdict: row.status === 'closed' ? parseVerdict(row.verdict) : null,
     creatorLabel: row.created_by ? (emailByUserId.get(row.created_by) ?? '') : '',
   }));
 
@@ -138,6 +157,7 @@ async function ProjectTestPlansSection({ projectSlug }: { projectSlug: string })
       projectSlug={project.slug}
       testPlans={testPlans}
       progressUnavailable={progressUnavailable}
+      statusFilter={statusFilter}
       canCreate={canCreate}
     />
   );
