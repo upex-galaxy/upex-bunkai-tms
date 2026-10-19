@@ -2,6 +2,7 @@ import type { LinkedBugSummary, RunDetail } from '@components/runs/RunnerView';
 import { RunnerView } from '@components/runs/RunnerView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { formatBugListRow } from '@lib/bugs/list-view';
+import { toAttachmentView } from '@lib/runs/attachment-access';
 import { getRunExpanded } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -94,6 +95,18 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
     .maybeSingle();
   const canManageRun = ['member', 'admin', 'owner'].includes(memberRow?.role ?? '');
 
+  // BK-593 — the Run's committed evidence images, through the caller's own RLS-scoped read
+  // (members of any role see committed rows; a pending upload is invisible to everybody). A
+  // failed read degrades to no images rather than blocking the runner.
+  const { data: attachmentRows } = await supabase
+    .from('run_step_attachments')
+    .select('id, run_id, run_step_id, original_filename, content_type, byte_size, status, created_by, created_at, committed_at')
+    .eq('run_id', run.id)
+    .eq('status', 'committed')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true });
+  const initialAttachments = (attachmentRows ?? []).map(toAttachmentView);
+
   // BK-212 Slice 2 — resolve the deep-linked bug (if any), scoped to THIS
   // run. `bugs` RLS (bugs_select_workspace_member, 0046_bugs.sql) already
   // gates this plain read to the caller's own workspace membership, same
@@ -131,6 +144,8 @@ export default async function RunDetailPage({ params, searchParams }: PageProps)
       canFinish={canManageRun}
       canMark={canManageRun}
       canReportBug={canManageRun}
+      canAttach={canManageRun}
+      initialAttachments={initialAttachments}
       atcModuleNames={atcModuleNames}
       linkedBug={linkedBug}
     />
