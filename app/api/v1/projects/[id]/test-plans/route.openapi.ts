@@ -13,9 +13,13 @@ const TestPlanSchema = z
     name: z.string().describe('1–100 chars after normalize (internal whitespace collapsed, then trimmed). Unique per project, case-insensitive.'),
     description: z.string().describe('0–500 chars.'),
     goal: z.string().describe('0–100 chars after normalize. Optional short target/release label, e.g. "Release 2.4".'),
-    status: z.enum(['open', 'closed']).describe('A new plan is always "open". Closing is a separate capability and is not exposed by this API.'),
+    status: z.enum(['open', 'closed']).describe('A new plan is always "open". A plan is closed with POST /api/v1/test-plans/{id}/close and returned to "open" with POST /api/v1/test-plans/{id}/reopen.'),
     created_by: z.string().uuid().nullable(),
     created_at: z.string().datetime(),
+    verdict: z.enum(['passed', 'failed']).nullable().optional().describe('Final verdict recorded at close. Null while the plan is open. Not returned by create or edit.'),
+    summary: z.string().nullable().optional().describe('Optional plain-text outcome summary recorded at close (at most 4000 characters, trimmed). Null when none was given or the plan is open.'),
+    closed_by: z.string().uuid().nullable().optional().describe('User who closed the plan. Null while open.'),
+    closed_at: z.string().datetime().nullable().optional().describe('When the plan was closed. Null while open.'),
   })
   .openapi('TestPlan');
 
@@ -52,13 +56,22 @@ registry.registerPath({
   description:
     'Lists the project\'s test plans newest first (created_at descending, id descending as the tie-break). Visible to any workspace member including viewers; a non-member receives an empty list.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [
+    IdParam,
+    {
+      name: 'status',
+      in: 'query' as const,
+      required: false,
+      description: 'Filter by status, applied on the server before any paging. Omit for all plans.',
+      schema: { type: 'string' as const, enum: ['open', 'closed'] },
+    },
+  ],
   responses: {
     200: {
       description: 'Test plans listed.',
       content: { 'application/json': { schema: ListResponseSchema } },
     },
-    400: { description: 'Malformed project id.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: 'Malformed project id, or a status other than open / closed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:read scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },

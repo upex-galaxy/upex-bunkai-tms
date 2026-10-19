@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
 import { createTestPlan } from '@lib/supabase/rpc';
+import { StatusFilterSchema } from '@lib/test-plans/close-view';
 import { mapTestPlanRpcError } from '@lib/test-plans/errors';
 import { TestPlanCreateBodySchema } from '@lib/test-plans/validation';
 
@@ -9,7 +10,9 @@ import { TestPlanCreateBodySchema } from '@lib/test-plans/validation';
 //      first (id tie-break for a stable order). Visible to any workspace
 //      member via the SELECT RLS policy (a non-member's cookie-scoped read
 //      returns []), viewers included — read access is role-agnostic among
-//      members (business-rules.md).
+//      members (business-rules.md). BK-207: `?status=open|closed` filters on the
+//      server, default All, applied in the query itself (before any paging) — an
+//      unknown value is a 400, never a silent All.
 // POST /api/v1/projects/{id}/test-plans — create a test plan (member+). The
 //      SECURITY DEFINER RPC holds the rulebook (write gate, normalize +
 //      length, uniqueness); this handler does parsing and error mapping only.
@@ -26,15 +29,25 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
 
   const { db } = getAuth(ctx);
 
+  const rawStatus = new URL(request.url).searchParams.get('status');
+  const status = rawStatus === null ? null : StatusFilterSchema.safeParse(rawStatus);
+  if (status && !status.success) {
+    throw new ApiError('bad_request', 'status must be "open" or "closed".');
+  }
+
   // RLS scopes the read to test plans the caller can see (workspace members).
   // `created_at desc, id desc` is the deterministic order the list renders in
   // — a plan has no date axis the way a milestone does, so newest cycle
   // first. Served by test_plans_project_created_at_id_idx (migration 0073)
   // scanned backwards.
-  const { data, error } = await db
+  let query = db
     .from('test_plans')
-    .select('id, project_id, name, description, goal, status, created_by, created_at')
-    .eq('project_id', projectId)
+    .select('id, project_id, name, description, goal, status, created_by, created_at, verdict, summary, closed_by, closed_at')
+    .eq('project_id', projectId);
+  if (status?.success) {
+    query = query.eq('status', status.data);
+  }
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .order('id', { ascending: false });
 

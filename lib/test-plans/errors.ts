@@ -1,5 +1,10 @@
 import { ApiError } from '@lib/api/error-envelope';
 import {
+  PLAN_SUMMARY_LENGTH_MESSAGE,
+  PLAN_VERDICT_INVALID_MESSAGE,
+  PLAN_VERDICT_REQUIRED_MESSAGE,
+} from '@lib/test-plans/close-validation';
+import {
   TEST_PLAN_DESCRIPTION_LENGTH_MESSAGE,
   TEST_PLAN_GOAL_LENGTH_MESSAGE,
   TEST_PLAN_NAME_LENGTH_MESSAGE,
@@ -114,6 +119,47 @@ export function mapTestPlanTestsRpcError(error: { code?: string, message: string
     case '45604':
       throw new ApiError('test_outside_plan_project', 'This test does not belong to the plan\'s project.', {
         details: { reason: 'test_outside_plan_project' },
+      });
+    default:
+      throw new ApiError('internal_error', error.message);
+  }
+}
+
+// BK-207 — map a bunkai_close_test_plan / bunkai_reopen_test_plan RPC error. The
+// ratified contract (2026-10-04, T3) reuses 45604 / 45605 / 45606 with DIFFERENT
+// meanings than the membership family above (45604 verdict required, 45605 verdict
+// invalid, 45606 forbidden role), which is why this is a separate mapper: the two
+// families never share a route. 45603 is the same code and message as everywhere else
+// in this domain (close of a closed plan, reopen of an open plan, the losing side of a
+// concurrent close). 22001 is the summary-over-4000 case, for which the contract
+// allocates no 456xx code. The mapper always throws.
+
+export function mapTestPlanCloseRpcError(error: { code?: string, message: string }): never {
+  switch (error.code) {
+    case 'P0002':
+      // Missing plan, a plan in another workspace, a non-member: uniform 404.
+      throw new ApiError('not_found', 'Test plan not found.', {
+        details: { reason: 'not_found' },
+      });
+    case '45606':
+      throw new ApiError('forbidden', 'Only the plan\'s creator or a workspace admin can close or reopen it.', {
+        details: { reason: 'close_forbidden' },
+      });
+    case '45603':
+      throw new ApiError('conflict', 'The plan is not in a state that allows this action.', {
+        details: { reason: 'test_plan_not_open' },
+      });
+    case '45604':
+      throw new ApiError('validation_failed', PLAN_VERDICT_REQUIRED_MESSAGE, {
+        details: { reason: 'verdict_required' },
+      });
+    case '45605':
+      throw new ApiError('validation_failed', PLAN_VERDICT_INVALID_MESSAGE, {
+        details: { reason: 'verdict_invalid' },
+      });
+    case '22001':
+      throw new ApiError('validation_failed', PLAN_SUMMARY_LENGTH_MESSAGE, {
+        details: { reason: 'test_plan_summary_length' },
       });
     default:
       throw new ApiError('internal_error', error.message);

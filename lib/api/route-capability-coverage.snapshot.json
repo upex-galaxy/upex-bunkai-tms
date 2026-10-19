@@ -356,6 +356,16 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/test-plans/[id]/close/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
+    "file": "app/api/v1/test-plans/[id]/reopen/route.ts",
+    "method": "POST",
+    "posture": "required:atc:write"
+  },
+  {
     "file": "app/api/v1/test-plans/[id]/route.ts",
     "method": "PATCH",
     "posture": "required:atc:write"
