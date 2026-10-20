@@ -86,6 +86,10 @@
                   "no_executable_steps",
                   "environment_invalid",
                   "test_outside_plan_project",
+                  "file_too_large",
+                  "unsupported_media_type",
+                  "attachment_limit_exceeded",
+                  "storage_unavailable",
                   "internal_error",
                   "upstream_error"
                 ],
@@ -108,6 +112,68 @@
         },
         "required": ["error"],
         "description": "Canonical error envelope returned by every `/api/v1` route on failure."
+      },
+      "RunStepAttachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_step_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filename": {
+            "type": "string",
+            "description": "The name the uploader gave the file. Display only: never used to decide the type or build a path."
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"]
+          },
+          "byte_size": {
+            "type": "integer",
+            "description": "Declared size while `pending`; the size measured in Storage once `committed`."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "committed"],
+            "description": "Only `committed` attachments are visible to anyone else, and only they are listed."
+          },
+          "created_by": {
+            "type": ["string", "null"],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "committed_at": {
+            "type": ["string", "null"]
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "description": "End of the upload window of a `pending` attachment; null once committed."
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "run_step_id",
+          "filename",
+          "content_type",
+          "byte_size",
+          "status",
+          "created_by",
+          "created_at",
+          "committed_at",
+          "expires_at"
+        ],
+        "description": "Metadata of one image attached to a run step. Never carries a storage path or a URL."
       },
       "AcceptanceCriterion": {
         "type": "object",
@@ -990,6 +1056,32 @@
           }
         },
         "required": ["eligible_users", "sent", "failed", "skipped"]
+      },
+      "StorageCleanupResponse": {
+        "type": "object",
+        "properties": {
+          "expired_pending": {
+            "type": "integer",
+            "description": "Pending uploads whose window lapsed, deleted this run (their objects are queued)."
+          },
+          "deleted": {
+            "type": "integer",
+            "description": "Queued objects removed from Storage this run."
+          },
+          "failed": {
+            "type": "integer",
+            "description": "Queued objects whose removal failed this run; retried by the next sweep."
+          },
+          "purged": {
+            "type": "integer",
+            "description": "Finished outbox rows older than 7 days, deleted."
+          },
+          "stuck": {
+            "type": "integer",
+            "description": "Outbox rows parked after 10 failed attempts. Anything above zero needs a human."
+          }
+        },
+        "required": ["expired_pending", "deleted", "failed", "purged", "stuck"]
       },
       "Atc": {
         "type": "object",
@@ -4195,6 +4287,53 @@
         },
         "required": ["reason"]
       },
+      "RunStepAttachmentUploadTarget": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": ["PUT"]
+          },
+          "url": {
+            "type": "string",
+            "description": "Storage signed upload URL for this attachment only. Valid for 2 hours. Treat it as a secret."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send exactly these headers with the PUT. The body is the raw file bytes."
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        },
+        "required": ["method", "url", "headers", "expires_at"]
+      },
+      "RunStepAttachmentInitBody": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Display name, 1-255 characters after trimming."
+          },
+          "content_type": {
+            "type": "string",
+            "enum": ["image/png", "image/jpeg", "image/webp"],
+            "description": "Declared type. The bytes are checked against it at commit: the content decides, never the name."
+          },
+          "byte_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10485760,
+            "description": "Size in bytes, 1 to 10485760 (10 MiB), inclusive."
+          }
+        },
+        "required": ["filename", "content_type", "byte_size"]
+      },
       "RunComparison": {
         "oneOf": [
           {
@@ -6748,6 +6887,92 @@
           },
           "500": {
             "description": "Failed to load digest candidates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/storage-cleanup": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Sweep the storage cleanup queue (cron entry point)",
+        "description": "Internal - system/cron principal only (ADR-0017), not part of the public consumer surface. The verb Vercel Cron invokes on the schedule declared in `vercel.json`. Requires `Authorization: Bearer <CRON_SECRET>`. Expires stale pending evidence uploads, deletes queued Storage objects, purges old finished queue rows (ADR-0019).",
+        "security": [
+          {
+            "cronAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sweep completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageCleanupResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid CRON_SECRET.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The sweep could not read or update the cleanup queue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Sweep the storage cleanup queue (manual retry)",
+        "description": "Internal - system/cron principal only (ADR-0017). Same handler as the GET cron entry point, kept for manual same-day retries and for staging, where no cron runs. Requires `Authorization: Bearer <CRON_SECRET>`.",
+        "security": [
+          {
+            "cronAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sweep completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageCleanupResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid CRON_SECRET.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The sweep could not read or update the cleanup queue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11629,6 +11854,259 @@
         }
       }
     },
+    "/api/v1/runs/{id}/steps/{stepId}/attachments": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Start an evidence upload for a run step",
+        "description": "Bearer `run:execute` (or cookie session); member+ write access; the Run must be `running`. Step 1 of 3: init -> PUT the raw bytes to `upload.url` with `upload.headers` -> `POST .../attachments/{attachmentId}/commit`. Limits (inclusive): PNG, JPEG or WebP only; 10 MiB per file; 10 images and 50 MiB per step; 250 MiB per Run. The attachment stays `pending` and invisible until commit; an upload that is never committed is discarded by the sweep after 3 hours. A step of any status accepts evidence; attaching never changes the step outcome.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8-128 chars, [a-zA-Z0-9_-]. A retry with the same key and payload returns the stored answer and creates no second attachment; the same key with a different payload returns 409 `conflict`. The same image attached twice on purpose uses two different keys."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunStepAttachmentInitBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending attachment created. PUT the bytes to `upload`, then commit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/RunStepAttachment"
+                    },
+                    "upload": {
+                      "$ref": "#/components/schemas/RunStepAttachmentUploadTarget"
+                    }
+                  },
+                  "required": ["attachment", "upload"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed ids, malformed JSON, or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope, or a viewer (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run step not found: missing, of another Run, or in a workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run is already closed (`conflict`, reason `run_not_open`), or the Idempotency-Key was reused with a different payload / is still in flight.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 10 MiB (`file_too_large`). Copy: \"Images must be 10 MiB or smaller.\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Not PNG, JPEG or WebP (`unsupported_media_type`). Copy: \"Only PNG, JPEG or WebP images are accepted.\"",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty file or invalid name (`validation_failed`, reasons `empty_file`, `invalid_filename`), or a quota is full (`attachment_limit_exceeded`, reasons `step_count`, `step_bytes`, `run_bytes`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`). Safe to retry with the same Idempotency-Key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/attachments": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "List the evidence images of a Run",
+        "description": "Bearer `atc:read` (or cookie session); any member of the owning workspace. Committed attachments of every step, oldest first. Metadata only: no storage path and no URL; open an image through `.../attachments/{attachmentId}/content`. A pending upload is never listed. Kept separate from `GET /runs/{id}` on purpose so abort, finish, mark and compare responses do not change.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The committed attachments.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RunStepAttachment"
+                      }
+                    }
+                  },
+                  "required": ["attachments"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed run id (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found, or in a workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/runs/{id}/compare": {
       "get": {
         "tags": ["Runs"],
@@ -11895,6 +12373,346 @@
           },
           "404": {
             "description": "Run not found (missing, not visible, or foreign workspace — non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/steps/{stepId}/attachments/{attachmentId}/commit": {
+      "post": {
+        "tags": ["Runs"],
+        "summary": "Commit an evidence upload",
+        "description": "Bearer `run:execute` (or cookie session); only the person who started the upload. Reads what actually arrived in Storage: the size from the object metadata and the type from its first 64 KiB. The bytes must be a real, still PNG, JPEG or WebP image of the declared type, within the limits; otherwise the pending attachment and its object are discarded and the request is refused. On success the attachment becomes visible to every workspace member. Nothing commits after the Run closed (the first terminal outcome wins). Always safe to retry: an already committed attachment answers 200 with the same body.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed (or already committed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attachment": {
+                      "$ref": "#/components/schemas/RunStepAttachment"
+                    }
+                  },
+                  "required": ["attachment"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope, or no longer a member with write access (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found, or not yours (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run is already closed (`conflict`, reason `run_not_open`), the upload window lapsed (reason `pending_expired`), or the file was never uploaded (reason `upload_missing`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The uploaded object is larger than 10 MiB (`file_too_large`). The attachment is discarded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The bytes are not a valid image of the declared type (`validation_failed`, reasons `content_mismatch`, `empty_file`, `animated_image`; the attachment is discarded), or a quota is full (`attachment_limit_exceeded`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`). Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/steps/{stepId}/attachments/{attachmentId}/content": {
+      "get": {
+        "tags": ["Runs"],
+        "summary": "Open an evidence image",
+        "description": "Bearer `atc:read` (or cookie session); any member of the owning workspace, viewers included. Answers 302 with a `Location` that is a signed URL valid for 60 seconds, `Cache-Control: private, no-store`. There is no anonymous read path and a stored reference alone is never enough. Do not store or log the `Location`: fetch the image and drop it. Missing, foreign-workspace and still-pending attachments all answer the same 404.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the signed URL of the image (60 seconds)."
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing atc:read scope (`forbidden`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is temporarily unavailable (`storage_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}/steps/{stepId}/attachments/{attachmentId}": {
+      "delete": {
+        "tags": ["Runs"],
+        "summary": "Remove an evidence image from a run step",
+        "description": "Bearer `run:execute` (or cookie session). Only the person who attached the image can remove it (an admin or owner cannot remove somebody else's), and only while the Run is `running`: once it is finished or aborted its evidence is fixed. The check runs under the Run row lock, so a removal racing finish or abort has exactly one winner. Works on a still-`pending` upload too (a cancelled upload). The stored object is deleted afterwards on a best-effort basis and retried by the daily cleanup sweep.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed."
+          },
+          "400": {
+            "description": "Malformed ids (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing run:execute scope, a viewer, or somebody else's attachment (`forbidden`, reason `not_uploader`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found under these ids, or in a workspace the caller is not a member of (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run is already closed (`conflict`, reason `run_not_open`).",
             "content": {
               "application/json": {
                 "schema": {

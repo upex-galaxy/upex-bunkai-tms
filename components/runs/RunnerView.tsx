@@ -1,11 +1,14 @@
 'use client';
 
+import type { StepAttachment } from '@lib/runs/evidence-view';
 import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
+import { StepEvidence } from '@components/runs/StepEvidence';
 import { Button, buttonVariants } from '@components/ui/button';
 import { compareHref, shouldShowCompareControl } from '@lib/runs/compare-view';
+import { groupAttachmentsByStep } from '@lib/runs/evidence-view';
 import {
   isEvidenceLinkOpenable,
   resolveAtcVerdictBadge,
@@ -129,6 +132,13 @@ interface RunnerViewProps {
   // resolved + RLS/run-scoped server-side by the page). `null`/absent renders
   // this view exactly as it did before this story: no banner, no highlight.
   linkedBug?: LinkedBugSummary | null
+  // BK-593 - member+ may attach evidence images (same role gate as marking, but the runner only
+  // offers it while the run is running). `initialAttachments` are the committed images the page
+  // read through RLS; viewers get them read-only.
+  canAttach?: boolean
+  initialAttachments?: StepAttachment[]
+  // Whose images show a Remove control (the uploader only).
+  currentUserId?: string
 }
 
 // BK-212 Slice 2 — pre-formatted (severity/status label + `.status-chip`
@@ -174,7 +184,10 @@ function formatFinishedAt(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
-export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null }: RunnerViewProps) {
+// Stable default: a fresh `[]` per render would re-run the effect that resets the attachments.
+const NO_ATTACHMENTS: StepAttachment[] = [];
+
+export function RunnerView({ run, projectSlug, canAbort = false, canFinish = false, canMark = false, canReportBug = false, atcModuleNames = {}, linkedBug = null, canAttach = false, initialAttachments = NO_ATTACHMENTS, currentUserId = '' }: RunnerViewProps) {
   const { registerRunLabel } = useWorkbench();
   const router = useRouter();
 
@@ -219,6 +232,20 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
   useEffect(() => {
     setView(run);
   }, [run]);
+
+  // BK-593 - committed evidence images. Local state so an upload shows at once; a fresh server
+  // payload (router.refresh after a Realtime change) replaces it.
+  const [attachments, setAttachments] = useState<StepAttachment[]>(initialAttachments);
+  useEffect(() => {
+    setAttachments(initialAttachments);
+  }, [initialAttachments]);
+  const attachmentsByStep = groupAttachmentsByStep(attachments);
+  const addAttachment = (attachment: StepAttachment) => {
+    setAttachments(list => (list.some(a => a.id === attachment.id) ? list : [...list, attachment]));
+  };
+  const removeAttachment = (attachmentId: string) => {
+    setAttachments(list => list.filter(a => a.id !== attachmentId));
+  };
 
   // BK-212 Slice 2 — scroll the deep-linked bug's originating step into view
   // once, on first paint (mirrors AC1's "clicking it takes her to that bug
@@ -909,6 +936,20 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
                               {markState.guardMessage}
                             </p>
                           )}
+
+                          {/* BK-593 — Attach control + the step's evidence images.
+                              Independent of the mark form above. */}
+                          <StepEvidence
+                            runId={view.id}
+                            stepId={s.id}
+                            runStatus={view.status}
+                            canAttach={canAttach}
+                            attachments={attachmentsByStep[s.id] ?? []}
+                            currentUserId={currentUserId}
+                            onAdded={addAttachment}
+                            onRemoved={removeAttachment}
+                            testSuffix={`${atc.position}-${s.position}`}
+                          />
 
                           {/* BK-40 — "Report bug", member+ only, failed steps
                               only (ATP-N1). Deliberately NOT gated on run

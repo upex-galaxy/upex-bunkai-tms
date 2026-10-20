@@ -1096,6 +1096,76 @@ export interface Database {
           },
         ]
       }
+      run_step_attachments: {
+        Row: {
+          byte_size: number
+          committed_at: string | null
+          content_type: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          original_filename: string
+          run_id: string
+          run_step_id: string
+          status: string
+          storage_path: string
+          workspace_id: string
+        }
+        Insert: {
+          byte_size: number
+          committed_at?: string | null
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          original_filename: string
+          run_id: string
+          run_step_id: string
+          status?: string
+          storage_path: string
+          workspace_id: string
+        }
+        Update: {
+          byte_size?: number
+          committed_at?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          original_filename?: string
+          run_id?: string
+          run_step_id?: string
+          status?: string
+          storage_path?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'run_step_attachments_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'runs'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'run_step_attachments_run_step_id_fkey'
+            columns: ['run_step_id']
+            isOneToOne: false
+            referencedRelation: 'run_steps'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'run_step_attachments_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       run_steps: {
         Row: {
           atc_step_id: string | null
@@ -1248,6 +1318,42 @@ export interface Database {
             referencedColumns: ['id']
           },
         ]
+      }
+      storage_cleanup_queue: {
+        Row: {
+          attempts: number
+          bucket: string
+          created_at: string
+          done_at: string | null
+          id: number
+          last_error: string | null
+          not_before: string
+          path: string
+          reason: string
+        }
+        Insert: {
+          attempts?: number
+          bucket: string
+          created_at?: string
+          done_at?: string | null
+          id?: never
+          last_error?: string | null
+          not_before?: string
+          path: string
+          reason: string
+        }
+        Update: {
+          attempts?: number
+          bucket?: string
+          created_at?: string
+          done_at?: string | null
+          id?: never
+          last_error?: string | null
+          not_before?: string
+          path?: string
+          reason?: string
+        }
+        Relationships: []
       }
       stripe_webhook_events: {
         Row: {
@@ -1853,6 +1959,10 @@ export interface Database {
         Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }
         Returns: Json
       }
+      bunkai_commit_run_step_attachment: {
+        Args: { p_attachment_id: string, p_byte_size: number }
+        Returns: Json
+      }
       bunkai_compare_run: { Args: { p_run_id: string }, Returns: Json }
       bunkai_compare_run_header: { Args: { p_run_id: string }, Returns: Json }
       bunkai_create_atc: {
@@ -1940,6 +2050,10 @@ export interface Database {
         }
         Returns: Json
       }
+      bunkai_expire_pending_run_step_attachments: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
       bunkai_filter_tests_by_tag: {
         Args: { p_actor_user_id: string, p_tag: string }
         Returns: Json
@@ -1963,6 +2077,16 @@ export interface Database {
       }
       bunkai_get_test_expanded: {
         Args: { p_actor_user_id: string, p_test_id: string }
+        Returns: Json
+      }
+      bunkai_init_run_step_attachment: {
+        Args: {
+          p_byte_size: number
+          p_content_type: string
+          p_filename: string
+          p_run_id: string
+          p_run_step_id: string
+        }
         Returns: Json
       }
       bunkai_insert_acceptance_criterion: {
@@ -2082,7 +2206,10 @@ export interface Database {
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
-      bunkai_reopen_test_plan: { Args: { p_test_plan_id: string }, Returns: Json }
+      bunkai_remove_run_step_attachment: {
+        Args: { p_attachment_id: string }
+        Returns: Json
+      }
       bunkai_remove_test_from_plan: {
         Args: { p_test_id: string, p_test_plan_id: string }
         Returns: Json
@@ -2093,6 +2220,10 @@ export interface Database {
           p_environment_id: string
           p_name: string
         }
+        Returns: Json
+      }
+      bunkai_reopen_test_plan: {
+        Args: { p_test_plan_id: string }
         Returns: Json
       }
       bunkai_reorder_test_steps: {
@@ -2159,6 +2290,10 @@ export interface Database {
         Returns: Json
       }
       bunkai_run_json: { Args: { p_run_id: string }, Returns: Json }
+      bunkai_run_step_attachment_json: {
+        Args: { a: Database['public']['Tables']['run_step_attachments']['Row'] }
+        Returns: Json
+      }
       bunkai_save_atc: {
         Args: {
           p_ac_ids: string[]
