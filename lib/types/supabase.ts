@@ -527,6 +527,76 @@ export interface Database {
           },
         ]
       }
+      chat_channels: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chat_channels_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          author_user_id: string | null
+          body: string
+          channel_id: string
+          created_at: string
+          id: string
+          seq: number
+          workspace_id: string
+        }
+        Insert: {
+          author_user_id?: string | null
+          body: string
+          channel_id: string
+          created_at?: string
+          id?: string
+          seq?: never
+          workspace_id: string
+        }
+        Update: {
+          author_user_id?: string | null
+          body?: string
+          channel_id?: string
+          created_at?: string
+          id?: string
+          seq?: never
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'chat_messages_channel_id_workspace_id_fkey'
+            columns: ['channel_id', 'workspace_id']
+            isOneToOne: false
+            referencedRelation: 'chat_channels'
+            referencedColumns: ['id', 'workspace_id']
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -1050,6 +1120,24 @@ export interface Database {
             referencedColumns: ['id']
           },
         ]
+      }
+      rate_limit_hits: {
+        Row: {
+          hit_at: string
+          id: number
+          key: string
+        }
+        Insert: {
+          hit_at?: string
+          id?: never
+          key: string
+        }
+        Update: {
+          hit_at?: string
+          id?: never
+          key?: string
+        }
+        Relationships: []
       }
       run_atcs: {
         Row: {
@@ -1628,7 +1716,7 @@ export interface Database {
           created_at?: string
           id?: string
           name: string
-          name_key?: never
+          name_key?: string | null
           project_id: string
           state: Json
           updated_at?: string
@@ -1639,7 +1727,7 @@ export interface Database {
           created_at?: string
           id?: string
           name?: string
-          name_key?: never
+          name_key?: string | null
           project_id?: string
           state?: Json
           updated_at?: string
@@ -1955,6 +2043,21 @@ export interface Database {
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_chat_resolve_authors: {
+        Args: { p_user_ids: string[], p_workspace_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
+      bunkai_chat_roster: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          email: string
+          role: string
+          user_id: string
+        }[]
+      }
       bunkai_close_test_plan: {
         Args: { p_summary?: string, p_test_plan_id: string, p_verdict: string }
         Returns: Json
@@ -2212,6 +2315,10 @@ export interface Database {
       }
       bunkai_plans_progress: { Args: { p_plan_ids: string[] }, Returns: Json }
       bunkai_purge_deleted_workspaces: { Args: never, Returns: Json }
+      bunkai_rate_limit_consume: {
+        Args: { p_key: string, p_windows: Json }
+        Returns: Json
+      }
       bunkai_remove_run_step_attachment: {
         Args: { p_attachment_id: string }
         Returns: Json
@@ -2356,6 +2463,7 @@ export interface Database {
         Args: { p_threshold_hours?: number }
         Returns: Json
       }
+      bunkai_sweep_rate_limit_hits: { Args: never, Returns: number }
       bunkai_test_json: { Args: { p_test_id: string }, Returns: Json }
       bunkai_test_tags_shape_ok: {
         Args: { p_tags: string[] }
