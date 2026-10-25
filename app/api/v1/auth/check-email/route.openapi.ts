@@ -29,6 +29,6 @@ registry.registerPath({
   responses: {
     200: { description: 'Email status.', content: { 'application/json': { schema: ResponseSchema } } },
     422: { description: 'Validation failed.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    429: { description: 'Rate limited.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    429: { description: 'Rate limited: more than 10 checks per 60 s or 60 per hour from one network source. Carries a `Retry-After` header (seconds) and `error.details.retry_after_seconds`; identical for every submitted address.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
