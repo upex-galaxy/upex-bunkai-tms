@@ -152,10 +152,11 @@ describeOrSkip('BK-49 — bunkai_list_activity isolation, keyset, allowlist (DoD
         { workspace_id: workspaceId, actor_user_id: ownerUserId, entity_type: 'atc', action: 'atc.created', payload: { title: `${PREFIX} p2` }, created_at: isoMinutesBefore(base, 1) },
         { workspace_id: workspaceId, actor_user_id: ownerUserId, entity_type: 'module', action: 'module.renamed', payload: { name: `${PREFIX} p3`, new_path: 'a/b' }, created_at: isoMinutesBefore(base, 1) },
         { workspace_id: workspaceId, actor_user_id: ownerUserId, entity_type: 'test', action: 'test.created', payload: { title: `${PREFIX} p4` }, created_at: isoMinutesBefore(base, 2) },
-        // Excluded: atc.updated is a REAL write-site action (0021/0035) but
-        // deliberately absent from the MVP allowlist (Decision 2) — this is
+        // Excluded: test.reordered is a REAL write-site action (0026) but
+        // deliberately absent from the MVP allowlist (Decision 2; atc.updated
+        // used to play this role until BK-268 / 0101 allowlisted it) — this is
         // what must NEVER appear in any page this suite reads.
-        { workspace_id: workspaceId, actor_user_id: ownerUserId, entity_type: 'atc', action: 'atc.updated', payload: { title: `${PREFIX} excluded` }, created_at: isoMinutesBefore(base, 1) },
+        { workspace_id: workspaceId, actor_user_id: ownerUserId, entity_type: 'test', action: 'test.reordered', payload: { title: `${PREFIX} excluded` }, created_at: isoMinutesBefore(base, 1) },
       ])
       .select('id, action, payload');
     if (seedError) { throw seedError; }
@@ -169,7 +170,7 @@ describeOrSkip('BK-49 — bunkai_list_activity isolation, keyset, allowlist (DoD
     const p2 = rows.find(r => r.payload.title === `${PREFIX} p2`)!.id;
     const p3 = rows.find(r => r.payload.name === `${PREFIX} p3`)!.id;
     const p4 = rows.find(r => r.payload.title === `${PREFIX} p4`)!.id;
-    const excludedId = rows.find(r => r.action === 'atc.updated')!.id;
+    const excludedId = rows.find(r => r.action === 'test.reordered')!.id;
 
     fixture = { workspaceId, p1, p2, p3, p4, excludedId };
   });
