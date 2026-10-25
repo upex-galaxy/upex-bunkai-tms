@@ -7331,6 +7331,205 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": ["ATCs"],
+        "summary": "Read one ATC by id (expandable)",
+        "description": "Bearer `atc:read` (or cookie session). Lean by default: the header fields only (no steps, assertions or acceptance criteria). `expand` is a comma-separated, case-insensitive list of `steps`, `assertions`, `acceptance_criteria`, `used_in` (repeated params are merged, duplicates and empty segments ignored); an unrecognised value is a 400 naming it. `acceptance_criteria` adds the anchored criteria rows; `used_in` adds the chaining Tests (empty array when none). A nonexistent, archived, or inaccessible ATC returns the same 404 (no existence leak). Read-only: no version bump, no event. Responses are `Cache-Control: private, no-store`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated: `steps,assertions,acceptance_criteria,used_in`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ATC (header only unless expanded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "atc": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "project_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "module_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "user_story_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "slug": {
+                          "type": "string",
+                          "description": "`<module-slug>/atc-<8 hex>`. Computed once at creation, immutable across edits."
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "layer": {
+                          "type": "string",
+                          "enum": ["UI", "API", "Unit"]
+                        },
+                        "technique": {
+                          "type": ["string", "null"],
+                          "enum": [
+                            "Equivalence Partitioning",
+                            "Boundary Value Analysis",
+                            "State Transition",
+                            "Decision Table",
+                            "Pairwise",
+                            null
+                          ],
+                          "description": "BK-399 — test-design technique that produced this ATC. `null` means \"not specified\"; it is never defaulted to a real value."
+                        },
+                        "priority": {
+                          "type": ["string", "null"],
+                          "enum": ["Critical", "High", "Medium", "Low", null],
+                          "description": "BK-399 — ATC priority (distinct from Bug severity). `null` means \"not specified\"."
+                        },
+                        "version": {
+                          "type": "integer",
+                          "description": "Monotonic per ATC. Starts at 1, +1 per edit."
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pass", "fail", "blocked", "skipped", "running", "unrun"]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "archived_at": {
+                          "type": ["string", "null"],
+                          "format": "date-time"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AtcStep"
+                          }
+                        },
+                        "assertions": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AtcAssertion"
+                          }
+                        },
+                        "acceptance_criterion_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "project_id",
+                        "module_id",
+                        "user_story_id",
+                        "slug",
+                        "title",
+                        "layer",
+                        "technique",
+                        "priority",
+                        "version",
+                        "status",
+                        "tags",
+                        "created_at",
+                        "updated_at",
+                        "archived_at"
+                      ]
+                    }
+                  },
+                  "required": ["atc"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or unrecognised `expand` value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Token lacks the `atc:read` scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ATC not found (or archived, or not visible to the caller).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/atcs/{id}/usage": {

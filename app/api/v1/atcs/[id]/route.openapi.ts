@@ -77,3 +77,32 @@ registry.registerPath({
     422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/atcs/{id}',
+  tags: ['ATCs'],
+  summary: 'Read one ATC by id (expandable)',
+  description: 'Bearer `atc:read` (or cookie session). Lean by default: the header fields only (no steps, assertions or acceptance criteria). `expand` is a comma-separated, case-insensitive list of `steps`, `assertions`, `acceptance_criteria`, `used_in` (repeated params are merged, duplicates and empty segments ignored); an unrecognised value is a 400 naming it. `acceptance_criteria` adds the anchored criteria rows; `used_in` adds the chaining Tests (empty array when none). A nonexistent, archived, or inaccessible ATC returns the same 404 (no existence leak). Read-only: no version bump, no event. Responses are `Cache-Control: private, no-store`.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [
+    IdParam,
+    {
+      name: 'expand',
+      in: 'query' as const,
+      required: false,
+      schema: { type: 'string' as const },
+      description: 'Comma-separated: `steps,assertions,acceptance_criteria,used_in`.',
+    },
+  ],
+  responses: {
+    200: {
+      description: 'The ATC (header only unless expanded).',
+      content: { 'application/json': { schema: z.object({ atc: AtcSchema.partial({ steps: true, assertions: true, acceptance_criterion_ids: true }) }) } },
+    },
+    400: { description: 'Malformed id or unrecognised `expand` value.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Token lacks the `atc:read` scope.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'ATC not found (or archived, or not visible to the caller).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
