@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import { countAtcsInWorkspace } from '@lib/atcs/library';
 import { listNotifications } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -34,6 +35,7 @@ async function getShellData() {
   // `unread_count` is needed here; the full item list is fetched lazily by
   // AppSidebar the first time the panel opens.
   let unreadCount = 0;
+  let atcCount: number | null = null;
   if (activeWorkspaceId) {
     const { data } = await supabase
       .from('projects')
@@ -58,9 +60,12 @@ async function getShellData() {
     const { data: notificationsPage } = await listNotifications(supabase, { workspaceId: activeWorkspaceId, limit: 1 });
     const page = notificationsPage as { unread_count?: number } | null;
     unreadCount = page?.unread_count ?? 0;
+
+    // BK-439 — ATC Library badge, read once per navigation (layout re-render).
+    atcCount = await countAtcsInWorkspace(supabase, activeWorkspaceId);
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole, unreadCount };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole, unreadCount, atcCount };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -76,6 +81,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           userEmail={shell.userEmail}
           userRole={shell.userRole}
           initialUnreadCount={shell.unreadCount}
+          atcCount={shell.atcCount}
         />
         <div className="flex min-h-0 flex-col overflow-hidden">
           {children}
