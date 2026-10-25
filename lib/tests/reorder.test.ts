@@ -1,3 +1,4 @@
+import { selectAll } from '@lib/utils/select-all';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'bun:test';
 
@@ -48,23 +49,26 @@ function service() {
 type Db = ReturnType<typeof service>;
 
 async function loadFixtures(db: Db) {
-  const { data: tests, error: te } = await db.from('tests').select('id, workspace_id, version');
-  if (te) { throw te; }
-  const { data: steps, error: se } = await db.from('test_steps').select('id, test_id, position');
-  if (se) { throw se; }
-  const { data: members, error: me } = await db.from('workspace_members').select('user_id, workspace_id, role, status');
-  if (me) { throw me; }
+  // Paged: PostgREST caps an un-ranged select at 1000 rows, which truncated the
+  // step set of a Test and made every real reorder raise chain_mismatch.
+  const tests = await selectAll<TestRow>(({ from, to }) => db.from('tests').select('id, workspace_id, version').order('id').range(from, to));
+  const steps = await selectAll<StepRow>(({ from, to }) => db.from('test_steps').select('id, test_id, position').order('id').range(from, to));
+  const members = await selectAll<MemberRow>(({ from, to }) => db.from('workspace_members').select('user_id, workspace_id, role, status').order('user_id').range(from, to));
+
+  // A soft-deleted workspace rejects every writer (0089 `deleted_at is null`),
+  // so its Tests are not valid reorder fixtures.
+  const liveWorkspaces = new Set((await selectAll<{ id: string }>(({ from, to }) => db.from('workspaces').select('id').is('deleted_at', null).order('id').range(from, to))).map(w => w.id));
 
   const stepsByTest = new Map<string, StepRow[]>();
-  for (const s of (steps ?? []) as StepRow[]) {
+  for (const s of steps) {
     if (!stepsByTest.has(s.test_id)) { stepsByTest.set(s.test_id, []); }
     stepsByTest.get(s.test_id)!.push(s);
   }
   for (const list of stepsByTest.values()) { list.sort((a, b) => a.position - b.position); }
 
-  const activeMembers = ((members ?? []) as MemberRow[]).filter(m => m.status === 'active');
+  const activeMembers = members.filter(m => m.status === 'active');
 
-  return { tests: (tests ?? []) as TestRow[], stepsByTest, activeMembers };
+  return { tests: tests.filter(t => liveWorkspaces.has(t.workspace_id)), stepsByTest, activeMembers };
 }
 
 // A (test, writer-actor, ordered step_ids) where the actor can write the Test's
