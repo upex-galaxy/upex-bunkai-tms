@@ -1607,6 +1607,7 @@ export interface Database {
       }
       tests: {
         Row: {
+          automation_status: string
           created_at: string
           created_by: string
           id: string
@@ -1617,6 +1618,7 @@ export interface Database {
           workspace_id: string
         }
         Insert: {
+          automation_status?: string
           created_at?: string
           created_by: string
           id?: string
@@ -1627,6 +1629,7 @@ export interface Database {
           workspace_id: string
         }
         Update: {
+          automation_status?: string
           created_at?: string
           created_by?: string
           id?: string
