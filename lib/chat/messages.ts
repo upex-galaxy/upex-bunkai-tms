@@ -69,8 +69,8 @@ export function initialsOf(name: string): string {
 // Merge incoming messages into the list: dedupe by id (a message can arrive via
 // the send response, the realtime event and a catch-up fetch), keep ascending
 // `seq` order. Returns the same array reference when nothing changed.
-export function mergeMessages(existing: readonly ChatMessage[], incoming: readonly ChatMessage[]): ChatMessage[] {
-  const byId = new Map<string, ChatMessage>();
+export function mergeMessages<T extends ChatMessage>(existing: readonly T[], incoming: readonly T[]): T[] {
+  const byId = new Map<string, T>();
   for (const m of existing) { byId.set(m.id, m); }
   let changed = false;
   for (const m of incoming) {
@@ -79,7 +79,7 @@ export function mergeMessages(existing: readonly ChatMessage[], incoming: readon
       changed = true;
     }
   }
-  if (!changed) { return existing as ChatMessage[]; }
+  if (!changed) { return existing as T[]; }
   return [...byId.values()].sort((a, b) => a.seq - b.seq);
 }
 
