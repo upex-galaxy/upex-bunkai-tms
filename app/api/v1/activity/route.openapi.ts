@@ -70,6 +70,13 @@ const ActivityItemSchema = z
     activityItemVariant('AtcCreated', 'atc.created', 'atc', {
       title: z.string().nullable(),
     }),
+    // BK-268 — projection of migration 0101: title, TRUE affected count and
+    // up to 3 resolved Test titles (RLS-scoped, sorted by title).
+    activityItemVariant('AtcUpdated', 'atc.updated', 'atc', {
+      title: z.string().nullable(),
+      affected_test_count: z.number().int().nullable(),
+      affected_tests: z.array(z.object({ id: z.string().uuid(), title: z.string() })).nullable(),
+    }),
     activityItemVariant('TestCreated', 'test.created', 'test', {
       title: z.string().nullable(),
     }),

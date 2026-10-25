@@ -1,4 +1,4 @@
-import { extractRunVerdict, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
+import { extractRunVerdict, formatAffectedTests, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
 import { describe, expect, test } from 'bun:test';
 
 // BK-49 — Activity feed view-state branch selection (AC3 3.1 vs 3.2), the
@@ -52,5 +52,33 @@ describe('extractRunVerdict', () => {
     expect(extractRunVerdict('run.aborted', { verdict: 'passed' })).toBeNull();
     expect(extractRunVerdict('module.renamed', { verdict: 'passed' })).toBeNull();
     expect(extractRunVerdict('atc.created', {})).toBeNull();
+  });
+});
+
+describe('formatAffectedTests (BK-268)', () => {
+  const t = (...titles: string[]) => titles.map((title, i) => ({ id: `id-${i}`, title }));
+
+  test('non atc.updated actions return null', () => {
+    expect(formatAffectedTests('atc.created', { affected_test_count: 2 })).toBeNull();
+  });
+
+  test('zero affected Tests renders the literal "No tests affected"', () => {
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 0, affected_tests: [] })).toBe('No tests affected');
+    expect(formatAffectedTests('atc.updated', {})).toBe('No tests affected');
+  });
+
+  test('one and two titles are listed in full', () => {
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 1, affected_tests: t('Regression Suite') })).toBe('Regression Suite');
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 2, affected_tests: t('Smoke Suite', 'Regression Suite') })).toBe('Smoke Suite, Regression Suite');
+  });
+
+  test('large counts show 3 titles plus "and N more"', () => {
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 40, affected_tests: t('A', 'B', 'C') })).toBe('A, B, C, and 37 more');
+  });
+
+  test('unresolved Tests fold into the remainder; all-unresolved gets neutral copy', () => {
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 3, affected_tests: t('A') })).toBe('A, and 2 more');
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 1, affected_tests: [] })).toBe('1 affected test is no longer available');
+    expect(formatAffectedTests('atc.updated', { affected_test_count: 4, affected_tests: [] })).toBe('4 affected tests are no longer available');
   });
 });

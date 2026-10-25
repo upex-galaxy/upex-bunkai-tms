@@ -19,6 +19,7 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   'module.moved': 'moved a module',
   'module.archived': 'archived a module',
   'atc.created': 'created an ATC',
+  'atc.updated': 'edited an ATC',
   'test.created': 'created a Test',
   'run.finished': 'finished a run',
   'run.aborted': 'aborted a run',

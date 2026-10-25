@@ -286,6 +286,9 @@
             "$ref": "#/components/schemas/ActivityItemAtcCreated"
           },
           {
+            "$ref": "#/components/schemas/ActivityItemAtcUpdated"
+          },
+          {
             "$ref": "#/components/schemas/ActivityItemTestCreated"
           },
           {
@@ -315,6 +318,7 @@
             "module.moved": "#/components/schemas/ActivityItemModuleMoved",
             "module.archived": "#/components/schemas/ActivityItemModuleArchived",
             "atc.created": "#/components/schemas/ActivityItemAtcCreated",
+            "atc.updated": "#/components/schemas/ActivityItemAtcUpdated",
             "test.created": "#/components/schemas/ActivityItemTestCreated",
             "run.finished": "#/components/schemas/ActivityItemRunFinished",
             "run.aborted": "#/components/schemas/ActivityItemRunAborted",
@@ -630,6 +634,79 @@
           }
         },
         "required": ["title"]
+      },
+      "ActivityItemAtcUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "activity_log row id — stable React key."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["atc"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["atc.updated"]
+          },
+          "action_label": {
+            "type": "string",
+            "description": "Server-rendered, from ACTION_LABELS — never re-derived client-side."
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActivityActor"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ActivityItemLabel"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ActivityPayloadAtcUpdated"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "action_label",
+          "actor",
+          "item",
+          "payload",
+          "created_at"
+        ]
+      },
+      "ActivityPayloadAtcUpdated": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"]
+          },
+          "affected_test_count": {
+            "type": ["integer", "null"]
+          },
+          "affected_tests": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "title"]
+            }
+          }
+        },
+        "required": ["title", "affected_test_count", "affected_tests"]
       },
       "ActivityItemTestCreated": {
         "type": "object",

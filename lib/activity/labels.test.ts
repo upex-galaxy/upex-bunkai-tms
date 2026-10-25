@@ -20,13 +20,14 @@ describe('aCTION_LABELS coverage (Risk R1)', () => {
     expect(Object.keys(ACTION_LABELS).sort()).toEqual([...ACTIVITY_ALLOWED_ACTIONS].sort());
   });
 
-  test('the exact 14-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
+  test('the exact 15-row table matches implementation-plan.md / BK-264 + BK-508\'s AC verbatim', () => {
     expect(ACTION_LABELS).toEqual({
       'module.renamed': 'renamed a module',
       'module.description_updated': 'updated a module description',
       'module.moved': 'moved a module',
       'module.archived': 'archived a module',
       'atc.created': 'created an ATC',
+      'atc.updated': 'edited an ATC',
       'test.created': 'created a Test',
       'run.finished': 'finished a run',
       'run.aborted': 'aborted a run',
@@ -47,8 +48,8 @@ describe('isKnownActivityAction', () => {
     }
   });
 
-  test('rejects an excluded write-site action (e.g. atc.updated, out of MVP scope)', () => {
-    expect(isKnownActivityAction('atc.updated')).toBe(false);
+  test('rejects an excluded write-site action (e.g. test.reordered, out of scope)', () => {
+    expect(isKnownActivityAction('test.reordered')).toBe(false);
   });
 
   test('rejects an unrelated string — bug.filed included: a PRE-EXISTING gap (bunkai_create_bug already emits it), deliberately left out of THIS story\'s allowlist addition', () => {
