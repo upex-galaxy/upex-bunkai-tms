@@ -18,6 +18,29 @@ import { describe, expect, test } from 'bun:test';
 // helpers (`activeReportFilterCount`, `reportTableFootText`,
 // `reportScopeLabel`). Mirrors `lib/runs/history-view.test.ts`'s structure.
 
+describe('resolveReportViewState — BK-225 mode-aware empty states', () => {
+  const none = { error: false, rowCount: 0, hasActiveFilters: true, modeFilter: 'automated' as const };
+  test('Mode = Automated, runs exist but none automated -> automated empty state', () => {
+    expect(resolveReportViewState({ ...none, scope: { has_runs: true, has_automated: false } })).toBe('empty-no-automated');
+  });
+  test('automated runs exist but other filters exclude them -> generic no-match', () => {
+    expect(resolveReportViewState({ ...none, scope: { has_runs: true, has_automated: true } })).toBe('empty-no-match');
+  });
+  test('project with zero runs -> first-use state wins', () => {
+    expect(resolveReportViewState({ ...none, scope: { has_runs: false, has_automated: false } })).toBe('empty-no-runs');
+  });
+  test('other Mode states never pick the automated empty state', () => {
+    const scope = { has_runs: true, has_automated: false };
+    expect(resolveReportViewState({ ...none, modeFilter: 'manual', scope })).toBe('empty-no-match');
+    expect(resolveReportViewState({ ...none, modeFilter: 'custom', scope })).toBe('empty-no-match');
+  });
+  test('automated copy is distinct and offers no upload CTA wording', () => {
+    const copy = resolveReportEmptyStateCopy('empty-no-automated');
+    expect(copy.title).toBe('No automated runs reported yet');
+    expect(copy.description.toLowerCase()).not.toContain('upload');
+  });
+});
+
 describe('resolveReportViewState', () => {
   test('a FIRST-PAGE error takes priority, even with rows already on screen', () => {
     expect(resolveReportViewState({ error: true, rowCount: 12, hasActiveFilters: false })).toBe('error');

@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReportExecutor, ReportStatus } from '@lib/runs/report-constants';
-import type { ReportFilterState } from '@lib/runs/report-view';
+import type { ReportFilterState, ReportScope } from '@lib/runs/report-view';
 import type { LucideIcon } from 'lucide-react';
+import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { Input } from '@components/ui/input';
@@ -14,12 +15,16 @@ import { REPORT_EXECUTOR_VALUES, REPORT_PAGE_SIZE, REPORT_STATUS_VALUES } from '
 import {
   EMPTY_REPORT_FILTERS,
   hasActiveReportFilters,
+  REPORT_API_DOCS_HREF,
+  REPORT_API_DOCS_LABEL,
   reportScopeLabel,
   reportTableFootText,
   resolveReportEmptyStateCopy,
   resolveReportViewState,
 } from '@lib/runs/report-view';
+import { executorsForMode, resolveModeFilter, RUN_MODE_LABEL } from '@lib/runs/run-mode';
 import { ArrowDown, Bot, Check, Inbox, RefreshCw, SearchX, Server, User, X } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // BK-38 — the project-wide Run Report: renders the mockup
@@ -66,14 +71,20 @@ export interface RunReportItem {
 // silently stops matching "aborted" the moment BK-225 or a future slice
 // changes row shape. Flagged in the Stage 2 report as a divergence beyond the
 // plan's own D-1/D-2/D-3, not a silent omission.
+// BK-225 adds the per-mode split (Manual + Automated = Passed + Failed) —
+// still never computed client-side.
 export interface RunReportTotals {
   passed: number
   failed: number
+  manual: number
+  automated: number
 }
 
 export interface RunReportPage {
   items: RunReportItem[]
   totals: RunReportTotals
+  // BK-225 — filter-invariant project context for the empty states.
+  scope?: ReportScope | null
   // Opaque page token (base64url of the keyset position), or null on the last page.
   next_cursor: string | null
 }
@@ -173,6 +184,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
   const [filters, setFilters] = useState<ReportFilterState>(EMPTY_REPORT_FILTERS);
   const [items, setItems] = useState<RunReportItem[]>(initialPage.items);
   const [totals, setTotals] = useState<RunReportTotals>(initialPage.totals);
+  const [scope, setScope] = useState<ReportScope | null>(initialPage.scope ?? null);
   const [cursor, setCursor] = useState<string | null>(initialPage.next_cursor);
   const [error, setError] = useState<string | null>(initialError);
   // A failed APPEND is tracked apart from `error` deliberately — same split as
@@ -214,6 +226,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
       }
       setItems(result.page.items);
       setTotals(result.page.totals);
+      setScope(result.page.scope ?? null);
       setCursor(result.page.next_cursor);
     }
     catch (err) {
@@ -270,6 +283,12 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
     }));
   };
 
+  // BK-225 — Mode is a PRESET over the Executor filter (the single filter
+  // state): picking one rewrites the executor selection, nothing else.
+  const setMode = (mode: 'all' | 'manual' | 'automated') => {
+    setFilters(prev => ({ ...prev, executor: executorsForMode(mode) }));
+  };
+
   const clearFilters = () => {
     setCursor(null);
     setFilters(EMPTY_REPORT_FILTERS);
@@ -313,6 +332,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
   };
 
   const hasActiveFilters = hasActiveReportFilters(filters);
+  const modeFilter = resolveModeFilter(filters.executor);
   // `error` is the FIRST-PAGE error only. An append failure is `appendError`
   // and is deliberately invisible to the resolver — it must not collapse the
   // view. `loading` is checked separately below: the plan requires a DISTINCT
@@ -320,7 +340,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
   // the previous filter's rows the way `RunHistoryView` does, because BK-38's
   // totals are filter-reactive (D2) and showing the OLD filter's numbers under
   // a freshly pressed chip would be a plain untruth.
-  const viewState = resolveReportViewState({ error: error !== null, rowCount: items.length, hasActiveFilters });
+  const viewState = resolveReportViewState({ error: error !== null, rowCount: items.length, hasActiveFilters, modeFilter, scope });
 
   const olderIdleLabel = appendError === null ? 'Load older runs' : 'Try again';
   const olderLabel = loadingOlder ? 'Loading…' : olderIdleLabel;
@@ -444,6 +464,49 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
               </div>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <span id="report-mode-label" className="text-2xs font-medium uppercase tracking-[0.06em] text-fg-3">
+                Mode
+              </span>
+              <div
+                role="group"
+                aria-labelledby="report-mode-label"
+                data-testid="report-filter-mode"
+                data-mode-state={modeFilter}
+                className="inline-flex overflow-hidden rounded-2 border border-stroke-2 bg-surface-2"
+              >
+                {(['all', 'manual', 'automated'] as const).map((mode) => {
+                  const ModeIcon = mode === 'manual' ? User : mode === 'automated' ? Bot : null;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      data-testid={`report-mode-${mode}`}
+                      aria-pressed={modeFilter === mode}
+                      onClick={() => setMode(mode)}
+                      className={`inline-flex h-6.5 items-center gap-1.5 border-r border-stroke-1 px-2.5 text-xs font-medium tracking-[0.02em] transition-colors duration-token ease-token last:border-r-0 ${
+                        modeFilter === mode
+                          ? 'bg-surface-5 text-fg-0'
+                          : 'text-fg-2 hover:bg-surface-4 hover:text-fg-1'
+                      }`}
+                    >
+                      {ModeIcon !== null && <ModeIcon size={11} aria-hidden="true" className="shrink-0" />}
+                      {mode === 'all' ? 'All' : RUN_MODE_LABEL[mode]}
+                    </button>
+                  );
+                })}
+                {modeFilter === 'custom' && (
+                  <span
+                    data-testid="report-mode-custom"
+                    aria-label="Custom executor selection"
+                    className="inline-flex h-6.5 items-center bg-surface-5 px-2.5 text-xs font-medium tracking-[0.02em] text-fg-0"
+                  >
+                    Custom
+                  </span>
+                )}
+              </div>
+            </div>
+
             {hasActiveFilters && (
               <Button
                 type="button"
@@ -470,6 +533,8 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
           >
             <TotalChip label="Passed" count={loading ? null : totals.passed} icon={Check} tone="pass" testId="report-total-passed" />
             <TotalChip label="Failed" count={loading ? null : totals.failed} icon={X} tone="fail" testId="report-total-failed" />
+            <ModeTotalChip label="Manual" count={loading ? null : totals.manual} icon={User} testId="report-total-manual" />
+            <ModeTotalChip label="Automated" count={loading ? null : totals.automated} icon={Bot} testId="report-total-automated" />
             <span className="text-xs text-fg-3" data-testid="report-scope-label">
               {loading
                 ? (
@@ -512,6 +577,24 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
               );
             })()}
 
+            {!loading && viewState === 'empty-no-automated' && (() => {
+              const copy = resolveReportEmptyStateCopy('empty-no-automated');
+              return (
+                <div data-testid="report-empty-no-automated" className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                  <Bot size={18} className="text-fg-3" />
+                  <span className="text-md font-semibold text-fg-1">{copy.title}</span>
+                  <span className="max-w-[56ch] text-sm text-fg-3">{copy.description}</span>
+                  <Link
+                    href={REPORT_API_DOCS_HREF}
+                    data-testid="report-empty-no-automated-docs"
+                    className="text-sm text-accent underline-offset-2 hover:underline"
+                  >
+                    {REPORT_API_DOCS_LABEL}
+                  </Link>
+                </div>
+              );
+            })()}
+
             {!loading && viewState === 'empty-no-match' && (() => {
               const copy = resolveReportEmptyStateCopy('empty-no-match');
               return (
@@ -533,7 +616,7 @@ export function ProjectRunsReportView({ projectId, modules, initialPage, initial
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        {['Run', 'Test', 'Module', 'Environment', 'Executor', 'Outcome', 'Ran'].map(column => (
+                        {['Run', 'Test', 'Module', 'Environment', 'Executor', 'Mode', 'Outcome', 'Ran'].map(column => (
                           <th
                             key={column}
                             scope="col"
@@ -617,6 +700,9 @@ function ReportRow({ run }: { run: RunReportItem }) {
         </span>
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        <RunModeBadge executorMode={run.executor_mode} />
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="status-chip" data-status={STATUS_TOKEN[run.status]}>
           <span className="dot" data-status={STATUS_TOKEN[run.status]} />
           {STATUS_LABEL[run.status]}
@@ -652,18 +738,39 @@ function TotalChip({ label, count, icon: Icon, tone, testId }: {
   );
 }
 
+// BK-225 — neutral per-mode total chip (icon + text, no signal color: a mode
+// is not a verdict).
+function ModeTotalChip({ label, count, icon: Icon, testId }: {
+  label: string
+  count: number | null
+  icon: LucideIcon
+  testId: string
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className="inline-flex items-center gap-1.5 rounded-2 border border-stroke-2 bg-surface-2 px-2.5 py-1 text-sm text-fg-1"
+    >
+      <Icon size={13} aria-hidden="true" className="shrink-0 text-fg-3" />
+      {label}
+      {' '}
+      <span className="font-mono font-semibold text-fg-0">{count === null ? '—' : count}</span>
+    </span>
+  );
+}
+
 // Skeleton rows shown WHILE a filter change is in flight — a DISTINCT state
 // from the mockup's request (not a dim-existing-rows treatment, because
 // totals are filter-reactive here and the previous filter's numbers would be
 // a stale, misleading answer under a freshly pressed chip).
 function ReportSkeletonRows() {
-  const widths = ['64px', '220px', '130px', '150px', '70px', '76px', '110px'];
+  const widths = ['64px', '220px', '130px', '150px', '70px', '76px', '76px', '110px'];
   return (
     <div data-testid="report-loading" aria-hidden="true">
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            {['Run', 'Test', 'Module', 'Environment', 'Executor', 'Outcome', 'Ran'].map(column => (
+            {['Run', 'Test', 'Module', 'Environment', 'Executor', 'Mode', 'Outcome', 'Ran'].map(column => (
               <th
                 key={column}
                 scope="col"

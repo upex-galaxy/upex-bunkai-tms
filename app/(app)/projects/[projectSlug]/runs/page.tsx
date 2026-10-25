@@ -1,4 +1,5 @@
 import type { RunReportItem, RunReportTotals } from '@components/runs/ProjectRunsReportView';
+import type { ReportScope } from '@lib/runs/report-view';
 import { ProjectRunsReportSkeleton, ProjectRunsReportView } from '@components/runs/ProjectRunsReportView';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { encodeRunCursor } from '@lib/runs/history-validation';
@@ -40,10 +41,11 @@ export default async function ProjectRunsReportPage({ params }: PageProps) {
 interface RunReportPayload {
   items: RunReportItem[]
   totals: RunReportTotals
+  scope: ReportScope | null
   next_cursor: { started_at: string, id: string } | null
 }
 
-const EMPTY_TOTALS: RunReportTotals = { passed: 0, failed: 0 };
+const EMPTY_TOTALS: RunReportTotals = { passed: 0, failed: 0, manual: 0, automated: 0 };
 
 // The first-page read, isolated in its own async component so it streams
 // inside the `<Suspense>` boundary above (the `RunHistorySection` / BK-37
@@ -115,6 +117,7 @@ async function ProjectRunsReportSection({ projectSlug }: { projectSlug: string }
         initialPage={{
           items: payload.items ?? [],
           totals: payload.totals ?? EMPTY_TOTALS,
+          scope: payload.scope ?? null,
           // The RPC returns the raw keyset position; the client only ever
           // echoes the opaque wire token back, exactly as the API route emits it.
           next_cursor: payload.next_cursor === null

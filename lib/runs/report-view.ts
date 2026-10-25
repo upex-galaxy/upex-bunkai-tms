@@ -7,7 +7,16 @@
 // earlier), but branches on FOUR independent filter axes instead of BK-37's
 // single `outcome !== null` check — see `hasActiveReportFilters` below.
 
-export type ReportViewState = 'error' | 'empty-no-runs' | 'empty-no-match' | 'rows';
+import type { RunModeFilter } from '@lib/runs/run-mode';
+
+export type ReportViewState = 'error' | 'empty-no-runs' | 'empty-no-automated' | 'empty-no-match' | 'rows';
+
+// BK-225 — filter-invariant project context the RPC returns beside the page:
+// does the Project have any Run at all, and any automated one.
+export interface ReportScope {
+  has_runs: boolean
+  has_automated: boolean
+}
 
 interface ResolveReportViewStateParams {
   // FIRST-PAGE failure only. A failed "load older" is NOT an input here, same
@@ -21,6 +30,10 @@ interface ResolveReportViewStateParams {
   // "is a filter active at all" question needs its own boolean rather than a
   // single nullable value.
   hasActiveFilters: boolean
+  // BK-225 — Mode control state + project context. Optional: absent context
+  // keeps the BK-38 behavior exactly.
+  modeFilter?: RunModeFilter
+  scope?: ReportScope | null
 }
 
 // Branch selection for the four mutually exclusive blocks. A first-page error
@@ -29,12 +42,25 @@ interface ResolveReportViewStateParams {
 // filters are irrelevant. Without rows, ACTIVE FILTERS are what separates
 // ATC-06 ("no runs yet for this Project") from ATC-03 ("no match for the
 // current filter combination").
-export function resolveReportViewState({ error, rowCount, hasActiveFilters }: ResolveReportViewStateParams): ReportViewState {
+export function resolveReportViewState({ error, rowCount, hasActiveFilters, modeFilter, scope }: ResolveReportViewStateParams): ReportViewState {
   if (error) {
     return 'error';
   }
   if (rowCount > 0) {
     return 'rows';
+  }
+  // BK-225: the automated empty state is PROJECT-level — only when Mode =
+  // Automated and the Project has no automated run at all. A Project with no
+  // run at all keeps the first-use state (deterministic precedence, 4.4); when
+  // automated runs exist but other filters exclude them, the generic no-match
+  // state wins (4.3).
+  if (modeFilter === 'automated' && scope) {
+    if (!scope.has_runs) {
+      return 'empty-no-runs';
+    }
+    if (!scope.has_automated) {
+      return 'empty-no-automated';
+    }
   }
   return hasActiveFilters ? 'empty-no-match' : 'empty-no-runs';
 }
@@ -119,6 +145,12 @@ export const REPORT_EMPTY_NO_MATCH_TITLE = 'No runs match these filters';
 export const REPORT_EMPTY_NO_MATCH_DESCRIPTION
   = 'The combination you applied matches nothing in this project. Totals above show zero — that is a valid result, not an error.';
 
+export const REPORT_EMPTY_NO_AUTOMATED_TITLE = 'No automated runs reported yet';
+export const REPORT_EMPTY_NO_AUTOMATED_DESCRIPTION
+  = 'Automated runs appear here when an agent executes a Test through the Bunkai API or a CI pipeline reports a run. Manual sessions stay under the Manual mode.';
+export const REPORT_API_DOCS_HREF = '/api/docs';
+export const REPORT_API_DOCS_LABEL = 'How runs are reported';
+
 export interface ReportEmptyStateCopy {
   title: string
   description: string
@@ -128,7 +160,10 @@ export interface ReportEmptyStateCopy {
 // silently converging on the same sentence (mirrors BK-37's
 // `runHistoryNoMatchMessage`, minus the outcome interpolation this feature
 // doesn't need).
-export function resolveReportEmptyStateCopy(state: 'empty-no-runs' | 'empty-no-match'): ReportEmptyStateCopy {
+export function resolveReportEmptyStateCopy(state: 'empty-no-runs' | 'empty-no-automated' | 'empty-no-match'): ReportEmptyStateCopy {
+  if (state === 'empty-no-automated') {
+    return { title: REPORT_EMPTY_NO_AUTOMATED_TITLE, description: REPORT_EMPTY_NO_AUTOMATED_DESCRIPTION };
+  }
   return state === 'empty-no-runs'
     ? { title: REPORT_EMPTY_NO_RUNS_TITLE, description: REPORT_EMPTY_NO_RUNS_DESCRIPTION }
     : { title: REPORT_EMPTY_NO_MATCH_TITLE, description: REPORT_EMPTY_NO_MATCH_DESCRIPTION };
