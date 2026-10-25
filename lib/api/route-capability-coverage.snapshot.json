@@ -51,6 +51,11 @@
   },
   {
     "file": "app/api/v1/atcs/[id]/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/atcs/[id]/route.ts",
     "method": "PATCH",
     "posture": "required:atc:write"
   },
