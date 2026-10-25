@@ -1,6 +1,8 @@
 import type { RunHistoryItem, RunHistoryTotals } from '@components/runs/RunHistoryView';
+import type { FlakinessCounts } from '@lib/runs/flakiness';
 import type { RunHistoryOutcome } from '@lib/runs/history-validation';
 import { RunHistorySkeleton, RunHistoryView } from '@components/runs/RunHistoryView';
+import { EMPTY_FLAKINESS } from '@lib/runs/flakiness';
 import { encodeRunCursor, RUN_HISTORY_OUTCOMES, RUN_HISTORY_PAGE_SIZE } from '@lib/runs/history-validation';
 import { listTestRuns } from '@lib/supabase/rpc';
 import { createClient } from '@lib/supabase/server';
@@ -47,6 +49,7 @@ export default async function TestRunHistoryPage({ params, searchParams }: PageP
 interface RunHistoryPayload {
   items: RunHistoryItem[]
   totals: RunHistoryTotals
+  flakiness?: FlakinessCounts
   next_cursor: { started_at: string, id: string } | null
 }
 
@@ -83,6 +86,7 @@ async function RunHistorySection({ testId, outcome }: { testId: string, outcome:
         initialPage={{
           items: payload.items ?? [],
           totals: payload.totals ?? EMPTY_TOTALS,
+          flakiness: payload.flakiness ?? EMPTY_FLAKINESS,
           // The RPC returns the raw keyset position; the client only ever echoes
           // the opaque wire token back, exactly as the API route emits it.
           next_cursor: payload.next_cursor === null
@@ -97,7 +101,7 @@ async function RunHistorySection({ testId, outcome }: { testId: string, outcome:
       <RunHistoryView
         testId={testId}
         initialOutcome={outcome}
-        initialPage={{ items: [], totals: EMPTY_TOTALS, next_cursor: null }}
+        initialPage={{ items: [], totals: EMPTY_TOTALS, flakiness: EMPTY_FLAKINESS, next_cursor: null }}
         initialError="Could not load this Test's run history."
       />
     );

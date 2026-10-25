@@ -5130,12 +5130,15 @@
           "totals": {
             "$ref": "#/components/schemas/RunHistoryTotals"
           },
+          "flakiness": {
+            "$ref": "#/components/schemas/RunHistoryFlakiness"
+          },
           "next_cursor": {
             "type": ["string", "null"],
             "description": "Opaque token for the next (older) page, or null when this is the last page. base64url, so it is URL-safe as-is: echo it back verbatim as `?cursor=`; never construct or parse one."
           }
         },
-        "required": ["items", "totals", "next_cursor"]
+        "required": ["items", "totals", "flakiness", "next_cursor"]
       },
       "RunHistoryItem": {
         "type": "object",
@@ -5195,6 +5198,29 @@
         },
         "required": ["passed", "failed", "aborted"],
         "description": "ALL-TIME counts over every terminal Run of the Test. Deliberately invariant under both `outcome` and pagination — filtering the list never changes these numbers."
+      },
+      "RunHistoryFlakiness": {
+        "type": "object",
+        "properties": {
+          "sample": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Passed/Failed Runs in the window (the 10 most recent)."
+          },
+          "flips": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Consecutive pairs in the window whose verdicts differ. Aborted Runs are skipped, not a break."
+          },
+          "aborted_skipped": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Aborted Runs left out of the sample (inside the span the sample covers; every Aborted Run when there is no verdict Run)."
+          }
+        },
+        "required": ["sample", "flips", "aborted_skipped"],
+        "description": "BK-554 raw flakiness counts for the Test. All-time window and filter-invariant like `totals`; below 5 verdict Runs the client shows no rate."
       },
       "TestTagsBody": {
         "type": "object",

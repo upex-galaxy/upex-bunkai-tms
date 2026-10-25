@@ -1,5 +1,6 @@
 'use client';
 
+import type { FlakinessBand, FlakinessCounts, FlakinessSignal } from '@lib/runs/flakiness';
 import type { RunHistoryOutcome } from '@lib/runs/history-constants';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { LucideIcon } from 'lucide-react';
@@ -8,6 +9,7 @@ import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { formatRunDuration } from '@lib/runs/duration';
+import { flakinessAbortedNote, flakinessHeadline, resolveFlakiness } from '@lib/runs/flakiness';
 // Constants come from the zod-free module, NOT `history-validation`: that file
 // evaluates `z.object(...)` at its top level, so importing two literals from it
 // would drag Zod and the whole query-schema graph into this client bundle.
@@ -58,6 +60,8 @@ export interface RunHistoryTotals {
 export interface RunHistoryPage {
   items: RunHistoryItem[]
   totals: RunHistoryTotals
+  // BK-554 — raw flakiness counts; all-time and filter-invariant like `totals`.
+  flakiness: FlakinessCounts
   // Opaque page token (base64 of the keyset position), or null on the last page.
   next_cursor: string | null
 }
@@ -140,6 +144,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
   const [outcome, setOutcome] = useState<RunHistoryOutcome | null>(initialOutcome);
   const [items, setItems] = useState<RunHistoryItem[]>(initialPage.items);
   const [totals, setTotals] = useState<RunHistoryTotals>(initialPage.totals);
+  const [flakiness, setFlakiness] = useState<FlakinessCounts>(initialPage.flakiness);
   const [cursor, setCursor] = useState<string | null>(initialPage.next_cursor);
   const [error, setError] = useState<string | null>(initialError);
   // A failed APPEND is tracked apart from `error` deliberately. `error` drives
@@ -194,6 +199,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
       }
       setItems(result.page.items);
       setTotals(result.page.totals);
+      setFlakiness(result.page.flakiness);
       setCursor(result.page.next_cursor);
     }
     catch (err) {
@@ -301,6 +307,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
       }
       setItems(current => [...current, ...result.page.items]);
       setTotals(result.page.totals);
+      setFlakiness(result.page.flakiness);
       setCursor(result.page.next_cursor);
     }
     catch (err) {
@@ -363,6 +370,12 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
               runs all time · newest first
             </span>
           </div>
+
+          {/* BK-554 — flakiness signal (spec-only departure, §5 D48). Describes
+              the Test, not the current view: filter-invariant like the totals
+              above, and hidden only for a Test with no finished Run at all (the
+              "No runs yet" state stands). Read-only, no controls. */}
+          {allTimeTotal > 0 && <FlakinessSignalBlock signal={resolveFlakiness(flakiness)} />}
 
           {/* Outcome filter — single-select, `running` deliberately absent (an
               in-progress Run is not an outcome and is never history). */}
@@ -627,6 +640,38 @@ function RunRow({ run }: { run: RunHistoryItem }) {
         </span>
       </td>
     </tr>
+  );
+}
+
+const FLAKINESS_TINT: Record<FlakinessBand, string> = {
+  'stable': 'bg-signal-pass-bg',
+  'occasionally-flaky': 'bg-signal-blocked-bg',
+  'flaky': 'bg-signal-fail-bg',
+};
+
+function FlakinessSignalBlock({ signal }: { signal: FlakinessSignal }) {
+  const note = flakinessAbortedNote(signal.abortedSkipped);
+  const tint = signal.kind === 'judged' ? FLAKINESS_TINT[signal.band] : 'bg-surface-2';
+  return (
+    <div
+      data-testid="run-history-flakiness"
+      data-band={signal.kind === 'judged' ? signal.band : 'insufficient'}
+      className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-2 border border-stroke-1 px-3 py-2 text-sm ${tint}`}
+    >
+      <span className="font-medium text-fg-1">{flakinessHeadline(signal)}</span>
+      {signal.kind === 'judged' && (
+        <span className="text-fg-3">
+          {signal.flips}
+          {' '}
+          of
+          {' '}
+          {signal.pairs}
+          {' '}
+          consecutive pairs changed verdict
+        </span>
+      )}
+      {note !== null && <span className="text-fg-3" data-testid="run-history-flakiness-aborted">{note}</span>}
+    </div>
   );
 }
 
