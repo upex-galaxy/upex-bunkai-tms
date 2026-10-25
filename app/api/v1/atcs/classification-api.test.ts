@@ -123,7 +123,8 @@ function writeBody(seed: Seed, overrides: Record<string, unknown> = {}) {
 function createRequest(token: string, body: unknown): NextRequest {
   return new NextRequest('https://app.test/api/v1/atcs', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+    // POST /atcs requires an Idempotency-Key; a fresh one per call keeps each create independent.
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'idempotency-key': crypto.randomUUID() },
     body: JSON.stringify(body),
   });
 }
