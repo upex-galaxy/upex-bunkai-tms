@@ -1,7 +1,16 @@
 'use client';
 
+import type { EntityCard as EntityCardData, EntitySearchItem } from '@lib/chat/entity-refs';
 import type { ChatMember, ChatMessage, ChatRole } from '@lib/chat/messages';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
+import {
+  buildEntityReference,
+  distinctRefs,
+  insertAtCaret,
+  parseBodySegments,
+  refKey,
+  textWithoutRefs,
+} from '@lib/chat/entity-refs';
 import {
   buildChatChannelConfig,
   canDeleteMessage,
@@ -21,9 +30,12 @@ import {
 } from '@lib/chat/messages';
 import { shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
 import { createClient } from '@lib/supabase/client';
+import { APP_URLS } from '@lib/urls';
 import { cn } from '@lib/utils';
-import { Hash, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
+import { Hash, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { EntityCard } from './EntityCard';
+import { EntityPicker } from './EntityPicker';
 
 // BK-215 — Team Chat, workspace general channel (mockup:
 // bk-210-team-chat/chat-panel-workspace.html, master-design-plan §4.14).
@@ -96,6 +108,14 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [lastSeen, setLastSeen] = useState(0);
   const [separatorSeq, setSeparatorSeq] = useState<number | null>(null);
   const [pendingBelow, setPendingBelow] = useState(0);
+  // BK-218 — resolved entity cards keyed `{type}:{id}`; `failedRefs` fall back to
+  // the plain link. Cleared each time the panel opens so a re-render shows the
+  // latest state (cards are never live-updated while mounted).
+  const [cards, setCards] = useState<ReadonlyMap<string, EntityCardData>>(new Map());
+  const [failedRefs, setFailedRefs] = useState<ReadonlySet<string>>(new Set());
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const inFlightRefs = useRef<Set<string>>(new Set());
   // BK-219: inline edit, delete confirmation, and a clock that closes the
   // 15-minute edit window while the panel stays open.
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -122,6 +142,62 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
 
   const config = useMemo(() => buildChatChannelConfig(workspaceId), [workspaceId]);
   const base = `/api/v1/workspaces/${workspaceId}/chat`;
+
+  const allowedOrigins = useMemo(
+    () => [...Object.values(APP_URLS), ...(typeof window === 'undefined' ? [] : [window.location.origin])],
+    [],
+  );
+  const segmentsById = useMemo(
+    () => new Map(messages.map(m => [m.id, parseBodySegments(m.body, allowedOrigins)])),
+    [messages, allowedOrigins],
+  );
+
+  useEffect(() => {
+    if (open) {
+      setCards(new Map());
+      setFailedRefs(new Set());
+      inFlightRefs.current.clear();
+    }
+  }, [open]);
+
+  // Resolve every not-yet-known reference of the loaded messages in one call.
+  useEffect(() => {
+    if (!open || loading) { return; }
+    const wanted = [...segmentsById.values()].flatMap(distinctRefs).filter((r, i, all) => all.findIndex(x => refKey(x) === refKey(r)) === i).filter(r => !cards.has(refKey(r)) && !failedRefs.has(refKey(r)) && !inFlightRefs.current.has(refKey(r)));
+    if (wanted.length === 0) { return; }
+    for (let i = 0; i < wanted.length; i += 20) {
+      const batch = wanted.slice(i, i + 20);
+      for (const r of batch) { inFlightRefs.current.add(refKey(r)); }
+      void (async () => {
+        const res = await apiJson<{ cards: Record<string, EntityCardData> }>(`${base}/entities/resolve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refs: batch.map(r => ({ type: r.type, id: r.id, project_slug: r.projectSlug })) }),
+        });
+        for (const r of batch) { inFlightRefs.current.delete(refKey(r)); }
+        if (res.ok) {
+          setCards(prev => new Map([...prev, ...Object.entries(res.data.cards)]));
+        }
+        else {
+          setFailedRefs(prev => new Set([...prev, ...batch.map(refKey)]));
+        }
+      })();
+    }
+  }, [segmentsById, cards, failedRefs, open, loading, base]);
+
+  const insertReference = (item: EntitySearchItem) => {
+    const url = buildEntityReference({ type: item.type, id: item.id, projectSlug: item.project_slug }, window.location.origin);
+    const el = composerRef.current;
+    const caret = el?.selectionStart ?? draft.length;
+    const next = insertAtCaret(draft, caret, url);
+    setDraft(next.value);
+    setSendError(null);
+    setPickerOpen(false);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(next.caret, next.caret);
+    });
+  };
 
   const nameOf = (m: ChatItem): string => {
     const member = members.find(x => x.user_id === m.author_user_id);
@@ -548,7 +624,25 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                               {actionError && <p data-testid="chat_edit_error" role="alert" className="m-0 mt-1 text-xs text-fail">{actionError}</p>}
                             </div>
                           )
-                        : <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">{m.body}</p>}
+                        : (() => {
+                            const segments = segmentsById.get(m.id) ?? [];
+                            const refs = segments.filter(sg => sg.kind === 'ref');
+                            const text = refs.length > 0 ? textWithoutRefs(segments) : m.body;
+                            return (
+                              <>
+                                {text.length > 0 && <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">{text}</p>}
+                                {refs.map((sg, idx) => {
+                                  const key = refKey(sg.ref);
+                                  const card = cards.get(key);
+                                  if (card) { return <EntityCard key={`${key}-${idx}`} card={card} />; }
+                                  if (failedRefs.has(key)) {
+                                    return <a key={`${key}-${idx}`} href={sg.raw} className="mt-1 block break-all text-[13px] text-accent-hi underline">{sg.raw}</a>;
+                                  }
+                                  return <div key={`${key}-${idx}`} data-testid="chat_entity_loading" aria-hidden="true" className="mt-1.5 h-[52px] w-full max-w-[316px] animate-status-pulse rounded-3 border border-stroke-2 bg-surface-2" />;
+                                })}
+                              </>
+                            );
+                          })()}
                     {windowClosed && !editing && (
                       <span data-testid="chat_edit_window_hint" className="sr-only">Messages can be edited for 15 minutes after sending.</span>
                     )}
@@ -595,8 +689,16 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       <footer className="border-t border-stroke-1 bg-surface-1 px-4 py-3">
         {writable
           ? (
-              <>
+              <div className="relative">
+                {pickerOpen && (
+                  <EntityPicker
+                    searchUrl={`${base}/entities/search`}
+                    onPick={insertReference}
+                    onClose={() => { setPickerOpen(false); composerRef.current?.focus(); }}
+                  />
+                )}
                 <textarea
+                  ref={composerRef}
                   data-testid="chat_composer"
                   value={draft}
                   rows={2}
@@ -609,6 +711,17 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                 />
                 <div className="mt-1.5 flex items-center gap-2 text-[11px] text-fg-3">
                   <span>Enter to send · Shift+Enter for a new line</span>
+                  <button
+                    type="button"
+                    data-testid="chat_entity_picker_toggle"
+                    aria-label="Insert entity reference"
+                    aria-expanded={pickerOpen}
+                    title="Insert entity reference"
+                    onClick={() => setPickerOpen(v => !v)}
+                    className="ml-auto inline-flex size-7 items-center justify-center rounded-2 border border-stroke-2 bg-surface-2 text-fg-2 hover:bg-surface-3 hover:text-fg-0"
+                  >
+                    <Link2 size={14} aria-hidden="true" />
+                  </button>
                   {overLimit && <span data-testid="chat_over_limit" className="text-fail">{`${draft.trim().length}/${CHAT_MESSAGE_MAX_LENGTH}`}</span>}
                   <button
                     type="button"
@@ -616,13 +729,13 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     aria-label="Send message"
                     disabled={sending || draft.trim().length === 0 || overLimit}
                     onClick={() => void send()}
-                    className="ml-auto inline-flex size-7 items-center justify-center rounded-2 bg-accent text-white hover:bg-accent-hi disabled:pointer-events-none disabled:opacity-40"
+                    className="inline-flex size-7 items-center justify-center rounded-2 bg-accent text-white hover:bg-accent-hi disabled:pointer-events-none disabled:opacity-40"
                   >
                     {sending ? <Loader2 size={14} className="animate-spin" /> : <SendHorizontal size={14} />}
                   </button>
                 </div>
                 {sendError && <p data-testid="chat_send_error" role="alert" className="m-0 mt-1 text-xs text-fail">{sendError}</p>}
-              </>
+              </div>
             )
           : (
               <div data-testid="chat_read_only" className="flex items-start gap-2 rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2 text-xs text-fg-1">

@@ -59,7 +59,7 @@ export function parseListParams(workspaceId: string, searchParams: URLSearchPara
   return { workspaceId, limit, beforeSeq, afterSeq };
 }
 
-async function resolveGeneralChannelId(db: SupabaseClient<Database>, workspaceId: string): Promise<string> {
+export async function resolveGeneralChannelId(db: SupabaseClient<Database>, workspaceId: string): Promise<string> {
   const { data, error } = await db
     .from('chat_channels')
     .select('id')
