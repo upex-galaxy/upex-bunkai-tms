@@ -72,6 +72,9 @@ interface AppSidebarProps {
   // (workspaces, projects, role) skips a client waterfall. Local state below
   // takes over from here (optimistic mark-read/mark-all + Realtime pushes).
   initialUnreadCount: number
+  // BK-439 — unfiltered count of every ATC the caller can read in the active
+  // workspace; null (failed read) hides the badge instead of showing a false 0.
+  atcCount: number | null
 }
 
 interface NavItem {
@@ -117,7 +120,7 @@ async function fetchNotificationsData(workspaceId: string): Promise<Notification
   return { ok: true, items: body.items, unreadCount: body.unread_count };
 }
 
-export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount }: AppSidebarProps) {
+export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail, userRole, initialUnreadCount, atcCount }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
@@ -168,7 +171,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
     { id: 'home', icon: Home, label: 'Home', href: '/home' },
     { id: 'activity', icon: Activity, label: 'Activity', href: '/activity' },
     { id: 'projects', icon: Folder, label: 'Projects', href: '/projects', badge: projects.length },
-    { id: 'library', icon: Library, label: 'ATC Library', href: null },
+    { id: 'library', icon: Library, label: 'ATC Library', href: '/atcs', badge: atcCount ?? undefined },
     { id: 'runs', icon: Play, label: 'Test Runs', href: null },
     { id: 'bugs', icon: Bug, label: 'Bug Reports', href: null },
     { id: 'metrics', icon: BarChart3, label: 'Metrics', href: null },
