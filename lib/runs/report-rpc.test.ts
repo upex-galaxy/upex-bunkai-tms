@@ -68,7 +68,8 @@ interface ReportItem {
 }
 interface ReportPage {
   items: ReportItem[]
-  totals: { passed: number, failed: number }
+  totals: { passed: number, failed: number, manual: number, automated: number }
+  scope: { has_runs: boolean, has_automated: boolean }
   next_cursor: { started_at: string, id: string } | null
 }
 interface Fixture {
@@ -224,7 +225,8 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       if (!fixture || !zeroRunsProjectId) { return warn(); }
       const page = await reportRuns(zeroRunsProjectId, fixture.actorUserId);
       expect(page.items).toEqual([]);
-      expect(page.totals).toEqual({ passed: 0, failed: 0 });
+      expect(page.totals).toEqual({ passed: 0, failed: 0, manual: 0, automated: 0 });
+      expect(page.scope).toEqual({ has_runs: false, has_automated: false });
       expect(page.next_cursor).toBeNull();
     });
   });
@@ -284,7 +286,7 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       // 3 passed (run1, run3, run6) + 1 failed (run2) among this suite's rows;
       // totals is additive over whatever else already exists for this
       // throwaway project (nothing else does, since the project is fresh).
-      expect(page.totals).toEqual({ passed: 3, failed: 1 });
+      expect(page.totals).toEqual({ passed: 3, failed: 1, manual: 3, automated: 1 });
     });
 
     it('module filter narrows BOTH rows and totals to a DIFFERENT value than unfiltered', async () => {
@@ -300,12 +302,12 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       expect(moduleB.totals).not.toEqual(unfiltered.totals);
 
       // module-a: run1 (passed), run2 (failed), run5 (running, not counted).
-      expect(moduleA.totals).toEqual({ passed: 1, failed: 1 });
+      expect(moduleA.totals).toEqual({ passed: 1, failed: 1, manual: 2, automated: 0 });
       expect(moduleA.items.every(i => i.module_id === fixture!.moduleAId)).toBe(true);
       expect(moduleA.items).toHaveLength(3);
 
       // module-b: run3 (passed), run4 (aborted, not counted), run6 (passed).
-      expect(moduleB.totals).toEqual({ passed: 2, failed: 0 });
+      expect(moduleB.totals).toEqual({ passed: 2, failed: 0, manual: 1, automated: 1 });
       expect(moduleB.items.every(i => i.module_id === fixture!.moduleBId)).toBe(true);
       expect(moduleB.items).toHaveLength(3);
     });
@@ -314,9 +316,23 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       if (!fixture) { return warn(); }
       const agentOnly = await reportRuns(fixture.projectId, fixture.actorUserId, { executorMode: ['agent'] });
       // run3 (passed) + run4 (aborted, not counted).
-      expect(agentOnly.totals).toEqual({ passed: 1, failed: 0 });
+      expect(agentOnly.totals).toEqual({ passed: 1, failed: 0, manual: 0, automated: 1 });
       expect(agentOnly.items).toHaveLength(2);
       expect(agentOnly.items.every(i => i.executor_mode === 'agent')).toBe(true);
+    });
+
+    it('BK-225 — Mode presets recompute per-mode totals; Manual + Automated = Passed + Failed', async () => {
+      if (!fixture) { return warn(); }
+      const unfiltered = await reportRuns(fixture.projectId, fixture.actorUserId);
+      expect(unfiltered.totals.manual + unfiltered.totals.automated).toBe(unfiltered.totals.passed + unfiltered.totals.failed);
+      const automated = await reportRuns(fixture.projectId, fixture.actorUserId, { executorMode: ['agent', 'ci'] });
+      // run3 (agent, passed) counted; run4 aborted + run5 running listed, not counted.
+      expect(automated.totals).toEqual({ passed: 1, failed: 0, manual: 0, automated: 1 });
+      expect(automated.items).toHaveLength(3);
+      const manual = await reportRuns(fixture.projectId, fixture.actorUserId, { executorMode: ['human'] });
+      expect(manual.totals).toEqual({ passed: 2, failed: 1, manual: 3, automated: 0 });
+      // Project-level scope is filter-invariant.
+      expect(automated.scope).toEqual({ has_runs: true, has_automated: true });
     });
 
     it('status filter narrows to exactly the requested statuses', async () => {
@@ -325,7 +341,7 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       expect(abortedOnly.items).toHaveLength(1);
       expect(abortedOnly.items[0].status).toBe('aborted');
       // Aborted never counts toward passed/failed totals.
-      expect(abortedOnly.totals).toEqual({ passed: 0, failed: 0 });
+      expect(abortedOnly.totals).toEqual({ passed: 0, failed: 0, manual: 0, automated: 0 });
     });
 
     it('combined module + status filters compose with AND', async () => {
@@ -337,7 +353,7 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       // module-b AND passed: run3, run6.
       expect(combined.items).toHaveLength(2);
       expect(combined.items.every(i => i.module_id === fixture!.moduleBId && i.status === 'passed')).toBe(true);
-      expect(combined.totals).toEqual({ passed: 2, failed: 0 });
+      expect(combined.totals).toEqual({ passed: 2, failed: 0, manual: 1, automated: 1 });
     });
   });
 
@@ -361,14 +377,16 @@ describeOrSkip('BK-38 — bunkai_report_project_runs', () => {
       // result below would be indistinguishable from ATC-06's case.
       const unfiltered = await reportRuns(fixture.projectId, fixture.actorUserId);
       expect(unfiltered.items.length).toBeGreaterThan(0);
-      expect(unfiltered.totals).not.toEqual({ passed: 0, failed: 0 });
+      expect(unfiltered.totals).not.toEqual({ passed: 0, failed: 0, manual: 0, automated: 0 });
 
       const page = await reportRuns(fixture.projectId, fixture.actorUserId, {
         moduleId: fixture.moduleAId,
         status: ['aborted'],
       });
       expect(page.items).toEqual([]);
-      expect(page.totals).toEqual({ passed: 0, failed: 0 });
+      expect(page.totals).toEqual({ passed: 0, failed: 0, manual: 0, automated: 0 });
+      // Scope is filter-invariant: the Project still has runs, automated included.
+      expect(page.scope).toEqual({ has_runs: true, has_automated: true });
       expect(page.next_cursor).toBeNull();
     });
   });

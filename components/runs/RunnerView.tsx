@@ -5,6 +5,7 @@ import type { StepMarkStatus } from '@lib/runs/mark-step-view';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
 import { BugFormDialog } from '@components/bugs/BugFormDialog';
+import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { StepEvidence } from '@components/runs/StepEvidence';
 import { Button, buttonVariants } from '@components/ui/button';
 import { compareHref, shouldShowCompareControl } from '@lib/runs/compare-view';
@@ -596,6 +597,7 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
             >
               {view.status}
             </span>
+            <RunModeBadge executorMode={view.executor_mode} />
             <span
               data-testid="runner-env"
               className="inline-flex items-center rounded-1 border border-stroke-2 bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-3"

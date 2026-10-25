@@ -5,6 +5,7 @@ import type { RunHistoryOutcome } from '@lib/runs/history-constants';
 import type { SavedViewState } from '@lib/saved-views/state';
 import type { LucideIcon } from 'lucide-react';
 import { useWorkbench } from '@app/(app)/projects/[projectSlug]/workbench-context';
+import { RunModeBadge } from '@components/runs/RunModeBadge';
 import { SavedViewsMenu } from '@components/saved-views/SavedViewsMenu';
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
@@ -516,7 +517,7 @@ export function RunHistoryView({ testId, initialPage, initialOutcome, initialErr
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        {['Run', 'Environment', 'Executor', 'Outcome', 'Duration', 'Ran'].map(column => (
+                        {['Run', 'Environment', 'Executor', 'Mode', 'Outcome', 'Duration', 'Ran'].map(column => (
                           <th
                             key={column}
                             scope="col"
@@ -622,6 +623,9 @@ function RunRow({ run }: { run: RunHistoryItem }) {
           <ExecutorIcon size={13} className="shrink-0 text-fg-2" />
           {EXECUTOR_LABEL[run.executor_mode] ?? run.executor_mode}
         </span>
+      </td>
+      <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
+        <RunModeBadge executorMode={run.executor_mode} />
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="status-chip" data-status={STATUS_TOKEN[run.status]}>

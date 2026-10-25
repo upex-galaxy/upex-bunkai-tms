@@ -38,6 +38,8 @@ const RunReportTotalsSchema = z
   .object({
     passed: z.number().int(),
     failed: z.number().int(),
+    manual: z.number().int().describe('Passed + failed Runs with executor `human` (Manual) in the filtered set. Manual + Automated = Passed + Failed.'),
+    automated: z.number().int().describe('Passed + failed Runs with executor `agent` or `ci` (Automated) in the filtered set.'),
   })
   .describe('Counts over the WHOLE filtered set (every row matching the active filters, not just the returned page) — Business Rule #3 / Technical Decision D2. Deliberately the OPPOSITE of RunHistoryTotals: these numbers change as filters narrow. `running` and `aborted` Runs are not counted here (aborted is a terminal outcome but not a pass/fail verdict).')
   .openapi('RunReportTotals');
@@ -46,6 +48,12 @@ const RunReportPageSchema = z
   .object({
     items: z.array(RunReportItemSchema).describe('The page, ordered newest first (started_at desc, id desc).'),
     totals: RunReportTotalsSchema,
+    scope: z
+      .object({
+        has_runs: z.boolean().describe('The Project has at least one Run (filter-invariant).'),
+        has_automated: z.boolean().describe('The Project has at least one Automated (agent/ci) Run (filter-invariant).'),
+      })
+      .describe('Project-level context independent of the active filters; lets clients pick the right empty state.'),
     next_cursor: z
       .string()
       .nullable()

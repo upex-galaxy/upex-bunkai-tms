@@ -74,7 +74,7 @@ interface ProjectRow { id: string, workspace_id: string }
 interface ReportItem { id: string, test_id: string, status: string }
 interface ReportPage {
   items: ReportItem[]
-  totals: { passed: number, failed: number }
+  totals: { passed: number, failed: number, manual: number, automated: number }
   next_cursor: { started_at: string, id: string } | null
 }
 interface Fixture {
@@ -229,7 +229,7 @@ describeOrSkip('BK-38 — bunkai_report_project_runs isolation (SEC-1 / ATC-07)'
     const page = await reportRuns(fixture.projectAId, fixture.actorUserId);
     expect(page.items).toHaveLength(3);
     expect(page.items.every(i => i.test_id === fixture!.testAId)).toBe(true);
-    expect(page.totals).toEqual({ passed: 2, failed: 1 });
+    expect(page.totals).toEqual({ passed: 2, failed: 1, manual: 3, automated: 0 });
   });
 
   it('Project B\'s report returns ONLY Project B\'s runs, in rows AND totals', async () => {
@@ -237,7 +237,7 @@ describeOrSkip('BK-38 — bunkai_report_project_runs isolation (SEC-1 / ATC-07)'
     const page = await reportRuns(fixture.projectBId, fixture.actorUserId);
     expect(page.items).toHaveLength(3);
     expect(page.items.every(i => i.test_id === fixture!.testBId)).toBe(true);
-    expect(page.totals).toEqual({ passed: 1, failed: 2 });
+    expect(page.totals).toEqual({ passed: 1, failed: 2, manual: 3, automated: 0 });
   });
 
   it('the two Projects\' reports never share a row id (no cross-project bleed)', async () => {
