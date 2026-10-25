@@ -13,6 +13,7 @@ import { useWorkbench } from './workbench-context';
 // mirroring `atc-search-filter.tsx` — no new visual decisions.
 
 const DEBOUNCE_MS = 250;
+const PAGE_LIMIT = 50;
 
 interface FilteredTestRow {
   id: string
@@ -40,14 +41,29 @@ export function TestTagFilter() {
     const controller = new AbortController();
     const run = async () => {
       try {
-        const params = new URLSearchParams({ tag: trimmed });
-        const res = await fetch(`/api/v1/tests?${params}`, { signal: controller.signal });
-        if (!res.ok) {
-          setTestTagFilter(trimmed, []);
-          return;
-        }
-        const body = (await res.json()) as { items: FilteredTestRow[] };
-        setTestTagFilter(trimmed, (body.items ?? []).map(t => t.id));
+        // BK-742 — the lookup is paged (max 50 per page). Follow `next_cursor`
+        // until it is null so the explorer is scoped to EVERY matching Test,
+        // never just the first page. Any failed page empties the scope rather
+        // than presenting a partial set as the complete match.
+        const ids: string[] = [];
+        let cursor: string | null = null;
+        do {
+          const params = new URLSearchParams({ tag: trimmed, limit: String(PAGE_LIMIT) });
+          if (cursor !== null) {
+            params.set('cursor', cursor);
+          }
+          const res = await fetch(`/api/v1/tests?${params}`, { signal: controller.signal });
+          if (!res.ok) {
+            setTestTagFilter(trimmed, []);
+            return;
+          }
+          const body = (await res.json()) as { items: FilteredTestRow[], next_cursor: string | null };
+          for (const t of body.items ?? []) {
+            ids.push(t.id);
+          }
+          cursor = body.next_cursor ?? null;
+        } while (cursor !== null);
+        setTestTagFilter(trimmed, ids);
       }
       catch {
         // Aborted or network error — leave the previous scope in place.
