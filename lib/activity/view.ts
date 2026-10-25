@@ -64,3 +64,32 @@ export function extractRunVerdict(action: string, payload: Record<string, unknow
 export function formatActivityTime(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 }
+
+// BK-268 — the "affected Tests" line for an `atc.updated` row. Plain text, no
+// interactive control (AC 5.3 / 6.1): "No tests affected" for zero; up to 3
+// titles; "and N more" for the remainder (the remainder also absorbs Tests
+// that no longer resolve — deleted or invisible — so the count stays true).
+// A positive count whose titles ALL failed to resolve gets a neutral copy
+// instead of a blank or a raw id. Returns null for any other action.
+export function formatAffectedTests(action: string, payload: Record<string, unknown>): string | null {
+  if (action !== 'atc.updated') {
+    return null;
+  }
+  const count = typeof payload.affected_test_count === 'number' ? payload.affected_test_count : 0;
+  if (count <= 0) {
+    return 'No tests affected';
+  }
+  const titles = Array.isArray(payload.affected_tests)
+    ? payload.affected_tests
+        .map(t => (t as { title?: unknown } | null)?.title)
+        .filter((t): t is string => typeof t === 'string' && t.trim() !== '')
+    : [];
+  if (titles.length === 0) {
+    return count === 1 ? '1 affected test is no longer available' : `${count} affected tests are no longer available`;
+  }
+  const remaining = count - titles.length;
+  if (remaining <= 0) {
+    return titles.join(', ');
+  }
+  return `${titles.join(', ')}, and ${remaining} more`;
+}
