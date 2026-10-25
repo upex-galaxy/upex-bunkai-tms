@@ -14429,8 +14429,8 @@
       },
       "get": {
         "tags": ["Tests"],
-        "summary": "List Tests carrying a tag",
-        "description": "Bearer `atc:read` (or cookie session). Returns the actor's workspace Tests that carry the given `tag` via a GIN containment match. Results are restricted to the actor's active workspace memberships — caller scope is ignored, cross-workspace Tests never leak. Zero matches return `{ items: [] }`, never a 404. The MVP exposes single-tag filtering only.",
+        "summary": "List Tests carrying a tag (one page)",
+        "description": "Bearer `atc:read` (or cookie session). Returns the actor's workspace Tests that carry the given `tag` via a GIN containment match. Results are restricted to the actor's active workspace memberships — caller scope is ignored, cross-workspace Tests never leak. Newest first (ties broken by id). Returns ONE page of at most `limit` Tests (default 20, max 50) plus `next_cursor`: non-null if and only if more Tests remain, so a caller stops when it is null. A walk over the cursors yields every matching Test exactly once. Zero matches return `{ items: [], next_cursor: null }`, never a 404. The MVP exposes single-tag filtering only (a `tag` is always required).",
         "security": [
           {
             "cookieAuth": []
@@ -14448,11 +14448,32 @@
               "type": "string"
             },
             "description": "Required. The single tag to filter by. Normalized like stored tags (reserved tags lowercased), so `Smoke` matches `smoke`. An unused tag returns an empty list, never a 404."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Page size, 1..50 (default 20). Out of range is refused with 422, never clamped."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque page token: pass back a previous response's `next_cursor` unchanged. A token this endpoint did not issue is refused with 400, never treated as page one."
           }
         ],
         "responses": {
           "200": {
-            "description": "The matching Tests (possibly empty).",
+            "description": "One page of the matching Tests (possibly empty).",
             "content": {
               "application/json": {
                 "schema": {
@@ -14463,9 +14484,22 @@
                       "items": {
                         "$ref": "#/components/schemas/FilteredTest"
                       }
+                    },
+                    "next_cursor": {
+                      "type": ["string", "null"]
                     }
                   },
-                  "required": ["items"]
+                  "required": ["items", "next_cursor"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The `cursor` is not a token this endpoint issued (`bad_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -14491,7 +14525,7 @@
             }
           },
           "422": {
-            "description": "Missing `tag` query parameter (`validation_failed`).",
+            "description": "Missing `tag`, or `limit` outside 1..50 / not an integer (`validation_failed`).",
             "content": {
               "application/json": {
                 "schema": {

@@ -6,6 +6,7 @@ import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
 import { createAdminClient } from '@lib/supabase/admin';
 import { createTest, filterTestsByTag } from '@lib/supabase/rpc';
 import { mapTestFilterError, mapTestRpcError } from '@lib/tests/errors';
+import { decodeTestTagFilterCursor, encodeTestTagFilterCursor, parseTestTagFilterParams } from '@lib/tests/tag-filter-validation';
 import { TestCreateBodySchema } from '@lib/tests/validation';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
 import { cookies } from 'next/headers';
@@ -24,25 +25,46 @@ import { cookies } from 'next/headers';
 // normalized the same way stored tags are, so `Smoke` matches `smoke`. Zero
 // matches return `{ items: [] }`, never a 404; cross-workspace Tests never leak.
 // `tag` is required (the MVP exposes single-tag filtering only — no list-all).
+// BK-742 — the answer is ONE bounded page, newest first (created_at desc, id
+// desc): `limit` 1..50 (default 20; out of range is a 422, never clamped) and an
+// opaque `cursor`. `next_cursor` is non-null if and only if more Tests remain;
+// a cursor this endpoint did not issue is a 400, never a silent first page.
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const { principal } = getAuth(ctx);
 
-  const tag = request.nextUrl.searchParams.get('tag')?.trim() ?? '';
-  if (tag === '') {
-    throw new ApiError('validation_failed', 'A `tag` query parameter is required.');
+  const query = parseTestTagFilterParams(request.nextUrl.searchParams);
+
+  let after: { createdAt: string, id: string } | null = null;
+  if (query.cursor !== undefined) {
+    const decoded = decodeTestTagFilterCursor(query.cursor);
+    if (!decoded.ok) {
+      throw new ApiError('bad_request', 'The cursor is not a valid page token.');
+    }
+    after = decoded.cursor;
   }
 
   const supabase = createAdminClient();
   const { data, error } = await filterTestsByTag(supabase, {
     actorUserId: principal.userId,
-    tag,
+    tag: query.tag,
+    limit: query.limit,
+    after,
   });
   if (error) {
     mapTestFilterError(error);
   }
 
-  // The RPC returns a jsonb array (already workspace-isolated).
-  return jsonResponse({ items: data ?? [] }, { status: 200 });
+  // The RPC returns { items, next_after } (already workspace-isolated).
+  const page = (data ?? { items: [], next_after: null }) as {
+    items: unknown[]
+    next_after: { created_at: string, id: string } | null
+  };
+  return jsonResponse({
+    items: page.items,
+    next_cursor: page.next_after
+      ? encodeTestTagFilterCursor({ createdAt: page.next_after.created_at, id: page.next_after.id })
+      : null,
+  }, { status: 200 });
 }, { auth: 'required', requires: ['atc:read'] });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
