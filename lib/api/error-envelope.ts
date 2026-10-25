@@ -115,13 +115,19 @@ export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly status: number;
   readonly details?: unknown;
+  readonly headers?: Record<string, string>;
 
-  constructor(code: ApiErrorCode, message: string, opts: { status?: number, details?: unknown } = {}) {
+  constructor(
+    code: ApiErrorCode,
+    message: string,
+    opts: { status?: number, details?: unknown, headers?: Record<string, string> } = {},
+  ) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = opts.status ?? DEFAULT_STATUS[code];
     this.details = opts.details;
+    this.headers = opts.headers;
   }
 }
 
@@ -137,5 +143,5 @@ export function errorResponse(
       ...(opts.requestId ? { request_id: opts.requestId } : {}),
     },
   };
-  return NextResponse.json(body, { status: err.status });
+  return NextResponse.json(body, { status: err.status, ...(err.headers ? { headers: err.headers } : {}) });
 }
