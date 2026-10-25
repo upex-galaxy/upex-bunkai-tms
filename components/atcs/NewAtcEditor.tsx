@@ -160,6 +160,9 @@ export function NewAtcEditor({
   const [assertionsYaml, setAssertionsYaml] = useState('- ');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
+  // only after a refusal so a corrected retry is not a payload mismatch.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const parsedSteps = useMemo(() => parseStepsMarkdown(stepsMd), [stepsMd]);
   const stepCount = parsedSteps.length;
@@ -243,7 +246,7 @@ export function NewAtcEditor({
     try {
       const response = await fetch('/api/v1/atcs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({
           module_id: moduleId,
           user_story_id: storyId,
@@ -261,6 +264,7 @@ export function NewAtcEditor({
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
         setError(friendlyError(body));
+        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -277,6 +281,7 @@ export function NewAtcEditor({
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
+      setIdempotencyKey(crypto.randomUUID());
       setSubmitting(false);
     }
   };

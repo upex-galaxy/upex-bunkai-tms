@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_400, IDEMPOTENCY_409, IdempotencyKeyParam } from '@lib/openapi/idempotency';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 const ProjectSchema = z
@@ -37,7 +38,7 @@ registry.registerPath({
   description:
     'Bearer `atc:write` (or cookie session). Member-only (role >= member). Auto-derives a per-workspace-unique slug from the name. Duplicate slug returns 409; non-members return 403.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [IdParam, IdempotencyKeyParam],
   request: {
     body: {
       required: true,
@@ -49,10 +50,10 @@ registry.registerPath({
       description: 'Project created.',
       content: { 'application/json': { schema: CreateResponseSchema } },
     },
-    400: { description: 'Malformed workspace id or invalid JSON body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: `Malformed workspace id or invalid JSON body, or: ${IDEMPOTENCY_400}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Caller is not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope, or caller is not a member of the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'A project with this slug already exists in the workspace.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: `A project with this slug already exists in the workspace, or: ${IDEMPOTENCY_409}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (including names that map to a reserved slug).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

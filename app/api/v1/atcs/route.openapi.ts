@@ -1,4 +1,5 @@
 import { ATC_PRIORITIES, ATC_TECHNIQUES } from '@lib/atcs/validation';
+import { IDEMPOTENCY_400, IDEMPOTENCY_409, IdempotencyKeyParam } from '@lib/openapi/idempotency';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 // BK-399 — the canonical value sets are declared once in `lib/atcs/validation`
@@ -88,14 +89,15 @@ registry.registerPath({
   summary: 'Create an ATC with steps and assertions',
   description: 'Bearer `atc:write` (or cookie session). Transactional create across atcs + steps + assertions + AC links. Validates that every acceptance criterion belongs to the user story and the module is the user story\'s module or a descendant in the same project. Emits an `atc.created` event.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdempotencyKeyParam],
   request: { body: { required: true, content: { 'application/json': { schema: CreateBodySchema } } } },
   responses: {
     201: { description: 'ATC created.', content: { 'application/json': { schema: z.object({ atc: AtcSchema }) } } },
-    400: { description: 'Malformed body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: IDEMPOTENCY_400, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'User story or module not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Slug collision (`slug_collision`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: `Slug collision (\`slug_collision\`), or: ${IDEMPOTENCY_409}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (`steps_position_invalid`, `ac_outside_user_story`, `module_outside_project_subtree`, title/limits, unrecognized `technique` / `priority` — `validation_failed` with `details.reason` `technique_invalid` / `priority_invalid`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

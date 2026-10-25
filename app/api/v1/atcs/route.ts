@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, withApiHandler } from '@lib/api/handler';
+import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { mapAtcRpcError } from '@lib/atcs/errors';
 import { sanitizeAtcAssertions, sanitizeAtcSteps } from '@lib/atcs/sanitize';
 import { AtcCreateBodySchema, stepPositionsError } from '@lib/atcs/validation';
@@ -29,26 +30,34 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     });
   }
 
-  const supabase = createAdminClient();
-  const { data, error } = await createAtc(supabase, {
-    actorUserId: principal.userId,
-    moduleId: body.module_id,
-    userStoryId: body.user_story_id,
-    title: body.title.trim(),
-    layer: body.layer,
-    // BK-399 — optional classification. The schema defaults both to null, so an
-    // omitted key creates the ATC "not specified" rather than dropping the field
-    // silently between the parsed body and the RPC.
-    technique: body.technique,
-    priority: body.priority,
-    tags: body.tags,
-    steps: sanitizeAtcSteps(body.steps),
-    assertions: sanitizeAtcAssertions(body.assertions),
-    acIds: body.acceptance_criterion_ids,
-  });
-  if (error) {
-    mapAtcRpcError(error);
-  }
+  return runIdempotentCreate({
+    request,
+    userId: principal.userId,
+    endpoint: 'POST /api/v1/atcs',
+    payload: body,
+    execute: async () => {
+      const supabase = createAdminClient();
+      const { data, error } = await createAtc(supabase, {
+        actorUserId: principal.userId,
+        moduleId: body.module_id,
+        userStoryId: body.user_story_id,
+        title: body.title.trim(),
+        layer: body.layer,
+        // BK-399 — optional classification. The schema defaults both to null, so an
+        // omitted key creates the ATC "not specified" rather than dropping the field
+        // silently between the parsed body and the RPC.
+        technique: body.technique,
+        priority: body.priority,
+        tags: body.tags,
+        steps: sanitizeAtcSteps(body.steps),
+        assertions: sanitizeAtcAssertions(body.assertions),
+        acIds: body.acceptance_criterion_ids,
+      });
+      if (error) {
+        mapAtcRpcError(error);
+      }
 
-  return jsonResponse({ atc: data }, { status: 201 });
+      return { atc: data };
+    },
+  });
 }, { auth: 'required', requires: ['atc:write'] });

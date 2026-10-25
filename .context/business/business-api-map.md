@@ -532,7 +532,7 @@ Auth column legend: `Public` (no auth) · `Bearer` (any authenticated caller) ·
 
 | Method | Path                                    | Summary                      | FR                                        | Auth                                  | Side effects                                                                                                                                             |
 | ------ | --------------------------------------- | ---------------------------- | ----------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/bugs`                                 | File a bug (no `Idempotency-Key` — not an adopter, see §7.3) | {{PROJECT_KEY}}-025 + {{PROJECT_KEY}}-037 | Bearer + role (member+) + scope:write | INSERT `bugs`; auto-link `atc_id` from failing `run_atc` if `run_id` set; refresh `module_defect_stats` MV; activity_log; enqueue Jira sync async worker |
+| POST   | `/bugs`                                 | File a bug (`Idempotency-Key` required, see §7.3) | {{PROJECT_KEY}}-025 + {{PROJECT_KEY}}-037 | Bearer + role (member+) + scope:write | INSERT `bugs`; auto-link `atc_id` from failing `run_atc` if `run_id` set; refresh `module_defect_stats` MV; activity_log; enqueue Jira sync async worker |
 | GET    | `/bugs`                                 | List bugs (filters)          | {{PROJECT_KEY}}-026                       | Bearer                                | None (filters: `project_id`, `module_id?`, `severity?`, `status?`)                                                                                       |
 | GET    | `/projects/{project_id}/defect-heatmap` | Defect heatmap by module     | {{PROJECT_KEY}}-027                       | Bearer                                | None (declared under Bugs tag in api-contracts.yaml; logically also a Projects read)                                                                     |
 
@@ -607,7 +607,7 @@ All routes live under `/api/v1/...` except `/api/openapi` (spec serving; the sam
 │  │      cookie-only (403 on Bearer) | required(<capabilities>)            │  │
 │  │  - inject one Principal { userId, workspaceId, capabilities, via, db } │  │
 │  │  - x-request-id propagation + structured access log                    │  │
-│  │  - Idempotency-Key: OPT-IN, inside the handler, on the 2 adopters      │  │
+│  │  - Idempotency-Key: OPT-IN, inside the handler, on the 7 adopters      │  │
 │  │      (POST /api/v1/tests, POST /api/v1/runs) — not here (ADR-0002)     │  │
 │  └────────────────────────┬───────────────────────────────────────────────┘  │
 │                           │                                                  │
@@ -727,8 +727,8 @@ Error `code` is a stable **snake_case** identifier drawn from the closed `API_ER
 
 ### 7.3 Idempotency ({{PROJECT_KEY}}-037, ADR-0002)
 
-- Header: `Idempotency-Key: <max 64 chars>`.
-- **Opt-in per endpoint, not global.** ADR-0002 scopes it deliberately. Today exactly **two** routes adopt it: `POST /api/v1/tests` and `POST /api/v1/runs` (both required, both via `lib/api/idempotency.ts`). Every other POST — including `POST /bugs` — accepts no `Idempotency-Key`.
+- Header: `Idempotency-Key: <8–128 chars, [a-zA-Z0-9_-]>`.
+- **Opt-in per endpoint, not global.** ADR-0002 scopes it deliberately. Today exactly **seven** routes adopt it, all with the header required and all via `lib/api/idempotency.ts`: `POST /api/v1/tests`, `POST /api/v1/runs`, `POST /api/v1/workspaces`, `POST /api/v1/workspaces/{id}/projects`, `POST /api/v1/modules/{id}/user-stories`, `POST /api/v1/atcs` and `POST /api/v1/bugs` (BK-667). Every other POST accepts no `Idempotency-Key`.
 - Run terminal transitions (`/runs/{id}/finish`, `/abort`, `/steps/{stepId}/mark`) need no key: the RPC's row lock makes the re-call naturally idempotent.
 - 24h TTL; the same `(namespace, endpoint, key)` returns the cached `response_snapshot`.
 
@@ -797,7 +797,7 @@ Frontend subscribes via `@supabase/supabase-js`. Phase 2 introduces a dedicated 
 | **Predictable failure envelope**                             | Success bodies are bare JSON; failures are always `{ error: { code, message, details?, request_id? } }` — one shape to parse on the error path                                                                          | `lib/api/error-envelope.ts`                                                            |
 | **Stable snake_case error codes**                            | `validation_failed`, `forbidden`, `conflict`, `chain_mismatch`, `no_executable_steps` etc. from the closed `API_ERROR_CODES` set — agent branches on `code`, never on `message` prose                                   | `lib/api/error-envelope.ts` `API_ERROR_CODES`                                          |
 | **Bearer-token auth (no OAuth dance)**                       | One-shot token issuance: `POST /api/v1/auth/signin` returns a freshly minted PAT in the same response. No device-code flow and no browser redirect at runtime                                                                                                                                      | {{PROJECT_KEY}}-034; §2.3 above                                                        |
-| **Idempotency-Key on the two creation endpoints that need it** | Retry-safe by design where a duplicate would create real duplicate state — `POST /api/v1/tests` and `POST /api/v1/runs`. Opt-in per endpoint (ADR-0002), NOT on every write                                            | {{PROJECT_KEY}}-037; ADR-0002; `lib/api/idempotency.ts`                                |
+| **Idempotency-Key on the seven creation endpoints BK-037 names** | Retry-safe by design where a duplicate would create real duplicate state — Workspace, Project, User Story, ATC, Test, Run and Bug creation. Opt-in per endpoint (ADR-0002), NOT on every write                                            | {{PROJECT_KEY}}-037; ADR-0002; `lib/api/idempotency.ts`                                |
 | **Identical data shape across modes**                        | Human runs and agent runs produce structurally identical `runs`/`run_atcs`/`run_steps`/`bugs` rows — dashboards aggregate without conditional logic. `executor.type ∈ {human \| agent \| ci}` is metadata, not a switch | architecture-specs.md §4.3                                                             |
 | **Full Test contract in one round trip**                     | `GET /tests/{id}?expand=atcs.steps,atcs.assertions` returns the entire script — no N+1 latency to discover what to execute                                                                                              | {{PROJECT_KEY}}-017; api-contracts.yaml `expand` query param                           |
 | **Uniform 401 (deliberately NOT sub-coded)**                 | Every bearer failure — missing, malformed, unknown, mismatched, revoked, expired — returns the same `unauthorized` / "Invalid token." This is **anti-enumeration**: an agent cannot, and must not try to, tell them apart. Re-mint the token and alert a human | `lib/api/middleware/bearer.ts`                                                          |

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { z } from 'zod';
 import { mergeWorkspaceRoles } from './response';
 
@@ -51,43 +52,51 @@ const CreateBodySchema = z.object({
 });
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
   const { name, slug } = CreateBodySchema.parse(payload);
 
-  const { data: workspaceId, error } = await db.rpc(
-    'bunkai_bootstrap_workspace',
-    { p_slug: slug, p_name: name },
-  );
+  return runIdempotentCreate({
+    request,
+    userId: principal.userId,
+    endpoint: 'POST /api/v1/workspaces',
+    payload: { name, slug },
+    execute: async () => {
+      const { data: workspaceId, error } = await db.rpc(
+        'bunkai_bootstrap_workspace',
+        { p_slug: slug, p_name: name },
+      );
 
-  if (error) {
-    // SQLSTATE 23505 = unique_violation on workspaces.slug.
-    if (error.code === '23505') {
-      throw new ApiError('conflict', `Slug "${slug}" is already taken.`);
-    }
-    if (error.code === '22023') {
-      throw new ApiError('validation_failed', error.message);
-    }
-    if (error.code === '42501') {
-      throw new ApiError('unauthorized', 'Authentication required.');
-    }
-    throw new ApiError('internal_error', error.message);
-  }
+      if (error) {
+      // SQLSTATE 23505 = unique_violation on workspaces.slug.
+        if (error.code === '23505') {
+          throw new ApiError('conflict', `Slug "${slug}" is already taken.`);
+        }
+        if (error.code === '22023') {
+          throw new ApiError('validation_failed', error.message);
+        }
+        if (error.code === '42501') {
+          throw new ApiError('unauthorized', 'Authentication required.');
+        }
+        throw new ApiError('internal_error', error.message);
+      }
 
-  const { data: workspace, error: fetchError } = await db
-    .from('workspaces')
-    .select('id, slug, name, owner_user_id, plan, created_at')
-    .eq('id', workspaceId)
-    .single();
+      const { data: workspace, error: fetchError } = await db
+        .from('workspaces')
+        .select('id, slug, name, owner_user_id, plan, created_at')
+        .eq('id', workspaceId)
+        .single();
 
-  if (fetchError || !workspace) {
-    throw new ApiError('internal_error', fetchError?.message ?? 'Workspace fetch failed.');
-  }
+      if (fetchError || !workspace) {
+        throw new ApiError('internal_error', fetchError?.message ?? 'Workspace fetch failed.');
+      }
 
-  return jsonResponse({ workspace }, { status: 201 });
+      return { workspace };
+    },
+  });
 // Bootstrap: the ONE genuinely capability-free write in the API. Creating the
 // first workspace is the only action a brand-new token can take before any
 // workspace context exists, so requiring a capability here would lock a

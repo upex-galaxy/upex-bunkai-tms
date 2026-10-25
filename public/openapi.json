@@ -7100,6 +7100,18 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored success snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7128,7 +7140,7 @@
             }
           },
           "400": {
-            "description": "Malformed body.",
+            "description": "Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -7168,7 +7180,7 @@
             }
           },
           "409": {
-            "description": "Slug collision (`slug_collision`).",
+            "description": "Slug collision (`slug_collision`), or: Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -8221,6 +8233,18 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored success snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -8256,7 +8280,7 @@
             }
           },
           "400": {
-            "description": "Malformed body.",
+            "description": "Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -8287,6 +8311,16 @@
           },
           "404": {
             "description": "Project, module, or run step not found (non-disclosing).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9786,6 +9820,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored success snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
           }
         ],
         "requestBody": {
@@ -9816,7 +9860,7 @@
             }
           },
           "400": {
-            "description": "Malformed id or body.",
+            "description": "Malformed id or body, or: Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9856,7 +9900,7 @@
             }
           },
           "409": {
-            "description": "Jira key already linked in this project.",
+            "description": "Jira key already linked in this project, or: Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -16328,6 +16372,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored success snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
           }
         ],
         "requestBody": {
@@ -16352,7 +16406,7 @@
             }
           },
           "400": {
-            "description": "Malformed workspace id or invalid JSON body.",
+            "description": "Malformed workspace id or invalid JSON body, or: Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -16382,7 +16436,7 @@
             }
           },
           "409": {
-            "description": "A project with this slug already exists in the workspace.",
+            "description": "A project with this slug already exists in the workspace, or: Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -16592,6 +16646,18 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{8,128}$"
+            },
+            "description": "Required. 8–128 chars, [a-zA-Z0-9_-]. A replay with the same key and payload returns the stored success snapshot; the same key with a different payload returns 409 `conflict`; a concurrent request with the same key while the first is still in flight also returns 409 `conflict`. Window: 24h."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -16613,6 +16679,16 @@
               }
             }
           },
+          "400": {
+            "description": "Malformed body or missing/invalid Idempotency-Key (`bad_request`, `idempotency_key_required`, `idempotency_key_invalid`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Caller is not signed in.",
             "content": {
@@ -16624,7 +16700,7 @@
             }
           },
           "409": {
-            "description": "Slug already in use.",
+            "description": "Slug already in use (`conflict`), or: Idempotency-Key reused with a different request payload, or a request with the same key is still in flight (`conflict`).",
             "content": {
               "application/json": {
                 "schema": {

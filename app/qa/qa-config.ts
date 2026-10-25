@@ -667,7 +667,7 @@ export const qaConfig: QaConfig = {
       { method: 'POST', path: '/api/v1/tokens', purpose: 'Mintea un PAT. COOKIE-ONLY — un PAT no puede mintear otro PAT (403 con Bearer). Token visible una sola vez.' },
       { method: 'GET', path: '/api/v1/tokens', purpose: 'Lista PATs (sin secretos). Acepta cookie y Bearer.' },
       { method: 'DELETE', path: '/api/v1/tokens/{id}', purpose: 'Revoca un PAT — no hay recuperación. COOKIE-ONLY (403 con Bearer).' },
-      { method: 'POST', path: '/api/v1/workspaces', purpose: 'Crea un workspace. Única escritura sin scope — es el bootstrap que un PAT nuevo necesita.' },
+      { method: 'POST', path: '/api/v1/workspaces', purpose: 'Crea un workspace. Única escritura sin scope — es el bootstrap que un PAT nuevo necesita. Exige header Idempotency-Key (8–128 chars [A-Za-z0-9_-], p. ej. un UUID); sin él → 400 idempotency_key_required.' },
       { method: 'GET', path: '/api/v1/workspaces/{id}/invites', purpose: 'Invites del workspace. Exige scope workspace:admin, que un PAT headless nunca tiene → 403.' },
       { method: 'POST', path: '/api/v1/invites/accept', purpose: 'Acepta una invitación por token.' },
       { method: 'DELETE', path: '/api/v1/workspaces/{id}/membership', purpose: 'Abandona un workspace. COOKIE-ONLY (403 con Bearer).' },

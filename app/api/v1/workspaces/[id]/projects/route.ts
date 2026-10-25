@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
-import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { getAuth, withApiHandler } from '@lib/api/handler';
+import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { isReservedProjectSlug } from '@lib/projects/validation';
 import { hasAlphanumeric, slugifyWithFallback } from '@lib/utils/slug';
 import { z } from 'zod';
@@ -29,7 +30,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Workspace id must be a UUID.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -75,22 +76,31 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // foreign workspace surfaced as 422 project_limit_reached instead of 403.
   await assertCanCreateProject(db, workspaceId);
 
-  const { data, error } = await db
-    .from('projects')
-    .insert({
-      workspace_id: workspaceId,
-      slug,
-      name: trimmedName,
-      description: description ?? null,
-    })
-    .select('id, slug, name, description, workspace_id, created_at')
-    .single();
+  return runIdempotentCreate({
+    request,
+    userId: principal.userId,
+    endpoint: 'POST /api/v1/workspaces/{id}/projects',
+    workspaceId,
+    payload: { workspace_id: workspaceId, name: trimmedName, description: description ?? null },
+    execute: async () => {
+      const { data, error } = await db
+        .from('projects')
+        .insert({
+          workspace_id: workspaceId,
+          slug,
+          name: trimmedName,
+          description: description ?? null,
+        })
+        .select('id, slug, name, description, workspace_id, created_at')
+        .single();
 
-  if (error) {
-    mapCreateProjectError(error);
-  }
+      if (error) {
+        mapCreateProjectError(error);
+      }
 
-  return jsonResponse({ project: data }, { status: 201 });
+      return { project: data };
+    },
+  });
 // Routine content creation inside an ALREADY-EXISTING workspace, so it reuses
 // `atc:write` rather than minting a new scope. The gateway evaluates the
 // capability before this body runs, so a PAT without `atc:write` never reaches
