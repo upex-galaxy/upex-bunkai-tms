@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { createClient } from '@supabase/supabase-js';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { NextRequest } from 'next/server';
 
 // BK-743 — rate limit on the email-existence check. The Supabase admin client
@@ -36,20 +37,40 @@ function consume(key: string, windows: Array<{ window_seconds: number, max: numb
   return { allowed: true };
 }
 
+// `mock.module` is PROCESS-wide and never restored, so this fake must only
+// answer while THIS file's tests run; otherwise every later suite that builds
+// the admin client (BK-184, BK-203, BK-315, billing webhook...) got a client
+// with no `.from` and failed under a full `bun test`. Outside this file the
+// factory falls through to a real client, built directly (not via an import of
+// the module being mocked, which would recurse).
+let fakeAdminActive = false;
+beforeAll(() => { fakeAdminActive = true; });
+afterAll(() => { fakeAdminActive = false; });
+
+function passthroughAdminClient(): unknown {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
+
 void mock.module('@lib/supabase/admin', () => ({
-  createAdminClient: () => ({
-    rpc: async (fn: string, args: Record<string, unknown>) => {
-      if (fn === 'bunkai_rate_limit_consume') {
-        if (storeDown) {
-          return { data: null, error: { message: 'down' } };
-        }
-        return { data: consume(args.p_key as string, args.p_windows as never), error: null };
-      }
-      directoryLookups.push(args.p_email as string);
-      const row = DIRECTORY[args.p_email as string];
-      return { data: row ? [row] : [], error: null };
-    },
-  }),
+  createAdminClient: () => !fakeAdminActive
+    ? passthroughAdminClient()
+    : ({
+        rpc: async (fn: string, args: Record<string, unknown>) => {
+          if (fn === 'bunkai_rate_limit_consume') {
+            if (storeDown) {
+              return { data: null, error: { message: 'down' } };
+            }
+            return { data: consume(args.p_key as string, args.p_windows as never), error: null };
+          }
+          directoryLookups.push(args.p_email as string);
+          const row = DIRECTORY[args.p_email as string];
+          return { data: row ? [row] : [], error: null };
+        },
+      }),
 }));
 
 const { POST } = await import('./route');
