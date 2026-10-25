@@ -3,7 +3,7 @@ import type { Database } from '@lib/types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'bun:test';
-import { fetchMessagesPage, fetchRoster, parseListParams, postMessage } from './response';
+import { deleteMessage, editMessage, fetchMessagesPage, fetchRoster, parseListParams, postMessage } from './response';
 
 // BK-215 — chat routes. Thin withApiHandler wrappers; every branch lives in
 // ./response.ts and is tested with a fake-chainable db (same convention as
@@ -25,6 +25,8 @@ interface FakeOpts {
   authors?: { user_id: string, email: string }[]
   roster?: { user_id: string, email: string, role: string }[]
   rosterError?: { code?: string, message: string } | null
+  rpcError?: { message: string } | null
+  rpcRow?: Record<string, unknown>
 }
 
 interface Rec { ops: string[], limit?: number, inserted?: unknown }
@@ -76,6 +78,9 @@ function fakeDb(opts: FakeOpts, rec: Rec = { ops: [] }): SupabaseClient<Database
     rpc: async (fn: string) => {
       if (fn === 'bunkai_chat_resolve_authors') { return { data: opts.authors ?? [{ user_id: U1, email: 'elena.ruiz@x.io' }], error: null }; }
       if (fn === 'bunkai_chat_roster') { return { data: opts.roster ?? [], error: opts.rosterError ?? null }; }
+      if (fn === 'bunkai_chat_edit_message' || fn === 'bunkai_chat_delete_message') {
+        return opts.rpcError ? { data: null, error: opts.rpcError } : { data: [{ ...row(1), edited_at: null, deleted_at: null, ...opts.rpcRow }], error: null };
+      }
       throw new Error(`unexpected rpc ${fn}`);
     },
   } as unknown as SupabaseClient<Database>;
@@ -161,6 +166,35 @@ describe('postMessage', () => {
   });
 });
 
+describe('editMessage / deleteMessage (BK-219)', () => {
+  const MSG = '44444444-4444-4444-4444-444444444444';
+  it('edits with the trimmed body and attaches the author', async () => {
+    const item = await editMessage(fakeDb({ rpcRow: { body: 'fixed', edited_at: '2026-10-25T10:01:00Z' } }), { workspaceId: WS, messageId: MSG, rawBody: '  fixed ' });
+    expect(item.body).toBe('fixed');
+    expect(item.edited_at).toBe('2026-10-25T10:01:00Z');
+    expect(item.author_name).toBe('Elena Ruiz');
+  });
+  it('rejects invalid bodies before calling the RPC', async () => {
+    expect(await code(editMessage(fakeDb({ rpcError: { message: 'boom' } }), { workspaceId: WS, messageId: MSG, rawBody: '  ' }))).toBe('validation_failed');
+  });
+  it('maps RPC errors to the envelope', async () => {
+    const run = async (m: string) => code(editMessage(fakeDb({ rpcError: { message: m } }), { workspaceId: WS, messageId: MSG, rawBody: 'x' }));
+    expect(await run('message_not_found')).toBe('not_found');
+    expect(await run('not_author')).toBe('forbidden');
+    expect(await run('edit_window_closed')).toBe('forbidden');
+    expect(await run('read_only')).toBe('forbidden');
+    expect(await run('message_deleted')).toBe('conflict');
+    expect(await run('weird')).toBe('internal_error');
+  });
+  it('deletes and returns the tombstone; foreign-workspace rows 404', async () => {
+    const item = await deleteMessage(fakeDb({ rpcRow: { body: '', deleted_at: '2026-10-25T10:05:00Z' } }), { workspaceId: WS, messageId: MSG });
+    expect(item.deleted_at).toBe('2026-10-25T10:05:00Z');
+    expect(item.body).toBe('');
+    expect(await code(deleteMessage(fakeDb({ rpcRow: { workspace_id: '99999999-9999-9999-9999-999999999999' } }), { workspaceId: WS, messageId: MSG }))).toBe('not_found');
+    expect(await code(deleteMessage(fakeDb({ rpcError: { message: 'not_allowed' } }), { workspaceId: WS, messageId: MSG }))).toBe('forbidden');
+  });
+});
+
 describe('fetchRoster', () => {
   it('maps members with display names', async () => {
     const members = await fetchRoster(fakeDb({ roster: [{ user_id: U1, email: 'sara.lee@x.io', role: 'admin' }] }), WS);
@@ -173,7 +207,7 @@ describe('fetchRoster', () => {
 
 describe('routes use the caller RLS client', () => {
   it('never import the admin client', () => {
-    for (const f of ['messages/route.ts', 'roster/route.ts', 'response.ts']) {
+    for (const f of ['messages/route.ts', 'messages/[messageId]/route.ts', 'roster/route.ts', 'response.ts']) {
       expect(readFileSync(new URL(f, import.meta.url), 'utf8')).not.toContain('createAdminClient');
     }
   });
