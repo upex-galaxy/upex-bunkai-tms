@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-214 — DB-integration test for `bunkai_notification_digest_candidates`
 // (migration 0078_notification_digest_log.sql), mandatory per ADR-0012 /
@@ -291,5 +291,236 @@ describeOrSkip('BK-214 — bunkai_notification_digest_candidates (membership, re
     expect(baseline.recipient_user_id).toBe(fixture.memberBaseline);
     expect(baseline.project_id).toBeTruthy();
     expect(baseline.entity_type).toBe('bug');
+  });
+});
+
+// ============================================================================
+// BK-1217 — email-only rows are digested once (migration 0107)
+// ============================================================================
+//
+// AI Product Owner decision 13138 rule 2: with In-app off and Email on, the
+// event appears in the next daily digest ONCE. 0107 adds
+// `and (not n.in_app_suppressed or n.emailed_at is null)`; the runner stamps
+// `emailed_at` after a successful send (send-digest-run.ts, unit-tested in
+// send-digest-run.test.ts). This block is the DB oracle the PO accepted while
+// Resend is down: it seeds rows directly with the service role (the function
+// is service_role only, so no session is involved) and stamps `emailed_at`
+// exactly the way the runner does.
+//
+// Recipients are borrowed real users, as in the block above: `memberOn` must
+// hold no disabled bug_lifecycle row (picked that way, never changed), and
+// `memberOff` gets bug_lifecycle/email disabled after a snapshot that afterAll
+// restores even if setup fails partway.
+//
+// FAIL-CLOSED GATE (precedent: lib/runs/compare-isolation.test.ts): SKIPPED,
+// loudly, only when there is no database environment or the
+// `in_app_suppressed` column does not exist yet (0107 not applied). Anything
+// else FAILS, and every test asserts at least once.
+
+let suppressionDeployed = false;
+if (hasServiceEnv) {
+  const probe = await service().from('notifications').select('id, in_app_suppressed, emailed_at').limit(1);
+  const code = probe.error?.code ?? 'no error';
+  if (!probe.error) {
+    suppressionDeployed = true;
+  }
+  else if (code === '42703' || code === 'PGRST204') {
+    console.warn(`[notification-digest-candidates-isolation] BK-1217 block SKIPPED: notifications.in_app_suppressed does not exist (${code}). Apply migration 0107_notification_inapp_suppression.sql. No BK-1217 assertion in this file ran.`);
+  }
+  else {
+    throw new Error(`[notification-digest-candidates-isolation] unexpected answer from the BK-1217 column probe (${code}: ${probe.error.message}). Expected success (deployed) or 42703 (column missing).`);
+  }
+}
+const describeIfSuppressionDeployed = hasServiceEnv && suppressionDeployed ? describe : describe.skip;
+
+const ONCE_PREFIX = `bk1217-digest-once-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+interface OnceFixture {
+  workspaceId: string
+  deletedWorkspaceId: string
+  memberOn: string
+  memberOff: string
+  ids: Record<'suppressedFresh' | 'suppressedEmailed' | 'visible' | 'visibleWithStamp' | 'suppressedEmailOff' | 'suppressedDeletedWorkspace', string>
+}
+
+let onceFixture: OnceFixture | null = null;
+const onceWorkspaceIds: string[] = [];
+let oncePrefTrack: { userId: string, prior: boolean | 'absent' } | null = null;
+
+function needOnceFixture(): OnceFixture {
+  if (!onceFixture) {
+    throw new Error('[notification-digest-candidates-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
+  }
+  return onceFixture;
+}
+
+function onceMust<T>(result: { data: T, error: { message: string } | null }, what: string): NonNullable<T> {
+  if (result.error || result.data === null || result.data === undefined) {
+    throw new Error(`[notification-digest-candidates-isolation] BK-1217 fixture seed failed at "${what}": ${result.error?.message ?? 'no row returned'}`);
+  }
+  return result.data;
+}
+
+async function candidateIdsFor(workspaceIds: string[]) {
+  const { data, error } = await service().rpc(RPC);
+  expect(error).toBeNull();
+  return new Set(((data ?? []) as CandidateRow[]).filter(r => workspaceIds.includes(r.workspace_id)).map(r => r.notification_id));
+}
+
+describeIfSuppressionDeployed('BK-1217 — bunkai_notification_digest_candidates digests an email-only row once', () => {
+  beforeEach(() => {
+    expect.hasAssertions();
+  });
+
+  beforeAll(async () => {
+    const db = service();
+
+    const { data: members, error: membersError } = await db
+      .from('workspace_members')
+      .select('user_id')
+      .eq('status', 'active')
+      .limit(50);
+    if (membersError) { throw new Error(`[notification-digest-candidates-isolation] could not read workspace members: ${membersError.message}`); }
+    const distinctIds = [...new Set((members ?? []).map(m => m.user_id as string))];
+    const { data: disabled, error: disabledError } = await db
+      .from('notification_preferences')
+      .select('user_id')
+      .in('user_id', distinctIds)
+      .eq('event_type', 'bug_lifecycle')
+      .eq('channel', 'email')
+      .eq('enabled', false);
+    if (disabledError) { throw new Error(`[notification-digest-candidates-isolation] could not read preferences: ${disabledError.message}`); }
+    const disabledIds = new Set((disabled ?? []).map(r => r.user_id as string));
+    const eligible = distinctIds.filter(id => !disabledIds.has(id));
+    if (eligible.length < 3) {
+      throw new Error('[notification-digest-candidates-isolation] need 3 active workspace members with bug_lifecycle email enabled (seed state).');
+    }
+    const [ownerUserId, memberOn, memberOff] = eligible;
+
+    // Snapshot memberOff's bug_lifecycle/email row BEFORE changing it.
+    const { data: existingPref } = await db
+      .from('notification_preferences')
+      .select('enabled')
+      .eq('user_id', memberOff)
+      .eq('event_type', 'bug_lifecycle')
+      .eq('channel', 'email')
+      .maybeSingle();
+    oncePrefTrack = { userId: memberOff, prior: existingPref ? (existingPref.enabled as boolean) : 'absent' };
+    const { error: prefError } = await db
+      .from('notification_preferences')
+      .upsert({ user_id: memberOff, event_type: 'bug_lifecycle', channel: 'email', enabled: false }, { onConflict: 'user_id,event_type,channel' });
+    if (prefError) { throw new Error(`[notification-digest-candidates-isolation] could not disable memberOff email: ${prefError.message}`); }
+
+    // Two workspaces: a live one, and one soft-deleted after seeding (BK-991).
+    const seedWorkspace = async (suffix: string) => {
+      const ws = onceMust(await db.from('workspaces').insert({ slug: `${ONCE_PREFIX}-${suffix}`, name: `${ONCE_PREFIX} ${suffix}`, owner_user_id: ownerUserId }).select('id').single(), `workspace ${suffix}`);
+      const workspaceId = ws.id as string;
+      onceWorkspaceIds.push(workspaceId);
+      onceMust(await db.from('workspace_members').insert([
+        { workspace_id: workspaceId, user_id: memberOn, role: 'member', status: 'active' },
+        { workspace_id: workspaceId, user_id: memberOff, role: 'member', status: 'active' },
+      ]).select('user_id'), `members ${suffix}`);
+      const project = onceMust(await db.from('projects').insert({ workspace_id: workspaceId, slug: `${ONCE_PREFIX}-${suffix}-p`, name: `${ONCE_PREFIX} ${suffix} project` }).select('id').single(), `project ${suffix}`);
+      const moduleRow = onceMust(await db.from('modules').insert({ project_id: project.id, path: `${ONCE_PREFIX}-${suffix}-m`, name: `${ONCE_PREFIX} ${suffix} module` }).select('id').single(), `module ${suffix}`);
+      const bug = onceMust(await db.from('bugs').insert({
+        workspace_id: workspaceId,
+        project_id: project.id,
+        module_id: moduleRow.id,
+        title: `${ONCE_PREFIX} ${suffix} bug`,
+        severity: 'P2',
+        created_by: ownerUserId,
+      }).select('id').single(), `bug ${suffix}`);
+      return { workspaceId, bugId: bug.id as string };
+    };
+    const live = await seedWorkspace('live');
+    const doomed = await seedWorkspace('deleted');
+
+    const row = (marker: string, recipient: string, target: { workspaceId: string, bugId: string }, extra: { in_app_suppressed: boolean, emailed_at: string | null }) => ({
+      workspace_id: target.workspaceId,
+      recipient_user_id: recipient,
+      event_type: 'bug.assigned',
+      entity_type: 'bug',
+      entity_id: target.bugId,
+      payload: { marker },
+      created_at: new Date().toISOString(),
+      read_at: null,
+      ...extra,
+    });
+    const yesterday = daysAgo(1);
+    const seeded = onceMust(await db.from('notifications').insert([
+      row('suppressedFresh', memberOn, live, { in_app_suppressed: true, emailed_at: null }),
+      row('suppressedEmailed', memberOn, live, { in_app_suppressed: true, emailed_at: yesterday }),
+      row('visible', memberOn, live, { in_app_suppressed: false, emailed_at: null }),
+      // emailed_at only gates suppressed rows: a visible unread row keeps
+      // being digested daily (BK-214), whatever this column holds.
+      row('visibleWithStamp', memberOn, live, { in_app_suppressed: false, emailed_at: yesterday }),
+      row('suppressedEmailOff', memberOff, live, { in_app_suppressed: true, emailed_at: null }),
+      row('suppressedDeletedWorkspace', memberOn, doomed, { in_app_suppressed: true, emailed_at: null }),
+    ]).select('id, payload'), 'notifications');
+    const byMarker = (marker: string) => (seeded as { id: string, payload: { marker: string } }[]).find(n => n.payload.marker === marker)!.id;
+
+    onceMust(await db.from('workspaces').update({ deleted_at: new Date().toISOString() }).eq('id', doomed.workspaceId).select('id').single(), 'soft-delete workspace');
+
+    onceFixture = {
+      workspaceId: live.workspaceId,
+      deletedWorkspaceId: doomed.workspaceId,
+      memberOn,
+      memberOff,
+      ids: {
+        suppressedFresh: byMarker('suppressedFresh'),
+        suppressedEmailed: byMarker('suppressedEmailed'),
+        visible: byMarker('visible'),
+        visibleWithStamp: byMarker('visibleWithStamp'),
+        suppressedEmailOff: byMarker('suppressedEmailOff'),
+        suppressedDeletedWorkspace: byMarker('suppressedDeletedWorkspace'),
+      },
+    };
+  });
+
+  afterAll(async () => {
+    const db = service();
+    if (oncePrefTrack) {
+      if (oncePrefTrack.prior === 'absent') {
+        await db.from('notification_preferences').delete().eq('user_id', oncePrefTrack.userId).eq('event_type', 'bug_lifecycle').eq('channel', 'email');
+      }
+      else {
+        await db.from('notification_preferences').update({ enabled: oncePrefTrack.prior }).eq('user_id', oncePrefTrack.userId).eq('event_type', 'bug_lifecycle').eq('channel', 'email');
+      }
+    }
+    if (onceWorkspaceIds.length > 0) {
+      await db.from('workspaces').delete().in('id', onceWorkspaceIds);
+    }
+  });
+
+  it('includes an unemailed email-only row and every visible unread row; excludes emailed, Email-off and deleted-workspace email-only rows', async () => {
+    const fx = needOnceFixture();
+    const ids = await candidateIdsFor([fx.workspaceId, fx.deletedWorkspaceId]);
+
+    expect(ids.has(fx.ids.suppressedFresh)).toBe(true);
+    expect(ids.has(fx.ids.visible)).toBe(true);
+    expect(ids.has(fx.ids.visibleWithStamp)).toBe(true);
+
+    expect(ids.has(fx.ids.suppressedEmailed)).toBe(false);
+    expect(ids.has(fx.ids.suppressedEmailOff)).toBe(false);
+    expect(ids.has(fx.ids.suppressedDeletedWorkspace)).toBe(false);
+  });
+
+  it('once the runner stamps emailed_at, the email-only row leaves the set while the visible row is re-included', async () => {
+    const fx = needOnceFixture();
+    // Exactly the runner's stamp (send-digest-run.ts): ids of the user's
+    // candidates, filtered on in_app_suppressed = true.
+    const { error } = await service()
+      .from('notifications')
+      .update({ emailed_at: new Date().toISOString() })
+      .in('id', [fx.ids.suppressedFresh, fx.ids.visible])
+      .eq('in_app_suppressed', true);
+    expect(error).toBeNull();
+
+    const ids = await candidateIdsFor([fx.workspaceId]);
+    expect(ids.has(fx.ids.suppressedFresh)).toBe(false);
+    expect(ids.has(fx.ids.visible)).toBe(true);
+
+    const { data: visible } = await service().from('notifications').select('emailed_at').eq('id', fx.ids.visible).single();
+    expect(visible!.emailed_at).toBeNull();
   });
 });
