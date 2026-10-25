@@ -51,6 +51,11 @@
   },
   {
     "file": "app/api/v1/atcs/[id]/route.ts",
+    "method": "GET",
+    "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/atcs/[id]/route.ts",
     "method": "PATCH",
     "posture": "required:atc:write"
   },
@@ -517,6 +522,24 @@
     "file": "app/api/v1/workspaces/[id]/billing/route.ts",
     "method": "GET",
     "posture": "required:atc:read"
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/chat/messages/route.ts",
+    "method": "GET",
+    "posture": "authenticated",
+    "why": "Chat is a membership-scoped surface: RLS limits reads to active workspace members, not a capability scope."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/chat/messages/route.ts",
+    "method": "POST",
+    "posture": "authenticated",
+    "why": "Chat is a membership-scoped surface: RLS limits writes to member/admin/owner, not a capability scope."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/chat/roster/route.ts",
+    "method": "GET",
+    "posture": "authenticated",
+    "why": "Chat roster is membership-scoped: the RPC asserts the caller is an active member, not a capability scope."
   },
   {
     "file": "app/api/v1/workspaces/[id]/coverage/route.ts",

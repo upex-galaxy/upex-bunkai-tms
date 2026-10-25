@@ -4,6 +4,7 @@ import type { NotificationRpcRow } from '@app/api/v1/workspaces/[id]/notificatio
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import type { MemberRole } from '@lib/types';
 import type { ComponentType } from 'react';
+import { useChat } from '@components/chat/ChatProvider';
 import { CommandPalette } from '@components/layout/CommandPalette';
 import { NotificationsPanel } from '@components/notifications/NotificationsPanel';
 import { OpenInboxFromQuery } from '@components/notifications/OpenInboxFromQuery';
@@ -28,6 +29,7 @@ import {
   Home,
   Library,
   LogOut,
+  MessageSquare,
   MoreHorizontal,
   Play,
   Plus,
@@ -124,6 +126,7 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
+  const chat = useChat();
 
   const [wsOpen, setWsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -471,6 +474,25 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
               "New project" affordance at the very top of the rail, the
               closest live equivalent to the mockup's "next to search, in the
               topbar" placement. */}
+          {/* BK-215 — Team Chat entry point: toggles the docked panel. */}
+          <button
+            type="button"
+            data-testid="chat_toggle"
+            aria-pressed={chat.open}
+            aria-label={chat.unread > 0 ? `Team chat, ${chat.unread} unread` : 'Team chat'}
+            onClick={chat.toggle}
+            className="relative inline-flex size-6 items-center justify-center rounded-2 text-fg-3 hover:bg-surface-2 hover:text-fg-1 aria-pressed:text-fg-0"
+          >
+            <MessageSquare size={14} />
+            {chat.unread > 0 && (
+              <span
+                data-testid="chat_badge"
+                className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full border-2 border-surface-1 bg-accent px-1 font-mono text-[10px] font-semibold leading-none text-white"
+              >
+                {chat.unread > 99 ? '99+' : chat.unread}
+              </span>
+            )}
+          </button>
           <div className="relative">
             <button
               ref={bellButtonRef}

@@ -1,5 +1,7 @@
 import type { MemberRole } from '@lib/types';
 import type { ReactNode } from 'react';
+import { ChatDock } from '@components/chat/ChatDock';
+import { ChatProvider } from '@components/chat/ChatProvider';
 import { AppSidebar } from '@components/layout/AppSidebar';
 import { AuthProvider } from '@components/providers/auth-context';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
@@ -65,7 +67,7 @@ async function getShellData() {
     atcCount = await countAtcsInWorkspace(supabase, activeWorkspaceId);
   }
 
-  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userRole, unreadCount, atcCount };
+  return { workspaces: list, activeWorkspaceId, projects, userEmail: user?.email ?? null, userId: user?.id ?? null, userRole, unreadCount, atcCount };
 }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -73,20 +75,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AuthProvider>
-      <div className="grid h-screen min-h-0 grid-cols-[224px_1fr] overflow-hidden bg-surface-0">
-        <AppSidebar
-          workspaces={shell.workspaces}
-          activeWorkspaceId={shell.activeWorkspaceId}
-          projects={shell.projects}
-          userEmail={shell.userEmail}
-          userRole={shell.userRole}
-          initialUnreadCount={shell.unreadCount}
-          atcCount={shell.atcCount}
-        />
-        <div className="flex min-h-0 flex-col overflow-hidden">
-          {children}
+      <ChatProvider>
+        <div className="grid h-screen min-h-0 grid-cols-[224px_1fr_auto] overflow-hidden bg-surface-0">
+          <AppSidebar
+            workspaces={shell.workspaces}
+            activeWorkspaceId={shell.activeWorkspaceId}
+            projects={shell.projects}
+            userEmail={shell.userEmail}
+            userRole={shell.userRole}
+            initialUnreadCount={shell.unreadCount}
+            atcCount={shell.atcCount}
+          />
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            {children}
+          </div>
+          {shell.activeWorkspaceId && shell.userId && (
+            <ChatDock workspaceId={shell.activeWorkspaceId} userId={shell.userId} role={shell.userRole} />
+          )}
         </div>
-      </div>
+      </ChatProvider>
     </AuthProvider>
   );
 }
