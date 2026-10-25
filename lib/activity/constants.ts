@@ -30,6 +30,8 @@ export const ACTIVITY_ALLOWED_ACTIONS = [
   'module.moved',
   'module.archived',
   'atc.created',
+  // BK-268 — ATC edits (in-app editor + API share bunkai_update_atc).
+  'atc.updated',
   'test.created',
   'run.finished',
   'run.aborted',

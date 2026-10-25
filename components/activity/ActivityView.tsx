@@ -4,7 +4,7 @@ import type { ActivityItemResponse, ActivityPageResponse } from '@app/api/v1/act
 import { Button } from '@components/ui/button';
 import { Card } from '@components/ui/card';
 import { ACTIVITY_PAGE_SIZE } from '@lib/activity/constants';
-import { extractRunVerdict, formatActivityTime, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
+import { extractRunVerdict, formatActivityTime, formatAffectedTests, resolveActivityViewState, resolveActorLabel } from '@lib/activity/view';
 import { Activity as ActivityIcon, ArrowDown, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -268,6 +268,7 @@ export function ActivityView({ initialPage, initialError = null }: ActivityViewP
 // is not in this story's scope (implementation-plan.md, out-of-scope.md).
 function ActivityRow({ item }: { item: ActivityItem }) {
   const verdict = extractRunVerdict(item.action, item.payload);
+  const affectedTests = formatAffectedTests(item.action, item.payload);
 
   return (
     <tr
@@ -290,6 +291,15 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </td>
       <td className="max-w-[320px] truncate border-t border-stroke-1 px-3 py-1.5">
         <span className="text-sm text-fg-2">{item.item.label}</span>
+        {affectedTests !== null && (
+          <span
+            data-testid={`activity-affected-${item.id}`}
+            className="block truncate text-xs text-fg-3"
+            title={affectedTests}
+          >
+            {affectedTests}
+          </span>
+        )}
       </td>
       <td className="whitespace-nowrap border-t border-stroke-1 px-3 py-1.5">
         <span className="font-mono text-xs text-fg-2" title={item.created_at}>

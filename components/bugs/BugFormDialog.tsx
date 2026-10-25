@@ -85,6 +85,9 @@ export function BugFormDialog({
   // validated) in run-linked mode, where the module is server-derived.
   const [moduleId, setModuleId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
+  // only after a refusal so a corrected retry is not a payload mismatch.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
 
   if (!open) {
@@ -144,7 +147,7 @@ export function BugFormDialog({
 
       const response = await fetch('/api/v1/bugs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(requestBody),
       });
       if (!response.ok) {
@@ -152,6 +155,7 @@ export function BugFormDialog({
         // Server copy rendered verbatim, same convention as handleAbort/
         // handleFinish/handleMarkSubmit.
         setError(body.error?.message ?? 'Could not file this bug.');
+        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -164,6 +168,7 @@ export function BugFormDialog({
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
+      setIdempotencyKey(crypto.randomUUID());
       setSubmitting(false);
     }
   };

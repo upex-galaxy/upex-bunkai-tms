@@ -1,6 +1,8 @@
+import type { BugCreateBody } from '@lib/bugs/validation';
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { mapBugRpcError } from '@lib/bugs/errors';
 import { decodeBugsCursor } from '@lib/bugs/list-cursor';
 import { parseBugsListParams } from '@lib/bugs/list-query';
@@ -85,14 +87,10 @@ export function assertRunLinkedStepIsFailed(stepStatus: string): void {
 interface RunStepRow { run_atc_id: string }
 interface RunAtcRow { run_id: string }
 
-export const POST = withApiHandler(async (request: NextRequest, ctx) => {
-  const { principal } = getAuth(ctx);
-
-  const payload: unknown = await request.json().catch(() => {
-    throw new ApiError('bad_request', 'Request body must be valid JSON.');
-  });
-  const body = BugCreateBodySchema.parse(payload);
-
+async function createBugFromBody(
+  body: BugCreateBody,
+  actorUserId: string,
+): Promise<{ bug: unknown }> {
   const supabase = createAdminClient();
 
   let projectId: string;
@@ -132,7 +130,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     // The membership-gated read: proves the actor can read this run (or maps
     // to the same not_found/forbidden non-disclosure the runner itself gets).
     const { data: runData, error: runError } = await getRunExpanded(supabase, {
-      actorUserId: principal.userId,
+      actorUserId,
       runId: atcRow.run_id,
     });
     if (runError) {
@@ -190,7 +188,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   const { data, error } = await createBug(supabase, {
-    actorUserId: principal.userId,
+    actorUserId,
     projectId,
     moduleId,
     title: body.title,
@@ -206,7 +204,24 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     mapBugRpcError(error);
   }
 
-  return jsonResponse({ bug: data }, { status: 201 });
+  return { bug: data };
+}
+
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const { principal } = getAuth(ctx);
+
+  const payload: unknown = await request.json().catch(() => {
+    throw new ApiError('bad_request', 'Request body must be valid JSON.');
+  });
+  const body = BugCreateBodySchema.parse(payload);
+
+  return runIdempotentCreate({
+    request,
+    userId: principal.userId,
+    endpoint: 'POST /api/v1/bugs',
+    payload: body,
+    execute: async () => createBugFromBody(body, principal.userId),
+  });
 }, { auth: 'required', requires: ['atc:write'] });
 
 // GET /api/v1/bugs — filtered, paginated, aggregate-bearing defect list

@@ -539,7 +539,7 @@ function projectBugsRequest(projectId: string, token: string): NextRequest {
 function createProjectRequest(workspaceId: string, token: string, name: string): NextRequest {
   return new NextRequest(`https://app.test/api/v1/workspaces/${workspaceId}/projects`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'idempotency-key': crypto.randomUUID() },
     body: JSON.stringify({ name }),
   });
 }

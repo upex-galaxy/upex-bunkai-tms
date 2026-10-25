@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_400, IDEMPOTENCY_409, IdempotencyKeyParam } from '@lib/openapi/idempotency';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 const UserStorySchema = z
@@ -37,15 +38,15 @@ registry.registerPath({
   summary: 'Create a user story under a module',
   description: 'Bearer \`atc:write\` (or cookie session). Member-only. Anchors the story to the module, validates the title (3–200) and optional Jira key, sanitizes the Markdown description. Duplicate Jira key in the project returns 409.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-  parameters: [IdParam],
+  parameters: [IdParam, IdempotencyKeyParam],
   request: { body: { required: true, content: { 'application/json': { schema: CreateBodySchema } } } },
   responses: {
     201: { description: 'Story created.', content: { 'application/json': { schema: z.object({ user_story: UserStorySchema }) } } },
-    400: { description: 'Malformed id or body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: `Malformed id or body, or: ${IDEMPOTENCY_400}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not signed in.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Module not found.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
-    409: { description: 'Jira key already linked in this project.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: `Jira key already linked in this project, or: ${IDEMPOTENCY_409}`, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (title, Jira key, or description size).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });

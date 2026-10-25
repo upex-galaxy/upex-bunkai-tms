@@ -2055,7 +2055,13 @@ export interface Database {
         Returns: number
       }
       bunkai_filter_tests_by_tag: {
-        Args: { p_actor_user_id: string, p_tag: string }
+        Args: {
+          p_actor_user_id: string
+          p_after_created?: string
+          p_after_id?: string
+          p_limit?: number
+          p_tag: string
+        }
         Returns: Json
       }
       bunkai_finish_run: {

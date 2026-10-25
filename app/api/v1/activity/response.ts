@@ -143,6 +143,7 @@ export function deriveItemLabel(row: Pick<ActivityRpcRow, 'action' | 'entity_typ
     case 'module.moved':
       return nonEmptyString(row.payload.new_path) ?? fallback;
     case 'atc.created':
+    case 'atc.updated':
     case 'test.created':
       return nonEmptyString(row.payload.title) ?? fallback;
     case 'module.description_updated':

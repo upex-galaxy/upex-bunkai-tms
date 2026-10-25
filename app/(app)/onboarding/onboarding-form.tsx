@@ -31,6 +31,9 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
+  // only after a refusal so a corrected retry is not a payload mismatch.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   // Browser autofill / password managers set the input DOM values WITHOUT
   // firing React's onChange, so controlled state stays empty and the form
@@ -88,7 +91,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
     try {
       const response = await fetch('/api/v1/workspaces', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({ slug: finalSlug, name: rawName }),
       });
       if (!response.ok) {
@@ -98,6 +101,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
           ? `Slug "${finalSlug}" is taken — try another.`
           : body.error?.message ?? 'Could not create workspace.';
         toast.error(friendly);
+        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -107,6 +111,7 @@ export function OnboardingForm({ userEmail }: { userEmail: string }) {
     }
     catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error.');
+      setIdempotencyKey(crypto.randomUUID());
       setSubmitting(false);
     }
   };

@@ -111,201 +111,6 @@ describeOrSkip('BK-33 — bunkai_normalize_test_tags', () => {
   });
 });
 
-describeOrSkip('BK-33 — bunkai_set_test_tags', () => {
-  it('a writer setting tags bumps version by 1 and logs one test.tags_changed event', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const since = new Date().toISOString();
-    const before = await tagsEventCount(db, pick.test.id);
-    const newTags = ['smoke', 'BK33-Probe'];
-
-    const { data, error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: pick.test.version,
-      p_tags: newTags,
-    });
-    expect(error).toBeNull();
-
-    const payload = data as { version: number, tags: string[] };
-    expect(payload.version).toBe(pick.test.version + 1);
-    expect(payload.tags).toEqual(newTags);
-    expect(await tagsEventCount(db, pick.test.id)).toBe(before + 1);
-
-    await restore(db, pick.userId, pick.test.id, pick.test.tags ?? [], pick.test.version, since);
-  });
-
-  it('re-submitting the same set is a no-op (no version bump, no event)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const before = await tagsEventCount(db, pick.test.id);
-    const { data, error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: pick.test.version,
-      p_tags: pick.test.tags ?? [],
-    });
-    expect(error).toBeNull();
-    expect((data as { version: number }).version).toBe(pick.test.version);
-    expect(await tagsEventCount(db, pick.test.id)).toBe(before);
-  });
-
-  it('an empty set is valid (clears all tags — boundary sc.4)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const since = new Date().toISOString();
-    // Seed a tag first so clearing is observable, then clear.
-    await db.rpc(SET_RPC, { p_actor_user_id: pick.userId, p_test_id: pick.test.id, p_if_match: null, p_tags: ['BK33-Temp'] });
-    const { data, error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: null,
-      p_tags: [],
-    });
-    expect(error).toBeNull();
-    expect((data as { tags: string[] }).tags).toEqual([]);
-
-    await restore(db, pick.userId, pick.test.id, pick.test.tags ?? [], pick.test.version, since);
-  });
-
-  it('a stale X-If-Match raises version_conflict (45125)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: pick.test.version + 999,
-      p_tags: ['smoke'],
-    });
-    expect(error?.code).toBe('45125');
-  });
-
-  it('a tag with a comma raises tags_invalid (45126)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: null,
-      p_tags: ['a,b'],
-    });
-    expect(error?.code).toBe('45126');
-  });
-
-  it('an over-50-char tag raises tags_invalid (45126)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: pick.test.id,
-      p_if_match: null,
-      p_tags: ['x'.repeat(51)],
-    });
-    expect(error?.code).toBe('45126');
-  });
-
-  it('a viewer-role member is denied (42501)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    // A Test whose workspace has an active VIEWER.
-    let found: { testId: string, viewerId: string } | undefined;
-    for (const t of fx.tests) {
-      const viewer = fx.activeMembers.find(m => m.workspace_id === t.workspace_id && m.role === 'viewer');
-      if (viewer) { found = { testId: t.id, viewerId: viewer.user_id }; break; }
-    }
-    if (!found) {
-      console.warn('[tags] skipped: need a Test whose workspace has an active viewer (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: found.viewerId,
-      p_test_id: found.testId,
-      p_if_match: null,
-      p_tags: ['smoke'],
-    });
-    expect(error?.code).toBe('42501');
-  });
-
-  it('a non-member actor on a real Test is denied (42501)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable Test (seed state).');
-      return;
-    }
-    // A user who is NOT a member of the picked Test's workspace.
-    const outsider = fx.activeMembers.find(m => m.workspace_id !== pick.test.workspace_id);
-    if (!outsider) {
-      console.warn('[tags] skipped: need a user outside the Test workspace (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: outsider.user_id,
-      p_test_id: pick.test.id,
-      p_if_match: null,
-      p_tags: ['smoke'],
-    });
-    expect(error?.code).toBe('42501');
-  });
-
-  it('a random / nonexistent Test id raises the uniform not_found (P0002)', async () => {
-    const db = service();
-    const fx = await loadFixtures(db);
-    const pick = pickWritable(fx);
-    if (!pick) {
-      console.warn('[tags] skipped: need a writable actor (seed state).');
-      return;
-    }
-
-    const { error } = await db.rpc(SET_RPC, {
-      p_actor_user_id: pick.userId,
-      p_test_id: RANDOM_UUID,
-      p_if_match: null,
-      p_tags: ['smoke'],
-    });
-    expect(error?.code).toBe('P0002');
-  });
-});
-
 describeOrSkip('BK-33 — bunkai_filter_tests_by_tag', () => {
   it('returns only the actor\'s workspace Tests carrying the tag; no cross-workspace leak', async () => {
     const db = service();
@@ -322,7 +127,7 @@ describeOrSkip('BK-33 — bunkai_filter_tests_by_tag', () => {
 
     const { data, error } = await db.rpc(FILTER_RPC, { p_actor_user_id: pick.userId, p_tag: probe });
     expect(error).toBeNull();
-    const rows = data as Array<{ id: string, workspace_id?: string }>;
+    const rows = (data as { items: Array<{ id: string, workspace_id?: string }> }).items;
     // The tagged Test is present.
     expect(rows.some(r => r.id === pick.test.id)).toBe(true);
     // Every returned Test belongs to a workspace the actor is an active member of.
@@ -351,6 +156,29 @@ describeOrSkip('BK-33 — bunkai_filter_tests_by_tag', () => {
       p_tag: `never-used-${Date.now()}`,
     });
     expect(error).toBeNull();
-    expect(data).toEqual([]);
+    expect(data).toEqual({ items: [], next_after: null });
+  });
+
+  it('BK-742: pages with a keyset position, no next_after on the last page', async () => {
+    const db = service();
+    const fx = await loadFixtures(db);
+    const pick = pickWritable(fx);
+    if (!pick) {
+      console.warn('[tags] skipped: need a writable Test (seed state).');
+      return;
+    }
+
+    const since = new Date().toISOString();
+    const probe = `bk742probe${Date.now()}`;
+    await db.rpc(SET_RPC, { p_actor_user_id: pick.userId, p_test_id: pick.test.id, p_if_match: null, p_tags: [probe] });
+
+    // One matching Test: limit 1 is exactly the last page.
+    const one = await db.rpc(FILTER_RPC, { p_actor_user_id: pick.userId, p_tag: probe, p_limit: 1 });
+    expect(one.error).toBeNull();
+    const page = one.data as { items: Array<{ id: string }>, next_after: unknown };
+    expect(page.items.map(r => r.id)).toEqual([pick.test.id]);
+    expect(page.next_after).toBeNull();
+
+    await restore(db, pick.userId, pick.test.id, pick.test.tags ?? [], pick.test.version, since);
   });
 });

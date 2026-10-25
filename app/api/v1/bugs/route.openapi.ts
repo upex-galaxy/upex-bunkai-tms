@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_400, IDEMPOTENCY_409, IdempotencyKeyParam } from '@lib/openapi/idempotency';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 // BK-40 — file a TMS-native bug, either linked to a failed run step or
@@ -137,6 +138,7 @@ registry.registerPath({
   summary: 'File a bug, linked to a failed run step or standalone',
   description: 'Bearer `atc:write` (or cookie session). Run-linked: body carries ONLY `run_step_id` — project/module/run/ATC context is derived server-side from the run (never client-supplied) and the target step must be `failed`. Standalone: body carries `project_id` + `module_id` directly. Either way `bunkai_create_bug` re-validates module ∈ project server-side. Always creates status `open`. Emits a `bug.filed` activity event.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdempotencyKeyParam],
   request: {
     body: {
       required: true,
@@ -149,8 +151,9 @@ registry.registerPath({
   },
   responses: {
     201: { description: 'Bug filed.', content: { 'application/json': { schema: z.object({ bug: BugDetailSchema }) } } },
-    400: { description: 'Malformed body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    400: { description: IDEMPOTENCY_400, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: IDEMPOTENCY_409, content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     403: { description: 'Missing atc:write scope or not a member with write access.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Project, module, or run step not found (non-disclosing).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Validation failed (title 5–200 chars, severity P1–P4, evidence links ≤10, module outside project, or the run-linked step is not `failed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },

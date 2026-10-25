@@ -170,6 +170,10 @@ describe('deriveItemLabel / buildActivityItem (payload projection table)', () =>
     expect(deriveItemLabel({ action: 'module.moved', entity_type: 'module', payload: { new_path: '/new/path' } })).toBe('/new/path');
   });
 
+  it('atc.updated uses payload.title (post-edit title)', () => {
+    expect(deriveItemLabel({ action: 'atc.updated', entity_type: 'atc', payload: { title: 'New name' } })).toBe('New name');
+  });
+
   it('atc.created uses payload.title', () => {
     expect(deriveItemLabel({ action: 'atc.created', entity_type: 'atc', payload: { title: 'Login succeeds' } })).toBe('Login succeeds');
   });

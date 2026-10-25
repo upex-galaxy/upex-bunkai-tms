@@ -469,27 +469,38 @@ paths:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Test' } } } }
     get:
       tags: [Tests]
-      summary: List tests
+      summary: List tests carrying a tag (one page)
+      description: >
+        BK-742 — `tag` is required (never a list-all). Returns ONE page, newest
+        first (created_at desc, id desc), of the Tests in the caller's
+        workspaces. `next_cursor` is non-null if and only if more remain; a
+        caller stops when it is null. `limit` out of 1..50 is refused (422), and
+        a `cursor` the product did not issue is refused (400), never page one.
       parameters:
         - in: query
-          name: project_id
-          required: true
-          schema: { type: string, format: uuid }
-        - in: query
           name: tag
+          required: true
           schema: { type: string }
         - in: query
           name: limit
-          schema: { type: integer, default: 20, maximum: 100 }
+          schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+        - in: query
+          name: cursor
+          description: Opaque token from a previous response's `next_cursor`; pass back unchanged.
+          schema: { type: string }
       responses:
         '200':
-          description: Tests
+          description: One page of Tests
           content:
             application/json:
               schema:
                 type: object
+                required: [items, next_cursor]
                 properties:
-                  data: { type: array, items: { $ref: '#/components/schemas/Test' } }
+                  items: { type: array, items: { $ref: '#/components/schemas/Test' } }
+                  next_cursor: { type: string, nullable: true }
+        '400': { description: Cursor not issued by this endpoint }
+        '422': { description: Missing tag, or limit outside 1..50 }
 
   /tests/{test_id}:
     parameters: [{ $ref: '#/components/parameters/TestIdPath' }]
