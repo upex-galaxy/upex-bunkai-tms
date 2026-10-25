@@ -46,7 +46,8 @@ import { reportProjectRuns } from '@lib/supabase/rpc';
 
 interface RunReportPayload {
   items: unknown[]
-  totals: { passed: number, failed: number }
+  totals: { passed: number, failed: number, manual: number, automated: number }
+  scope: { has_runs: boolean, has_automated: boolean }
   next_cursor: { started_at: string, id: string } | null
 }
 
@@ -101,6 +102,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   return jsonResponse({
     items: payload.items,
     totals: payload.totals,
+    scope: payload.scope,
     // The RPC returns the raw keyset position; the wire token is opaque.
     next_cursor: payload.next_cursor === null
       ? null

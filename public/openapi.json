@@ -3393,12 +3393,27 @@
           "totals": {
             "$ref": "#/components/schemas/RunReportTotals"
           },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "has_runs": {
+                "type": "boolean",
+                "description": "The Project has at least one Run (filter-invariant)."
+              },
+              "has_automated": {
+                "type": "boolean",
+                "description": "The Project has at least one Automated (agent/ci) Run (filter-invariant)."
+              }
+            },
+            "required": ["has_runs", "has_automated"],
+            "description": "Project-level context independent of the active filters; lets clients pick the right empty state."
+          },
           "next_cursor": {
             "type": ["string", "null"],
             "description": "Opaque token for the next (older) page, or null when this is the last page. base64url, so it is URL-safe as-is: echo it back verbatim as `?cursor=`; never construct or parse one."
           }
         },
-        "required": ["items", "totals", "next_cursor"]
+        "required": ["items", "totals", "scope", "next_cursor"]
       },
       "RunReportItem": {
         "type": "object",
@@ -3471,9 +3486,17 @@
           },
           "failed": {
             "type": "integer"
+          },
+          "manual": {
+            "type": "integer",
+            "description": "Passed + failed Runs with executor `human` (Manual) in the filtered set. Manual + Automated = Passed + Failed."
+          },
+          "automated": {
+            "type": "integer",
+            "description": "Passed + failed Runs with executor `agent` or `ci` (Automated) in the filtered set."
           }
         },
-        "required": ["passed", "failed"],
+        "required": ["passed", "failed", "manual", "automated"],
         "description": "Counts over the WHOLE filtered set (every row matching the active filters, not just the returned page) — Business Rule #3 / Technical Decision D2. Deliberately the OPPOSITE of RunHistoryTotals: these numbers change as filters narrow. `running` and `aborted` Runs are not counted here (aborted is a terminal outcome but not a pass/fail verdict)."
       },
       "SavedViewPatchResponse": {
