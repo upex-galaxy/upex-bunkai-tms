@@ -36,8 +36,14 @@ const { POST } = await import('./route');
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const hasEnv = Boolean(url && serviceKey);
+// Opt-in only (`RUN_EMAIL_AUTH_TESTS=1 bun test <file>`): this suite sends a REAL
+// signup email through the shared Resend account on every run (to an
+// undeliverable @example.test address).
+// Plain `bun test` loads `.env`, so `hasEnv` alone let it burn the daily
+// email quota auth shares with marketing (2026-10-25 outage).
+const runsEmailTests = process.env.RUN_EMAIL_AUTH_TESTS === '1';
 
-const describeOrSkip = hasEnv ? describe : describe.skip;
+const describeOrSkip = hasEnv && runsEmailTests ? describe : describe.skip;
 
 function service() {
   return createClient(url!, serviceKey!, { auth: { persistSession: false } });
