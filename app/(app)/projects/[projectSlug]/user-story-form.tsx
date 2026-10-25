@@ -74,6 +74,9 @@ export function UserStoryForm({ moduleId, story, onSaved, onCancel }: UserStoryF
   const [description, setDescription] = useState(story?.description ?? '');
   const [externalId, setExternalId] = useState(story?.external_id ?? '');
   const [submitting, setSubmitting] = useState(false);
+  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
+  // only after a refusal so a corrected retry is not a payload mismatch.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
 
   const overCap = byteLength(description) > MAX_BYTES;
@@ -102,12 +105,17 @@ export function UserStoryForm({ moduleId, story, onSaved, onCancel }: UserStoryF
       const url = isEdit ? `/api/v1/user-stories/${story?.id}` : `/api/v1/modules/${moduleId}/user-stories`;
       const response = await fetch(url, {
         method: isEdit ? 'PATCH' : 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          // Create path only: the edit (PATCH) route does not take the header.
+          ...(isEdit ? {} : { 'Idempotency-Key': idempotencyKey }),
+        },
         body: JSON.stringify(body),
       });
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => ({}))) as ApiErrorBody;
         setError(friendlyError(errorBody));
+        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -117,6 +125,7 @@ export function UserStoryForm({ moduleId, story, onSaved, onCancel }: UserStoryF
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
+      setIdempotencyKey(crypto.randomUUID());
       setSubmitting(false);
     }
   };

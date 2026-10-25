@@ -68,6 +68,9 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // One Idempotency-Key per attempt (BK-667, ADR-0002): generated once, rotated
+  // only after a refusal so a corrected retry is not a payload mismatch.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
 
   // Live slug preview uses the SAME helper (and prefix/minLength) the server
@@ -88,7 +91,7 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
     try {
       const response = await fetch(`/api/v1/workspaces/${workspaceId}/projects`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({
           name: name.trim(),
           ...(description.trim().length > 0 ? { description: description.trim() } : {}),
@@ -97,6 +100,7 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
         setError(friendlyError(body));
+        setIdempotencyKey(crypto.randomUUID());
         setSubmitting(false);
         return;
       }
@@ -115,6 +119,7 @@ export function CreateProjectForm({ workspaceId, hasProjects }: CreateProjectFor
     }
     catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
+      setIdempotencyKey(crypto.randomUUID());
       setSubmitting(false);
     }
   };
