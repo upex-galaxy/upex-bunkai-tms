@@ -1203,3 +1203,18 @@ export async function removeRunStepAttachment(supabase: Client, args: { attachme
 export async function expirePendingRunStepAttachments(supabase: Client, args: { limit?: number } = {}) {
   return supabase.rpc('bunkai_expire_pending_run_step_attachments', { p_limit: args.limit ?? 500 });
 }
+
+// BK-215 — Team Chat roster (migration 0104). SECURITY DEFINER, asserts the
+// caller's active membership first (raises 42501 otherwise), returns active
+// members with role + email.
+export async function chatRoster(supabase: Client, args: { workspaceId: string }) {
+  return supabase.rpc('bunkai_chat_roster', { p_workspace_id: args.workspaceId });
+}
+
+// BK-215 — emails for message authors (incl. members who have since left).
+export async function chatResolveAuthors(supabase: Client, args: { workspaceId: string, userIds: string[] }) {
+  return supabase.rpc('bunkai_chat_resolve_authors', {
+    p_workspace_id: args.workspaceId,
+    p_user_ids: args.userIds,
+  });
+}

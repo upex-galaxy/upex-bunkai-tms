@@ -5770,6 +5770,106 @@
         ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
       },
+      "ChatMessagesPage": {
+        "type": "object",
+        "properties": {
+          "channel_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "description": "Ascending by `seq` (oldest first, newest last)."
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More older messages exist (default / `before_seq`), or more newer ones beyond the 200 catch-up cap (`after_seq`)."
+          }
+        },
+        "required": ["channel_id", "items", "has_more"]
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "integer",
+            "description": "Monotonic total order across the workspace channel. The only ordering and pagination key."
+          },
+          "channel_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "author_user_id": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "null once the author account is deleted."
+          },
+          "author_name": {
+            "type": "string",
+            "description": "Display name derived from the author's email; \"Former member\" when unknown."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "channel_id",
+          "workspace_id",
+          "author_user_id",
+          "author_name",
+          "body",
+          "created_at"
+        ]
+      },
+      "SendChatMessageBody": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "1..4000 characters after trimming; empty or whitespace-only is rejected."
+          }
+        },
+        "required": ["body"]
+      },
+      "ChatMember": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["viewer", "member", "admin", "owner"]
+          }
+        },
+        "required": ["user_id", "email", "display_name", "role"]
+      },
       "WorkspaceCoverage": {
         "type": "object",
         "properties": {
@@ -15493,6 +15593,286 @@
           },
           "500": {
             "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/chat/messages": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "List messages of the workspace general channel",
+        "description": "Cookie session or Bearer PAT, no scope: visibility is active workspace membership (RLS). Default returns the newest `limit` messages; `before_seq` pages back through history; `after_seq` returns everything newer (reconnect catch-up, capped at 200). `before_seq` and `after_seq` are mutually exclusive.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "before_seq",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "after_seq",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessagesPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace id not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid `limit` / `before_seq` / `after_seq`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Send a message to the workspace general channel",
+        "description": "Members, admins and owners can write; viewers are read-only (403, reason `viewer_read_only`). The body is trimmed and must be 1..4000 characters.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendChatMessageBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or workspace id not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller has the viewer role (`viewer_read_only`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty (`message_empty`) or over-long (`message_too_long`) body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/chat/roster": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "List the active members of the workspace with their role",
+        "description": "Cookie session or Bearer PAT, no scope. Presence is not part of this response: it is live Realtime Presence on the client.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active members, oldest membership first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChatMember"
+                      }
+                    }
+                  },
+                  "required": ["members"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace id not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
             "content": {
               "application/json": {
                 "schema": {
