@@ -70,7 +70,9 @@ async function resolveAutomationUserId(): Promise<string> {
 }
 
 function ids(rows: unknown): string[] {
-  return ((rows ?? []) as Array<{ id: string }>).map(r => r.id);
+  // BK-742: the tag lookup returns { items, next_after }; other RPCs a bare array.
+  const list = Array.isArray(rows) ? rows : ((rows as { items?: unknown[] } | null)?.items ?? []);
+  return (list as Array<{ id: string }>).map(r => r.id);
 }
 
 async function buildFixture(db: Db, actorId: string, onWorkspace: (f: Fixture) => void): Promise<Fixture> {

@@ -311,10 +311,22 @@ export async function setTestTags(supabase: Client, args: SetTestTagsArgs) {
 // tag is normalized the SAME way stored tags are, so `Smoke` matches `smoke`.
 // An unused tag returns `[]`, never a 404, never a cross-workspace leak.
 // Returns a jsonb array of lightweight rows (id/title/tags/step_count).
-export async function filterTestsByTag(supabase: Client, args: { actorUserId: string, tag: string }) {
+export interface FilterTestsByTagArgs {
+  actorUserId: string
+  tag: string
+  limit?: number
+  after?: { createdAt: string, id: string } | null
+}
+
+// BK-742 — one bounded page. Returns jsonb `{ items, next_after }`;
+// `next_after` is the keyset position of the last item, null on the last page.
+export async function filterTestsByTag(supabase: Client, args: FilterTestsByTagArgs) {
   return supabase.rpc('bunkai_filter_tests_by_tag', {
     p_actor_user_id: args.actorUserId,
     p_tag: args.tag,
+    p_limit: args.limit,
+    p_after_created: args.after?.createdAt,
+    p_after_id: args.after?.id,
   });
 }
 
