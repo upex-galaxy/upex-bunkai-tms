@@ -37,10 +37,19 @@ const RunHistoryTotalsSchema = z
   .describe('ALL-TIME counts over every terminal Run of the Test. Deliberately invariant under both `outcome` and pagination — filtering the list never changes these numbers.')
   .openapi('RunHistoryTotals');
 
+const RunHistoryFlakinessSchema = z
+  .object({
+    sample: z.number().int().min(0).max(10).describe('Passed/Failed Runs in the window (the 10 most recent).'),
+    flips: z.number().int().min(0).describe('Consecutive pairs in the window whose verdicts differ. Aborted Runs are skipped, not a break.'),
+    aborted_skipped: z.number().int().min(0).describe('Aborted Runs left out of the sample (inside the span the sample covers; every Aborted Run when there is no verdict Run).'),
+  })
+  .openapi('RunHistoryFlakiness');
+
 const RunHistoryPageSchema = z
   .object({
     items: z.array(RunHistoryItemSchema).describe('The page, ordered newest first (started_at desc, id desc).'),
     totals: RunHistoryTotalsSchema,
+    flakiness: RunHistoryFlakinessSchema.describe('BK-554 raw flakiness counts for the Test. All-time window and filter-invariant like `totals`; below 5 verdict Runs the client shows no rate.'),
     next_cursor: z
       .string()
       .nullable()
