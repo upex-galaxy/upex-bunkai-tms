@@ -1,6 +1,6 @@
 import { selectAll } from '@lib/utils/select-all';
 import { createClient } from '@supabase/supabase-js';
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, setDefaultTimeout } from 'bun:test';
 
 // BK-28 — integration guard for the Test chain-reorder RPC
 // (`bunkai_reorder_test_steps`). Sibling of the BK-32 read-isolation suite: it
@@ -114,6 +114,9 @@ async function restore(db: Db, actorId: string, testId: string, originalStepIds:
 }
 
 describeOrSkip('BK-28 — bunkai_reorder_test_steps', () => {
+  // Each case pages whole tables for its fixture; the 5s default flakes under load.
+  setDefaultTimeout(60_000);
+
   it('a real reorder bumps version by 1 and logs exactly one test.reordered event', async () => {
     const db = service();
     const fx = await loadFixtures(db);
