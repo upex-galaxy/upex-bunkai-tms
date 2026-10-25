@@ -5770,6 +5770,90 @@
         ],
         "description": "A workspace's live billing-relevant counts, admin/owner only."
       },
+      "ChatEntityCard": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": ["ok"]
+              },
+              "type": {
+                "type": "string",
+                "enum": ["atc", "test", "run"]
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/ChatEntityStatus"
+              },
+              "project_name": {
+                "type": "string"
+              },
+              "detail": {
+                "type": ["string", "null"]
+              },
+              "href": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state",
+              "type",
+              "id",
+              "code",
+              "title",
+              "status",
+              "project_name",
+              "detail",
+              "href"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": ["restricted", "unavailable"]
+              },
+              "type": {
+                "type": "string",
+                "enum": ["atc", "test", "run"]
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": ["state", "type", "id"]
+          }
+        ]
+      },
+      "ChatEntityStatus": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["pass", "fail", "blocked", "skipped", "running", "neutral"]
+          }
+        },
+        "required": ["value", "label", "tone"]
+      },
       "ChatMessagesPage": {
         "type": "object",
         "properties": {
@@ -15593,6 +15677,234 @@
           },
           "500": {
             "description": "The overview could not be read (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/chat/entities/resolve": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Resolve ATC / Test / Run references into rich-card data",
+        "description": "Cookie session or Bearer PAT, no scope. Read-only. Returns the CURRENT state per reference, keyed `{type}:{id}`. An entity outside the channel workspace is `restricted` (no metadata); a missing or archived one is `unavailable`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["atc", "test", "run"]
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "project_slug": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "id", "project_slug"]
+                    },
+                    "maxItems": 20
+                  }
+                },
+                "required": ["refs"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Card data keyed by `{type}:{id}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cards": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/components/schemas/ChatEntityCard"
+                      }
+                    }
+                  },
+                  "required": ["cards"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace id not a UUID or body not JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Malformed `refs`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{id}/chat/entities/search": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Search ATCs, Tests and Runs to insert as a chat reference",
+        "description": "Cookie session or Bearer PAT, no scope. Matches title (or a full id / ATC slug); an empty `q` lists the most recent. At most 5 per entity type.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching entities.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": ["atc", "test", "run"]
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "project_name": {
+                            "type": "string"
+                          },
+                          "project_slug": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["type", "id", "code", "title", "project_name", "project_slug"]
+                      }
+                    }
+                  },
+                  "required": ["items"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace id not a UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workspace not found or caller is not an active member.",
             "content": {
               "application/json": {
                 "schema": {

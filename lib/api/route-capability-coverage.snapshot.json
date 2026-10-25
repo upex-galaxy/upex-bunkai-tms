@@ -524,6 +524,18 @@
     "posture": "required:atc:read"
   },
   {
+    "file": "app/api/v1/workspaces/[id]/chat/entities/resolve/route.ts",
+    "method": "POST",
+    "posture": "authenticated",
+    "why": "Rich-link resolution is membership-scoped: RLS on the caller client plus the channel workspace bound what is disclosed, not a capability scope."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/chat/entities/search/route.ts",
+    "method": "GET",
+    "posture": "authenticated",
+    "why": "Entity picker search is membership-scoped: RLS on the caller client bounds what is listed, not a capability scope."
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/chat/messages/route.ts",
     "method": "GET",
     "posture": "authenticated",
