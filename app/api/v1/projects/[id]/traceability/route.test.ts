@@ -140,7 +140,7 @@ describeOrSkip('BK-329 — GET /api/v1/projects/{id}/traceability rejects a proj
     // REAL write path — the exact handler production traffic goes through.
     const createRequest = new NextRequest(`https://app.test/api/v1/modules/${moduleA.id}/user-stories`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'authorization': `Bearer ${pat.token}` },
+      headers: { 'content-type': 'application/json', 'authorization': `Bearer ${pat.token}`, 'idempotency-key': crypto.randomUUID() },
       body: JSON.stringify({ title: `${prefix} story` }),
     });
     const createResponse = await createUserStory(createRequest);

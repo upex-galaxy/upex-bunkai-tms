@@ -1,5 +1,6 @@
+import { selectAll } from '@lib/utils/select-all';
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, describe, expect, it } from 'bun:test';
+import { afterAll, describe, expect, it, setDefaultTimeout } from 'bun:test';
 
 // BK-34 — integration guard for the start-run RPC (`bunkai_create_run`) and the
 // read RPC (`bunkai_get_run_expanded`). Sibling of the BK-28 reorder suite: it
@@ -50,18 +51,27 @@ type Db = ReturnType<typeof service>;
 
 // A (test, writer-actor, project, staging-env) where the actor can write the
 // Test's workspace and the Test has at least one executable step.
+// Memoised: the scan pages through whole tables, so run it once per file.
+let runnablePick: ReturnType<typeof scanRunnable> | undefined;
 async function pickRunnable(db: Db) {
-  const { data: members } = await db.from('workspace_members').select('user_id, workspace_id, role, status');
-  const activeWriters = ((members ?? []) as MemberRow[]).filter(m => m.status === 'active' && WRITER_ROLES.has(m.role));
+  runnablePick ??= scanRunnable(db);
+  return runnablePick;
+}
+
+async function scanRunnable(db: Db) {
+  // Every scan is paged: PostgREST caps an un-ranged select at 1000 rows, which
+  // truncated chains/step counts and made `execCount` disagree with the RPC.
+  const members = await selectAll<MemberRow>(({ from, to }) => db.from('workspace_members').select('user_id, workspace_id, role, status').order('user_id').range(from, to));
+  // A soft-deleted workspace rejects every writer (0089 `deleted_at is null`).
+  const liveWorkspaces = new Set((await selectAll<{ id: string }>(({ from, to }) => db.from('workspaces').select('id').is('deleted_at', null).order('id').range(from, to))).map(w => w.id));
+  const activeWriters = members.filter(m => m.status === 'active' && WRITER_ROLES.has(m.role) && liveWorkspaces.has(m.workspace_id));
 
   // Tests with >= 1 executable step, joined to their project + a Staging env.
-  const { data: steps } = await db.from('test_steps').select('test_id, atc_id');
-  const { data: tests } = await db.from('tests').select('id, workspace_id, title');
-  const { data: atcs } = await db.from('atcs').select('id, project_id');
-  const { data: atcSteps } = await db.from('atc_steps').select('atc_id');
-  const { data: envs } = await db.from('project_environments').select('id, project_id, name');
-
-  if (!steps || !tests || !atcs || !atcSteps || !envs) { return undefined; }
+  const steps = await selectAll<{ test_id: string, atc_id: string }>(({ from, to }) => db.from('test_steps').select('test_id, atc_id').order('id').range(from, to));
+  const tests = await selectAll<{ id: string, workspace_id: string, title: string }>(({ from, to }) => db.from('tests').select('id, workspace_id, title').order('id').range(from, to));
+  const atcs = await selectAll<{ id: string, project_id: string }>(({ from, to }) => db.from('atcs').select('id, project_id').order('id').range(from, to));
+  const atcSteps = await selectAll<{ atc_id: string }>(({ from, to }) => db.from('atc_steps').select('atc_id').order('id').range(from, to));
+  const envs = await selectAll<{ id: string, project_id: string, name: string }>(({ from, to }) => db.from('project_environments').select('id, project_id, name').order('id').range(from, to));
 
   const stepCountByAtc = new Map<string, number>();
   for (const s of atcSteps as { atc_id: string }[]) {
@@ -88,6 +98,9 @@ async function pickRunnable(db: Db) {
 }
 
 describeOrSkip('BK-34 — bunkai_create_run / bunkai_get_run_expanded', () => {
+  // The first test pays for the paged fixture scan (memoised for the rest).
+  setDefaultTimeout(60_000);
+
   afterAll(async () => {
     if (!hasEnv) { return; }
     const db = service();

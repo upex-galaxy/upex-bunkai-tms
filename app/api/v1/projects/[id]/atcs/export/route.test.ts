@@ -266,7 +266,7 @@ describeOrSkip('BK-315 — GET /api/v1/projects/{id}/atcs/export — live DB', (
       foreignProjectId,
       overCapProjectId,
     };
-  });
+  }, 60_000); // seeds >1000 modules; the 5s default flakes under full-suite DB load
 
   afterAll(async () => {
     if (createdProjectIds.length === 0) { return; }
