@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, describe, expect, it, mock } from 'bun:test';
+import { afterAll, describe, expect, it, mock, setDefaultTimeout } from 'bun:test';
 import { NextRequest } from 'next/server';
 
 // The routes import `@lib/supabase/admin` (server-only) and `lib/api/pat` pulls
@@ -153,6 +153,9 @@ interface AtcBody {
 }
 
 describeOrSkip('BK-399 — ATC classification across the HTTP surface', () => {
+  // Two creates + a search per case: the 5s default flakes under full-suite DB load.
+  setDefaultTimeout(30_000);
+
   const createdAtcIds: string[] = [];
   const createdTokenIds: string[] = [];
   let cachedToken: string | null = null;
