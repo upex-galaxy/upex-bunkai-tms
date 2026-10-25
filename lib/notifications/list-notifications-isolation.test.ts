@@ -533,8 +533,12 @@ describeIfSuppressionDeployed('BK-1217 — email-only rows never reach the inbox
 
   afterAll(async () => {
     if (suppressionWorkspaceId) {
-      // Cascades cover workspace_members and notifications.
-      await service().from('workspaces').delete().eq('id', suppressionWorkspaceId);
+      // Cascades cover workspace_members and notifications. A failed delete
+      // is a test failure, never a silent leak of a QA_E2E workspace.
+      const { error } = await service().from('workspaces').delete().eq('id', suppressionWorkspaceId);
+      if (error) {
+        throw new Error(`[list-notifications-isolation] BK-1217 cleanup failed: delete BK-1217 workspace: ${error.message}`);
+      }
     }
   });
 
@@ -570,6 +574,28 @@ describeIfSuppressionDeployed('BK-1217 — email-only rows never reach the inbox
 
     const { data: raw } = await service().from('notifications').select('read_at').eq('id', fx.suppressedId).single();
     expect(raw!.read_at).toBeNull();
+  });
+
+  // WITH CHECK on notifications_update_recipient_member: a recipient cannot
+  // flip their own visible row to suppressed through a direct PATCH (which
+  // would also hide it from mark-all and change what the digest sends).
+  it('a direct client PATCH cannot set in_app_suppressed on the recipient\'s own visible row', async () => {
+    const fx = needSuppressionFixture();
+    const { data, error } = await suppressionClient!
+      .from('notifications')
+      .update({ in_app_suppressed: true })
+      .eq('id', fx.visibleId)
+      .select('id');
+    if (error) {
+      expect(error.code).toBe('42501'); // new row violates row-level security policy
+    }
+    else {
+      expect(data ?? []).toHaveLength(0);
+    }
+
+    const { data: raw, error: rawError } = await service().from('notifications').select('in_app_suppressed').eq('id', fx.visibleId).single();
+    expect(rawError).toBeNull();
+    expect(raw!.in_app_suppressed).toBe(false);
   });
 
   // Deliberately LAST: it mutates the visible row.

@@ -520,6 +520,28 @@ let qaClient: ReturnType<typeof service> | null = null;
 let prefsSnapshot: { userId: string, rows: PreferenceRow[] } | null = null;
 let prefsWorkspaceId: string | null = null;
 
+// Runs every cleanup step, records each failure (returned error or thrown),
+// and throws once at the end so one failed step never skips the others.
+function cleanupCollector() {
+  const failures: string[] = [];
+  return {
+    async step(what: string, op: PromiseLike<{ error: { message: string } | null }>) {
+      try {
+        const { error } = await op;
+        if (error) { failures.push(`${what}: ${error.message}`); }
+      }
+      catch (err) {
+        failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    throwIfFailed(label: string) {
+      if (failures.length > 0) {
+        throw new Error(`${label} failed: ${failures.join('; ')}`);
+      }
+    },
+  };
+}
+
 function needPrefsFixture(): PrefsFixture {
   if (!prefsFixture || !qaClient) {
     throw new Error('[bug-event-trigger-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
@@ -665,16 +687,22 @@ describeIfPrefsDeployed('BK-1217 — bunkai_notify_bug_event honours bug_lifecyc
 
   afterAll(async () => {
     const db = service();
+    const cleanup = cleanupCollector();
+    // Every step runs even if an earlier one fails; any failure is thrown at
+    // the end, because a silently failed restore would leave QA_E2E with a
+    // lifecycle channel off and poison QA's BK-213 retests.
     if (prefsSnapshot) {
-      await db.from('notification_preferences').delete().eq('user_id', prefsSnapshot.userId).eq('event_type', 'bug_lifecycle');
-      if (prefsSnapshot.rows.length > 0) {
-        await db.from('notification_preferences').insert(prefsSnapshot.rows.map(r => ({ user_id: prefsSnapshot!.userId, ...r })));
+      const { userId, rows } = prefsSnapshot;
+      await cleanup.step('delete QA_E2E bug_lifecycle preferences', db.from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'bug_lifecycle'));
+      if (rows.length > 0) {
+        await cleanup.step('restore QA_E2E bug_lifecycle preferences', db.from('notification_preferences').insert(rows.map(r => ({ user_id: userId, ...r }))));
       }
     }
     if (prefsWorkspaceId) {
       // Cascades cover bugs/projects/modules/members/activity_log/notifications.
-      await db.from('workspaces').delete().eq('id', prefsWorkspaceId);
+      await cleanup.step('delete BK-1217 workspace', db.from('workspaces').delete().eq('id', prefsWorkspaceId));
     }
+    cleanup.throwIfFailed('[bug-event-trigger-isolation] BK-1217 cleanup');
   });
 
   it('default (no preference rows): a self-assignment is stored visible and the recipient sees it', async () => {

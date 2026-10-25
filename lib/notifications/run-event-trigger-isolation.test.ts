@@ -493,6 +493,28 @@ let prefsSnapshot: { userId: string, rows: PreferenceRow[] } | null = null;
 let prefsWorkspaceId: string | null = null;
 let prefsTestId: string | null = null;
 
+// Runs every cleanup step, records each failure (returned error or thrown),
+// and throws once at the end so one failed step never skips the others.
+function cleanupCollector() {
+  const failures: string[] = [];
+  return {
+    async step(what: string, op: PromiseLike<{ error: { message: string } | null }>) {
+      try {
+        const { error } = await op;
+        if (error) { failures.push(`${what}: ${error.message}`); }
+      }
+      catch (err) {
+        failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    throwIfFailed(label: string) {
+      if (failures.length > 0) {
+        throw new Error(`${label} failed: ${failures.join('; ')}`);
+      }
+    },
+  };
+}
+
 function needPrefsFixture(): PrefsFixture {
   if (!prefsFixture || !qaClient) {
     throw new Error('[run-event-trigger-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
@@ -636,21 +658,27 @@ describeIfPrefsDeployed('BK-1217 — bunkai_notify_run_event honours run_lifecyc
 
   afterAll(async () => {
     const db = service();
+    const cleanup = cleanupCollector();
     // Restore first, keyed on the snapshot alone (not on the fixture), so a
     // crash partway through setup never leaves QA_E2E's preferences changed.
+    // Every step runs even if an earlier one fails; any failure is thrown at
+    // the end, because a silently failed restore would leave QA_E2E with a
+    // lifecycle channel off and poison QA's BK-213 retests.
     if (prefsSnapshot) {
-      await db.from('notification_preferences').delete().eq('user_id', prefsSnapshot.userId).eq('event_type', 'run_lifecycle');
-      if (prefsSnapshot.rows.length > 0) {
-        await db.from('notification_preferences').insert(prefsSnapshot.rows.map(r => ({ user_id: prefsSnapshot!.userId, ...r })));
+      const { userId, rows } = prefsSnapshot;
+      await cleanup.step('delete QA_E2E run_lifecycle preferences', db.from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'run_lifecycle'));
+      if (rows.length > 0) {
+        await cleanup.step('restore QA_E2E run_lifecycle preferences', db.from('notification_preferences').insert(rows.map(r => ({ user_id: userId, ...r }))));
       }
     }
-    await db.from('runs').delete().like('start_token', `${PREFIX}-bk1217-%`);
+    await cleanup.step('delete BK-1217 runs', db.from('runs').delete().like('start_token', `${PREFIX}-bk1217-%`));
     if (prefsWorkspaceId) {
-      await db.from('workspaces').delete().eq('id', prefsWorkspaceId);
+      await cleanup.step('delete BK-1217 workspace', db.from('workspaces').delete().eq('id', prefsWorkspaceId));
     }
     if (prefsTestId) {
-      await db.from('tests').delete().eq('id', prefsTestId);
+      await cleanup.step('delete BK-1217 test', db.from('tests').delete().eq('id', prefsTestId));
     }
+    cleanup.throwIfFailed('[run-event-trigger-isolation] BK-1217 cleanup');
   });
 
   it('default (no preference rows): the row is stored visible and the recipient sees it', async () => {
@@ -724,5 +752,40 @@ describeIfPrefsDeployed('BK-1217 — bunkai_notify_run_event honours run_lifecyc
     expect(await visibleToRecipient(rows[0].id)).toBe(false);
     const after = await suppressionRow(eventId);
     expect(after[0].in_app_suppressed).toBe(true);
+  });
+
+  // End to end on the run path: the row the REAL producer wrote is a digest
+  // candidate until the runner's stamp, then never again (PO decision 13138,
+  // rule 2). QA_E2E is the recipient, an email account by construction.
+  it('an email-only run row from the real producer is a digest candidate until emailed_at is stamped', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: true });
+    const eventId = await closeQaRun(fx, { key: 'digest-once', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    const notificationId = rows[0].id;
+
+    const candidates = async () => {
+      const { data, error } = await service().rpc('bunkai_notification_digest_candidates');
+      expect(error).toBeNull();
+      return ((data ?? []) as { notification_id: string, recipient_user_id: string, event_type: string }[])
+        .filter(r => r.notification_id === notificationId);
+    };
+
+    const before = await candidates();
+    expect(before).toHaveLength(1);
+    expect(before[0].recipient_user_id).toBe(fx.qaUserId);
+    expect(before[0].event_type).toBe('run.finished');
+
+    // Exactly the runner's stamp (lib/notifications/send-digest-run.ts).
+    const { error: stampError } = await service()
+      .from('notifications')
+      .update({ emailed_at: new Date().toISOString() })
+      .in('id', [notificationId])
+      .eq('in_app_suppressed', true);
+    expect(stampError).toBeNull();
+
+    expect(await candidates()).toHaveLength(0);
   });
 });
