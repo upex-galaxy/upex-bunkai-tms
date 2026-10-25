@@ -1218,3 +1218,13 @@ export async function chatResolveAuthors(supabase: Client, args: { workspaceId: 
     p_user_ids: args.userIds,
   });
 }
+
+// BK-219 — edit own message (author, live, within 15 min) / delete (author or
+// admin/owner). SECURITY DEFINER (migration 0105); coded errors in `message`.
+export async function chatEditMessage(supabase: Client, args: { messageId: string, body: string }) {
+  return supabase.rpc('bunkai_chat_edit_message', { p_message_id: args.messageId, p_body: args.body });
+}
+
+export async function chatDeleteMessage(supabase: Client, args: { messageId: string }) {
+  return supabase.rpc('bunkai_chat_delete_message', { p_message_id: args.messageId });
+}

@@ -10,8 +10,10 @@ const ChatMessageSchema = z
     workspace_id: z.string().uuid(),
     author_user_id: z.string().uuid().nullable().describe('null once the author account is deleted.'),
     author_name: z.string().describe('Display name derived from the author\'s email; "Former member" when unknown.'),
-    body: z.string().min(1).max(4000),
+    body: z.string().max(4000).describe('1..4000 characters; empty only on a tombstone.'),
     created_at: z.string().datetime({ offset: true }),
+    edited_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set once the author edited the message (BK-219).'),
+    deleted_at: z.string().datetime({ offset: true }).nullable().optional().describe('Set on a tombstone; `body` is then empty. Author and moderator deletions are indistinguishable.'),
   })
   .openapi('ChatMessage');
 
@@ -72,6 +74,54 @@ registry.registerPath({
     403: { description: 'Caller has the viewer role (`viewer_read_only`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     404: { description: 'Workspace not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
     422: { description: 'Empty (`message_empty`) or over-long (`message_too_long`) body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
+const EditChatMessageBodySchema = z
+  .object({ body: z.string().describe('New text, 1..4000 characters after trimming.') })
+  .openapi('EditChatMessageBody');
+
+const MessageIdParam = {
+  name: 'messageId',
+  in: 'path' as const,
+  required: true,
+  schema: { type: 'string' as const, format: 'uuid' as const },
+};
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/workspaces/{id}/chat/messages/{messageId}',
+  tags: ['Chat'],
+  summary: 'Edit my own message',
+  description: 'Author only, live message only, within 15 minutes of sending (BK-219). Sets `edited_at`. Admins cannot edit others\' messages.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [WorkspaceIdParam, MessageIdParam],
+  request: { body: { required: true, content: { 'application/json': { schema: EditChatMessageBodySchema } } } },
+  responses: {
+    200: { description: 'The edited message.', content: { 'application/json': { schema: ChatMessageSchema } } },
+    400: { description: 'Malformed JSON or id not a UUID.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Not the author (`not_author`), read-only role (`viewer_read_only`) or window closed (`edit_window_closed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Message not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    409: { description: 'The message was already deleted (`message_deleted`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    422: { description: 'Empty or over-long body.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/workspaces/{id}/chat/messages/{messageId}',
+  tags: ['Chat'],
+  summary: 'Delete a message (own, or any as admin/owner)',
+  description: 'Replaces the message with a tombstone (body scrubbed, `deleted_at` set). The author may delete at any time; admins and owners may moderate any message. Idempotent. The tombstone never reveals who deleted it.',
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [WorkspaceIdParam, MessageIdParam],
+  responses: {
+    200: { description: 'The tombstone.', content: { 'application/json': { schema: ChatMessageSchema } } },
+    400: { description: 'Id not a UUID.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    401: { description: 'Not authenticated.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    403: { description: 'Not the author and not an admin/owner (`not_allowed`).', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
+    404: { description: 'Message not found or caller is not an active member.', content: { 'application/json': { schema: ErrorEnvelopeSchema } } },
   },
 });
 

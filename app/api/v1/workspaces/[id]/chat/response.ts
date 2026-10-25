@@ -11,7 +11,7 @@ import {
   validateMessageBody,
 
 } from '@lib/chat/messages';
-import { chatResolveAuthors, chatRoster } from '@lib/supabase/rpc';
+import { chatDeleteMessage, chatEditMessage, chatResolveAuthors, chatRoster } from '@lib/supabase/rpc';
 
 // BK-215 — DB-parametrized logic for the workspace general chat routes
 // (`GET/POST .../chat/messages`, `GET .../chat/roster`), split out of the
@@ -38,7 +38,7 @@ export interface ListMessagesParams {
   afterSeq?: number
 }
 
-const MESSAGE_COLUMNS = 'id, seq, channel_id, workspace_id, author_user_id, body, created_at';
+const MESSAGE_COLUMNS = 'id, seq, channel_id, workspace_id, author_user_id, body, created_at, edited_at, deleted_at';
 
 export function parseIntParam(raw: string | null, name: string, bounds: { min: number, max: number }): number | undefined {
   if (raw === null || raw === '') { return undefined; }
@@ -189,4 +189,64 @@ export async function fetchRoster(db: SupabaseClient<Database>, workspaceId: str
     display_name: displayNameFromEmail(r.email),
     role: r.role as ChatRole,
   }));
+}
+
+// BK-219 — edit / delete. Both run through SECURITY DEFINER RPCs (migration
+// 0105) that assert ownership / role / the 15-minute window; here we only map
+// their coded errors to the API envelope.
+const RPC_ERRORS: Record<string, { code: 'not_found' | 'forbidden' | 'conflict' | 'validation_failed', message: string, reason?: string }> = {
+  message_not_found: { code: 'not_found', message: 'Message not found.' },
+  not_author: { code: 'forbidden', message: 'You can only edit your own messages.', reason: 'not_author' },
+  not_allowed: { code: 'forbidden', message: 'You can only delete your own messages.', reason: 'not_allowed' },
+  read_only: { code: 'forbidden', message: 'Viewers have read-only access to chat.', reason: 'viewer_read_only' },
+  message_deleted: { code: 'conflict', message: 'This message was deleted.', reason: 'message_deleted' },
+  edit_window_closed: { code: 'forbidden', message: 'Messages can be edited for 15 minutes after sending.', reason: 'edit_window_closed' },
+  invalid_body: { code: 'validation_failed', message: 'A message must be 1 to 4000 characters.', reason: 'invalid_body' },
+};
+
+function mapRpcError(error: { message: string }): never {
+  const mapped = RPC_ERRORS[error.message];
+  if (!mapped) { throw new ApiError('internal_error', error.message); }
+  throw new ApiError(mapped.code, mapped.message, mapped.reason ? { details: { reason: mapped.reason } } : undefined);
+}
+
+export async function editMessage(
+  db: SupabaseClient<Database>,
+  params: { workspaceId: string, messageId: string, rawBody: unknown },
+): Promise<ChatMessageItem> {
+  const validated = validateMessageBody(params.rawBody);
+  if (!validated.ok) {
+    throw new ApiError(
+      'validation_failed',
+      validated.reason === 'empty'
+        ? 'A message cannot be empty.'
+        : `A message can be at most ${CHAT_MESSAGE_MAX_LENGTH} characters.`,
+      { details: { reason: validated.reason === 'empty' ? 'message_empty' : 'message_too_long' } },
+    );
+  }
+  const { data, error } = await chatEditMessage(db, { messageId: params.messageId, body: validated.body });
+  if (error) { mapRpcError(error); }
+  return withAuthor(db, params.workspaceId, data);
+}
+
+export async function deleteMessage(
+  db: SupabaseClient<Database>,
+  params: { workspaceId: string, messageId: string },
+): Promise<ChatMessageItem> {
+  const { data, error } = await chatDeleteMessage(db, { messageId: params.messageId });
+  if (error) { mapRpcError(error); }
+  return withAuthor(db, params.workspaceId, data);
+}
+
+async function withAuthor(
+  db: SupabaseClient<Database>,
+  workspaceId: string,
+  data: unknown,
+): Promise<ChatMessageItem> {
+  const row = (Array.isArray(data) ? data[0] : data) as ChatMessage | undefined;
+  // The RPC resolves the message across workspaces; a row from another
+  // workspace than the URL's collapses into the same 404 as a missing one.
+  if (!row || row.workspace_id !== workspaceId) { throw new ApiError('not_found', 'Message not found.'); }
+  const [item] = await attachAuthors(db, workspaceId, [row]);
+  return item;
 }
