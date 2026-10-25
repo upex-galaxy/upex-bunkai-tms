@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { jsonResponse, withApiHandler } from '@lib/api/handler';
+import { CHECK_EMAIL_WINDOWS, digestSource, enforceRateLimit, rateLimitKey, sourceFromHeaders } from '@lib/auth/rate-limit';
 import { createAdminClient } from '@lib/supabase/admin';
 import { z } from 'zod';
 
@@ -17,9 +18,11 @@ import { z } from 'zod';
 // be routed to verification rather than a misleading "wrong password"). This
 // endpoint is NOT covered by Supabase's GoTrue auth/OTP throttling — it reads
 // `auth.users` via the `public.auth_email_status` SECURITY DEFINER RPC, which
-// bypasses GoTrue entirely. The accepted enumeration tradeoff's real mitigation
-// is therefore an app-level rate limiter, a documented follow-up in ADR-0007
-// (not yet shipped). The lookup runs ONLY with the service-role key, never
+// bypasses GoTrue entirely. The accepted enumeration tradeoff's mitigation is
+// therefore an app-level rate limiter (BK-743, `@lib/auth/rate-limit`): a
+// per-source budget checked BEFORE the body is parsed and BEFORE the directory
+// is consulted, so a refusal is identical for every address and malformed
+// submissions spend budget too. The lookup runs ONLY with the service-role key, never
 // client-side, and returns two booleans — no user id, name, or other internals
 // are ever exposed.
 
@@ -33,6 +36,14 @@ interface AuthEmailStatusRow {
 }
 
 export const POST = withApiHandler(async (request: NextRequest) => {
+  await enforceRateLimit({
+    key: rateLimitKey({
+      scope: 'source',
+      identifier: digestSource(sourceFromHeaders(request.headers)),
+      step: 'check-email',
+    }),
+    windows: CHECK_EMAIL_WINDOWS,
+  });
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
   });
