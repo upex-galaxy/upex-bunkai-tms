@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // BK-667 — lifecycle of the shared create wrapper (begin -> write -> record|discard).
 const calls: string[] = [];
@@ -6,16 +6,32 @@ let beginResult: unknown;
 let recordShouldThrow = false;
 
 void mock.module('server-only', () => ({}));
+// `mock.module` is PROCESS-wide and never restored, so the fake must only answer
+// while THIS file's tests run; otherwise every later suite that goes through the
+// real middleware (BK-203 tests route, ...) silently loses Idempotency-Key
+// enforcement. The original functions are copied BEFORE registering the mock
+// (a live namespace would end up pointing at the mock) and used outside it.
+const realIdempotency = { ...(await import('@lib/api/idempotency')) };
+let fakeActive = false;
+beforeAll(() => { fakeActive = true; });
+afterAll(() => { fakeActive = false; });
+
 void mock.module('@lib/api/idempotency', () => ({
-  beginIdempotentRequest: async () => {
+  ...realIdempotency,
+  beginIdempotentRequest: async (...args: Parameters<typeof realIdempotency.beginIdempotentRequest>) => {
+    if (!fakeActive) { return realIdempotency.beginIdempotentRequest(...args); }
     calls.push('begin');
     return beginResult;
   },
-  recordIdempotencyResult: async () => {
+  recordIdempotencyResult: async (...args: Parameters<typeof realIdempotency.recordIdempotencyResult>) => {
+    if (!fakeActive) { return realIdempotency.recordIdempotencyResult(...args); }
     calls.push('record');
     if (recordShouldThrow) { throw new Error('store failed'); }
   },
-  discardIdempotencyResult: async () => { calls.push('discard'); },
+  discardIdempotencyResult: async (...args: Parameters<typeof realIdempotency.discardIdempotencyResult>) => {
+    if (!fakeActive) { return realIdempotency.discardIdempotencyResult(...args); }
+    calls.push('discard');
+  },
 }));
 
 const { runIdempotentCreate } = await import('./idempotent-create');
