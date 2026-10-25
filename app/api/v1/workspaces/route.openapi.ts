@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_400, IDEMPOTENCY_409, IdempotencyKeyParam } from '@lib/openapi/idempotency';
 import { ErrorEnvelopeSchema, registry, z } from '@lib/openapi/registry';
 
 const WorkspaceSchema = z
@@ -47,6 +48,7 @@ registry.registerPath({
   description:
     'Wraps the `bunkai_bootstrap_workspace` SECURITY DEFINER RPC so the workspace row and the owner-membership row are inserted in a single transaction.',
   security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  parameters: [IdempotencyKeyParam],
   request: {
     body: {
       required: true,
@@ -58,12 +60,16 @@ registry.registerPath({
       description: 'Workspace created.',
       content: { 'application/json': { schema: CreateResponseSchema } },
     },
+    400: {
+      description: IDEMPOTENCY_400,
+      content: { 'application/json': { schema: ErrorEnvelopeSchema } },
+    },
     401: {
       description: 'Caller is not signed in.',
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
     409: {
-      description: 'Slug already in use.',
+      description: `Slug already in use (\`conflict\`), or: ${IDEMPOTENCY_409}`,
       content: { 'application/json': { schema: ErrorEnvelopeSchema } },
     },
     422: {

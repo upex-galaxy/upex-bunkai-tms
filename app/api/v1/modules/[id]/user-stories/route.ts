@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError } from '@lib/api/error-envelope';
 import { getAuth, jsonResponse, withApiHandler } from '@lib/api/handler';
+import { runIdempotentCreate } from '@lib/api/idempotent-create';
 import { byteLength } from '@lib/markdown/format';
 import { sanitizeMarkdown } from '@lib/markdown/sanitize';
 import { mapStoryWriteError, titleMessage } from '@lib/user-stories/errors';
@@ -30,7 +31,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     throw new ApiError('bad_request', 'Module id must be a UUID.');
   }
 
-  const { db } = getAuth(ctx);
+  const { principal, db } = getAuth(ctx);
 
   const payload: unknown = await request.json().catch(() => {
     throw new ApiError('bad_request', 'Request body must be valid JSON.');
@@ -59,38 +60,46 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     normalizedKey = normalizeJiraKey(external_id);
   }
 
-  // The module supplies the denormalized project_id and confirms existence; RLS
-  // scopes the read so a non-visible module reads as not found.
-  const { data: module, error: moduleError } = await db
-    .from('modules')
-    .select('id, project_id')
-    .eq('id', moduleId)
-    .is('archived_at', null)
-    .maybeSingle();
-  if (moduleError) {
-    throw new ApiError('internal_error', moduleError.message);
-  }
-  if (!module) {
-    throw new ApiError('not_found', 'Module not found.');
-  }
+  return runIdempotentCreate({
+    request,
+    userId: principal.userId,
+    endpoint: 'POST /api/v1/modules/{id}/user-stories',
+    payload: { module_id: moduleId, title: title.trim(), description: description ?? null, external_id: normalizedKey },
+    execute: async () => {
+    // The module supplies the denormalized project_id and confirms existence; RLS
+    // scopes the read so a non-visible module reads as not found.
+      const { data: module, error: moduleError } = await db
+        .from('modules')
+        .select('id, project_id')
+        .eq('id', moduleId)
+        .is('archived_at', null)
+        .maybeSingle();
+      if (moduleError) {
+        throw new ApiError('internal_error', moduleError.message);
+      }
+      if (!module) {
+        throw new ApiError('not_found', 'Module not found.');
+      }
 
-  const { data, error } = await db
-    .from('user_stories')
-    .insert({
-      module_id: moduleId,
-      project_id: module.project_id,
-      title: title.trim(),
-      description: description != null ? sanitizeMarkdown(description) : null,
-      external_id: normalizedKey,
-    })
-    .select(STORY_COLUMNS)
-    .single();
+      const { data, error } = await db
+        .from('user_stories')
+        .insert({
+          module_id: moduleId,
+          project_id: module.project_id,
+          title: title.trim(),
+          description: description != null ? sanitizeMarkdown(description) : null,
+          external_id: normalizedKey,
+        })
+        .select(STORY_COLUMNS)
+        .single();
 
-  if (error) {
-    mapStoryWriteError(error);
-  }
+      if (error) {
+        mapStoryWriteError(error);
+      }
 
-  return jsonResponse({ user_story: data }, { status: 201 });
+      return { user_story: data };
+    },
+  });
 }, { auth: 'required', requires: ['atc:write'] });
 
 export const GET = withApiHandler(async (request: NextRequest, ctx) => {
