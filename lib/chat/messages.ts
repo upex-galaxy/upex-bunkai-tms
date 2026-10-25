@@ -21,6 +21,9 @@ export interface ChatMessage {
   author_user_id: string | null
   body: string
   created_at: string
+  // BK-219: set once the author edited the body / a tombstone replaced it.
+  edited_at?: string | null
+  deleted_at?: string | null
 }
 
 export interface ChatMember {
@@ -43,6 +46,41 @@ export function validateMessageBody(raw: unknown): BodyValidation {
   if (body.length === 0) { return { ok: false, reason: 'empty' }; }
   if (body.length > CHAT_MESSAGE_MAX_LENGTH) { return { ok: false, reason: 'too_long' }; }
   return { ok: true, body };
+}
+
+// BK-219: authors can edit for 15 minutes after sending (server-enforced by
+// bunkai_chat_edit_message; this mirrors it to hide the action client-side).
+export const CHAT_EDIT_WINDOW_MS = 15 * 60 * 1000;
+
+export function isTombstone(m: Pick<ChatMessage, 'deleted_at'>): boolean {
+  return Boolean(m.deleted_at);
+}
+
+export function editWindowOpen(createdAt: string, now: number): boolean {
+  return now - new Date(createdAt).getTime() <= CHAT_EDIT_WINDOW_MS;
+}
+
+export function canEditMessage(
+  m: ChatMessage,
+  actor: { userId: string | null, role: ChatRole | null | undefined },
+  now: number,
+): boolean {
+  return !isTombstone(m)
+    && m.author_user_id !== null
+    && m.author_user_id === actor.userId
+    && canWriteChat(actor.role)
+    && editWindowOpen(m.created_at, now);
+}
+
+// Own messages at any time (even with a read-only role); anyone else's only
+// for admin/owner (moderation, delete-only).
+export function canDeleteMessage(
+  m: ChatMessage,
+  actor: { userId: string | null, role: ChatRole | null | undefined },
+): boolean {
+  if (isTombstone(m)) { return false; }
+  if (m.author_user_id !== null && m.author_user_id === actor.userId) { return true; }
+  return actor.role === 'admin' || actor.role === 'owner';
 }
 
 export function canWriteChat(role: ChatRole | null | undefined): boolean {
@@ -68,19 +106,35 @@ export function initialsOf(name: string): string {
 
 // Merge incoming messages into the list: dedupe by id (a message can arrive via
 // the send response, the realtime event and a catch-up fetch), keep ascending
-// `seq` order. Returns the same array reference when nothing changed.
+// `seq` order. An incoming version REPLACES the held one when it is newer
+// (BK-219: edited / deleted); a stale copy never overwrites a tombstone or a
+// later edit. Returns the same array reference when nothing changed.
 export function mergeMessages<T extends ChatMessage>(existing: readonly T[], incoming: readonly T[]): T[] {
   const byId = new Map<string, T>();
   for (const m of existing) { byId.set(m.id, m); }
   let changed = false;
   for (const m of incoming) {
-    if (!byId.has(m.id)) {
+    const held = byId.get(m.id);
+    if (!held) {
       byId.set(m.id, m);
+      changed = true;
+    }
+    else if (isNewerVersion(held, m)) {
+      byId.set(m.id, { ...held, ...m });
       changed = true;
     }
   }
   if (!changed) { return existing as T[]; }
   return [...byId.values()].sort((a, b) => a.seq - b.seq);
+}
+
+function versionOf(m: ChatMessage): number {
+  if (m.deleted_at) { return Number.MAX_SAFE_INTEGER; }
+  return m.edited_at ? new Date(m.edited_at).getTime() : 0;
+}
+
+function isNewerVersion(held: ChatMessage, incoming: ChatMessage): boolean {
+  return versionOf(incoming) > versionOf(held);
 }
 
 export function lastSeq(messages: readonly ChatMessage[]): number {
@@ -117,7 +171,7 @@ export function seenStorageKey(workspaceId: string, userId: string): string {
 }
 
 export interface ChatChannelBinding {
-  event: 'INSERT'
+  event: '*'
   schema: 'public'
   table: 'chat_messages'
   filter: string
@@ -137,7 +191,7 @@ export function buildChatChannelConfig(workspaceId: string): ChatChannelConfig {
     channelName: `chat-${workspaceId}`,
     presenceChannelName: `chat-presence-${workspaceId}`,
     binding: {
-      event: 'INSERT',
+      event: '*',
       schema: 'public',
       table: 'chat_messages',
       filter: `workspace_id=eq.${workspaceId}`,

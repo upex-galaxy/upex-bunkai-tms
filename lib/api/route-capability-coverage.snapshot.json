@@ -536,6 +536,18 @@
     "why": "Entity picker search is membership-scoped: RLS on the caller client bounds what is listed, not a capability scope."
   },
   {
+    "file": "app/api/v1/workspaces/[id]/chat/messages/[messageId]/route.ts",
+    "method": "DELETE",
+    "posture": "authenticated",
+    "why": "Chat is a membership-scoped surface: the delete RPC asserts authorship or admin/owner role, not a capability scope."
+  },
+  {
+    "file": "app/api/v1/workspaces/[id]/chat/messages/[messageId]/route.ts",
+    "method": "PATCH",
+    "posture": "authenticated",
+    "why": "Chat is a membership-scoped surface: the edit RPC asserts authorship and the edit window, not a capability scope."
+  },
+  {
     "file": "app/api/v1/workspaces/[id]/chat/messages/route.ts",
     "method": "GET",
     "posture": "authenticated",

@@ -13,6 +13,8 @@ import {
 } from '@lib/chat/entity-refs';
 import {
   buildChatChannelConfig,
+  canDeleteMessage,
+  canEditMessage,
   canWriteChat,
   CHAT_MESSAGE_MAX_LENGTH,
   continuesPrevious,
@@ -20,6 +22,7 @@ import {
   firstUnreadIndex,
   initialsOf,
   isNewDay,
+  isTombstone,
   lastSeq,
   mergeMessages,
   seenStorageKey,
@@ -29,7 +32,7 @@ import { shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
 import { createClient } from '@lib/supabase/client';
 import { APP_URLS } from '@lib/urls';
 import { cn } from '@lib/utils';
-import { Hash, Link2, Loader2, Lock, SendHorizontal, Users, WifiOff, X } from 'lucide-react';
+import { Hash, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EntityCard } from './EntityCard';
 import { EntityPicker } from './EntityPicker';
@@ -113,6 +116,15 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [pickerOpen, setPickerOpen] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const inFlightRefs = useRef<Set<string>>(new Set());
+  // BK-219: inline edit, delete confirmation, and a clock that closes the
+  // 15-minute edit window while the panel stays open.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChatItem | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const listRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatItem[]>([]);
@@ -122,6 +134,10 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const lastSeenLoaded = useRef(false);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
   useEffect(() => { membersRef.current = members; }, [members]);
 
   const config = useMemo(() => buildChatChannelConfig(workspaceId), [workspaceId]);
@@ -252,11 +268,12 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         if (row.author_user_id && !membersRef.current.some(m => m.user_id === row.author_user_id)) {
           void loadRoster();
         }
+        const isInsert = payload.eventType === 'INSERT';
         const merged = mergeMessages(messagesRef.current, [row]);
         if (merged === messagesRef.current) { return; }
         messagesRef.current = merged;
         setMessages(merged);
-        if (!stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
+        if (isInsert && !stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
       },
     );
     channel.subscribe((status) => {
@@ -382,6 +399,65 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     setMessages(merged);
   };
 
+  const applyServerMessage = (item: ChatItem) => {
+    const merged = mergeMessages(messagesRef.current, [item]);
+    messagesRef.current = merged;
+    setMessages(merged);
+  };
+
+  const startEdit = (m: ChatItem) => {
+    setActionError(null);
+    setEditingId(m.id);
+    setEditDraft(m.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft('');
+    setActionError(null);
+  };
+
+  const saveEdit = async (m: ChatItem) => {
+    if (editBusy) { return; }
+    const check = validateMessageBody(editDraft);
+    if (!check.ok) {
+      setActionError(check.reason === 'empty' ? 'A message cannot be empty.' : `Messages are limited to ${CHAT_MESSAGE_MAX_LENGTH} characters.`);
+      return;
+    }
+    if (check.body === m.body) { cancelEdit(); return; }
+    setEditBusy(true);
+    setActionError(null);
+    const res = await apiJson<ChatItem>(`${base}/messages/${m.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: check.body }),
+    });
+    setEditBusy(false);
+    if (!res.ok) { setActionError(res.message); return; }
+    applyServerMessage(res.data);
+    setEditingId(null);
+    setEditDraft('');
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteBusy) { return; }
+    setDeleteBusy(true);
+    const res = await apiJson<ChatItem>(`${base}/messages/${deleteTarget.id}`, { method: 'DELETE' });
+    setDeleteBusy(false);
+    if (!res.ok) { setActionError(res.message); setDeleteTarget(null); return; }
+    applyServerMessage(res.data);
+    if (editingId === deleteTarget.id) { cancelEdit(); }
+    setDeleteTarget(null);
+  };
+
+  const onEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, m: ChatItem) => {
+    if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); return; }
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      void saveEdit(m);
+    }
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -471,6 +547,12 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
             const cont = continuesPrevious(prev, m);
             const own = m.author_user_id === userId;
             const name = nameOf(m);
+            const tomb = isTombstone(m);
+            const actor = { userId, role };
+            const mayEdit = canEditMessage(m, actor, now);
+            const mayDelete = canDeleteMessage(m, actor);
+            const windowClosed = !tomb && own && canWriteChat(role) && !mayEdit;
+            const editing = editingId === m.id && !tomb;
             return (
               <div key={m.id}>
                 {isNewDay(prev, m) && (
@@ -487,7 +569,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                     <span className="h-px flex-1 bg-accent/60" />
                   </div>
                 )}
-                <article data-testid="chat_message" data-own={own} data-seq={m.seq} className={cn('flex gap-3 px-4 hover:bg-surface-2/50', cont ? 'py-0.5' : 'pb-0.5 pt-2')}>
+                <article data-testid="chat_message" data-own={own} data-seq={m.seq} className={cn('group relative flex gap-3 px-4 hover:bg-surface-2/50 focus-within:bg-surface-2/50', cont ? 'py-0.5' : 'pb-0.5 pt-2')}>
                   {cont
                     ? <span className="w-7 shrink-0" aria-hidden="true" />
                     : (
@@ -501,28 +583,89 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                         <span className="truncate text-[13px] font-semibold text-fg-0">{name}</span>
                         {own && <span className="rounded-1 bg-surface-3 px-1 text-[10px] text-fg-3">you</span>}
                         <time dateTime={m.created_at} className="font-mono text-[10px] text-fg-3">{timeLabel(m.created_at)}</time>
+                        {m.edited_at && !tomb && <span data-testid="chat_edited" className="text-[10px] italic text-fg-3">(edited)</span>}
                       </div>
                     )}
-                    {(() => {
-                      const segments = segmentsById.get(m.id) ?? [];
-                      const refs = segments.filter(sg => sg.kind === 'ref');
-                      const text = refs.length > 0 ? textWithoutRefs(segments) : m.body;
-                      return (
-                        <>
-                          {text.length > 0 && <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">{text}</p>}
-                          {refs.map((sg, idx) => {
-                            const key = refKey(sg.ref);
-                            const card = cards.get(key);
-                            if (card) { return <EntityCard key={`${key}-${idx}`} card={card} />; }
-                            if (failedRefs.has(key)) {
-                              return <a key={`${key}-${idx}`} href={sg.raw} className="mt-1 block break-all text-[13px] text-accent-hi underline">{sg.raw}</a>;
-                            }
-                            return <div key={`${key}-${idx}`} data-testid="chat_entity_loading" aria-hidden="true" className="mt-1.5 h-[52px] w-full max-w-[316px] animate-status-pulse rounded-3 border border-stroke-2 bg-surface-2" />;
-                          })}
-                        </>
-                      );
-                    })()}
+                    {tomb
+                      ? (
+                          <p data-testid="chat_tombstone" className="m-0 inline-flex items-center gap-2 rounded-2 border border-dashed border-stroke-2 bg-surface-2 px-3 py-1.5 text-xs italic text-fg-3">
+                            <Trash2 size={12} aria-hidden="true" />
+                            This message was deleted
+                          </p>
+                        )
+                      : editing
+                        ? (
+                            <div data-testid="chat_edit_box" className="mt-1">
+                              <textarea
+                                data-testid="chat_edit_input"
+                                aria-label="Edit message"
+                                value={editDraft}
+                                rows={2}
+                                autoFocus
+                                disabled={editBusy}
+                                onChange={(e) => { setEditDraft(e.target.value); setActionError(null); }}
+                                onKeyDown={e => onEditKeyDown(e, m)}
+                                className="w-full resize-none rounded-2 border border-stroke-2 bg-surface-2 px-3 py-2 text-[13px] text-fg-0 focus-visible:border-accent focus-visible:outline-none"
+                              />
+                              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-fg-3">
+                                <span className="mr-auto">Enter save · Esc cancel</span>
+                                <button type="button" data-testid="chat_edit_cancel" onClick={cancelEdit} className="rounded-2 px-2 py-1 text-xs text-fg-1 hover:bg-surface-3">Cancel</button>
+                                <button
+                                  type="button"
+                                  data-testid="chat_edit_save"
+                                  disabled={editBusy || editDraft.trim().length === 0}
+                                  onClick={() => void saveEdit(m)}
+                                  className="inline-flex items-center gap-1 rounded-2 bg-accent px-2 py-1 text-xs font-medium text-white hover:bg-accent-hi disabled:pointer-events-none disabled:opacity-40"
+                                >
+                                  {editBusy && <Loader2 size={12} className="animate-spin" aria-hidden="true" />}
+                                  Save
+                                </button>
+                              </div>
+                              {actionError && <p data-testid="chat_edit_error" role="alert" className="m-0 mt-1 text-xs text-fail">{actionError}</p>}
+                            </div>
+                          )
+                        : (() => {
+                            const segments = segmentsById.get(m.id) ?? [];
+                            const refs = segments.filter(sg => sg.kind === 'ref');
+                            const text = refs.length > 0 ? textWithoutRefs(segments) : m.body;
+                            return (
+                              <>
+                                {text.length > 0 && <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-fg-1">{text}</p>}
+                                {refs.map((sg, idx) => {
+                                  const key = refKey(sg.ref);
+                                  const card = cards.get(key);
+                                  if (card) { return <EntityCard key={`${key}-${idx}`} card={card} />; }
+                                  if (failedRefs.has(key)) {
+                                    return <a key={`${key}-${idx}`} href={sg.raw} className="mt-1 block break-all text-[13px] text-accent-hi underline">{sg.raw}</a>;
+                                  }
+                                  return <div key={`${key}-${idx}`} data-testid="chat_entity_loading" aria-hidden="true" className="mt-1.5 h-[52px] w-full max-w-[316px] animate-status-pulse rounded-3 border border-stroke-2 bg-surface-2" />;
+                                })}
+                              </>
+                            );
+                          })()}
+                    {windowClosed && !editing && (
+                      <span data-testid="chat_edit_window_hint" className="sr-only">Messages can be edited for 15 minutes after sending.</span>
+                    )}
                   </div>
+                  {!tomb && !editing && (mayEdit || mayDelete || windowClosed) && (
+                    <div data-testid="chat_message_actions" role="toolbar" aria-label="Message actions" className="absolute -top-2.5 right-4 flex gap-1 rounded-2 border border-stroke-2 bg-surface-3 p-0.5 opacity-0 shadow-card transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                      {mayEdit && (
+                        <button type="button" data-testid="chat_action_edit" aria-label="Edit message" title="Edit message" onClick={() => startEdit(m)} className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-surface-4 hover:text-fg-0">
+                          <Pencil size={12} />
+                        </button>
+                      )}
+                      {windowClosed && (
+                        <span data-testid="chat_action_edit_closed" title="Messages can be edited for 15 minutes after sending." aria-label="Edit unavailable: messages can be edited for 15 minutes after sending." className="inline-flex size-6 cursor-not-allowed items-center justify-center rounded-1 text-fg-4">
+                          <Pencil size={12} />
+                        </span>
+                      )}
+                      {mayDelete && (
+                        <button type="button" data-testid="chat_action_delete" aria-label="Delete message" title="Delete message" onClick={() => { setActionError(null); setDeleteTarget(m); }} className="inline-flex size-6 items-center justify-center rounded-1 text-fg-3 hover:bg-fail-bg hover:text-fail">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </article>
               </div>
             );
@@ -601,6 +744,46 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
               </div>
             )}
       </footer>
+
+      {actionError && !editingId && (
+        <p data-testid="chat_action_error" role="alert" className="m-0 border-t border-stroke-1 bg-surface-1 px-4 py-2 text-xs text-fail">{actionError}</p>
+      )}
+
+      {deleteTarget && (
+        <div className="absolute inset-0 z-40 grid place-items-center bg-black/55 p-6" data-testid="chat_delete_overlay">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="chat-del-title"
+            onKeyDown={(e) => { if (e.key === 'Escape') { setDeleteTarget(null); } }}
+            className="w-full max-w-[320px] rounded-4 border border-stroke-3 bg-surface-3 p-6 shadow-pop"
+          >
+            <h3 id="chat-del-title" className="m-0 mb-2 text-base font-semibold text-fg-0">Delete message?</h3>
+            <p className="m-0 text-[13px] text-fg-1">
+              {deleteTarget.author_user_id === userId
+                ? 'This deletes your message in #general:'
+                : `As ${role === 'owner' ? 'an owner' : 'an admin'}, you are removing ${nameOf(deleteTarget)}'s message in #general:`}
+            </p>
+            <blockquote className="my-3 break-words border border-stroke-1 border-l-2 border-l-stroke-strong bg-surface-2 px-3 py-2 text-[13px] text-fg-3">
+              {deleteTarget.body.length > 160 ? `${deleteTarget.body.slice(0, 160)}…` : deleteTarget.body}
+            </blockquote>
+            <p className="m-0 text-[11px] text-fg-3">This can't be undone. A "This message was deleted" notice stays in its place.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" data-testid="chat_delete_cancel" autoFocus onClick={() => setDeleteTarget(null)} className="rounded-2 border border-stroke-2 bg-surface-2 px-3 py-1.5 text-xs text-fg-1 hover:bg-surface-3">Cancel</button>
+              <button
+                type="button"
+                data-testid="chat_delete_confirm"
+                disabled={deleteBusy}
+                onClick={() => void confirmDelete()}
+                className="inline-flex items-center gap-1.5 rounded-2 bg-fail px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {deleteBusy ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Trash2 size={12} aria-hidden="true" />}
+                Delete message
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {rosterOpen && (
         <aside id="chat-roster" data-testid="chat_roster" aria-label="Members of #general" className="absolute inset-x-0 top-[49px] z-10 max-h-[60%] overflow-y-auto border-b border-stroke-2 bg-surface-2">

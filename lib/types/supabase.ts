@@ -565,6 +565,8 @@ export interface Database {
           body: string
           channel_id: string
           created_at: string
+          deleted_at: string | null
+          edited_at: string | null
           id: string
           seq: number
           workspace_id: string
@@ -574,6 +576,8 @@ export interface Database {
           body: string
           channel_id: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           seq?: never
           workspace_id: string
@@ -583,6 +587,8 @@ export interface Database {
           body?: string
           channel_id?: string
           created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           seq?: never
           workspace_id?: string
@@ -2046,6 +2052,34 @@ export interface Database {
       }
       bunkai_bug_json: { Args: { p_bug_id: string }, Returns: Json }
       bunkai_can_write_workspace: { Args: { ws_id: string }, Returns: boolean }
+      bunkai_chat_delete_message: {
+        Args: { p_message_id: string }
+        Returns: {
+          author_user_id: string
+          body: string
+          channel_id: string
+          created_at: string
+          deleted_at: string
+          edited_at: string
+          id: string
+          seq: number
+          workspace_id: string
+        }[]
+      }
+      bunkai_chat_edit_message: {
+        Args: { p_body: string, p_message_id: string }
+        Returns: {
+          author_user_id: string
+          body: string
+          channel_id: string
+          created_at: string
+          deleted_at: string
+          edited_at: string
+          id: string
+          seq: number
+          workspace_id: string
+        }[]
+      }
       bunkai_chat_resolve_authors: {
         Args: { p_user_ids: string[], p_workspace_id: string }
         Returns: {

@@ -2,12 +2,17 @@ import type { ChatMessage } from './messages';
 import { describe, expect, it } from 'bun:test';
 import {
   buildChatChannelConfig,
+  canDeleteMessage,
+  canEditMessage,
   canWriteChat,
+  CHAT_EDIT_WINDOW_MS,
   continuesPrevious,
   displayNameFromEmail,
+  editWindowOpen,
   firstUnreadIndex,
   initialsOf,
   isNewDay,
+  isTombstone,
   lastSeq,
   mergeMessages,
   validateMessageBody,
@@ -109,6 +114,49 @@ describe('buildChatChannelConfig', () => {
     const c = buildChatChannelConfig('ws-1');
     expect(c.channelName).toBe('chat-ws-1');
     expect(c.presenceChannelName).toBe('chat-presence-ws-1');
-    expect(c.binding).toEqual({ event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'workspace_id=eq.ws-1' });
+    expect(c.binding).toEqual({ event: '*', schema: 'public', table: 'chat_messages', filter: 'workspace_id=eq.ws-1' });
+  });
+});
+
+describe('BK-219 edit / delete rules', () => {
+  const created = '2026-10-25T10:00:00.000Z';
+  const t0 = new Date(created).getTime();
+  const me = { userId: 'u1', role: 'member' as const };
+
+  it('edit window is 15 minutes inclusive', () => {
+    expect(editWindowOpen(created, t0 + CHAT_EDIT_WINDOW_MS)).toBe(true);
+    expect(editWindowOpen(created, t0 + CHAT_EDIT_WINDOW_MS + 1)).toBe(false);
+  });
+  it('author edits own live message inside the window only', () => {
+    expect(canEditMessage(msg(1, { created_at: created }), me, t0 + 2 * 60_000)).toBe(true);
+    expect(canEditMessage(msg(1, { created_at: created }), me, t0 + 16 * 60_000)).toBe(false);
+  });
+  it('nobody edits someone else (admins included), tombstones or as viewer', () => {
+    const other = msg(1, { author_user_id: 'u2', created_at: created });
+    expect(canEditMessage(other, me, t0)).toBe(false);
+    expect(canEditMessage(other, { userId: 'u1', role: 'admin' }, t0)).toBe(false);
+    expect(canEditMessage(msg(1, { created_at: created, deleted_at: created }), me, t0)).toBe(false);
+    expect(canEditMessage(msg(1, { created_at: created }), { userId: 'u1', role: 'viewer' }, t0)).toBe(false);
+  });
+  it('delete: own anytime, others only admin/owner, never a tombstone', () => {
+    const own = msg(1);
+    const other = msg(2, { author_user_id: 'u2' });
+    expect(canDeleteMessage(own, me)).toBe(true);
+    expect(canDeleteMessage(other, me)).toBe(false);
+    expect(canDeleteMessage(other, { userId: 'u1', role: 'viewer' })).toBe(false);
+    expect(canDeleteMessage(other, { userId: 'u1', role: 'admin' })).toBe(true);
+    expect(canDeleteMessage(other, { userId: 'u1', role: 'owner' })).toBe(true);
+    expect(canDeleteMessage(msg(3, { deleted_at: 'x' }), { userId: 'u1', role: 'admin' })).toBe(false);
+    expect(isTombstone(msg(3, { deleted_at: 'x' }))).toBe(true);
+  });
+  it('mergeMessages applies edits and tombstones, never reverts them', () => {
+    const base = [msg(1)];
+    const edited = mergeMessages(base, [msg(1, { body: 'fixed', edited_at: '2026-10-25T10:01:00.000Z' })]);
+    expect(edited[0].body).toBe('fixed');
+    const stale = mergeMessages(edited, [msg(1)]);
+    expect(stale).toBe(edited);
+    const dead = mergeMessages(edited, [msg(1, { body: '', deleted_at: '2026-10-25T10:02:00.000Z' })]);
+    expect(dead[0].deleted_at).not.toBeNull();
+    expect(mergeMessages(dead, [msg(1, { body: 'late', edited_at: '2026-10-25T10:03:00.000Z' })])).toBe(dead);
   });
 });

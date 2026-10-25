@@ -439,6 +439,12 @@ color-only signals.
 | `chat-entity-rich-link.html` | component inside the chat panel (both channel types) | BK-218 rich cards for ATC/Test/Run references: icon + title + status/verdict row with project name as a second line, resolved-card states plus same-footprint restricted (no access) and deleted (entity gone) placeholders, composer-side entity picker popover. |
 | `chat-search.html` | overlay within the chat panel | BK-220 message-history search: input + channel/author/date filter chips + result list (channel badge, author, date, highlighted snippet) over the same panel shell; default/populated/filtered/no-matches states, jump-to-message-in-context on select. |
 
+**BK-219 departure (ratified, Jira AI Product Owner decision C3, 2026-10-25):** the mockup's admin-delete
+tombstone (shield icon, "Removed by an admin", reason, author-only view) and the confirm copy "Admins keep
+an audit record" are NOT built. PO ratification C5 makes author and moderator tombstones identical, so every
+reader sees the neutral dashed "This message was deleted" row; only the delete confirmation names the acting
+role. Edit and delete affordances, inline editor and "(edited)" suffix follow the mockup.
+
 Cross-epic note: BK-217 mention delivery renders into the Notifications inbox (§4.13,
 `notifications-inbox.html`) — that screen's entity-chip and signal-token idiom is the one this
 batch's mention pills and rich-link id-chips deliberately reuse, so the two surfaces read as one
