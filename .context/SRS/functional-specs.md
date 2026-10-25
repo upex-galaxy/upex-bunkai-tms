@@ -288,8 +288,8 @@
 
 ### {{PROJECT_KEY}}-037 — Idempotency
 - **Applies to**: every POST endpoint that creates non-trivial state ({{PROJECT_KEY}}-002, {{PROJECT_KEY}}-005, {{PROJECT_KEY}}-007, {{PROJECT_KEY}}-010, {{PROJECT_KEY}}-015, {{PROJECT_KEY}}-019, {{PROJECT_KEY}}-025).
-- **Input**: optional header `Idempotency-Key` (max 64 chars).
-- **Processing**: Lookup `(endpoint, idempotency_key)` in a 24h LRU table; on hit, return stored response.
+- **Input**: REQUIRED header `Idempotency-Key` on every endpoint listed above (8–128 chars, `[a-zA-Z0-9_-]`; ADR-0002 Decision #2). A missing header is `400 idempotency_key_required`; a malformed one is `400 idempotency_key_invalid`.
+- **Processing**: Lookup `(user_id, endpoint, idempotency_key)` in a 24h table; on a hit with the same payload, return the stored response; same key with a different payload, or while the first request is in flight, is `409 conflict`. A failure before the record is written releases the key.
 
 ### {{PROJECT_KEY}}-038 — Audit-light logging
 - **Applies to**: all state-changing endpoints.
