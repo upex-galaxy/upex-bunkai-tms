@@ -6,7 +6,7 @@ import type { PreferenceCell } from '@lib/notification-preferences/grid';
 import { Switch } from '@components/ui/switch';
 import { cn } from '@lib/utils';
 import { Bell, Lock, Mail } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface NotificationPreferencesGridProps {
@@ -48,19 +48,38 @@ const CHANNEL_LABEL: Record<NotificationChannel, string> = { in_app: 'In-app', e
 // `principal.userId`-scoped server data comes in as `preferences` from the
 // parent server component (`settings/notifications/page.tsx`, TD7 isolation);
 // this component owns no Supabase client of its own.
+//
+// BK-1218 — every save is scoped to its own cell. A cell stays disabled
+// while ITS save is in flight (other cells stay clickable), so one cell never
+// has two overlapping saves: the PATCH is an unversioned last-write-wins
+// upsert, and two in-flight writes of one cell can commit in either order,
+// which no client-side "latest response wins" rule can mirror. A failed save
+// reverts only its own cell, to its click-time value — with one save per
+// cell, that is the value the server holds. Restoring a whole-grid snapshot
+// taken at click time instead discards any other cell saved meanwhile.
 export function NotificationPreferencesGrid({ preferences }: NotificationPreferencesGridProps) {
   const [cells, setCells] = useState(preferences);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savingKeys, setSavingKeys] = useState<ReadonlySet<string>>(() => new Set());
+  // Synchronous mirror of `savingKeys`: a second click on the same cell that
+  // lands before React re-renders it as disabled is still refused.
+  const inFlightRef = useRef(new Set<string>());
+
+  const setCellEnabled = (eventType: EditableEventType, channel: NotificationChannel, enabled: boolean) => {
+    setCells(prev => prev.map(cell =>
+      cell.event_type === eventType && cell.channel === channel
+        ? { ...cell, enabled }
+        : cell,
+    ));
+  };
 
   const handleToggle = async (eventType: EditableEventType, channel: NotificationChannel, nextEnabled: boolean) => {
     const key = cellKey(eventType, channel);
-    const previous = cells;
-    setCells(prev => prev.map(cell =>
-      cell.event_type === eventType && cell.channel === channel
-        ? { ...cell, enabled: nextEnabled }
-        : cell,
-    ));
-    setSavingKey(key);
+    if (inFlightRef.current.has(key)) {
+      return;
+    }
+    inFlightRef.current.add(key);
+    setSavingKeys(prev => new Set(prev).add(key));
+    setCellEnabled(eventType, channel, nextEnabled);
 
     try {
       const response = await fetch('/api/v1/notification-preferences', {
@@ -70,18 +89,23 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-        setCells(previous);
+        setCellEnabled(eventType, channel, !nextEnabled);
         toast.error(body.error?.message ?? 'Could not save this preference.');
         return;
       }
       toast.success('Saved');
     }
     catch (err) {
-      setCells(previous);
+      setCellEnabled(eventType, channel, !nextEnabled);
       toast.error(err instanceof Error ? err.message : 'Network error.');
     }
     finally {
-      setSavingKey(null);
+      inFlightRef.current.delete(key);
+      setSavingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -147,7 +171,7 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
                   >
                     <Switch
                       checked={cell.enabled}
-                      disabled={cell.locked || savingKey === key}
+                      disabled={cell.locked || savingKeys.has(key)}
                       onCheckedChange={(checked) => { void handleToggle(eventType as EditableEventType, channel, checked); }}
                       aria-label={cell.locked
                         ? `${CHANNEL_LABEL[channel]}, ${meta.label}, locked until Team Chat ships`
