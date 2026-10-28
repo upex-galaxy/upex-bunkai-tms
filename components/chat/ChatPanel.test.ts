@@ -551,3 +551,56 @@ describe('ChatPanel — header Live only when the message binding is accepted (B
     expect(liveChip(container)).toBe('offline');
   });
 });
+
+// BK-1282 — the composer counted UTF-16 units (`draft.trim().length`), so 2007
+// characters with emoji showed 4002/4000 and disabled Send. It now counts code
+// points, the unit the API and the DB CHECK use.
+describe('ChatPanel — composer limit counts characters, not UTF-16 units (BK-1282)', () => {
+  const GRIN = '\u{1F600}';
+
+  async function type(container: HTMLElement, value: string): Promise<void> {
+    const composer = container.querySelector<HTMLTextAreaElement>('[data-testid="chat_composer"]');
+    if (!composer) { throw new Error('composer not rendered'); }
+    // React tracks the value through the native setter; a plain assignment
+    // would be swallowed and no onChange would fire.
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+    if (!descriptor?.set) { throw new Error('no native value setter'); }
+    await act(async () => {
+      descriptor.set?.call(composer, value);
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await flush();
+  }
+
+  function sendDisabled(container: HTMLElement): boolean {
+    const send = container.querySelector<HTMLButtonElement>('[data-testid="chat_send"]');
+    if (!send) { throw new Error('send button not rendered'); }
+    return send.disabled;
+  }
+
+  function overLimitText(container: HTMLElement): string | null {
+    return container.querySelector('[data-testid="chat_over_limit"]')?.textContent ?? null;
+  }
+
+  test('2007 characters with emoji stay under the limit and Send is enabled', async () => {
+    const container = await mount();
+    await answer('', page([], false));
+
+    await type(container, `BK-215 TC7a ${GRIN.repeat(1995)}`);
+    expect(overLimitText(container)).toBeNull();
+    expect(sendDisabled(container)).toBe(false);
+  });
+
+  test('exactly 4000 emoji are allowed; 4001 show 4001/4000 and disable Send', async () => {
+    const container = await mount();
+    await answer('', page([], false));
+
+    await type(container, GRIN.repeat(4000));
+    expect(overLimitText(container)).toBeNull();
+    expect(sendDisabled(container)).toBe(false);
+
+    await type(container, ` ${GRIN.repeat(4001)}\n`);
+    expect(overLimitText(container)).toBe('4001/4000');
+    expect(sendDisabled(container)).toBe(true);
+  });
+});

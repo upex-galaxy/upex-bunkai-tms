@@ -70,10 +70,18 @@ describeOrSkip('BK-215 — workspace chat isolation (RLS + RPC)', () => {
 
   afterAll(async () => {
     const admin = service();
-    if (workspaceId) { await admin.from('workspaces').delete().eq('id', workspaceId); }
-    for (const u of Object.values(users)) {
-      if (u.id) { await admin.auth.admin.deleteUser(u.id); }
+    // Try every delete, then fail loudly if any left a row behind.
+    const failures: string[] = [];
+    if (workspaceId) {
+      const { error } = await admin.from('workspaces').delete().eq('id', workspaceId);
+      if (error) { failures.push(`workspace ${workspaceId}: ${error.message}`); }
     }
+    for (const u of Object.values(users)) {
+      if (!u.id) { continue; }
+      const { error } = await admin.auth.admin.deleteUser(u.id);
+      if (error) { failures.push(`user ${u.email}: ${error.message}`); }
+    }
+    if (failures.length > 0) { throw new Error(`cleanup failed: ${failures.join('; ')}`); }
   }, 60_000);
 
   it('creates exactly one general channel with the workspace, visible to members only', async () => {
@@ -104,6 +112,17 @@ describeOrSkip('BK-215 — workspace chat isolation (RLS + RPC)', () => {
     expect((await member.from('chat_messages').insert({ ...base, body: '   ' })).error).not.toBeNull();
     expect((await member.from('chat_messages').insert({ ...base, body: 'a'.repeat(4001) })).error).not.toBeNull();
     expect((await member.from('chat_messages').insert({ ...base, body: 'a'.repeat(4000) })).error).toBeNull();
+  });
+
+  // BK-1282: the CHECK counts code points (char_length), not UTF-16 units, so
+  // 4000 emoji (8000 UTF-16 units) fit and 4001 do not. The app counts the same.
+  it('counts the 1..4000 bound in code points: 4000 emoji round-trip, 4001 are rejected', async () => {
+    const base = { channel_id: channelId, workspace_id: workspaceId, author_user_id: users.member.id };
+    const body = '\u{1F600}'.repeat(4000);
+    const ok = await member.from('chat_messages').insert({ ...base, body }).select('body').single();
+    expect(ok.error).toBeNull();
+    expect(ok.data?.body).toBe(body);
+    expect((await member.from('chat_messages').insert({ ...base, body: '\u{1F600}'.repeat(4001) })).error).not.toBeNull();
   });
 
   it('viewer reads full history in seq order; outsider reads nothing', async () => {
