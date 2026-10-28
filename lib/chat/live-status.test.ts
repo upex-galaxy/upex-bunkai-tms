@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { bindingVerdictFromSystem, chatLiveState, shouldReconcileOnBindingVerdict } from './live-status';
+import { bindingVerdictFromSystem, chatLiveState, isBindingUnavailable, shouldReconcileOnBindingVerdict } from './live-status';
 
 // BK-1281 — the chat header must not say Live while the message binding failed.
 
@@ -34,6 +34,18 @@ describe('chatLiveState', () => {
       expect(chatLiveState(status, 'ok')).toBe('offline');
       expect(chatLiveState(status, 'pending')).toBe('offline');
     }
+  });
+});
+
+describe('isBindingUnavailable', () => {
+  it('is true only for a rejected binding on a joined channel, never for a transport drop', () => {
+    expect(isBindingUnavailable('SUBSCRIBED', 'error')).toBe(true);
+    expect(isBindingUnavailable('SUBSCRIBED', 'ok')).toBe(false);
+    expect(isBindingUnavailable('SUBSCRIBED', 'pending')).toBe(false);
+    for (const status of ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'] as const) {
+      expect(isBindingUnavailable(status, 'error')).toBe(false);
+    }
+    expect(isBindingUnavailable(null, 'error')).toBe(false);
   });
 });
 

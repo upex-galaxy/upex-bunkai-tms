@@ -144,6 +144,10 @@ function offlineBanner(container: HTMLElement): boolean {
   return container.querySelector('[data-testid="chat_offline_banner"]') !== null;
 }
 
+function bannerText(container: HTMLElement): string {
+  return container.querySelector('[data-testid="chat_offline_banner"]')?.textContent?.trim() ?? '';
+}
+
 // The query of every `/messages` GET, in order (`''` = the newest page).
 function messageQueries(): string[] {
   return messageRequests.map(r => r.url.search.replace(/^\?/, ''));
@@ -394,6 +398,8 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
 describe('ChatPanel — header Live only when the message binding is accepted (BK-1281)', () => {
   const BINDING_ERROR = 'Unable to subscribe to changes with given parameters: invalid column for filter workspace_id';
   const OK = 'Subscribed to PostgreSQL';
+  const UNAVAILABLE_COPY = 'Live updates are unavailable. Reload the page to retry.';
+  const RECONNECTING_COPY = 'Connection lost. Reconnecting';
 
   // Page 11..40 loaded, joined, gap catch-up answered empty: a settled dock.
   async function settled(): Promise<HTMLElement> {
@@ -404,13 +410,34 @@ describe('ChatPanel — header Live only when the message binding is accepted (B
     return container;
   }
 
-  test('SUBSCRIBED + postgres_changes system error: not Live, offline banner shown', async () => {
+  test('SUBSCRIBED + postgres_changes system error: not Live, banner says live updates are unavailable', async () => {
     const container = await mount();
     await status('SUBSCRIBED');
     await system('postgres_changes', 'error', BINDING_ERROR);
 
     expect(liveChip(container)).toBe('offline');
     expect(offlineBanner(container)).toBe(true);
+    expect(bannerText(container)).toBe(UNAVAILABLE_COPY);
+  });
+
+  test('a transport drop keeps the reconnecting copy', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await system('postgres_changes', 'ok', OK);
+    await status('CHANNEL_ERROR');
+
+    expect(liveChip(container)).toBe('offline');
+    expect(bannerText(container)).toStartWith(RECONNECTING_COPY);
+    expect(bannerText(container)).not.toContain('unavailable');
+  });
+
+  test('a binding error followed by a transport drop shows the reconnecting copy (the rejoin re-subscribes)', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await system('postgres_changes', 'error', BINDING_ERROR);
+    await status('CLOSED');
+
+    expect(bannerText(container)).toStartWith(RECONNECTING_COPY);
   });
 
   test('SUBSCRIBED alone is still connecting; the postgres_changes ok frame makes it Live', async () => {

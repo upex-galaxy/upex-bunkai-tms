@@ -55,6 +55,16 @@ export function chatLiveState(
   return binding === 'ok' ? 'live' : 'connecting';
 }
 
+// Offline because the server rejected the binding on a joined channel, as
+// opposed to a transport drop that realtime-js reconnects by itself. The
+// member is told live updates are unavailable instead of "reconnecting".
+export function isBindingUnavailable(
+  channel: RealtimeConnectionStatus | null,
+  binding: ChangesBindingStatus,
+): boolean {
+  return channel === 'SUBSCRIBED' && binding === 'error';
+}
+
 // Every `ok` verdict on a joined channel runs the catch-up: the first one
 // (changes committed between SUBSCRIBED and the binding going active), a
 // recovery after an error, and a repeated one (a silent CDC re-subscribe).

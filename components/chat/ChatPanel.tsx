@@ -12,7 +12,7 @@ import {
   refKey,
   textWithoutRefs,
 } from '@lib/chat/entity-refs';
-import { bindingVerdictFromSystem, chatLiveState, shouldReconcileOnBindingVerdict } from '@lib/chat/live-status';
+import { bindingVerdictFromSystem, chatLiveState, isBindingUnavailable, shouldReconcileOnBindingVerdict } from '@lib/chat/live-status';
 import {
   buildChatChannelConfig,
   canDeleteMessage,
@@ -107,6 +107,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [live, setLive] = useState<ChatLiveState>('connecting');
+  // BK-1281: offline because the server rejected the message binding (not a
+  // transport drop realtime-js reconnects by itself).
+  const [bindingUnavailable, setBindingUnavailable] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -374,6 +377,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     let binding: ChangesBindingStatus = 'pending';
     const publish = (status: RealtimeConnectionStatus | null) => {
       setLive(chatLiveState(status, binding));
+      setBindingUnavailable(isBindingUnavailable(status, binding));
     };
     const channel = supabase.channel(config.channelName);
     channel.on<Record<string, unknown>>(
@@ -654,7 +658,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       {live === 'offline' && (
         <div data-testid="chat_offline_banner" role="status" aria-live="polite" className="flex items-center gap-2 border-b border-blocked/40 bg-surface-3 px-4 py-2 text-xs text-blocked">
           <WifiOff size={12} aria-hidden="true" />
-          Connection lost. Reconnecting — missed messages will appear automatically.
+          {bindingUnavailable
+            ? 'Live updates are unavailable. Reload the page to retry.'
+            : 'Connection lost. Reconnecting — missed messages will appear automatically.'}
         </div>
       )}
 
