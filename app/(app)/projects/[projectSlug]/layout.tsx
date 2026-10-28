@@ -78,24 +78,34 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
   // out of the active tree and every downstream listing. BK-1233: every
   // tree read is paged past PostgREST's 1000-row cap (`workbench-tree-query`).
-  const modules = await fetchTreeModules(supabase, project.id);
-  const moduleIds = modules.map(m => m.id);
+  // Only stories (by module) and ACs (by story) depend on an earlier read, so
+  // that chain runs alongside the independent reads.
+  const loadModuleChain = async () => {
+    const modules = await fetchTreeModules(supabase, project.id);
+    const stories = await fetchTreeStories(supabase, modules.map(m => m.id));
+    const acceptanceCriteria = await fetchTreeAcceptanceCriteria(supabase, stories.map(s => s.id));
+    return { modules, stories, acceptanceCriteria };
+  };
 
   // Workspace Tests (BK-27) feed the explorer's flat Tests group; BK-148 adds
   // the project's environments for the explorer's Environments group (name asc,
   // mirroring the GET route's stable order).
-  const [stories, atcs, testsData, { data: environmentsData }] = await Promise.all([
-    fetchTreeStories(supabase, moduleIds),
-    fetchTreeAtcs(supabase, project.id),
-    fetchExplorerTests(supabase, activeWorkspaceId),
-    supabase
+  const loadEnvironments = async () => {
+    const { data, error } = await supabase
       .from('project_environments')
       .select('id, name, created_at')
       .eq('project_id', project.id)
-      .order('name', { ascending: true }),
-  ]);
+      .order('name', { ascending: true });
+    if (error) { throw new Error(error.message); }
+    return data;
+  };
 
-  const acceptanceCriteria = await fetchTreeAcceptanceCriteria(supabase, stories.map(s => s.id));
+  const [{ modules, stories, acceptanceCriteria }, atcs, testsData, environmentsData] = await Promise.all([
+    loadModuleChain(),
+    fetchTreeAtcs(supabase, project.id),
+    fetchExplorerTests(supabase, activeWorkspaceId),
+    loadEnvironments(),
+  ]);
 
   const tree = buildModuleTree({
     modules,
