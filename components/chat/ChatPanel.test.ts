@@ -114,9 +114,9 @@ async function status(next: string): Promise<void> {
   await flush();
 }
 
-async function deliver(row: ChatMessage): Promise<void> {
+async function deliver(row: ChatMessage, eventType = 'INSERT'): Promise<void> {
   const channel = messagesChannel();
-  await act(async () => { channel.changeHandler?.({ eventType: 'INSERT', new: row }); });
+  await act(async () => { channel.changeHandler?.({ eventType, new: row }); });
   await flush();
 }
 
@@ -281,5 +281,19 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
     await flush();
     expect(messageQueries()).toEqual(['', '', 'after_seq=40']);
     expect(container.querySelector('[data-testid="chat_error"]')).toBeNull();
+  });
+  test('an edit or tombstone of a message that is not loaded is ignored; one of a held message is applied', async () => {
+    const container = await mount();
+    await answer('', page(range(11, 40), true));
+    await status('SUBSCRIBED');
+    await answer('after_seq=40', page([], false));
+
+    await deliver({ ...msg(5), body: 'edited old', edited_at: '2026-10-28T11:00:00.000Z' }, 'UPDATE');
+    await deliver({ ...msg(6), body: '', deleted_at: '2026-10-28T11:00:00.000Z' }, 'UPDATE');
+    expect(renderedSeqs(container)[0]).toBe(11);
+    expect(renderedSeqs(container)).toHaveLength(30);
+
+    await deliver({ ...msg(20), body: 'edited twenty', edited_at: '2026-10-28T11:00:00.000Z' }, 'UPDATE');
+    expect(container.textContent).toContain('edited twenty');
   });
 });

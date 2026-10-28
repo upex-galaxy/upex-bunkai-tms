@@ -299,10 +299,14 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       (payload) => {
         const row = payload.new as unknown as ChatMessage;
         if (!row?.id) { return; }
+        const isInsert = payload.eventType === 'INSERT';
+        // An edit / tombstone of a message we never loaded (older history) is
+        // not news: inserting it would put a stray row at the top and make the
+        // scroll-up page start from the wrong `before_seq`, skipping history.
+        if (!isInsert && !messagesRef.current.some(m => m.id === row.id)) { return; }
         if (row.author_user_id && !membersRef.current.some(m => m.user_id === row.author_user_id)) {
           void loadRoster();
         }
-        const isInsert = payload.eventType === 'INSERT';
         const merged = mergeMessages(messagesRef.current, [row]);
         if (merged === messagesRef.current) { return; }
         messagesRef.current = merged;
