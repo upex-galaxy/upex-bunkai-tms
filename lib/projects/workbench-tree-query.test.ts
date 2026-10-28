@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'bun:test';
 import {
   batchIds,
+  dedupeById,
   fetchExplorerTests,
   fetchTreeAcceptanceCriteria,
   fetchTreeAtcs,
@@ -29,9 +30,13 @@ interface FakeOptions {
   total: (call: Call) => number
   // Fail the request whose range starts at this offset.
   failAtOffset?: number
+  // Rows inserted ahead of the read window after the first page was served:
+  // every later window starts this many rows earlier, so it repeats the tail
+  // of the previous page (the offset-paging race).
+  shiftAfterFirstPage?: number
 }
 
-function fakeDb({ total, failAtOffset }: FakeOptions) {
+function fakeDb({ total, failAtOffset, shiftAfterFirstPage = 0 }: FakeOptions) {
   const calls: Call[] = [];
   const db = {
     from(table: string) {
@@ -48,10 +53,11 @@ function fakeDb({ total, failAtOffset }: FakeOptions) {
           if (failAtOffset === from) {
             return { data: null, error: { message: `page at ${from} failed` } };
           }
-          const n = total(call);
+          const shift = from > 0 ? shiftAfterFirstPage : 0;
+          const n = total(call) + shift;
           const length = Math.max(0, Math.min(to + 1, n) - from);
           const batchTag = String((call.ops.find(op => op[0] === 'in')?.[2] as string[] | undefined)?.[0] ?? '');
-          const data = Array.from({ length }, (_, i) => ({ id: `${batchTag}${from + i}` }));
+          const data = Array.from({ length }, (_, i) => ({ id: `${batchTag}${from - shift + i}` }));
           return { data, error: null };
         },
       };
@@ -114,6 +120,13 @@ describe('BK-1233 — fetchTreeAtcs (the workbench ATC tree read)', () => {
     const { db } = fakeDb({ total: () => 3000, failAtOffset: 1000 });
     const error = await rejection(fetchTreeAtcs(db, 'project-1'));
     expect(error.message).toBe('page at 1000 failed');
+  });
+
+  it('returns each ATC once when a concurrent insert shifts the offset windows (no duplicate React keys)', async () => {
+    const { db } = fakeDb({ total: () => 2500, shiftAfterFirstPage: 1 });
+    const atcs = await fetchTreeAtcs(db, 'project-1');
+
+    expect(atcs.map(a => a.id)).toEqual(Array.from({ length: 2500 }, (_, i) => String(i)));
   });
 
   it('selects exactly the Atc fields — never `*`, so the search tsvector stays out of the payload', async () => {
@@ -181,7 +194,10 @@ describe('BK-1233 — the sibling tree reads are paged too', () => {
     for (const call of calls) {
       expect(ops(call, 'in')[0]?.[1]).toBe('module_id');
       expect(ops(call, 'is')).toEqual([['is', 'archived_at', null]]);
-      expect(ops(call, 'order').at(-1)).toEqual(['order', 'id', { ascending: true }]);
+      expect(ops(call, 'order')).toEqual([
+        ['order', 'created_at', { ascending: true }],
+        ['order', 'id', { ascending: true }],
+      ]);
     }
   });
 
@@ -203,6 +219,10 @@ describe('BK-1233 — the sibling tree reads are paged too', () => {
       expect(ops(call, 'in')[0]?.[1]).toBe('user_story_id');
       expect((ops(call, 'in')[0]?.[2] as string[]).length).toBeLessThanOrEqual(TREE_IN_FILTER_BATCH);
       expect(ops(call, 'is')).toEqual([['is', 'archived_at', null]]);
+      expect(ops(call, 'order')).toEqual([
+        ['order', 'position', { ascending: true }],
+        ['order', 'id', { ascending: true }],
+      ]);
     }
   });
 
@@ -210,6 +230,20 @@ describe('BK-1233 — the sibling tree reads are paged too', () => {
     const { db } = fakeDb({ total: () => 1500, failAtOffset: 1000 });
     const error = await rejection(fetchTreeAcceptanceCriteria(db, ['s1', 's2']));
     expect(error.message).toBe('page at 1000 failed');
+  });
+});
+
+describe('dedupeById', () => {
+  it('keeps the first occurrence of each id, in order', () => {
+    const rows = [{ id: 'a', n: 1 }, { id: 'b', n: 2 }, { id: 'a', n: 3 }, { id: 'c', n: 4 }, { id: 'b', n: 5 }];
+    expect(dedupeById(rows)).toEqual([{ id: 'a', n: 1 }, { id: 'b', n: 2 }, { id: 'c', n: 4 }]);
+  });
+
+  it('dedupes across batches too (the stories and AC reads)', async () => {
+    const { db } = fakeDb({ total: () => 1200, shiftAfterFirstPage: 3 });
+    const stories = await fetchTreeStories(db, ['m-']);
+    expect(stories).toHaveLength(1200);
+    expect(new Set(stories.map(s => s.id)).size).toBe(1200);
   });
 });
 

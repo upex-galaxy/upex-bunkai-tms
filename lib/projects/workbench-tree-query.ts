@@ -9,8 +9,14 @@ import { fetchAllPages } from '@lib/atcs/export-query';
 // with no error, so the layout's bare `.select()`s showed at most 1000 ATCs per
 // Project and silently dropped the rest from every module (same cap BK-315 and
 // BK-637 fixed for the CSV export). Every read here is drained to completion
-// with `fetchAllPages`, under an ordering that ends in the primary key so the
-// offset windows neither skip nor repeat a row between pages.
+// with `fetchAllPages`, under an ordering that ends in the primary key, so on
+// a data set that does not change mid-read the offset windows neither skip
+// nor repeat a row. Offset paging is not a snapshot, though: a row inserted or
+// restored ahead of the window while the read runs shifts the later pages, so
+// a row can come back twice. Every loader therefore dedupes by `id` (first
+// occurrence wins), which keeps React keys unique. A concurrent archive can
+// still drop one row from this render; the next refresh restores it. Keyset
+// pagination would close that gap and is a follow-up.
 //
 // The two `.in()` reads are also sent in batches: PostgREST puts the id list
 // in the GET query string (~40 URL-encoded bytes per uuid) against a gateway
@@ -46,6 +52,17 @@ export function batchIds(ids: string[], size: number = TREE_IN_FILTER_BATCH): st
   return batches;
 }
 
+// Keeps the first row seen for each `id`. See the header for why offset
+// paging can return the same row twice.
+export function dedupeById<T extends { id: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (seen.has(row.id)) { return false; }
+    seen.add(row.id);
+    return true;
+  });
+}
+
 async function fetchInBatches<T>(
   ids: string[],
   fetchBatch: (batch: string[]) => Promise<T[]>,
@@ -56,7 +73,7 @@ async function fetchInBatches<T>(
 
 // Live modules of the Project, in display order.
 export async function fetchTreeModules(db: Db, projectId: string): Promise<Module[]> {
-  return fetchAllPages<Module>(async (offset, limit) => {
+  return dedupeById(await fetchAllPages<Module>(async (offset, limit) => {
     const { data, error } = await db
       .from('modules')
       .select('*')
@@ -66,14 +83,14 @@ export async function fetchTreeModules(db: Db, projectId: string): Promise<Modul
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
     return { data: data as Module[] | null, error };
-  });
+  }));
 }
 
 // Live ATCs of the Project. Neither the explorer nor the table sorts ATCs, so
 // fetch order is display order: creation order, as the unordered read
 // returned them in practice.
 export async function fetchTreeAtcs(db: Db, projectId: string): Promise<Atc[]> {
-  return fetchAllPages<Atc>(async (offset, limit) => {
+  return dedupeById(await fetchAllPages<Atc>(async (offset, limit) => {
     const { data, error } = await db
       .from('atcs')
       .select(TREE_ATC_COLUMNS)
@@ -83,13 +100,13 @@ export async function fetchTreeAtcs(db: Db, projectId: string): Promise<Atc[]> {
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
     return { data: data as Atc[] | null, error };
-  });
+  }));
 }
 
 // Live stories of the given (live) modules. Batched by module, so every
 // module's stories come back from one batch, in creation order.
 export async function fetchTreeStories(db: Db, moduleIds: string[]): Promise<UserStory[]> {
-  return fetchInBatches(moduleIds, async batch => fetchAllPages<UserStory>(async (offset, limit) => {
+  return dedupeById(await fetchInBatches(moduleIds, async batch => fetchAllPages<UserStory>(async (offset, limit) => {
     const { data, error } = await db
       .from('user_stories')
       .select('*')
@@ -99,7 +116,7 @@ export async function fetchTreeStories(db: Db, moduleIds: string[]): Promise<Use
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
     return { data: data as UserStory[] | null, error };
-  }));
+  })));
 }
 
 // Live ACs of the given (live) stories. `buildModuleTree` re-sorts each
@@ -108,7 +125,7 @@ export async function fetchTreeAcceptanceCriteria(
   db: Db,
   storyIds: string[],
 ): Promise<AcceptanceCriterion[]> {
-  return fetchInBatches(storyIds, async batch => fetchAllPages<AcceptanceCriterion>(async (offset, limit) => {
+  return dedupeById(await fetchInBatches(storyIds, async batch => fetchAllPages<AcceptanceCriterion>(async (offset, limit) => {
     const { data, error } = await db
       .from('acceptance_criteria')
       .select('*')
@@ -118,12 +135,12 @@ export async function fetchTreeAcceptanceCriteria(
       .order('id', { ascending: true })
       .range(offset, offset + limit - 1);
     return { data: data as AcceptanceCriterion[] | null, error };
-  }));
+  })));
 }
 
 // The workspace's Tests for the explorer's Tests group (BK-27), newest first.
 export async function fetchExplorerTests(db: Db, workspaceId: string): Promise<ExplorerTestSourceRow[]> {
-  return fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
+  return dedupeById(await fetchAllPages<ExplorerTestSourceRow>(async (offset, limit) => {
     const { data, error } = await db
       .from('tests')
       .select('id, title, created_at, test_steps(count)')
@@ -132,5 +149,5 @@ export async function fetchExplorerTests(db: Db, workspaceId: string): Promise<E
       .order('id', { ascending: false })
       .range(offset, offset + limit - 1);
     return { data: data as ExplorerTestSourceRow[] | null, error };
-  });
+  }));
 }
