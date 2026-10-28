@@ -30,6 +30,7 @@ import {
 } from '@lib/chat/messages';
 import { shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
 import { createClient } from '@lib/supabase/client';
+import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
 import { APP_URLS } from '@lib/urls';
 import { cn } from '@lib/utils';
 import { Hash, Link2, Loader2, Lock, Pencil, SendHorizontal, Trash2, Users, WifiOff, X } from 'lucide-react';
@@ -276,17 +277,23 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         if (isInsert && !stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
       },
     );
-    channel.subscribe((status) => {
-      const next = String(status) as RealtimeConnectionStatus;
-      setLive(next === 'SUBSCRIBED' ? 'live' : 'offline');
-      if (shouldReconcileOnStatusChange(prev, next)) { void catchUp(); }
-      prev = next;
+    // BK-1279: join as the signed-in user, never as anon.
+    const cancelJoin = subscribeWithUserAuth({
+      realtime: supabase.realtime,
+      channel,
+      callback: (status) => {
+        const next = String(status) as RealtimeConnectionStatus;
+        setLive(next === 'SUBSCRIBED' ? 'live' : 'offline');
+        if (shouldReconcileOnStatusChange(prev, next)) { void catchUp(); }
+        prev = next;
+      },
     });
 
     const onOnline = () => { void catchUp(); };
     window.addEventListener('online', onOnline);
     return () => {
       window.removeEventListener('online', onOnline);
+      cancelJoin();
       void supabase.removeChannel(channel);
     };
   }, [config, catchUp, loadRoster, userId]);
@@ -298,10 +305,17 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     channel.on('presence', { event: 'sync' }, () => {
       setOnline(new Set(Object.keys(channel.presenceState())));
     });
-    channel.subscribe((status) => {
-      if (String(status) === 'SUBSCRIBED') { void channel.track({ online_at: new Date().toISOString() }); }
+    const cancelJoin = subscribeWithUserAuth({
+      realtime: supabase.realtime,
+      channel,
+      callback: (status) => {
+        if (String(status) === 'SUBSCRIBED') { void channel.track({ online_at: new Date().toISOString() }); }
+      },
     });
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      cancelJoin();
+      void supabase.removeChannel(channel);
+    };
   }, [config, userId]);
 
   // Freeze the unread separator at the moment the panel opens; clear on close.

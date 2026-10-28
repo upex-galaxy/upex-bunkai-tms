@@ -16,6 +16,7 @@ import { buildNotificationsChannelConfig } from '@lib/notifications/realtime-not
 import { formatUnreadBadgeCount, shouldResetNotificationsOnWorkspaceChange } from '@lib/notifications/view';
 import { createRefetchScheduler, shouldReconcileOnStatusChange } from '@lib/runs/realtime-run-channel';
 import { createClient } from '@lib/supabase/client';
+import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
 import { cn } from '@lib/utils';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
@@ -309,15 +310,21 @@ export function AppSidebar({ workspaces, activeWorkspaceId, projects, userEmail,
         () => scheduler.trigger(),
       );
     }
-    channel.subscribe((status) => {
-      const next = String(status) as RealtimeConnectionStatus;
-      if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
-        scheduler.trigger();
-      }
-      prevRealtimeStatusRef.current = next;
+    // BK-1279: join as the signed-in user, never as anon.
+    const cancelJoin = subscribeWithUserAuth({
+      realtime: supabase.realtime,
+      channel,
+      callback: (status) => {
+        const next = String(status) as RealtimeConnectionStatus;
+        if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
+          scheduler.trigger();
+        }
+        prevRealtimeStatusRef.current = next;
+      },
     });
 
     return () => {
+      cancelJoin();
       scheduler.cancel();
       void supabase.removeChannel(channel);
     };
