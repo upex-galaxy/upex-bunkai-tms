@@ -63,6 +63,11 @@ interface ChatPanelProps {
 type LiveState = 'connecting' | 'live' | 'offline';
 
 const SCROLL_STICK_PX = 48;
+// BK-1283: a catch-up stops after this many server pages (200 each); the rest
+// is resumed by the next reconcile from where it stopped.
+const CHAT_CATCH_UP_MAX_PAGES = 10;
+// BK-1283: one automatic retry of a failed newest page, after this delay.
+const CHAT_PAGE_RETRY_MS = 3000;
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -210,50 +215,118 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     if (res.ok) { setMembers(res.data.members); }
   }, [base]);
 
-  // Initial load: roster + newest page. Last-seen is read before painting so
-  // the separator is computed against what the member had actually seen.
+  // BK-1283: the catch-up cursor is unknown until the newest page has landed.
+  // A reconcile requested before that (the first SUBSCRIBED usually fires
+  // first) is parked and run once from the page's newest seq, so it closes the
+  // page-to-join gap instead of asking for `after_seq=0` (the whole channel).
+  const historyRef = useRef<'loading' | 'ready' | 'failed'>('loading');
+  const catchUpPendingRef = useRef(false);
+  // Lowest seq a catch-up started from but never finished (failed, or stopped
+  // at its page cap). The next reconcile resumes there, so a newer realtime row
+  // cannot hide a message that was never fetched.
+  const unconfirmedFromRef = useRef<number | null>(null);
+  const pageRetryTimerRef = useRef<number | null>(null);
+  const pageAutoRetriedRef = useRef(false);
+  // The delayed retry calls the newest-page loader through this ref (the loader
+  // is defined below and schedules the retry itself).
+  const loadLatestPageRef = useRef<() => Promise<void>>(async () => {});
+  const unmountedRef = useRef(false);
   useEffect(() => {
-    let cancelled = false;
-    const stored = Number(window.localStorage.getItem(seenStorageKey(workspaceId, userId)) ?? '0');
-    setLastSeen(Number.isFinite(stored) ? stored : 0);
-    lastSeenLoaded.current = true;
-    void (async () => {
-      setLoading(true);
-      setLoadError(null);
-      const [, page] = await Promise.all([
-        loadRoster(),
-        apiJson<{ items: ChatItem[], has_more: boolean }>(`${base}/messages`),
-      ]);
-      if (cancelled) { return; }
-      if (page.ok) {
-        messagesRef.current = page.data.items;
-        setMessages(page.data.items);
-        setHasMore(page.data.has_more);
-      }
-      else {
-        setLoadError(page.message);
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [workspaceId, userId, base, loadRoster]);
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      if (pageRetryTimerRef.current !== null) { window.clearTimeout(pageRetryTimerRef.current); }
+    };
+  }, []);
 
-  // Catch up everything newer than the last message we hold (reconnect, tab
-  // wake). Loops while the server reports more than its 200 cap.
-  const catchUp = useCallback(async () => {
-    for (let i = 0; i < 10; i++) {
-      const after = lastSeq(messagesRef.current);
+  // Catch up everything newer than `from` (default: the newest message held,
+  // or an unfinished catch-up's cursor when lower) after a reconnect or tab
+  // wake. Loops while the server reports more than its 200 cap, advancing the
+  // keyset cursor by each response's newest seq.
+  const catchUp = useCallback(async (from?: number) => {
+    const held = lastSeq(messagesRef.current);
+    const unconfirmed = unconfirmedFromRef.current;
+    let after = from ?? (unconfirmed === null ? held : Math.min(unconfirmed, held));
+    unconfirmedFromRef.current = after;
+    for (let i = 0; i < CHAT_CATCH_UP_MAX_PAGES; i++) {
+      if (unmountedRef.current) { return; }
       const res = await apiJson<{ items: ChatItem[], has_more: boolean }>(`${base}/messages?after_seq=${after}`);
-      if (!res.ok) { return; }
+      if (unmountedRef.current || !res.ok) { return; }
       const incoming = res.data.items;
       if (incoming.length > 0) {
         const merged = mergeMessages(messagesRef.current, incoming);
         messagesRef.current = merged;
         setMessages(merged);
+        after = Math.max(after, lastSeq(incoming));
+        unconfirmedFromRef.current = after;
       }
-      if (!res.data.has_more || incoming.length === 0) { return; }
+      if (!res.data.has_more || incoming.length === 0) {
+        unconfirmedFromRef.current = null;
+        return;
+      }
     }
   }, [base]);
+
+  // Newest page (default `limit`, 30). Merges into what is already held: a
+  // realtime row that landed while the request was in flight must survive. A
+  // failed page is retried once automatically after a short delay, so a parked
+  // catch-up does not wait for the next reconnect.
+  const loadLatestPage = useCallback(async () => {
+    if (pageRetryTimerRef.current !== null) {
+      window.clearTimeout(pageRetryTimerRef.current);
+      pageRetryTimerRef.current = null;
+    }
+    historyRef.current = 'loading';
+    setLoading(true);
+    setLoadError(null);
+    const [, page] = await Promise.all([
+      loadRoster(),
+      apiJson<{ items: ChatItem[], has_more: boolean }>(`${base}/messages`),
+    ]);
+    if (unmountedRef.current) { return; }
+    if (page.ok) {
+      const merged = mergeMessages(messagesRef.current, page.data.items);
+      messagesRef.current = merged;
+      setMessages(merged);
+      setHasMore(page.data.has_more);
+      historyRef.current = 'ready';
+      if (catchUpPendingRef.current) {
+        catchUpPendingRef.current = false;
+        void catchUp(lastSeq(page.data.items));
+      }
+    }
+    else {
+      historyRef.current = 'failed';
+      setLoadError(page.message);
+      if (!pageAutoRetriedRef.current) {
+        pageAutoRetriedRef.current = true;
+        pageRetryTimerRef.current = window.setTimeout(() => {
+          pageRetryTimerRef.current = null;
+          void loadLatestPageRef.current();
+        }, CHAT_PAGE_RETRY_MS);
+      }
+    }
+    setLoading(false);
+  }, [base, loadRoster, catchUp]);
+  useEffect(() => { loadLatestPageRef.current = loadLatestPage; }, [loadLatestPage]);
+
+  // Reconnect / tab wake. Never builds `after_seq` from an unknown cursor: while
+  // the newest page is in flight the catch-up waits for it, and a failed first
+  // page is retried instead of downloading the whole history.
+  const reconcile = useCallback(() => {
+    if (historyRef.current === 'ready') { void catchUp(); return; }
+    catchUpPendingRef.current = true;
+    if (historyRef.current === 'failed') { void loadLatestPage(); }
+  }, [catchUp, loadLatestPage]);
+
+  // Initial load: roster + newest page. Last-seen is read before painting so
+  // the separator is computed against what the member had actually seen.
+  useEffect(() => {
+    const stored = Number(window.localStorage.getItem(seenStorageKey(workspaceId, userId)) ?? '0');
+    setLastSeen(Number.isFinite(stored) ? stored : 0);
+    lastSeenLoaded.current = true;
+    void loadLatestPage();
+  }, [workspaceId, userId, loadLatestPage]);
 
   // Realtime: new messages + reconnect reconciliation.
   useEffect(() => {
@@ -266,10 +339,14 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       (payload) => {
         const row = payload.new as unknown as ChatMessage;
         if (!row?.id) { return; }
+        const isInsert = payload.eventType === 'INSERT';
+        // An edit / tombstone of a message we never loaded (older history) is
+        // not news: inserting it would put a stray row at the top and make the
+        // scroll-up page start from the wrong `before_seq`, skipping history.
+        if (!isInsert && !messagesRef.current.some(m => m.id === row.id)) { return; }
         if (row.author_user_id && !membersRef.current.some(m => m.user_id === row.author_user_id)) {
           void loadRoster();
         }
-        const isInsert = payload.eventType === 'INSERT';
         const merged = mergeMessages(messagesRef.current, [row]);
         if (merged === messagesRef.current) { return; }
         messagesRef.current = merged;
@@ -284,19 +361,19 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       callback: (status) => {
         const next = String(status) as RealtimeConnectionStatus;
         setLive(next === 'SUBSCRIBED' ? 'live' : 'offline');
-        if (shouldReconcileOnStatusChange(prev, next)) { void catchUp(); }
+        if (shouldReconcileOnStatusChange(prev, next)) { reconcile(); }
         prev = next;
       },
     });
 
-    const onOnline = () => { void catchUp(); };
+    const onOnline = () => { reconcile(); };
     window.addEventListener('online', onOnline);
     return () => {
       window.removeEventListener('online', onOnline);
       cancelJoin();
       void supabase.removeChannel(channel);
     };
-  }, [config, catchUp, loadRoster, userId]);
+  }, [config, reconcile, loadRoster, userId]);
 
   // Presence: who is online right now (client-side, no DB writes).
   useEffect(() => {
