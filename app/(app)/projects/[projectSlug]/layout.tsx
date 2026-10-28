@@ -1,7 +1,13 @@
-import type { Atc, Module, UserStory } from '@lib/types';
 import type { ReactNode } from 'react';
 import type { ExplorerEnvironmentItem, ExplorerTestItem } from './project-explorer';
 import { ACTIVE_WORKSPACE_COOKIE } from '@lib/api/workspace-cookie';
+import {
+  fetchExplorerTests,
+  fetchTreeAcceptanceCriteria,
+  fetchTreeAtcs,
+  fetchTreeModules,
+  fetchTreeStories,
+} from '@lib/projects/workbench-tree-query';
 import { createClient } from '@lib/supabase/server';
 import { buildModuleTree } from '@lib/tree';
 import { resolveActiveWorkspaceId } from '@lib/workspaces/active';
@@ -70,49 +76,41 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
   }
 
   // `archived_at IS NULL` keeps soft-deleted (BK-10) modules and their cascade
-  // out of the active tree and every downstream listing.
-  const { data: modulesData } = await supabase
-    .from('modules')
-    .select('*')
-    .eq('project_id', project.id)
-    .is('archived_at', null)
-    .order('position', { ascending: true });
-
-  const moduleIds = (modulesData ?? []).map(m => m.id);
+  // out of the active tree and every downstream listing. BK-1233: every
+  // tree read is paged past PostgREST's 1000-row cap (`workbench-tree-query`).
+  // Only stories (by module) and ACs (by story) depend on an earlier read, so
+  // that chain runs alongside the independent reads.
+  const loadModuleChain = async () => {
+    const modules = await fetchTreeModules(supabase, project.id);
+    const stories = await fetchTreeStories(supabase, modules.map(m => m.id));
+    const acceptanceCriteria = await fetchTreeAcceptanceCriteria(supabase, stories.map(s => s.id));
+    return { modules, stories, acceptanceCriteria };
+  };
 
   // Workspace Tests (BK-27) feed the explorer's flat Tests group; BK-148 adds
   // the project's environments for the explorer's Environments group (name asc,
   // mirroring the GET route's stable order).
-  const [{ data: storiesData }, { data: atcsData }, { data: testsData }, { data: environmentsData }] = await Promise.all([
-    moduleIds.length > 0
-      ? supabase.from('user_stories').select('*').in('module_id', moduleIds).is('archived_at', null)
-      : Promise.resolve({ data: [] as UserStory[] }),
-    supabase.from('atcs').select('*').eq('project_id', project.id).is('archived_at', null),
-    supabase
-      .from('tests')
-      .select('id, title, created_at, test_steps(count)')
-      .eq('workspace_id', activeWorkspaceId)
-      .order('created_at', { ascending: false }),
-    supabase
+  const loadEnvironments = async () => {
+    const { data, error } = await supabase
       .from('project_environments')
       .select('id, name, created_at')
       .eq('project_id', project.id)
-      .order('name', { ascending: true }),
+      .order('name', { ascending: true });
+    if (error) { throw new Error(error.message); }
+    return data;
+  };
+
+  const [{ modules, stories, acceptanceCriteria }, atcs, testsData, environmentsData] = await Promise.all([
+    loadModuleChain(),
+    fetchTreeAtcs(supabase, project.id),
+    fetchExplorerTests(supabase, activeWorkspaceId),
+    loadEnvironments(),
   ]);
-
-  const storyIds = (storiesData ?? []).map(s => s.id);
-  const { data: acsData } = storyIds.length > 0
-    ? await supabase.from('acceptance_criteria').select('*').in('user_story_id', storyIds).is('archived_at', null)
-    : { data: [] };
-
-  const modules = (modulesData ?? []) as Module[];
-  const stories = (storiesData ?? []) as UserStory[];
-  const atcs = (atcsData ?? []) as Atc[];
 
   const tree = buildModuleTree({
     modules,
     stories,
-    acceptanceCriteria: acsData ?? [],
+    acceptanceCriteria,
     atcs,
   });
 
@@ -122,7 +120,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     module_path: moduleById.get(a.module_id)?.path ?? '—',
   }));
 
-  const tests: ExplorerTestItem[] = (testsData ?? []).map(t => ({
+  const tests: ExplorerTestItem[] = testsData.map(t => ({
     id: t.id,
     title: t.title,
     created_at: t.created_at,
