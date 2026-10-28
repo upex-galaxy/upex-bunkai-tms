@@ -1,21 +1,20 @@
 import { describe, expect, it } from 'bun:test';
-import { bindingStatusFromSystem, chatLiveState, isBindingRecovery } from './live-status';
+import { bindingVerdictFromSystem, chatLiveState, shouldReconcileOnBindingVerdict } from './live-status';
 
 // BK-1281 — the chat header must not say Live while the message binding failed.
 
-describe('bindingStatusFromSystem', () => {
+describe('bindingVerdictFromSystem', () => {
   it('reads ok and error from a postgres_changes system frame', () => {
-    expect(bindingStatusFromSystem({ extension: 'postgres_changes', status: 'ok', message: 'Subscribed to PostgreSQL' }, 'pending')).toBe('ok');
-    expect(bindingStatusFromSystem({ extension: 'postgres_changes', status: 'error', message: 'invalid column for filter workspace_id' }, 'ok')).toBe('error');
-    expect(bindingStatusFromSystem({ extension: 'postgres_changes', status: 'ok' }, 'error')).toBe('ok');
+    expect(bindingVerdictFromSystem({ extension: 'postgres_changes', status: 'ok', message: 'Subscribed to PostgreSQL' })).toBe('ok');
+    expect(bindingVerdictFromSystem({ extension: 'postgres_changes', status: 'error', message: 'invalid column for filter workspace_id' })).toBe('error');
   });
 
-  it('ignores frames for another extension, unknown statuses and empty payloads', () => {
-    expect(bindingStatusFromSystem({ extension: 'system', status: 'error', message: 'x' }, 'ok')).toBe('ok');
-    expect(bindingStatusFromSystem({ extension: 'system', status: 'ok' }, 'pending')).toBe('pending');
-    expect(bindingStatusFromSystem({ extension: 'postgres_changes', status: 'weird' }, 'pending')).toBe('pending');
-    expect(bindingStatusFromSystem(null, 'error')).toBe('error');
-    expect(bindingStatusFromSystem(undefined, 'ok')).toBe('ok');
+  it('carries no verdict for another extension, an unknown status or an empty payload', () => {
+    expect(bindingVerdictFromSystem({ extension: 'system', status: 'error', message: 'x' })).toBeNull();
+    expect(bindingVerdictFromSystem({ extension: 'system', status: 'ok' })).toBeNull();
+    expect(bindingVerdictFromSystem({ extension: 'postgres_changes', status: 'weird' })).toBeNull();
+    expect(bindingVerdictFromSystem(null)).toBeNull();
+    expect(bindingVerdictFromSystem(undefined)).toBeNull();
   });
 });
 
@@ -38,11 +37,11 @@ describe('chatLiveState', () => {
   });
 });
 
-describe('isBindingRecovery', () => {
-  it('is true only for error -> ok on a joined channel', () => {
-    expect(isBindingRecovery({ channel: 'SUBSCRIBED', previous: 'error', next: 'ok' })).toBe(true);
-    expect(isBindingRecovery({ channel: 'SUBSCRIBED', previous: 'pending', next: 'ok' })).toBe(false);
-    expect(isBindingRecovery({ channel: 'CLOSED', previous: 'error', next: 'ok' })).toBe(false);
-    expect(isBindingRecovery({ channel: 'SUBSCRIBED', previous: 'ok', next: 'error' })).toBe(false);
+describe('shouldReconcileOnBindingVerdict', () => {
+  it('is true for every ok verdict on a joined channel, and never for an error or an unjoined channel', () => {
+    expect(shouldReconcileOnBindingVerdict('SUBSCRIBED', 'ok')).toBe(true);
+    expect(shouldReconcileOnBindingVerdict('SUBSCRIBED', 'error')).toBe(false);
+    expect(shouldReconcileOnBindingVerdict('CLOSED', 'ok')).toBe(false);
+    expect(shouldReconcileOnBindingVerdict(null, 'ok')).toBe(false);
   });
 });

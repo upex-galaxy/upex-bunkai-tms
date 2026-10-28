@@ -11,17 +11,20 @@ import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 // - the server subscribes the binding to the database AFTER that reply and
 //   reports the result as a `system` frame on the same channel:
 //   `{ extension: 'postgres_changes', status: 'ok' | 'error', message }`.
-//   A failed subscription ("invalid column for filter workspace_id", a grant
-//   or RLS change, a CDC outage) never changes the channel status, so a UI
-//   reading `SUBSCRIBED` alone stays "Live" on a dead channel.
-// - On a retryable error the server keeps retrying on the same join and
-//   sends `ok` once it succeeds; a rejoin (after CLOSED / TIMED_OUT /
-//   CHANNEL_ERROR) sends a fresh `ok` or `error`.
+//   A rejected subscription ("invalid column for filter workspace_id", a
+//   grant or RLS change) never changes the channel status, so a UI reading
+//   `SUBSCRIBED` alone stays "Live" on a dead channel.
+// - A CDC outage on the server is NOT reported as an error: the server
+//   re-subscribes silently and sends `ok` again. Every `ok` therefore runs the
+//   catch-up, which is what recovers the changes committed during the outage.
+// - A retryable error is retried on the same join and ends in `ok`. A fatal
+//   error is not retried on that join; the next `access_token` push (the
+//   hourly token refresh) or a rejoin re-subscribes and sends a fresh verdict.
 
 export type ChatLiveState = 'connecting' | 'live' | 'offline';
 
 // What the server last said about the channel's `postgres_changes` binding
-// on the current join. `pending` until the first `system` frame arrives.
+// on the current join. `pending` until the first `system` verdict arrives.
 export type ChangesBindingStatus = 'pending' | 'ok' | 'error';
 
 export interface RealtimeSystemPayload {
@@ -30,16 +33,13 @@ export interface RealtimeSystemPayload {
   message?: unknown
 }
 
-// The binding status after a `system` frame. Frames for another extension
-// (e.g. `system`) and unknown statuses leave it unchanged.
-export function bindingStatusFromSystem(
-  payload: RealtimeSystemPayload | null | undefined,
-  current: ChangesBindingStatus,
-): ChangesBindingStatus {
-  if (payload?.extension !== 'postgres_changes') { return current; }
+// The binding verdict a `system` frame carries, or null when it carries none
+// (another extension such as `system`, an unknown status, an empty payload).
+export function bindingVerdictFromSystem(payload: RealtimeSystemPayload | null | undefined): 'ok' | 'error' | null {
+  if (payload?.extension !== 'postgres_changes') { return null; }
   if (payload.status === 'ok') { return 'ok'; }
   if (payload.status === 'error') { return 'error'; }
-  return current;
+  return null;
 }
 
 // Live only when the channel is joined AND its message binding was accepted.
@@ -55,14 +55,12 @@ export function chatLiveState(
   return binding === 'ok' ? 'live' : 'connecting';
 }
 
-// A binding that recovers on the same join (server retry) must run the
-// catch-up: changes committed while it was down were never delivered. The
-// first `ok` of a join is NOT a recovery (the SUBSCRIBED transition already
-// reconciled).
-export function isBindingRecovery(params: {
-  channel: RealtimeConnectionStatus | null
-  previous: ChangesBindingStatus
-  next: ChangesBindingStatus
-}): boolean {
-  return params.channel === 'SUBSCRIBED' && params.previous === 'error' && params.next === 'ok';
+// Every `ok` verdict on a joined channel runs the catch-up: the first one
+// (changes committed between SUBSCRIBED and the binding going active), a
+// recovery after an error, and a repeated one (a silent CDC re-subscribe).
+export function shouldReconcileOnBindingVerdict(
+  channel: RealtimeConnectionStatus | null,
+  verdict: 'ok' | 'error',
+): boolean {
+  return channel === 'SUBSCRIBED' && verdict === 'ok';
 }

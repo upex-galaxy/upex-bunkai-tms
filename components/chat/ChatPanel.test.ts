@@ -393,6 +393,16 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
 
 describe('ChatPanel — header Live only when the message binding is accepted (BK-1281)', () => {
   const BINDING_ERROR = 'Unable to subscribe to changes with given parameters: invalid column for filter workspace_id';
+  const OK = 'Subscribed to PostgreSQL';
+
+  // Page 11..40 loaded, joined, gap catch-up answered empty: a settled dock.
+  async function settled(): Promise<HTMLElement> {
+    const container = await mount();
+    await answer('', page(range(11, 40), true));
+    await status('SUBSCRIBED');
+    await answer('after_seq=40', page([], false));
+    return container;
+  }
 
   test('SUBSCRIBED + postgres_changes system error: not Live, offline banner shown', async () => {
     const container = await mount();
@@ -411,16 +421,51 @@ describe('ChatPanel — header Live only when the message binding is accepted (B
     expect(liveChip(container)).toBe('connecting');
     expect(offlineBanner(container)).toBe(false);
 
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    await system('postgres_changes', 'ok', OK);
     expect(liveChip(container)).toBe('live');
     expect(offlineBanner(container)).toBe(false);
   });
 
-  test('error then a successful rejoin returns to Live, with the usual reconnect catch-up', async () => {
+  test('the first ok catches up a message committed between SUBSCRIBED and the binding going active', async () => {
+    const container = await settled();
+    await system('postgres_changes', 'ok', OK);
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+
+    await answer('after_seq=40', page([msg(41)], false));
+    expect(renderedSeqs(container)).toEqual(range(11, 41).map(m => m.seq));
+  });
+
+  test('SUBSCRIBED + ok in quick succession never run two overlapping catch-ups: one in flight, one follow-up', async () => {
     const container = await mount();
     await answer('', page(range(11, 40), true));
     await status('SUBSCRIBED');
+    await system('postgres_changes', 'ok', OK);
+    // The ok arrived while the SUBSCRIBED catch-up is still in flight: queued.
+    expect(messageQueries()).toEqual(['', 'after_seq=40']);
+
+    await answer('after_seq=40', page([msg(41)], false));
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=41']);
+    await answer('after_seq=41', page([msg(42)], false));
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=41']);
+    expect(renderedSeqs(container)).toEqual(range(11, 42).map(m => m.seq));
+  });
+
+  test('a repeated ok (silent CDC re-subscribe) runs one catch-up from the newest held seq', async () => {
+    const container = await settled();
+    await system('postgres_changes', 'ok', OK);
     await answer('after_seq=40', page([], false));
+    await deliver(msg(41));
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+
+    await system('postgres_changes', 'ok', OK);
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40', 'after_seq=41']);
+    await answer('after_seq=41', page([msg(42), msg(43)], false));
+    expect(liveChip(container)).toBe('live');
+    expect(renderedSeqs(container)).toEqual(range(11, 43).map(m => m.seq));
+  });
+
+  test('error then a successful rejoin returns to Live, with the usual reconnect catch-up', async () => {
+    const container = await settled();
     await system('postgres_changes', 'error', BINDING_ERROR);
     expect(liveChip(container)).toBe('offline');
 
@@ -429,53 +474,46 @@ describe('ChatPanel — header Live only when the message binding is accepted (B
     await status('SUBSCRIBED');
     // The rejoin's binding is not confirmed yet: never Live on the old verdict.
     expect(liveChip(container)).toBe('connecting');
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+    await system('postgres_changes', 'ok', OK);
 
     expect(liveChip(container)).toBe('live');
     expect(offlineBanner(container)).toBe(false);
-    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+    // The ok's catch-up waits for the rejoin's one, then runs once.
+    await answer('after_seq=40', page([], false));
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40', 'after_seq=40']);
   });
 
   test('error then the server retry succeeds on the same join: Live again, and one catch-up for what the dead binding missed', async () => {
-    const container = await mount();
-    await answer('', page(range(11, 40), true));
-    await status('SUBSCRIBED');
+    const container = await settled();
+    await system('postgres_changes', 'ok', OK);
     await answer('after_seq=40', page([], false));
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
-    expect(messageQueries()).toEqual(['', 'after_seq=40']);
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
 
     await system('postgres_changes', 'error', BINDING_ERROR);
     expect(liveChip(container)).toBe('offline');
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    expect(messageQueries()).toHaveLength(3);
+    await system('postgres_changes', 'ok', OK);
+
+    expect(liveChip(container)).toBe('live');
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40', 'after_seq=40']);
+  });
+
+  test('a system frame for another extension leaves the binding verdict alone and runs no catch-up', async () => {
+    const container = await settled();
+    await system('postgres_changes', 'ok', OK);
+    await answer('after_seq=40', page([], false));
+    await system('system', 'error', 'unrelated');
+    await system('system', 'ok', 'unrelated');
 
     expect(liveChip(container)).toBe('live');
     expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
-  });
-
-  test('a repeated ok frame does not run another catch-up', async () => {
-    await mount();
-    await answer('', page(range(11, 40), true));
-    await status('SUBSCRIBED');
-    await answer('after_seq=40', page([], false));
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
-
-    expect(messageQueries()).toEqual(['', 'after_seq=40']);
-  });
-
-  test('a system frame for another extension leaves the binding verdict alone', async () => {
-    const container = await mount();
-    await status('SUBSCRIBED');
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
-    await system('system', 'error', 'unrelated');
-
-    expect(liveChip(container)).toBe('live');
   });
 
   test('CHANNEL_ERROR and TIMED_OUT are not Live, even after an accepted binding', async () => {
     const container = await mount();
     await status('SUBSCRIBED');
-    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    await system('postgres_changes', 'ok', OK);
     expect(liveChip(container)).toBe('live');
 
     await status('CHANNEL_ERROR');
