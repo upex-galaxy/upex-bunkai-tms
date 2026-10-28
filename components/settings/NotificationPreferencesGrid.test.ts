@@ -185,6 +185,21 @@ describe('NotificationPreferencesGrid — per-cell saves (BK-1218)', () => {
     expect(isOn(container, 'run_lifecycle', 'email')).toBe(false);
   });
 
+  test('two clicks on one cell before React re-renders it disabled still send a single save', async () => {
+    const container = mount();
+
+    // Both clicks land inside one act scope, so the second reaches the
+    // still-enabled button; only the synchronous in-flight guard refuses it.
+    await act(async () => {
+      const toggle = toggleOf(container, 'run_lifecycle', 'email');
+      toggle.click();
+      toggle.click();
+    });
+
+    expect(patchesFor('run_lifecycle', 'email')).toHaveLength(1);
+    expect(isOn(container, 'run_lifecycle', 'email')).toBe(false);
+  });
+
   test('one cell settling does not re-enable another cell whose save is still in flight', async () => {
     const container = mount();
 
