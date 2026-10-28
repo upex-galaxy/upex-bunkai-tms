@@ -2,19 +2,24 @@
 // as `anon`.
 //
 // Why this exists (verified against the installed @supabase/supabase-js
-// 2.106.x / realtime-js / phoenix code):
-// - `SupabaseClient` only forwards the session token to Realtime on
-//   `SIGNED_IN` and `TOKEN_REFRESHED`. A page load that RESTORES a session
-//   (every reload, every new tab) emits `INITIAL_SESSION` instead, so nothing
-//   pushes the user JWT into the Realtime client up front.
+// 2.106.x / auth-js / realtime-js / phoenix code):
+// - On a page load that RESTORES a session (every reload, every new tab), the
+//   user JWT reaches the Realtime client only once auth initialisation
+//   finishes (cookie read, auth lock, possibly a refresh), via the
+//   SIGNED_IN it emits or the `accessToken` callback awaiting
+//   `auth.getSession()`. Both are asynchronous.
 // - `RealtimeChannel.subscribe()` reads `socket.accessTokenValue`
-//   synchronously. The auth it kicks off on connect is still awaiting
-//   `auth.getSession()` at that moment, so the value is null.
-// - phoenix's `Push.send()` evaluates the join payload right then and buffers
-//   the computed frame, so a later token update cannot repair a join that is
-//   already queued. The server evaluates the `postgres_changes` filters for
-//   the `anon` role ("invalid column for filter ..." on chat, silent RLS
-//   denial on notifications and runs) and no change is ever delivered.
+//   synchronously, and phoenix's `Push.send()` freezes the join payload into
+//   the send buffer right then. A component effect that subscribes at
+//   hydration, before auth init completes, therefore sends `phx_join` with no
+//   `access_token`, and the server evaluates the `postgres_changes` filters
+//   for the `anon` role ("invalid column for filter workspace_id" on chat,
+//   silent RLS denial on notifications and runs).
+// - If the token then arrives before the join reply, realtime-js only updates
+//   the (already sent) join payload and never pushes an `access_token` event,
+//   so the channel stays anon for its whole life. Fast production hydration
+//   lands in exactly that window; a first load right after sign-in does not,
+//   because the sign-in itself already set the token.
 //
 // The fix: resolve the Realtime token from the current session BEFORE the
 // channel joins. `setAuth()` is called with NO argument on purpose — it reads

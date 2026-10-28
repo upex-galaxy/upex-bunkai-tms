@@ -5,8 +5,9 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 // BK-1279 — drives the REAL supabase-js client (auth-js + realtime-js +
 // phoenix) through the page-reload path: a session already sits in auth
-// storage, so auth-js restores it with INITIAL_SESSION (not SIGNED_IN). Only
-// the WebSocket is faked, so the assertion is on the exact phx_join frame the
+// storage and auth-js restores it asynchronously, while the channel is
+// subscribed straight away (what a hydration-time effect does). Only the
+// WebSocket is faked, so the assertion is on the exact phx_join frame the
 // browser would put on the wire.
 
 const SUPABASE_URL = 'http://localhost:54321';
