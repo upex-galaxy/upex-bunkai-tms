@@ -16,6 +16,8 @@ const STORAGE_KEY = 'sb-test-auth-token';
 const USER_TOKEN = 'user-access-token-for-tests';
 
 interface SentFrame {
+  joinRef: string | null
+  ref: string | null
   topic: string
   event: string
   payload: Record<string, unknown>
@@ -46,8 +48,14 @@ class FakeWebSocket {
 
   send(data: string) {
     // realtime-js 2.x (vsn 2.0.0) text frames: [join_ref, ref, topic, event, payload]
-    const [, , topic, event, payload] = JSON.parse(data) as [string, string, string, string, Record<string, unknown>];
-    this.sent.push({ topic, event, payload });
+    const [joinRef, ref, topic, event, payload] = JSON.parse(data) as [string | null, string | null, string, string, Record<string, unknown>];
+    this.sent.push({ joinRef, ref, topic, event, payload });
+  }
+
+  // Server side of a join: answer `phx_reply ok` to a join frame this socket sent.
+  replyOk(join: SentFrame, response: Record<string, unknown>) {
+    const frame = [join.joinRef, join.ref, join.topic, 'phx_reply', { status: 'ok', response }];
+    this.onmessage?.({ data: JSON.stringify(frame) });
   }
 
   close() {
@@ -97,10 +105,22 @@ function createReloadedClient(): SupabaseClient {
   });
 }
 
-function joinFrames(topic: string): SentFrame[] {
+function framesFor(topic: string, event: string): SentFrame[] {
   return FakeWebSocket.instances
     .flatMap(socket => socket.sent)
-    .filter(frame => frame.topic === `realtime:${topic}` && frame.event === 'phx_join');
+    .filter(frame => frame.topic === `realtime:${topic}` && frame.event === event);
+}
+
+function joinFrames(topic: string): SentFrame[] {
+  return framesFor(topic, 'phx_join');
+}
+
+const CHAT_BINDING = { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'workspace_id=eq.w1' } as const;
+
+// realtime-js keeps this internal (stripped from its typings); it is the flag
+// that decides whether the heartbeat keeps re-reading the session token.
+function isManualToken(target: SupabaseClient): boolean {
+  return (target.realtime as unknown as { _isManualToken: () => boolean })._isManualToken();
 }
 
 async function waitFor(condition: () => boolean, timeoutMs = 2000) {
@@ -190,7 +210,61 @@ describe('subscribeWithUserAuth (BK-1279)', () => {
     expect(statuses).toHaveLength(0);
   });
 
+  test('pins the bug class on 2.106.x: a token landing between join send and reply is never pushed, the channel stays anon yet reports SUBSCRIBED', async () => {
+    client = createReloadedClient();
+    const statuses: string[] = [];
+    const channel = client.channel('chat-w1').on('postgres_changes', CHAT_BINDING, () => {});
+
+    channel.subscribe((status) => { statuses.push(String(status)); });
+    await waitFor(() => joinFrames('chat-w1').length > 0);
+    const [join] = joinFrames('chat-w1');
+    expect(join.payload).not.toHaveProperty('access_token');
+
+    // The token lands AFTER the join was sent but BEFORE the server replies.
+    await client.auth.getSession();
+    await waitFor(() => client!.realtime.accessTokenValue === USER_TOKEN);
+
+    FakeWebSocket.instances[0].replyOk(join, { postgres_changes: [{ id: 1, ...CHAT_BINDING }] });
+    await waitFor(() => statuses.includes('SUBSCRIBED'));
+    // Give the post-join setAuth() time to run: it sees an unchanged token.
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(framesFor('chat-w1', 'access_token')).toHaveLength(0);
+    expect(statuses).toEqual(['SUBSCRIBED']);
+  });
+
+  test('a same-topic strict-mode remount sends exactly one join, with the token, and leaves one channel', async () => {
+    client = createReloadedClient();
+
+    // Mount, immediate cleanup (React strict mode), remount: same topic.
+    const first = client.channel('chat-w1').on('postgres_changes', CHAT_BINDING, () => {});
+    const cancelFirst = subscribeWithUserAuth({ realtime: client.realtime, channel: first });
+    cancelFirst();
+    void client.removeChannel(first);
+    const second = client.channel('chat-w1').on('postgres_changes', CHAT_BINDING, () => {});
+    subscribeWithUserAuth({ realtime: client.realtime, channel: second });
+
+    await waitFor(() => joinFrames('chat-w1').length > 0);
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(second).not.toBe(first);
+    expect(joinFrames('chat-w1')).toHaveLength(1);
+    expect(joinFrames('chat-w1')[0].payload.access_token).toBe(USER_TOKEN);
+    expect(client.getChannels()).toEqual([second]);
+  });
+
+  test('leaves the Realtime client in callback mode, so the heartbeat keeps refreshing the token', async () => {
+    client = createReloadedClient();
+
+    subscribeWithUserAuth({ realtime: client.realtime, channel: client.channel('chat-w1') });
+    await waitFor(() => joinFrames('chat-w1').length > 0);
+
+    expect(isManualToken(client)).toBe(false);
+  });
+
   test('still subscribes when the token lookup fails, so the status callback keeps reporting', async () => {
+    // Defensive path only: realtime-js swallows accessToken-callback errors
+    // itself, so the real client never rejects here; a stub forces it.
     client = createReloadedClient();
     const channel = client.channel('auth-failed');
     const realtime = {
