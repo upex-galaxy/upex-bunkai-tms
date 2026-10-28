@@ -30,16 +30,14 @@ import { afterAll, describe, expect, it } from 'bun:test';
 // session is obtained and no auth user is created or changed.
 //
 // FAIL-CLOSED GATE. This file is evidence only when it EXECUTES. It is
-// registered as SKIPPED, with a loud warning at module load, in exactly two
-// cases:
-//   1. no database environment (NEXT_PUBLIC_SUPABASE_URL and
-//      SUPABASE_SERVICE_ROLE_KEY absent: CI without DB credentials), or
-//   2. the database still answers exactly as 0090 predicts for the twins
-//      (migration 0108 not applied yet): reported as PENDING MIGRATION APPLY.
-// Every other outcome FAILS: no active workspace member to anchor the fixture,
-// a seed or cleanup error, or a report matching neither the old nor the new
-// rule. Every test asserts at least once (`expect.hasAssertions()`). A run
-// counts as evidence only if its output shows zero skipped tests.
+// registered as SKIPPED, with a loud warning at module load, in exactly one
+// case: no database environment (NEXT_PUBLIC_SUPABASE_URL and
+// SUPABASE_SERVICE_ROLE_KEY absent: CI without DB credentials). Migration 0108
+// is applied (2026-10-28), so every other outcome FAILS: no active workspace
+// member to anchor the fixture, a seed or cleanup error, a report that answers
+// as 0090 did (the BK-1220 regression, named as such), or a report matching
+// neither rule. Every test asserts at least once (`expect.hasAssertions()`). A
+// run counts as evidence only if its output shows zero skipped tests.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -285,37 +283,53 @@ function sameStates(a: Record<CaseKey, string>, b: Record<CaseKey, string>): boo
   return CASES.every(key => a[key] === b[key]);
 }
 
-// Seed and classify the database at module load, so the suite can register as
-// skipped (pending apply) or run (0108 live) before any test is collected.
+// Cleans up, then rethrows `error`. A cleanup failure never replaces the
+// original error: it is attached to it (as `cleanupError` and in the message).
+async function failAfterCleanup(error: unknown): Promise<never> {
+  try {
+    await cleanup();
+  }
+  catch (cleanupError) {
+    const detail = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+    if (error instanceof Error) {
+      error.message = `${error.message} (cleanup also failed: ${detail})`;
+      Object.assign(error, { cleanupError });
+      throw error;
+    }
+    throw new AggregateError([error, cleanupError], `${TAG} ${String(error)} (cleanup also failed: ${detail})`);
+  }
+  throw error;
+}
+
+// Seed and classify the database at module load. With a database, the suite
+// either runs against a fixture the report already answered correctly, or the
+// file fails here before any test is collected.
 let fixture: Fixture | null = null;
 if (!hasDbEnv) {
   console.warn(`${TAG} SKIPPED ENTIRELY: no database environment (needs NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY). No assertion in this file ran, so nothing here is evidence about migration 0108.`);
 }
 else {
-  let seeded: Fixture;
-  let states: Record<CaseKey, string>;
-  try {
-    seeded = await seed();
-    states = statesOf(await reportCoverage(seeded), seeded);
-  }
-  catch (error) {
-    await cleanup();
-    throw error;
-  }
+  const { seeded, states } = await (async () => {
+    try {
+      const fx = await seed();
+      return { seeded: fx, states: statesOf(await reportCoverage(fx), fx) };
+    }
+    catch (error) {
+      return failAfterCleanup(error);
+    }
+  })();
   if (sameStates(states, EXPECTED_0108)) {
     fixture = seeded;
   }
   else if (sameStates(states, PREDICTED_0090)) {
-    await cleanup();
-    console.warn(`${TAG} SKIPPED ENTIRELY: PENDING MIGRATION APPLY. The database still answers exactly as 0090 predicts (the higher run_atcs.id wins the tie). Apply supabase/migrations/0108_project_coverage_repeated_atc_tiebreak.sql, then re-run. No assertion in this file ran, so nothing here is evidence about migration 0108.`);
+    await failAfterCleanup(new Error(`${TAG} REGRESSION (BK-1220): bunkai_report_project_coverage answers exactly as 0090 did, so the higher run_atcs.id decides a repeated ATC's coverage state again. The live function no longer carries the 0108 ordering (supabase/migrations/0108_project_coverage_repeated_atc_tiebreak.sql). States: ${JSON.stringify(states)}`));
   }
   else {
-    await cleanup();
-    throw new Error(`${TAG} coverage states match neither 0108 nor the 0090 prediction: ${JSON.stringify(states)}`);
+    await failAfterCleanup(new Error(`${TAG} coverage states match neither 0108 nor the 0090 prediction: ${JSON.stringify(states)}`));
   }
 }
 
-const describeOrSkip = fixture ? describe : describe.skip;
+const describeOrSkip = hasDbEnv ? describe : describe.skip;
 
 describeOrSkip('BK-1220 — an ATC repeated in one Test chain gets a deterministic coverage state (0108)', () => {
   afterAll(async () => {
