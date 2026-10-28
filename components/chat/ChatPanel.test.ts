@@ -25,21 +25,24 @@ afterAll(async () => { await GlobalRegistrator.unregister(); });
 
 type StatusCallback = (status: string) => void;
 type ChangeHandler = (payload: { eventType: string, new: unknown }) => void;
+type SystemHandler = (payload: { extension: string, status: string, message?: string }) => void;
 
 interface FakeChannel {
   name: string
   statusCallback: StatusCallback | null
   changeHandler: ChangeHandler | null
+  systemHandler: SystemHandler | null
 }
 
 let channels: FakeChannel[] = [];
 
 function fakeChannel(name: string) {
-  const record: FakeChannel = { name, statusCallback: null, changeHandler: null };
+  const record: FakeChannel = { name, statusCallback: null, changeHandler: null, systemHandler: null };
   channels.push(record);
   const channel = {
-    on(type: string, _filter: unknown, handler: ChangeHandler) {
+    on(type: string, _filter: unknown, handler: ChangeHandler & SystemHandler) {
       if (type === 'postgres_changes') { record.changeHandler = handler; }
+      if (type === 'system') { record.systemHandler = handler; }
       return channel;
     },
     subscribe(callback?: StatusCallback) {
@@ -124,6 +127,21 @@ async function deliver(row: ChatMessage, eventType = 'INSERT'): Promise<void> {
   const channel = messagesChannel();
   await act(async () => { channel.changeHandler?.({ eventType, new: row }); });
   await flush();
+}
+
+// A Realtime `system` frame on the chat channel (BK-1281).
+async function system(extension: string, frameStatus: string, message?: string): Promise<void> {
+  const channel = messagesChannel();
+  await act(async () => { channel.systemHandler?.({ extension, status: frameStatus, message }); });
+  await flush();
+}
+
+function liveChip(container: HTMLElement): string | null {
+  return container.querySelector('[data-testid="chat_live_chip"]')?.getAttribute('data-state') ?? null;
+}
+
+function offlineBanner(container: HTMLElement): boolean {
+  return container.querySelector('[data-testid="chat_offline_banner"]') !== null;
 }
 
 // The query of every `/messages` GET, in order (`''` = the newest page).
@@ -370,5 +388,101 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
     unmountAll();
     await answer('after_seq=40', page(range(41, 45), true));
     expect(messageQueries()).toEqual(['', 'after_seq=40']);
+  });
+});
+
+describe('ChatPanel — header Live only when the message binding is accepted (BK-1281)', () => {
+  const BINDING_ERROR = 'Unable to subscribe to changes with given parameters: invalid column for filter workspace_id';
+
+  test('SUBSCRIBED + postgres_changes system error: not Live, offline banner shown', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await system('postgres_changes', 'error', BINDING_ERROR);
+
+    expect(liveChip(container)).toBe('offline');
+    expect(offlineBanner(container)).toBe(true);
+  });
+
+  test('SUBSCRIBED alone is still connecting; the postgres_changes ok frame makes it Live', async () => {
+    const container = await mount();
+    expect(liveChip(container)).toBe('connecting');
+
+    await status('SUBSCRIBED');
+    expect(liveChip(container)).toBe('connecting');
+    expect(offlineBanner(container)).toBe(false);
+
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    expect(liveChip(container)).toBe('live');
+    expect(offlineBanner(container)).toBe(false);
+  });
+
+  test('error then a successful rejoin returns to Live, with the usual reconnect catch-up', async () => {
+    const container = await mount();
+    await answer('', page(range(11, 40), true));
+    await status('SUBSCRIBED');
+    await answer('after_seq=40', page([], false));
+    await system('postgres_changes', 'error', BINDING_ERROR);
+    expect(liveChip(container)).toBe('offline');
+
+    await status('CLOSED');
+    expect(liveChip(container)).toBe('offline');
+    await status('SUBSCRIBED');
+    // The rejoin's binding is not confirmed yet: never Live on the old verdict.
+    expect(liveChip(container)).toBe('connecting');
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+
+    expect(liveChip(container)).toBe('live');
+    expect(offlineBanner(container)).toBe(false);
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+  });
+
+  test('error then the server retry succeeds on the same join: Live again, and one catch-up for what the dead binding missed', async () => {
+    const container = await mount();
+    await answer('', page(range(11, 40), true));
+    await status('SUBSCRIBED');
+    await answer('after_seq=40', page([], false));
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    expect(messageQueries()).toEqual(['', 'after_seq=40']);
+
+    await system('postgres_changes', 'error', BINDING_ERROR);
+    expect(liveChip(container)).toBe('offline');
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+
+    expect(liveChip(container)).toBe('live');
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+  });
+
+  test('a repeated ok frame does not run another catch-up', async () => {
+    await mount();
+    await answer('', page(range(11, 40), true));
+    await status('SUBSCRIBED');
+    await answer('after_seq=40', page([], false));
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+
+    expect(messageQueries()).toEqual(['', 'after_seq=40']);
+  });
+
+  test('a system frame for another extension leaves the binding verdict alone', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    await system('system', 'error', 'unrelated');
+
+    expect(liveChip(container)).toBe('live');
+  });
+
+  test('CHANNEL_ERROR and TIMED_OUT are not Live, even after an accepted binding', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await system('postgres_changes', 'ok', 'Subscribed to PostgreSQL');
+    expect(liveChip(container)).toBe('live');
+
+    await status('CHANNEL_ERROR');
+    expect(liveChip(container)).toBe('offline');
+    expect(offlineBanner(container)).toBe(true);
+
+    await status('TIMED_OUT');
+    expect(liveChip(container)).toBe('offline');
   });
 });

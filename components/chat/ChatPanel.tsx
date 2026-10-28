@@ -1,6 +1,7 @@
 'use client';
 
 import type { EntityCard as EntityCardData, EntitySearchItem } from '@lib/chat/entity-refs';
+import type { ChangesBindingStatus, ChatLiveState, RealtimeSystemPayload } from '@lib/chat/live-status';
 import type { ChatMember, ChatMessage, ChatRole } from '@lib/chat/messages';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import {
@@ -11,6 +12,7 @@ import {
   refKey,
   textWithoutRefs,
 } from '@lib/chat/entity-refs';
+import { bindingStatusFromSystem, chatLiveState, isBindingRecovery } from '@lib/chat/live-status';
 import {
   buildChatChannelConfig,
   canDeleteMessage,
@@ -60,8 +62,6 @@ interface ChatPanelProps {
   onUnreadChange: (count: number) => void
 }
 
-type LiveState = 'connecting' | 'live' | 'offline';
-
 const SCROLL_STICK_PX = 48;
 // BK-1283: a catch-up stops after this many server pages (200 each); the rest
 // is resumed by the next reconcile from where it stopped.
@@ -106,7 +106,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [live, setLive] = useState<LiveState>('connecting');
+  const [live, setLive] = useState<ChatLiveState>('connecting');
   const [rosterOpen, setRosterOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -332,6 +332,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   useEffect(() => {
     const supabase = createClient();
     let prev: RealtimeConnectionStatus | null = null;
+    // BK-1281: the header is Live only once the server confirmed the message
+    // binding on this join (a `system` frame), not on SUBSCRIBED alone.
+    let binding: ChangesBindingStatus = 'pending';
     const channel = supabase.channel(config.channelName);
     channel.on<Record<string, unknown>>(
       'postgres_changes',
@@ -354,13 +357,25 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         if (isInsert && !stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
       },
     );
+    // `system` is its own bindings key in realtime-js, so it does not shift the
+    // index matching of the postgres_changes binding against the join reply.
+    channel.on('system', {}, (payload: RealtimeSystemPayload) => {
+      const next = bindingStatusFromSystem(payload, binding);
+      if (next === binding) { return; }
+      const recovered = isBindingRecovery({ channel: prev, previous: binding, next });
+      binding = next;
+      setLive(chatLiveState(prev, binding));
+      if (recovered) { reconcile(); }
+    });
     // BK-1279: join as the signed-in user, never as anon.
     const cancelJoin = subscribeWithUserAuth({
       realtime: supabase.realtime,
       channel,
       callback: (status) => {
         const next = String(status) as RealtimeConnectionStatus;
-        setLive(next === 'SUBSCRIBED' ? 'live' : 'offline');
+        // A dropped join loses its binding; the rejoin reports a fresh one.
+        if (next !== 'SUBSCRIBED') { binding = 'pending'; }
+        setLive(chatLiveState(next, binding));
         if (shouldReconcileOnStatusChange(prev, next)) { reconcile(); }
         prev = next;
       },
