@@ -981,10 +981,12 @@ export interface Database {
       notifications: {
         Row: {
           created_at: string
+          emailed_at: string | null
           entity_id: string | null
           entity_type: string
           event_type: string
           id: string
+          in_app_suppressed: boolean
           payload: Json
           read_at: string | null
           recipient_user_id: string
@@ -993,10 +995,12 @@ export interface Database {
         }
         Insert: {
           created_at?: string
+          emailed_at?: string | null
           entity_id?: string | null
           entity_type: string
           event_type: string
           id?: string
+          in_app_suppressed?: boolean
           payload?: Json
           read_at?: string | null
           recipient_user_id: string
@@ -1005,10 +1009,12 @@ export interface Database {
         }
         Update: {
           created_at?: string
+          emailed_at?: string | null
           entity_id?: string | null
           entity_type?: string
           event_type?: string
           id?: string
+          in_app_suppressed?: boolean
           payload?: Json
           read_at?: string | null
           recipient_user_id?: string
@@ -2320,6 +2326,10 @@ export interface Database {
       bunkai_normalize_test_tags: {
         Args: { p_tags: string[] }
         Returns: string[]
+      }
+      bunkai_notification_channel_enabled: {
+        Args: { p_channel: string, p_event_type: string, p_user_id: string }
+        Returns: boolean
       }
       bunkai_notification_digest_candidates: {
         Args: never

@@ -46,6 +46,42 @@ export interface RunDigestSendResult {
   skipped: number
 }
 
+// BK-1217 — ids per `.in()` filter when stamping `emailed_at`. The candidate
+// rows carry no suppression flag, so the id list is every unread candidate of
+// the user (up to 90 days); chunking keeps each PATCH URL well under
+// PostgREST / proxy URL limits.
+export const EMAILED_STAMP_CHUNK_SIZE = 100;
+
+// BK-1217 — after a SUCCESSFUL send, mark the user's email-only rows as
+// emailed so `bunkai_notification_digest_candidates()` (0107) never includes
+// them again; a visible (in-app) row is untouched and keeps being re-included
+// while it stays unread (BK-214). Ids come from the RAW candidate rows, never
+// the grouped digest: groups are capped at DIGEST_ITEMS_PER_PROJECT_CAP and
+// the overflow rows ("and N more") carry no ids there, yet they were
+// delivered too (PO decision 13138, rule 7). Returns false when any chunk
+// failed; the caller only logs it, because the worst case is the item being
+// digested once more tomorrow, and a sent digest must never flip to failed.
+async function stampEmailedSuppressed(db: Admin, notificationIds: string[], stampedAt: string): Promise<boolean> {
+  let ok = true;
+  for (let i = 0; i < notificationIds.length; i += EMAILED_STAMP_CHUNK_SIZE) {
+    const chunk = notificationIds.slice(i, i + EMAILED_STAMP_CHUNK_SIZE);
+    try {
+      const { error } = await db
+        .from('notifications')
+        .update({ emailed_at: stampedAt })
+        .in('id', chunk)
+        .eq('in_app_suppressed', true);
+      if (error) {
+        ok = false;
+      }
+    }
+    catch {
+      ok = false;
+    }
+  }
+  return ok;
+}
+
 export async function runDigestSend(db: Admin, sendMail: SendMailFn, now: Date = new Date()): Promise<RunDigestSendResult> {
   const { data: candidateRows, error: candidatesError } = await db.rpc('bunkai_notification_digest_candidates');
   if (candidatesError) {
@@ -58,8 +94,20 @@ export async function runDigestSend(db: Admin, sendMail: SendMailFn, now: Date =
   // `resolveNotificationTitle`'s existing contract (`view.ts`) — `payload`
   // is `jsonb not null default '{}'::jsonb` on `notifications` (0053), so
   // it is always an object in practice, never the `Json` union's other arms.
-  const digests = groupDigestCandidates((candidateRows ?? []) as unknown as DigestCandidateRow[]);
+  const rows = (candidateRows ?? []) as unknown as DigestCandidateRow[];
+  const digests = groupDigestCandidates(rows);
   const { isoDate, label } = formatDigestDate(now);
+
+  const candidateIdsByUser = new Map<string, string[]>();
+  for (const row of rows) {
+    const ids = candidateIdsByUser.get(row.recipient_user_id);
+    if (ids) {
+      ids.push(row.notification_id);
+    }
+    else {
+      candidateIdsByUser.set(row.recipient_user_id, [row.notification_id]);
+    }
+  }
 
   let sent = 0;
   let failed = 0;
@@ -97,6 +145,11 @@ export async function runDigestSend(db: Admin, sendMail: SendMailFn, now: Date =
         .from('notification_digest_log')
         .update({ status: 'sent', notification_count: digest.totalCount, sent_at: new Date().toISOString() })
         .eq('id', claimed.id);
+
+      const stamped = await stampEmailedSuppressed(db, candidateIdsByUser.get(digest.userId) ?? [], new Date().toISOString());
+      if (!stamped) {
+        console.warn(`[send-digest] digest sent to user ${digest.userId} but stamping emailed_at failed; email-only items may be digested once more.`);
+      }
     }
     else {
       failed += 1;

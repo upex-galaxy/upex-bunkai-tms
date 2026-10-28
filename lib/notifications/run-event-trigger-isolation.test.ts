@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-211 — DB-integration test for `bunkai_notify_run_event`
 // (migration 0066_run_event_notifications.sql), the AFTER INSERT trigger on
@@ -122,6 +122,19 @@ async function latestActivityId(db: ReturnType<typeof service>, runId: string, a
   return (data as { id: string } | null)?.id ?? null;
 }
 
+async function withoutDisabledPreferences(db: ReturnType<typeof service>, userIds: string[], category: 'run_lifecycle' | 'bug_lifecycle') {
+  if (userIds.length === 0) { return userIds; }
+  const { data, error } = await db
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', userIds)
+    .eq('event_type', category)
+    .eq('enabled', false);
+  if (error) { throw error; }
+  const disabled = new Set((data ?? []).map(r => r.user_id as string));
+  return userIds.filter(id => !disabled.has(id));
+}
+
 async function notificationsForEvent(db: ReturnType<typeof service>, sourceEventId: string) {
   const { data, error } = await db
     .from('notifications')
@@ -159,7 +172,11 @@ describeOrSkip('BK-211 — bunkai_notify_run_event trigger (channel-aware suppre
       .eq('status', 'active')
       .limit(20);
     if (membersError) { throw membersError; }
-    const distinctIds = [...new Set((members ?? []).map(m => m.user_id as string))];
+    // BK-1217: the trigger now honours channel preferences, so a borrowed
+    // starter with Run lifecycle switched off would make these assertions
+    // depend on that person's settings. Only users with no disabled
+    // run_lifecycle row are eligible as DATA recipients here.
+    const distinctIds = await withoutDisabledPreferences(db, [...new Set((members ?? []).map(m => m.user_id as string))], 'run_lifecycle');
     if (distinctIds.length < 2) {
       skipReason = 'need at least 2 distinct real user ids among active workspace members (seed state).';
       return;
@@ -413,3 +430,364 @@ describeOrSkip('BK-211 — bunkai_notify_run_event trigger (channel-aware suppre
 function warn() {
   console.warn(`[run-event-trigger-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
 }
+
+// ============================================================================
+// BK-1217 — channel preferences at write time (migration 0107)
+// ============================================================================
+//
+// AI Product Owner decision 13138 / AI Tech Lead decision 13139: In-app off +
+// Email on stores an email-only row (`in_app_suppressed = true`) that the
+// recipient's own RLS-scoped session can never see; both channels off stores
+// nothing; the decision is a snapshot at event time.
+//
+// "The recipient sees nothing" can only be proven through a real session, and
+// the only identity this suite may sign in as is the declared automation
+// identity (QA_E2E_USER_EMAIL / QA_E2E_USER_PASSWORD, `.agents/project.yaml`
+// -> testing.automation_identity, through the app's real password path). So
+// QA_E2E is the run STARTER (the recipient) here, and a borrowed teammate is
+// the actor that finishes or aborts the run through the real RPCs. QA_E2E's
+// own run_lifecycle preferences are toggled with the service role (fixture
+// seed, sanctioned) after a snapshot, and restored in afterAll even when
+// setup fails partway (see notification-digest-candidates-isolation.test.ts
+// for the incident that rule comes from).
+//
+// FAIL-CLOSED GATE (precedent: lib/runs/compare-isolation.test.ts). This block
+// is SKIPPED, with a loud warning, in exactly two cases: no database
+// environment at all, or the database answers that
+// `bunkai_notification_channel_enabled` does not exist (migration 0107 not
+// applied yet). Every other problem (missing automation identity, failed
+// login, a fixture that cannot be seeded, an unexpected probe answer) FAILS.
+// Every test asserts at least once (`expect.hasAssertions()`).
+
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const qaEmail = process.env.QA_E2E_USER_EMAIL;
+const qaPassword = process.env.QA_E2E_USER_PASSWORD;
+const PREFS_PREFIX = `bk1217-run-prefs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+let prefsDeployed = false;
+if (hasEnv) {
+  const probe = await service().rpc('bunkai_notification_channel_enabled', {
+    p_user_id: ZERO_UUID,
+    p_event_type: 'run.finished',
+    p_channel: 'in_app',
+  });
+  const code = probe.error?.code ?? 'no error';
+  if (!probe.error && probe.data === true) {
+    prefsDeployed = true;
+  }
+  else if (code === 'PGRST202' || code === '42883') {
+    console.warn(`[run-event-trigger-isolation] BK-1217 block SKIPPED: bunkai_notification_channel_enabled is not deployed (${code}). Apply migration 0107_notification_inapp_suppression.sql. No BK-1217 assertion in this file ran.`);
+  }
+  else {
+    throw new Error(`[run-event-trigger-isolation] unexpected answer from the BK-1217 deploy probe (${code}: ${probe.error?.message ?? JSON.stringify(probe.data)}). Expected true (deployed) or PGRST202/42883 (not deployed).`);
+  }
+}
+const describeIfPrefsDeployed = hasEnv && prefsDeployed ? describe : describe.skip;
+
+interface PreferenceRow { event_type: string, channel: string, enabled: boolean }
+interface PrefsFixture extends Fixture { qaUserId: string }
+
+let prefsFixture: PrefsFixture | null = null;
+let qaClient: ReturnType<typeof service> | null = null;
+let prefsSnapshot: { userId: string, rows: PreferenceRow[] } | null = null;
+let prefsWorkspaceId: string | null = null;
+let prefsTestId: string | null = null;
+
+// Runs every cleanup step, records each failure (returned error or thrown),
+// and throws once at the end so one failed step never skips the others.
+function cleanupCollector() {
+  const failures: string[] = [];
+  return {
+    async step(what: string, op: PromiseLike<{ error: { message: string } | null }>) {
+      try {
+        const { error } = await op;
+        if (error) { failures.push(`${what}: ${error.message}`); }
+      }
+      catch (err) {
+        failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    throwIfFailed(label: string) {
+      if (failures.length > 0) {
+        throw new Error(`${label} failed: ${failures.join('; ')}`);
+      }
+    },
+  };
+}
+
+function needPrefsFixture(): PrefsFixture {
+  if (!prefsFixture || !qaClient) {
+    throw new Error('[run-event-trigger-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
+  }
+  return prefsFixture;
+}
+
+async function setRunPreferences(userId: string, channels: { in_app: boolean, email: boolean }) {
+  const { error } = await service()
+    .from('notification_preferences')
+    .upsert([
+      { user_id: userId, event_type: 'run_lifecycle', channel: 'in_app', enabled: channels.in_app },
+      { user_id: userId, event_type: 'run_lifecycle', channel: 'email', enabled: channels.email },
+    ], { onConflict: 'user_id,event_type,channel' });
+  if (error) { throw new Error(`[run-event-trigger-isolation] could not set run_lifecycle preferences: ${error.message}`); }
+}
+
+async function clearRunPreferences(userId: string) {
+  const { error } = await service().from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'run_lifecycle');
+  if (error) { throw new Error(`[run-event-trigger-isolation] could not clear run_lifecycle preferences: ${error.message}`); }
+}
+
+async function suppressionRow(sourceEventId: string) {
+  const { data, error } = await service()
+    .from('notifications')
+    .select('id, recipient_user_id, in_app_suppressed, emailed_at')
+    .eq('source_event_id', sourceEventId);
+  if (error) { throw error; }
+  return (data ?? []) as { id: string, recipient_user_id: string, in_app_suppressed: boolean, emailed_at: string | null }[];
+}
+
+async function visibleToRecipient(notificationId: string) {
+  const { data, error } = await qaClient!.from('notifications').select('id').eq('id', notificationId);
+  expect(error).toBeNull();
+  return (data ?? []).length > 0;
+}
+
+// Finishes (or aborts) a fresh run started by QA_E2E, as the borrowed
+// teammate, through the real RPC; returns the activity_log id it wrote.
+async function closeQaRun(fx: PrefsFixture, opts: { key: string, action: 'run.finished' | 'run.aborted' }) {
+  const db = service();
+  const runId = await seedRun(db, fx, { key: `bk1217-${opts.key}`, executorUserId: fx.qaUserId });
+  const { error } = opts.action === 'run.finished'
+    ? await db.rpc('bunkai_finish_run', { p_actor_user_id: fx.teammateUserId, p_run_id: runId, p_verdict: 'passed', p_via: 'cookie' })
+    : await db.rpc('bunkai_abort_run', { p_actor_user_id: fx.teammateUserId, p_run_id: runId, p_reason: 'BK-1217 abort', p_via: 'cookie' });
+  // The finish/abort itself must never fail because of the preference gate.
+  expect(error).toBeNull();
+  const eventId = await latestActivityId(db, runId, opts.action);
+  expect(eventId).not.toBeNull();
+  return eventId!;
+}
+
+describeIfPrefsDeployed('BK-1217 — bunkai_notify_run_event honours run_lifecycle channel preferences at write time', () => {
+  beforeEach(() => {
+    expect.hasAssertions();
+  });
+
+  beforeAll(async () => {
+    if (!anonKey || !qaEmail || !qaPassword) {
+      throw new Error('[run-event-trigger-isolation] NEXT_PUBLIC_SUPABASE_ANON_KEY, QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD are required when a database environment is present: only a real session proves the recipient cannot see a suppressed row.');
+    }
+    const client = createClient(url!, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await client.auth.signInWithPassword({ email: qaEmail, password: qaPassword });
+    if (signInError || !signIn.session || !signIn.user) {
+      throw new Error(`[run-event-trigger-isolation] QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+    }
+    qaClient = client;
+    const qaUserId = signIn.user.id;
+    const db = service();
+
+    // Snapshot BEFORE any mutation, so afterAll can always restore it.
+    const { data: existing, error: existingError } = await db
+      .from('notification_preferences')
+      .select('event_type, channel, enabled')
+      .eq('user_id', qaUserId)
+      .eq('event_type', 'run_lifecycle');
+    if (existingError) { throw new Error(`[run-event-trigger-isolation] could not snapshot QA_E2E preferences: ${existingError.message}`); }
+    prefsSnapshot = { userId: qaUserId, rows: (existing ?? []) as PreferenceRow[] };
+
+    const { data: members, error: membersError } = await db
+      .from('workspace_members')
+      .select('user_id')
+      .eq('status', 'active')
+      .neq('user_id', qaUserId)
+      .limit(1)
+      .maybeSingle();
+    if (membersError || !members) {
+      throw new Error(`[run-event-trigger-isolation] need one active workspace member other than QA_E2E to act as the teammate (${membersError?.message ?? 'none found'}).`);
+    }
+    const teammateUserId = members.user_id as string;
+
+    const { data: workspace, error: workspaceError } = await db
+      .from('workspaces')
+      .insert({ slug: `${PREFS_PREFIX}-ws`, name: PREFS_PREFIX, owner_user_id: teammateUserId })
+      .select('id')
+      .single();
+    if (workspaceError) { throw new Error(`[run-event-trigger-isolation] fixture seed failed at "workspace": ${workspaceError.message}`); }
+    prefsWorkspaceId = workspace.id as string;
+
+    const { error: seedMembersError } = await db
+      .from('workspace_members')
+      .insert([
+        { workspace_id: prefsWorkspaceId, user_id: qaUserId, role: 'member', status: 'active' },
+        { workspace_id: prefsWorkspaceId, user_id: teammateUserId, role: 'member', status: 'active' },
+      ]);
+    if (seedMembersError) { throw new Error(`[run-event-trigger-isolation] fixture seed failed at "members": ${seedMembersError.message}`); }
+
+    const { data: project, error: projectError } = await db
+      .from('projects')
+      .insert({ workspace_id: prefsWorkspaceId, slug: `${PREFS_PREFIX}-project`, name: `${PREFS_PREFIX} project` })
+      .select('id, slug')
+      .single();
+    if (projectError) { throw new Error(`[run-event-trigger-isolation] fixture seed failed at "project": ${projectError.message}`); }
+
+    const { data: environment, error: environmentError } = await db
+      .from('project_environments')
+      .insert({ project_id: project.id as string, name: 'Staging' })
+      .select('id')
+      .single();
+    if (environmentError) { throw new Error(`[run-event-trigger-isolation] fixture seed failed at "environment": ${environmentError.message}`); }
+
+    const { data: test, error: testError } = await db
+      .from('tests')
+      .insert({ workspace_id: prefsWorkspaceId, title: `${PREFIX} test`, created_by: qaUserId })
+      .select('id')
+      .single();
+    if (testError) { throw new Error(`[run-event-trigger-isolation] fixture seed failed at "test": ${testError.message}`); }
+    prefsTestId = test.id as string;
+
+    prefsFixture = {
+      workspaceId: prefsWorkspaceId,
+      projectId: project.id as string,
+      projectSlug: project.slug as string,
+      environmentId: environment.id as string,
+      testId: prefsTestId,
+      starterUserId: qaUserId,
+      teammateUserId,
+      qaUserId,
+    };
+  });
+
+  afterAll(async () => {
+    const db = service();
+    const cleanup = cleanupCollector();
+    // Restore first, keyed on the snapshot alone (not on the fixture), so a
+    // crash partway through setup never leaves QA_E2E's preferences changed.
+    // Every step runs even if an earlier one fails; any failure is thrown at
+    // the end, because a silently failed restore would leave QA_E2E with a
+    // lifecycle channel off and poison QA's BK-213 retests.
+    if (prefsSnapshot) {
+      const { userId, rows } = prefsSnapshot;
+      await cleanup.step('delete QA_E2E run_lifecycle preferences', db.from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'run_lifecycle'));
+      if (rows.length > 0) {
+        await cleanup.step('restore QA_E2E run_lifecycle preferences', db.from('notification_preferences').insert(rows.map(r => ({ user_id: userId, ...r }))));
+      }
+    }
+    await cleanup.step('delete BK-1217 runs', db.from('runs').delete().like('start_token', `${PREFIX}-bk1217-%`));
+    if (prefsWorkspaceId) {
+      await cleanup.step('delete BK-1217 workspace', db.from('workspaces').delete().eq('id', prefsWorkspaceId));
+    }
+    if (prefsTestId) {
+      await cleanup.step('delete BK-1217 test', db.from('tests').delete().eq('id', prefsTestId));
+    }
+    cleanup.throwIfFailed('[run-event-trigger-isolation] BK-1217 cleanup');
+  });
+
+  it('default (no preference rows): the row is stored visible and the recipient sees it', async () => {
+    const fx = needPrefsFixture();
+    await clearRunPreferences(fx.qaUserId);
+
+    const eventId = await closeQaRun(fx, { key: 'default', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].recipient_user_id).toBe(fx.qaUserId);
+    expect(rows[0].in_app_suppressed).toBe(false);
+    expect(await visibleToRecipient(rows[0].id)).toBe(true);
+  });
+
+  it('In-app off + Email on: the row is stored email-only and the recipient\'s own session cannot see it', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: true });
+
+    const eventId = await closeQaRun(fx, { key: 'inapp-off', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    expect(rows[0].emailed_at).toBeNull();
+    expect(await visibleToRecipient(rows[0].id)).toBe(false);
+
+    // The inbox RPC (items + unread_count) runs under the same RLS.
+    const { data, error } = await qaClient!.rpc('bunkai_list_notifications', { p_workspace_id: fx.workspaceId, p_limit: 50 });
+    expect(error).toBeNull();
+    const page = data as { items: { id: string }[] };
+    expect(page.items.map(i => i.id)).not.toContain(rows[0].id);
+  });
+
+  it('In-app off + Email on also applies to run.aborted', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: true });
+
+    const eventId = await closeQaRun(fx, { key: 'abort-inapp-off', action: 'run.aborted' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    expect(await visibleToRecipient(rows[0].id)).toBe(false);
+  });
+
+  it('both channels off: nothing is stored, and the finish still succeeds', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: false });
+
+    const eventId = await closeQaRun(fx, { key: 'both-off', action: 'run.finished' });
+    expect(await suppressionRow(eventId)).toHaveLength(0);
+  });
+
+  it('In-app on + Email off: the row is stored visible', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: true, email: false });
+
+    const eventId = await closeQaRun(fx, { key: 'email-off', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(false);
+    expect(await visibleToRecipient(rows[0].id)).toBe(true);
+  });
+
+  it('snapshot at event time: re-enabling In-app later leaves an already-suppressed row hidden', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: true });
+    const eventId = await closeQaRun(fx, { key: 'snapshot', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+
+    await setRunPreferences(fx.qaUserId, { in_app: true, email: true });
+    expect(await visibleToRecipient(rows[0].id)).toBe(false);
+    const after = await suppressionRow(eventId);
+    expect(after[0].in_app_suppressed).toBe(true);
+  });
+
+  // End to end on the run path: the row the REAL producer wrote is a digest
+  // candidate until the runner's stamp, then never again (PO decision 13138,
+  // rule 2). QA_E2E is the recipient, an email account by construction.
+  it('an email-only run row from the real producer is a digest candidate until emailed_at is stamped', async () => {
+    const fx = needPrefsFixture();
+    await setRunPreferences(fx.qaUserId, { in_app: false, email: true });
+    const eventId = await closeQaRun(fx, { key: 'digest-once', action: 'run.finished' });
+    const rows = await suppressionRow(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    const notificationId = rows[0].id;
+
+    const candidates = async () => {
+      // Server-side filter: the shared DB holds more candidates than
+      // PostgREST's 1000-row cap, so an unfiltered read can drop this row.
+      const { data, error } = await service().rpc('bunkai_notification_digest_candidates').eq('notification_id', notificationId);
+      expect(error).toBeNull();
+      return ((data ?? []) as { notification_id: string, recipient_user_id: string, event_type: string }[])
+        .filter(r => r.notification_id === notificationId);
+    };
+
+    const before = await candidates();
+    expect(before).toHaveLength(1);
+    expect(before[0].recipient_user_id).toBe(fx.qaUserId);
+    expect(before[0].event_type).toBe('run.finished');
+
+    // Exactly the runner's stamp (lib/notifications/send-digest-run.ts).
+    const { error: stampError } = await service()
+      .from('notifications')
+      .update({ emailed_at: new Date().toISOString() })
+      .in('id', [notificationId])
+      .eq('in_app_suppressed', true);
+    expect(stampError).toBeNull();
+
+    expect(await candidates()).toHaveLength(0);
+  });
+});

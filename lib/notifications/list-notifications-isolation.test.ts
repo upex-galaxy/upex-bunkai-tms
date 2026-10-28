@@ -1,5 +1,10 @@
+import type { Database } from '@lib/types/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { markNotificationRead } from '@app/api/v1/notifications/[id]/read/response';
+import { markAllNotificationsRead } from '@app/api/v1/workspaces/[id]/notifications/read-all/response';
+import { ApiError } from '@lib/api/error-envelope';
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-209 Slice 1 — DB-level integration test for `bunkai_list_notifications`
 // (migration 0053_notifications.sql), the DB-integration test the ADR-0012 /
@@ -406,3 +411,206 @@ describeOrSkip('BK-209 — bunkai_list_notifications isolation, retention, entit
 function warn() {
   console.warn(`[list-notifications-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
 }
+
+// ============================================================================
+// BK-1217 — suppressed (email-only) rows are invisible and immutable in-app
+// ============================================================================
+//
+// Migration 0107 adds `and not in_app_suppressed` to
+// notifications_select_recipient_member_retained and (USING + WITH CHECK)
+// notifications_update_recipient_member. This block proves it through the
+// REAL signed-in QA_E2E session, on every in-app path at once:
+//   - bunkai_list_notifications items and unread_count;
+//   - mark-one: the route's own `markNotificationRead` on a suppressed id
+//     answers the existing not_found (404), never a distinct error;
+//   - mark-all: the route's own `markAllNotificationsRead` never stamps
+//     read_at on a suppressed row (which would silently drop it from the
+//     digest), while the visible row is marked read.
+// The route tests themselves use a fake db, where a suppressed row and a
+// missing row are indistinguishable by construction; the RLS behaviour can
+// only be shown here, against Postgres. It runs in its OWN throwaway
+// workspace so the block above (unread_count === 3) is never disturbed.
+//
+// FAIL-CLOSED GATE (precedent: lib/runs/compare-isolation.test.ts): SKIPPED,
+// loudly, only when there is no database environment or the `in_app_suppressed`
+// column does not exist yet (migration 0107 not applied). Anything else
+// (missing automation identity, failed login, seed failure, an unexpected
+// probe answer) FAILS, and every test asserts at least once.
+
+const SUPPRESSION_PREFIX = `bk1217-list-suppressed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+let suppressionDeployed = false;
+if (hasServiceEnv) {
+  const probe = await service().from('notifications').select('id, in_app_suppressed, emailed_at').limit(1);
+  const code = probe.error?.code ?? 'no error';
+  if (!probe.error) {
+    suppressionDeployed = true;
+  }
+  else if (code === '42703' || code === 'PGRST204') {
+    console.warn(`[list-notifications-isolation] BK-1217 block SKIPPED: notifications.in_app_suppressed does not exist (${code}). Apply migration 0107_notification_inapp_suppression.sql. No BK-1217 assertion in this file ran.`);
+  }
+  else {
+    throw new Error(`[list-notifications-isolation] unexpected answer from the BK-1217 column probe (${code}: ${probe.error.message}). Expected success (deployed) or 42703 (column missing).`);
+  }
+}
+const describeIfSuppressionDeployed = hasServiceEnv && suppressionDeployed ? describe : describe.skip;
+
+interface SuppressionFixture {
+  workspaceId: string
+  qaUserId: string
+  visibleId: string
+  suppressedId: string
+}
+
+let suppressionFixture: SuppressionFixture | null = null;
+let suppressionClient: ReturnType<typeof service> | null = null;
+let suppressionWorkspaceId: string | null = null;
+
+function needSuppressionFixture(): SuppressionFixture {
+  if (!suppressionFixture || !suppressionClient) {
+    throw new Error('[list-notifications-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
+  }
+  return suppressionFixture;
+}
+
+describeIfSuppressionDeployed('BK-1217 — email-only rows never reach the inbox, the bell or the mark-read routes', () => {
+  beforeEach(() => {
+    expect.hasAssertions();
+  });
+
+  beforeAll(async () => {
+    if (!hasRealLoginEnv) {
+      throw new Error('[list-notifications-isolation] NEXT_PUBLIC_SUPABASE_ANON_KEY, QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD are required when a database environment is present: RLS can only be proven through a real session.');
+    }
+    const client = createClient(url!, anonKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await client.auth.signInWithPassword({ email: qaEmail!, password: qaPassword! });
+    if (signInError || !signIn.session || !signIn.user) {
+      throw new Error(`[list-notifications-isolation] QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+    }
+    suppressionClient = client;
+    const qaUserId = signIn.user.id;
+    const db = service();
+
+    const { data: workspace, error: workspaceError } = await db
+      .from('workspaces')
+      .insert({ slug: `${SUPPRESSION_PREFIX}-ws`, name: SUPPRESSION_PREFIX, owner_user_id: qaUserId })
+      .select('id')
+      .single();
+    if (workspaceError) { throw new Error(`[list-notifications-isolation] fixture seed failed at "workspace": ${workspaceError.message}`); }
+    suppressionWorkspaceId = workspace.id as string;
+
+    const { error: memberError } = await db
+      .from('workspace_members')
+      .insert({ workspace_id: suppressionWorkspaceId, user_id: qaUserId, role: 'viewer', status: 'active' });
+    if (memberError) { throw new Error(`[list-notifications-isolation] fixture seed failed at "membership": ${memberError.message}`); }
+
+    // Same key set on both rows (PostgREST bulk insert sends null for a key a
+    // sibling row has and this one omits; see the note in the block above).
+    const row = (marker: string, suppressed: boolean) => ({
+      workspace_id: suppressionWorkspaceId,
+      recipient_user_id: qaUserId,
+      event_type: 'run.finished',
+      entity_type: 'run',
+      entity_id: NONEXISTENT_ENTITY_UUID,
+      payload: { marker },
+      created_at: new Date().toISOString(),
+      in_app_suppressed: suppressed,
+    });
+    const { data: seeded, error: seedError } = await db
+      .from('notifications')
+      .insert([row(`${SUPPRESSION_PREFIX}-visible`, false), row(`${SUPPRESSION_PREFIX}-suppressed`, true)])
+      .select('id, payload');
+    if (seedError) { throw new Error(`[list-notifications-isolation] fixture seed failed at "notifications": ${seedError.message}`); }
+    const byMarker = (marker: string) => (seeded ?? []).find(r => (r.payload as { marker?: string }).marker === marker)!.id as string;
+
+    suppressionFixture = {
+      workspaceId: suppressionWorkspaceId,
+      qaUserId,
+      visibleId: byMarker(`${SUPPRESSION_PREFIX}-visible`),
+      suppressedId: byMarker(`${SUPPRESSION_PREFIX}-suppressed`),
+    };
+  });
+
+  afterAll(async () => {
+    if (suppressionWorkspaceId) {
+      // Cascades cover workspace_members and notifications. A failed delete
+      // is a test failure, never a silent leak of a QA_E2E workspace.
+      const { error } = await service().from('workspaces').delete().eq('id', suppressionWorkspaceId);
+      if (error) {
+        throw new Error(`[list-notifications-isolation] BK-1217 cleanup failed: delete BK-1217 workspace: ${error.message}`);
+      }
+    }
+  });
+
+  it('the list RPC never returns a suppressed row, and unread_count ignores it', async () => {
+    const fx = needSuppressionFixture();
+    const { data, error } = await listNotifications(suppressionClient!, { workspaceId: fx.workspaceId, limit: 20 });
+    expect(error).toBeNull();
+    const page = data as unknown as NotificationsPage;
+    const ids = page.items.map(i => i.id);
+    expect(ids).toEqual([fx.visibleId]);
+    expect(page.unread_count).toBe(1);
+
+    // The row genuinely exists, unread, for this recipient (service-role read).
+    const { data: raw, error: rawError } = await service().from('notifications').select('recipient_user_id, read_at, in_app_suppressed').eq('id', fx.suppressedId).single();
+    expect(rawError).toBeNull();
+    expect(raw!.recipient_user_id).toBe(fx.qaUserId);
+    expect(raw!.read_at).toBeNull();
+    expect(raw!.in_app_suppressed).toBe(true);
+  });
+
+  it('mark-one on a suppressed id answers the existing not_found (404)', async () => {
+    const fx = needSuppressionFixture();
+    let captured: unknown;
+    try {
+      await markNotificationRead(suppressionClient as unknown as SupabaseClient<Database>, fx.suppressedId);
+    }
+    catch (err) {
+      captured = err;
+    }
+    expect(captured).toBeInstanceOf(ApiError);
+    expect((captured as ApiError).code).toBe('not_found');
+    expect((captured as ApiError).status).toBe(404);
+
+    const { data: raw } = await service().from('notifications').select('read_at').eq('id', fx.suppressedId).single();
+    expect(raw!.read_at).toBeNull();
+  });
+
+  // WITH CHECK on notifications_update_recipient_member: a recipient cannot
+  // flip their own visible row to suppressed through a direct PATCH (which
+  // would also hide it from mark-all and change what the digest sends).
+  it('a direct client PATCH cannot set in_app_suppressed on the recipient\'s own visible row', async () => {
+    const fx = needSuppressionFixture();
+    const { data, error } = await suppressionClient!
+      .from('notifications')
+      .update({ in_app_suppressed: true })
+      .eq('id', fx.visibleId)
+      .select('id');
+    if (error) {
+      expect(error.code).toBe('42501'); // new row violates row-level security policy
+    }
+    else {
+      expect(data ?? []).toHaveLength(0);
+    }
+
+    const { data: raw, error: rawError } = await service().from('notifications').select('in_app_suppressed').eq('id', fx.visibleId).single();
+    expect(rawError).toBeNull();
+    expect(raw!.in_app_suppressed).toBe(false);
+  });
+
+  // Deliberately LAST: it mutates the visible row.
+  it('mark-all marks the visible row read and never stamps read_at on the suppressed row', async () => {
+    const fx = needSuppressionFixture();
+    const result = await markAllNotificationsRead(suppressionClient as unknown as SupabaseClient<Database>, {
+      workspaceId: fx.workspaceId,
+      recipientUserId: fx.qaUserId,
+    });
+    expect(result).toEqual({ updated_count: 1 });
+
+    const { data: raw, error: rawError } = await service().from('notifications').select('id, read_at').in('id', [fx.visibleId, fx.suppressedId]);
+    expect(rawError).toBeNull();
+    const byId = new Map((raw ?? []).map(r => [r.id as string, r.read_at as string | null]));
+    expect(byId.get(fx.visibleId)).not.toBeNull();
+    expect(byId.get(fx.suppressedId)).toBeNull();
+  });
+});

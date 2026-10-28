@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 
 // BK-212 Slice 1 — DB-integration test for `bunkai_notify_bug_event`
 // (migration 0056_bug_event_notifications.sql), the AFTER INSERT trigger on
@@ -118,6 +118,19 @@ async function latestActivityId(db: ReturnType<typeof service>, bugId: string, a
   return (data as { id: string } | null)?.id ?? null;
 }
 
+async function withoutDisabledPreferences(db: ReturnType<typeof service>, userIds: string[]) {
+  if (userIds.length === 0) { return userIds; }
+  const { data, error } = await db
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', userIds)
+    .eq('event_type', 'bug_lifecycle')
+    .eq('enabled', false);
+  if (error) { throw error; }
+  const disabled = new Set((data ?? []).map(r => r.user_id as string));
+  return userIds.filter(id => !disabled.has(id));
+}
+
 async function notificationsForEvent(db: ReturnType<typeof service>, sourceEventId: string) {
   const { data, error } = await db
     .from('notifications')
@@ -162,7 +175,14 @@ describeOrSkip('BK-212 — bunkai_notify_bug_event trigger (recipient rule, idem
       .eq('status', 'active')
       .limit(20);
     if (membersError) { throw membersError; }
-    const distinctIds = [...new Set((members ?? []).map(m => m.user_id as string))].filter(id => id !== qaUserId);
+    // BK-1217: the trigger now honours channel preferences, so a borrowed
+    // recipient with Bug lifecycle switched off would make these assertions
+    // depend on that person's settings. Only users with no disabled
+    // bug_lifecycle row are eligible as DATA recipients here.
+    const distinctIds = await withoutDisabledPreferences(
+      db,
+      [...new Set((members ?? []).map(m => m.user_id as string))].filter(id => id !== qaUserId),
+    );
     if (distinctIds.length < 3) {
       skipReason = 'need at least 3 distinct real user ids (other than QA_E2E) among active workspace members (seed state).';
       return;
@@ -431,3 +451,360 @@ describeOrSkip('BK-212 — bunkai_notify_bug_event trigger (recipient rule, idem
 function warn() {
   console.warn(`[bug-event-trigger-isolation] skipped: ${skipReason ?? 'fixture unavailable.'}`);
 }
+
+// ============================================================================
+// BK-1217 — channel preferences at write time (migration 0107)
+// ============================================================================
+//
+// AI Product Owner decision 13138 / AI Tech Lead decision 13139: In-app off +
+// Email on stores an email-only row (`in_app_suppressed = true`) the
+// recipient's own RLS-scoped session can never see; both channels off stores
+// nothing for THAT recipient; the decision is a snapshot at event time.
+//
+// QA_E2E is the only identity this suite may sign in as (declared automation
+// identity, real password path), and the assign/transition RPCs only run as an
+// authenticated session, so QA_E2E is both actor and recipient here:
+// assignment events have no actor exclusion, so QA_E2E self-assigning (the
+// defect's own repro: "re-assign a bug to yourself") notifies QA_E2E.
+// `bug.status_changed` always excludes the actor, so that one case writes the
+// trigger's input row directly with the service role (actor = a borrowed
+// owner, reporter = QA_E2E, assignee = a borrowed member). The REAL trigger
+// still produces every notification; only the activity_log row is
+// hand-shaped, and it proves the per-recipient `continue` leaves the other
+// recipient of the same event untouched. QA_E2E's own bug_lifecycle
+// preferences are toggled with the service role after a snapshot and restored
+// in afterAll even when setup fails partway.
+//
+// FAIL-CLOSED GATE (precedent: lib/runs/compare-isolation.test.ts). This block
+// is SKIPPED, with a loud warning, only when there is no database environment
+// or `bunkai_notification_channel_enabled` does not exist (migration 0107 not
+// applied yet). Everything else (missing automation identity, failed login,
+// fixture seed failure, an unexpected probe answer) FAILS. Every test asserts
+// at least once.
+
+const hasDbEnv = Boolean(url && serviceKey);
+const PREFS_PREFIX = `bk1217-bug-prefs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+let prefsDeployed = false;
+if (hasDbEnv) {
+  const probe = await service().rpc('bunkai_notification_channel_enabled', {
+    p_user_id: ZERO_UUID,
+    p_event_type: 'bug.assigned',
+    p_channel: 'in_app',
+  });
+  const code = probe.error?.code ?? 'no error';
+  if (!probe.error && probe.data === true) {
+    prefsDeployed = true;
+  }
+  else if (code === 'PGRST202' || code === '42883') {
+    console.warn(`[bug-event-trigger-isolation] BK-1217 block SKIPPED: bunkai_notification_channel_enabled is not deployed (${code}). Apply migration 0107_notification_inapp_suppression.sql. No BK-1217 assertion in this file ran.`);
+  }
+  else {
+    throw new Error(`[bug-event-trigger-isolation] unexpected answer from the BK-1217 deploy probe (${code}: ${probe.error?.message ?? JSON.stringify(probe.data)}). Expected true (deployed) or PGRST202/42883 (not deployed).`);
+  }
+}
+const describeIfPrefsDeployed = hasDbEnv && prefsDeployed ? describe : describe.skip;
+
+interface PreferenceRow { event_type: string, channel: string, enabled: boolean }
+interface PrefsFixture {
+  workspaceId: string
+  projectId: string
+  moduleId: string
+  qaUserId: string
+  ownerUserId: string // workspace owner + actor of the hand-shaped status event
+  memberA: string // co-recipient with default preferences
+}
+
+let prefsFixture: PrefsFixture | null = null;
+let qaClient: ReturnType<typeof service> | null = null;
+let prefsSnapshot: { userId: string, rows: PreferenceRow[] } | null = null;
+let prefsWorkspaceId: string | null = null;
+
+// Runs every cleanup step, records each failure (returned error or thrown),
+// and throws once at the end so one failed step never skips the others.
+function cleanupCollector() {
+  const failures: string[] = [];
+  return {
+    async step(what: string, op: PromiseLike<{ error: { message: string } | null }>) {
+      try {
+        const { error } = await op;
+        if (error) { failures.push(`${what}: ${error.message}`); }
+      }
+      catch (err) {
+        failures.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    throwIfFailed(label: string) {
+      if (failures.length > 0) {
+        throw new Error(`${label} failed: ${failures.join('; ')}`);
+      }
+    },
+  };
+}
+
+function needPrefsFixture(): PrefsFixture {
+  if (!prefsFixture || !qaClient) {
+    throw new Error('[bug-event-trigger-isolation] the BK-1217 fixture was not seeded (see the beforeAll failure above); refusing to pass.');
+  }
+  return prefsFixture;
+}
+
+async function setBugPreferences(userId: string, channels: { in_app: boolean, email: boolean }) {
+  const { error } = await service()
+    .from('notification_preferences')
+    .upsert([
+      { user_id: userId, event_type: 'bug_lifecycle', channel: 'in_app', enabled: channels.in_app },
+      { user_id: userId, event_type: 'bug_lifecycle', channel: 'email', enabled: channels.email },
+    ], { onConflict: 'user_id,event_type,channel' });
+  if (error) { throw new Error(`[bug-event-trigger-isolation] could not set bug_lifecycle preferences: ${error.message}`); }
+}
+
+async function clearBugPreferences(userId: string) {
+  const { error } = await service().from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'bug_lifecycle');
+  if (error) { throw new Error(`[bug-event-trigger-isolation] could not clear bug_lifecycle preferences: ${error.message}`); }
+}
+
+async function seedPrefsBug(fx: PrefsFixture, key: string, extra: Record<string, unknown> = {}) {
+  const { data, error } = await service()
+    .from('bugs')
+    .insert({
+      workspace_id: fx.workspaceId,
+      project_id: fx.projectId,
+      module_id: fx.moduleId,
+      title: `${PREFS_PREFIX} ${key}`,
+      severity: 'P2',
+      created_by: fx.ownerUserId,
+      ...extra,
+    })
+    .select('id')
+    .single();
+  if (error) { throw new Error(`[bug-event-trigger-isolation] fixture seed failed at "bug ${key}": ${error.message}`); }
+  return data.id as string;
+}
+
+async function rowsForEvent(sourceEventId: string) {
+  const { data, error } = await service()
+    .from('notifications')
+    .select('id, recipient_user_id, in_app_suppressed, emailed_at')
+    .eq('source_event_id', sourceEventId);
+  if (error) { throw error; }
+  return (data ?? []) as { id: string, recipient_user_id: string, in_app_suppressed: boolean, emailed_at: string | null }[];
+}
+
+async function visibleToQa(notificationId: string) {
+  const { data, error } = await qaClient!.from('notifications').select('id').eq('id', notificationId);
+  expect(error).toBeNull();
+  return (data ?? []).length > 0;
+}
+
+async function qaSelfAssign(bugId: string, action: 'bug.assigned' | 'bug.reassigned', fx: PrefsFixture) {
+  const { error } = await assign(qaClient!, bugId, fx.qaUserId);
+  // The assignment itself must never fail because of the preference gate.
+  expect(error).toBeNull();
+  const eventId = await latestActivityId(service(), bugId, action);
+  expect(eventId).not.toBeNull();
+  return eventId!;
+}
+
+describeIfPrefsDeployed('BK-1217 — bunkai_notify_bug_event honours bug_lifecycle channel preferences per recipient', () => {
+  beforeEach(() => {
+    expect.hasAssertions();
+  });
+
+  beforeAll(async () => {
+    if (!anonKey || !qaEmail || !qaPassword) {
+      throw new Error('[bug-event-trigger-isolation] NEXT_PUBLIC_SUPABASE_ANON_KEY, QA_E2E_USER_EMAIL and QA_E2E_USER_PASSWORD are required when a database environment is present: the bug RPCs and the recipient-visibility check both need a real session.');
+    }
+    const client = createClient(url!, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: signIn, error: signInError } = await client.auth.signInWithPassword({ email: qaEmail, password: qaPassword });
+    if (signInError || !signIn.session || !signIn.user) {
+      throw new Error(`[bug-event-trigger-isolation] QA_E2E login failed (${signInError?.message ?? 'no session returned'}).`);
+    }
+    qaClient = client;
+    const qaUserId = signIn.user.id;
+    const db = service();
+
+    const { data: existing, error: existingError } = await db
+      .from('notification_preferences')
+      .select('event_type, channel, enabled')
+      .eq('user_id', qaUserId)
+      .eq('event_type', 'bug_lifecycle');
+    if (existingError) { throw new Error(`[bug-event-trigger-isolation] could not snapshot QA_E2E preferences: ${existingError.message}`); }
+    prefsSnapshot = { userId: qaUserId, rows: (existing ?? []) as PreferenceRow[] };
+
+    const { data: members, error: membersError } = await db
+      .from('workspace_members')
+      .select('user_id')
+      .eq('status', 'active')
+      .neq('user_id', qaUserId)
+      .limit(20);
+    if (membersError) { throw new Error(`[bug-event-trigger-isolation] could not read workspace members: ${membersError.message}`); }
+    const borrowed = await withoutDisabledPreferences(db, [...new Set((members ?? []).map(m => m.user_id as string))]);
+    if (borrowed.length < 2) {
+      throw new Error('[bug-event-trigger-isolation] need 2 active workspace members other than QA_E2E with default bug_lifecycle preferences (seed state).');
+    }
+    const [ownerUserId, memberA] = borrowed;
+
+    const { data: workspace, error: workspaceError } = await db
+      .from('workspaces')
+      .insert({ slug: `${PREFS_PREFIX}-ws`, name: PREFS_PREFIX, owner_user_id: ownerUserId })
+      .select('id')
+      .single();
+    if (workspaceError) { throw new Error(`[bug-event-trigger-isolation] fixture seed failed at "workspace": ${workspaceError.message}`); }
+    prefsWorkspaceId = workspace.id as string;
+
+    const { error: seedMembersError } = await db
+      .from('workspace_members')
+      .insert([
+        { workspace_id: prefsWorkspaceId, user_id: qaUserId, role: 'member', status: 'active' },
+        { workspace_id: prefsWorkspaceId, user_id: memberA, role: 'member', status: 'active' },
+      ]);
+    if (seedMembersError) { throw new Error(`[bug-event-trigger-isolation] fixture seed failed at "members": ${seedMembersError.message}`); }
+
+    const { data: project, error: projectError } = await db
+      .from('projects')
+      .insert({ workspace_id: prefsWorkspaceId, slug: `${PREFS_PREFIX}-project`, name: `${PREFS_PREFIX} project` })
+      .select('id')
+      .single();
+    if (projectError) { throw new Error(`[bug-event-trigger-isolation] fixture seed failed at "project": ${projectError.message}`); }
+
+    const { data: module, error: moduleError } = await db
+      .from('modules')
+      .insert({ project_id: project.id as string, path: `${PREFS_PREFIX}-module`, name: `${PREFS_PREFIX} module` })
+      .select('id')
+      .single();
+    if (moduleError) { throw new Error(`[bug-event-trigger-isolation] fixture seed failed at "module": ${moduleError.message}`); }
+
+    prefsFixture = {
+      workspaceId: prefsWorkspaceId,
+      projectId: project.id as string,
+      moduleId: module.id as string,
+      qaUserId,
+      ownerUserId,
+      memberA,
+    };
+  });
+
+  afterAll(async () => {
+    const db = service();
+    const cleanup = cleanupCollector();
+    // Every step runs even if an earlier one fails; any failure is thrown at
+    // the end, because a silently failed restore would leave QA_E2E with a
+    // lifecycle channel off and poison QA's BK-213 retests.
+    if (prefsSnapshot) {
+      const { userId, rows } = prefsSnapshot;
+      await cleanup.step('delete QA_E2E bug_lifecycle preferences', db.from('notification_preferences').delete().eq('user_id', userId).eq('event_type', 'bug_lifecycle'));
+      if (rows.length > 0) {
+        await cleanup.step('restore QA_E2E bug_lifecycle preferences', db.from('notification_preferences').insert(rows.map(r => ({ user_id: userId, ...r }))));
+      }
+    }
+    if (prefsWorkspaceId) {
+      // Cascades cover bugs/projects/modules/members/activity_log/notifications.
+      await cleanup.step('delete BK-1217 workspace', db.from('workspaces').delete().eq('id', prefsWorkspaceId));
+    }
+    cleanup.throwIfFailed('[bug-event-trigger-isolation] BK-1217 cleanup');
+  });
+
+  it('default (no preference rows): a self-assignment is stored visible and the recipient sees it', async () => {
+    const fx = needPrefsFixture();
+    await clearBugPreferences(fx.qaUserId);
+    const bugId = await seedPrefsBug(fx, 'default');
+
+    const eventId = await qaSelfAssign(bugId, 'bug.assigned', fx);
+    const rows = await rowsForEvent(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].recipient_user_id).toBe(fx.qaUserId);
+    expect(rows[0].in_app_suppressed).toBe(false);
+    expect(await visibleToQa(rows[0].id)).toBe(true);
+  });
+
+  it('In-app off + Email on: bug.assigned is stored email-only and hidden from the recipient', async () => {
+    const fx = needPrefsFixture();
+    await setBugPreferences(fx.qaUserId, { in_app: false, email: true });
+    const bugId = await seedPrefsBug(fx, 'assigned-inapp-off');
+
+    const eventId = await qaSelfAssign(bugId, 'bug.assigned', fx);
+    const rows = await rowsForEvent(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    expect(rows[0].emailed_at).toBeNull();
+    expect(await visibleToQa(rows[0].id)).toBe(false);
+  });
+
+  it('In-app off + Email on: bug.reassigned to self is stored email-only and hidden from the recipient', async () => {
+    const fx = needPrefsFixture();
+    await setBugPreferences(fx.qaUserId, { in_app: false, email: true });
+    const bugId = await seedPrefsBug(fx, 'reassigned-inapp-off', { assignee_user_id: fx.memberA });
+
+    const eventId = await qaSelfAssign(bugId, 'bug.reassigned', fx);
+    const rows = await rowsForEvent(eventId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].recipient_user_id).toBe(fx.qaUserId);
+    expect(rows[0].in_app_suppressed).toBe(true);
+    expect(await visibleToQa(rows[0].id)).toBe(false);
+  });
+
+  it('both channels off: a self-assignment stores nothing, and the assignment still succeeds', async () => {
+    const fx = needPrefsFixture();
+    await setBugPreferences(fx.qaUserId, { in_app: false, email: false });
+    const bugId = await seedPrefsBug(fx, 'both-off');
+
+    const eventId = await qaSelfAssign(bugId, 'bug.assigned', fx);
+    expect(await rowsForEvent(eventId)).toHaveLength(0);
+  });
+
+  it('snapshot at event time: re-enabling In-app later leaves an already-suppressed row hidden', async () => {
+    const fx = needPrefsFixture();
+    await setBugPreferences(fx.qaUserId, { in_app: false, email: true });
+    const bugId = await seedPrefsBug(fx, 'snapshot');
+    const eventId = await qaSelfAssign(bugId, 'bug.assigned', fx);
+    const rows = await rowsForEvent(eventId);
+    expect(rows).toHaveLength(1);
+
+    await setBugPreferences(fx.qaUserId, { in_app: true, email: true });
+    expect(await visibleToQa(rows[0].id)).toBe(false);
+  });
+
+  for (const scenario of [
+    { name: 'both channels off', prefs: { in_app: false, email: false }, qaRow: 'none' as const },
+    { name: 'In-app off + Email on', prefs: { in_app: false, email: true }, qaRow: 'suppressed' as const },
+  ]) {
+    it(`bug.status_changed, ${scenario.name} for one recipient: that recipient is gated, the other recipient is untouched`, async () => {
+      const fx = needPrefsFixture();
+      await setBugPreferences(fx.qaUserId, scenario.prefs);
+      // Reporter = QA_E2E, assignee = memberA, actor = ownerUserId (neither recipient).
+      const bugId = await seedPrefsBug(fx, `status-${scenario.qaRow}`, { created_by: fx.qaUserId, assignee_user_id: fx.memberA });
+
+      const db = service();
+      const { data: event, error } = await db
+        .from('activity_log')
+        .insert({
+          workspace_id: fx.workspaceId,
+          actor_user_id: fx.ownerUserId,
+          entity_type: 'bug',
+          entity_id: bugId,
+          action: 'bug.status_changed',
+          payload: { previous_status: 'open', status: 'in_progress', assignee_user_id: fx.memberA },
+        })
+        .select('id')
+        .single();
+      expect(error).toBeNull();
+
+      const rows = await rowsForEvent(event!.id as string);
+      const memberRow = rows.find(r => r.recipient_user_id === fx.memberA);
+      const qaRow = rows.find(r => r.recipient_user_id === fx.qaUserId);
+      expect(memberRow).toBeDefined();
+      expect(memberRow!.in_app_suppressed).toBe(false);
+      if (scenario.qaRow === 'none') {
+        expect(qaRow).toBeUndefined();
+        expect(rows).toHaveLength(1);
+      }
+      else {
+        expect(qaRow).toBeDefined();
+        expect(qaRow!.in_app_suppressed).toBe(true);
+        expect(await visibleToQa(qaRow!.id)).toBe(false);
+        expect(rows).toHaveLength(2);
+      }
+    });
+  }
+});
