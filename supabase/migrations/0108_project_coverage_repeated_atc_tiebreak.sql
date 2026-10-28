@@ -30,9 +30,10 @@
 -- Unchanged on purpose: point-in-time semantics (BK-46 Q1, decision A1 on
 -- BK-1083): only the latest run is consulted, so an earlier run's 'passed'
 -- never rescues a later run that executed nothing. The executed allowlist
--- (passed/failed), the Q3 union rule across distinct ATCs, and everything a
+-- (passed/failed), the Q3 union rule across distinct ATCs, and what a
 -- non-repeated ATC sees: it has one row per run, so its result is identical
--- to 0090's.
+-- to 0090's unless two of its Runs share started_at (0090 took the higher
+-- run_atcs.id there; 0108 takes the executed row).
 --
 -- Changed: the atc_real_status ORDER BY and its comment. Everything else
 -- (signature, SECURITY DEFINER, search_path = '', the step-0 actor bind,
