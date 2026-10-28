@@ -17,8 +17,9 @@
 //   silent RLS denial on notifications and runs).
 // - If the token then arrives before the join reply, realtime-js only updates
 //   the (already sent) join payload and never pushes an `access_token` event,
-//   so the channel stays anon for its whole life. Fast production hydration
-//   lands in exactly that window; a first load right after sign-in does not,
+//   so the channel stays anon (while reporting SUBSCRIBED) until the next
+//   token change, i.e. the next refresh, roughly hourly. Fast production
+//   hydration lands in exactly that window; a first load right after sign-in does not,
 //   because the sign-in itself already set the token.
 //
 // The fix: resolve the Realtime token from the current session BEFORE the
