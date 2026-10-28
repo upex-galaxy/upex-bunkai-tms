@@ -37,14 +37,30 @@ export type BodyValidation
   = | { ok: true, body: string }
     | { ok: false, reason: 'empty' | 'too_long' };
 
+// BK-1282: length of a message body in the unit the DB CHECK uses. Postgres
+// `char_length` counts Unicode code points, while JS `.length` counts UTF-16
+// code units (an emoji like U+1F600 is 2 units but 1 code point). Iterating a
+// string walks code points, so this counts the same thing as the DB. A grapheme
+// (ZWJ family, flag) is several code points and counts as several: code points
+// are the contract, never graphemes, or the client would accept what the DB
+// rejects. No Unicode normalization, same as the DB.
+export function chatBodyLength(raw: string): number {
+  return [...raw.trim()].length;
+}
+
 // Business rule: 1..4000 characters AFTER trimming; empty/whitespace-only is
 // rejected. Mirrors the DB CHECK (char_length(btrim(body)) between 1 and 4000)
-// so the client, the API and the table agree.
+// so the client, the API and the table agree. The trim is JS `trim()` (all
+// Unicode whitespace), wider than `btrim`'s spaces-only default; the trimmed
+// string is what the API stores and sends to the edit RPC, so the DB's `btrim`
+// is a no-op on it and both sides measure the same text. The only difference is
+// that whitespace-only input like "\n\t" is rejected here, which is the rule.
 export function validateMessageBody(raw: unknown): BodyValidation {
   if (typeof raw !== 'string') { return { ok: false, reason: 'empty' }; }
   const body = raw.trim();
-  if (body.length === 0) { return { ok: false, reason: 'empty' }; }
-  if (body.length > CHAT_MESSAGE_MAX_LENGTH) { return { ok: false, reason: 'too_long' }; }
+  const length = chatBodyLength(body);
+  if (length === 0) { return { ok: false, reason: 'empty' }; }
+  if (length > CHAT_MESSAGE_MAX_LENGTH) { return { ok: false, reason: 'too_long' }; }
   return { ok: true, body };
 }
 

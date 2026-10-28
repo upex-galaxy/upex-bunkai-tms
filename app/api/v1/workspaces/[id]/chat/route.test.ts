@@ -195,6 +195,48 @@ describe('editMessage / deleteMessage (BK-219)', () => {
   });
 });
 
+// BK-1282: the length rule counts code points (the DB's `char_length`), not
+// UTF-16 units, on both create and edit. 4001 keeps the existing 422 shape.
+describe('message length counts code points (BK-1282)', () => {
+  const MSG = '44444444-4444-4444-4444-444444444444';
+  const GRIN = '\u{1F600}';
+
+  async function rejection(p: Promise<unknown>): Promise<{ code: string, message: string, details: unknown } | undefined> {
+    try {
+      await p;
+    }
+    catch (e) {
+      const err = e as ApiError;
+      return { code: err.code, message: err.message, details: err.details };
+    }
+    return undefined;
+  }
+
+  const TOO_LONG = {
+    code: 'validation_failed',
+    message: 'A message can be at most 4000 characters.',
+    details: { reason: 'message_too_long' },
+  };
+
+  it('postMessage stores a 4000-emoji body and rejects 4001 with message_too_long', async () => {
+    const rec: Rec = { ops: [] };
+    await postMessage(fakeDb({}, rec), { workspaceId: WS, userId: U1, rawBody: ` ${GRIN.repeat(4000)}\n` });
+    expect(rec.inserted).toEqual({ channel_id: CH, workspace_id: WS, author_user_id: U1, body: GRIN.repeat(4000) });
+
+    const rejected: Rec = { ops: [] };
+    expect(await rejection(postMessage(fakeDb({}, rejected), { workspaceId: WS, userId: U1, rawBody: GRIN.repeat(4001) }))).toEqual(TOO_LONG);
+    expect(rejected.inserted).toBeUndefined();
+  });
+
+  it('editMessage accepts a 4000-emoji body and rejects 4001 before the RPC', async () => {
+    const item = await editMessage(fakeDb({ rpcRow: { body: GRIN.repeat(4000) } }), { workspaceId: WS, messageId: MSG, rawBody: GRIN.repeat(4000) });
+    expect(item.body).toBe(GRIN.repeat(4000));
+    // An RPC error here would surface as internal_error: the 422 proves the
+    // body was refused before the RPC ran.
+    expect(await rejection(editMessage(fakeDb({ rpcError: { message: 'boom' } }), { workspaceId: WS, messageId: MSG, rawBody: GRIN.repeat(4001) }))).toEqual(TOO_LONG);
+  });
+});
+
 describe('fetchRoster', () => {
   it('maps members with display names', async () => {
     const members = await fetchRoster(fakeDb({ roster: [{ user_id: U1, email: 'sara.lee@x.io', role: 'admin' }] }), WS);
