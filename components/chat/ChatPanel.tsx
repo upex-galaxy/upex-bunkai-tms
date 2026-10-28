@@ -19,6 +19,7 @@ import {
   canEditMessage,
   canWriteChat,
   CHAT_MESSAGE_MAX_LENGTH,
+  chatBodyLength,
   continuesPrevious,
   displayNameFromEmail,
   firstUnreadIndex,
@@ -617,7 +618,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     }
   };
 
-  const overLimit = draft.trim().length > CHAT_MESSAGE_MAX_LENGTH;
+  // BK-1282: code points, the unit the API and the DB CHECK count.
+  const draftLength = chatBodyLength(draft);
+  const overLimit = draftLength > CHAT_MESSAGE_MAX_LENGTH;
 
   return (
     <section data-testid="chat_panel" aria-label="Team chat panel" className="relative flex h-full min-h-0 flex-col">
@@ -876,7 +879,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
                   >
                     <Link2 size={14} aria-hidden="true" />
                   </button>
-                  {overLimit && <span data-testid="chat_over_limit" className="text-fail">{`${draft.trim().length}/${CHAT_MESSAGE_MAX_LENGTH}`}</span>}
+                  {overLimit && <span data-testid="chat_over_limit" className="text-fail">{`${draftLength}/${CHAT_MESSAGE_MAX_LENGTH}`}</span>}
                   <button
                     type="button"
                     data-testid="chat_send"
