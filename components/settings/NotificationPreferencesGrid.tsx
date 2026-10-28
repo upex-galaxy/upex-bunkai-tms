@@ -6,7 +6,7 @@ import type { PreferenceCell } from '@lib/notification-preferences/grid';
 import { Switch } from '@components/ui/switch';
 import { cn } from '@lib/utils';
 import { Bell, Lock, Mail } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface NotificationPreferencesGridProps {
@@ -40,6 +40,9 @@ const ROW_META: Record<string, RowMeta> = {
 };
 const ROW_ORDER = ['run_lifecycle', 'bug_lifecycle', 'mentions'];
 const CHANNEL_LABEL: Record<NotificationChannel, string> = { in_app: 'In-app', email: 'Email' };
+// A save still unanswered after this long is aborted: the catch below reverts
+// the cell, re-enables it and shows the error toast (BK-1218 review).
+const SAVE_TIMEOUT_MS = 15_000;
 
 // Settings > Notifications preference grid (BK-213 — AC1-AC5). Instant-save:
 // each toggle click optimistically flips the cell, PATCHes
@@ -54,15 +57,21 @@ const CHANNEL_LABEL: Record<NotificationChannel, string> = { in_app: 'In-app', e
 // has two overlapping saves: the PATCH is an unversioned last-write-wins
 // upsert, and two in-flight writes of one cell can commit in either order,
 // which no client-side "latest response wins" rule can mirror. A failed save
-// reverts only its own cell, to its click-time value — with one save per
-// cell, that is the value the server holds. Restoring a whole-grid snapshot
-// taken at click time instead discards any other cell saved meanwhile.
+// reverts only its own cell, to its click-time value. With one save per cell
+// that is the server's value whenever the failure means nothing was written
+// (an error response, a refused connection); a connection that drops AFTER
+// the write committed can still leave the cell off from the DB until reload.
+// Restoring a whole-grid snapshot taken at click time instead discards any
+// other cell saved meanwhile. A save that hangs is aborted after
+// SAVE_TIMEOUT_MS so its cell never stays disabled until a reload.
 export function NotificationPreferencesGrid({ preferences }: NotificationPreferencesGridProps) {
   const [cells, setCells] = useState(preferences);
   const [savingKeys, setSavingKeys] = useState<ReadonlySet<string>>(() => new Set());
   // Synchronous mirror of `savingKeys`: a second click on the same cell that
-  // lands before React re-renders it as disabled is still refused.
-  const inFlightRef = useRef(new Set<string>());
+  // lands before React re-renders it as disabled is still refused. Mutable
+  // and stable for the component's lifetime; the lazy initializer allocates
+  // it once.
+  const [inFlight] = useState(() => new Set<string>());
 
   const setCellEnabled = (eventType: EditableEventType, channel: NotificationChannel, enabled: boolean) => {
     setCells(prev => prev.map(cell =>
@@ -74,10 +83,10 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
 
   const handleToggle = async (eventType: EditableEventType, channel: NotificationChannel, nextEnabled: boolean) => {
     const key = cellKey(eventType, channel);
-    if (inFlightRef.current.has(key)) {
+    if (inFlight.has(key)) {
       return;
     }
-    inFlightRef.current.add(key);
+    inFlight.add(key);
     setSavingKeys(prev => new Set(prev).add(key));
     setCellEnabled(eventType, channel, nextEnabled);
 
@@ -86,6 +95,7 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ event_type: eventType, channel, enabled: nextEnabled }),
+        signal: AbortSignal.timeout(SAVE_TIMEOUT_MS),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
@@ -100,7 +110,7 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
       toast.error(err instanceof Error ? err.message : 'Network error.');
     }
     finally {
-      inFlightRef.current.delete(key);
+      inFlight.delete(key);
       setSavingKeys((prev) => {
         const next = new Set(prev);
         next.delete(key);

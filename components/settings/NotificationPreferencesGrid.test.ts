@@ -108,8 +108,10 @@ beforeEach(() => {
   mounted = [];
   toastError = spyOn(toast, 'error');
   toastSuccess = spyOn(toast, 'success');
-  globalThis.fetch = (async (_input: unknown, init?: { body?: string }) => {
+  // Rejects with the signal's reason on abort, the way a real fetch does.
+  globalThis.fetch = (async (_input: unknown, init?: { body?: string, signal?: AbortSignal }) => {
     return new Promise<Response>((resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => { reject(init.signal?.reason); });
       pendingPatches.push({ body: JSON.parse(init?.body ?? '{}') as PatchBody, resolve, reject });
     });
   }) as unknown as typeof globalThis.fetch;
@@ -194,6 +196,38 @@ describe('NotificationPreferencesGrid — per-cell saves (BK-1218)', () => {
     expect(toggleOf(container, 'bug_lifecycle', 'in_app').disabled).toBe(true);
     await click(container, 'bug_lifecycle', 'in_app');
     expect(patchesFor('bug_lifecycle', 'in_app')).toHaveLength(1);
+  });
+
+  test('a save that never answers is aborted on timeout: its cell reverts, re-enables and shows the error', async () => {
+    // The component's real timeout signal is swapped for one this test fires,
+    // so "15s pass" is chosen rather than waited for.
+    const timeouts: Array<{ ms: number, controller: AbortController }> = [];
+    const timeoutSpy = spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => {
+      const controller = new AbortController();
+      timeouts.push({ ms, controller });
+      return controller.signal;
+    });
+    try {
+      const container = mount();
+
+      await click(container, 'bug_lifecycle', 'email');
+      expect(isOn(container, 'bug_lifecycle', 'email')).toBe(false);
+      expect(toggleOf(container, 'bug_lifecycle', 'email').disabled).toBe(true);
+      expect(timeouts).toHaveLength(1);
+      expect(timeouts[0].ms).toBe(15_000);
+
+      await act(async () => {
+        timeouts[0].controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+      });
+      await flush();
+
+      expect(isOn(container, 'bug_lifecycle', 'email')).toBe(true);
+      expect(toggleOf(container, 'bug_lifecycle', 'email').disabled).toBe(false);
+      expect(toastError).toHaveBeenCalledWith('The operation timed out.');
+    }
+    finally {
+      timeoutSpy.mockRestore();
+    }
   });
 
   test('a cell can be toggled again once its save has settled', async () => {
