@@ -40,6 +40,9 @@ const ROW_META: Record<string, RowMeta> = {
 };
 const ROW_ORDER = ['run_lifecycle', 'bug_lifecycle', 'mentions'];
 const CHANNEL_LABEL: Record<NotificationChannel, string> = { in_app: 'In-app', email: 'Email' };
+// A save still unanswered after this long is aborted: the catch below reverts
+// the cell, re-enables it and shows the error toast (BK-1218 review).
+const SAVE_TIMEOUT_MS = 15_000;
 
 // Settings > Notifications preference grid (BK-213 — AC1-AC5). Instant-save:
 // each toggle click optimistically flips the cell, PATCHes
@@ -48,40 +51,71 @@ const CHANNEL_LABEL: Record<NotificationChannel, string> = { in_app: 'In-app', e
 // `principal.userId`-scoped server data comes in as `preferences` from the
 // parent server component (`settings/notifications/page.tsx`, TD7 isolation);
 // this component owns no Supabase client of its own.
+//
+// BK-1218 — every save is scoped to its own cell. A cell stays disabled
+// while ITS save is in flight (other cells stay clickable), so one cell never
+// has two overlapping saves: the PATCH is an unversioned last-write-wins
+// upsert, and two in-flight writes of one cell can commit in either order,
+// which no client-side "latest response wins" rule can mirror. A failed save
+// reverts only its own cell, to its click-time value. With one save per cell
+// that is the server's value whenever the failure means nothing was written
+// (an error response, a refused connection); a connection that drops AFTER
+// the write committed can still leave the cell off from the DB until reload.
+// Restoring a whole-grid snapshot taken at click time instead discards any
+// other cell saved meanwhile. A save that hangs is aborted after
+// SAVE_TIMEOUT_MS so its cell never stays disabled until a reload.
 export function NotificationPreferencesGrid({ preferences }: NotificationPreferencesGridProps) {
   const [cells, setCells] = useState(preferences);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savingKeys, setSavingKeys] = useState<ReadonlySet<string>>(() => new Set());
+  // Synchronous mirror of `savingKeys`: a second click on the same cell that
+  // lands before React re-renders it as disabled is still refused. Mutable
+  // and stable for the component's lifetime; the lazy initializer allocates
+  // it once.
+  const [inFlight] = useState(() => new Set<string>());
+
+  const setCellEnabled = (eventType: EditableEventType, channel: NotificationChannel, enabled: boolean) => {
+    setCells(prev => prev.map(cell =>
+      cell.event_type === eventType && cell.channel === channel
+        ? { ...cell, enabled }
+        : cell,
+    ));
+  };
 
   const handleToggle = async (eventType: EditableEventType, channel: NotificationChannel, nextEnabled: boolean) => {
     const key = cellKey(eventType, channel);
-    const previous = cells;
-    setCells(prev => prev.map(cell =>
-      cell.event_type === eventType && cell.channel === channel
-        ? { ...cell, enabled: nextEnabled }
-        : cell,
-    ));
-    setSavingKey(key);
+    if (inFlight.has(key)) {
+      return;
+    }
+    inFlight.add(key);
+    setSavingKeys(prev => new Set(prev).add(key));
+    setCellEnabled(eventType, channel, nextEnabled);
 
     try {
       const response = await fetch('/api/v1/notification-preferences', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ event_type: eventType, channel, enabled: nextEnabled }),
+        signal: AbortSignal.timeout(SAVE_TIMEOUT_MS),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-        setCells(previous);
+        setCellEnabled(eventType, channel, !nextEnabled);
         toast.error(body.error?.message ?? 'Could not save this preference.');
         return;
       }
       toast.success('Saved');
     }
     catch (err) {
-      setCells(previous);
+      setCellEnabled(eventType, channel, !nextEnabled);
       toast.error(err instanceof Error ? err.message : 'Network error.');
     }
     finally {
-      setSavingKey(null);
+      inFlight.delete(key);
+      setSavingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -147,7 +181,7 @@ export function NotificationPreferencesGrid({ preferences }: NotificationPrefere
                   >
                     <Switch
                       checked={cell.enabled}
-                      disabled={cell.locked || savingKey === key}
+                      disabled={cell.locked || savingKeys.has(key)}
                       onCheckedChange={(checked) => { void handleToggle(eventType as EditableEventType, channel, checked); }}
                       aria-label={cell.locked
                         ? `${CHANNEL_LABEL[channel]}, ${meta.label}, locked until Team Chat ships`
