@@ -1,6 +1,6 @@
 import type { ChatMessage } from '@lib/chat/messages';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 // BK-1283 — opening the Team Chat dock downloaded the whole channel history.
 // The first Realtime SUBSCRIBED ran the reconnect catch-up before the newest
@@ -17,6 +17,9 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 // Every `/messages` request hangs until the test settles it, so the order
 // "SUBSCRIBED before / after the page" is chosen, not raced.
 GlobalRegistrator.register();
+// Release the DOM when this file is done, so the next React suite in the same
+// `bun test` process (BillingOverviewView.test.ts) can register its own.
+afterAll(async () => { await GlobalRegistrator.unregister(); });
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

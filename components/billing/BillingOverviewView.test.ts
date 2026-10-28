@@ -1,5 +1,5 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 // BK-741 — the Billing overview stayed on its loading skeleton forever when
 // the billing fetch blew past the 10s timeout, instead of rendering the error
@@ -16,6 +16,9 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 // static import is hoisted above it and would evaluate react-dom against a
 // document-less global.
 GlobalRegistrator.register();
+// Release the DOM when this file is done, so another React suite in the same
+// `bun test` process (e.g. ChatPanel.test.ts) can register its own.
+afterAll(async () => { await GlobalRegistrator.unregister(); });
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
