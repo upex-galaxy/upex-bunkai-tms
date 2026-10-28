@@ -66,11 +66,17 @@ const { ChatPanel } = await import('@components/chat/ChatPanel');
 
 const WS = 'ws-1283';
 const realSetTimeout = globalThis.setTimeout;
+const realWindowSetTimeout = window.setTimeout;
 const realFetch = globalThis.fetch;
+// Mirrors `CHAT_PAGE_RETRY_MS` in the component (not exported). Only timers at
+// or above this delay are trapped; React and happy-dom schedule far shorter ones.
+const PAGE_RETRY_MIN_DELAY_MS = 2000;
+let retryTimers: Array<() => void> = [];
 
 interface PendingRequest {
   url: URL
   resolve: (value: Response) => void
+  answered: boolean
 }
 
 let messageRequests: PendingRequest[] = [];
@@ -126,19 +132,35 @@ function messageQueries(): string[] {
 }
 
 function takeRequest(query: string): PendingRequest {
-  const found = messageRequests.find(r => r.url.search.replace(/^\?/, '') === query);
+  const found = messageRequests.find(r => !r.answered && r.url.search.replace(/^\?/, '') === query);
   if (!found) { throw new Error(`no request with query "${query}" (seen: ${JSON.stringify(messageQueries())})`); }
   return found;
 }
 
 async function answer(query: string, response: Response): Promise<void> {
   const request = takeRequest(query);
+  request.answered = true;
   await act(async () => { request.resolve(response); });
   await flush();
 }
 
 function renderedSeqs(container: HTMLElement): number[] {
   return [...container.querySelectorAll('[data-testid="chat_message"]')].map(el => Number(el.getAttribute('data-seq')));
+}
+
+async function fireRetryTimers(): Promise<void> {
+  const timers = retryTimers;
+  retryTimers = [];
+  await act(async () => { timers.forEach((fire) => { fire(); }); });
+  await flush();
+}
+
+function unmountAll(): void {
+  mounted.forEach(({ container, root }) => {
+    act(() => { root.unmount(); });
+    container.remove();
+  });
+  mounted = [];
 }
 
 async function mount() {
@@ -165,10 +187,18 @@ beforeEach(() => {
   channels = [];
   messageRequests = [];
   mounted = [];
+  retryTimers = [];
+  window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+    if (typeof handler === 'function' && (delay ?? 0) >= PAGE_RETRY_MIN_DELAY_MS) {
+      retryTimers.push(handler as () => void);
+      return 0;
+    }
+    return (realWindowSetTimeout as unknown as (...rest: unknown[]) => unknown)(handler, delay, ...args);
+  }) as unknown as typeof window.setTimeout;
   globalThis.fetch = (async (input: unknown) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname === `/api/v1/workspaces/${WS}/chat/messages`) {
-      return new Promise<Response>((resolve) => { messageRequests.push({ url, resolve }); });
+      return new Promise<Response>((resolve) => { messageRequests.push({ url, resolve, answered: false }); });
     }
     if (url.pathname.endsWith('/roster')) {
       return new Response(JSON.stringify({ members: [] }), { status: 200 });
@@ -178,11 +208,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  mounted.forEach(({ container, root }) => {
-    act(() => { root.unmount(); });
-    container.remove();
-  });
-  mounted = [];
+  unmountAll();
+  window.setTimeout = realWindowSetTimeout;
   globalThis.fetch = realFetch;
 });
 
@@ -282,6 +309,43 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
     expect(messageQueries()).toEqual(['', '', 'after_seq=40']);
     expect(container.querySelector('[data-testid="chat_error"]')).toBeNull();
   });
+  test('SUBSCRIBED, then the newest page fails: one delayed retry loads it, then exactly one catch-up from its newest seq', async () => {
+    const container = await mount();
+    await status('SUBSCRIBED');
+    await answer('', new Response(JSON.stringify({ error: { message: 'boom' } }), { status: 500 }));
+    expect(container.querySelector('[data-testid="chat_error"]')).not.toBeNull();
+    expect(retryTimers).toHaveLength(1);
+
+    await fireRetryTimers();
+    expect(messageQueries()).toEqual(['', '']);
+
+    const retry = messageRequests[1];
+    await act(async () => { retry.resolve(page(range(11, 40), true)); });
+    await flush();
+    expect(messageQueries()).toEqual(['', '', 'after_seq=40']);
+    expect(container.querySelector('[data-testid="chat_error"]')).toBeNull();
+    expect(retryTimers).toHaveLength(0);
+  });
+
+  test('a failed gap catch-up is resumed from its own cursor on the next reconnect, not from a newer held row', async () => {
+    await mount();
+    await status('SUBSCRIBED');
+    await deliver(msg(42));
+    await answer('', page(range(11, 40), true));
+    await answer('after_seq=40', new Response('{}', { status: 503 }));
+
+    // Held: 11..40 and 42. 41 was never fetched, so the reconnect asks after 40.
+    await status('CLOSED');
+    await status('SUBSCRIBED');
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40']);
+
+    // Once a catch-up completes, the next reconnect starts from the newest held seq.
+    await answer('after_seq=40', page([msg(41), msg(42)], false));
+    await status('CLOSED');
+    await status('SUBSCRIBED');
+    expect(messageQueries()).toEqual(['', 'after_seq=40', 'after_seq=40', 'after_seq=42']);
+  });
+
   test('an edit or tombstone of a message that is not loaded is ignored; one of a held message is applied', async () => {
     const container = await mount();
     await answer('', page(range(11, 40), true));
@@ -295,5 +359,16 @@ describe('ChatPanel — first open loads only the newest page (BK-1283)', () => 
 
     await deliver({ ...msg(20), body: 'edited twenty', edited_at: '2026-10-28T11:00:00.000Z' }, 'UPDATE');
     expect(container.textContent).toContain('edited twenty');
+  });
+
+  test('a catch-up stops paging once the panel unmounts', async () => {
+    await mount();
+    await status('SUBSCRIBED');
+    await answer('', page(range(11, 40), true));
+    expect(messageQueries()).toEqual(['', 'after_seq=40']);
+
+    unmountAll();
+    await answer('after_seq=40', page(range(41, 45), true));
+    expect(messageQueries()).toEqual(['', 'after_seq=40']);
   });
 });
