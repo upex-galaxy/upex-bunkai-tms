@@ -1,6 +1,7 @@
 'use client';
 
 import type { EntityCard as EntityCardData, EntitySearchItem } from '@lib/chat/entity-refs';
+import type { ChangesBindingStatus, ChatLiveState, RealtimeSystemPayload } from '@lib/chat/live-status';
 import type { ChatMember, ChatMessage, ChatRole } from '@lib/chat/messages';
 import type { RealtimeConnectionStatus } from '@lib/runs/realtime-run-channel';
 import {
@@ -11,6 +12,7 @@ import {
   refKey,
   textWithoutRefs,
 } from '@lib/chat/entity-refs';
+import { bindingVerdictFromSystem, chatLiveState, isBindingUnavailable, shouldReconcileOnBindingVerdict } from '@lib/chat/live-status';
 import {
   buildChatChannelConfig,
   canDeleteMessage,
@@ -60,8 +62,6 @@ interface ChatPanelProps {
   onUnreadChange: (count: number) => void
 }
 
-type LiveState = 'connecting' | 'live' | 'offline';
-
 const SCROLL_STICK_PX = 48;
 // BK-1283: a catch-up stops after this many server pages (200 each); the rest
 // is resumed by the next reconcile from where it stopped.
@@ -106,7 +106,10 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [live, setLive] = useState<LiveState>('connecting');
+  const [live, setLive] = useState<ChatLiveState>('connecting');
+  // BK-1281: offline because the server rejected the message binding (not a
+  // transport drop realtime-js reconnects by itself).
+  const [bindingUnavailable, setBindingUnavailable] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -267,6 +270,43 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
     }
   }, [base]);
 
+  // BK-1281: SUBSCRIBED and the binding `ok` that follows it both reconcile, so
+  // catch-ups must never overlap (they share `unconfirmedFromRef`). At most one
+  // runs; requests arriving meanwhile fold into ONE follow-up run. A follow-up
+  // asked from an explicit cursor never starts above the default resume point.
+  const catchUpRunningRef = useRef(false);
+  const catchUpQueuedRef = useRef<{ from: number | undefined } | null>(null);
+  const runCatchUp = useCallback(async (from?: number) => {
+    if (catchUpRunningRef.current) {
+      const queued = catchUpQueuedRef.current;
+      const earlier = queued === null ? from : queued.from;
+      catchUpQueuedRef.current = { from: earlier === undefined || from === undefined ? (earlier ?? from) : Math.min(earlier, from) };
+      return;
+    }
+    catchUpRunningRef.current = true;
+    try {
+      let next: number | undefined = from;
+      let again = true;
+      while (again) {
+        await catchUp(next);
+        const queued = catchUpQueuedRef.current;
+        catchUpQueuedRef.current = null;
+        again = queued !== null && !unmountedRef.current;
+        if (queued !== null && queued.from !== undefined) {
+          const held = lastSeq(messagesRef.current);
+          const unconfirmed = unconfirmedFromRef.current;
+          next = Math.min(queued.from, unconfirmed === null ? held : Math.min(unconfirmed, held));
+        }
+        else {
+          next = undefined;
+        }
+      }
+    }
+    finally {
+      catchUpRunningRef.current = false;
+    }
+  }, [catchUp]);
+
   // Newest page (default `limit`, 30). Merges into what is already held: a
   // realtime row that landed while the request was in flight must survive. A
   // failed page is retried once automatically after a short delay, so a parked
@@ -292,7 +332,7 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       historyRef.current = 'ready';
       if (catchUpPendingRef.current) {
         catchUpPendingRef.current = false;
-        void catchUp(lastSeq(page.data.items));
+        void runCatchUp(lastSeq(page.data.items));
       }
     }
     else {
@@ -307,17 +347,17 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       }
     }
     setLoading(false);
-  }, [base, loadRoster, catchUp]);
+  }, [base, loadRoster, runCatchUp]);
   useEffect(() => { loadLatestPageRef.current = loadLatestPage; }, [loadLatestPage]);
 
   // Reconnect / tab wake. Never builds `after_seq` from an unknown cursor: while
   // the newest page is in flight the catch-up waits for it, and a failed first
   // page is retried instead of downloading the whole history.
   const reconcile = useCallback(() => {
-    if (historyRef.current === 'ready') { void catchUp(); return; }
+    if (historyRef.current === 'ready') { void runCatchUp(); return; }
     catchUpPendingRef.current = true;
     if (historyRef.current === 'failed') { void loadLatestPage(); }
-  }, [catchUp, loadLatestPage]);
+  }, [runCatchUp, loadLatestPage]);
 
   // Initial load: roster + newest page. Last-seen is read before painting so
   // the separator is computed against what the member had actually seen.
@@ -332,6 +372,13 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
   useEffect(() => {
     const supabase = createClient();
     let prev: RealtimeConnectionStatus | null = null;
+    // BK-1281: the header is Live only once the server confirmed the message
+    // binding on this join (a `system` frame), not on SUBSCRIBED alone.
+    let binding: ChangesBindingStatus = 'pending';
+    const publish = (status: RealtimeConnectionStatus | null) => {
+      setLive(chatLiveState(status, binding));
+      setBindingUnavailable(isBindingUnavailable(status, binding));
+    };
     const channel = supabase.channel(config.channelName);
     channel.on<Record<string, unknown>>(
       'postgres_changes',
@@ -354,13 +401,27 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
         if (isInsert && !stickRef.current && row.author_user_id !== userId) { setPendingBelow(n => n + 1); }
       },
     );
+    // `system` is its own bindings key in realtime-js, so it does not shift the
+    // index matching of the postgres_changes binding against the join reply.
+    // Every `ok` on a joined channel catches up: the first one closes the
+    // SUBSCRIBED-to-active gap, a later one covers an error or a silent CDC
+    // re-subscribe (the server sends `ok` again, never an error).
+    channel.on('system', {}, (payload: RealtimeSystemPayload) => {
+      const verdict = bindingVerdictFromSystem(payload);
+      if (verdict === null) { return; }
+      binding = verdict;
+      publish(prev);
+      if (shouldReconcileOnBindingVerdict(prev, verdict)) { reconcile(); }
+    });
     // BK-1279: join as the signed-in user, never as anon.
     const cancelJoin = subscribeWithUserAuth({
       realtime: supabase.realtime,
       channel,
       callback: (status) => {
         const next = String(status) as RealtimeConnectionStatus;
-        setLive(next === 'SUBSCRIBED' ? 'live' : 'offline');
+        // A dropped join loses its binding; the rejoin reports a fresh one.
+        if (next !== 'SUBSCRIBED') { binding = 'pending'; }
+        publish(next);
         if (shouldReconcileOnStatusChange(prev, next)) { reconcile(); }
         prev = next;
       },
@@ -597,7 +658,9 @@ export function ChatPanel({ workspaceId, userId, role, open, onClose, onUnreadCh
       {live === 'offline' && (
         <div data-testid="chat_offline_banner" role="status" aria-live="polite" className="flex items-center gap-2 border-b border-blocked/40 bg-surface-3 px-4 py-2 text-xs text-blocked">
           <WifiOff size={12} aria-hidden="true" />
-          Connection lost. Reconnecting — missed messages will appear automatically.
+          {bindingUnavailable
+            ? 'Live updates are unavailable. Reload the page to retry.'
+            : 'Connection lost. Reconnecting — missed messages will appear automatically.'}
         </div>
       )}
 
