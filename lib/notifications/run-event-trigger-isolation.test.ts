@@ -767,7 +767,9 @@ describeIfPrefsDeployed('BK-1217 — bunkai_notify_run_event honours run_lifecyc
     const notificationId = rows[0].id;
 
     const candidates = async () => {
-      const { data, error } = await service().rpc('bunkai_notification_digest_candidates');
+      // Server-side filter: the shared DB holds more candidates than
+      // PostgREST's 1000-row cap, so an unfiltered read can drop this row.
+      const { data, error } = await service().rpc('bunkai_notification_digest_candidates').eq('notification_id', notificationId);
       expect(error).toBeNull();
       return ((data ?? []) as { notification_id: string, recipient_user_id: string, event_type: string }[])
         .filter(r => r.notification_id === notificationId);

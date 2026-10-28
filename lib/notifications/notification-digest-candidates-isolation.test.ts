@@ -271,7 +271,9 @@ describeOrSkip('BK-214 — bunkai_notification_digest_candidates (membership, re
   it('returns exactly the rows that should survive membership + retention + preference + entity + event-type filtering', async () => {
     if (!fixture) { return warn(); }
 
-    const { data, error } = await service().rpc(RPC);
+    // Filter server-side: the shared DB holds more candidates than PostgREST's
+    // 1000-row cap, so an unfiltered read can drop this fixture's rows.
+    const { data, error } = await service().rpc(RPC).eq('workspace_id', fixture.workspaceId);
     expect(error).toBeNull();
 
     const rows = ((data ?? []) as CandidateRow[]).filter(r => r.workspace_id === fixture!.workspaceId);
@@ -383,7 +385,8 @@ async function setQaBugEmail(userId: string, enabled: boolean) {
 }
 
 async function candidateIdsFor(workspaceIds: string[]) {
-  const { data, error } = await service().rpc(RPC);
+  // Server-side filter: see the PostgREST 1000-row cap note in the BK-214 block.
+  const { data, error } = await service().rpc(RPC).in('workspace_id', workspaceIds);
   expect(error).toBeNull();
   return new Set(((data ?? []) as CandidateRow[]).filter(r => workspaceIds.includes(r.workspace_id)).map(r => r.notification_id));
 }
