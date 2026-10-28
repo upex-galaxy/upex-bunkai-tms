@@ -25,6 +25,7 @@ import {
 import { buildReportBugPrefill, shouldShowReportBugButton } from '@lib/runs/report-bug-view';
 import { RUN_STEP_EVIDENCE_URL_MAX, RUN_STEP_NOTE_MAX } from '@lib/runs/validation';
 import { createClient } from '@lib/supabase/client';
+import { subscribeWithUserAuth } from '@lib/supabase/realtime-auth';
 import { Ban, Bug, Check, ChevronLeft, Flag, GitCompareArrows, Play, Square, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -317,17 +318,23 @@ export function RunnerView({ run, projectSlug, canAbort = false, canFinish = fal
         () => scheduler.trigger(),
       );
     }
-    channel.subscribe((status) => {
-      // realtime-js reports a nominal string enum; normalize to a plain
-      // string so it compares cleanly against RealtimeConnectionStatus.
-      const next = String(status) as RealtimeConnectionStatus;
-      if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
-        scheduler.trigger();
-      }
-      prevRealtimeStatusRef.current = next;
+    // BK-1279: join as the signed-in user, never as anon.
+    const cancelJoin = subscribeWithUserAuth({
+      realtime: supabase.realtime,
+      channel,
+      callback: (status) => {
+        // realtime-js reports a nominal string enum; normalize to a plain
+        // string so it compares cleanly against RealtimeConnectionStatus.
+        const next = String(status) as RealtimeConnectionStatus;
+        if (shouldReconcileOnStatusChange(prevRealtimeStatusRef.current, next)) {
+          scheduler.trigger();
+        }
+        prevRealtimeStatusRef.current = next;
+      },
     });
 
     return () => {
+      cancelJoin();
       scheduler.cancel();
       void supabase.removeChannel(channel);
     };
