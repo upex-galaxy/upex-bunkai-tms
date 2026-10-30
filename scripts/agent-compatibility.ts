@@ -10,7 +10,7 @@
  *
  * Output contract: the alias status line is printed on EVERY run, whatever
  * the overall verdict, and the errors are grouped per surface (instructions,
- * alias, wrappers, hooks, MCP). "Alias pending the migration commit" and "MCP
+ * alias, hooks, MCP, lint). "Alias pending the migration commit" and "MCP
  * drift" must be distinguishable at a glance, never one flat failure.
  */
 
@@ -19,16 +19,26 @@ import {
   checkAgentCompatibility,
   describeAliasStatus,
   groupCompatibilityErrors,
+  removeShadowingCommands,
   repairClaudeSkillsAlias,
-  repairCommandWrappers,
+  SHADOWING_COMMANDS_BACKUP_DIR,
 } from '../cli/lib/agent-compatibility.ts';
+import { declaredHarnesses } from '../cli/lib/harness-selection.ts';
 
 export * from '../cli/lib/agent-compatibility.ts';
 
 function printCheck(result: CompatibilityCheck): void {
   console.log(describeAliasStatus(result.alias));
+  console.log(`Harnesses checked: ${result.harnesses.join(', ')}.`);
+  // Notes never fail the check: a harness the project does not use, skipped.
+  for (const note of result.notes) {
+    console.log(`  NOTE: ${note}`);
+  }
+  for (const warning of result.warnings) {
+    console.warn(`  WARNING: ${warning}`);
+  }
   if (result.ok) {
-    console.log('Agent compatibility OK.');
+    console.log(`Agent compatibility OK${result.warnings.length > 0 ? ` (${result.warnings.length} warning(s) above)` : ''}.`);
     return;
   }
   const groups = groupCompatibilityErrors(result.errors);
@@ -45,10 +55,13 @@ if (import.meta.main) {
   const checkOnly = process.argv.includes('--check');
   try {
     if (!checkOnly) {
-      const alias = repairClaudeSkillsAlias();
-      console.log(describeAliasStatus(alias));
-      const wrappers = repairCommandWrappers();
-      console.log(`Command wrappers synchronized: ${wrappers} updated`);
+      if (declaredHarnesses().harnesses.includes('claude')) {
+        const alias = repairClaudeSkillsAlias();
+        console.log(describeAliasStatus(alias));
+      }
+      for (const moved of removeShadowingCommands()) {
+        console.log(`Command shadowed a skill, moved to ${SHADOWING_COMMANDS_BACKUP_DIR}/${moved}`);
+      }
     }
     const result = checkAgentCompatibility();
     printCheck(result);

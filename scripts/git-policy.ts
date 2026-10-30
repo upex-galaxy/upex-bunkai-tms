@@ -17,7 +17,9 @@
  * COMMANDS
  *   verify   Read the host, diff against git_strategy, report. Read-only.
  *            `--stamp` writes meta.policy_verified / policy_source when clean.
- *            Exit 1 on drift, 0 when in parity.
+ *            Exit 1 on UNACCEPTED drift; 0 in parity, when every drift is listed
+ *            in `policy.accepted_divergences`, or when the host is unreachable
+ *            (warned, not verified — absence of data is not drift).
  *   apply    Derive a ruleset from git_strategy and write it to the host.
  *            Dry-run by DEFAULT; `--yes` performs the write.
  *            Refuses to LOOSEN protection unless `--allow-loosening`.
@@ -34,12 +36,19 @@
  *   - `bypass_actors` beyond the org-admin role. Real actor IDs are org
  *     identity, not project config, and must not live in a versioned per-project
  *     file. `verify` reports them; `apply` preserves whatever is already there.
+ *     A caller without admin rights on the repository is not served that field
+ *     AT ALL: the key is omitted and `current_user_can_bypass` reads `never`.
+ *     That is a permissions artifact, not an empty bypass list, so `verify`
+ *     reports UNKNOWN and never drift — the same law as the classic-404 case
+ *     above, which `/git-flow-master` Step 1b states outright: absence of data
+ *     is not data.
  *   - CODEOWNERS. `require_code_owner_review` is derived from whether the file
  *     actually exists, because turning it on without one produces a requirement
  *     nobody outside the bypass list can ever satisfy.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 
@@ -54,12 +63,24 @@ const RULESET_NAME = 'ProtectPublic';
 // Types
 // ---------------------------------------------------------------------------
 
-interface GitStrategy {
+export interface AcceptedDivergence {
+  field: string
+  enforced?: string
+  reason?: string
+  accepted?: string
+}
+
+export interface GitStrategy {
   strategy: string
   branches: { production: string | null, integration: string | null, ephemeral_pattern: string | null }
   protected: string[]
   decisions: { promote_method: string, feature_merge: string, hotfix_policy: string }
-  policy: { direct_push_to_protected: string, admin_bypass: boolean, require_pr_reviews: number | null }
+  policy: {
+    direct_push_to_protected: string
+    admin_bypass: boolean
+    require_pr_reviews: number | null
+    accepted_divergences?: AcceptedDivergence[]
+  }
   meta: Record<string, unknown>
 }
 
@@ -72,14 +93,32 @@ interface PullRequestParams {
   allowed_merge_methods: string[]
 }
 
-interface Rule { type: string, parameters?: Record<string, unknown> }
+export interface Rule { type: string, parameters?: Record<string, unknown> }
 
-interface Finding {
-  severity: 'drift' | 'info'
+interface BypassActor { actor_type: string, bypass_mode: string }
+
+/** The subset of `GET /repos/{owner}/{repo}/rulesets/{id}` this tool reads. */
+interface RulesetDetail {
+  bypass_actors?: BypassActor[] | null
+  current_user_can_bypass?: string
+}
+
+/**
+ * Whether the bypass list was READ, or merely not served. Two different facts,
+ * and collapsing them is the defect this type exists to make unrepresentable.
+ */
+export type BypassAssessment
+  = | { known: true, actors: BypassActor[], hasAdminBypass: boolean }
+    | { known: false, reason: string, currentUserCanBypass: string | null };
+
+export interface Finding {
+  severity: 'drift' | 'accepted' | 'info'
   field: string
   declared: string
   enforced: string
   note?: string
+  /** The host's side of this field could not be read. Not parity, not drift. */
+  unknown?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -99,18 +138,27 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
-/** `gh api` wrapper. Returns null on any non-zero exit (404 / 403 / no network). */
+/** `gh api` wrapper. Returns null on any non-zero exit (404 / 403 / no network / no gh binary). */
 function gh(path: string, args: string[] = []): unknown | null {
-  const p = Bun.spawnSync(['gh', 'api', path, ...args], { stdout: 'pipe', stderr: 'pipe' });
-  if (p.exitCode !== 0) { return null; }
-  const out = p.stdout.toString().trim();
-  if (out === '') { return null; }
-  try { return JSON.parse(out); }
-  catch { return null; }
+  try {
+    const p = Bun.spawnSync(['gh', 'api', path, ...args], { stdout: 'pipe', stderr: 'pipe' });
+    if (p.exitCode !== 0) { return null; }
+    const out = p.stdout.toString().trim();
+    if (out === '') { return null; }
+    return JSON.parse(out);
+  }
+  catch { return null; } // gh binary absent, or non-JSON output
 }
 
 function ghExitCode(path: string): number {
-  return Bun.spawnSync(['gh', 'api', path], { stdout: 'pipe', stderr: 'pipe' }).exitCode ?? 1;
+  try { return Bun.spawnSync(['gh', 'api', path], { stdout: 'pipe', stderr: 'pipe' }).exitCode ?? 1; }
+  catch { return 1; }
+}
+
+/** The `login` `gh` is currently authenticated as. Named in every UNKNOWN report. */
+function activeGitHubAccount(): string | null {
+  const me = gh('user') as { login?: string } | null;
+  return typeof me?.login === 'string' ? me.login : null;
 }
 
 function readStrategy(): GitStrategy {
@@ -182,6 +230,13 @@ export function allowedMergeMethods(gs: GitStrategy): string[] | null {
  */
 export const MANAGED_RULE_TYPES = new Set(['deletion', 'non_fast_forward', 'creation', 'pull_request']);
 
+/** Fields formally accepted as divergent in `policy.accepted_divergences`. */
+export function acceptedFields(gs: GitStrategy): string[] {
+  return (gs.policy?.accepted_divergences ?? [])
+    .map(d => d?.field)
+    .filter((f): f is string => typeof f === 'string' && f.length > 0);
+}
+
 export function buildRules(gs: GitStrategy, codeowners: boolean, current: Rule[] = []): Rule[] {
   const rules: Rule[] = [
     { type: 'deletion' },
@@ -189,7 +244,15 @@ export function buildRules(gs: GitStrategy, codeowners: boolean, current: Rule[]
     { type: 'creation' },
   ];
 
-  if (gs.policy?.direct_push_to_protected !== 'allowed') {
+  // An accepted divergence on direct_push_to_protected means "the host's side of
+  // this field is intended". Deriving our own pull_request rule (or omitting it)
+  // would overwrite exactly what was accepted — carry the host's rule forward as-is.
+  const acceptedDirectPush = acceptedFields(gs).some(f => f.endsWith('.direct_push_to_protected'));
+  if (acceptedDirectPush) {
+    const hostPr = current.find(r => r.type === 'pull_request');
+    if (hostPr) { rules.push(hostPr); }
+  }
+  else if (gs.policy?.direct_push_to_protected !== 'allowed') {
     const currentPr = current.find(r => r.type === 'pull_request');
     const currentMethods = (currentPr?.parameters as Partial<PullRequestParams> | undefined)?.allowed_merge_methods;
     const params: PullRequestParams = {
@@ -220,6 +283,51 @@ export function buildRules(gs: GitStrategy, codeowners: boolean, current: Rule[]
 }
 
 // ---------------------------------------------------------------------------
+// bypass visibility
+// ---------------------------------------------------------------------------
+
+/**
+ * Is the ruleset's bypass list readable by the account that asked?
+ *
+ * GitHub serves `bypass_actors` only to a caller with admin rights on the
+ * repository. Everyone else receives the SAME, unchanged ruleset with the key
+ * omitted and `current_user_can_bypass: "never"`. Coercing that to `[]` turns
+ * "you may not look" into "there is nothing there", and on any machine holding
+ * two GitHub accounts it reports a bypass list nobody touched as overnight host
+ * drift — exit 1, sending the reader off to re-litigate an unchanged host.
+ *
+ * A PRIVILEGED caller on a ruleset with no bypass actors gets `[]`: a present,
+ * empty array. So the discriminator is the SHAPE of the field, never its length.
+ * `current_user_can_bypass` is reported verbatim as corroboration rather than
+ * branched on, because its enum is GitHub's to extend, not ours to assume.
+ */
+export function assessBypass(detail: RulesetDetail | null): BypassAssessment {
+  const canBypass = typeof detail?.current_user_can_bypass === 'string' ? detail.current_user_can_bypass : null;
+  if (detail === null) {
+    return {
+      known: false,
+      reason: 'the ruleset detail could not be read (403, 404, or no network)',
+      currentUserCanBypass: null,
+    };
+  }
+  const actors = detail.bypass_actors;
+  if (!Array.isArray(actors)) {
+    return {
+      known: false,
+      reason: canBypass === null
+        ? 'GitHub omitted `bypass_actors` from the response'
+        : `GitHub omitted \`bypass_actors\` — this account is not an admin of the repository (current_user_can_bypass: ${canBypass})`,
+      currentUserCanBypass: canBypass,
+    };
+  }
+  return {
+    known: true,
+    actors,
+    hasAdminBypass: actors.some(a => a?.actor_type === 'OrganizationAdmin' || a?.actor_type === 'RepositoryRole'),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // verify
 // ---------------------------------------------------------------------------
 
@@ -236,10 +344,47 @@ function readHost(slug: string, branch: string): HostReading {
   return { branch, rulesetRules: rules, classicStatus };
 }
 
+/**
+ * Move every drift whose field is listed in `policy.accepted_divergences` to
+ * `accepted`, and append an `info` finding for each STALE entry (one that no
+ * longer matches any drift) so the list cannot silently accumulate dead
+ * exceptions. Mutates `findings`; returns the accepted entries keyed by field.
+ */
+export function classifyAccepted(findings: Finding[], accepted: AcceptedDivergence[]): Map<string, AcceptedDivergence> {
+  const acceptedByField = new Map(accepted.filter(a => a?.field).map(a => [a.field, a]));
+  for (const f of findings) {
+    if (f.severity === 'drift' && acceptedByField.has(f.field)) { f.severity = 'accepted'; }
+  }
+  const matched = new Set(findings.filter(f => f.severity === 'accepted').map(f => f.field));
+  // A field whose host side could not be READ cannot prove its acceptance stale.
+  const undeterminable = new Set(findings.filter(f => f.unknown === true).map(f => f.field));
+  for (const a of acceptedByField.keys()) {
+    if (!matched.has(a) && !undeterminable.has(a)) {
+      findings.push({
+        severity: 'info',
+        field: a,
+        declared: 'accepted divergence (policy.accepted_divergences)',
+        enforced: 'no matching drift — STALE entry, remove it from the yaml',
+      });
+    }
+  }
+  return acceptedByField;
+}
+
 function verify(gs: GitStrategy, slug: string, stamp: boolean): number {
+  // Preflight: no host reading means no finding, not a drift. Exit 0 with a loud
+  // warning so a caller never blocks on a machine that is offline,
+  // unauthenticated, or missing `gh` — absence of data is not parity.
+  if (gh(`repos/${slug}`) === null) {
+    log.warn(`Cannot reach ${slug} via \`gh api\` (no gh binary, no auth, or no network).`);
+    log.dim('Parity NOT verified — skipping. Run `bun run git:policy verify` from a connected, authenticated shell.');
+    return 0;
+  }
+
   const branches = protectedBranches(gs);
   const codeowners = hasCodeowners();
   const findings: Finding[] = [];
+  const accepted = gs.policy?.accepted_divergences ?? [];
 
   console.log(pc.bold('\nGit Policy Parity Report'));
   console.log('='.repeat(50));
@@ -342,25 +487,46 @@ function verify(gs: GitStrategy, slug: string, stamp: boolean): number {
   const rs = (gh(`repos/${slug}/rulesets`) as { id: number, name: string }[] | null) ?? [];
   const target = rs.find(r => r.name === RULESET_NAME) ?? rs[0];
   if (target) {
-    const full = gh(`repos/${slug}/rulesets/${target.id}`) as { bypass_actors?: { actor_type: string, bypass_mode: string }[] } | null;
-    const actors = full?.bypass_actors ?? [];
+    const detail = gh(`repos/${slug}/rulesets/${target.id}`) as RulesetDetail | null;
+    const bypass = assessBypass(detail);
     const declaredBypass = gs.policy?.admin_bypass === true;
-    const hasAdminBypass = actors.some(a => a.actor_type === 'OrganizationAdmin' || a.actor_type === 'RepositoryRole');
     console.log(pc.bold(`Ruleset ${target.name} (id ${target.id})`));
-    console.log(`  bypass_actors: ${actors.length === 0 ? 'none' : actors.map(a => `${a.actor_type}/${a.bypass_mode}`).join(', ')}`);
-    if (declaredBypass !== hasAdminBypass) {
+    if (bypass.known) {
+      console.log(`  bypass_actors: ${bypass.actors.length === 0 ? 'none' : bypass.actors.map(a => `${a.actor_type}/${a.bypass_mode}`).join(', ')}`);
+      if (declaredBypass !== bypass.hasAdminBypass) {
+        findings.push({
+          severity: 'drift',
+          field: 'admin_bypass',
+          declared: String(declaredBypass),
+          enforced: String(bypass.hasAdminBypass),
+        });
+      }
+    }
+    else {
+      // The ruleset did not change; the READER did. Report who is asking and
+      // how to ask as someone who can see the answer — then get out of the way.
+      const who = activeGitHubAccount();
+      console.log(`  bypass_actors: ${pc.yellow('UNKNOWN')} — ${bypass.reason}`);
+      console.log(pc.dim(`  active gh account: ${who ?? 'could not be resolved'}`));
+      console.log(pc.dim('  To read it: `gh auth switch --user <repo-admin>` (or `gh auth login`), then re-run verify.'));
       findings.push({
-        severity: 'drift',
+        severity: 'info',
+        unknown: true,
         field: 'admin_bypass',
         declared: String(declaredBypass),
-        enforced: String(hasAdminBypass),
+        enforced: `UNKNOWN — ${bypass.reason}`,
+        note: `Active gh account: ${who ?? 'unresolved'}. Not counted as drift: absence of data is not data.`,
       });
     }
     console.log('');
   }
 
+  // --- accepted divergences: declared drift the project has formally signed off ---
+  const acceptedByField = classifyAccepted(findings, accepted);
+
   // --- report ---
   const drifts = findings.filter(f => f.severity === 'drift');
+  const accepts = findings.filter(f => f.severity === 'accepted');
   const infos = findings.filter(f => f.severity === 'info');
 
   console.log(pc.bold(`DRIFT (${drifts.length}):`));
@@ -371,9 +537,20 @@ function verify(gs: GitStrategy, slug: string, stamp: boolean): number {
     console.log(`      enforced: ${f.enforced}`);
     if (f.note) { console.log(pc.dim(`      ${f.note}`)); }
   }
+  if (accepts.length > 0) {
+    console.log(`\n${pc.bold(`ACCEPTED (${accepts.length}):`)}`);
+    for (const f of accepts) {
+      const entry = acceptedByField.get(f.field);
+      console.log(`  ${pc.green('✔')} ${f.field}  declared ${f.declared} / enforced ${f.enforced}`);
+      if (entry?.reason) { console.log(pc.dim(`      ${String(entry.reason).trim().replace(/\s+/g, ' ')}`)); }
+    }
+  }
   if (infos.length > 0) {
     console.log(`\n${pc.bold(`NOTES (${infos.length}):`)}`);
-    for (const f of infos) { console.log(`  ${pc.yellow('▲')} ${f.field}: ${f.enforced}`); }
+    for (const f of infos) {
+      console.log(`  ${pc.yellow('▲')} ${f.field}: ${f.enforced}`);
+      if (f.note) { console.log(pc.dim(`      ${f.note}`)); }
+    }
   }
 
   console.log('');
@@ -381,18 +558,20 @@ function verify(gs: GitStrategy, slug: string, stamp: boolean): number {
     log.warn('Declared policy does not match the host.');
     log.dim('Fix the host:  bun run git:policy apply --yes');
     log.dim('Fix the yaml:  edit .agents/project.yaml -> git_strategy.policy, then re-run verify');
-    log.dim('Accept it:     record WHY in this project\'s AGENTS.md -> ## Git Strategy');
+    log.dim('Accept it:     add the finding\'s field to git_strategy.policy.accepted_divergences with a reason');
     return 1;
   }
 
-  log.ok('Declared policy matches the host.');
-  if (stamp) { stampVerified(); }
-  else { log.dim('Re-run with --stamp to record meta.policy_verified / policy_source: verified'); }
+  const source = accepts.length > 0 ? 'accepted' : 'verified';
+  if (accepts.length > 0) { log.ok('Declared policy matches the host, modulo formally accepted divergences.'); }
+  else { log.ok('Declared policy matches the host.'); }
+  if (stamp) { stampVerified(source); }
+  else { log.dim(`Re-run with --stamp to record meta.policy_verified / policy_source: ${source}`); }
   return 0;
 }
 
 /** Append-only edit of the two meta fields. Never rewrites anything else. */
-function stampVerified(): void {
+function stampVerified(source: 'verified' | 'accepted'): void {
   const today = new Date().toISOString().slice(0, 10);
   const verifiedRe = /^(\s*)policy_verified:\s*\S+/m;
   const sourceRe = /^(\s*)policy_source:\s*\S+/m;
@@ -408,13 +587,13 @@ function stampVerified(): void {
 
   const before = text;
   text = text.replace(verifiedRe, `$1policy_verified: ${today}`);
-  text = text.replace(sourceRe, '$1policy_source: verified');
+  text = text.replace(sourceRe, `$1policy_source: ${source}`);
   if (text === before) {
-    log.ok(`Already stamped: policy_verified: ${today}, policy_source: verified`);
+    log.ok(`Already stamped: policy_verified: ${today}, policy_source: ${source}`);
     return;
   }
   writeFileSync(PROJECT_YAML, text);
-  log.ok(`Stamped meta.policy_verified: ${today}, meta.policy_source: verified`);
+  log.ok(`Stamped meta.policy_verified: ${today}, meta.policy_source: ${source}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -457,6 +636,14 @@ function detectLoosening(current: Rule[], next: Rule[], slug: string, branch: st
 }
 
 function apply(gs: GitStrategy, slug: string, write: boolean, allowLoosening: boolean): number {
+  // Unlike verify, an unreachable host here is FATAL: apply derives its payload
+  // from the host's current rules, and an empty reading would masquerade as
+  // "no ruleset exists" and produce a CREATE payload that drops every host rule.
+  if (gh(`repos/${slug}`) === null) {
+    log.err(`Cannot reach ${slug} via \`gh api\` (no gh binary, no auth, or no network). Refusing to derive a ruleset from an empty host reading.`);
+    return 1;
+  }
+
   const branches = protectedBranches(gs);
   const codeowners = hasCodeowners();
 
@@ -524,7 +711,7 @@ function apply(gs: GitStrategy, slug: string, write: boolean, allowLoosening: bo
     return 0;
   }
 
-  const tmp = join('/tmp', `git-policy-${process.pid}.json`);
+  const tmp = join(tmpdir(), `git-policy-${process.pid}.json`);
   writeFileSync(tmp, JSON.stringify(body));
   const path = existing ? `repos/${slug}/rulesets/${existing.id}` : `repos/${slug}/rulesets`;
   // GitHub's "Update a repository ruleset" is PUT, not PATCH — PATCH returns 404.
@@ -551,8 +738,12 @@ USAGE
   bun run git:policy <command> [flags]
 
 COMMANDS
-  verify              Read the host, diff against git_strategy, report. Exit 1 on drift.
+  verify              Read the host, diff against git_strategy, report. Exit 1 on
+                      unaccepted drift; divergences listed in
+                      git_strategy.policy.accepted_divergences report as ACCEPTED
+                      (exit 0). Unreachable host = warn + exit 0.
   apply               Write the ruleset git_strategy implies. Dry-run unless --yes.
+                      Preserves the host's side of any accepted-divergent field.
   plan                Print the implied ruleset. No host calls.
 
 FLAGS
@@ -602,4 +793,8 @@ function main(): void {
   }
 }
 
-main();
+// Guarded so the pure helpers above can be imported by a test without running
+// the CLI. Same convention as scripts/sync-jira-issues.ts.
+if (import.meta.main) {
+  main();
+}
