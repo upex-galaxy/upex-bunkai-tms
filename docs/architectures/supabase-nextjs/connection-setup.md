@@ -2,13 +2,13 @@
 
 > **Idioma:** Español
 > **Nivel:** Intermedio
-> **Audiencia:** QA Engineers que trabajan con proyectos Supabase
+> **Audiencia:** Developers que trabajan con proyectos Supabase
 
 ---
 
 ## Overview
 
-Supabase ofrece múltiples formas de conectarse a la base de datos PostgreSQL. Este documento explica cómo configurar conexiones para testing y uso con MCPs.
+Supabase ofrece varias formas de conectarse a la base de datos PostgreSQL. Este documento explica cuál usar desde la app, desde scripts y migraciones, y cómo llega la AI a la base de datos.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -36,152 +36,105 @@ Supabase proporciona tres tipos de connection strings. Los encuentras en:
 
 ### 1. Direct Connection
 
-Conexión directa al servidor PostgreSQL:
+Conexión directa al servidor PostgreSQL, sin pooler:
 
 ```
-postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
 ```
 
-| Característica     | Valor                         |
-| ------------------ | ----------------------------- |
-| Puerto             | `5432`                        |
-| Conexiones máximas | Limitadas (~20-60 según plan) |
-| Mejor para         | Migraciones, admin tasks      |
+| Característica     | Valor                                         |
+| ------------------ | --------------------------------------------- |
+| Puerto             | `5432`                                        |
+| Red                | IPv6 (IPv4 solo con el IPv4 Add-on)           |
+| Mejor para         | Migraciones, `pg_dump`, backends de larga vida |
 
 ### 2. Session Pooler
 
-Conexión a través del pooler con modo sesión:
+Conexión a través del pooler (Supavisor) en modo sesión:
 
 ```
-postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?pgbouncer=true
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
 ```
 
-| Característica | Valor                                 |
-| -------------- | ------------------------------------- |
-| Puerto         | `5432`                                |
-| Modo           | Session (mantiene estado)             |
-| Mejor para     | Aplicaciones con transacciones largas |
+| Característica | Valor                                                    |
+| -------------- | -------------------------------------------------------- |
+| Puerto         | `5432`                                                   |
+| Modo           | Session (cada cliente mantiene su conexión)              |
+| Red            | IPv4                                                     |
+| Mejor para     | Clientes persistentes que necesitan `SET`, prepared statements, `LISTEN/NOTIFY` |
 
-### 3. Transaction Pooler (Recomendado para Testing)
+### 3. Transaction Pooler
 
 Conexión optimizada para muchas conexiones cortas:
 
 ```
-postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 ```
 
-| Característica | Valor                                  |
-| -------------- | -------------------------------------- |
-| Puerto         | **`6543`** (diferente!)                |
-| Modo           | Transaction                            |
-| Mejor para     | **Tests, serverless, muchos clientes** |
+| Característica | Valor                                                 |
+| -------------- | ----------------------------------------------------- |
+| Puerto         | **`6543`** (diferente!)                               |
+| Modo           | Transaction                                           |
+| Red            | IPv4                                                  |
+| Mejor para     | **Serverless (Vercel), edge functions, muchos clientes** |
+| Limitación     | Sin features de sesión (`SET`, `LISTEN/NOTIFY`, advisory locks) |
 
 ---
 
 ## Componentes del Connection String
 
 ```
-postgresql://postgres.czuusjchqpgvanvbdrnz:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-└────┬────┘ └─────────┬────────────────┘ └──┬──┘ └────────────┬────────────────────┘ └─┬─┘ └──┬───┘
-  protocolo         user                  pass              host                    port    db
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+└────┬────┘ └─────────┬─────────┘ └────┬────┘ └───────────────┬──────────────────┘ └─┬─┘ └──┬───┘
+  protocolo         user              pass                   host                   port    db
 ```
 
-| Componente   | Descripción                         | Ejemplo                               |
-| ------------ | ----------------------------------- | ------------------------------------- |
-| **User**     | `postgres.[PROJECT_REF]`            | `postgres.czuusjchqpgvanvbdrnz`       |
-| **Password** | Tu database password                | (establecido al crear proyecto)       |
-| **Host**     | Pooler endpoint                     | `aws-0-us-east-1.pooler.supabase.com` |
-| **Port**     | 5432 (session) o 6543 (transaction) | `6543`                                |
-| **Database** | Siempre `postgres`                  | `postgres`                            |
+| Componente   | Descripción                                        | Ejemplo                                 |
+| ------------ | -------------------------------------------------- | --------------------------------------- |
+| **User**     | `postgres.<project-ref>` en el pooler; `postgres` en la conexión directa | `postgres.<project-ref>`  |
+| **Password** | Tu database password                               | (establecido al crear el proyecto)      |
+| **Host**     | Pooler endpoint o `db.<project-ref>.supabase.co`   | `aws-0-<region>.pooler.supabase.com`    |
+| **Port**     | 5432 (session / directa) o 6543 (transaction)      | `6543`                                  |
+| **Database** | Siempre `postgres`                                 | `postgres`                              |
+
+Ninguno de estos valores se commitea: el password vive en `.env`, nunca en un archivo versionado.
 
 ### Extraer el Project Reference
 
-El **Project Reference** es el identificador único de tu proyecto Supabase:
+El **Project Reference** es el identificador único de tu proyecto Supabase, y es el subdominio de `NEXT_PUBLIC_SUPABASE_URL`:
 
 ```typescript
 // Desde la URL del proyecto
-const SUPABASE_URL = 'https://czuusjchqpgvanvbdrnz.supabase.co';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!; // https://<project-ref>.supabase.co
 const PROJECT_REF = SUPABASE_URL.split('//')[1].split('.')[0];
-// Result: 'czuusjchqpgvanvbdrnz'
 ```
 
 ---
 
-## Configuración para DBHub MCP
+## Cómo llega la AI a la base de datos
 
-El MCP de DBHub permite que tu AI assistant acceda a la base de datos. Se configura con un archivo TOML.
+La AI no usa un connection string. Pide la capability `db` (`.agents/instructions/agent-skills-and-mcps.md` §5, "MCPs"), que en este repo la provee el servidor MCP `supabase` declarado en `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`. Lee una sola credencial, `SUPABASE_ACCESS_TOKEN`, que el loader de `.env` (`varlock run --filter SUPABASE_ACCESS_TOKEN`) toma de `.env` al arrancar el servidor; la URL y las keys del proyecto nunca le llegan. No hay archivo TOML ni rol de base de datos que crear.
 
-### Paso 1: Crear `dbhub.toml`
-
-Crea un archivo `dbhub.toml` en el root de tu proyecto:
-
-```toml
-# dbhub.toml
-[[sources]]
-id = "supabase-staging"
-type = "postgres"
-host = "aws-0-us-east-1.pooler.supabase.com"
-port = 6543
-database = "postgres"
-user = "postgres.czuusjchqpgvanvbdrnz"
-password = "TuPasswordAqui"
-sslmode = "require"
-```
-
-### Paso 2: Configurar MCP
-
-#### Claude Code (`.mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "sql": {
-      "command": "npx",
-      "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-    }
-  }
-}
-```
-
-#### OpenCode (`opencode.json`)
-
-```json
-{
-  "mcpServers": {
-    "sql": {
-      "type": "local",
-      "command": ["npx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
-      "enabled": true
-    }
-  }
-}
-```
-
-### Paso 3: Verificar Conexión
-
-Después de configurar, reinicia tu AI assistant y verifica que el MCP esté activo:
+Para verificar que está activo, dentro de la sesión:
 
 ```
 /mcp
 ```
 
-Deberías ver el MCP de `sql` listado con sus herramientas disponibles.
+Un valor faltante en `.env` no rompe el arranque: el servidor arranca sin la variable y falla recién en su primera llamada autenticada (`AGENTS.md` Regla #9). Si ves un 401/403, revisa `.env` y reinicia la sesión. Los lanzamientos sin línea de comandos (app de escritorio, workers supervisados) no necesitan nada extra: el loader lee `.env` igual.
+
+Quien prefiera DBHub para consultas SQL directas puede agregarlo como MCP opt-in: el bloque `sql` de `docs/mcp/` y un `dbhub.toml` que parte de `docs/mcp/dbhub.example.toml`, solo con referencias `${VAR}`; los valores literales van en `dbhub.local.toml` (gitignored). Ver [docs/mcp/README.md](../../mcp/README.md). Un servidor agregado a un harness tiene que existir en los tres, o falla `bun run agents:compat:check`.
 
 ---
 
 ## IPv4 vs IPv6
 
-Supabase usa **IPv6** por defecto, pero algunos entornos solo soportan IPv4.
+La conexión directa (`db.<project-ref>.supabase.co`) resuelve solo a **IPv6**. Los dos poolers (Supavisor, en `5432` y `6543`) aceptan **IPv4**.
 
-### Forzar IPv4
+Si tu red no tiene IPv6:
 
-Agrega el parámetro `?options=pool_mode=transaction&options=force_ipv4=true`:
-
-```
-postgresql://user:pass@host:6543/postgres?options=-c%20search_path%3Dpublic
-```
-
-O usa el **IPv4 Add-on** en proyectos Pro (Dashboard → Project Settings → Add-ons).
+1. Usa el Session Pooler o el Transaction Pooler en vez de la conexión directa
+2. O activa el **IPv4 Add-on** (Dashboard → Project Settings → Add-ons) para seguir usando la directa
 
 ### Verificar Soporte IPv6
 
@@ -189,7 +142,7 @@ O usa el **IPv4 Add-on** en proyectos Pro (Dashboard → Project Settings → Ad
 # Verificar si tu máquina tiene IPv6
 ping6 google.com
 
-# Si falla, necesitas usar IPv4
+# Si falla, usa un pooler
 ```
 
 ---
@@ -205,74 +158,15 @@ Supabase tiene varios roles predefinidos:
 | `authenticated` | Usuario logueado | API autenticada (con RLS) |
 | `service_role`  | Bypass RLS       | Backend, admin APIs       |
 
-### Para Testing: Crear Usuario QA
-
-```sql
--- Crear rol QA con permisos limitados
-CREATE ROLE qa_tester WITH LOGIN PASSWORD 'QaPassword123!';
-
--- Dar permisos de lectura
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO qa_tester;
-
--- Para staging, agregar permisos de escritura
-GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO qa_tester;
-```
-
-Luego usa este usuario en tu `dbhub.toml`:
-
-```toml
-[[sources]]
-id = "supabase-qa"
-type = "postgres"
-host = "aws-0-us-east-1.pooler.supabase.com"
-port = 6543
-database = "postgres"
-user = "qa_tester.czuusjchqpgvanvbdrnz"
-password = "QaPassword123!"
-sslmode = "require"
-```
+Las RLS policies se escriben contra `anon` y `authenticated`. El rol `service_role` (la secret key) salta RLS: solo en código de servidor, nunca para conseguir una sesión de usuario.
 
 ---
 
 ## Múltiples Ambientes
 
-Puedes configurar múltiples conexiones en el mismo `dbhub.toml`:
+Cada ambiente es un proyecto Supabase distinto, con su propio `<project-ref>` y sus propias keys. Los valores viven en `.env` (local) y en las variables de Vercel por scope (Preview / Production); las URLs de cada ambiente están en `.agents/project.yaml` → `environments`. Ver [environments.md](../../workflows/environments.md).
 
-```toml
-# dbhub.toml
-
-# Desarrollo local
-[[sources]]
-id = "local"
-type = "postgres"
-host = "localhost"
-port = 54322
-database = "postgres"
-user = "postgres"
-password = "postgres"
-
-# Staging
-[[sources]]
-id = "staging"
-type = "postgres"
-host = "aws-0-us-east-1.pooler.supabase.com"
-port = 6543
-database = "postgres"
-user = "postgres.STAGING_PROJECT_REF"
-password = "StagingPassword"
-sslmode = "require"
-
-# Production (solo lectura)
-[[sources]]
-id = "production"
-type = "postgres"
-host = "aws-0-us-east-1.pooler.supabase.com"
-port = 6543
-database = "postgres"
-user = "qa_readonly.PROD_PROJECT_REF"
-password = "ReadOnlyPassword"
-sslmode = "require"
-```
+Para desarrollo local con la CLI de Supabase (`supabase start`), la base escucha en `localhost:54322` con usuario y password `postgres`.
 
 ---
 
@@ -299,7 +193,7 @@ FATAL: password authentication failed for user "postgres"
 **Soluciones:**
 
 1. Verificar password en Dashboard → Settings → Database
-2. Asegurar que el formato del user es `postgres.[PROJECT_REF]`
+2. En los poolers, el formato del user es `postgres.<project-ref>`; en la conexión directa es `postgres`
 3. Resetear password si es necesario
 
 ### Error: SSL required
@@ -308,7 +202,7 @@ FATAL: password authentication failed for user "postgres"
 FATAL: SSL connection is required
 ```
 
-**Solución:** Agregar `sslmode = "require"` en la configuración.
+**Solución:** agregar `sslmode=require` al connection string.
 
 ### Error: Too many connections
 
@@ -318,9 +212,11 @@ FATAL: too many connections
 
 **Soluciones:**
 
-1. Usar Transaction Pooler (puerto 6543)
+1. Usar Transaction Pooler (puerto 6543), sobre todo desde funciones serverless
 2. Cerrar conexiones después de usarlas
-3. Reducir paralelismo de tests
+3. Reutilizar un solo cliente por proceso
+
+Más casos en [troubleshooting.md](./troubleshooting.md).
 
 ---
 
@@ -328,12 +224,10 @@ FATAL: too many connections
 
 1. **Auth Tokens:** [auth-tokens.md](./auth-tokens.md) - Autenticación con Supabase
 2. **Troubleshooting:** [troubleshooting.md](./troubleshooting.md) - Problemas comunes
-3. **Generic Connections:** [../../testing/database/connection-db.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/testing/database/connection-db.md) - Conceptos genéricos
 
 ---
 
 ## Referencias
 
 - [Supabase Database Connections](https://supabase.com/docs/guides/database/connecting-to-postgres)
-- [Supabase Connection Pooling](https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler)
-- [DBHub MCP Documentation](https://github.com/bytebase/dbhub)
+- [Supabase IPv4 Address](https://supabase.com/docs/guides/platform/ipv4-address)

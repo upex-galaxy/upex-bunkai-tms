@@ -2,11 +2,11 @@
 
 > **Idioma:** Español
 
-Bienvenido a la documentación del **AI-Driven Project Starter**.
+Bienvenido a la documentación de **agentic-dev-boilerplate**.
 
 Esta documentación está orientada a **humanos** — para aprender conceptos, entender metodologías y seguir guías paso a paso.
 
-> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `AGENTS.md` y `CONTEXT.md` en la raíz del repo (`CLAUDE.md` es solo un shim de una línea, `@AGENTS.md`, para que Claude Code llegue al mismo archivo). El resto del comportamiento de la AI vive en skills (`.agents/skills/`, leídas por Claude Code, OpenCode y Codex) y en los slash commands generados (`.claude/commands/`, `.opencode/commands/`), que son alias hacia una skill y un modo.
+> **Nota**: Para el contexto **operativo** que la AI carga cada sesión, consulta `AGENTS.md` y `CONTEXT.md` en la raíz del repo (`CLAUDE.md` es solo un shim de una línea, `@AGENTS.md`, para que Claude Code llegue al mismo archivo). `AGENTS.md` es el núcleo que carga siempre; el detalle vive en una sección por tema bajo `.agents/instructions/`, que la AI lee a pedido cuando el router o una línea `ROUTE:` del hook la nombra. El resto del comportamiento de la AI vive en skills (`.agents/skills/`, leídas por Claude Code, OpenCode y Codex) No hay archivos de comando: una skill se invoca por su nombre más un modo (`/project-context data` en Claude Code; "cargá `project-context`, modo `data`" en OpenCode y Codex). Decisión en [ADR-0006](../.context/ADR/ADR-0006-skill-plus-mode-invocation.md).
 
 ---
 
@@ -15,6 +15,7 @@ Esta documentación está orientada a **humanos** — para aprender conceptos, e
 | Documento                                                                                             | Descripción                                                                                                                                                                                                            |
 | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Una fuente, tres harnesses](https://upex-galaxy.github.io/agentic-dev-boilerplate/harnesses.es.html) | Cómo el mismo repositorio corre en Claude Code, OpenCode y Codex desde una sola fuente: qué es canónico, qué se genera, y qué pasa al actualizar un proyecto creado antes del cambio. Página publicada, con diagramas. |
+| [Docs hub](https://upex-galaxy.github.io/agentic-dev-boilerplate/)                               | Hub publicado: la página de inicio y un deck por skill de flujo, más la doctrina del núcleo.                                                                                                                             |
 | [ADR-0002](../.context/ADR/ADR-0002-multi-harness-single-source.md)                                   | Registro de la decisión (contexto, alternativas descartadas, consecuencias). En inglés.                                                                                                                                |
 
 ---
@@ -23,18 +24,14 @@ Esta documentación está orientada a **humanos** — para aprender conceptos, e
 
 ```
 docs/
-├── methodology/                  # Metodologías de testing y QA
-│   ├── IQL-methodology.md        # Integrated Quality Lifecycle
-│   ├── early-game-testing.md     # Fase shift-left
-│   ├── mid-game-testing.md       # Fase de desarrollo activo
-│   ├── late-game-testing.md     # Fase de regresión
-│   └── jira-platform.md          # Uso de Jira en el flujo
+├── methodology/                  # La costura entre desarrollo y QA
+│   ├── IQL-methodology.md        # Cómo el dev le entrega trabajo a QA
+│   └── jira-platform.md          # Jira y Xray desde el lado dev
 │
-├── setup/                        # Guías de configuración
-│   ├── jira-setup-guide.md       # Configurar Jira/Atlassian
-│   └── mcp/                      # Guías per-cliente MCP (claude-code, gemini-cli, …)
+├── setup/                        # Guías de configuración (incluye Jira lado dev)
+│   └── mcp/                      # Primer MCP y guías por harness
 │
-├── mcp/                          # Templates opt-in de MCP para hosts sin adapter (gemini-cli, cursor, …)
+├── mcp/                          # Configuración MCP de los tres harnesses + bloques opt-in
 │
 ├── workflows/                    # Flujos de trabajo
 │   ├── environments.md           # Ambientes dev, staging, prod
@@ -46,32 +43,29 @@ docs/
 │
 ├── agentic-development-engineering.md  # Ingeniería del ciclo de desarrollo agéntico
 ├── ai-personality.md             # Espejo humano del contrato de personalidad de la AI
-└── onboarding.html               # Tour de onboarding interactivo (HTML standalone)
+└── onboarding.html               # Empezá acá: orientación (HTML standalone, `bun run onboarding`)
 ```
 
 ---
 
 ## Metodología
 
-La metodología de testing está basada en **IQL (Integrated Quality Lifecycle)**.
+Este repo cubre el desarrollo; la metodología de testing (**IQL**, Integrated Quality Lifecycle) vive en [agentic-qa-boilerplate](https://upex-galaxy.github.io/agentic-qa-boilerplate/docs/core/metodologia/index.html). Acá solo está el lado dev de la costura:
 
-| Documento                                                    | Descripción                        |
-| ------------------------------------------------------------ | ---------------------------------- |
-| [IQL-methodology.md](./methodology/IQL-methodology.md)       | Vista completa de IQL              |
-| [early-game-testing.md](./methodology/early-game-testing.md) | Testing shift-left                 |
-| [mid-game-testing.md](./methodology/mid-game-testing.md)     | Desarrollo + automatización        |
-| [late-game-testing.md](./methodology/late-game-testing.md)   | Regresión y producción             |
-| [jira-platform.md](./methodology/jira-platform.md)           | Uso de Jira en el flujo end-to-end |
+| Documento                                              | Descripción                                                |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| [IQL-methodology.md](./methodology/IQL-methodology.md) | Cómo el dev le entrega trabajo a QA                        |
+| [jira-platform.md](./methodology/jira-platform.md)     | Jira y Xray desde el lado dev: qué se escribe y qué se lee |
 
 ---
 
 ## Guías de Configuración
 
-| Documento                                          | Descripción                                                      |
-| -------------------------------------------------- | ---------------------------------------------------------------- |
-| [jira-setup-guide.md](./setup/jira-setup-guide.md) | Configurar credenciales y MCP de Atlassian/Jira                  |
-| [setup/mcp/](./setup/mcp/)                         | Guías per-cliente (claude-code, gemini-cli, copilot-cli, vscode) |
-| [mcp/](./mcp/)                                     | Templates copy-pasteables (`cp docs/mcp/*.template.* …`)         |
+| Documento                                          | Descripción                                            |
+| -------------------------------------------------- | ------------------------------------------------------ |
+| [Jira (lado dev)](./setup/README.md#jira-lado-dev) | Configurar credenciales y MCP de Atlassian/Jira        |
+| [setup/mcp/](./setup/mcp/)                         | Primer MCP y guías por harness                         |
+| [mcp/](./mcp/)                                     | Servidores MCP declarados y bloques opt-in por harness |
 
 ---
 
@@ -93,43 +87,44 @@ Guías para stacks tecnológicos específicos:
 | ---------------------- | -------------------------------- | ---------------------------------------------------- |
 | **Supabase + Next.js** | PostgreSQL + PostgREST + Next.js | [supabase-nextjs/](./architectures/supabase-nextjs/) |
 
-> **Nota**: Conceptos genéricos de testing pertenecen a `methodology/`. Solo configuraciones específicas de cada stack van en `architectures/`.
+> **Nota**: `architectures/` guarda solo configuración específica de cada stack. La costura con QA está en `methodology/`; la metodología de testing, en el repo de QA.
 
 ---
 
 ## Inicio Rápido
 
-### 1. Entender la Metodología
+### 1. Orientarte
 
-Lee la [Metodología IQL](./methodology/IQL-methodology.md) para entender las fases de testing.
+Corré `bun run onboarding`: abre `onboarding.html`, el recorrido de empezá acá (las piezas del repo, cómo se invoca una skill, cómo viaja una historia). Para saber qué recibe QA al final del sprint, leé [Cómo el dev le entrega trabajo a QA](./methodology/IQL-methodology.md).
 
 ### 2. Configurar Tus Herramientas
 
-- Jira / Atlassian: [jira-setup-guide.md](./setup/jira-setup-guide.md)
+- Jira / Atlassian: [Jira (lado dev)](./setup/README.md#jira-lado-dev)
 
 ### 3. Aprender los Workflows
 
 - [Flujo Git](./workflows/git-flow.md) para control de versiones
 - [Ambientes](./workflows/environments.md) para etapas de deployment
-- `bun up --help` para sincronizar este boilerplate upstream
+- `bun sync --help` para sincronizar este boilerplate upstream
+- `bun run worktree:provision` para preparar un worktree nuevo (`.env`, dependencias, alias de skills); `bun run worktree:audit` para revisarlos
 
-### 4. Usar Skills y Commands
+### 4. Usar Skills y Modos
 
-El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.agents/skills/`, la única copia que leen Claude Code, OpenCode y Codex. Cada skill se invoca con `/<nombre>` (por ejemplo `/sprint-development`, `/project-foundation`). Lista completa en `AGENTS.md` sección **Skills**. Los slash commands (`/business-data-map`, `/sync-ai-memory`, etc.) son alias generados hacia una skill y un modo; en Codex no hay wrappers, se invoca la skill directamente.
+El comportamiento operativo (cómo crear historias, cómo planificar, cómo ejecutar el sprint) vive en skills bajo `.agents/skills/`, la única copia que leen Claude Code, OpenCode y Codex. Cada skill se invoca por su nombre, más un modo cuando tiene varios: `/project-context data` en Claude Code, o "cargá `project-context`, modo `data`" en OpenCode y Codex. Una skill multi-modo lista sus modos en su propia sección `## Mode routing`. El catálogo de skills es `.agents/skills/REGISTRY.md` (lo genera `bun run skills:registry`).
 
 ---
 
 ## Relación con `.context/`, `.agents/` y los adapters por harness
 
-| Directorio / archivo                         | Audiencia | Propósito                                                                                   |
-| -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------- |
-| `docs/`                                      | Humanos   | Aprendizaje, tutoriales, referencia                                                         |
-| `.context/`                                  | AI        | Memoria persistente del proyecto (PRD, SRS, business map, PBI, ADR)                         |
-| `.agents/skills/`                            | AI        | Workflows ejecutables: la única copia, leída por los tres harnesses                         |
-| `.agents/compatibility/command-aliases.json` | AI        | Manifiesto de alias: fuente de todos los slash commands generados                           |
-| `.claude/`, `.opencode/`, `.codex/`          | AI        | Adapters por harness (hook, MCP, wrappers generados). Nunca una segunda copia del contenido |
-| `AGENTS.md`                                  | AI        | Operational context cargado en cada sesión, en cualquier harness                            |
-| `CLAUDE.md`                                  | AI        | Shim de una línea (`@AGENTS.md`) para Claude Code. Generado, nunca lleva prosa              |
+| Directorio / archivo                | Audiencia | Propósito                                                                                                                                                     |
+| ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/`                             | Humanos   | Aprendizaje, tutoriales, referencia                                                                                                                           |
+| `.context/`                         | AI        | Memoria persistente del proyecto (PRD, SRS, PBI, ADR). Los business maps viven en las skills `business-*-context` y se leen con `bun run context:map <skill>` |
+| `.agents/skills/`                   | AI        | Workflows ejecutables: la única copia, leída por los tres harnesses                                                                                           |
+| `.claude/`, `.opencode/`, `.codex/` | AI        | Adapters por harness (hook, MCP). Generado solo `.claude/skills`; nunca una segunda copia del contenido                                                       |
+| `AGENTS.md`                         | AI        | Núcleo operativo (L0) cargado en cada sesión, en cualquier harness, con el router a `.agents/instructions/`                                                   |
+| `.agents/instructions/`             | AI        | Una sección por tema (git, PBI, herramientas, variables...), leída a pedido; `agent-project.md` guarda las reglas propias del proyecto                               |
+| `CLAUDE.md`                         | AI        | Shim de una línea (`@AGENTS.md`) para Claude Code. Generado, nunca lleva prosa                                                                                |
 
 **Regla general**:
 
@@ -145,15 +140,13 @@ Para agregar documentación:
 
 1. **Educacional / Tutorial** → Agregar al subdirectorio apropiado de `docs/`
 2. **Workflow ejecutable para AI** → Crear o editar una skill en `.agents/skills/<nombre>/SKILL.md`
-3. **Slash command de utilidad** → Declarar el alias en `.agents/compatibility/command-aliases.json` y correr `bun run agents:compat` (los wrappers en `.claude/commands/` y `.opencode/commands/` se generan; no se editan a mano)
+3. **Una variante de una skill existente** → Agregar un modo a la sección `## Mode routing` de esa skill (no hay archivos de comando, ver ADR-0006)
+
+Antes de commitear prosa, `bun run docs:check`: la Regla #17 de `AGENTS.md` prohíbe conteos que cambian, listas de un conjunto mutable, citas `archivo:línea` y fechas de estado actual. Nombrá al dueño del dato (un archivo, un comando), nunca el valor que tiene. Detalle en `.agents/skills/agentic-dev-core/references/volatile-facts.md`.
 
 ### Agregar Nuevas Arquitecturas
 
 1. Crear carpeta: `docs/architectures/{nombre-stack}/`
 2. Agregar `README.md` con overview de la arquitectura
 3. Agregar guías de configuración específicas
-4. Mantener conceptos genéricos en `docs/methodology/`
-
----
-
-**Última actualización**: 2026-09-03
+4. Mantener lo que no depende del stack fuera de `architectures/`

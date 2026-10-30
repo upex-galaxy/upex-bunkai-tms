@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP) - Guía General
 
-## 📖 ¿Qué es MCP?
+## 📖 Qué es MCP?
 
 **Model Context Protocol (MCP)** es un estándar abierto que define cómo los modelos de lenguaje (LLMs) se conectan e interactúan con herramientas externas y fuentes de datos.
 
@@ -10,7 +10,7 @@
 
 ### Cliente MCP
 
-La aplicación que usa el modelo de IA (Claude Code, OpenCode, Codex, Gemini CLI, GitHub Copilot, etc.)
+La aplicación que usa el modelo de IA. En este repo, los tres hosts del contrato: Claude Code, OpenCode y Codex CLI + Desktop (`.agents/instructions/agent-harnesses.md` §5.5).
 
 ### Servidor MCP
 
@@ -86,7 +86,7 @@ Plantillas predefinidas que el servidor puede ofrecer.
 
 #### Estado actual
 
-⚠️ **IMPORTANTE**: SSE está siendo deprecado en favor de HTTP Streamable. Muchos servidores y clientes están eliminando soporte para SSE.
+⚠️ **IMPORTANTE**: SSE está deprecado en el estándar MCP en favor de HTTP Streamable. Usalo solo cuando un servicio no expone otra cosa.
 
 #### Formato de configuración típico
 
@@ -133,7 +133,7 @@ Plantillas predefinidas que el servidor puede ofrecer.
       "type": "http",
       "url": "https://api.ejemplo.com/mcp",
       "headers": {
-        "Authorization": "Bearer ${input:token}"
+        "Authorization": "Bearer ${API_TOKEN}"
       }
     }
   }
@@ -238,115 +238,30 @@ Plantillas predefinidas que el servidor puede ofrecer.
 
 ### Variables de Entorno y Secretos
 
-#### Approach 1: Variables de Entorno del Sistema
+Un secreto nunca se escribe en el config y su valor vive en `.env` (gitignored). En los tres hosts, un server stdio que necesita valores arranca con el mismo loader de `.env`:
 
-```bash
-export API_KEY="mi-clave-secreta"
+```
+bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter API_KEY -- <server>
 ```
 
-```json
-{
-  "env": {
-    "API_KEY": "${API_KEY}"
-  }
-}
-```
+El loader lee `.env` (o el gestor de secretos que nombra el schema) al arrancar el server, lo haya lanzado quien sea (terminal, app de escritorio, worker supervisado), y le pasa solo las variables de su `--filter`. No se copia ningún valor a otro archivo. Un server remoto (HTTP) no puede usar el loader: referencia su secreto con `${VAR}` (Claude Code), `{env:VAR}` (OpenCode) o `bearer_token_env_var` (Codex), desde el entorno del proceso del harness, donde `.env` no llega en ningún lanzamiento. Preferí el login OAuth del server (como el MCP remoto de Atlassian vía `mcp-remote`); un server que solo acepta token necesita que exportes esa ÚNICA variable en el shell antes de lanzar, sabiendo que queda en el entorno del agente.
 
-#### Approach 2: Input Prompts
-
-```json
-{
-  "inputs": [
-    {
-      "id": "api-token",
-      "type": "promptString",
-      "description": "Ingresa tu API token",
-      "password": true
-    }
-  ]
-}
-```
+Ningún host avisa cuando falta una variable: el servidor arranca y falla en su primera llamada autenticada. Un 401/403 es la señal; `/mcp` dentro de la sesión es el chequeo (`AGENTS.md` Critical Rule #9).
 
 ---
 
-## 📊 Casos de Uso Comunes
+## 🧩 Cómo usa MCP este repo
 
-### 1. Acceso a Base de Datos
+Las skills no nombran servidores: piden una **capacidad** y el agente la resuelve por el sufijo del nombre de la tool, sea cual sea el prefijo que le dio el host. Si ninguna tool la provee, el agente se detiene en ese paso, dice qué falta y cómo habilitarlo, y espera.
 
-**MCP Server**: PostgreSQL, MySQL, Supabase
-**Transporte**: stdio (local) o HTTP (remoto)
+| Capacidad          | Para qué                                        | Dónde vive                                                              |
+| ------------------ | ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `library-docs`     | documentación oficial de librerías, SDKs y CLIs | servidor commiteado (`.mcp.json` y sus pares)                           |
+| `web-search`       | búsqueda web, fixes de la comunidad             | nivel harness, una vez por máquina (Exa primero, Tavily segundo); nunca en un archivo del proyecto |
+| `db`               | schema, ledger de migraciones, lecturas         | servidor commiteado                                                     |
+| `automation-flows` | workflows de n8n                                | servidor commiteado                                                     |
 
-### 2. Testing Automatizado
-
-**MCP Server**: Playwright, Postman
-**Transporte**: stdio
-
-### 3. Gestión de Proyectos
-
-**MCP Server**: GitHub, Atlassian, Notion
-**Transporte**: HTTP
-
-### 4. Búsqueda y Documentación
-
-**MCP Server**: Context7, Tavily
-**Transporte**: HTTP
-
-### 5. Comunicación en Equipo
-
-**MCP Server**: Slack, Discord
-**Transporte**: stdio o HTTP
-
----
-
-## 🎯 Recomendaciones por Caso de Uso
-
-### Desarrollo Local Individual
-
-- **Transporte**: stdio
-- **Por qué**: Latencia mínima, setup simple
-
-### Equipo Pequeño (2-10 personas)
-
-- **Transporte**: stdio para recursos locales, HTTP para compartidos
-- **Por qué**: Balance entre simplicidad y colaboración
-
-### Empresa/Producción
-
-- **Transporte**: HTTP Streamable exclusivamente
-- **Por qué**: Escalabilidad, OAuth, auditoría
-
-### Experimentación/Prototyping
-
-- **Transporte**: Cualquiera
-- **Por qué**: Flexibilidad, rápida iteración
-
----
-
-## 🛠️ MCPs Populares
-
-### Desarrollo
-
-- **Supabase** - PostgreSQL database y auth
-- **Playwright** - E2E testing
-- **Postman** - API testing
-
-### Productividad
-
-- **GitHub** - Repositorios y proyectos
-- **Atlassian** - Jira y Confluence
-- **Notion** - Documentación
-- **Slack** - Comunicación
-
-### Información
-
-- **Context7** - Documentación de bibliotecas
-- **Tavily** - Web search
-- **Memory** - Memoria persistente
-
-### DevOps
-
-- **Vercel** - Deployment
-- **Sentry** - Error monitoring
+Qué servidor da cada capacidad, los sufijos y cómo habilitar una que falta: `.agents/skills/agentic-dev-core/references/mcp-capabilities.md`. La automatización de browser no es un MCP: es `playwright-cli` (`.agents/instructions/agent-tool-resolution.md` §6). Jira y Confluence van por `acli`; el MCP de Atlassian es opt-in ([`docs/mcp/README.md`](../../mcp/README.md)).
 
 ---
 
@@ -356,41 +271,36 @@ export API_KEY="mi-clave-secreta"
 
 - **MCP Specification**: https://modelcontextprotocol.io/
 - **GitHub MCP Registry**: https://github.com/modelcontextprotocol/servers
-- **Awesome MCP Servers**: https://github.com/punkpeye/awesome-mcp-servers
 
 ### Configs en este repo
 
-Este boilerplate corre sobre tres harnesses desde una sola fuente de instrucciones y skills (`AGENTS.md` + `.agents/skills/`). El inventario MCP (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`) existe una vez por formato de host, commiteado en el repo y verificado en paridad por `bun run agents:compat:check`. Los demás clientes solo tienen template o configuración manual: no hay adapter en runtime.
+Este boilerplate corre sobre tres harnesses desde una sola fuente de instrucciones y skills (`AGENTS.md` + `.agents/skills/`). El inventario MCP (el que declara `.mcp.json`) existe una vez por formato de host, commiteado en el repo y verificado en paridad por `bun run agents:compat:check`.
 
-| Harness                      | Config MCP                                               | Sintaxis de env vars                             | Launcher           |
-| ---------------------------- | -------------------------------------------------------- | ------------------------------------------------ | ------------------ |
-| Claude Code                  | `.mcp.json` (commiteada)                                 | `${VAR}`                                         | `bun run claude`   |
-| OpenCode                     | `opencode.jsonc` (commiteada)                            | `{env:VAR}`                                      | `bun run opencode` |
-| Codex CLI + Desktop          | `.codex/config.toml` (commiteada; requiere repo trusted) | `env_vars` / `bearer_token_env_var` (por nombre) | `bun run codex`    |
-| Gemini CLI                   | solo template opt-in: `docs/mcp/gemini.template.json`    | `$VAR`                                           | manual             |
-| GitHub Copilot CLI / VS Code | manual, según las guías de abajo                         | según la herramienta                             | manual             |
+| Harness             | Config MCP                                               | Secretos                                          | Cómo se abre                  |
+| ------------------- | -------------------------------------------------------- | ------------------------------------------------- | ----------------------------- |
+| Claude Code         | `.mcp.json` (commiteada)                                 | loader de `.env` (`--filter`)                     | `claude` o la app de escritorio |
+| OpenCode            | `opencode.jsonc` (commiteada)                            | loader de `.env` (`--filter`)                     | `opencode`                    |
+| Codex CLI + Desktop | `.codex/config.toml` (commiteada; requiere repo trusted) | loader de `.env` (`--filter`) + `startup_timeout_sec` | `codex` o Codex Desktop       |
 
-### Herramientas Especificas
+Ningún lanzamiento usa un script envoltorio: el binario pelado, la app de escritorio y un worker supervisado no cargan `.env` en el proceso del agente (ADR-0016), y el loader lo lee igual para cada MCP. Después de un cambio de `.env`, reiniciá la sesión (OpenCode: también `opencode service restart`).
 
-Para configuraciones especificas por herramienta, consulta:
+### Guías por host
 
 - [Claude Code](./claude-code.md)
 - [Codex CLI + Desktop](./codex.md)
-- [Gemini CLI](./gemini-cli.md) (solo template, sin adapter en runtime)
-- [GitHub Copilot CLI](./copilot-cli.md) (manual)
-- [VS Code con GitHub Copilot](./vscode.md) (manual)
+- OpenCode: los comentarios de `opencode.jsonc` y la sección OpenCode de [`docs/mcp/mcp-configuration-guide.md`](../../mcp/mcp-configuration-guide.md)
+- Templates opt-in y cómo sumar un servidor: [`docs/mcp/README.md`](../../mcp/README.md)
 
 ---
 
 ## 🔑 Conceptos Clave
 
-1. **MCP = Estándar Universal**: Un protocolo para conectar IAs con herramientas
-2. **Tres Transportes**: stdio (local), SSE (deprecado), HTTP (producción)
-3. **Seguridad Primero**: OAuth para producción, variables de entorno para secretos
-4. **Stateful Protocol**: Una sesión permite múltiples llamadas RPC
-5. **JSON-RPC**: Protocolo subyacente para mensajes
+1. **MCP = Estándar Universal**: un protocolo para conectar IAs con herramientas
+2. **Tres Transportes**: stdio (local), SSE (deprecado), HTTP Streamable (remoto)
+3. **Secretos fuera del config**: referencias por host, valores en `.env`
+4. **Stateful Protocol**: una sesión permite múltiples llamadas RPC
+5. **JSON-RPC**: protocolo subyacente para mensajes
 
 ---
 
-**Última actualización**: 2025-10-29
 **Referencia**: Documentación oficial de Model Context Protocol

@@ -20,8 +20,8 @@ Cuando agregues soporte para una nueva arquitectura:
 1. Crea una carpeta: `docs/architectures/{nombre-stack}/`
 2. Agrega un `README.md` explicando la arquitectura
 3. Agrega guías de configuración específicas (auth, conexiones, etc.)
-4. Mantén los conceptos genéricos en `docs/testing/` - solo lo específico del stack aquí
+4. Deja fuera lo genérico: solo lo específico del stack va aquí
 
 ---
 
-**Nota:** Los conceptos genéricos de testing pertenecen a `docs/testing/`. Esta carpeta es solo para configuraciones específicas de cada stack.
+**Nota:** Esta carpeta es solo para configuraciones específicas de cada stack. El ciclo de desarrollo genérico vive en las skills (`.agents/skills/`) y en [agentic-development-engineering.md](../agentic-development-engineering.md).

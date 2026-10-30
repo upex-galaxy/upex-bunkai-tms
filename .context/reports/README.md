@@ -35,6 +35,10 @@ The framework file is the single source of truth for sprint progress.
 - Diff consecutive files to detect recurring carryovers.
 - Feed into retro-prep tools or dashboards.
 
+## Adoption plan
+
+`project-adoption-plan.md` is the one non-sprint report here: written by `/project-adoption` on an existing app (`Status: PENDING APPROVAL` → `APPROVED` → `COMPLETED`), committed with the adoption writes so the team reviews both in one PR. A later drift run appends a dated section; closed sections are never rewritten. Template: `.agents/skills/project-adoption/references/plan-template.md`.
+
 ## Related
 
 - Story-level artifacts (implementation-plan, context, evidence) → `.context/PBI/epics/EPIC-<KEY>-<slug>/stories/STORY-<KEY>-<slug>/`.

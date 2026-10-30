@@ -82,6 +82,8 @@ Who authors: a human architect directly, **or** an AI workflow that detected an 
 
 > ADR-0016 is taken by other in-flight work not yet present in this branch — confirmed by the Conductor 2026-08-28/30. BK-214 took the next free number, 0017.
 
+> **Two numbering series share this folder.** The table above indexes Bunkai's own ADRs. The boilerplate's ADRs (`ADR-0002-multi-harness-single-source.md` and `ADR-0003` to `ADR-0020` with boilerplate slugs, delivered by `bun sync`) sit beside them, so several numbers exist twice with different slugs. Always cite an ADR by number AND slug. A new Bunkai ADR takes the next number free in both series: `ADR-0021` onward (owner decision, boilerplate sync 2026-10-30).
+
 > Keep this table in sync whenever an ADR is added or its status changes. It is the fast index every session reads first.
 
 ---

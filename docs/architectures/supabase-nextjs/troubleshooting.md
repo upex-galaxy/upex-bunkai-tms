@@ -1,33 +1,69 @@
-# Troubleshooting: Common Database and API MCP Issues
+# Troubleshooting: Supabase Connections and the Database MCP
 
-This guide documents real issues encountered during MCP configuration and their verified solutions.
+Common issues when connecting to a Supabase database, from your own code or through the AI's `db` capability (the `supabase` MCP server), and how to solve them.
+
+---
+
+## Supabase MCP Issues
+
+The AI reaches the database through the `supabase` server declared in `.mcp.json`, `opencode.jsonc` and `.codex/config.toml`. It reads one variable, `SUPABASE_ACCESS_TOKEN`, which the `.env` loader (`varlock run --filter SUPABASE_ACCESS_TOKEN`) takes from `.env` when the server spawns.
+
+### A 401 / 403, or a tool call that fails for no visible reason
+
+**Cause:** a credential is missing or stale. The failure is silent at startup: the server starts without the variable (or with an empty one) and only dies on its first authenticated call (`AGENTS.md` Critical Rule #9). A value that fails the schema stops the server instead: `bunx varlock load --agent` shows which, redacted.
+
+**Solution:**
+
+1. Run `/mcp` inside the session: it shows whether `supabase` connected and with which tools
+2. Fix the value in `.env` (names are in `.env.example`)
+3. A session launched without a command line (desktop app, a supervised worker) needs nothing extra: the loader reads `.env` whatever launched the harness. `bun run harness:env:check` exits 1 while a plaintext copy from an older install remains; `bun run harness:env` retires it
+4. **Restart the agent session.** MCP servers read the environment once, when they spawn. On OpenCode also run `opencode service restart`: its background service caches the resolved config
+
+If the server behaves as if `.env` were ignored, your shell probably exports a value that differs from `.env`: an inherited value wins under varlock and reaches the loader. `bun run vars:env:check` names it (names and lengths only); `unset` it or open a clean shell, then restart the session.
+
+### MCP shows as "failed" in Claude Code
+
+1. **View error details:**
+
+   ```bash
+   claude mcp get supabase
+   ```
+
+2. **Test the command directly:** run the server's command from `.mcp.json` as it is, from the repo root, to see the actual error. The `.env` loader reads `.env` itself, so no value is typed anywhere.
+
+### A server added to one harness only
+
+Every server must exist in the config of every harness in use (`harnesses:` in `.agents/project.yaml`; the boilerplate checks all three) with the same `.env` dependencies. `bun run agents:compat:check` fails naming the server and the harness that lacks it.
 
 ---
 
 ## Database Connection Issues
 
-### Error: `ENETUNREACH` with IPv6 Address
+### Error: `ENETUNREACH` with an IPv6 address
 
 **Symptom:**
 
 ```
-Failed to connect to PostgreSQL database: Error: connect ENETUNREACH 2600:1f18:2e13:9d37:7429:2f13:d1ef:5476:5432
+Failed to connect to PostgreSQL database: Error: connect ENETUNREACH 2600:1f18:...:5432
 ```
 
-**Cause:** Your network only supports IPv4, but Supabase is attempting to connect via IPv6.
+**Cause:** your network only supports IPv4, and the direct connection (`db.<project-ref>.supabase.co`) resolves to IPv6 only.
 
-**Solution:** Use Supabase's **Shared Pooler** instead of the direct connection.
+**Solution:** use one of the poolers, which accept IPv4.
 
-| Type                 | Host                                 | Port |
-| -------------------- | ------------------------------------ | ---- |
-| ❌ Direct Connection | `db.<ref>.supabase.co`               | 5432 |
-| ✅ Shared Pooler     | `aws-0-<region>.pooler.supabase.com` | 6543 |
+| Type                  | Host                                 | Port |
+| --------------------- | ------------------------------------ | ---- |
+| ❌ Direct connection  | `db.<project-ref>.supabase.co`       | 5432 |
+| ✅ Session pooler     | `aws-0-<region>.pooler.supabase.com` | 5432 |
+| ✅ Transaction pooler | `aws-0-<region>.pooler.supabase.com` | 6543 |
 
-**How to get the Shared Pooler:**
+**How to get the pooler string:**
 
 1. Supabase Dashboard → Project Settings → Database
 2. Change **Method** from "Direct connection" to "Transaction" or "Session"
 3. Copy the new connection string
+
+Or enable the **IPv4 Add-on** to keep using the direct connection.
 
 ---
 
@@ -36,31 +72,28 @@ Failed to connect to PostgreSQL database: Error: connect ENETUNREACH 2600:1f18:2
 **Symptom:**
 
 ```bash
-npx -y @bytebase/dbhub --dsn "postgresql://user:Password!@host..."
+psql "postgresql://postgres.<project-ref>:Password!@host..."
 bash: !@host: event not found
 ```
 
-**Cause:** Bash interprets `!` as a history command when using double quotes.
+**Cause:** Bash interprets `!` as a history command inside double quotes.
 
-**Solution:** Use **single quotes** in Bash:
+**Solution:** use **single quotes** in Bash:
 
 ```bash
 # ❌ Incorrect (double quotes)
-npx -y @bytebase/dbhub --dsn "postgresql://user:Pass!@host/db"
+psql "postgresql://postgres.<project-ref>:Pass!@host:6543/postgres"
 
 # ✅ Correct (single quotes)
-npx -y @bytebase/dbhub --dsn 'postgresql://user:Pass!@host/db'
+psql 'postgresql://postgres.<project-ref>:Pass!@host:6543/postgres'
 ```
 
-**Alternative:** Use environment variables in JSON configuration:
-
-```json
-{
-  "env": {
-    "DB_PASSWORD": "Password_With_Special_Chars!@#"
-  }
-}
-```
+| Terminal       | Quotes for a connection string | Escape `!`    |
+| -------------- | ------------------------------ | ------------- |
+| **PowerShell** | Double `"..."`                 | Not necessary |
+| **CMD**        | Double `"..."`                 | Not necessary |
+| **Git Bash**   | Single `'...'`                 | Or use `\!`   |
+| **WSL**        | Single `'...'`                 | Or use `\!`   |
 
 ---
 
@@ -68,181 +101,22 @@ npx -y @bytebase/dbhub --dsn 'postgresql://user:Pass!@host/db'
 
 **Possible causes:**
 
-1. **Incorrect password** - Verify the password in Supabase Dashboard
-2. **User does not exist** - Verify that you created the user with the correct SQL
-3. **Incorrect user format in Shared Pooler** - The format must be `user.project`
+1. **Incorrect password:** verify it in Supabase Dashboard → Settings → Database
+2. **Wrong user format for the pooler:** the pooler user is `<role>.<project-ref>`, the direct connection user is just `postgres`
 
-**Correct format for Shared Pooler:**
-
-```
-postgresql://qa_team.ionevzckjyxtpmyenbxc:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-```
-
-**Note:** The user is `qa_team.ionevzckjyxtpmyenbxc`, NOT just `qa_team`.
-
----
-
-## Windows-Specific Issues
-
-### Error: `EPERM: operation not permitted, rmdir`
-
-**Symptom:**
+**Correct format for the pooler:**
 
 ```
-npm warn cleanup Failed to remove some directories
-npm warn cleanup [Error: EPERM: operation not permitted, rmdir 'C:\Users\...\node_modules\@azure\...']
-```
-
-**Cause:** npm has permission issues when cleaning cache on Windows.
-
-**Solutions (in order of preference):**
-
-#### Option 1: Clean npm cache
-
-```powershell
-# PowerShell as Administrator
-npm cache clean --force
-```
-
-Then try the command again.
-
-#### Option 2: Manually delete cache folder
-
-1. Close all terminals, VS Code, Cursor
-2. Delete the folder: `C:\Users\<User>\AppData\Local\npm-cache\_npx`
-3. Run the command again
-
-#### Option 3: Install globally
-
-```powershell
-npm install -g @bytebase/dbhub
-dbhub --transport stdio --dsn "your_connection_string"
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 ```
 
 ---
 
-### Error: `gyp ERR! find Python`
+### Error: `too many connections`
 
-**Symptom:**
+**Cause:** serverless functions (Vercel) open a connection per invocation.
 
-```
-gyp ERR! find Python You need to install the latest version of Python.
-error: install script from "better-sqlite3" exited with 1
-```
-
-**Cause:** DBHub has a native dependency (`better-sqlite3`) that requires Python and Build Tools to compile on Windows.
-
-**Solutions:**
-
-#### Option 1: Install build dependencies
-
-1. Install Python from [python.org](https://www.python.org/downloads/)
-   - ✅ Check "Add Python to PATH" during installation
-
-2. Install Build Tools:
-
-   ```powershell
-   npm install -g windows-build-tools
-   ```
-
-3. Restart terminal and try again
-
-#### Option 2: Use Docker (avoids compilation)
-
-```powershell
-docker run --rm -it bytebase/dbhub --transport stdio --dsn "postgresql://user:pass@host:6543/postgres"
-```
-
-MCP configuration with Docker:
-
-```json
-{
-  "mcpServers": {
-    "database": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "bytebase/dbhub",
-        "--transport",
-        "stdio",
-        "--dsn",
-        "postgresql://user:pass@host:6543/postgres"
-      ]
-    }
-  }
-}
-```
-
-#### Option 3: Use WSL (Windows Subsystem for Linux)
-
-If you have WSL installed, run from there:
-
-```bash
-npx -y @bytebase/dbhub --transport stdio --dsn 'postgresql://user:pass@host:6543/postgres'
-```
-
-#### Option 4: Use Bun instead of npm
-
-```powershell
-# Install Bun
-powershell -c "irm bun.sh/install.ps1 | iex"
-
-# Run with bunx
-bunx @bytebase/dbhub --transport stdio --dsn "postgresql://user:pass@host:6543/postgres"
-```
-
----
-
-### Differences between terminals on Windows
-
-| Terminal       | Quotes for DSN | Escape `!`    |
-| -------------- | -------------- | ------------- |
-| **PowerShell** | Double `"..."` | Not necessary |
-| **CMD**        | Double `"..."` | Not necessary |
-| **Git Bash**   | Single `'...'` | Or use `\!`   |
-| **WSL**        | Single `'...'` | Or use `\!`   |
-
----
-
-## MCP Issues
-
-### MCP appears as "failed" in Claude Code
-
-**Diagnostic steps:**
-
-1. **View error details:**
-
-   ```bash
-   claude mcp get <mcp-name>
-   ```
-
-2. **Test the command directly:**
-   Copy the MCP command and run it manually in terminal to see the actual error.
-
-3. **Verify that arguments are complete:**
-   ```bash
-   claude mcp list
-   ```
-   Review that all args appear correctly.
-
-### Missing `--transport stdio`
-
-If the MCP doesn't work, verify that you included `--transport stdio` in the arguments:
-
-```json
-{
-  "args": [
-    "-y",
-    "@bytebase/dbhub",
-    "--transport",
-    "stdio", // ← Required
-    "--dsn",
-    "..."
-  ]
-}
-```
+**Solution:** connect through the transaction pooler (port `6543`) and reuse one client per process.
 
 ---
 
@@ -250,60 +124,58 @@ If the MCP doesn't work, verify that you included `--transport stdio` in the arg
 
 ### Error: `permission denied for table`
 
-**Cause:** The user doesn't have permissions on the table.
+**Cause:** the role the request runs as has no grant on the table, or an RLS policy filters every row.
 
-**Solution:** Execute in Supabase SQL Editor:
+**Solution:**
+
+1. Requests from the app run as `anon` or `authenticated`: check the table's RLS policies first (a missing policy means no rows, not an error, for `SELECT`)
+2. Grants and policies are schema changes: write them as a migration, never as a one-off edit in the SQL Editor, so every environment gets the same change
 
 ```sql
--- For read-only user
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO your_user;
-
--- For user with DML permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO your_user;
+-- Example grant, inside a migration
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO authenticated;
 ```
 
 ### Error: `permission denied for sequence`
 
-**Cause:** Missing permission for sequences (necessary for INSERT with auto-incremental IDs).
+**Cause:** missing permission on the sequence behind an auto-incremental ID.
 
-**Solution:**
+**Solution (inside a migration):**
 
 ```sql
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO your_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 ```
 
 ---
 
 ## Quick Connection Verification
 
-### Test Supabase connection manually
-
 ```bash
-# With psql (if you have it installed)
-psql "postgresql://qa_team.project:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+# With psql (if installed)
+psql 'postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres'
 
-# With curl (verify that the host responds)
-curl -I "https://project.supabase.co/rest/v1/" -H "apikey: YOUR_ANON_KEY"
+# With curl (verify that the REST API responds)
+curl -I "https://<project-ref>.supabase.co/rest/v1/" -H "apikey: <SUPABASE_PUBLISHABLE_KEY>"
 ```
 
-### Test the MCP directly
+---
 
-```bash
-# DBHub
-npx -y @bytebase/dbhub --transport stdio --dsn 'your_connection_string'
+## If You Added DBHub (opt-in)
 
-# OpenAPI MCP (verify that it loads the schema)
-curl "https://project.supabase.co/rest/v1/?apikey=YOUR_ANON_KEY"
-```
+DBHub is not part of the committed server set. When a project adds it from the blocks in `docs/mcp/`:
+
+- Include `--transport stdio` in its arguments, or the host cannot talk to it
+- On Windows, its native dependency (`better-sqlite3`) needs Python and build tools; running it with `bunx`, under WSL, or from the `bytebase/dbhub` Docker image avoids the compile step
+- If `npx` fails with `EPERM` while cleaning its cache on Windows, run `npm cache clean --force` from an elevated PowerShell and retry
 
 ---
 
 ## Troubleshooting Checklist
 
-- [ ] Are you using the **Shared Pooler** (port 6543)?
-- [ ] Is the user format `user.project` for the pooler?
+- [ ] Does `/mcp` show the `supabase` server connected?
+- [ ] Are the variables it needs set in `.env`, and did you restart the session after changing them?
+- [ ] Does `bunx varlock load --agent` show every variable the server needs as valid (redacted)?
+- [ ] Are you connecting through a pooler if your network has no IPv6?
+- [ ] Is the pooler user in the `<role>.<project-ref>` format?
 - [ ] Did you use **single quotes** in Bash?
-- [ ] Did you include `--transport stdio` in DBHub?
-- [ ] Does the user have the necessary permissions in the DB?
-- [ ] Did you test the command directly in terminal?
-- [ ] Did you restart Claude Desktop/Cursor after changing the config?
+- [ ] Does the role have the grants and RLS policies the query needs?

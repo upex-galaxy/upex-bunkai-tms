@@ -1,31 +1,11 @@
 # Metodología
 
 > **Idioma:** Español
-> Metodologías y frameworks de testing usados en este proyecto.
+> Dónde el trabajo de desarrollo se cruza con el de QA. La metodología de testing en sí vive en [agentic-qa-boilerplate](https://upex-galaxy.github.io/agentic-qa-boilerplate/docs/core/metodologia/index.html).
 
----
+| Documento                                  | Para qué                                                                                                                                                         |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [IQL-methodology.md](./IQL-methodology.md) | Cómo el dev le entrega trabajo a QA: la historia en `Ready For QA`, el deploy de staging, la página `/qa` con el SHA del build y el camino de vuelta de los bugs |
+| [jira-platform.md](./jira-platform.md)     | Jira y Xray desde el lado dev: qué escribe este repo, qué lee de QA y qué queda fuera de la caché                                                                |
 
-## Contenido
-
-| Documento                                                                                                                       | Descripción                                         |
-| ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [IQL-methodology.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/IQL-methodology.md)       | Integrated Quality Lifecycle - Metodología completa |
-| [early-game-testing.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/early-game-testing.md) | IQL Fase 1: Prevención y planificación              |
-| [mid-game-testing.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/mid-game-testing.md)     | IQL Fase 2: Detección y automatización              |
-| [late-game-testing.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/late-game-testing.md)   | IQL Fase 3: Observación y monitoreo                 |
-| [kata-fundamentals.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/kata-fundamentals.md)   | Filosofía y conceptos del Framework KATA            |
-
----
-
-## Inicio Rápido
-
-1. **¿Nuevo en metodología de testing?** Comienza con [IQL-methodology.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/IQL-methodology.md)
-2. **¿Quieres entender KATA?** Lee [kata-fundamentals.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/methodology/kata-fundamentals.md)
-3. **¿Necesitas guía específica por fase?** Revisa los documentos early/mid/late game
-
----
-
-**Ver También:**
-
-- `.context/guidelines/TAE/` - Guías de implementación para AI
-- `docs/testing/automation/` - Guías prácticas de automatización
+El recorrido completo de una historia, desde el plan hasta producción, está en `docs/onboarding.html` (se abre con `bun run onboarding`).

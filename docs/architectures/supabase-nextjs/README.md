@@ -71,10 +71,11 @@ Login Usuario → Supabase Auth → JWT Token → Usar para ambas APIs
 
 1. **Obtener string de conexión:** Ver [connection-setup.md](./connection-setup.md)
 2. **Obtener tokens de auth:** Ver [auth-tokens.md](./auth-tokens.md)
-3. **¿Tienes problemas?** Revisa [troubleshooting.md](./troubleshooting.md)
+3. **Tienes problemas?** Revisa [troubleshooting.md](./troubleshooting.md)
 
 ---
 
 **Ver También:**
 
-- `docs/testing/api/authentication.md` - Patrones genéricos de autenticación
+- Skill `/project-bootstrap`: scaffolding de auth, rutas de API, OpenAPI y tipos de Supabase (`.agents/skills/project-bootstrap/references/`)
+- `.agents/skills/sprint-development/references/live-ui-identity.md`: con qué cuenta se valida la UI en vivo (`testing.automation_identity` en `.agents/project.yaml`)

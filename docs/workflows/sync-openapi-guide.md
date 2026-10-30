@@ -9,12 +9,12 @@ Esta guia explica como usar el script `sync-openapi.ts` para sincronizar especif
 Usa `sync-openapi.ts` cuando:
 
 - Tu equipo backend mantiene el OpenAPI spec en su repositorio
-- Necesitas mantener sincronizado el spec con tu proyecto de testing
+- Necesitas mantener sincronizado el spec con el código que lo consume
 - Quieres generar tipos TypeScript desde el spec
 
 **No uses este script si:**
 
-- Defines tus schemas con Zod (usa `zod-to-openapi` en su lugar)
+- Defines tus schemas con Zod en tu propia app (el setup de `/project-bootstrap` genera el spec desde el registry, ver `.agents/skills/project-bootstrap/references/openapi-setup.md`)
 - Usas Supabase (tiene auto-spec en `/rest/v1/?apikey=...`)
 
 ---
@@ -54,7 +54,7 @@ El script te preguntara primero la fuente (`URL / GitHub / Local`) y luego los d
 
 1. **Repository (owner/repo):** Ej. `myorg/backend-api`
 2. **Branch:** Ej. `main` o `develop`
-3. **Path to OpenAPI file:** Ej. `docs/openapi.yaml`
+3. **Path to OpenAPI file (dentro del repo remoto):** Ej. `openapi/openapi.yaml`
 
 La configuracion se guarda en `api/.openapi-config.json` para futuras ejecuciones.
 
@@ -100,7 +100,7 @@ bun run api:sync --no-types
   "source": "github",
   "repo": "myorg/backend-api",
   "branch": "main",
-  "filePath": "docs/openapi.yaml",
+  "filePath": "openapi/openapi.yaml",
   "specFile": "openapi.yaml",
   "lastSync": "2024-01-15T10:30:00.000Z",
   "endpointCount": 42
@@ -113,37 +113,19 @@ bun run api:sync --no-types
 
 Despues de sincronizar, puedes:
 
-### Opcion A: Configurar MCP para testing con AI
-
-Usa el spec descargado con `@ivotoby/openapi-mcp-server`:
-
-```json
-{
-  "mcpServers": {
-    "api": {
-      "command": "npx",
-      "args": ["-y", "@ivotoby/openapi-mcp-server"],
-      "env": {
-        "OPENAPI_SPEC_PATH": "./api/openapi.yaml",
-        "API_BASE_URL": "https://your-api.com",
-        "API_HEADERS": "Authorization:Bearer YOUR_TOKEN"
-      }
-    }
-  }
-}
-```
-
-### Opcion B: Usar tipos en tests Playwright
+### Opcion A: Tipar el cliente de la API en tu app
 
 ```typescript
-import type { paths } from '../api/openapi-types';
+import type { paths } from '@/api/openapi-types';
 
 type UserResponse = paths['/users/{id}']['get']['responses']['200']['content']['application/json'];
 ```
 
-### Opcion C: Contract testing con Zod
+Usa el alias de import que declare tu `tsconfig.json` (`paths`); `@/` es el de Next.js.
 
-Ver: [OpenAPI + Zod Contract Testing](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/testing/api/openapi-contract-testing.md)
+### Opcion B: Explorar la API con la AI
+
+La AI explora una API con `curl` más los tipos generados (`[API_TOOL]` en `.agents/instructions/agent-tool-resolution.md` §6); no necesita un MCP de OpenAPI. Pásale el endpoint y el ambiente, y lee las URLs de `.agents/project.yaml` → `environments`.
 
 ---
 
@@ -185,11 +167,14 @@ gh api /repos/owner/repo/contents/path/to/openapi.yaml
 
 ## Flujos relacionados
 
-| Flujo               | Cuando usarlo                 | Documento                                                                                                                                   |
-| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **sync-openapi.ts** | Backend externo tiene el spec | Este documento                                                                                                                              |
-| **Zod-to-OpenAPI**  | Tu defines schemas con Zod    | [openapi-contract-testing.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/testing/api/openapi-contract-testing.md) |
+| Flujo               | Cuando usarlo                         | Documento                                                            |
+| ------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| **sync-openapi.ts** | Backend externo tiene el spec         | Este documento                                                       |
+| **Zod + registry**  | Tu app define sus schemas con Zod     | `.agents/skills/project-bootstrap/references/openapi-setup.md`       |
 
 ---
 
 **Ver tambien:**
+
+- [environments.md](./environments.md): de dónde salen las URLs de cada ambiente
+- Skill `/project-bootstrap`: scaffolding de rutas de API, OpenAPI y tipos

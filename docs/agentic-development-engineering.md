@@ -27,7 +27,7 @@
 
 ## 1. Overview
 
-This repository is not a traditional project starter. It is an **agentic development engineering practice** built on top of Next.js, Supabase, TypeScript, and Bun, orchestrated through Claude Code skills and commands, and backed by a structured knowledge layer that lets AI agents understand the product, the architecture, and the backlog without the developer having to re-explain it every session.
+This repository is not a traditional project starter. It is an **agentic development engineering practice** built on top of Next.js, Supabase, TypeScript, and Bun, orchestrated through agent skills that run on Claude Code, OpenCode and Codex, and backed by a structured knowledge layer that lets AI agents understand the product, the architecture, and the backlog without the developer having to re-explain it every session.
 
 The skills are written in the open SKILL format and run on Claude Code, OpenCode and Codex (CLI + Desktop) from one committed copy under `.agents/skills/`; Claude Code is the reference implementation used throughout this document, and everything it does through a skill applies to the other two harnesses unless stated otherwise.
 
@@ -43,9 +43,8 @@ ONE-TIME FOUNDATION    →    CONTINUOUS MANAGEMENT    →    PER-STORY IMPLEMEN
 | **Foundation** (one-time per product)                  | `project-foundation` → `design-system` → `project-bootstrap`        | `.context/business/`, `.context/PRD/`, `.context/SRS/`, `DESIGN.md`, scaffolded backend + frontend                                                        |
 | **Testability bridge** (one-time + idempotent re-runs) | `testability-guide`                                                 | In-app `/qa` page ("Software Testability Guide for QA") + tool-agnostic credentials artifact (Jira Epic / Confluence / Notion / MCP / CLI / manual paste) |
 | **Management** (continuous)                            | `product-management`                                                | Jira backlog (epics + stories), refined ACs in Gherkin, edge-case enumeration, sprint snapshots                                                           |
-| **Implementation** (per story)                         | `sprint-development` (+ optional `unit-testing`, `git-flow-master`) | `implementation-plan.md`, code on a feature branch, PR, code review, merged to staging                                                                    |
+| **Implementation** (per story)                         | `sprint-development` (+ optional `unit-testing`, `git-flow-master`) | `implementation-plan.md`, code on a feature branch, PR, code review, merged and deployed to staging                                                       |
 | **Autonomous delivery** (scheduled / unattended runs)  | `autonomous-delivery` (wraps the pipeline skills)                   | Audit of real state (git is truth, the tracker is a hint), selection of genuinely unblocked work, dispatch to the owning pipeline skill, run report       |
-| **Spec-Driven Development** (any substantial change)   | `sdd-*` skill bloque (not auto-installed; see §3.1 note)            | Exploration → Proposal → Spec → Design → Tasks → Apply → Verify → Archive                                                                                 |
 
 Every phase is powered by an AI skill, every skill operates with at least one human-in-the-loop checkpoint, and every artefact produced is traceable from the original Jira ticket back to the source PRD requirement that motivated it.
 
@@ -71,7 +70,7 @@ The goal of this boilerplate is therefore not to "add some AI to a project," but
 
 - A three-tier pipeline (foundation → management → implementation) owned by AI skills, with human checkpoints between stages.
 - A structured context layer (`.context/`) the AI reads before it acts.
-- A Spec-Driven Development (SDD) workflow for any substantial change, with explicit phases (explore → propose → spec → design → tasks → apply → verify → archive).
+- A spec-first artefact chain (Constitution → PRD → SRS → story AC → implementation plan) that every change walks before code is written.
 - A backlog seeded from the PRD with INVEST-validated stories and Gherkin acceptance criteria.
 - A per-story dev loop that drives Jira state transitions, plans before it codes, reviews before it merges, and never deploys to production without a human gate.
 - Persistent memory (`engram`) that survives sessions and compactions, plus a gitignored `.context/PBI/` cache — hydrated from Jira on demand (`bun run context:hydrate`) — for anything `engram` should not have to hold in full.
@@ -86,7 +85,7 @@ The practice rests on three load-bearing strategic choices.
 
 ### 3.1 Spec-Driven Development (SDD) before code
 
-> **Note**: SDD slash commands (`/sdd-*`) are no longer auto-installed. The boilerplate now installs only Engram via `gentle-ai install --preset minimal`. To use SDD, install the bundle manually: `gentle-ai install --agent <agent> --components sdd,skills`.
+> **Note**: `bun setup` wires only Engram, with the engram binary's own `engram setup <agent>`. The optional `sdd-*` skill bundle is not part of the shipped skill set; §11.6 covers adopting it.
 
 Code is the last artefact produced, not the first. Before any line of TypeScript is written, the AI walks the project through:
 
@@ -125,7 +124,7 @@ Workflows live in `.agents/skills/<name>/SKILL.md`, not in copy-paste prompt fil
 - **Self-documenting** — a `SKILL.md` describes when it triggers, what it does, what references it loads, what it produces.
 - **Composable** — `/unit-testing` runs standalone or mid-flight from `/sprint-development`. `/design-system` runs standalone or from `/project-foundation` Phase 2.5.
 - **Auto-triggered** — the harness (Claude Code, OpenCode or Codex) matches user intent against the skill description and loads the right skill automatically. No `/<name>` typing required for common phrasings.
-- **Stored once, read three ways** — `.agents/skills/` is the only skill store. OpenCode and Codex read that tree natively; Claude Code reaches the same files through the generated `.claude/skills` alias (a symlink on POSIX, a junction on Windows, gitignored, regenerated by `bun run agents:compat`). The same rule covers the instruction body: `AGENTS.md` is canonical and `CLAUDE.md` is exactly `@AGENTS.md` plus a newline. Generated surfaces (`CLAUDE.md`, `.claude/skills`, `.claude/commands/*.md`, `.opencode/commands/*.md`) are never hand-edited; `bun run agents:compat:check` is the gate (`AGENTS.md` Critical Rule #15).
+- **Stored once, read three ways** — `.agents/skills/` is the only skill store. OpenCode and Codex read that tree natively; Claude Code reaches the same files through the generated `.claude/skills` alias (a symlink on POSIX, a junction on Windows, gitignored, regenerated by `bun run agents:compat`). The same rule covers the instruction body: `AGENTS.md` is canonical and `CLAUDE.md` is exactly `@AGENTS.md` plus a newline. Generated surfaces (`CLAUDE.md`, `.claude/skills`) are never hand-edited; `bun run agents:compat:check` is the gate (`AGENTS.md` Critical Rule #15).
 
 Compare to the alternative: a `prompts/` directory full of `.md` files that developers copy into their chat window. There is no versioning of _behavior_, no autocomplete, no composition, no way to enforce that a "test plan" prompt is always run before a "test run" prompt.
 
@@ -163,25 +162,28 @@ This is the foundational decision behind every architectural choice in this repo
 | Term                    | Definition                                                                                                                                                                              |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Token**               | The unit an AI model reads and writes. Tokens have direct cost and occupy context window space.                                                                                         |
-| **Context Window**      | The memory available within a single conversation. Everything the AI can "see" right now.                                                                                               |
-| **MCP**                 | Model Context Protocol. A standard that lets AI tools talk to live systems — database, browser, web search, official library docs.                                                      |
+| **Context Window**      | The memory available within a single conversation. Everything the AI can "see" in that conversation.                                                                                               |
+| **MCP**                 | Model Context Protocol. A standard that lets AI tools talk to live systems (database, library docs, workflow automation). The project configs declare local servers; web search runs at harness level. |
+| **Capability**          | What a skill asks for instead of naming a server: `library-docs`, `web-search`, `db`, `automation-flows`, `diagrams`. Resolved by tool-name suffix; a missing one is a STOP at the point of use (`agentic-dev-core/references/mcp-capabilities.md`). |
 | **Skill**               | A reusable AI capability, stored under `.agents/skills/<name>/` and shared by every supported harness. Auto-triggers when the user's intent matches its description.                    |
-| **Command**             | A generated transport alias (`.claude/commands/<name>.md`, `.opencode/commands/<name>.md`) that forwards `/<name>` to a skill + mode. Holds no workflow of its own. No auto-triggering. |
+| **Mode**                | One entry point of a multi-mode skill, listed in its `## Mode routing` section. Invoked as `/<skill> <mode>` on Claude Code, or by naming skill and mode in prose on OpenCode and Codex. No command files exist (ADR-0006). |
 | **Subagent**            | A specialist worker dispatched by the orchestrator for a focused task (reading, writing, verifying, deploying).                                                                         |
 | **Orchestrator**        | The main conversation thread that coordinates work. Decides; delegates; synthesises. Does not read or write code inline when delegation makes sense.                                    |
 | **Engram**              | Persistent memory layer (MCP server) that survives across sessions and compactions. Stores decisions, conventions, bug fixes, discoveries.                                              |
 | **PRD**                 | Product Requirements Document. Output of `/project-foundation` Phase 2. Defines _what_ we are building.                                                                                 |
 | **SRS**                 | Software Requirements Specification. Output of `/project-foundation` Phase 3. Defines _how_ the system is structured.                                                                   |
 | **AC**                  | Acceptance Criterion. The Gherkin-formatted condition a story must satisfy to be considered done. Refined by `/product-management`.                                                     |
-| **PBI**                 | Product Backlog Item. In this repo, the local folder (`.context/PBI/...`) that stores per-epic and per-story knowledge.                                                                 |
-| **SDD**                 | Spec-Driven Development. Meta-skill bloque (`sdd-explore`, `sdd-propose`, `sdd-spec`, `sdd-design`, `sdd-tasks`, `sdd-apply`, `sdd-verify`, `sdd-archive`).                             |
+| **PBI**                 | Product Backlog Item. In this repo, `.context/PBI/...`: a gitignored cache of Jira, rebuilt with `bun run context:hydrate`.                                                             |
+| **SDD**                 | Spec-Driven Development: writing the specs before the code (§3.1). An optional gentle-ai `sdd-*` bundle automates it; it is not shipped (§11.6).                                       |
 | **INVEST**              | Independent, Negotiable, Valuable, Estimable, Small, Testable. Validation criteria for user stories. Enforced by `/product-management`.                                                 |
 | **Implementation Plan** | The artefact produced by `/sprint-development` Stage 1. The input contract for Stage 2 (coding).                                                                                        |
 | **Compact Rules**       | Pre-digested coding standards injected into subagent prompts so they do not have to load and parse a full skill registry on every dispatch.                                             |
-| **Briefing Template**   | The 6-component format (Goal · Context docs · Skills to load · Exact instructions · Report format · Rules) every subagent dispatch follows.                                             |
+| **Briefing Template**   | The 7-component format (Goal · Context docs · Project Standards · Skills to load · Exact instructions · Report format · Rules) every subagent dispatch follows.                                             |
 | **Dispatch Pattern**    | One of Single / Sequential / Parallel / Background. Picked per stage in each skill's `## Subagent Dispatch Strategy` section.                                                           |
-| **Active Environment**  | The environment URLs and credentials currently in use (local / staging / production). Resolved from `testing.default_env` in `.agents/project.yaml` or session override.                |
+| **Active Environment**  | The environment URLs and credentials in use for the session (local / staging / production). Resolved from `testing.default_env` in `.agents/project.yaml` or session override.                |
 | **Topic Key**           | The stable identifier under which an artefact is saved in engram (e.g. `pbi/{ticket}/impl-plan`). Documented in `agentic-dev-core/references/topic-key-conventions.md`.                 |
+| **Supervised worker**   | A persistent agent session, in its own worktree, that a conductor session coordinates through `/orca-orchestration`. Optional: only when the orchestration runtime is reachable (§8). |
+| **Worktree**            | A second working directory of the repo on its own branch, so parallel sessions never share uncommitted files. Prepared with `bun run worktree:provision`.                              |
 
 ---
 
@@ -198,33 +200,23 @@ The practice is organised in three conceptual tiers:
 ┌────────────────────────────────┴────────────────────────────────────┐
 │                          AI SKILLS LAYER                            │
 │                                                                     │
-│  Foundation reference host (passive — cited by every workflow)      │
+│  core (passive reference host, cited by every workflow)             │
 │  ┌──────────────────┐                                               │
 │  │ agentic-dev-core │  Briefing template · Dispatch patterns ·      │
 │  └──────────────────┘  Orchestration doctrine · Skill composition   │
 │                                                                     │
-│  Foundation workflow skills (one-time)                              │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                 │
-│  │   project-   │ │   design-    │ │   project-   │                 │
-│  │  foundation  │ │    system    │ │  bootstrap   │                 │
-│  └──────────────┘ └──────────────┘ └──────────────┘                 │
+│  workflow skills (own a stage of the lifecycle)                     │
+│  e.g. project-foundation · design-system · project-bootstrap ·      │
+│       product-management · sprint-development · git-flow-master ·   │
+│       autonomous-delivery · orca-orchestration                      │
 │                                                                     │
-│  Management + implementation workflow skills (continuous)           │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐│
-│  │   product-   │ │   sprint-    │ │    unit-     │ │ git-flow-    ││
-│  │  management  │ │     dev      │ │   testing    │ │    master    ││
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘│
+│  context skills (hold a synthesized business map, HTML)             │
+│  e.g. business-data-context · business-feature-context              │
 │                                                                     │
-│  SDD meta-skills (any substantial change)                           │
-│  sdd-init · sdd-explore · sdd-propose · sdd-spec · sdd-design ·     │
-│  sdd-tasks · sdd-apply · sdd-verify · sdd-archive                   │
+│  utility skills (a CLI's grammar)                                   │
+│  e.g. acli (Jira) · vercel-cli (deploy ops)                         │
 │                                                                     │
-│  Tool / utility skills                                              │
-│  acli (Jira CLI) · vercel-cli (deploy ops) · agentic-dev-onboard    │
-│  (tour) · testability-guide (/qa page)                              │
-│                                                                     │
-│  Unattended delivery                                                │
-│  autonomous-delivery (scheduled runs: audit → select → dispatch)    │
+│  Full roster: .agents/skills/REGISTRY.md                            │
 │                                                                     │
 │  Shared Knowledge Layer                                             │
 │  Product specs · Design tokens · Discovery docs · Per-ticket memory │
@@ -243,20 +235,20 @@ The human sits on top. The AI never ships anything on its own. Every stage has a
 
 ### Middle tier — the AI skills
 
-The skill roster is split by _phase_ (declared in each `SKILL.md` frontmatter as `phase:`):
+Every skill declares its kind in `SKILL.md` frontmatter (`metadata.kind`), and `bun run skills:check` gates it:
 
-- **`foundation` (passive reference host)** — `agentic-dev-core` (briefing template, dispatch patterns, orchestration doctrine, skill-composition strategy; loaded on demand by other skills, not invoked directly).
-- **`onboarding`** — `agentic-dev-onboard` (guided tour for newcomers).
-- **`foundation`** — `project-foundation` (Constitution + PRD + SRS + Discovery), `design-system` (DESIGN.md + opt-in screen-mapping: design briefs for Claude Design / Open Design → `master-design-plan.md`), `project-bootstrap` (backend + frontend scaffolding).
-- **`foundation-extension`** — `testability-guide` (in-app `/qa` page + tool-agnostic credentials artifact for QA testers and AI agents; runs after `project-bootstrap`, idempotent on re-run).
-- **`management`** — `product-management` (backlog seed, epic creation, story refinement, AC quality, edge-case enumeration, sprint reporting).
-- **`implementation`** — `sprint-development` (per-story mega-orchestrator), `unit-testing` (TDD composable slice), `git-flow-master` (branches, commits, PRs, conflicts), `autonomous-delivery` (scheduled / unattended entry point: audits real state — git is truth, the tracker is a hint — selects work whose dependencies are genuinely satisfied, dispatches the owning pipeline skill, closes out and reports; modes `story` / `bug` / `discovery`).
+- **`core`**: `agentic-dev-core`, a passive reference host (briefing template, dispatch patterns, orchestration doctrine, skill-composition strategy, MCP capabilities, artifact lifecycle). Loaded on demand by other skills, never invoked directly.
+- **`workflow`**: the skills that own a stage of the lifecycle, from product definition and scaffolding through backlog, per-story delivery, git, PR review, unattended runs, session handoff and multi-session orchestration.
+- **`context`**: the `business-*-context` skills, each holding one synthesized business map as HTML, read with `bun run context:map <skill>` and refreshed by `/project-context`.
+- **`utility`**: a CLI's grammar (`acli`, `vercel-cli`), auto-loaded when that binary is called (`.agents/instructions/agent-tool-resolution.md` §6.5).
 
-On top of the project-shipped skills, the boilerplate composes with **two external skill catalogs** installed via `bun run setup`:
+The roster itself is not copied here: `.agents/skills/REGISTRY.md` (built by `bun run skills:registry`) lists every skill with its kind and compact rules, and `.agents/instructions/agent-skills-and-mcps.md` §5 says when each one triggers.
 
-- **Reusable community skills** (installed via `bunx skills add` from community repositories): stack-aware skills like `next-best-practices`, `next-cache-components`, `next-upgrade`, `tailwind-css-patterns`, `shadcn`, `react-hook-form`, `zod`, `typescript-advanced-types`, `accessibility`, `seo`, `frontend-design`. These ship the canonical "how to do X in framework Y" knowledge so the project-shipped skills can stay stack-agnostic.
-- **User-level skills installed via `bunx skills add`** (cross-cutting, repo-agnostic): `skill-creator`, `find-skills`, `github-actions-docs`, `brainstorming`, `html-ppt`, plus every CLI-companion skill (`supabase`, `supabase-postgres-best-practices`, `deploy-to-vercel`, `resend-cli`, `bun`, `playwright-cli`). These follow the user across every project.
-- **Gentle-AI skills** (installed by `gentle-ai install --preset minimal`): the `engram` MCP for persistent memory.
+On top of the project-shipped skills, the boilerplate composes with **external skill catalogs** installed via `bun setup`:
+
+- **Community skills** (installed via `bunx skills add`): stack-aware skills that ship the canonical "how to do X in framework Y" knowledge, so the project-shipped skills can stay stack-agnostic; plus CLI companions such as `supabase` and `deploy-to-vercel`. The list is `PROJECT_LEVEL_SKILLS` in `cli/install.ts`; they land in the same `.agents/skills/` store.
+- **User-level skills** (cross-cutting, repo-agnostic, they follow the user across every project): the list is `USER_LEVEL_SKILLS` in `cli/install.ts`.
+- **Engram** (wired by `engram setup <agent>`): the `engram` MCP for persistent memory.
 
 All skills share the **Knowledge Layer** (the `.context/` directory and the engram MCP): product specs, design tokens, discovery docs, per-ticket memory.
 
@@ -265,7 +257,7 @@ All skills share the **Knowledge Layer** (the `.context/` directory and the engr
 - **Issue tracker** — Jira (Stories, Bugs, Epics) accessed via the `acli` skill (official Atlassian CLI). Drives the `Ready For Dev → In Progress → In Review → Ready For QA` state machine.
 - **`[DB_TOOL]`** — the Supabase database, accessed through the Supabase MCP. Used for schema exploration, migrations, type generation, and Discovery.
 - **`[API_TOOL]`** — the OpenAPI spec, generated by `bun run api:sync`. Used for contract verification and type generation in the frontend.
-- **CI / CD** — Vercel for deploys, GitHub Actions for lint/types/tests on PRs. Triggers the staging deploy on merge to `staging`; production deploys are human-gated.
+- **CI / CD** — Vercel for deploys, GitHub Actions for lint/types/tests on PRs. Which merge triggers the staging deploy depends on the branching strategy in `.agents/project.yaml` → `git_strategy` (the shipped default, `solo-main`, has no `staging` branch); production deploys are human-gated.
 
 The `[TAG_TOOL]` brackets are not decorative. Every skill in this repo writes tool calls in `[TAG_TOOL]` pseudocode, which resolves against the **Tool Resolution** table in `AGENTS.md`. Swap the row, swap the backend — no skill edits required.
 
@@ -282,7 +274,7 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │  PROJECT LEVEL                                               │
 │  Business model · PRD · SRS · API map · Data map · Feature   │
 │  map · Design tokens                                         │
-│  Example: .context/business/business-feature-map.md tells    │
+│  Example: the feature map (business-feature-context) tells   │
 │  the AI what features exist in THIS codebase.                │
 └──────────────────────────────────────────────────────────────┘
                               ▼
@@ -325,16 +317,13 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
 │   ├── ADR-NNNN-template.md         #   Template to copy
 │   └── ADR-NNNN-<slug>.md           #   One per hard-to-reverse decision (/project-foundation SRS, /sprint-development Stage 1)
 │
-├── business/                         # Single source of business knowledge (Constitution + Maps)
+├── business/                         # Authored business knowledge (Constitution + glossary)
 │   ├── business-model.md            #   Problem, solution, monetization, segments  (/project-foundation Phase 1)
 │   ├── market-context.md            #   Industry, competitors, trends              (/project-foundation Phase 1)
-│   ├── legacy-analysis.md           #   Legacy stack + doc-gap analysis (optional) (/project-foundation Phase 1)
-│   ├── business-data-map.md         #   Entities, flows, state machines  (/business-data-map)
-│   ├── business-feature-map.md      #   Feature inventory + CRUD matrix  (/business-feature-map)
-│   ├── business-api-map.md          #   Auth model + critical endpoints  (/business-api-map)
 │   └── domain-glossary.md           #   Canonical domain terminology     (/project-foundation Phase 4 Step 6; hand-maintained, append-only)
 │
-├── master-implementation-plan.md     # High-level roadmap                (/master-implementation-plan)
+├── master-implementation-plan.md     # High-level roadmap                (/project-context master-plan)
+├── dev-roadmap.md                    # Ticket-level execution order      (/project-context dev-roadmap)
 │
 └── PBI/                              # Per-epic + per-ticket memory (Module = Epic, 1:1) — GITIGNORED CACHE; only README.md + templates/ are committed
     ├── README.md                    #   [COMMIT] tier rules + gitignore ladder
@@ -359,12 +348,14 @@ The knowledge layer is organised in three tiers, mirroring the scope at which th
             └── evidence/            #   Screenshots, logs   [LOCAL] disposable
 ```
 
+The business maps (data, feature, API) are HTML maps inside the `business-data-context`, `business-feature-context` and `business-api-context` skills under `.agents/skills/`; read one with `bun run context:map <slug>`.
+
 The `PBI/` tree is owned by `scripts/sync-jira-issues.ts` and is a **gitignored cache**: everything under `.context/PBI/` is excluded except `README.md` and `templates/`, the only two paths actually tracked in git. Jira is the source of truth; plan history lives in the Jira field's own edit history plus engram, not in git log. `bun run context:hydrate` (`sync-jira-issues pull --include-comments`) rebuilds the whole `[SYNC]` tree from scratch — a fresh clone starts with an almost-empty `PBI/` (just `README.md` and `templates/`), and that is the intended state, not a broken checkout. Detailed CONTENT reads go through the sync — run `bun run jira:sync-issues get <KEY> --include-comments` and read the generated `.md`, never `acli view` (which returns `null` for `customfield_*`). Authoring is Jira-first: write the field (or its fallback comment) → sync → read. Story-level `context.md`, `progress.md`, and `evidence/` are `[LOCAL]`: hand-written, machine-local, disposable — nothing downstream may depend on one existing; durable session state lives under `.session/` and durable evidence goes to Jira.
 
 Plus, at the project root:
 
 - **`DESIGN.md`** — Apache-2.0 spec from Google Labs. The portable visual identity (palette, typography, spacing, components) every AI agent reads. Generated by `/design-system`. An optional opt-in screen-mapping phase extends it with `.context/design/master-design-plan.md` (per-screen specs + US→Screen map): the AI generates portable design briefs, the user produces mockups in Claude Design / Open Design, the bundle returns to `.context/designs/`, and `/sprint-development` builds every UI story against its agreed screen.
-- **`AGENTS.md`** — operational context loaded every session on Claude Code, OpenCode and Codex: project identity, behavioral layer, critical reminders, tool resolution, orchestration mode, skills catalog, multi-harness wiring (§5.5). OpenCode and Codex read it natively; Claude Code reads it through `CLAUDE.md`, a generated one-line `@AGENTS.md` shim that never carries prose of its own.
+- **`AGENTS.md`** — the always-on core of the operational context, loaded every session on Claude Code, OpenCode and Codex: the binding sentence of each critical rule, the behavioral layer, the orchestration core and a router. The rest (tool resolution, the skills catalog, multi-harness wiring, git, the PBI cache) lives in one section per topic under `.agents/instructions/`, read on demand when the router or a hook `ROUTE:` line names it. OpenCode and Codex read it natively; Claude Code reads it through `CLAUDE.md`, a generated one-line `@AGENTS.md` shim that never carries prose of its own.
 
 The canonical shape is documented in `.context/README.md`. The strategic reasoning behind the three-tier split lives in `CONTEXT.md` at the repo root.
 
@@ -374,12 +365,17 @@ A second knowledge surface exists outside `.context/`: the `agentic-dev-core/ref
 
 | `agentic-dev-core` reference | Purpose                                                                                                      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `briefing-template.md`       | The 6-component subagent briefing format with concrete examples per dispatch pattern.                        |
+| `briefing-template.md`       | The 7-component subagent briefing format with concrete examples per dispatch pattern.                        |
 | `dispatch-patterns.md`       | Decision table + heuristic for picking Single / Sequential / Parallel / Background.                          |
 | `orchestration-doctrine.md`  | Cacheable mirror of `AGENTS.md` §Orchestration Mode (Subagent Strategy).                                     |
 | `model-routing.md`           | Phase → model alias table (opus for foundation, sonnet for impl, haiku for archive).                         |
-| `topic-key-conventions.md`   | Stable engram topic keys per artefact (e.g. `pbi/{ticket}/impl-plan`, `sdd/{change}/spec`).                  |
+| `topic-key-conventions.md`   | Stable engram topic keys per artefact (e.g. `pbi/{ticket}/impl-plan`).                                        |
 | `skill-resolver.md`          | Skill-resolver protocol: how the orchestrator looks up compact rules and injects them into subagent prompts. |
+| `mcp-capabilities.md`        | Capability vocabulary, tool-name suffix resolution, and the point-of-use STOP when a capability is missing.   |
+| `artifact-lifecycle.md`      | Which tracker status every dev artefact lives in, who moves it, and what to do when a status slug is missing. |
+| `volatile-facts.md`          | Rule #17: what committed prose may never state (moving counts, mutable lists, dates) and what to name instead. |
+
+The directory listing is the full set; the table above is the part a newcomer meets first.
 
 ### Project variables vs runtime credentials
 
@@ -398,7 +394,9 @@ Validated via `bun run vars:check`, `bun run jira:sync-fields`, and `bun run jir
 
 ### Live sources of truth
 
-Static documentation is only half the picture. Before every meaningful action, the AI also pulls from **live** sources: the frontend codebase, backend routes, the Supabase database (via `[DB_TOOL]`), the OpenAPI spec (via `[API_TOOL]`), the Jira tracker (via `acli`), engram memory, and the official documentation MCPs (`context7`, `tavily`, `n8n`). Operational decision rules for which one to reach for — when to pick `context7` vs `tavily` vs `engram`, CLI-first vs MCP-fallback — live in [onboarding.html §12 MCPs available](onboarding.html). The Tool Resolution table in `AGENTS.md` is the canonical mapping from each `[TAG_TOOL]` pseudocode tag to its concrete implementation.
+Static documentation is only half the picture. Before every meaningful action, the AI also pulls from **live** sources: the frontend codebase, backend routes, the Supabase database (via `[DB_TOOL]`), the OpenAPI spec (via `[API_TOOL]`), the Jira tracker (via `acli`), engram memory, official library docs (`[DOCS_TOOL]`) and the web (`[WEB_SEARCH_TOOL]`).
+
+Skills ask for a **capability**, never a server: `library-docs`, `web-search`, `db`, `automation-flows`, `diagrams`. Each resolves by tool-name suffix, whatever prefix the harness gave the server. The project MCP files declare the local servers (whatever `.mcp.json` declares); web search runs at harness level, connected once per machine (Exa first, Tavily second), and never lives in the project files (ADR-0005). When no tool provides a capability, the AI stops at the point of use, names the capability and how to enable it, and waits: no silent fallback. Vocabulary and rules: `agentic-dev-core/references/mcp-capabilities.md`. The Tool Resolution table in `.agents/instructions/agent-tool-resolution.md` §6 is the canonical mapping from each `[TAG_TOOL]` pseudocode tag to its concrete implementation, CLI first and MCP as fallback.
 
 ### Why it matters
 
@@ -437,11 +435,14 @@ The daily workflow is plain English, and it is the same on Claude Code, OpenCode
 > sprint report
   → Auto-triggers: product-management skill workflow G (read-only PM snapshot)
 
-> /sdd-new authentication-rework
-  → SDD orchestrator handles: exploration → proposal → spec → design → tasks → apply → verify → archive
+> /project-context data
+  → Explicit skill + mode: refreshes the business data map (on OpenCode / Codex: "load project-context, mode data")
+
+> hagamos el handoff
+  → Auto-triggers: session-handoff skill (successor session resumes where this one stopped)
 ```
 
-Auto-triggering is governed by each skill's `description` field, which lists the phrases the skill should respond to. The decision tree in `AGENTS.md` documents the full mapping. Explicit invocation is also supported — `/sprint-development`, `/product-management`, `/git-flow-master`, and so on — for cases where determinism is preferred over pattern matching.
+Auto-triggering is governed by each skill's `description` field, which lists the phrases the skill should respond to. The decision tree in `AGENTS.md` documents the full mapping. Explicit invocation is also supported for cases where determinism is preferred over pattern matching: `/sprint-development`, `/git-flow-master`, or a skill plus a mode (`/project-context dev-roadmap`) on Claude Code; on OpenCode and Codex, name the skill and the mode in prose. A multi-mode skill lists its modes in its own `## Mode routing` section. There are no command files (ADR-0006).
 
 ### What happens on invocation
 
@@ -454,7 +455,7 @@ The practice runs on this combination of tools. Each is replaceable, but the com
 | Tool                                | Role                                                                                                                                                                                                            |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **AI-native terminal** (Warp, etc.) | Terminal with blocks, smart autocomplete.                                                                                                                                                                       |
-| **Claude Code · OpenCode · Codex**  | The AI harness that runs on top — dispatches skills, subagents, MCPs. Pick one; all three read the same `AGENTS.md` and `.agents/skills/`. Launch with `bun run claude` / `bun run opencode` / `bun run codex`. |
+| **Claude Code · OpenCode · Codex**  | The AI harness that runs on top — dispatches skills, subagents, MCPs. Pick one; all three read the same `AGENTS.md` and `.agents/skills/`. Open it with its own binary (`claude` / `opencode` / `codex`) or its desktop app. |
 | **VSCode · Cursor · Windsurf**      | Editor — personal preference. Pick one.                                                                                                                                                                         |
 | **Git** + **gh CLI**                | Version control and PR operations.                                                                                                                                                                              |
 | **Bun**                             | Runtime + package manager.                                                                                                                                                                                      |
@@ -462,7 +463,7 @@ The practice runs on this combination of tools. Each is replaceable, but the com
 | **Supabase**                        | Database, auth, storage.                                                                                                                                                                                        |
 | **Jira (via `acli`)**               | Issue tracker — stories, bugs, epics.                                                                                                                                                                           |
 
-The harness is the load-bearing piece — it is the orchestrator that triggers skills, dispatches subagents, and accesses MCPs. Everything else is the developer's working surface around it. Claude Code is the reference harness in this document; the Engram and caveman plugins are Claude Code specific, and the rules that mention them are no-ops on the other two.
+The harness is the load-bearing piece — it is the orchestrator that triggers skills, dispatches subagents, and accesses MCPs. Everything else is the developer's working surface around it. Claude Code is the reference harness in this document; the Engram plugin (session hooks) is Claude Code specific, while `engram setup <agent>` wires the Engram MCP server on all three.
 
 ---
 
@@ -512,7 +513,7 @@ The orchestrator follows an explicit cost-aware delegation policy. The decision 
 | Write one file (mechanical, you know what)   | ✅     | —                            |
 | Write across multiple files with new logic   | —      | ✅                           |
 | Bash for state (`git status`, `gh pr list`)  | ✅     | —                            |
-| Bash for execution (`bun test`, `bun build`) | —      | ✅                           |
+| Bash for execution (`bun run test`, `bun run types:check`) | — | ✅                     |
 
 `delegate (async)` is the default for delegated work. Synchronous task delegation is used only when the next inline action depends on the result.
 
@@ -523,13 +524,21 @@ The orchestrator follows an explicit cost-aware delegation policy. The decision 
 - Running tests or builds inline → delegate.
 - Reading files as preparation for edits, then editing → delegate the whole thing together.
 
+### Two executors
+
+One-shot subagents are the default executor: they live inside the turn, read or write or verify, report, and their context is gone. A second, optional executor exists for work that is a whole scope by itself (one story through plan, code and review to an open PR): the **supervised worker**, a persistent agent session in its own worktree and branch that a conductor session coordinates through `/orca-orchestration`, talking to it at any moment in both directions. `/sprint-development` fleet mode runs one worker per story.
+
+It needs the Orca runtime. When the binary or the runtime is missing, the workflow skills stay silent about it and the same work runs on subagents plus the launch lines a human pastes by hand. The conductor keeps every shared-state write (merge, staging deploy, shared-database migration, sprint report) for itself.
+
+Two neighbouring tools are not orchestration. `/session-handoff` hands the whole session to a successor when the context window runs high or the work outlives the session. `/autonomous-delivery` runs the pipeline unattended, on a schedule, with no human on the line.
+
 ### Where the doctrine lives
 
 The orchestration model is not improvised per session — it is captured in canonical references that workflow skills load on demand. Engineers and skill authors should know where to look:
 
 - **`AGENTS.md` §Orchestration Mode** — canonical project-level statement of the strategy (delegation rules, briefing format, error protocol).
 - **`agentic-dev-core/references/orchestration-doctrine.md`** — cacheable mirror loaded by subagents that need the full doctrine without re-reading `AGENTS.md`.
-- **`agentic-dev-core/references/briefing-template.md`** — the six-component briefing format every dispatch uses (Goal · Context docs · Skills to load · Exact instructions · Report format · Rules).
+- **`agentic-dev-core/references/briefing-template.md`** — the seven-component briefing format every dispatch uses (Goal · Context docs · Project Standards · Skills to load · Exact instructions · Report format · Rules).
 - **`agentic-dev-core/references/dispatch-patterns.md`** — decision guide for the four patterns (Single, Sequential, Parallel, Background) and when each applies.
 - **`## Subagent Dispatch Strategy`** sections inside each workflow `SKILL.md` (`sprint-development`, `project-foundation`, `project-bootstrap`, `product-management`, etc.) — per-stage tables declaring which steps delegate to subagents and with what pattern.
 
@@ -537,25 +546,13 @@ When a skill writes `Use the dispatch defined in §Subagent Dispatch Strategy: P
 
 ### Per-phase model routing
 
-Each skill declares a `phase:` in its `SKILL.md` frontmatter, and the model-routing table in `agentic-dev-core/references/model-routing.md` maps phases to model aliases:
-
-| Phase          | Default model | Reason                       |
-| -------------- | ------------- | ---------------------------- |
-| orchestrator   | opus          | Coordinates, makes decisions |
-| foundation     | opus          | Architectural decisions      |
-| planning       | sonnet        | Structured writing           |
-| implementation | sonnet        | Coding                       |
-| review         | opus          | Critical analysis            |
-| archive        | haiku         | Mechanical close-out         |
-| default        | sonnet        | Non-classified delegation    |
-
-The orchestrator reads the table once at session start and routes each delegated subagent to the appropriate model — giving deep reasoning where it matters and cheap tokens where it does not.
+Workflow skills carry an advisory `model_preferences` block that maps broad phases (foundation, planning, implementation, review, archive) to a model tier: deep reasoning where it matters, cheap tokens where it does not. The mapping and its rationale live in `agentic-dev-core/references/model-routing.md`; it is advisory, read by dispatchers that pass a model when they launch a subagent.
 
 ---
 
 ## 9. Quality Gates: Lint, Types, Tests, Review, Deploy
 
-Every change merged to `staging` (and especially every change promoted to `main`) passes through the same gate. There is no "I think it's fine" shipping decision — the verdict is data-driven, owned by `/sprint-development`'s Stage 3 and Stage 4 dispatchers, and enforced by CI.
+Every change merged to the base branch your `git_strategy` names (and especially every change promoted to `main`) passes through the same gate. There is no "I think it's fine" shipping decision — the verdict is data-driven, owned by `/sprint-development`'s Stage 3 and Stage 4 dispatchers, and enforced by CI.
 
 ### The five gates
 
@@ -563,8 +560,8 @@ Every change merged to `staging` (and especially every change promoted to `main`
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
 │   LINT   │ → │  TYPES   │ → │  TESTS   │ → │  REVIEW  │ → │  DEPLOY  │
 └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
-   ESLint        tsc           Vitest +        Reviewer       Vercel +
-   Prettier      --noEmit      Playwright      subagent +     migrations
+   ESLint        tsc           Unit tests      Reviewer       Vercel +
+   Prettier      --noEmit                      subagent +     migrations
                                                human          (gated for
                                                               prod)
 ```
@@ -572,23 +569,26 @@ Every change merged to `staging` (and especially every change promoted to `main`
 | Gate   | Command                                  | Owner               | Behavior on red                              |
 | ------ | ---------------------------------------- | ------------------- | -------------------------------------------- |
 | Lint   | `bun run lint:check`                     | Stage 2 verifier #1 | Auto-fix attempt, then escalate              |
-| Types  | `bun run build` or `tsc --noEmit`        | Stage 2 verifier #2 | Surface to impl subagent for fix loop        |
-| Tests  | `bun test` (Vitest) + `bun run e2e` (PW) | Stage 2 verifier #3 | Surface to impl subagent for fix loop        |
+| Types  | `bun run types:check`                    | Stage 2 verifier #2 | Surface to impl subagent for fix loop        |
+| Tests  | `bun run test`                           | Stage 2 verifier #3 | Surface to impl subagent for fix loop        |
 | Review | Reviewer subagent + developer            | Stage 3             | Fix-and-iterate, max 2 loops, then escalate  |
 | Deploy | Vercel + Supabase migrations             | Stage 4 + Stage 5   | Rollback playbook ready; prod is human-gated |
 
+The commands above are the names in this repo's `package.json`; a scaffolded app adds its own (a build script, an end-to-end suite). Read `package.json` before quoting one (`AGENTS.md` Critical Rule #10). A deploy counts as done when the deployment for the pushed commit reads `READY`, never because the push or the build request was accepted (Critical Rule #16).
+
 ### Pre-flight checklist
 
-Before any push to `main`:
+Before any push to a protected branch:
 
 - [ ] Plan presented and approved before coding (skill-internal in `/sprint-development`).
-- [ ] Aliases used for imports (`@api/`, `@schemas/`, `@utils/`). No deep relative imports.
-- [ ] Credentials read from `.env`, never hardcoded.
+- [ ] Imports use the aliases `tsconfig.json` `paths` declares (Next.js `@/`). No deep relative imports.
+- [ ] Credentials referenced by variable name (values in `.env`), never hardcoded or printed.
 - [ ] Unit tests pass (when applicable; see `/unit-testing`).
 - [ ] Lint + types green.
-- [ ] No AI attribution in commits ("Generated with Claude Code", "Co-Authored-By: Claude" are forbidden).
+- [ ] No AI attribution in commits ("Generated with Claude Code", "Co-Authored-By: Claude", any harness-branded trailer are forbidden).
+- [ ] Every agent-written commit ends with the forensic trailers `Worktree:` then `Session:`, copied from the `AGENT IDENTITY:` line (ADR-0004).
 - [ ] Context loaded progressively (not all at once).
-- [ ] Human confirmation before push to `main`.
+- [ ] Push policy resolved from `git_strategy.policy.direct_push_to_protected` (Critical Rule #4): `confirm` asks first, `allowed` pushes without asking, `forbidden` routes through a PR; a missing block behaves as `confirm`.
 
 ### Failure protocol
 
@@ -608,11 +608,11 @@ Consider a ticket `UPEX-XXX` with a handful of acceptance criteria covering a us
 
 2. **Stage 1 — Planning.** A planner subagent is dispatched (Single pattern, model alias = sonnet). It reads the story, the AC, the module context, and produces `implementation-plan.md`. The plan is presented to the developer with open questions and approved. Jira transitions Ready For Dev → In Progress.
 
-3. **Stage 2 — Implementation.** An implementation subagent picks up the plan and writes code across the listed files. After each batch, three verifiers run in parallel: `bun run lint:check`, `bun run build`, `bun test`. Red → fix loop, max 2 iterations. The developer can opt into a TDD slice via `/unit-testing` for any pure function or complex branching.
+3. **Stage 2 — Implementation.** An implementation subagent picks up the plan and writes code across the listed files. After each batch, three verifiers run in parallel: lint, types and unit tests (`bun run lint:check`, `bun run types:check`, `bun run test` in this repo; the project's `package.json` names its own). Red → fix loop, max 2 iterations. The developer can opt into a TDD slice via `/unit-testing` for any pure function or complex branching.
 
 4. **Stage 3 — Code Review.** The branch is pushed and a PR is opened via `/git-flow-master` (auto-detected branching strategy chooses the base branch). Jira automatically transitions In Progress → In Review. A reviewer subagent (model alias = opus) walks the AC compliance matrix, the code-standards checklist, and the composition patterns. Output: `review.md` and `compliance-matrix.md`, persisted to the gitignored PBI cache and to engram (topic keys `pbi/{ticket}/review`, `pbi/{ticket}/compliance-matrix`) — not committed to the PR branch.
 
-5. **Stage 4 — Staging Deploy.** PR is merged to `staging`. Vercel deploys the preview. Supabase migrations run (if any). A background subagent watches health and smoke for N minutes. Jira transitions In Review → Ready For QA.
+5. **Stage 4 — Staging Deploy.** PR is merged to the base branch the strategy names. Vercel deploys, and the deploy is verified by polling the deployment for the merged commit until it reads `READY`. Supabase migrations run (if any). A background subagent watches health and smoke for N minutes. Jira transitions In Review → Ready For QA.
 
 6. **Stage 5 — Production Deploy (gated).** The developer triggers `/sprint-development` Stage 5 explicitly after QA sign-off (from the sister `agentic-qa-boilerplate`) and business approval. Tag, promote, monitor, rollback-ready.
 
@@ -643,32 +643,36 @@ The framework is meant to be extended. The hooks are documented and the conventi
 
 ### 11.1 Adding a workflow skill
 
-1. Create `.agents/skills/<name>/SKILL.md` with the standard frontmatter:
+New skills are built with `skill-creator` (installed at project level by `cli/install.ts`): it drafts the skill, the test prompts, the evals and the description pass. This repo owns the contract the skill must meet, in `agentic-dev-core/references/skill-scaffold.md`.
+
+1. Create `.agents/skills/<name>/SKILL.md` with the frontmatter the scaffold defines, at minimum:
 
 ```markdown
 ---
 name: <skill-name>
 description: '<what it does, what it triggers on, what NOT to use it for>'
 license: MIT
-compatibility: [claude-code, opencode, codex]
-phase: <foundation | onboarding | management | implementation | exploration | proposal | spec | design | tasks | apply | verify | archive>
+compatibility: [claude-code, codex, opencode]
+compact_rules: |
+  - DO: <binding rule>
+metadata:
+  kind: workflow
 ---
 ```
 
-2. Document `## When to use`, `## Pre-requisites`, `## Subagent Dispatch Strategy`, `## Main workflow`, and `## Hand-offs`.
-3. Cite `agentic-dev-core/references/*.md` in a `## Dependencies` block (do not duplicate the orchestration doctrine, briefing template, or dispatch patterns inline).
-4. Put long-form procedures under `.agents/skills/<name>/references/`. Keep `SKILL.md` itself as a router; the references are the meat.
-5. Run `bun run skills:registry` to update `.agents/skills/REGISTRY.md` with the new skill's compact rules.
-6. Nothing else: Claude Code sees the new folder through the `.claude/skills` alias, OpenCode and Codex read the store directly. If the alias is missing on a fresh clone or worktree, `bun run agents:compat` regenerates it.
+2. A workflow skill also ships `references/` and `evals/evals.json`; a skill that owns stages adds the session banner, `## Phase 0`, a dispatch section built on the 7-component briefing, and a session-close step (the scaffold lists each, per kind).
+3. Cite `agentic-dev-core/references/*.md` instead of duplicating the orchestration doctrine, briefing template, or dispatch patterns inline. Keep `SKILL.md` a router; long-form procedures go under `references/`.
+4. Run `bun run skills:check` (frontmatter, kind, sections) and `bun run skills:registry` to add the skill's compact rules to `.agents/skills/REGISTRY.md`.
+5. Nothing else: Claude Code sees the new folder through the `.claude/skills` alias, OpenCode and Codex read the store directly. If the alias is missing on a fresh clone or worktree, `bun run agents:compat` regenerates it.
 
-### 11.2 Adding a slash command
+### 11.2 Adding a mode to a skill
 
-Commands are transport, not workflow. The body lives in a skill; the command only selects that skill plus a mode and forwards `$ARGUMENTS`.
+There are no command files: a skill is invoked by its name plus a mode, on every harness (ADR-0006). A new entry point is a new mode of an existing skill, or a new skill.
 
-1. Put the workflow in a skill: a new one under `.agents/skills/<name>/`, or a new mode of an existing one (the way `/business-data-map` maps to `project-context` mode `data` and `/dev-roadmap` to mode `dev-roadmap`).
-2. Add an entry to `.agents/compatibility/command-aliases.json` naming the command, the target skill and the mode.
-3. Run `bun run agents:compat`. It writes `.claude/commands/<name>.md` and `.opencode/commands/<name>.md`; never hand-edit those wrappers, and never grow them a body: `bun run agents:compat:check` fails on `contains workflow prose`. Codex has no wrapper layer, so a Codex user invokes the skill + mode directly.
-4. List it in `AGENTS.md` §5 (alias table) and update `CONTEXT.md` if the command surface changes.
+1. Add a row to the skill's `## Mode routing` table: the mode name, its trigger phrases, the one reference it loads, and its output.
+2. Put the mode's procedure in that reference under `references/`.
+3. Users invoke it as `/<skill> <mode>` on Claude Code, or by naming the skill and the mode on OpenCode and Codex. A former command name survives only as a trigger phrase in the skill's `description`.
+4. Never add a `.claude/commands/` or `.opencode/commands/` file named like a skill: it would hide the skill's instructions, and `bun run agents:compat:check` refuses it.
 
 ### 11.3 Adding a project variable
 
@@ -681,30 +685,30 @@ Commands are transport, not workflow. The body lives in a skill; the command onl
 1. Add the slug to `.agents/jira-required.yaml` with expected type, options, and consumers.
 2. Run `bun run jira:sync-fields` to populate the workspace catalog.
 3. Run `bun run jira:check` to confirm the workspace satisfies the manifest.
-4. Reference the field in skills/commands as `{{jira.<slug>}}` — never `customfield_XXXXX`.
+4. Reference the field in skills as `{{jira.<slug>}}` — never `customfield_XXXXX`.
 
 ### 11.5 Adding a new MCP
 
-1. Configure the MCP server in all three runtime configs: `.mcp.json` (Claude Code, `${VAR}`), `opencode.jsonc` (OpenCode, `{env:VAR}`) and `.codex/config.toml` (Codex, `env_vars` / `bearer_token_env_var` by name). `bun run agents:compat:check` normalizes the three and fails when a server exists in one host only or depends on a different set of `.env` variables. See `docs/mcp/README.md` for the per-host syntax.
-2. Add the resolution row to `AGENTS.md` § Tool Resolution.
-3. Document the MCP under `docs/setup/mcp/<mcp-name>.md`.
-4. Update the MCP catalog in [onboarding.html §12 MCPs available](onboarding.html) and the `AGENTS.md` § MCPs Available table.
+1. Configure the server in the runtime config of every harness in use (all three in the boilerplate): `.mcp.json` (Claude Code), `opencode.jsonc` (OpenCode) and `.codex/config.toml` (Codex, plus `startup_timeout_sec = 30`). A stdio server that needs `.env` values starts through the `.env` loader on all three, `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter <the exact names it reads> -- <server>` (`mcpEnvLoaderArgs` in `cli/lib/agent-compatibility-contracts.ts`), with no `${VAR}` / `{env:}` / `{file:}` / `env_vars` beside it; one that needs no value launches bare. `bun run agents:compat:check` normalizes the three and fails when a server exists in one host only or depends on a different set of `.env` variables. See `docs/mcp/README.md` for the per-host syntax.
+2. Decide which **capability** it provides. An existing one (`db`, `library-docs`, …) needs only the server; a new one needs a row in `.agents/instructions/agent-skills-and-mcps.md` §5 "MCPs (decision rules)", in `.agents/instructions/agent-tool-resolution.md` §6 Tool Resolution, and in `agentic-dev-core/references/mcp-capabilities.md`, and the skills that use it declare it in `metadata.requires_capabilities`.
+3. Web search never goes in the project files: it is connected per machine, at harness level (ADR-0005).
+4. Add the server's variables to `.env.example`, and remember that a missing credential fails silently on every harness (Critical Rule #9): `/mcp` inside a Claude Code session is the check, and a 401/403 is the signal.
 
 ### 11.6 Adopting Spec-Driven Development (SDD)
 
-The SDD bloque (`sdd-*` skills) is not auto-installed by `bun run setup` (see §3.1 note). Install manually first: `gentle-ai install --agent <agent> --components sdd,skills`. Once installed:
+The SDD bloque (`sdd-*` skills) is not auto-installed by `bun setup` (see §3.1 note). Install manually first: `gentle-ai install --agent <agent> --components sdd,skills`. Once installed:
 
 1. Run `/sdd-init` to detect the stack and bootstrap the persistence backend (engram by default).
 2. For any substantial change, use `/sdd-new <change-name>` to start the full lifecycle: explore → propose → spec → design → tasks → apply → verify → archive.
-3. Each phase has its own model alias (see § per-phase model routing in Section 8). The orchestrator routes each subagent accordingly.
+3. The bundle sequences and routes its own phases; it composes with this repo's skills but does not replace `/sprint-development` for per-story delivery.
 
 ### 11.7 Future hooks (deferred patterns)
 
 The skill architecture leaves room for future enhancements without rework. Documented but not yet implemented:
 
-- **Cross-agent portability.** Each skill declares `compatibility: [claude-code, copilot, cursor, codex, opencode]`. A future CI step could spin up multiple runners to validate cross-agent reliability.
+- **Cross-harness CI.** Each skill declares the harnesses it supports in `compatibility:`. A future CI step could run the same skill on Claude Code, OpenCode and Codex to validate cross-harness reliability.
 - **Team-shared engram.** A future cross-machine persistent memory layer (sync between developers, team-shared decisions) could plug into the existing topic-key convention.
-- **Per-phase autonomous routing.** A future orchestrator could read each skill's `phase:` frontmatter and route to a different model automatically without the developer specifying.
+- **Per-phase autonomous routing.** A future orchestrator could read each skill's advisory `model_preferences` block and route to a different model automatically without the developer specifying.
 
 These hooks are documented but not implemented. Reopen when there is concrete demand.
 
@@ -716,16 +720,16 @@ These hooks are documented but not implemented. Reopen when there is concrete de
 
 - **A foundation reference host (`agentic-dev-core`)** — passive library that hosts the canonical orchestration doctrine, briefing template, dispatch patterns, model-routing table, topic-key conventions, and skill-resolver protocol cited by every workflow skill. Loaded on demand; not invoked directly. Foundation files (`AGENTS.md`, `.agents/`, `scripts/`) ship with the cloned repository.
 - **A roster of phase-aware AI skills** — auto-triggered by user intent, orchestrated with human-in-the-loop checkpoints. Each tier of the lifecycle has its own skill. The current roster is enumerated in [onboarding.html §9 Skills catalog](onboarding.html).
-- **The SDD meta-skill bloque** — explore → propose → spec → design → tasks → apply → verify → archive for any substantial change.
-- **A library of utility slash commands** — deterministic, single-purpose, invoked with `/<name>`; each one is a generated alias onto a skill + mode, identical on Claude Code and OpenCode. The current library is enumerated in [onboarding.html §10 Commands & Scripts](onboarding.html).
-- **One source, three harnesses** — `AGENTS.md` + `.agents/skills/` are read natively by OpenCode and Codex and through generated shims by Claude Code; the MCP inventory exists once per host format and is parity-checked. Full wiring in `AGENTS.md` §5.5.
-- **Live system integrations** — MCPs for the database (Supabase), library docs (context7), web search (tavily), workflow automation (n8n), persistent memory (engram); first-party CLIs for Jira (acli), GitHub (gh), deploys (vercel, supabase), browser automation (playwright).
+- **Skills with modes** — a multi-mode skill is invoked by name plus mode (`/project-context data`), the same entry point on every harness; no command files to keep in sync.
+- **One source, three harnesses** — `AGENTS.md` + `.agents/skills/` are read natively by OpenCode and Codex and through generated shims by Claude Code; the MCP inventory exists once per host format and is parity-checked. Full wiring in `.agents/instructions/agent-harnesses.md` §5.5.
+- **Orchestration and parallel work** — one-shot subagents by default; optional supervised workers in their own worktrees through `/orca-orchestration`; `bun run worktree:provision` and `bun run worktree:audit` for any parallel checkout; `/session-handoff` when a session must continue in a fresh one.
+- **Live system integrations** — capabilities resolved through MCPs (the local servers `.mcp.json` declares, plus web search at harness level and engram for memory); first-party CLIs for Jira (acli), GitHub (gh), deploys (vercel, supabase), browser automation (`playwright-cli`).
 - **A structured context layer** — project, module, and story-level knowledge, on disk. Project-level docs (product specs, design tokens, discovery docs) are version-controlled; per-ticket memory under `.context/PBI/` is a gitignored cache hydrated from Jira, not a git-tracked artefact.
 - **A portable design system (`DESIGN.md`)** — Apache-2.0 Google Labs spec at the project root. Consumed by `/project-bootstrap` and any AI agent reading the repo.
 - **Project variable contract** — `.agents/project.yaml` + `.agents/jira-required.yaml` + auto-generated catalogs, validated by `bun run vars:check` and `bun run jira:check`.
 - **Persistent memory (engram + Jira, synced on demand into a machine-local `.context/PBI/` cache)** — sessions resume from the exact point they ended. No context loss between days or developers.
 - **A per-story dev loop** — Planning → Implementation → Code Review → Staging → (gated) Production. Drives Jira state transitions automatically. Production is always human-gated.
-- **A CI / CD pipeline** — Vercel for deploys, GitHub Actions for lint/types/tests on PRs, Supabase migrations on merge to `staging`.
+- **A CI / CD pipeline** — Vercel for deploys, GitHub Actions for lint/types/tests on PRs, Supabase migrations on the merge your branching strategy routes to staging.
 - **A pre-flight quality gate** — lint + types + tests + review + deploy. Failures stop the line; the developer decides retry / skip / abort.
 
 ### The core claim
@@ -736,17 +740,15 @@ The rest is execution.
 
 ---
 
-**Last Updated**: 2026-05-13
-
 **See also**:
 
 - [`docs/onboarding.html`](onboarding.html) — operational reference: lifecycle, Jira state machine, skills catalog, commands, MCPs, cheat sheet (served by `bun run onboarding`).
-- `AGENTS.md` — canonical project memory, Tool Resolution, orchestration mode, skill routing, engram protocol, multi-harness wiring (§5.5). `CLAUDE.md` is its generated one-line shim.
+- `AGENTS.md` — always-on L0: the binding sentence of each Critical Rule, the behavioural layer, the orchestration core and the router; the topics it routes to (Tool Resolution, multi-harness wiring, ...) live under `.agents/instructions/`. `CLAUDE.md` is its generated one-line shim.
 - `CONTEXT.md` — strategic reasoning behind the three-tier knowledge layer (repo root).
 - `docs/methodology/IQL-methodology.md` — phased lifecycle deep-dive.
 - `docs/architectures/supabase-nextjs/` — stack-specific configuration.
-- `docs/workflows/` — environments, git-flow, OpenAPI sync, template updates.
-- `INSTALLER.md` — what `bun run setup` configures: gentle-ai, community skills, MCPs, external CLIs, opt-out.
+- `docs/workflows/` — environments, git-flow, OpenAPI sync.
+- `INSTALLER.md` — what `bun setup` configures and how its run is shown (phases, the local page, `--headless`): Engram, community skills, MCPs, external CLIs, opt-out.
 - `.agents/skills/agentic-dev-core/SKILL.md` — foundation reference host (passive; shared references cited by other skills).
 - `.agents/skills/agentic-dev-core/references/orchestration-doctrine.md` — canonical orchestration doctrine cited by every workflow skill.
 - `.agents/skills/project-foundation/SKILL.md` — Constitution + PRD + SRS + Discovery skill internals.
@@ -756,7 +758,8 @@ The rest is execution.
 - `.agents/skills/sprint-development/SKILL.md` — Per-story dev loop skill internals.
 - `.agents/skills/unit-testing/SKILL.md` — TDD slice skill internals.
 - `.agents/skills/git-flow-master/SKILL.md` — Git operator skill internals.
-- `.agents/skills/project-context/SKILL.md` — the five context-artifact modes behind the `/business-*-map`, `/master-implementation-plan` and `/dev-roadmap` aliases.
+- `.agents/skills/project-context/SKILL.md` — the context-artifact modes (`data`, `features`, `api`, `master-plan`, `dev-roadmap`, …), listed in its `## Mode routing`.
+- `.agents/skills/REGISTRY.md` — every skill with its kind and compact rules (generated by `bun run skills:registry`).
 - `.agents/skills/vercel-cli/SKILL.md` — Vercel CLI cookbook: deployment verification, env var sync, build/runtime log streaming, rollback, project linking. Companion to community `deploy-to-vercel`.
 - `.context/README.md` — canonical context layout.
 - `.agents/README.md` — project variable contract and validation scripts.

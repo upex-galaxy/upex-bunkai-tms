@@ -1,802 +1,291 @@
-# Guía de Configuración MCP para AI Coding Agents
+# Guía de Configuración MCP por host
 
-Esta guía explica cómo configurar MCP (Model Context Protocol) servers para diferentes herramientas de AI coding: **Claude Code**, **OpenCode**, **Codex CLI**, y **Gemini CLI**.
+Referencia de sintaxis para los tres hosts del contrato (`.agents/instructions/agent-harnesses.md` §5.5): **Claude Code**, **OpenCode** y **Codex CLI + Desktop**. Qué servidores corre el repo, cómo llegan las credenciales y cómo sumar uno opt-in está en [`README.md`](./README.md); esta página es el detalle por host.
 
 ---
 
 ## Tabla de Contenidos
 
 1. [Resumen de Formatos](#resumen-de-formatos)
-2. [Formato de Variables](#formato-de-variables)
+2. [Variables y secretos](#variables-y-secretos)
 3. [Claude Code](#claude-code)
 4. [OpenCode](#opencode)
-5. [Codex CLI](#codex-cli)
-6. [Gemini CLI](#gemini-cli)
-7. [Configuración de DBHub (SQL)](#configuración-de-dbhub-sql)
-8. [Configuración de OpenAPI](#configuración-de-openapi)
-9. [Configuración de Postman](#configuración-de-postman)
-10. [Flujo de Autenticación API](#flujo-de-autenticación-api)
-11. [La Trifuerza de Testing](#la-trifuerza-de-testing)
+5. [Codex CLI + Desktop](#codex-cli--desktop)
+6. [DBHub (SQL)](#dbhub-sql)
+7. [OpenAPI](#openapi)
+8. [Postman](#postman)
+9. [Token de Supabase para llamar a la API](#token-de-supabase-para-llamar-a-la-api)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Resumen de Formatos
 
-| Herramienta     | Archivo Config  | Ubicación                    | Formato |
-| --------------- | --------------- | ---------------------------- | ------- |
-| **Claude Code** | `.mcp.json`     | Root del proyecto            | JSON    |
-| **OpenCode**    | `opencode.jsonc` | Root o `~/.config/opencode/` | JSONC   |
-| **Codex CLI**   | `config.toml`   | `~/.codex/` o `.codex/` (proyecto: solo si el repo es trusted) | TOML    |
+| Host                | Archivo de proyecto  | Archivo global                     | Formato |
+| ------------------- | -------------------- | ---------------------------------- | ------- |
+| **Claude Code**     | `.mcp.json`          | `~/.claude.json` (scope `user`)    | JSON    |
+| **OpenCode**        | `opencode.jsonc`     | `~/.config/opencode/opencode.json` | JSONC   |
+| **Codex CLI + Desktop** | `.codex/config.toml` (solo en un repo trusted) | `~/.codex/config.toml` | TOML |
 
-**En este repo** los tres primeros están commiteados con el mismo conjunto de servidores (el que declara `.mcp.json`; el boilerplate trae `context7`, `tavily`, `supabase`, `n8n`): `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`. `bun run agents:compat:check` los normaliza y compara tomando como conjunto canónico el que declara `.mcp.json`: un servidor que falte en otro host, o que exista en un solo host, falla el gate; esos cuatro reciben además un chequeo estricto de forma por host cuando el proyecto los declara, y cualquier otro servidor (por ejemplo `playwright`) solo el chequeo genérico de variables de `.env`. Gemini CLI queda como template opt-in, sin adapter en runtime.
-| **Gemini CLI**  | `settings.json` | `~/.gemini/`                 | JSON    |
+**En este repo** los tres archivos de proyecto están commiteados con el mismo conjunto de servidores: el que declara `.mcp.json`. `bun run agents:compat:check` los normaliza y compara; un servidor que falte en un host, o que exista en uno solo, falla el gate. En un proyecto que declara `harnesses:` en `.agents/project.yaml`, solo se comparan los hosts en uso. Los servidores que trae el boilerplate (`KNOWN_MCP_IDS` en `cli/lib/agent-compatibility-contracts.ts`) reciben además un chequeo estricto de forma por host; cualquier otro, solo el chequeo genérico de variables de `.env`.
 
 ### Diferencias Clave
 
-| Característica | Claude         | OpenCode         | Codex              | Gemini       |
-| -------------- | -------------- | ---------------- | ------------------ | ------------ |
-| Root key       | `mcpServers`   | `mcp`            | `mcp_servers`      | `mcpServers` |
-| Command type   | string         | array            | string             | string       |
-| Env vars key   | `env`          | `environment`    | `env_vars` (por nombre) + `[server.env]` (literales) | `env`        |
-| Secreto en URL | `${VAR}`       | `{env:VAR}`      | imposible: `url` + `bearer_token_env_var` | `$VAR`       |
-| Remote type    | `type: "http"` | `type: "remote"` | `url`              | `httpUrl`    |
-| Enable/disable | N/A            | `enabled`        | `enabled`          | N/A          |
+| Característica | Claude Code     | OpenCode                    | Codex                                                    |
+| -------------- | --------------- | --------------------------- | -------------------------------------------------------- |
+| Root key       | `mcpServers`    | `mcp`                       | `mcp_servers`                                            |
+| Command        | string + `args` | array                       | string + `args`                                          |
+| Env literal    | `env`           | `environment`               | `[mcp_servers.X.env]`                                    |
+| Secreto stdio  | loader de `.env` | loader de `.env`           | loader de `.env` + `startup_timeout_sec = 30`            |
+| Secreto remoto | `${VAR}`        | `{env:VAR}`                 | `bearer_token_env_var`                                   |
+| Remote type    | `type: "http"`  | `type: "remote"`            | `url`                                                    |
+| Enable/disable | N/A             | `enabled`                   | `enabled`                                                |
 
 ---
 
-## Formato de Variables
+## Variables y secretos
 
-### Dos Estrategias Posibles
+Los templates de este directorio usan `{{VARIABLE}}` solo como marcador de buscar y reemplazar: ningún host lo entiende en runtime. Un secreto no se escribe en el config: su valor vive en `.env` (gitignored) y llega al server así:
 
-| Estrategia                          | Cómo                                                                                                        | Cuándo usar                                                            |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **A. Replace + gitignore (legacy)** | Reemplazás `{{VAR}}` con el valor literal en el config y agregás el archivo al `.gitignore`                 | Configs personales que nunca se compartirán                            |
-| **B. Env-var expansion + commit**   | Reemplazás `{{VAR}}` con la sintaxis nativa de env vars de la herramienta y guardás el valor real en `.env` | **Recomendado** para configs compartidos con el equipo (ver más abajo) |
+| Server            | Cómo llega el secreto                                                                                         | Si la variable falta                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| stdio (los tres hosts) | el loader de `.env`: `bunx -p varlock@<pin> varlock run --no-redact-stdout --inject vars --filter A,B -- <server>` | el server la recibe vacía o sin definir y falla en su primera llamada autenticada |
+| remoto, Claude Code | `${VAR}` en `url` / `headers`, desde el entorno del proceso                                                  | sin aviso claro: el server falla en su primera llamada, o el config no carga en un lanzamiento de escritorio |
+| remoto, OpenCode  | `{env:VAR}`, desde el entorno del proceso                                                                     | `""`                                                              |
+| remoto, Codex     | `bearer_token_env_var = "VAR"`, desde el entorno del proceso                                                  | error al arrancar que nombra el server                            |
 
-### Formato Universal en Templates: `{{VAR}}`
+**El loader de `.env`.** Es el mismo en los tres hosts (`MCP_ENV_LOADER_*` / `mcpEnvLoaderArgs` en `cli/lib/agent-compatibility-contracts.ts`). Lee el schema de varlock más `.env` / `.env.local` (o el gestor de secretos que nombra el schema) desde la raíz del proyecto al arrancar el server, lo haya lanzado quien sea (terminal, app de escritorio, worker supervisado), y le pasa **solo** las variables de su `--filter`, que son los nombres exactos que el server lee. `--inject vars` las pasa sueltas, sin blob; `--no-redact-stdout` deja intacto el stream JSON-RPC. Al lado del loader no va ningún `${VAR}`, `{env:}`, `{file:}` ni `env_vars`: un `${VAR}` sin valor rompe un lanzamiento de escritorio y un valor heredado vacío le gana a `.env`. Un server que no necesita valores (context7) arranca sin loader. Un valor que falla el schema frena solo al server que lo necesita: `bunx varlock load --agent` muestra cuál, redactado.
 
-Los archivos en este directorio usan `{{VARIABLE}}` solo como marcador de "buscar y reemplazar". **No es sintaxis que ninguna herramienta entienda en runtime** — siempre tenés que reemplazarlo, ya sea por un valor literal (estrategia A) o por la sintaxis nativa de tu herramienta (estrategia B).
+**Un server remoto no puede usar el loader** (no hay comando que envolver): su secreto sale del entorno del proceso del harness, adonde `.env` no llega en ningún lanzamiento. Preferí el login OAuth del server (como el MCP remoto de Atlassian vía `mcp-remote`); un server que solo acepta token necesita que exportes esa ÚNICA variable en el shell antes de lanzar, sabiendo que queda en el entorno del agente.
 
-### Formato Nativo por Herramienta (para estrategia B)
+**Abrir el agente.** Con su propio binario en la carpeta del proyecto (`claude`, `opencode`, `codex`) o con su app de escritorio. No hay script envoltorio: nada carga `.env` en el proceso del agente, así que ningún secreto llega al shell de la IA (ADR-0016). Un comando que corre el agente y necesita un valor lo corre por el loader en un subproceso: `bunx varlock run -- sh -c '<comando que usa "$VAR">'` (los scripts de `bun` cargan `.env` solos). Si un MCP se comporta como si `.env` no existiera, corré `bun run vars:env:check`: nombra la variable que el shell exporta con otro valor, porque bajo varlock gana el heredado (solo nombres y largos). Después de un cambio de `.env`, reiniciá la sesión. Una instalación vieja escribía copias en texto plano (bloque `env` de `.claude/settings.local.json`, `.auth/opencode/<VAR>`): `bun run harness:env` las retira y `bun run harness:env:check` sale con 1 mientras quede una.
 
-| Herramienta | Formato Nativo                             | Ejemplo                               | Si la var no existe                   |
-| ----------- | ------------------------------------------ | ------------------------------------- | ------------------------------------- |
-| Claude Code | `${VAR}` o `${VAR:-default}`               | `${API_TOKEN}` / `${HOST:-localhost}` | **Falla al parsear el config** (safe) |
-| OpenCode    | `{env:VAR}`                                | `{env:API_TOKEN}`                     | Sustituye string vacío (footgun)      |
-| Codex CLI   | `env_vars = ["NAME"]` (stdio) / `bearer_token_env_var = "NAME"` (HTTP). NO expande `${VAR}` | `env_vars = ["API_TOKEN"]`           | La var no se reenvía; el server falla en auth (401/403) |
-| Gemini CLI  | `$VAR` o `${VAR}`                          | `$API_TOKEN`                          | Depende del campo                     |
-
-**Campos donde la expansión funciona (Claude Code):** `command`, `args`, `env`, `url`, `headers`.
-**Campos donde la expansión funciona (OpenCode):** `headers`, `oauth`, y en la práctica también `command`, `environment`, `url` cuando se prueba.
-**Campos donde la expansión funciona (Codex):** ninguno. Un `${VAR}` dentro de `args` o de `[server.env]` llega al server como texto literal. Los secretos se reenvían por nombre (`env_vars`, `bearer_token_env_var`); ver la sección Codex CLI más abajo.
-
-### Patrón Recomendado: Config Committeable con `.env`
-
-Para configs compartidos con el equipo (NO commitear credenciales pero SÍ commitear la estructura del config):
-
-1. Tomá el template (`claude.template.json`, `opencode.template.json`, etc.)
-2. Reemplazá cada `{{VAR}}` por la sintaxis nativa de tu herramienta:
-   - Claude: `{{TAVILY_API_KEY}}` → `${TAVILY_API_KEY}`
-   - OpenCode: `{{TAVILY_API_KEY}}` → `{env:TAVILY_API_KEY}`
-   - Codex: sacá el placeholder del `args` / `env` y declará el nombre en `env_vars = ["TAVILY_API_KEY"]` (stdio) o `bearer_token_env_var = "TAVILY_API_KEY"` (HTTP)
-3. Guardá los valores reales en un archivo `.env` (gitignored)
-4. Cargá `.env` antes de lanzar el agente:
-   - Cross-platform: `bun run claude` / `bun run opencode` / `bun run codex` (wrappers `dotenv -o -e .env`; el `-o` hace que `.env` gane sobre una variable heredada del shell)
-   - Mac/Linux opcional: `.envrc` con `dotenv_if_exists .env` + `direnv`
-5. Commiteá el `.mcp.json` / `opencode.jsonc` / `.codex/config.toml` resultantes — sin secretos, listos para el equipo. Corré `bun run agents:compat:check` para confirmar que los tres declaran los mismos servidores con las mismas variables de `.env`.
-
-**Ejemplos vivos**: el repositorio `agentic-dev-boilerplate` ya usa este patrón. Ver `.mcp.json` (Claude) + `opencode.jsonc` (OpenCode) + `.codex/config.toml` (Codex) + `.env.example` en la raíz.
-
-> **⚠️ Regla crítica con env-var expansion**: si un MCP server falla al arrancar o devuelve 401/403, lo más probable es que una env var no está cargada. **Salí del agente, corregí `.env`, y volvé a entrar** — las env vars se leen una sola vez al spawnear el MCP.
+> **Regla crítica:** ningún server stdio se niega a arrancar por una variable faltante (el único error temprano es el `bearer_token_env_var` de un server remoto en Codex). Un 401/403 o una falla misteriosa de una tool ES la señal. Verificá con `/mcp` dentro de la sesión, corregí `.env` y reiniciá la sesión: las variables se leen al spawnear el MCP (`AGENTS.md` Critical Rule #9).
 
 ---
 
 ## Claude Code
 
-### Archivo: `.mcp.json`
-
-**Ubicación:** Root del proyecto
-
-### Estructura Básica
+**Archivo de proyecto:** `.mcp.json` en el root.
 
 ```json
 {
   "mcpServers": {
     "server-name": {
-      "command": "npx",
-      "args": ["-y", "package-name"],
-      "env": {
-        "API_KEY": "tu-api-key-aqui"
-      }
+      "command": "bunx",
+      "args": [
+        "-p", "varlock@<pin>", "varlock", "run", "--no-redact-stdout",
+        "--inject", "vars", "--filter", "API_KEY", "--",
+        "npx", "-y", "package-name"
+      ]
     },
     "remote-server": {
       "type": "http",
       "url": "https://mcp.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer tu-token-aqui"
+        "Authorization": "Bearer ${API_TOKEN}"
       }
     }
   }
 }
 ```
-
-### Comandos Útiles
 
 ```bash
-# Ver MCPs configurados
+# Ver, habilitar, autenticar o reconectar servers (dentro de la sesión)
 /mcp
 
-# Agregar MCP desde CLI
-claude mcp add server-name -- npx -y package-name
-
-# Agregar MCP con JSON
-claude mcp add-json --scope=user my-server '{"command":"npx","args":[...]}'
+# Agregar un server a tu scope de usuario (fuera de este repo)
+claude mcp add --scope user server-name -- npx -y package-name
 ```
 
-### Ejemplo con SoloQ (Valores Reales)
-
-```json
-{
-  "mcpServers": {
-    "openapi": {
-      "command": "npx",
-      "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-      "env": {
-        "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-        "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-        "API_HEADERS": "Authorization:Bearer {{JWT_ACCESS_TOKEN}}"
-      }
-    },
-    "sql": {
-      "command": "npx",
-      "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-    },
-    "postman": {
-      "type": "http",
-      "url": "https://mcp.postman.com/mcp",
-      "headers": {
-        "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-      }
-    }
-  }
-}
-```
+Un server que solo agregás vos (por ejemplo búsqueda web) va al scope `user` o como conector de claude.ai, nunca a `.mcp.json`. Guía del host: [`docs/setup/mcp/claude-code.md`](../setup/mcp/claude-code.md).
 
 ---
 
 ## OpenCode
 
-### Archivo: `opencode.json`
+**Archivo de proyecto:** `opencode.jsonc` en el root.
 
-**Ubicación:** Root del proyecto o `~/.config/opencode/opencode.json`
-
-### Estructura Básica
-
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "server-name": {
       "type": "local",
-      "command": ["npx", "-y", "package-name"],
-      "environment": {
-        "API_KEY": "tu-api-key-aqui"
-      },
-      "enabled": true
+      "command": [
+        "bunx", "-p", "varlock@<pin>", "varlock", "run", "--no-redact-stdout",
+        "--inject", "vars", "--filter", "API_KEY", "--",
+        "npx", "-y", "package-name",
+      ],
+      "enabled": true,
     },
     "remote-server": {
       "type": "remote",
       "url": "https://mcp.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer tu-token-aqui"
+        "Authorization": "Bearer {env:API_TOKEN}",
       },
       "oauth": false,
-      "enabled": true
-    }
-  }
+      "enabled": true,
+    },
+  },
 }
 ```
 
-### Características Especiales
-
-- **Command como array:** `["npx", "-y", "package"]` (no string)
-- **Variables de entorno:** Usar `{env:VARIABLE_NAME}` para runtime
-- **Archivos:** Usar `{file:path/to/file}` para contenido de archivos
-- **Enable/disable:** Campo `enabled` para activar/desactivar sin eliminar
-
-### Ejemplo con SoloQ (Valores Reales)
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "openapi": {
-      "type": "local",
-      "command": ["npx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-      "environment": {
-        "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-        "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-        "API_HEADERS": "Authorization:Bearer {{JWT_ACCESS_TOKEN}}"
-      },
-      "enabled": true
-    },
-    "sql": {
-      "type": "local",
-      "command": ["npx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
-      "enabled": true
-    },
-    "postman": {
-      "type": "remote",
-      "url": "https://mcp.postman.com/mcp",
-      "headers": {
-        "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-      },
-      "enabled": true
-    }
-  }
-}
-```
+- `command` es un array (`["npx", "-y", "package"]`), nunca un string.
+- El loader corre en el directorio de `opencode.jsonc`, así que en un worktree lee el `.env` de ese worktree (`bun run worktree:provision` lo copia).
+- `enabled: false` desactiva un server sin borrarlo.
+- El servicio en background cachea el config resuelto por directorio: después de cambiar `.env` o el config, `opencode service restart` (o cerrá todas las sesiones).
 
 ---
 
-## Codex CLI
+## Codex CLI + Desktop
 
-### Archivo: `config.toml`
+**Archivo de proyecto:** `.codex/config.toml`. Solo se carga si Codex confía en el repositorio; la confianza es estado de runtime, así que `bun run setup:doctor` la reporta como WARN. Codex CLI y Codex Desktop leen el mismo archivo. Guía del host: [`docs/setup/mcp/codex.md`](../setup/mcp/codex.md).
 
-**Ubicación:** `~/.codex/config.toml` (global) o `.codex/config.toml` (proyecto). El de proyecto solo se carga si Codex confía en el repositorio (trust): la confianza es estado de runtime, no un archivo, así que `bun run setup:doctor` la reporta como WARN y no puede verificarla leyendo el disco.
+Codex no interpola placeholders dentro de `args` ni de `[mcp_servers.X.env]`: un `${VAR}` ahí llega al server como texto literal. No hace falta:
 
-**En este boilerplate**: `.codex/config.toml` ya viene commiteado con los mismos servidores que declara `.mcp.json` y `.codex/hooks.json` con el hook de personalidad. Codex CLI y Codex Desktop leen el mismo archivo. Lanzá con `bun run codex`, que carga `.env` antes de arrancar. Guía completa: [`docs/setup/mcp/codex.md`](../setup/mcp/codex.md).
-
-### Estructura Básica
+- un server stdio que necesita valores arranca con el loader de `.env` (arriba), igual que en los otros dos hosts, más `startup_timeout_sec = 30` (un `bunx` en frío más el salto del loader puede pasar los 10 s por defecto);
+- `bearer_token_env_var = "NOMBRE"` en un server HTTP envía `Authorization: Bearer <valor>` desde el entorno del proceso;
+- `[mcp_servers.X.env]` queda para settings literales (`MCP_MODE = "stdio"`).
 
 ```toml
-# STDIO Server (local)
 [mcp_servers.server-name]
-command = "npx"
-args = ["-y", "package-name"]
-
-[mcp_servers.server-name.env]
-API_KEY = "tu-api-key-aqui"
-
-# HTTP Server (remoto)
-[mcp_servers.remote-server]
-url = "https://mcp.example.com/mcp"
-bearer_token_env_var = "TOKEN_ENV_VAR"
-```
-
-### Por qué Codex no expande `${VAR}` (y cómo lo resuelve este repo)
-
-Codex no interpola placeholders dentro de `args` ni dentro de los valores de `[mcp_servers.X.env]`: un `${TAVILY_API_KEY}` escrito ahí llega al server como texto literal. La única forma de pasar un secreto es **por nombre**, y Codex lo toma del entorno del proceso (el que carga `bun run codex` desde `.env`):
-
-- `env_vars = ["NOMBRE", ...]` en un server stdio: reenvía esas variables al proceso hijo tal cual están en el entorno.
-- `bearer_token_env_var = "NOMBRE"` en un server HTTP: envía `Authorization: Bearer <valor>` leyendo esa variable.
-- `[mcp_servers.X.env]` queda solo para settings literales (`MCP_MODE = "stdio"`, `LOG_LEVEL = "error"`).
-
-Eso obliga a dos adaptaciones respecto de `.mcp.json` / `opencode.jsonc`, ambas commiteadas en `.codex/config.toml`:
-
-| Server     | Claude / OpenCode                                                   | Codex                                                                                                  | Por qué                                                                                                                                       |
-| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tavily`   | stdio `mcp-remote https://mcp.tavily.com/mcp/?tavilyApiKey=${VAR}`  | `url = "https://mcp.tavily.com/mcp/"` + `bearer_token_env_var = "TAVILY_API_KEY"`                     | El túnel `mcp-remote` existe solo para meter la key en la URL; sin interpolación no hay forma de armarla, y el endpoint acepta bearer directo. |
-| `supabase` | `--access-token ${SUPABASE_ACCESS_TOKEN}` en `args`                 | sin `--access-token`; `SUPABASE_ACCESS_TOKEN` (más URL y keys) declaradas en `env_vars`                | `@supabase/mcp-server-supabase` lee `SUPABASE_ACCESS_TOKEN` del entorno cuando falta el flag (fallback documentado).                          |
-
-`context7` y `n8n` no cambian de forma: `context7` no necesita secreto y `n8n` ya recibía todo por `env`, que en Codex pasa a `env_vars` (`N8N_API_URL`, `N8N_API_KEY`) más una tabla `.env` con los literales. `bun run agents:compat:check` compara **los nombres de variables de `.env`** de los que depende cada host, no la forma del comando, así que estas adaptaciones pasan el gate.
-
-Bloques reales de `.codex/config.toml` de este repo:
-
-```toml
-[mcp_servers.tavily]
-url = "https://mcp.tavily.com/mcp/"
-bearer_token_env_var = "TAVILY_API_KEY"
-enabled = true
-
-[mcp_servers.supabase]
 command = "bunx"
 enabled = true
-args = ["-y", "@supabase/mcp-server-supabase@latest"]
-env_vars = [
-  "SUPABASE_ACCESS_TOKEN",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "SUPABASE_PUBLISHABLE_KEY",
-  "SUPABASE_SECRET_KEY",
+startup_timeout_sec = 30
+args = [
+  "-p", "varlock@<pin>", "varlock", "run", "--no-redact-stdout",
+  "--inject", "vars", "--filter", "API_KEY", "--",
+  "npx", "-y", "package-name",
 ]
+
+[mcp_servers.remote-server]
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "API_TOKEN"
 ```
 
-### Comandos Útiles
+`<pin>` es la versión exacta de la devDependency `varlock` (la que usan los configs commiteados). `bun run agents:compat:check` compara **los nombres de variables de `.env`** de los que depende cada host (el `--filter`) y la existencia de cada server. Un server stdio sin loader, con `env_vars` al lado del loader o sin `startup_timeout_sec` falla el check en el boilerplate y es WARNING en un proyecto derivado, con el lanzamiento exacto. Los bloques reales están en `.codex/config.toml`; los opt-in, ya con el loader, en [`codex.template.toml`](./codex.template.toml).
 
 ```bash
-# Agregar MCP
+# Server global (fuera de este repo)
 codex mcp add server-name -- npx -y package-name
+codex mcp add remote-name --url https://mcp.example.com/mcp
+codex mcp login remote-name
 
-# Agregar con variables de entorno
-codex mcp add server-name --env API_KEY=value -- npx -y package-name
-
-# Ver MCPs
+# Dentro de la sesión
 /mcp
-
-# Ver ayuda
-codex mcp --help
-```
-
-### Ejemplo con SoloQ (Valores Reales)
-
-```toml
-# ============================================
-# CONFIGURACIÓN MCP PARA CODEX CLI
-# ============================================
-
-[mcp_servers.openapi]
-command = "npx"
-args = ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"]
-
-[mcp_servers.openapi.env]
-API_BASE_URL = "https://staging-upexsoloq.vercel.app/api"
-OPENAPI_SPEC_PATH = "https://staging-upexsoloq.vercel.app/api/openapi"
-API_HEADERS = "Authorization:Bearer {{JWT_ACCESS_TOKEN}}"
-
-[mcp_servers.sql]
-command = "npx"
-args = ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-
-[mcp_servers.postman]
-url = "https://mcp.postman.com/mcp"
-bearer_token_env_var = "POSTMAN_API_KEY"
 ```
 
 ---
 
-## Gemini CLI
+## DBHub (SQL)
 
-### Archivo: `settings.json`
+Opt-in. La capacidad `db` del repo la da el MCP `supabase` commiteado; DBHub se suma solo cuando un proyecto necesita SQL contra una base que ese MCP no cubre.
 
-**Ubicación:** `~/.gemini/settings.json`
+1. Copiá [`dbhub.example.toml`](./dbhub.example.toml) a `dbhub.toml` en el root. Usa `${VAR}`, que DBHub interpola desde su entorno al cargar (el loader de `.env` del bloque `sql` lo llena con su `--filter`), así que `dbhub.toml` se puede commitear sin secretos. Credenciales literales solo en `dbhub.local.toml` (ya gitignored).
+2. Declará `DB_HOST`, `DB_USER` y `DB_PASSWORD` en `.env.schema` (`@sensitive` en la contraseña), agregalas vacías a `.env.example` y con valor a `.env`. Una variable más en `dbhub.toml` va también al `--filter` del bloque `sql` en los tres hosts.
+3. Copiá el bloque `sql` de los tres templates a `.mcp.json`, `opencode.jsonc` y `.codex/config.toml`, y corré `bun run agents:compat:check`.
+4. Reiniciá la sesión y verificá con `/mcp`.
 
-### Estructura Básica
-
-```json
-{
-  "mcpServers": {
-    "server-name": {
-      "command": "npx",
-      "args": ["-y", "package-name"],
-      "env": {
-        "API_KEY": "tu-api-key-aqui"
-      }
-    },
-    "remote-server": {
-      "httpUrl": "https://mcp.example.com/mcp",
-      "headers": {
-        "Authorization": "Bearer tu-token-aqui"
-      }
-    }
-  }
-}
-```
-
-### Comandos Útiles
-
-```bash
-# Agregar MCP stdio
-gemini mcp add server-name -- npx -y package-name
-
-# Agregar MCP HTTP
-gemini mcp add remote-server -t http https://mcp.example.com/mcp
-
-# Ver MCPs
-/mcp
-
-# Listar configurados
-gemini mcp list
-
-# Eliminar
-gemini mcp remove server-name
-```
-
-### Características Especiales
-
-- **Variables de entorno:** Usar `$VAR_NAME` o `${VAR_NAME}` para runtime
-- **HTTP streaming:** Usar `httpUrl` (no `url`)
-- **SSE:** Usar `url` para Server-Sent Events
-- **Tool filtering:** `includeTools` y `excludeTools`
-
-### Ejemplo con SoloQ (Valores Reales)
-
-```json
-{
-  "mcpServers": {
-    "openapi": {
-      "command": "npx",
-      "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-      "env": {
-        "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-        "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-        "API_HEADERS": "Authorization:Bearer {{JWT_ACCESS_TOKEN}}"
-      }
-    },
-    "sql": {
-      "command": "npx",
-      "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-    },
-    "postman": {
-      "httpUrl": "https://mcp.postman.com/mcp",
-      "headers": {
-        "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-      }
-    }
-  }
-}
-```
+DBHub nombra sus tools con el id de la fuente (`execute_sql_<source_id>`); una variable sin definir queda como `${VAR}` literal sin error, y la conexión falla después.
 
 ---
 
-## Configuración de DBHub (SQL)
+## OpenAPI
 
-### Paso 1: Crear archivo `dbhub.toml`
+Opt-in, para explorar la API de la app desde el agente. Para llamadas puntuales alcanza con `curl` y los tipos de `bun run api:sync` (`.agents/instructions/agent-tool-resolution.md` §6, `[API_TOOL]`).
 
-Crea un archivo llamado `dbhub.toml` en el root de tu proyecto:
+Requisitos: URL base de la API, URL del spec OpenAPI (JSON o YAML) y un bearer token ([abajo](#token-de-supabase-para-llamar-a-la-api)).
 
-```toml
-[[sources]]
-id = "soloq"
-type = "postgres"
-host = "aws-1-us-east-2.pooler.supabase.com"
-port = 5432
-database = "postgres"
-user = "{{DB_USER}}"
-password = "{{DB_PASSWORD}}"
-sslmode = "require"
-```
+> **IMPORTANTE:** el flag `--tools dynamic` es obligatorio. Sin él, el server responde 400.
 
-> **Importante:** `dbhub.toml` **se commitea** cuando usa expansión `${VAR}` (sin secretos; los valores reales viven en `.env`) — es parte de la estrategia de testing, misma convención que `.mcp.json`. Solo si pegás credenciales **literales** en el archivo, movelas a `dbhub.local.toml` (ya gitignored) — nunca dejes secretos reales en `dbhub.toml`.
-
-### Paso 2: Configurar el MCP
-
-#### Claude Code (`.mcp.json`)
-
-```json
-"sql": {
-  "command": "npx",
-  "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-}
-```
-
-#### OpenCode (`opencode.json`)
-
-```json
-"sql": {
-  "type": "local",
-  "command": ["npx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
-  "enabled": true
-}
-```
-
-#### Codex CLI (`config.toml`)
-
-```toml
-[mcp_servers.sql]
-command = "npx"
-args = ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-```
-
-#### Gemini CLI (`settings.json`)
-
-```json
-"sql": {
-  "command": "npx",
-  "args": ["-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"]
-}
-```
-
-### Paso 3: Verificar conexión
-
-Ejecuta tu agente y usa `/mcp` para verificar que el MCP está conectado.
-
-### Conexión Alternativa (VSCode/Cursor)
-
-Para conectarte via extensión de editor:
-
-```
-postgresql://{{DB_USER}}:{{DB_PASSWORD}}@aws-1-us-east-2.pooler.supabase.com:5432/postgres
-```
-
----
-
-## Configuración de OpenAPI
-
-### Requisitos Previos
-
-1. URL base de la API
-2. URL del spec OpenAPI (JSON/YAML)
-3. Bearer Token de autenticación (ver [Flujo de Autenticación](#flujo-de-autenticación-api))
-
-### Paso 1: Configurar el MCP
-
-> **IMPORTANTE:** El flag `--tools dynamic` es **OBLIGATORIO**. Sin él, da error 400.
-
-#### Claude Code (`.mcp.json`)
-
-```json
-"openapi": {
-  "command": "npx",
-  "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "env": {
-    "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-    "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-    "API_HEADERS": "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-}
-```
-
-#### OpenCode (`opencode.json`)
-
-```json
-"openapi": {
-  "type": "local",
-  "command": ["npx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "environment": {
-    "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-    "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-    "API_HEADERS": "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  },
-  "enabled": true
-}
-```
-
-#### Codex CLI (`config.toml`)
-
-```toml
-[mcp_servers.openapi]
-command = "npx"
-args = ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"]
-
-[mcp_servers.openapi.env]
-API_BASE_URL = "https://staging-upexsoloq.vercel.app/api"
-OPENAPI_SPEC_PATH = "https://staging-upexsoloq.vercel.app/api/openapi"
-API_HEADERS = "Authorization:Bearer {{JWT_ACCESS_TOKEN}}"
-```
-
-#### Gemini CLI (`settings.json`)
-
-```json
-"openapi": {
-  "command": "npx",
-  "args": ["-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
-  "env": {
-    "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
-    "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
-    "API_HEADERS": "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-}
-```
-
-### Capacidades del MCP OpenAPI
+Bloques en los tres templates (`openapi`). Reemplazá `{{API_BASE_URL}}` y `{{OPENAPI_SPEC_URL}}` por las URLs de tu entorno. El header `API_HEADERS` lleva el token dentro del valor y ningún host lo interpola: poné el valor entero (`API_HEADERS=Authorization:Bearer <token>`) en `.env`; el loader del bloque se lo pasa al server con `--filter API_HEADERS` en los tres hosts.
 
 | Tool                      | Descripción                           |
 | ------------------------- | ------------------------------------- |
-| `list-api-endpoints`      | Lista todos los endpoints disponibles |
+| `list-api-endpoints`      | Lista los endpoints disponibles       |
 | `get-api-endpoint-schema` | Obtiene el schema JSON de un endpoint |
 | `invoke-api-endpoint`     | Ejecuta un endpoint con parámetros    |
 
 ---
 
-## Configuración de Postman
+## Postman
 
-### Paso 1: Generar API Key
+Opt-in, servidor remoto.
 
-1. Ve a https://www.postman.com y logueate
-2. Click en tu avatar (arriba derecha) → **Settings**
-3. Baja hasta **"API Keys"**
-4. Click **"Generate API Key"**
-5. Nombre: "Postman MCP", Expiración: 60-90 días
-6. Copia el token (solo se muestra una vez)
+1. En https://www.postman.com: avatar → **Settings** → **API Keys** → **Generate API Key** (se muestra una sola vez).
+2. Guardala en `.env` como `POSTMAN_API_KEY`.
+3. Copiá el bloque `postman` de los tres templates y reemplazá `{{POSTMAN_API_KEY}}` por `${POSTMAN_API_KEY}` (Claude Code) o `{env:POSTMAN_API_KEY}` (OpenCode). Codex la envía con `bearer_token_env_var = "POSTMAN_API_KEY"`. Es un server remoto: la key sale del entorno del proceso del harness, no de `.env`. Si Postman no ofrece login OAuth, exportá `POSTMAN_API_KEY` en el shell antes de abrir el agente, sabiendo que queda en su entorno.
 
-### Paso 2: Configurar el MCP
-
-#### Claude Code (`.mcp.json`)
-
-```json
-"postman": {
-  "type": "http",
-  "url": "https://mcp.postman.com/mcp",
-  "headers": {
-    "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-  }
-}
-```
-
-#### OpenCode (`opencode.json`)
-
-```json
-"postman": {
-  "type": "remote",
-  "url": "https://mcp.postman.com/mcp",
-  "headers": {
-    "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-  },
-  "enabled": true
-}
-```
-
-#### Codex CLI (`config.toml`)
-
-```toml
-[mcp_servers.postman]
-url = "https://mcp.postman.com/mcp"
-bearer_token_env_var = "POSTMAN_API_KEY"
-```
-
-> **Nota:** Para Codex, la variable tiene que existir en el entorno del proceso: `export POSTMAN_API_KEY=PMAK-...`, o agregala a `.env` y lanzá con `bun run codex`.
-
-#### Gemini CLI (`settings.json`)
-
-```json
-"postman": {
-  "httpUrl": "https://mcp.postman.com/mcp",
-  "headers": {
-    "Authorization": "Bearer {{POSTMAN_API_KEY}}"
-  }
-}
-```
-
-### Capacidades del MCP Postman (41 tools)
-
-| Categoría        | Tools                                                            |
-| ---------------- | ---------------------------------------------------------------- |
-| **Collections**  | crear, obtener, duplicar, actualizar, ejecutar (`runCollection`) |
-| **Requests**     | crear/actualizar requests dentro de colecciones                  |
-| **Environments** | crear, obtener, actualizar variables                             |
-| **Specs**        | crear, sincronizar OpenAPI specs con colecciones                 |
-| **Mocks**        | crear, publicar mock servers                                     |
-| **Workspaces**   | crear, obtener, actualizar                                       |
+Las tools cubren colecciones, requests, environments, specs, mocks y workspaces; `/mcp` lista las que expone tu versión.
 
 ---
 
-## Flujo de Autenticación API
+## Token de Supabase para llamar a la API
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         AUTHENTICATION FLOW                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-    TU CLIENTE                    SUPABASE AUTH                    NEXT.JS API
-         │                              │                               │
-         │  1. POST /auth/v1/token      │                               │
-         │     { email, password }      │                               │
-         │ ────────────────────────────>│                               │
-         │                              │                               │
-         │  2. { access_token: "eyJ.." }│                               │
-         │ <────────────────────────────│                               │
-         │                              │                               │
-         │  3. GET /api/clients                                         │
-         │     Authorization: Bearer eyJ...                             │
-         │ ────────────────────────────────────────────────────────────>│
-         │                              │                               │
-         │  4. 200 OK { clients: [...] }                                │
-         │ <────────────────────────────────────────────────────────────│
+CLIENTE                       SUPABASE AUTH                   API DE LA APP
+   |  1. POST /auth/v1/token        |                               |
+   |     { email, password }        |                               |
+   | -----------------------------> |                               |
+   |  2. { access_token: "eyJ..." } |                               |
+   | <----------------------------- |                               |
+   |  3. GET /api/<recurso>                                         |
+   |     Authorization: Bearer eyJ...                               |
+   | -------------------------------------------------------------> |
+   |  4. 200 OK                                                     |
+   | <------------------------------------------------------------- |
 ```
-
-### Paso 1: Obtener el Access Token
-
-**Endpoint:**
-
-```
-POST https://czuusjchqpgvanvbdrnz.supabase.co/auth/v1/token?grant_type=password
-```
-
-**Headers:**
-
-```
-apikey: {{SUPABASE_PUBLISHABLE_KEY}}
-Content-Type: application/json
-```
-
-**Body:**
-
-```json
-{
-  "email": "{{DEMO_EMAIL}}",
-  "password": "{{DEMO_PASSWORD}}"
-}
-```
-
-**Response:**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "expires_in": 3600,
-  ...
-}
-```
-
-### Paso 2: Usar el token
-
-Header para todas las requests:
-
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-> **Nota:** El token expira en 7 días. Si recibes 401, vuelve a hacer Login.
-
-### Ejemplo cURL
 
 ```bash
-# Paso 1: Obtener token
-curl -X POST 'https://czuusjchqpgvanvbdrnz.supabase.co/auth/v1/token?grant_type=password' \
-  -H 'apikey: {{SUPABASE_PUBLISHABLE_KEY}}' \
+# 1. Obtener el token con la identidad de automatización del proyecto
+curl -X POST 'https://<project-ref>.supabase.co/auth/v1/token?grant_type=password' \
+  -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"{{DEMO_EMAIL}}","password":"{{DEMO_PASSWORD}}"}'
+  -d '{"email":"<email>","password":"<password>"}'
 
-# Paso 2: Usar token en API call
-curl 'https://staging-upexsoloq.vercel.app/api/clients' \
-  -H 'Authorization: Bearer <ACCESS_TOKEN_DEL_PASO_1>'
+# 2. Usar el token
+curl 'https://<app-host>/api/<recurso>' \
+  -H 'Authorization: Bearer <access_token del paso 1>'
 ```
 
----
-
-## La Trifuerza de Testing
-
-| MCP         | Para qué sirve                        | Requiere           |
-| ----------- | ------------------------------------- | ------------------ |
-| **OpenAPI** | Invocar endpoints directamente        | Bearer Token SoloQ |
-| **Postman** | Gestionar colecciones, ejecutar tests | API Key Postman    |
-| **DBHub**   | Verificar datos en la base de datos   | Connection string  |
-
-```
-UI (Playwright) + API (OpenAPI/Postman) + DB (DBHub) = Testing Completo 🎯
-```
-
----
-
-## Verificación
-
-Después de configurar, ejecuta tu agente y verifica con:
-
-```
-/mcp
-```
-
-Deberías ver todos los MCPs configurados y sus tools disponibles.
+El token dura lo que dice `expires_in` en la respuesta (en segundos). Ante un 401, pedí uno nuevo. `<project-ref>` está en `NEXT_PUBLIC_SUPABASE_URL`. `<email>` y `<password>` salen de las variables de `.env` que nombra `.agents/project.yaml` → `testing.automation_identity` (`email_var`, `password_var`): una cuenta dedicada de no producción, nunca un usuario creado a mano.
 
 ---
 
 ## Troubleshooting
 
+### 401 / 403 o una tool que falla sin explicación
+
+Variable faltante o vacía (ver [Variables y secretos](#variables-y-secretos)). Corregí `.env` (`bunx varlock load --agent` muestra, redactado, qué valor falla el schema) y reiniciá la sesión.
+
+### El MCP no aparece en `/mcp`
+
+- Revisá la sintaxis del archivo (root key, `command` como array en OpenCode).
+- Codex: confirmá que el repo es trusted.
+- OpenCode: un `{file:}` que apunta a un archivo inexistente invalida todo el config (solo en un config viejo; los de este repo usan el loader de `.env`).
+- Reiniciá la sesión después de cada cambio.
+
+### `bun run agents:compat:check` falla después de agregar un server
+
+El server falta en alguno de los tres archivos, o depende de variables distintas en cada uno. El mensaje nombra el server y el host.
+
 ### Error 400 en OpenAPI
 
-- Asegúrate de incluir `--tools dynamic` en los argumentos
-
-### MCP no aparece en /mcp
-
-- Verifica la sintaxis del archivo de configuración
-- Revisa que el archivo esté en la ubicación correcta
-- Reinicia el agente después de cambiar la configuración
+Falta `--tools dynamic` en los argumentos.
 
 ### Error de conexión en DBHub
 
-- Verifica que el archivo `dbhub.toml` exista en el root
-- Confirma las credenciales de la base de datos
-- Asegúrate de que la base de datos sea accesible desde tu red
-
-### Token expirado en OpenAPI
-
-- Vuelve a ejecutar el flujo de autenticación
-- Actualiza el token en la configuración
-- Reinicia el agente
-
-### Error "command not found" en OpenCode
-
-- Recuerda que `command` debe ser un array: `["npx", "-y", "package"]`
-- No uses string como en Claude: `"command": "npx"` ❌
+- `dbhub.toml` existe en el root y sus `${VAR}` están en `.env`.
+- La base es alcanzable desde tu red (Supabase: pooler en IPv4).
 
 ---
 
 ## Referencias
 
-- [Claude Code MCP Docs](https://docs.anthropic.com/en/docs/claude-code)
-- [OpenCode Config Docs](https://opencode.ai/docs/config/)
-- [Codex CLI MCP Docs](https://developers.openai.com/codex/mcp/)
-- [Gemini CLI MCP Docs](https://geminicli.com/docs/tools/mcp-server/)
+- [Claude Code MCP](https://docs.anthropic.com/en/docs/claude-code/mcp)
+- [OpenCode Config](https://opencode.ai/docs/config/)
+- [Codex MCP](https://developers.openai.com/codex/mcp/)
 - [DBHub Configuration](https://dbhub.ai/config/toml)
 - [OpenAPI MCP Server](https://github.com/ivo-toby/mcp-openapi-server)

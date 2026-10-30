@@ -1,18 +1,17 @@
 # Workflows
 
 > **Idioma:** Español
-> Flujos de trabajo de desarrollo y testing.
+> Flujos de trabajo de desarrollo.
 
 ---
 
 ## Contenido
 
-| Documento                                                                                                                                   | Descripción                                    | Estado        |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------- |
-| [environments.md](./environments.md)                                                                                                        | Ambientes de desarrollo (dev, staging, prod)   | ✅ Disponible |
-| [git-flow.md](./git-flow.md)                                                                                                                | Flujo de trabajo Git para desarrollo AI-driven | ✅ Disponible |
-| [test-manual-lifecycle.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-manual-lifecycle.md)         | TMLC - Flujo de testing manual (qa-repo)       | ✅ Disponible |
-| [test-automation-lifecycle.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/workflows/test-automation-lifecycle.md) | TALC - Flujo de automatización (qa-repo)       | ✅ Disponible |
+| Documento                                        | Descripción                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| [environments.md](./environments.md)             | Ambientes de desarrollo (local, staging, producción)          |
+| [git-flow.md](./git-flow.md)                     | Flujo de trabajo Git para desarrollo AI-driven                |
+| [sync-openapi-guide.md](./sync-openapi-guide.md) | `bun run api:sync`: sincronizar el spec OpenAPI y sus tipos   |
 
 ---
 
@@ -20,11 +19,13 @@
 
 1. **Entender ambientes:** `environments.md`
 2. **Aprender flujo Git:** `git-flow.md`
-3. **Proceso de testing manual:** `test-manual-lifecycle.md`
-4. **Proceso de automatización:** `test-automation-lifecycle.md`
+3. **Consumir una API externa con tipos:** `sync-openapi-guide.md`
+
+El testing manual y la automatización de QA viven en el repo hermano [agentic-qa-boilerplate](https://github.com/upex-galaxy/agentic-qa-boilerplate).
 
 ---
 
 **Ver También:**
 
-- `docs/methodology/IQL-methodology.md` - Fases de IQL que se alinean con estos workflows
+- Skill `/git-flow-master`: el operador de branches, commits, PRs y conflictos (`.agents/skills/git-flow-master/SKILL.md`)
+- Skill `/sprint-development`: el ciclo por historia, de plan a deploy (`.agents/skills/sprint-development/SKILL.md`)

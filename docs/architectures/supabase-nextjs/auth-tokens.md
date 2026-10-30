@@ -2,7 +2,7 @@
 
 > **Idioma:** Español
 > **Nivel:** Intermedio
-> **Audiencia:** QA Engineers que necesitan autenticar requests contra Supabase
+> **Audiencia:** Developers que construyen o exploran la API de un proyecto Supabase + Next.js
 
 ---
 
@@ -12,7 +12,7 @@ Supabase usa JWT (JSON Web Tokens) para autenticación. El mismo token funciona 
 
 - Supabase REST API (`/rest/v1/*`)
 - Supabase Auth API (`/auth/v1/*`)
-- Next.js API Routes (`/api/*`) - via cookie
+- Next.js API Routes (`/api/*`), por header o por la cookie que gestiona el cliente de Supabase
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -32,38 +32,28 @@ Supabase usa JWT (JSON Web Tokens) para autenticación. El mismo token funciona 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-> **Nota:** Next.js API Routes soportan Bearer token (recomendado para testing) y cookies (automático en browser).
+> **Nota:** si tus API Routes aceptan Bearer token además de la cookie, explorarlas con `curl` es directo. El scaffold de `/project-bootstrap` lo documenta en `.agents/skills/project-bootstrap/references/bearer-token-support.md`.
 
 ---
 
 ## Keys de Supabase
 
-Supabase proporciona dos tipos de API keys:
+Supabase proporciona dos tipos de API keys. Este repo usa los nombres del par moderno **publishable + secret** (ver `.env.example`):
 
-| Key              | Nombre                      | Propósito                   |
-| ---------------- | --------------------------- | --------------------------- |
-| **Anon Key**     | `SUPABASE_ANON_KEY`         | Acceso público, respeta RLS |
-| **Service Role** | `SUPABASE_SERVICE_ROLE_KEY` | Bypass RLS, solo backend    |
+| Key           | Variable en `.env`                                                  | Propósito                                     |
+| ------------- | ------------------------------------------------------------------- | --------------------------------------------- |
+| **Publishable** | `SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Acceso público, respeta RLS (el antiguo anon key) |
+| **Secret**    | `SUPABASE_SECRET_KEY`                                               | Bypass de RLS, solo servidor (el antiguo service role key) |
 
-Encuentras ambas en: **Dashboard → Project Settings → API**
+Las encuentras en: **Dashboard → Project Settings → API**
 
-> **Nota (este boilerplate):** `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` son los nombres **legacy** de Supabase. Los proyectos modernos usan el par nuevo **publishable + secret**, y el `.env` de este repo los declara como `SUPABASE_PUBLISHABLE_KEY` (equivale al anon key) y `SUPABASE_SECRET_KEY` (equivale al service role key). Donde este documento diga "Anon Key", usa tu `SUPABASE_PUBLISHABLE_KEY`.
-
-### Anon Key (pública)
-
-```javascript
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
-```
+### Publishable key
 
 - ✅ Segura para exponer en frontend
-- ✅ Respeta RLS policies
-- ⚠️ Solo ve datos que las policies permiten
+- ✅ Respeta las RLS policies
+- ⚠️ Solo ve los datos que las policies permiten
 
-### Service Role Key (secreta)
-
-```javascript
-const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
-```
+### Secret key
 
 - ❌ **NUNCA** exponer en frontend
 - ❌ **NUNCA** commitear a Git
@@ -74,18 +64,20 @@ const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 
 ## Obtener Access Token (Login)
 
-### Via API (Recomendado para Testing)
+### Via API
 
 ```http
-POST https://[PROJECT_REF].supabase.co/auth/v1/token?grant_type=password
+POST https://<project-ref>.supabase.co/auth/v1/token?grant_type=password
 Content-Type: application/json
-apikey: [SUPABASE_ANON_KEY]
+apikey: <SUPABASE_PUBLISHABLE_KEY>
 
 {
-  "email": "user@example.com",
-  "password": "password123"
+  "email": "<email de la cuenta>",
+  "password": "<password de la cuenta>"
 }
 ```
+
+Las credenciales nunca se escriben en un archivo commiteado: salen de `.env`. Para validar la app en vivo, la cuenta es la que declara `testing.automation_identity` en `.agents/project.yaml` (nombres de variables, no valores); el contrato completo está en `.agents/skills/sprint-development/references/live-ui-identity.md`.
 
 ### Response
 
@@ -99,7 +91,7 @@ apikey: [SUPABASE_ANON_KEY]
   "user": {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "email": "user@example.com",
-    "user_metadata": { "name": "Test User" }
+    "user_metadata": { "name": "Example User" }
   }
 }
 ```
@@ -117,16 +109,16 @@ apikey: [SUPABASE_ANON_KEY]
 ### Headers Requeridos
 
 ```http
-GET https://[PROJECT_REF].supabase.co/rest/v1/orders
-apikey: [SUPABASE_ANON_KEY]
-Authorization: Bearer [ACCESS_TOKEN]
+GET https://<project-ref>.supabase.co/rest/v1/orders
+apikey: <SUPABASE_PUBLISHABLE_KEY>
+Authorization: Bearer <ACCESS_TOKEN>
 ```
 
 ### cURL Ejemplo
 
 ```bash
 curl -X GET \
-  'https://czuusjchqpgvanvbdrnz.supabase.co/rest/v1/orders?user_id=eq.123' \
+  'https://<project-ref>.supabase.co/rest/v1/orders?user_id=eq.123' \
   -H 'apikey: eyJhbGciOiJIUzI1NiIs...' \
   -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIs...'
 ```
@@ -136,7 +128,7 @@ curl -X GET \
 ```javascript
 const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?user_id=eq.${userId}`, {
   headers: {
-    apikey: SUPABASE_ANON_KEY,
+    apikey: SUPABASE_PUBLISHABLE_KEY,
     Authorization: `Bearer ${accessToken}`,
   },
 });
@@ -146,18 +138,9 @@ const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?user_id=eq.${userId
 
 ## Usar el Token en Next.js API Routes
 
-Next.js API routes soportan **dos métodos** de autenticación:
+### Opción A: Bearer Token
 
-### Opción A: Bearer Token (Recomendado para Testing)
-
-El método más simple - igual que Supabase REST API:
-
-```http
-GET http://localhost:3000/api/clients
-Authorization: Bearer [ACCESS_TOKEN]
-```
-
-#### cURL Ejemplo
+El mismo formato que la REST API de Supabase:
 
 ```bash
 curl -X GET \
@@ -165,158 +148,11 @@ curl -X GET \
   -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIs...'
 ```
 
-**Ventajas:**
+Funciona igual en `curl`, Postman o un cliente móvil.
 
-- ✅ Simple - mismo formato que Supabase REST
-- ✅ Funciona en Postman, cURL, mobile apps
-- ✅ No requiere construir cookies manualmente
+### Opción B: Cookie (la gestiona el cliente de Supabase)
 
----
-
-### Opción B: Cookie (Automático en Browser)
-
-El browser envía cookies automáticamente. Para testing manual:
-
-#### Estructura de la Cookie
-
-```
-Nombre: sb-[PROJECT_REF]-auth-token
-Valor:  base64(JSON con el token)
-```
-
-### Crear la Cookie Manualmente
-
-```javascript
-// 1. Datos del token
-const tokenData = {
-  access_token: accessToken,
-  refresh_token: refreshToken,
-  expires_at: Math.floor(Date.now() / 1000) + 3600,
-  expires_in: 3600,
-  token_type: 'bearer',
-  user: {
-    id: userId,
-    email: userEmail,
-  },
-};
-
-// 2. Codificar en base64
-const cookieValue = btoa(JSON.stringify(tokenData));
-
-// 3. Nombre de la cookie
-const PROJECT_REF = 'czuusjchqpgvanvbdrnz';
-const cookieName = `sb-${PROJECT_REF}-auth-token`;
-```
-
-### cURL con Cookie
-
-```bash
-# Crear el valor de la cookie
-TOKEN_JSON='{"access_token":"eyJ...","refresh_token":"abc...","token_type":"bearer"}'
-COOKIE_VALUE=$(echo -n "$TOKEN_JSON" | base64)
-
-# Hacer request
-curl -X GET \
-  'http://localhost:3000/api/orders' \
-  -H "Cookie: sb-czuusjchqpgvanvbdrnz-auth-token=$COOKIE_VALUE"
-```
-
----
-
-## Usar en Playwright Tests
-
-### Setup Completo
-
-```typescript
-import { test, expect, Page } from '@playwright/test';
-
-// Configuración
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
-const PROJECT_REF = SUPABASE_URL.split('//')[1].split('.')[0];
-
-interface AuthData {
-  accessToken: string;
-  refreshToken: string;
-  userId: string;
-  email: string;
-}
-
-async function loginViaApi(request: any, email: string, password: string): Promise<AuthData> {
-  const response = await request.post(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    headers: { apikey: ANON_KEY },
-    data: { email, password },
-  });
-
-  const data = await response.json();
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    userId: data.user.id,
-    email: data.user.email,
-  };
-}
-
-async function injectAuthCookie(page: Page, auth: AuthData) {
-  const cookieData = {
-    access_token: auth.accessToken,
-    refresh_token: auth.refreshToken,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: 'bearer',
-    user: { id: auth.userId, email: auth.email },
-  };
-
-  const cookieValue = Buffer.from(JSON.stringify(cookieData)).toString('base64');
-
-  await page.context().addCookies([
-    {
-      name: `sb-${PROJECT_REF}-auth-token`,
-      value: cookieValue,
-      domain: 'localhost',
-      path: '/',
-    },
-  ]);
-}
-
-// Uso en test
-test('authenticated user can access dashboard', async ({ page, request }) => {
-  // 1. Login via API
-  const auth = await loginViaApi(request, 'test@example.com', 'password123');
-
-  // 2. Inyectar cookie
-  await injectAuthCookie(page, auth);
-
-  // 3. Navegar (ya autenticado)
-  await page.goto('/dashboard');
-  await expect(page.locator('.welcome')).toContainText('Welcome');
-});
-```
-
-### Fixture Reutilizable
-
-```typescript
-// fixtures.ts
-import { test as base } from '@playwright/test';
-
-type AuthFixture = {
-  authenticatedPage: Page;
-  authData: AuthData;
-};
-
-export const test = base.extend<AuthFixture>({
-  authenticatedPage: async ({ page, request }, use) => {
-    const auth = await loginViaApi(request, 'test@example.com', 'password123');
-    await injectAuthCookie(page, auth);
-    await use(page);
-  },
-});
-
-// Uso
-test('test with authenticated page', async ({ authenticatedPage }) => {
-  await authenticatedPage.goto('/dashboard');
-  // Ya está autenticado
-});
-```
+En el browser, el cliente de Supabase guarda la sesión en una cookie `sb-<project-ref>-auth-token` después del login y la envía sola. Esa cookie la escribe el login de la app: no se construye a mano. Las skills de este repo prohíben fabricar cookies de sesión o sesiones locales para saltarse el login (`live-ui-identity.md`); para un request fuera del browser, usa la Opción A.
 
 ---
 
@@ -325,26 +161,24 @@ test('test with authenticated page', async ({ authenticatedPage }) => {
 Cuando el `access_token` expira (1 hora por defecto), usa el `refresh_token`:
 
 ```http
-POST https://[PROJECT_REF].supabase.co/auth/v1/token?grant_type=refresh_token
+POST https://<project-ref>.supabase.co/auth/v1/token?grant_type=refresh_token
 Content-Type: application/json
-apikey: [SUPABASE_ANON_KEY]
+apikey: <SUPABASE_PUBLISHABLE_KEY>
 
 {
   "refresh_token": "abc123..."
 }
 ```
 
-Response: Nuevos `access_token` y `refresh_token`.
+Response: nuevos `access_token` y `refresh_token`.
 
 ---
 
 ## Decodificar JWT (Debug)
 
-Para ver qué contiene un JWT:
-
 ### Opción 1: jwt.io
 
-Visita https://jwt.io y pega el token.
+Visita https://jwt.io y pega el token. Solo con tokens de un ambiente que no sea producción.
 
 ### Opción 2: JavaScript
 
@@ -372,31 +206,6 @@ console.log(decoded);
 
 ---
 
-## Test Users Recomendados
-
-Crea usuarios de test en cada ambiente:
-
-| Ambiente | Email                          | Password         | Rol      |
-| -------- | ------------------------------ | ---------------- | -------- |
-| Staging  | `qa.customer@yourproject.test` | `QaCustomer123!` | Customer |
-| Staging  | `qa.admin@yourproject.test`    | `QaAdmin123!`    | Admin    |
-| Dev      | `dev.test@localhost`           | `DevTest123!`    | Customer |
-
-### Crear via SQL
-
-```sql
--- En el SQL Editor de Supabase
-INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, raw_user_meta_data)
-VALUES (
-  'qa.customer@yourproject.test',
-  crypt('QaCustomer123!', gen_salt('bf')),
-  NOW(),
-  '{"name": "QA Customer", "role": "customer"}'::jsonb
-);
-```
-
----
-
 ## Resumen de Endpoints Auth
 
 | Acción             | Method | Endpoint                                  |
@@ -413,7 +222,6 @@ VALUES (
 
 1. **Connection Setup:** [connection-setup.md](./connection-setup.md) - Configurar conexión DB
 2. **Troubleshooting:** [troubleshooting.md](./troubleshooting.md) - Problemas comunes
-3. **Generic Auth:** [../../testing/api/authentication.md](https://github.com/upex-galaxy/agentic-qa-boilerplate/blob/main/docs/testing/api/authentication.md) - Conceptos genéricos
 
 ---
 
