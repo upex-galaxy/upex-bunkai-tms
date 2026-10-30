@@ -1,6 +1,6 @@
 # Skill Registry (auto-generated)
 
-> Generated: `2026-10-15T11:10:51.759Z`
+> Generated: `2026-10-30T14:41:06.998Z`
 > Generator: `bun scripts/build-skill-registry.ts`
 > Protocol: `.agents/skills/agentic-dev-core/references/skill-resolver.md`
 
@@ -35,7 +35,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/accessibility/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\accessibility\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -57,7 +57,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/acli/SKILL.md` · phase: `unknown` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\acli\SKILL.md` · phase: `unknown` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -78,7 +78,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/agentic-dev-core/SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\agentic-dev-core\SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -100,7 +100,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/agentic-dev-onboard/SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\agentic-dev-onboard\SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -129,7 +129,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: you are running any phase of a scheduled run, a gate fires, or the briefing tells you to load the full skill.
 
-> Source: `.agents/skills/autonomous-delivery/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\autonomous-delivery\SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -157,7 +157,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/deploy-to-vercel/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\deploy-to-vercel\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -176,7 +176,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/design-system/SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\design-system\SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -204,7 +204,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/design-taste-frontend/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\design-taste-frontend\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -232,7 +232,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/emil-design-eng/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\emil-design-eng\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -257,7 +257,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/frontend-design/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\frontend-design\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -284,7 +284,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: running Strategy Setup, resolving conflicts, planning the commits of a large change, or when the compact rules above do not settle the operation.
 
-> Source: `.agents/skills/git-flow-master/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\git-flow-master\SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -312,7 +312,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/impeccable/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\impeccable\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -335,7 +335,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the mode is ambiguous, a dry-run diff or migration audit looks wrong, or you need the selected reference's step-by-step phases and verification list.
 
-> Source: `.agents/skills/jira-administration/SKILL.md` · phase: `unknown` · extraction strategy: A
+> Source: `.agents\skills\jira-administration\SKILL.md` · phase: `unknown` · extraction strategy: A
 
 ---
 
@@ -363,7 +363,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-code-javascript/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-code-javascript\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -391,7 +391,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-code-python/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-code-python\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -419,7 +419,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-expression-syntax/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-expression-syntax\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -447,7 +447,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-mcp-tools-expert/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-mcp-tools-expert\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -475,7 +475,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-node-configuration/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-node-configuration\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -503,7 +503,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-validation-expert/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-validation-expert\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -531,7 +531,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/n8n-workflow-patterns/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\n8n-workflow-patterns\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -559,7 +559,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/next-best-practices/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\next-best-practices\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -585,7 +585,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/next-cache-components/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\next-cache-components\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -613,7 +613,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/next-upgrade/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\next-upgrade\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -637,7 +637,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/playwright-cli/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\playwright-cli\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -670,7 +670,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/product-management/SKILL.md` · phase: `management` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\product-management\SKILL.md` · phase: `management` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -690,7 +690,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/project-bootstrap/SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\project-bootstrap\SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -711,7 +711,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the requested mode is ambiguous, a `refresh-all` chain fails mid-sequence, or you need the selected reference's own analysis steps and validation gate.
 
-> Source: `.agents/skills/project-context/SKILL.md` · phase: `unknown` · extraction strategy: A
+> Source: `.agents\skills\project-context\SKILL.md` · phase: `unknown` · extraction strategy: A
 
 ---
 
@@ -731,7 +731,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/project-foundation/SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\project-foundation\SKILL.md` · phase: `foundation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -759,7 +759,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/react-hook-form/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\react-hook-form\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -787,7 +787,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/redesign-existing-projects/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\redesign-existing-projects\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -815,7 +815,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/resend-cli/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\resend-cli\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -843,7 +843,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/seo/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\seo\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -871,7 +871,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/shadcn/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\shadcn\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -898,7 +898,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the stage you are running needs its full walkthrough, a gate fires, or the briefing tells you to load the full skill.
 
-> Source: `.agents/skills/sprint-development/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\sprint-development\SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -926,7 +926,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/supabase/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\supabase\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -954,7 +954,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/supabase-postgres-best-practices/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\supabase-postgres-best-practices\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -974,7 +974,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the audit scope is disputed, a structural-drift flag needs the preserve-list, or the standalone-HTML patch rules are needed.
 
-> Source: `.agents/skills/sync-ai-memory/SKILL.md` · phase: `unknown` · extraction strategy: A
+> Source: `.agents\skills\sync-ai-memory\SKILL.md` · phase: `unknown` · extraction strategy: A
 
 ---
 
@@ -1002,7 +1002,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/tailwind-css-patterns/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\tailwind-css-patterns\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -1020,7 +1020,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/testability-guide/SKILL.md` · phase: `foundation-extension` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\testability-guide\SKILL.md` · phase: `foundation-extension` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -1048,7 +1048,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/typescript-advanced-types/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\typescript-advanced-types\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -1076,7 +1076,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/ui-ux-pro-max/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\ui-ux-pro-max\SKILL.md` · phase: `unknown` · extraction strategy: B
 
 ---
 
@@ -1097,7 +1097,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/unit-testing/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\unit-testing\SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -1122,7 +1122,7 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/vercel-cli/SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
+> Source: `.agents\skills\vercel-cli\SKILL.md` · phase: `implementation` · source: frontmatter `compact_rules` (verbatim)
 
 ---
 
@@ -1150,4 +1150,4 @@ Skills indexed: 44
 
 **Read full SKILL.md when**: the compact rules above are insufficient (e.g. novel scenario, debugging, or the briefing tells you to load the full skill).
 
-> Source: `.agents/skills/zod/SKILL.md` · phase: `unknown` · extraction strategy: B
+> Source: `.agents\skills\zod\SKILL.md` · phase: `unknown` · extraction strategy: B
