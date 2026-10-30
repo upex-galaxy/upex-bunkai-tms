@@ -1,0 +1,153 @@
+{
+  "description": "Labelled prompts for the instruction router of .agents/hooks/personality-reinject.mjs. Each `expect` lists what a careful reader of the AGENTS.md router would load for the prompt: a section id (frontmatter `id`) or an import path. Labels follow the router, not the classifier: a miss or a false hit is fixed in a section's `triggers:`, never by relabelling. Bilingual on purpose (ES/EN).",
+  "targets": {
+    "recall": 0.95,
+    "precision": 0.8
+  },
+  "prompts": [
+    { "prompt": "commit and push these changes", "expect": ["git"] },
+    { "prompt": "abrí un PR contra main con estos cambios", "expect": ["git"] },
+    { "prompt": "tengo un conflicto al hacer merge de staging", "expect": ["git"] },
+    { "prompt": "rebase this branch onto main", "expect": ["git"] },
+    { "prompt": "merge the PR once checks pass", "expect": ["git"] },
+    {
+      "prompt": "create a branch for UPEX-123",
+      "expect": ["git", "ticket-work", "local-context-pbi"]
+    },
+    {
+      "prompt": "implement story UPEX-123 end to end",
+      "expect": ["ticket-work", "local-context-pbi"]
+    },
+    { "prompt": "implementá la historia UPEX-45", "expect": ["ticket-work", "local-context-pbi"] },
+    {
+      "prompt": "fix the login bug reported in BK-88",
+      "expect": ["ticket-work", "local-context-pbi"]
+    },
+    {
+      "prompt": "hay un defecto en el checkout, reportalo",
+      "expect": ["ticket-work", "local-context-pbi"]
+    },
+    {
+      "prompt": "explain the acceptance criteria of UPEX-7",
+      "expect": ["ticket-work", "local-context-pbi", "project-variables"]
+    },
+    {
+      "prompt": "sync the Jira issues into the PBI cache",
+      "expect": ["local-context-pbi", "project-variables"]
+    },
+    {
+      "prompt": "check .context/PBI/UPEX-12 for the plan",
+      "expect": ["ticket-work", "local-context-pbi", "project-variables"]
+    },
+    {
+      "prompt": "actualizá los criterios de aceptación de la épica de pagos",
+      "expect": ["context-map", "local-context-pbi", "project-variables"]
+    },
+    {
+      "prompt": "create the epic for payments in the backlog",
+      "expect": ["context-map", "local-context-pbi", "project-variables"]
+    },
+    {
+      "prompt": "what's the staging URL for this project?",
+      "expect": ["project-variables", ".agents/project.yaml"]
+    },
+    {
+      "prompt": "¿qué valor tiene {{PROJECT_KEY}} acá?",
+      "expect": ["project-variables", ".agents/project.yaml"]
+    },
+    {
+      "prompt": "cambiá el default_env en project.yaml",
+      "expect": ["project-variables", ".agents/project.yaml"]
+    },
+    { "prompt": "how do I run the tests?", "expect": ["package.json"] },
+    { "prompt": "corré lint y types:check", "expect": ["package.json"] },
+    { "prompt": "¿cómo levanto el servidor de desarrollo?", "expect": ["package.json"] },
+    { "prompt": "run bun run repo:check and fix what fails", "expect": ["package.json"] },
+    { "prompt": "¿qué hace el script worktree:provision?", "expect": ["package.json"] },
+    {
+      "prompt": "run the full type checks before pushing",
+      "expect": ["git", "package.json"]
+    },
+    {
+      "prompt": "corré la regresión de unit tests antes de mergear",
+      "expect": ["git", "package.json"]
+    },
+    { "prompt": "rerun the e2e suite after the fix", "expect": ["package.json"] },
+    {
+      "prompt": "edit the UserPromptSubmit hook in .claude/settings.json",
+      "expect": ["harnesses"]
+    },
+    { "prompt": "el updater pisó mi .mcp.json, revisalo", "expect": ["harnesses"] },
+    { "prompt": "the codex hook is not firing", "expect": ["harnesses"] },
+    {
+      "prompt": "add the new MCP server to opencode.jsonc",
+      "expect": ["harnesses", "skills-and-mcps"]
+    },
+    {
+      "prompt": "configurá husky para que corra el lint en pre-commit",
+      "expect": ["harnesses", "package.json"]
+    },
+    {
+      "prompt": "which skill should I use to write a PRD?",
+      "expect": ["skills-and-mcps", "context-map"]
+    },
+    {
+      "prompt": "agregá un modo nuevo a la skill de product-management",
+      "expect": ["skills-and-mcps"]
+    },
+    { "prompt": "refactor the date utils in src/lib/format.ts", "expect": ["code-quickref"] },
+    { "prompt": "revisá este código TypeScript y aplicá DRY", "expect": ["code-quickref"] },
+    { "prompt": "what does src/app/page.tsx render?", "expect": ["code-quickref"] },
+    {
+      "prompt": "launch three workers in parallel, one per story",
+      "expect": ["orchestration-detail"]
+    },
+    { "prompt": "orquestá una flota para el sprint 4", "expect": ["orchestration-detail"] },
+    { "prompt": "dispatch a subagent to research this", "expect": ["orchestration-detail"] },
+    { "prompt": "is breaking rule #5 ok here if I amend?", "expect": ["critical-rules", "git"] },
+    {
+      "prompt": "¿la regla crítica 13 me deja hacer git restore .?",
+      "expect": ["critical-rules", "git"]
+    },
+    {
+      "prompt": "apply the supabase migration for the profiles table",
+      "expect": ["tool-resolution"]
+    },
+    { "prompt": "use gh to list the open PRs", "expect": ["tool-resolution", "git"] },
+    {
+      "prompt": "deploy to vercel staging and check the build",
+      "expect": ["tool-resolution", "project-variables", ".agents/project.yaml"]
+    },
+    { "prompt": "corré playwright-cli contra la home", "expect": ["tool-resolution"] },
+    { "prompt": "update the ADR for the auth decision", "expect": ["context-map"] },
+    { "prompt": "where does the business data map live?", "expect": ["context-map"] },
+    { "prompt": "start the design system for this app", "expect": ["context-map"] },
+    { "prompt": "set up the onboarding for a new teammate", "expect": ["context-map"] },
+    { "prompt": "hola, ¿cómo estás?", "expect": [] },
+    { "prompt": "thanks, that's all", "expect": [] },
+    { "prompt": "explain what this paragraph means", "expect": [] },
+    { "prompt": "write a haiku about autumn", "expect": [] },
+    { "prompt": "resumime lo que hicimos hoy", "expect": [] },
+    {
+      "prompt": "¿qué dice la regla crítica 16 sobre verificar en el destino?",
+      "expect": ["critical-rules"]
+    },
+    { "prompt": "add a new rule sentence to AGENTS.md", "expect": ["harnesses"] },
+    {
+      "prompt": "mové este párrafo de AGENTS.md a una sección de .agents/instructions/",
+      "expect": ["harnesses"]
+    },
+    {
+      "prompt": "the router keeps missing these prompts, tune the triggers of that instruction section",
+      "expect": ["harnesses"]
+    },
+    {
+      "prompt": "<task-notification>\n<task-id>a1b2c3d4</task-id>\n<status>completed</status>\n<summary>Agent \"doc sweep\" completed</summary>\n<result>Done. I committed the hook change and pushed to main; the harness compat check and package.json scripts pass, and .agents/project.yaml now carries the new orchestration keys for the sprint.</result>\n</task-notification>",
+      "expect": []
+    },
+    {
+      "prompt": "<task-notification>\n<task-id>e5f6a7b8</task-id>\n<status>completed</status>\n<summary>Agent \"revisión del sprint\" completed</summary>\n<result>Listo: revisé el sprint actual en Jira, el board muestra 3 historias en review; corrí bun run lint:check y el git status quedó limpio.</result>\n</task-notification>",
+      "expect": []
+    }
+  ]
+}

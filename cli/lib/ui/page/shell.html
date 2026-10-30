@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="/*@@LANG@@*/">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>Agentic Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
+    <style>
+      /*@@CSS@@*/
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <main class="win" aria-live="polite">
+        <div class="titlebar">
+          <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="cmd" id="cmd"></span>
+          <span class="tb-right"
+            ><span class="clock" id="clock">00:00</span><span class="state run" id="state"></span
+          ></span>
+        </div>
+        <div class="body">
+          <nav class="rail" id="rail"></nav>
+          <section class="stream" id="stream">
+            <div class="lanes" id="lanes" hidden></div>
+          </section>
+        </div>
+        <div class="term" id="term">
+          <div class="term-bar">
+            <span id="term-label"></span><button type="button" id="term-toggle"></button>
+          </div>
+          <div class="term-log" id="log" role="log"></div>
+        </div>
+      </main>
+
+      <div class="foot">
+        <span id="foot-note"></span>
+        <span class="grp"><span class="seg" id="theme"></span></span>
+      </div>
+    </div>
+    <script id="ui-config" type="application/json">
+      /*@@CONFIG@@*/
+    </script>
+    <script>
+      /*@@JS@@*/
+    </script>
+  </body>
+</html>

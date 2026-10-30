@@ -224,6 +224,29 @@ export interface PackageJsonKeptKey {
   resolution: 'skip' | 'mine'
 }
 
+/**
+ * `--adopt` only: a path upstream would deliver that the adopting app already
+ * carries with different content. Never written: the wrapper reports it and
+ * protects it (`updater.protected_paths`) so a later sync never overwrites it.
+ */
+/** An upstream `.gitignore` line withheld on an adopted app: it matches files the app tracks. */
+export interface IgnoreLineWithheld {
+  file: string
+  line: string
+  /** Up to a few tracked paths it would hide (the evidence). */
+  tracked: string[]
+}
+
+export interface AdoptCollision {
+  path: string
+  component: string
+  /**
+   * The app carries a file at a path upstream RETIRED (`deprecatedFiles`):
+   * kept and protected like any collision, never deleted by the adopt run.
+   */
+  retired?: boolean
+}
+
 export interface RunSummary {
   applied: AppliedFile[]
   skipped: DeltaEntry[]
@@ -248,6 +271,10 @@ export interface RunSummary {
   lastApplyPaths?: number
   /** Set by the wrapper's parity hook when it saved the prompt file (`UpdaterConfig.promptFile`). */
   promptSaved?: boolean
+  /** `--adopt` only: app files kept because upstream ships a different file at the same path. */
+  adoptCollisions?: AdoptCollision[]
+  /** Adopted repos only: upstream ignore lines NOT appended because they would hide files the app tracks. */
+  ignoreLinesWithheld?: IgnoreLineWithheld[]
 }
 
 export interface MergeResult {
@@ -263,6 +290,8 @@ export interface DeprecatedFile {
   component: string
   reason: string
   deprecatedSince: string
+  /** Copy the file under the run's `.backups/update-*` folder before removing it (a file the project may have edited). */
+  backup?: boolean
 }
 
 export interface GitVersion {
@@ -324,7 +353,7 @@ export interface IgnoreDelta {
  * package you may not use appears in your manifest" — whereas the cost of
  * excluding it is that the `cli` component, which is synced wholesale and
  * imports several packages declared only here, ships code without the package
- * and leaves `bun run up` crashing on import in every downstream repo.
+ * and leaves `bun sync` crashing on import in every downstream repo.
  *
  * `lint-staged` is included for the same reason: `.husky/pre-commit` is synced
  * and shells out to `bunx lint-staged`, whose config lives in package.json and
@@ -523,7 +552,7 @@ export interface UpdaterConfig {
    *
    * The scaffold side is enforced separately by `TEMPLATE_EXCLUDES` in
    * `packages/create-agentic-dev/src/prepare.ts`; a sync-reachable entry
-   * usually belongs in both, or `bun run up` re-delivers what the scaffold
+   * usually belongs in both, or `bun sync` re-delivers what the scaffold
    * pruned.
    */
   repoOnlyPaths?: string[]
@@ -535,6 +564,20 @@ export interface UpdaterConfig {
    */
   sparseExtraPaths?: string[]
   agentsFrameworkFiles?: string[]
+  /**
+   * On top of `repoOnlyPaths`, matched against the repo-relative path: upstream
+   * paths this repo never receives. The wrapper sets it for an ADOPTED app
+   * only (the `--adopt` run and every run after it), e.g. the boilerplate's own
+   * numbered ADRs, which would land in the app's decision log and numbering.
+   * Unset on a greenfield project, which keeps receiving them.
+   */
+  repoOnlyPatterns?: RegExp[]
+  /**
+   * The repo is an adopted app (this `--adopt` run, or any run after one). An
+   * upstream `.gitignore` line that would hide a file the app tracks is
+   * withheld (`RunSummary.ignoreLinesWithheld`), never appended.
+   */
+  adopted?: boolean
   /**
    * Optional component name (e.g. `'cli'`) whose files contain the updater itself.
    * When set, runUpdate performs a Phase 0 self-update: if any file under this
@@ -552,5 +595,13 @@ export interface UpdaterConfig {
   hooks?: {
     afterApply?: (summary: RunSummary) => Promise<void>
     skillsResolver?: (templateDir: string) => string[]
+    /**
+     * Runs right before the process hands itself to another updater (the
+     * self-update re-exec, or the upstream updater a `--dry-run` previews
+     * with). The parent's event loop is blocked while the child runs, so a
+     * live page must be handed over here: the hook stops what it serves and
+     * returns the env the child needs to pick it up (installer-ui plan §6).
+     */
+    beforeReexec?: (info: { kind: 'self-update' | 'preview', from: string, to: string }) => Promise<Record<string, string>>
   }
 }

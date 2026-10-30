@@ -72,6 +72,26 @@ export type VarValueSource = 'env-file' | 'atlassian-instance';
  */
 export type VarRequired = boolean | { ifEnv: string };
 
+/**
+ * What the generated varlock schema (`.env.core.schema`, see
+ * `cli/lib/env-schema.ts`) says about a variable beyond its name and its
+ * sensitivity (`secret` becomes `@sensitive`). Documentation and typing only:
+ * the schema requires nothing (ADR-0010), so there is no `required` here.
+ *
+ *   - `type`     an env-spec type expression, e.g. `email`, `url`. Omitted = string.
+ *   - `example`  placeholder printed as `@example` (documentation only).
+ *   - `docs`     URL printed as `@docs(...)`.
+ *
+ * No schema DEFAULT on purpose: `varlock run` injects a default into every
+ * process it launches, the agent session included, and a value nobody typed is
+ * the kind of copy this design removes.
+ */
+export interface VarSchemaHints {
+  type?: string
+  example?: string
+  docs?: string
+}
+
 export interface VarSpec {
   /** UPPER_SNAKE_CASE env-var name, exactly as it appears in `.env.example`. */
   name: string
@@ -101,7 +121,8 @@ export interface VarSpec {
    * CRITICAL = project-independent TOOL credential, prompted interactively
    * during the NORMAL installer (`configureMcps` / `configureDayZeroCredentials`).
    * Identical in both boilerplates: ATLASSIAN_URL/EMAIL/API_TOKEN (Jira/acli),
-   * RESEND_API_KEY (email testing), TAVILY_API_KEY (pre-configured Tavily MCP).
+   * RESEND_API_KEY (email testing). Web search is not here: it runs at harness
+   * level and keeps its key outside `.env` (`harness-level-mcps.ts`).
    * Everything else is non-critical: never asked at install, never warned about,
    * surfaced only in the closing "Next steps" with an `obtainHint`.
    */
@@ -114,13 +135,15 @@ export interface VarSpec {
   obtainHint?: string
   /**
    * Auto-provisioned by the Supabase↔Vercel integration and PULLED via
-   * `vercel env pull` (only available inside `bun run setup --variables`, since
+   * `vercel env pull` (only available inside `bun setup --variables`, since
    * at install time the infra does not exist yet). These vars are NEVER asked
    * at install and NEVER listed individually in the closing next-steps.
    */
   pulledFromInfra?: true
   /** Human note (provenance / where to get the value / why it's tracked). */
   note: string
+  /** Schema-only hints for `.env.core.schema`. See `VarSchemaHints`. */
+  schema?: VarSchemaHints
 }
 
 export interface DeprecatedVar {
@@ -174,6 +197,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: true,
     note: 'Atlassian account email (acli + scripts/sync-jira-*.ts). Critical tool credential — prompted at install.',
+    schema: { type: 'email', docs: 'https://id.atlassian.com/manage-profile/security/api-tokens' },
   },
   {
     name: 'ATLASSIAN_API_TOKEN',
@@ -182,6 +206,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: true,
     note: 'Atlassian API token (acli + scripts/sync-jira-*.ts). Critical tool credential — prompted at install.',
+    schema: { docs: 'https://id.atlassian.com/manage-profile/security/api-tokens' },
   },
   {
     name: 'RESEND_API_KEY',
@@ -191,14 +216,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: true,
     note: 'Resend API key (transactional email + resend CLI auth). Critical tool credential — prompted at install; app runtime → also reaches Vercel.',
-  },
-  {
-    name: 'TAVILY_API_KEY',
-    destinations: ['local'],
-    secret: true,
-    required: true,
-    critical: true,
-    note: 'Tavily web-search MCP API key. Critical tool credential — prompted at install.',
+    schema: { docs: 'https://resend.com/api-keys' },
   },
   // --- Supabase project backend (auto-provisioned; pulled from Vercel) ---
   {
@@ -209,8 +227,9 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Supabase project URL (browser-safe). App runtime. Vercel+Supabase integration generates only this var.',
+    schema: { type: 'url', example: 'https://<project-ref>.supabase.co' },
   },
   {
     name: 'SUPABASE_PUBLISHABLE_KEY',
@@ -220,8 +239,18 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Supabase new-style publishable key (browser-safe, replaces anon key).',
+  },
+  {
+    name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+    destinations: ['local', 'vercel'],
+    scopes: ALL_SCOPES,
+    secret: false,
+    required: true,
+    critical: false,
+    obtainHint: 'Same value as SUPABASE_PUBLISHABLE_KEY (Supabase dashboard → Project Settings → API). The Supabase↔Vercel integration does not provision this name: set it in .env and in Vercel by hand.',
+    note: 'Browser-side copy of the publishable key, read by the Supabase browser client (Next.js only inlines NEXT_PUBLIC_* into client bundles). The legacy NEXT_PUBLIC_SUPABASE_ANON_KEY still works while Supabase keeps the legacy pair.',
   },
   {
     name: 'SUPABASE_SECRET_KEY',
@@ -231,7 +260,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Supabase new-style secret key (server only, replaces service_role).',
   },
   {
@@ -242,7 +271,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Secret used to sign / verify custom JWTs. Known to doctor but not the installer today.',
   },
   // --- Postgres direct connection (auto-provisioned; pulled from Vercel) ---
@@ -254,7 +283,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Direct Postgres host for the Supabase project (db.<project-ref>.supabase.co).',
   },
   {
@@ -265,8 +294,9 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Postgres user (default: postgres).',
+    schema: { example: 'postgres' },
   },
   {
     name: 'POSTGRES_PASSWORD',
@@ -276,7 +306,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Postgres password for the project.',
   },
   {
@@ -287,8 +317,9 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Postgres database name (default: postgres).',
+    schema: { example: 'postgres' },
   },
   {
     name: 'POSTGRES_URL',
@@ -298,7 +329,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Pooled Postgres connection string (port 6543). Contains the password → secret.',
   },
   {
@@ -309,7 +340,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Direct Postgres connection string (port 5432). Contains the password → secret.',
   },
   {
@@ -320,7 +351,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`.',
     note: 'Pooled connection with pgbouncer=true (for Prisma ORM). Contains the password → secret.',
   },
   // --- App config (auto-provisioned for the deployed URL; pulled from Vercel) ---
@@ -332,8 +363,9 @@ export const VAR_MANIFEST: VarSpec[] = [
     required: true,
     critical: false,
     pulledFromInfra: true,
-    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun run setup --variables`. Defaults to http://localhost:3000 locally.',
+    obtainHint: 'Auto-provisioned by Supabase↔Vercel — pull with `vercel env pull` via `bun setup --variables`. Defaults to http://localhost:3000 locally.',
     note: 'Base URL for auth redirects, OAuth callbacks, email links. Referenced in code; previously untracked by installer AND doctor.',
+    schema: { type: 'url', example: 'http://localhost:3000' },
   },
   // --- Automation identity (live-UI validation + authenticated HTTP probes) ---
   // The account browser/HTTP automation logs in as while validating a story
@@ -356,6 +388,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     critical: false,
     obtainHint: 'Provision a DEDICATED non-production account (no real data, minimum privileges), then declare its var name in `.agents/project.yaml` → testing.automation_identity.email_var. Never a real user, admin, or production account.',
     note: 'Email of the automation identity used by live-UI validation / authenticated HTTP probes. Local only.',
+    schema: { type: 'email', example: 'qa.automation@example.test' },
   },
   {
     name: 'QA_E2E_USER_PASSWORD',
@@ -375,6 +408,7 @@ export const VAR_MANIFEST: VarSpec[] = [
     critical: false,
     obtainHint: 'Your n8n instance → Settings → API (e.g. https://n8n.yourapp.com/api/v1). Only needed if you use the n8n MCP server.',
     note: 'n8n instance API URL for the n8n MCP server (project-bound). Local only.',
+    schema: { type: 'url', example: 'https://n8n.example.test/api/v1' },
   },
   {
     name: 'N8N_API_KEY',
@@ -458,9 +492,8 @@ export function envFileVars(): VarSpec[] {
 
 /**
  * The CRITICAL tool credentials — project-independent vars prompted interactively
- * during the normal installer (ATLASSIAN_URL/EMAIL/API_TOKEN, RESEND_API_KEY,
- * TAVILY_API_KEY). Drives `install.ts`'s day-0 prompt set. Identical in both
- * boilerplates.
+ * during the normal installer (ATLASSIAN_URL/EMAIL/API_TOKEN, RESEND_API_KEY).
+ * Drives `install.ts`'s day-0 prompt set.
  */
 export function criticalVars(): VarSpec[] {
   return VAR_MANIFEST.filter(spec => spec.critical);
@@ -469,7 +502,7 @@ export function criticalVars(): VarSpec[] {
 /**
  * Non-critical vars surfaced in the installer's closing "Next steps — finish
  * later" section. EXCLUDES `pulledFromInfra` vars (auto-provisioned by the
- * Supabase↔Vercel infra and pulled via `bun run setup --variables` — they are
+ * Supabase↔Vercel infra and pulled via `bun setup --variables` — they are
  * covered by a single distinct next-steps line, never listed individually).
  */
 export function nextStepsVars(): VarSpec[] {

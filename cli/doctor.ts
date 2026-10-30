@@ -7,24 +7,22 @@
  * AI agents driving the setup: parse the JSON, take action on each
  * pending_actions entry, then re-run until status === "ok".
  *
- * Besides env vars / direnv / deps it diagnoses the cross-harness contract
+ * Besides env vars / deps it diagnoses the cross-harness contract
  * (`agent_compatibility`): AGENTS.md + the CLAUDE.md shim, the canonical
- * `.agents/skills` store + its Claude alias, the generated command wrappers,
- * the three hook adapters and MCP parity across `.mcp.json` / `opencode.jsonc`
- * / `.codex/config.toml`. Codex repository TRUST is runtime state no file
- * check can verify, so it is always a WARN row, never a FAIL.
+ * `.agents/skills` store + its Claude alias, the commands that would shadow a
+ * skill, the hook adapters and MCP parity across `.mcp.json` / `opencode.jsonc`
+ * / `.codex/config.toml`, each only for a harness the project uses (ADR-0013).
+ * Codex repository TRUST is runtime state no file check can verify, so it is
+ * always a WARN row, never a FAIL.
  *
  * Usage:
  *   bun run setup:doctor              # human-readable summary
  *   bun run setup:doctor --json       # machine-readable JSON
- *   bun run setup:doctor --preflight  # blocker-only gate for `bun run setup`
+ *   bun run setup:doctor --preflight  # alias of `bun cli/preflight.ts --for setup --gate`
  *
- * --preflight mode: minimal pre-install gate. Checks only the things that
- * would crash `cli/install.ts` at module-load time (Bun runtime present and
- * recent enough, `node_modules/@inquirer/prompts` resolvable). Skips env
- * vars, MCPs, direnv, external CLIs — those are install.ts's job. Uses only
- * node built-ins so it runs safely before `bun install`. Wired into the
- * `setup` npm script as `bun cli/doctor.ts --preflight && bun cli/install.ts`.
+ * --preflight mode: an alias of the setup gate in `cli/preflight.ts` (Bun
+ * recent enough, dependencies installed, `bun install` run when they are
+ * missing). The full pre-run checklist runs inside `bun setup` itself.
  *
  * Exit code:
  *   0 if status === "ok"     (full mode) or preflight passes
@@ -35,12 +33,15 @@
 
 import type { CompatibilityCheck, CompatibilityErrorGroup } from './lib/agent-compatibility.ts';
 import type { AtlassianUrlSource } from './lib/atlassian-instance.ts';
-import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import type { CheckFinding as HarnessEnvFinding } from './lib/harness-env.ts';
+import type { HarnessLevelVerdict } from './lib/harness-level-mcps.ts';
+import type { Harness } from './lib/harness-selection.ts';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
 
 import { join, resolve } from 'node:path';
+import { analyzeIsolation } from './lib/adopt-isolation.ts';
 import {
   declaredMcpIds,
   validateHookCompatibility,
@@ -48,7 +49,6 @@ import {
 } from './lib/agent-compatibility-contracts.ts';
 import {
   checkAgentCompatibility,
-  commandWrapperCounts,
   describeAliasStatus,
   groupCompatibilityErrors,
   validateCanonicalSources,
@@ -57,7 +57,13 @@ import {
   formatInstanceMismatchWarning,
   resolveAtlassianInstance,
 } from './lib/atlassian-instance.ts';
+import { contextMapAdvice, contextMapStatuses } from './lib/context-maps.ts';
+import { CORE_SCHEMA_FILE, deprecatedEnvKeysIn, neutralizeDeprecatedKeys, PROJECT_SCHEMA_FILE, varlockInstalled } from './lib/env-schema.ts';
+import { harnessLevelMcpReport } from './lib/harness-level-mcps.ts';
+import { HARNESS_LABEL } from './lib/harness-selection.ts';
+import { detectHookManager } from './lib/hook-manager.ts';
 import { DEPRECATED_VARS, varsFor } from './lib/variables-manifest.ts';
+import { checkoutRoots } from './lib/worktree.ts';
 
 // `tui` pulls third-party deps (boxen/cli-table3/figures/picocolors). It is
 // imported lazily inside main() so `--preflight` loads only node built-ins and
@@ -73,12 +79,7 @@ const ENV_PATH = join(REPO_ROOT, '.env');
 const MCP_PATH = join(REPO_ROOT, '.mcp.json');
 const OPENCODE_PATH = join(REPO_ROOT, 'opencode.jsonc');
 const CODEX_CONFIG_PATH = join(REPO_ROOT, '.codex', 'config.toml');
-const NODE_MODULES_DOTENV = join(REPO_ROOT, 'node_modules', 'dotenv-cli');
-// --preflight mode resolves install.ts's only third-party import.
-const INQUIRER_MARKER = join(REPO_ROOT, 'node_modules', '@inquirer', 'prompts', 'package.json');
-
-// Minimum Bun version that install.ts is known to work with.
-const MIN_BUN: readonly [number, number, number] = [1, 0, 0];
+const NODE_MODULES_VARLOCK = join(REPO_ROOT, 'node_modules', 'varlock', 'package.json');
 
 // Required MCP env vars (mirrors MCP_SERVER_SECRETS in cli/install.ts).
 // ATLASSIAN_* are the canonical credentials consumed by acli and
@@ -104,7 +105,6 @@ const MIN_BUN: readonly [number, number, number] = [1, 0, 0];
 // checked separately (see the Atlassian-host block in `buildReport`). Listing it
 // here would report `missing` forever on a correctly configured repo.
 const DAY_ZERO_VARS = [
-  'TAVILY_API_KEY',
   'RESEND_API_KEY',
   'ATLASSIAN_EMAIL',
   'ATLASSIAN_API_TOKEN',
@@ -114,8 +114,8 @@ const DAY_ZERO_VARS = [
 // Project-bound vars are derived from the canonical VAR_MANIFEST (single source
 // of truth — kills the prior install/doctor drift where doctor knew 13 vars and
 // the installer 5). They are the manifest's NON-critical vars (Supabase /
-// Postgres / app-runtime / n8n). The CRITICAL tool credentials (TAVILY_API_KEY,
-// ATLASSIAN_*, RESEND_API_KEY) also live in the manifest now but are day-zero
+// Postgres / app-runtime / n8n). The CRITICAL tool credentials (ATLASSIAN_*,
+// RESEND_API_KEY) also live in the manifest now but are day-zero
 // (prompted at install), so they are excluded here to avoid double-listing with
 // DAY_ZERO_VARS. SUPABASE_ACCESS_TOKEN stays day-zero (not in the manifest).
 const PROJECT_BOUND_VARS: readonly string[] = varsFor('local')
@@ -136,10 +136,6 @@ const REQUIRED_VARS: readonly string[] = [...DAY_ZERO_VARS, ...PROJECT_BOUND_VAR
 const LEGACY_JIRA_CRED_KEYS: readonly string[] = DEPRECATED_VARS.map(d => d.name);
 
 const VAR_HINTS: Record<string, { hint: string, where: string }> = {
-  TAVILY_API_KEY: {
-    hint: 'Tavily web-search MCP API key',
-    where: 'https://app.tavily.com/  →  account  →  API keys',
-  },
   RESEND_API_KEY: {
     hint: 'Resend API key (transactional email + resend CLI auth)',
     where: 'https://resend.com/api-keys  (docs: https://resend.com/docs/api-reference/introduction)',
@@ -162,6 +158,10 @@ const VAR_HINTS: Record<string, { hint: string, where: string }> = {
   },
   SUPABASE_PUBLISHABLE_KEY: {
     hint: 'Supabase new-style publishable key (browser-safe, replaces anon key)',
+    where: 'Supabase dashboard → Project Settings → API',
+  },
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: {
+    hint: 'Browser-side copy of SUPABASE_PUBLISHABLE_KEY (not provisioned by the Vercel integration: set by hand)',
     where: 'Supabase dashboard → Project Settings → API',
   },
   SUPABASE_SECRET_KEY: {
@@ -218,7 +218,7 @@ const VAR_HINTS: Record<string, { hint: string, where: string }> = {
 // Types
 // ----------------------------------------------------------------------------
 
-type PendingActionType = 'credential' | 'shell_hook' | 'system_install' | 'shell_command';
+type PendingActionType = 'credential' | 'system_install' | 'shell_command';
 
 interface PendingAction {
   type: PendingActionType
@@ -227,29 +227,72 @@ interface PendingAction {
   where?: string
 }
 
-interface DirenvState {
-  installed: boolean
-  version?: string
-  envrc_allowed?: boolean
-  hook_in_rc?: boolean
-  rc_file?: string
+/** What setup a linked worktree lacks, as the worktree-aware fix reads it. */
+export interface WorktreeSetupState {
+  envFile: boolean
+  deps: boolean
+  /** `.husky/_/` exists: without it `core.hooksPath` points at nothing and no git hook runs. */
+  gitHooks: boolean
+}
+
+/**
+ * The fix for missing setup inside a LINKED worktree, or null when nothing is
+ * missing. One command, `bun run worktree:provision`: it copies the real
+ * `.env` (and `.vercel/`, local settings) from the primary checkout and
+ * installs dependencies and git hooks. The primary-checkout answer
+ * (`cp .env.example .env`) is the wrong one here: it leaves the worktree with
+ * an empty template while the filled `.env` sits one directory away.
+ */
+/**
+ * Split the retired credential names set in `.env` into the ones to remove
+ * and the ones an adopted app declares as its own (`appOwned`: the keys of the
+ * app's part of `.env.example`, empty on a greenfield repo). Telling the app
+ * to delete its own variable would break whatever in the app reads it.
+ */
+export function legacyCredentialKeys(envValues: Record<string, string>, appOwned: ReadonlySet<string>): { remove: string[], appOwned: string[] } {
+  const set = LEGACY_JIRA_CRED_KEYS.filter((key) => {
+    const value = envValues[key];
+    return value !== undefined && value.trim().length > 0;
+  });
+  return { remove: set.filter(k => !appOwned.has(k)), appOwned: set.filter(k => appOwned.has(k)) };
+}
+
+export function worktreeSetupAction(state: WorktreeSetupState): PendingAction | null {
+  const missing = [
+    state.envFile ? null : '.env',
+    state.deps ? null : 'node_modules/',
+    state.gitHooks ? null : '.husky/_ (git hooks)',
+  ].filter((m): m is string => m !== null);
+  if (missing.length === 0) { return null; }
+  return {
+    type: 'shell_command',
+    target: 'bun run worktree:provision',
+    hint: `This is a linked worktree missing ${missing.join(', ')}. Provisioning copies .env and the other gitignored inputs from the primary checkout and installs dependencies and git hooks. Do not copy .env.example here: every MCP server reads this worktree's own .env through the .env loader, and a template one hands them empty values.`,
+  };
 }
 
 export interface AgentCompatibilityDiagnostic {
-  /** Every file-verifiable part of the contract holds (alias, wrappers, hooks, MCP parity, shim). */
+  /** Every file-verifiable part of the contract holds (alias, hooks, MCP parity, shim). */
   file_correct: boolean
   errors: string[]
   /** Errors bucketed per surface, so "alias pending" and "MCP drift" never read as one flat failure. */
   errors_by_surface: Array<{ group: CompatibilityErrorGroup, label: string, errors: string[] }>
   /** The alias on its own, whatever the verdict: `deferred` is expected right after the migration. */
   alias: CompatibilityCheck['alias']
+  /**
+   * The harnesses checked (`declaredHarnesses`, ADR-0013). A harness outside
+   * this list is `not used`: its per-host flags below read `true` and no row
+   * or action names its files.
+   */
+  harnesses: Harness[]
+  /** One line per skipped harness (`CompatibilityCheck.notes`). */
+  notes: string[]
   instructions: {
     agents_md: boolean
     claude_shim: boolean
     canonical_skills: boolean
     claude_alias: boolean
   }
-  command_wrappers: { expected: number, claude: number, opencode: number, ok: boolean }
   hooks: { claude: boolean, opencode: boolean, codex: boolean, ok: boolean }
   mcp: { expected_servers: number, claude: boolean, opencode: boolean, codex: boolean, parity: boolean }
   codex: {
@@ -288,13 +331,138 @@ interface DoctorReport {
    */
   atlassian_host: AtlassianHostState
   legacy_jira_cred_keys: string[]
+  /** Retired tooling names an adopted app declares as its own variables: kept, never a removal. */
+  app_owned_retired_keys: string[]
   mcp_json_exists: boolean
   opencode_jsonc_exists: boolean
   codex_config_exists: boolean
   agent_compatibility: AgentCompatibilityDiagnostic
   deps_installed: boolean
-  direnv: DirenvState
+  /** Linked worktree: the primary checkout's root; null in the primary itself. */
+  worktree_of: string | null
+  /** Servers that run at harness level, classified against the user-level configs (never a value). */
+  harness_level_mcps: { verdicts: HarnessLevelVerdict[], sources: string[] }
+  /**
+   * Business context maps still to generate, one line each (cli/lib/context-maps.ts).
+   * Informational, never a pending action: a `project-context` mode writes the
+   * map, and an old `.context/business/` markdown map beside it is kept as input.
+   */
+  context_maps: string[]
+  /**
+   * Whether a plaintext copy of an MCP credential is still on disk.
+   *
+   * Every MCP server reads `.env` itself through the `.env` loader (ADR-0012),
+   * so the copies an older `bun run harness:env` generated
+   * (`.claude/settings.local.json` env block, `.auth/opencode/`) are only a
+   * leak surface the AI can read. A stale copy is a pending action
+   * (`bun run harness:env` retires it); a copy a legacy host config still
+   * reads, and a backup waiting for the human, are informational.
+   *
+   * `findings` carries variable NAMES and a verdict only, never a value.
+   */
+  harness_env: HarnessEnvDiagnostic
+  /**
+   * Where secret VALUES come from (`.agents/project.yaml` -> `secrets:`,
+   * ADR-0011) and whether the committed overlay agrees. NAMES only.
+   */
+  secrets_provider: SecretsProviderDiagnostic
+  /**
+   * Which key paths upstream's `.agents/project.schema.yaml` declares that this
+   * project's `.agents/project.yaml` does not have.
+   *
+   * NEVER a failure. Being behind upstream is not a broken repo, and the moment
+   * an upstream key addition turns a project's own checks red, the project
+   * learns to skip them. `bun sync` is where it becomes actionable; here it
+   * is the answer to "why is my project behaving oddly".
+   */
+  project_schema: ProjectSchemaDiagnostic
+  /**
+   * The `stack:` block of `.agents/project.yaml` against the repo it
+   * describes (cli/lib/stack-descriptor.ts). NEVER a failure, like
+   * `project_schema`: a stale descriptor is a wrong command in a skill later,
+   * and the fix is one `agents:setup --stack`, not a red doctor today.
+   */
+  stack: StackDiagnosticReport
+  /**
+   * On an ADOPTED app (installer lock `adopted: true`): the app configs that
+   * still reach the tooling (`cli/lib/adopt-isolation.ts`). The adoption never
+   * edits them, so after the `--adopt` run this is the only place that keeps
+   * saying so. NEVER a failure: the fix is a hand edit of the app's file.
+   */
+  tooling_isolation: { adopted: boolean, pending: string[] }
+  /**
+   * The developer's `.env` against the committed varlock schema
+   * (`.env.schema` + `.env.core.schema`), plus which varlock is reachable.
+   * The verdict comes from `varlock load --agent`, whose output is redacted:
+   * `errors` carries varlock's own diagnostic lines, item NAMES only.
+   */
+  env_schema: EnvSchemaDiagnostic
   pending_actions: PendingAction[]
+}
+
+export interface EnvSchemaDiagnostic {
+  /** Both schema files present at the repo root. */
+  schema_present: boolean
+  /**
+   * `standalone`: a `varlock` binary on PATH (what a harness-spawned process finds).
+   * `devDependency`: only `node_modules/varlock` (what the gates use).
+   * `missing`: neither.
+   */
+  binary: 'standalone' | 'devDependency' | 'missing'
+  binary_version: string | null
+  /** `skipped` when the schema or the devDependency is absent. */
+  validation: 'ok' | 'invalid' | 'skipped'
+  /** Resolved item count on `ok`; names only ever reach this report. */
+  items: number
+  /** varlock's redacted diagnostic lines on `invalid`. */
+  errors: string[]
+}
+
+interface StackDiagnosticReport {
+  present: boolean
+  app_found: boolean
+  issues: Array<{ path: string, message: string }>
+  unsupported: Array<{ path: string, message: string }>
+  drift: Array<{ path: string, declared: string | null, detected: string | null, evidence: string }>
+  note: string | null
+}
+
+interface ProjectSchemaDiagnostic {
+  /** Key paths the schema declares and this project lacks, grouped by block. */
+  gaps: Array<{ block: string, paths: string[], wholeBlock: boolean }>
+  /** Blocks silenced through `updater.schema_exempt`. */
+  exempt: string[]
+  /** Set when nothing could be compared: a parse failure, or no schema on disk. */
+  note: string | null
+  /**
+   * True when `.agents/project.yaml` is the boilerplate maintainers' own copy
+   * in a repo that is not the boilerplate (GitHub "Use this template"). A
+   * warning, never a failure: `bun run agents:setup` is the fix.
+   */
+  copied_template: boolean
+}
+
+interface HarnessEnvDiagnostic {
+  /** false when at least one blocking finding stands. */
+  ok: boolean
+  /** One line: how many stale copies remain, or that none does. */
+  summary: string
+  /** The MCP credential names the configs declare, for the record. Never their values. */
+  allowlist: string[]
+  findings: Array<Omit<HarnessEnvFinding, 'kind'> & { kind: HarnessEnvFinding['kind'] | 'check-failed' }>
+}
+
+export interface SecretsProviderDiagnostic {
+  /** `secrets.provider`, or null when the block could not be read (see `note`). */
+  provider: string | null
+  /** `.env.provider.schema` (references only) is on disk. */
+  overlay_present: boolean
+  /** NAMES the overlay resolves from the manager (active item lines). */
+  vault_items: string[]
+  /** The manager's CLI is on PATH; null when the provider needs none. */
+  cli_installed: boolean | null
+  /** Set when the yaml block could not be parsed. */
+  note: string | null
 }
 
 // ----------------------------------------------------------------------------
@@ -334,84 +502,151 @@ function parseEnvFile(content: string): Record<string, string> {
   return out;
 }
 
-async function detectDirenv(): Promise<DirenvState> {
-  const version = tryRun('direnv', ['version']);
-  if (!version.ok) { return { installed: false }; }
+// ----------------------------------------------------------------------------
+// Plaintext MCP credential copies
+// ----------------------------------------------------------------------------
 
-  const status = tryRun('direnv', ['status']);
-  // Modern direnv prints `Found RC allowed 0` (0 = Allow); older variants used
-  // `true`. Match the numeric enum and treat 0 (or legacy true) as allowed.
-  const allowMatch = status.stdout.match(/Found RC allowed (\d+|true)/);
-  const envrcAllowed = allowMatch !== null && (allowMatch[1] === '0' || allowMatch[1] === 'true');
-
-  const candidates = ['.bashrc', '.zshrc', '.bash_profile', '.profile'];
-  let hookInRc = false;
-  let rcFile: string | undefined;
-  for (const file of candidates) {
-    const path = join(homedir(), file);
-    if (!existsSync(path)) { continue; }
-    try {
-      const content = await readFile(path, 'utf8');
-      if (/\bdirenv\s+hook\b/.test(content)) {
-        hookInRc = true;
-        rcFile = path;
-        break;
-      }
-    }
-    catch {
-      // skip unreadable files (permissions, broken symlinks)
-    }
+/**
+ * The plaintext MCP credential copies an older install left on disk
+ * (`bun run harness:env --check`, as data).
+ *
+ * DYNAMIC import: `cli/lib/harness-env.ts` imports `cli/install.ts`, which pulls
+ * third-party packages at module load, and this module must stay loadable with
+ * node built-ins only for `--preflight`. Try-wrapped because a doctor that
+ * crashes on the thing it was meant to diagnose is useless.
+ */
+async function harnessEnvDiagnostic(): Promise<HarnessEnvDiagnostic> {
+  try {
+    const { check } = await import('./lib/harness-env.ts');
+    const result = check(REPO_ROOT);
+    return { ok: result.ok, summary: result.summary, allowlist: result.allowlist.all, findings: result.findings };
   }
-
-  return {
-    installed: true,
-    version: version.stdout.trim(),
-    envrc_allowed: envrcAllowed,
-    hook_in_rc: hookInRc,
-    rc_file: rcFile,
-  };
+  catch (err) {
+    return {
+      ok: false,
+      summary: 'the harness-env check could not run',
+      allowlist: [],
+      findings: [{
+        surface: 'claude',
+        kind: 'check-failed',
+        names: [],
+        detail: `harness-env check threw: ${(err as Error).message}`,
+        blocking: true,
+      }],
+    };
+  }
 }
 
-function installCommandForPlatform(): string {
-  if (process.platform === 'win32') {
-    return 'winget install direnv';
+/**
+ * Where secret values come from. `local` is the default and needs nothing; a
+ * manager needs its committed overlay (references only) and, for 1Password,
+ * the `op` CLI on a developer machine. NAMES only: the overlay holds `op://`
+ * references and this reads only which keys it activates.
+ *
+ * DYNAMIC import: `secret-providers.ts` pulls the `yaml` package, and this
+ * module must stay loadable with node built-ins only for `--preflight`.
+ */
+async function secretsProviderDiagnostic(): Promise<SecretsProviderDiagnostic> {
+  try {
+    const { PROVIDER_SCHEMA_FILE, providerResolvedKeysIn, readSecretsConfig } = await import('./lib/secret-providers.ts');
+    const overlay_present = existsSync(join(REPO_ROOT, PROVIDER_SCHEMA_FILE));
+    const vault_items = providerResolvedKeysIn(REPO_ROOT);
+    let provider: string | null = null;
+    let note: string | null = null;
+    try { provider = readSecretsConfig(join(REPO_ROOT, '.agents', 'project.yaml')).provider; }
+    catch (err) { note = (err as Error).message; }
+    const cli_installed = provider === '1password' ? tryRun('op', ['--version']).ok : null;
+    return { provider, overlay_present, vault_items, cli_installed, note };
   }
-  if (process.platform === 'darwin') {
-    return 'brew install direnv';
+  catch (err) {
+    return { provider: null, overlay_present: false, vault_items: [], cli_installed: null, note: `provider check could not run: ${(err as Error).message}` };
   }
-  return 'sudo apt install direnv  (or: dnf install direnv / pacman -S direnv)';
 }
 
-function shellHookLine(): { line: string, rc: string } {
-  const shell = (process.env.SHELL ?? '').toLowerCase();
-  if (shell.endsWith('zsh')) {
-    return { line: 'eval "$(direnv hook zsh)"', rc: '~/.zshrc' };
+function gitOrigin(): string | null {
+  try {
+    return execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
   }
-  if (shell.endsWith('fish')) {
-    return { line: 'direnv hook fish | source', rc: '~/.config/fish/config.fish' };
-  }
-  if (shell.endsWith('bash')) {
-    return { line: 'eval "$(direnv hook bash)"', rc: '~/.bashrc' };
-  }
-  // No POSIX $SHELL (typical on native Windows PowerShell) — advise the pwsh hook
-  // instead of mis-instructing the user to edit ~/.bashrc.
-  if (process.platform === 'win32') {
-    return { line: 'Invoke-Expression "$(direnv hook pwsh)"', rc: '$PROFILE' };
-  }
-  return { line: 'eval "$(direnv hook bash)"', rc: '~/.bashrc' };
+  catch { return null; }
 }
 
-function parseBunVersion(v: string): [number, number, number] | null {
-  const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (!m) { return null; }
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
+/**
+ * `.agents/project.yaml` against upstream's generated schema (`bun run
+ * agents:schema --project`, as data).
+ *
+ * DYNAMIC import for the same reason as the harness-env diagnostic: the
+ * schema module pulls the `yaml` package, and this module must stay loadable
+ * with node built-ins only for `--preflight`. Try-wrapped because a doctor
+ * that crashes on the thing it was meant to diagnose is useless.
+ */
+async function projectSchemaDiagnostic(): Promise<ProjectSchemaDiagnostic> {
+  try {
+    const { classifyProjectYaml, projectDelta, SCHEMA_FILE, SCHEMA_SOURCE } = await import('./lib/agents-schema.ts');
+    const sourcePath = join(REPO_ROOT, SCHEMA_SOURCE);
+    const schemaPath = join(REPO_ROOT, SCHEMA_FILE);
+    if (!existsSync(sourcePath)) { return { gaps: [], exempt: [], note: `${SCHEMA_SOURCE} not found`, copied_template: false }; }
+    const sourceText = await readFile(sourcePath, 'utf8');
+    const copied_template = classifyProjectYaml(sourceText, gitOrigin()) === 'copied-template';
+    if (!existsSync(schemaPath)) { return { gaps: [], exempt: [], note: `${SCHEMA_FILE} not found: run \`bun sync\` to receive it`, copied_template }; }
+    const delta = projectDelta(sourceText, await readFile(schemaPath, 'utf8'));
+    return { gaps: delta.gaps, exempt: delta.exempt, note: delta.error, copied_template };
+  }
+  catch (err) {
+    return { gaps: [], exempt: [], note: `the schema comparison threw: ${(err as Error).message}`, copied_template: false };
+  }
 }
 
-function compareVersion(a: readonly number[], b: readonly number[]): number {
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) { return a[i] - b[i]; }
+/**
+ * The `stack:` block against the repo. Dynamic import and try-wrapped for the
+ * same reasons as `projectSchemaDiagnostic`.
+ */
+async function stackDiagnostic(): Promise<StackDiagnosticReport> {
+  const empty: StackDiagnosticReport = { present: false, app_found: false, issues: [], unsupported: [], drift: [], note: null };
+  try {
+    const { diagnoseStack } = await import('./lib/stack-descriptor.ts');
+    const { SCHEMA_SOURCE } = await import('./lib/agents-schema.ts');
+    const sourcePath = join(REPO_ROOT, SCHEMA_SOURCE);
+    if (!existsSync(sourcePath)) { return { ...empty, note: `${SCHEMA_SOURCE} not found` }; }
+    const d = diagnoseStack(REPO_ROOT, await readFile(sourcePath, 'utf8'));
+    return { present: d.present, app_found: d.appFound, issues: d.issues, unsupported: d.unsupported, drift: d.drift, note: d.note };
   }
-  return 0;
+  catch (err) {
+    return { ...empty, note: `the stack check threw: ${(err as Error).message}` };
+  }
+}
+
+/** One line per app config that still reaches the tooling; silent on a greenfield repo. */
+function toolingIsolationDiagnostic(): { adopted: boolean, pending: string[] } {
+  const adopted = (() => {
+    try { return (JSON.parse(readFileSync(join(REPO_ROOT, '.template', 'installer.lock.json'), 'utf8')) as { adopted?: unknown }).adopted === true; }
+    catch { return false; }
+  })();
+  if (!adopted) { return { adopted, pending: [] }; }
+  const a = analyzeIsolation(REPO_ROOT);
+  const pending: string[] = [];
+  for (const t of a.tsconfigs) { pending.push(`${t.path} type-checks ${t.reached.map(d => `${d}/`).join(', ')}: add them to its "exclude" (snippet: .agents/prompts/adopt-tooling-isolation.md)`); }
+  if (a.eslint !== null) { pending.push(`${a.eslint.path} lints the tooling: ignore ${a.eslint.missing.join(', ')}`); }
+  if (a.hooksPending) { pending.push(`${a.hooks.manager} (${a.hooks.evidence}) does not call .husky/framework-gates.sh: the framework gates never run`); }
+  const repoCheck = (() => {
+    try { return (JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as { scripts?: Record<string, unknown> }).scripts?.['repo:check']; }
+    catch { return undefined; }
+  })();
+  if (repoCheckRunsAppWideLegs(repoCheck)) {
+    pending.push('package.json "repo:check" runs the app-wide format:check / lint:check / types:check: take upstream\'s value (`bun sync`, row scripts.repo:check), which opens with `bun scripts/tooling-check.ts repo` and scopes them to the tooling');
+  }
+  return { adopted, pending };
+}
+
+/**
+ * Whether a `repo:check` script still opens with the legs that judge the whole
+ * repo (`format:check`, `lint:check`, `types:check`). On an adopted app those
+ * are the app's own scripts or tools run over the app's root configs; the
+ * scoped form is `bun scripts/tooling-check.ts repo`. An app without the
+ * script, or with its own composition, is not reported.
+ */
+export function repoCheckRunsAppWideLegs(script: unknown): boolean {
+  if (typeof script !== 'string') { return false; }
+  return /\bbun run (?:format:check|lint:check|types:check)\b/.test(script) && !script.includes('tooling-check.ts repo');
 }
 
 // ----------------------------------------------------------------------------
@@ -430,15 +665,14 @@ export function diagnoseAgentCompatibility(
 ): AgentCompatibilityDiagnostic {
   const platform = options.platform ?? process.platform;
   const compatibility = checkAgentCompatibility(root, platform);
-  const canonicalErrors = validateCanonicalSources(root);
-  const hookErrors = validateHookCompatibility(root);
-  const mcpErrors = validateMcpParity(root);
-  let wrappers = { expected: 0, claude: 0, opencode: 0 };
-  try { wrappers = commandWrapperCounts(root); }
-  catch { /* compatibility.errors already carries the manifest diagnostics */ }
+  const harnesses = compatibility.harnesses;
+  const uses = (harness: Harness): boolean => harnesses.includes(harness);
+  const canonicalErrors = validateCanonicalSources(root, harnesses);
+  const hookErrors = validateHookCompatibility(root, harnesses);
+  const mcpErrors = validateMcpParity(root, { harnesses });
   let expectedServers = 0;
-  try { expectedServers = declaredMcpIds(root).length; }
-  catch { /* mcpErrors already carries the .mcp.json diagnostics */ }
+  try { expectedServers = declaredMcpIds(root, harnesses).length; }
+  catch { /* mcpErrors already carries the canonical MCP config diagnostics */ }
 
   const hasHookError = (needle: string): boolean => hookErrors.some(error => error.includes(needle));
   const hasMcpError = (needle: string): boolean => mcpErrors.some(error => error.includes(needle));
@@ -453,34 +687,31 @@ export function diagnoseAgentCompatibility(
     errors: [...new Set(compatibility.errors)],
     errors_by_surface: groupCompatibilityErrors([...new Set(compatibility.errors)]),
     alias: compatibility.alias,
+    harnesses,
+    notes: compatibility.notes,
     instructions: {
       agents_md: !agentsError,
       claude_shim: !claudeShimError,
       canonical_skills: !skillsError,
-      claude_alias: compatibility.alias.status === 'valid',
-    },
-    command_wrappers: {
-      ...wrappers,
-      ok: wrappers.expected > 0
-        && wrappers.claude === wrappers.expected
-        && wrappers.opencode === wrappers.expected,
+      claude_alias: compatibility.alias.status === 'valid' || compatibility.alias.status === 'not-used',
     },
     hooks: {
-      claude: !hasHookError('.claude/settings.json'),
-      opencode: !hasHookError('opencode.jsonc') && !hasHookError('.opencode/plugins'),
-      codex: codexHooksExist && !hasHookError('.codex/hooks.json') && !hasHookError('.codex/config.toml'),
+      claude: !uses('claude') || !hasHookError('.claude/settings.json'),
+      opencode: !uses('opencode') || (!hasHookError('opencode.jsonc') && !hasHookError('.opencode/plugins')),
+      codex: !uses('codex') || (codexHooksExist && !hasHookError('.codex/hooks.json') && !hasHookError('.codex/config.toml')),
       ok: hookErrors.length === 0,
     },
     mcp: {
       expected_servers: expectedServers,
-      claude: !hasMcpError('.mcp.json'),
-      opencode: !hasMcpError('opencode.jsonc'),
-      codex: codexConfigExists && !hasMcpError('.codex/config.toml'),
+      claude: !uses('claude') || !hasMcpError('.mcp.json'),
+      opencode: !uses('opencode') || !hasMcpError('opencode.jsonc'),
+      codex: !uses('codex') || (codexConfigExists && !hasMcpError('.codex/config.toml')),
       parity: mcpErrors.length === 0,
     },
     codex: {
       config_exists: codexConfigExists,
-      cli_detected: options.codexCliDetected ?? tryRun('codex', ['--version']).ok,
+      // Not probed when Codex is not in use: the binary is irrelevant there.
+      cli_detected: uses('codex') && (options.codexCliDetected ?? tryRun('codex', ['--version']).ok),
       repository_configured: codexConfigExists && codexHooksExist,
       desktop_uses_repository_config: true,
       trust_required: true,
@@ -504,17 +735,42 @@ async function runDoctor(): Promise<DoctorReport> {
     env_vars: {},
     atlassian_host: { status: 'missing' },
     legacy_jira_cred_keys: [],
+    app_owned_retired_keys: [],
     mcp_json_exists: existsSync(MCP_PATH),
     opencode_jsonc_exists: existsSync(OPENCODE_PATH),
     codex_config_exists: existsSync(CODEX_CONFIG_PATH),
     agent_compatibility: diagnoseAgentCompatibility(REPO_ROOT),
-    deps_installed: existsSync(NODE_MODULES_DOTENV),
-    direnv: { installed: false },
+    deps_installed: existsSync(NODE_MODULES_VARLOCK),
+    worktree_of: ((): string | null => {
+      const roots = checkoutRoots(REPO_ROOT);
+      return roots !== null && roots.linked ? roots.primaryRoot : null;
+    })(),
+    harness_level_mcps: harnessLevelMcpReport(),
+    context_maps: contextMapStatuses(REPO_ROOT).map(contextMapAdvice).filter((line): line is string => line !== null),
+    harness_env: await harnessEnvDiagnostic(),
+    secrets_provider: await secretsProviderDiagnostic(),
+    project_schema: await projectSchemaDiagnostic(),
+    stack: await stackDiagnostic(),
+    tooling_isolation: toolingIsolationDiagnostic(),
+    env_schema: envSchemaDiagnostic(),
     pending_actions: [],
   };
 
+  // A linked worktree gets ONE fix for missing setup (worktree:provision),
+  // replacing the primary-checkout `.env` copy and `bun install` below.
+  const worktreeFix = report.worktree_of === null
+    ? null
+    : worktreeSetupAction({
+        envFile: report.env_file_exists,
+        deps: report.deps_installed,
+        // A foreign hook manager (lefthook, simple-git-hooks, ...) installs its
+        // own hooks: `.husky/_` is never created there, on purpose.
+        gitHooks: existsSync(join(REPO_ROOT, '.husky', '_')) || detectHookManager(REPO_ROOT).foreign,
+      });
+  if (worktreeFix !== null) { report.pending_actions.push(worktreeFix); }
+
   // .env presence
-  if (!report.env_file_exists) {
+  if (!report.env_file_exists && worktreeFix === null) {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'cp .env.example .env',
@@ -580,13 +836,13 @@ async function runDoctor(): Promise<DoctorReport> {
   // JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN still in `.env` is leftover from
   // before the DRY rename and should be removed. Nothing reads them anymore;
   // acli and the sync scripts read ATLASSIAN_* directly, and the Atlassian
-  // MCP server is opt-in via docs/mcp/.
-  for (const key of LEGACY_JIRA_CRED_KEYS) {
-    const value = envValues[key];
-    if (value !== undefined && value.trim().length > 0) {
-      report.legacy_jira_cred_keys.push(key);
-    }
-  }
+  // MCP server is opt-in via docs/mcp/. On an adopted app a retired name the
+  // app declares in its own part of `.env.example` is the app's variable:
+  // reported, never a removal (same rule as `vars:env:check`).
+  const { appOwnedExampleKeys } = await import('./lib/updater-adopt.ts');
+  const legacy = legacyCredentialKeys(envValues, appOwnedExampleKeys(REPO_ROOT));
+  report.legacy_jira_cred_keys = legacy.remove;
+  report.app_owned_retired_keys = legacy.appOwned;
   if (report.legacy_jira_cred_keys.length > 0) {
     report.pending_actions.push({
       type: 'shell_command',
@@ -595,64 +851,89 @@ async function runDoctor(): Promise<DoctorReport> {
     });
   }
 
-  // node_modules / dotenv-cli
-  if (!report.deps_installed) {
+  // node_modules / varlock
+  if (!report.deps_installed && worktreeFix === null) {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'bun install',
-      hint: 'Install project dependencies including dotenv-cli (needed for `bun claude`).',
+      hint: 'Install project dependencies including varlock (the env schema gates and `bunx varlock run -- <cmd>`).',
     });
   }
 
-  // direnv (optional — wrapper still works without it)
-  report.direnv = await detectDirenv();
-  if (!report.direnv.installed) {
-    report.pending_actions.push({
-      type: 'system_install',
-      target: 'direnv',
-      hint: 'Optional. Without direnv, launch with `bun run claude` / `bun run opencode` / `bun run codex` (wrapper). Install if you want the executables to work directly via shell autoload.',
-      where: installCommandForPlatform(),
-    });
-  }
-  else {
-    if (!report.direnv.envrc_allowed) {
-      report.pending_actions.push({
-        type: 'shell_command',
-        target: 'direnv allow',
-        hint: 'Approve this repo\'s .envrc so direnv auto-loads .env on cd.',
-      });
-    }
-    if (!report.direnv.hook_in_rc) {
-      const hook = shellHookLine();
-      report.pending_actions.push({
-        type: 'shell_hook',
-        target: hook.rc,
-        hint: `Add the direnv shell hook to ${hook.rc} so 'cd' into this repo auto-loads .env.`,
-        where: hook.line,
-      });
-    }
-  }
-
-  // .mcp.json / opencode.jsonc presence
-  if (!report.mcp_json_exists) {
+  // .mcp.json / opencode.jsonc presence, only for a harness in use: a project
+  // that dropped one deleted its config on purpose (ADR-0013).
+  const harnessInUse = (harness: Harness): boolean => report.agent_compatibility.harnesses.includes(harness);
+  if (!report.mcp_json_exists && harnessInUse('claude')) {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'git restore .mcp.json',
       hint: '.mcp.json is missing. Restore from git — it is the committed Claude Code config.',
     });
   }
-  if (!report.opencode_jsonc_exists) {
+  if (!report.opencode_jsonc_exists && harnessInUse('opencode')) {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'git restore opencode.jsonc',
       hint: 'opencode.jsonc is missing. Restore from git — it is the committed OpenCode config.',
     });
   }
-  if (!report.codex_config_exists) {
+  if (!report.codex_config_exists && harnessInUse('codex')) {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'git restore .codex/config.toml',
       hint: '.codex/config.toml is missing. Restore from git — it is the committed Codex (CLI + Desktop) config.',
+    });
+  }
+
+  // A missing `.env` (or an unprovisioned worktree) already has its own action
+  // above: the retirement compares each copy with `.env`, so fix that first.
+  if (!report.harness_env.ok && report.env_file_exists && worktreeFix === null) {
+    const blocking = report.harness_env.findings.filter(f => f.blocking);
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun run harness:env',
+      hint: 'A plaintext copy of an MCP credential is still on disk, readable by any agent, '
+        + 'although every MCP server now reads .env through the .env loader. The command deletes a copy '
+        + `.env reproduces and backs up the rest, naming them: ${
+          blocking.map(f => `${f.kind} (${f.names.join(', ')})`).join('; ')}`,
+      where: '.claude/settings.local.json + .auth/opencode/',
+    });
+  }
+
+  // Secret manager: a provider without its overlay resolves nothing from the
+  // vault, and an overlay with `provider: local` still does. Both are the yaml
+  // and the committed file disagreeing; `bun setup` rewrites the pair.
+  const sp = report.secrets_provider;
+  if (sp.note !== null && sp.provider === null) {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun setup',
+      hint: `The secrets: block of .agents/project.yaml could not be read (${sp.note}). Fix it, or re-run the secret-manager step of setup.`,
+      where: '.agents/project.yaml',
+    });
+  }
+  else if (sp.provider !== null && sp.provider !== 'local' && !sp.overlay_present) {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun setup',
+      hint: `secrets.provider is ${sp.provider} but .env.provider.schema is missing, so nothing resolves from the vault and every launch reads .env alone. Re-run the secret-manager step of setup to write the overlay.`,
+      where: '.env.provider.schema',
+    });
+  }
+  else if (sp.provider === 'local' && sp.overlay_present && sp.vault_items.length > 0) {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bun setup',
+      hint: `secrets.provider is local but .env.provider.schema still resolves ${sp.vault_items.join(', ')} from a vault. Pick one: re-run the secret-manager step of setup, or delete the overlay.`,
+      where: '.env.provider.schema',
+    });
+  }
+  if (sp.provider === '1password' && sp.cli_installed === false) {
+    report.pending_actions.push({
+      type: 'system_install',
+      target: 'op',
+      hint: 'secrets.provider is 1password and the 1Password CLI is not on PATH, so every vault-backed item resolves empty on this machine (CI uses OP_SERVICE_ACCOUNT_TOKEN instead).',
+      where: 'https://developer.1password.com/docs/cli/get-started/',
     });
   }
 
@@ -662,7 +943,19 @@ async function runDoctor(): Promise<DoctorReport> {
     report.pending_actions.push({
       type: 'shell_command',
       target: 'bun run agents:compat',
-      hint: `Repair the generated compatibility artifacts (Claude skills alias + command wrappers), then restore any canonical/config file doctor still reports: ${report.agent_compatibility.errors.join('; ')}`,
+      hint: `Repair the generated compatibility artifacts (Claude skills alias; a command that shadows a skill moves to .backups/shadowing-commands/), then restore any canonical/config file doctor still reports: ${report.agent_compatibility.errors.join('; ')}`,
+    });
+  }
+
+  // The env schema verdict. Only an INVALID load is an action: the schema
+  // requires nothing (ADR-0010), so this fires on a malformed typed value.
+  if (report.env_schema.validation === 'invalid') {
+    report.pending_actions.push({
+      type: 'shell_command',
+      target: 'bunx varlock load --agent',
+      hint: 'Your .env does not satisfy the committed env schema (.env.schema + .env.core.schema). '
+        + 'The command names the failing items with sensitive values redacted; fix them in .env and re-run doctor.',
+      where: report.env_schema.errors[0],
     });
   }
 
@@ -670,6 +963,87 @@ async function runDoctor(): Promise<DoctorReport> {
     report.status = 'needs-action';
   }
   return report;
+}
+
+// The SGR escape (`ESC [ ... m`) built from its code point: a literal control
+// character in a regex trips `no-control-regex`, and that rule is right that a
+// reader cannot see it.
+const ANSI_SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+
+/**
+ * Runs `bunx varlock load --agent` at the repo root. `--agent` is the mode
+ * built for exactly this consumer: JSON, sensitive values redacted. Stdout is
+ * parsed for the item COUNT and discarded; the redacted lines are kept as the
+ * diagnosis when the load fails. Skipped when the schema or the pinned
+ * devDependency is absent, so a repo synced to this doctor but not to this
+ * package.json is not told its env is broken.
+ */
+function envSchemaDiagnostic(): EnvSchemaDiagnostic {
+  const schemaPresent = existsSync(join(REPO_ROOT, PROJECT_SCHEMA_FILE)) && existsSync(join(REPO_ROOT, CORE_SCHEMA_FILE));
+  const devDep = varlockInstalled(REPO_ROOT);
+
+  let binary: EnvSchemaDiagnostic['binary'] = 'missing';
+  let binaryVersion: string | null = null;
+  // `bun run setup:doctor` prepends node_modules/.bin to PATH, so a bare probe
+  // would find the devDependency's shim and call it "standalone". Strip every
+  // such segment: the question is what a process spawned outside the repo's
+  // scripts finds.
+  const pathSep = process.platform === 'win32' ? ';' : ':';
+  const binMarker = join('node_modules', '.bin');
+  const outsidePath = (process.env.PATH ?? '').split(pathSep).filter(seg => !seg.includes(binMarker)).join(pathSep);
+  const candidates = process.platform === 'win32' ? ['varlock', 'varlock.cmd'] : ['varlock'];
+  for (const name of candidates) {
+    const probe = spawnSync(name, ['--version'], { encoding: 'utf8', env: { ...process.env, PATH: outsidePath }, stdio: ['ignore', 'pipe', 'pipe'] });
+    if (!probe.error && probe.status === 0) {
+      binary = 'standalone';
+      binaryVersion = (probe.stdout ?? '').trim() || null;
+      break;
+    }
+  }
+  if (binary === 'missing' && devDep) {
+    binary = 'devDependency';
+    try {
+      const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'node_modules', 'varlock', 'package.json'), 'utf8')) as { version?: string };
+      binaryVersion = pkg.version ?? null;
+    }
+    catch {
+      binaryVersion = null;
+    }
+  }
+
+  const base: EnvSchemaDiagnostic = { schema_present: schemaPresent, binary, binary_version: binaryVersion, validation: 'skipped', items: 0, errors: [] };
+  if (!schemaPresent || !devDep) { return base; }
+
+  // A deprecated key still in `.env` is not declared, and an undeclared EMPTY
+  // key fails varlock: neutralize them so this verdict is about the declared
+  // items. The "Legacy JIRA_* credential keys" section asks for their removal.
+  const deprecatedInFile = existsSync(ENV_PATH) ? deprecatedEnvKeysIn(readFileSync(ENV_PATH, 'utf8')) : [];
+  const run = spawnSync('bunx', ['varlock', 'load', '--agent'], {
+    cwd: REPO_ROOT,
+    env: neutralizeDeprecatedKeys({ ...process.env }, deprecatedInFile),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (run.error) {
+    return { ...base, validation: 'invalid', errors: [`could not run bunx varlock: ${run.error.message}`] };
+  }
+  if (run.status !== 0) {
+    // Only stderr: varlock's diagnostics name the failing items, while stdout
+    // carries the (redacted) values blob this report never needs.
+    const lines = (run.stderr ?? '')
+      .split(/\r?\n/)
+      .map(l => l.replace(ANSI_SGR, '').trim())
+      .filter(l => l !== '' && !l.startsWith('💥') && !l.startsWith('🚨'));
+    return { ...base, validation: 'invalid', errors: lines.slice(0, 20) };
+  }
+  let items = 0;
+  try {
+    items = Object.keys(JSON.parse(run.stdout) as Record<string, unknown>).filter(name => !deprecatedInFile.includes(name)).length;
+  }
+  catch {
+    // A non-JSON success is still a success; the count is informational.
+  }
+  return { ...base, validation: 'ok', items };
 }
 
 // ----------------------------------------------------------------------------
@@ -700,28 +1074,38 @@ function printHuman(report: DoctorReport): void {
 
   // File + dep checks as a table
   const compat = report.agent_compatibility;
+  const inUse = (harness: Harness): boolean => compat.harnesses.includes(harness);
+  const notUsed = `${tui.statusIcon('ok')} not used`;
   const hostList = (hosts: { claude: boolean, opencode: boolean, codex: boolean }): string =>
-    (['claude', 'opencode', 'codex'] as const).map(host => `${host}:${hosts[host] ? 'ok' : 'FAIL'}`).join(' ');
+    compat.harnesses.map(host => `${host}:${hosts[host] ? 'ok' : 'FAIL'}`).join(' ');
+  const fileRow = (exists: boolean, harness: Harness): string =>
+    !inUse(harness) ? notUsed : exists ? tui.statusIcon('ok') : tui.statusIcon('fail');
+  const harnessCount = `${compat.harnesses.length} harness${compat.harnesses.length === 1 ? '' : 'es'}`;
   const checks: string[][] = [
     ['.env file', report.env_file_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['.mcp.json', report.mcp_json_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['opencode.jsonc', report.opencode_jsonc_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['.codex/config.toml', report.codex_config_exists ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['AGENTS.md + CLAUDE.md shim', compat.instructions.agents_md && compat.instructions.claude_shim ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['Canonical .agents/skills + Claude alias', compat.instructions.canonical_skills && compat.instructions.claude_alias ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    [`Command wrappers (${compat.command_wrappers.expected} Claude + ${compat.command_wrappers.expected} OpenCode)`, compat.command_wrappers.ok ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${compat.command_wrappers.claude}/${compat.command_wrappers.opencode} of ${compat.command_wrappers.expected}`],
-    ['Hook adapters (Claude/OpenCode/Codex)', compat.hooks.ok ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.hooks)}`],
-    [`MCP parity (${compat.mcp.expected_servers} servers x 3 harnesses)`, compat.mcp.parity ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.mcp)}`],
-    ['Codex repository config (config.toml + hooks.json)', compat.codex.repository_configured ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    ['Codex CLI executable', compat.codex.cli_detected ? tui.statusIcon('ok') : `${tui.statusIcon('warn')} not on PATH; Desktop still reads the repository config`],
-    ['Codex repository trust', `${tui.statusIcon('warn')} required; runtime state, not file-verifiable`],
-    ['node_modules', report.deps_installed ? tui.statusIcon('ok') : tui.statusIcon('fail')],
-    [`direnv binary${report.direnv.version ? ` (${report.direnv.version})` : ''}`, report.direnv.installed ? tui.statusIcon('ok') : tui.statusIcon('warn')],
+    ['Harnesses in use', compat.harnesses.map(h => HARNESS_LABEL[h]).join(', ')],
+    ['.mcp.json', fileRow(report.mcp_json_exists, 'claude')],
+    ['opencode.jsonc', fileRow(report.opencode_jsonc_exists, 'opencode')],
+    ['.codex/config.toml', fileRow(report.codex_config_exists, 'codex')],
+    [inUse('claude') ? 'AGENTS.md + CLAUDE.md shim' : 'AGENTS.md', compat.instructions.agents_md && compat.instructions.claude_shim ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    [inUse('claude') ? 'Canonical .agents/skills + Claude alias' : 'Canonical .agents/skills', compat.instructions.canonical_skills && compat.instructions.claude_alias ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    [`Hook adapters (${compat.harnesses.map(h => HARNESS_LABEL[h]).join('/')})`, compat.hooks.ok ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.hooks)}`],
+    [`MCP parity (${compat.mcp.expected_servers} servers x ${harnessCount})`, compat.mcp.parity ? tui.statusIcon('ok') : `${tui.statusIcon('fail')} ${hostList(compat.mcp)}`],
   ];
-  if (report.direnv.installed) {
-    checks.push(['  .envrc allowed', report.direnv.envrc_allowed ? tui.statusIcon('ok') : tui.statusIcon('fail')]);
-    checks.push([`  shell hook${report.direnv.rc_file ? ` (in ${report.direnv.rc_file})` : ''}`, report.direnv.hook_in_rc ? tui.statusIcon('ok') : tui.statusIcon('warn')]);
+  if (inUse('codex')) {
+    checks.push(
+      ['Codex repository config (config.toml + hooks.json)', compat.codex.repository_configured ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+      ['Codex CLI executable', compat.codex.cli_detected ? tui.statusIcon('ok') : `${tui.statusIcon('warn')} not on PATH; Desktop still reads the repository config`],
+      ['Codex repository trust', `${tui.statusIcon('warn')} required; runtime state, not file-verifiable`],
+    );
   }
+  else {
+    checks.push(['Codex', notUsed]);
+  }
+  checks.push(
+    ['node_modules', report.deps_installed ? tui.statusIcon('ok') : tui.statusIcon('fail')],
+    ...(report.worktree_of !== null ? [['Linked worktree of', `${tui.statusIcon('info')} ${report.worktree_of}`]] : []),
+  );
   // The host is shown by VALUE, not as a set/missing tick. Reading which site
   // the repo is about to write to is the entire point — a green check that says
   // "configured" is exactly what let a dead instance go unnoticed.
@@ -745,6 +1129,155 @@ function printHuman(report: DoctorReport): void {
   ]);
   process.stdout.write(`${tui.table(['Variable', 'Status', 'Value'], envRows)}\n`);
 
+  // Plaintext MCP credential copies. Its own section because it is
+  // per-VARIABLE and per-file: an exit code says a copy remains, it does not say
+  // WHICH credential sits in WHICH file.
+  tui.section('Plaintext MCP credential copies (MCP servers read .env through the .env loader)');
+  process.stdout.write(`  ${tui.statusIcon(report.harness_env.ok ? 'ok' : 'fail')} ${report.harness_env.summary}\n`);
+  process.stdout.write(`  MCP credentials declared: ${report.harness_env.allowlist.join(', ') || '(none)'}\n`);
+  for (const finding of report.harness_env.findings) {
+    process.stdout.write(`  ${tui.statusIcon(finding.blocking ? 'fail' : 'warn')} ${finding.kind}: ${finding.names.join(', ') || '-'}\n`);
+    process.stdout.write(`    ${finding.detail}\n`);
+  }
+  if (!report.harness_env.ok) {
+    process.stdout.write('  Fix: bun run harness:env  (retires the copies; values are never printed by it or by this report)\n');
+  }
+  process.stdout.write('\n');
+
+  // Secret source. Names where values come from and what reads them: only a
+  // varlock launch (the MCP .env loader, `bunx varlock run -- <cmd>`, the
+  // gates) reaches the vault; a shell that sourced .env does not.
+  tui.section('Secret source (.agents/project.yaml -> secrets:)');
+  const sp = report.secrets_provider;
+  if (sp.provider === null) {
+    process.stdout.write(`  ${tui.statusIcon('fail')} provider unknown: ${sp.note ?? 'not read'}\n`);
+  }
+  else if (sp.provider === 'local') {
+    process.stdout.write(`  ${tui.statusIcon(sp.overlay_present && sp.vault_items.length > 0 ? 'warn' : 'ok')} local: values come from .env / .env.local${sp.overlay_present && sp.vault_items.length > 0 ? ` (but .env.provider.schema still resolves ${sp.vault_items.join(', ')})` : ''}\n`);
+  }
+  else {
+    process.stdout.write(`  ${tui.statusIcon(sp.overlay_present ? 'ok' : 'fail')} ${sp.provider}: overlay ${sp.overlay_present ? `present, ${sp.vault_items.length} item(s) from the vault: ${sp.vault_items.join(', ') || '(none active)'}` : 'MISSING (nothing resolves from the vault)'}\n`);
+    if (sp.cli_installed !== null) {
+      process.stdout.write(`  ${tui.statusIcon(sp.cli_installed ? 'ok' : 'warn')} manager CLI ${sp.cli_installed ? 'on PATH' : 'not on PATH (vault items resolve empty here; CI uses its service-account token)'}\n`);
+    }
+    process.stdout.write('  Vault values reach: every MCP server (.env loader) and `bunx varlock run -- <cmd>`. The agent session itself holds none (ADR-0016).\n');
+    process.stdout.write('  They do NOT reach a shell that sourced .env (`source .env`): run a shell CLI as `bunx varlock run -- <cmd>` instead.\n');
+  }
+  process.stdout.write('\n');
+
+  // Env schema (varlock). Its own section because it carries three facts: is
+  // the schema there, which varlock can run, does the developer's .env satisfy
+  // it. Nothing here prints a value; `--agent` redacts and this report keeps
+  // only names.
+  tui.section('Env schema (varlock: .env.schema + .env.core.schema)');
+  const es = report.env_schema;
+  const binaryNote = es.binary === 'standalone'
+    ? `standalone binary${es.binary_version ? ` ${es.binary_version}` : ''}`
+    : es.binary === 'devDependency'
+      ? `devDependency only${es.binary_version ? ` (${es.binary_version})` : ''}; enough for the gates and bunx varlock run -- <cmd>`
+      : 'not found; run bun install (devDependency)';
+  process.stdout.write(`  ${tui.statusIcon(es.schema_present ? 'ok' : 'fail')} schema files ${es.schema_present ? 'present' : 'missing (bun run vars:schema)'}\n`);
+  process.stdout.write(`  ${tui.statusIcon(es.binary === 'missing' ? 'fail' : 'ok')} varlock: ${binaryNote}\n`);
+  if (es.validation === 'ok') {
+    process.stdout.write(`  ${tui.statusIcon('ok')} .env satisfies the schema (${es.items} items resolved, values redacted)\n`);
+  }
+  else if (es.validation === 'invalid') {
+    process.stdout.write(`  ${tui.statusIcon('fail')} .env does not satisfy the schema:\n`);
+    for (const line of es.errors) { process.stdout.write(`    ${line}\n`); }
+    process.stdout.write('  Fix: correct the named items in .env, then: bunx varlock load --agent\n');
+  }
+  else {
+    process.stdout.write(`  ${tui.statusIcon('warn')} validation skipped (schema or devDependency absent)\n`);
+  }
+  process.stdout.write('\n');
+
+  // Project schema gap. Its own section and NOT a check row: nothing here is a
+  // failure, and it must never push the report to `needs action`. It answers a
+  // different question from the checks above: not "is something broken" but
+  // "has upstream moved and am I still on the old shape".
+  const ps = report.project_schema;
+  if (ps.note !== null || ps.gaps.length > 0 || ps.copied_template) {
+    tui.section('Project config vs upstream schema (.agents/project.yaml)');
+    if (ps.copied_template) {
+      process.stdout.write(`  ${tui.statusIcon('warn')} .agents/project.yaml is the boilerplate maintainers' own copy (GitHub "Use this template"): their git_strategy and push authorization\n`);
+      process.stdout.write('  Fix: bun run agents:setup  (replaces it with the blank template after one confirm)\n');
+    }
+    if (ps.note !== null) {
+      process.stdout.write(`  ${tui.statusIcon('warn')} ${ps.note}\n`);
+    }
+    else if (ps.gaps.length > 0) {
+      const total = ps.gaps.reduce((n, g) => n + g.paths.length, 0);
+      process.stdout.write(`  ${tui.statusIcon('warn')} upstream declares ${total} key path(s) this project does not have\n`);
+      for (const gap of ps.gaps) {
+        process.stdout.write(`  ${gap.block}${gap.wholeBlock ? ' (whole block)' : ''}: ${gap.paths.join(', ')}\n`);
+      }
+      process.stdout.write('  Fix: bun sync  (offers to insert them, one prompt per block, insert-only)\n');
+    }
+    if (ps.exempt.length > 0) {
+      process.stdout.write(`  silenced via updater.schema_exempt: ${ps.exempt.join(', ')}\n`);
+    }
+    process.stdout.write('\n');
+  }
+
+  // Stack descriptor. Its own section and never a check row, for the same
+  // reason as the schema gap above. Silent when the block is present, valid,
+  // and either matches the repo or has no app to be compared against yet.
+  const st = report.stack;
+  if (st.note !== null || !st.present || st.issues.length > 0 || st.unsupported.length > 0 || st.drift.length > 0) {
+    tui.section('Stack descriptor (.agents/project.yaml -> stack:)');
+    if (st.note !== null) {
+      process.stdout.write(`  ${tui.statusIcon('warn')} ${st.note}\n`);
+    }
+    else if (!st.present) {
+      process.stdout.write(`  ${tui.statusIcon('warn')} no \`stack:\` block: skills fall back to the greenfield defaults\n`);
+      process.stdout.write('  Fix: bun run agents:setup --stack  (inserts the block from the schema and fills it from the repo)\n');
+    }
+    else {
+      for (const issue of st.issues) {
+        process.stdout.write(`  ${tui.statusIcon('warn')} stack.${issue.path} ${issue.message}\n`);
+      }
+      for (const issue of st.unsupported) {
+        process.stdout.write(`  ${tui.statusIcon('info')} stack.${issue.path} ${issue.message}\n`);
+      }
+      for (const d of st.drift) {
+        process.stdout.write(`  ${tui.statusIcon('warn')} stack.${d.path}: declared ${d.declared ?? 'null'}, repo shows ${d.detected ?? 'null'} (${d.evidence})\n`);
+      }
+      if (st.issues.length > 0 || st.drift.length > 0) {
+        process.stdout.write('  Fix: bun run agents:setup --stack  (one prompt per field, evidence shown)\n');
+      }
+    }
+    process.stdout.write('\n');
+  }
+
+  // Tooling isolation on an adopted app. Its own section and never a check
+  // row: the fix is a hand edit of one of the app's files.
+  if (report.tooling_isolation.pending.length > 0) {
+    tui.section('Tooling isolation (adopted app)');
+    for (const line of report.tooling_isolation.pending) {
+      process.stdout.write(`  ${tui.statusIcon('warn')} ${line}\n`);
+    }
+    process.stdout.write('  Fix: by hand in the app\'s own files; the exact lines are in .agents/prompts/adopt-tooling-isolation.md (written by the --adopt run)\n\n');
+  }
+
+  // Servers that are not in the project config because they run at harness
+  // level. Its own section and never a check row: a claude.ai connector is
+  // invisible to a file read, so "not detectable" must never look like "missing".
+  tui.section('MCP servers provided at harness level (not in .mcp.json by design)');
+  for (const verdict of report.harness_level_mcps.verdicts) {
+    const icon = tui.statusIcon(verdict.state === 'provided elsewhere' ? 'ok' : 'info');
+    process.stdout.write(`  ${icon} ${verdict.id} (${verdict.capability}): ${verdict.state}${verdict.hosts.length > 0 ? ` (${verdict.hosts.join(', ')})` : ''}\n`);
+    process.stdout.write(`    ${verdict.detail}\n`);
+  }
+  process.stdout.write(`  read: ${report.harness_level_mcps.sources.length > 0 ? report.harness_level_mcps.sources.join(', ') : '(no user-level config found)'}\n\n`);
+
+  if (report.context_maps.length > 0) {
+    tui.section('Business context maps not generated yet');
+    for (const line of report.context_maps) {
+      process.stdout.write(`  ${tui.statusIcon('info')} ${line.replace(/`/g, '')}\n`);
+    }
+    process.stdout.write('\n');
+  }
+
   // Legacy JIRA_* credential keys (pre-DRY .env leftover)
   if (report.legacy_jira_cred_keys.length > 0) {
     tui.section('Legacy JIRA_* credential keys in .env');
@@ -753,12 +1286,19 @@ function printHuman(report: DoctorReport): void {
     }
     process.stdout.write(`  ${COLORS.dim}acli and the sync scripts read ATLASSIAN_* directly; the Atlassian MCP server is opt-in via docs/mcp/.${COLORS.reset}\n\n`);
   }
+  if (report.app_owned_retired_keys.length > 0) {
+    tui.section('Retired tooling names the app declares as its own');
+    for (const key of report.app_owned_retired_keys) {
+      process.stdout.write(`  ${tui.statusIcon('info')} ${key}: the app's own variable (declared above the tooling block of .env.example), kept; the tooling does not read it\n`);
+    }
+    process.stdout.write('\n');
+  }
 
   if (compat.errors.length > 0) {
     tui.section('Cross-harness compatibility errors');
     // The alias line stands on its own: right after the migration it is
     // deferred on purpose, and that must not read as one more broken contract.
-    process.stdout.write(`  ${tui.statusIcon(compat.alias.status === 'valid' ? 'ok' : compat.alias.status === 'deferred' ? 'warn' : 'fail')} ${describeAliasStatus(compat.alias)}\n`);
+    process.stdout.write(`  ${tui.statusIcon(compat.alias.status === 'valid' || compat.alias.status === 'not-used' ? 'ok' : compat.alias.status === 'deferred' ? 'warn' : 'fail')} ${describeAliasStatus(compat.alias)}\n`);
     for (const bucket of compat.errors_by_surface) {
       process.stdout.write(`  ${COLORS.bold}${bucket.label}${COLORS.reset}\n`);
       for (const error of bucket.errors) {
@@ -782,49 +1322,28 @@ function printHuman(report: DoctorReport): void {
   else {
     process.stdout.write('\n');
     process.stdout.write(`${tui.successBox([
-      'All file checks green. Launch: bun run claude  /  bun run opencode  /  bun run codex',
+      'All file checks green. Open the agent in this folder: claude  /  opencode  /  codex (or its desktop app)',
       'Codex Desktop reads the same repository config; approve repository trust there before hooks run.',
     ])}\n`);
   }
 }
 
 // ----------------------------------------------------------------------------
-// Preflight (blocker-only gate for `bun run setup`)
+// Preflight (alias of the setup gate in cli/preflight.ts)
 // ----------------------------------------------------------------------------
 
-function preflightFail(msg: string, fix: string): never {
-  // Dependency-free output — preflight may run before `bun install`, so no TUI.
-  process.stderr.write(`Preflight failed: ${msg}\n`);
-  process.stderr.write(`  Fix: ${fix}\n`);
-  process.exit(1);
-}
-
-function runPreflight(): never {
-  // Dependency-free header — preflight loads no TUI (third-party) modules.
-  process.stdout.write('\nPreflight check\n');
-
-  const bunVersion = process.versions.bun;
-  if (!bunVersion) {
-    preflightFail(
-      'Bun runtime not detected (process.versions.bun is undefined).',
-      'Install Bun from https://bun.sh, then re-run `bun run setup`.',
-    );
-  }
-  const parsed = parseBunVersion(bunVersion);
-  if (!parsed || compareVersion(parsed, MIN_BUN) < 0) {
-    preflightFail(
-      `Bun ${bunVersion} is older than required ${MIN_BUN.join('.')}.`,
-      'Upgrade Bun: `bun upgrade` (or reinstall from https://bun.sh).',
-    );
-  }
-  if (!existsSync(INQUIRER_MARKER)) {
-    preflightFail(
-      'Project dependencies not installed (node_modules/@inquirer/prompts missing).',
-      'Run `bun install` first, then re-run `bun run setup`.',
-    );
-  }
-  process.stdout.write(`Preflight OK (Bun ${bunVersion}, deps installed)\n`);
-  process.exit(0);
+/**
+ * `--preflight`: an alias of the setup gate (`cli/preflight.ts --for setup
+ * --gate`, node:* only), kept for the scripts and docs that still call it.
+ * `bun setup` calls the gate directly: this file statically imports modules
+ * that need `node_modules`, so on a fresh clone it cannot load before
+ * `bun install` (analysis §8 #3).
+ */
+async function runPreflight(): Promise<never> {
+  const { runSetupGate } = await import('./preflight.ts');
+  const env = process.env;
+  const lang = (env.LC_ALL || env.LC_MESSAGES || env.LANG || '').toLowerCase().startsWith('en') ? 'en' : 'es';
+  process.exit(await runSetupGate({ cwd: REPO_ROOT, lang }));
 }
 
 // ----------------------------------------------------------------------------
@@ -833,7 +1352,7 @@ function runPreflight(): never {
 
 async function main(): Promise<void> {
   if (process.argv.includes('--preflight')) {
-    runPreflight(); // never returns
+    await runPreflight(); // never returns
     return;
   }
 

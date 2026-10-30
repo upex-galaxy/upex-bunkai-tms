@@ -1,5 +1,5 @@
 /**
- * @fileoverview `bun run setup --variables` flow — idempotent local + remote
+ * @fileoverview `bun setup --variables` flow — idempotent local + remote
  * env-var setup driven by the canonical `VAR_MANIFEST`
  * (`cli/lib/variables-manifest.ts`, Phase 1).
  *
@@ -365,7 +365,7 @@ async function promptVarsInto(
 
 /**
  * Prompt for the CRITICAL tool credentials (ATLASSIAN_URL/EMAIL/API_TOKEN,
- * RESEND_API_KEY, TAVILY_API_KEY) and upsert them into `.env`. IDEMPOTENT: an
+ * RESEND_API_KEY) and upsert them into `.env`. IDEMPOTENT: an
  * already-set var is shown and left untouched unless the user opts to overwrite
  * it. Secrets are masked at the prompt; their values are never printed.
  *
@@ -373,7 +373,7 @@ async function promptVarsInto(
  * prompts these on a fresh clone; this is the "set / reset" power-tool path.
  */
 async function setCriticalVars(opts: VariablesFlowOptions): Promise<void> {
-  tui.section('CRITICAL — tool credentials (Atlassian, Resend, Tavily)');
+  tui.section('CRITICAL — tool credentials (Atlassian, Resend)');
   await promptVarsInto(criticalVars(), opts);
 }
 
@@ -552,7 +552,7 @@ async function runRemote(
 async function offerVercelLink(opts: VariablesFlowOptions): Promise<boolean> {
   process.stdout.write(`${C.yellow}  Repo is not linked to a Vercel project.${C.reset}\n`);
   if (opts.nonInteractive) {
-    process.stdout.write(`${C.cyan}  Run: vercel link${C.reset}  ${C.dim}(then re-run: bun run setup --variables)${C.reset}\n`);
+    process.stdout.write(`${C.cyan}  Run: vercel link${C.reset}  ${C.dim}(then re-run: bun setup --variables)${C.reset}\n`);
     return false;
   }
   const doLink = await tui.confirm({
@@ -560,13 +560,13 @@ async function offerVercelLink(opts: VariablesFlowOptions): Promise<boolean> {
     initialValue: true,
   });
   if (tui.isCancel(doLink) || !doLink) {
-    process.stdout.write(`${C.dim}  Skipped. Run \`vercel link\` then re-run: bun run setup --variables${C.reset}\n`);
+    process.stdout.write(`${C.dim}  Skipped. Run \`vercel link\` then re-run: bun setup --variables${C.reset}\n`);
     return false;
   }
   // Interactive link — inherit stdio so the user can pick / create the project.
   const link = spawnSync('vercel', ['link'], { stdio: 'inherit', timeout: 180000 });
   if (link.status !== 0) {
-    tui.log.warn(`vercel link did not complete (exit ${link.status}). Re-run \`bun run setup --variables\` after linking.`);
+    tui.log.warn(`vercel link did not complete (exit ${link.status}). Re-run \`bun setup --variables\` after linking.`);
     return false;
   }
   const after = detectVercel();
@@ -783,7 +783,7 @@ async function runMenu(
     message: 'What do you want to do?',
     options: [
       { value: 'walk', label: 'Set variables one by one (walk all local vars)' },
-      { value: 'critical', label: 'Set / reset the critical variables (Atlassian, Resend, Tavily)' },
+      { value: 'critical', label: 'Set / reset the critical variables (Atlassian, Resend)' },
       { value: 'push', label: 'Push local .env → Vercel env (production / preview / development)' },
       { value: 'pull', label: 'Pull infra vars from Vercel (Supabase / Postgres / app URL) into .env' },
       { value: 'everything', label: 'Everything (set critical, then push to Vercel)' },
@@ -829,13 +829,22 @@ async function runMenu(
  * Vercel push/pull, the interactive menu, deprecated-var warnings, and the final
  * observability table.
  *
- * With `menu: true` (invoked via `bun run setup --variables` with NO explicit
+ * With `menu: true` (invoked via `bun setup --variables` with NO explicit
  * mode flag, on a TTY) it shows the interactive menu. Otherwise it runs `mode`
  * directly (scriptable / non-interactive).
  *
  * Never prints secret values. Remote writes are gated + stdin-only (D3) and
  * idempotent (D4); `.env` is backed up before any local mutation (D5).
  */
+/**
+ * Every MCP server reads `.env` itself through the `.env` loader (ADR-0012),
+ * but only when the harness spawns it, so a value written here reaches a
+ * running session after a restart. No file is derived from `.env` any more.
+ */
+function noticeMcpRestart(): void {
+  tui.log.info('Restart the agent session: MCP servers read .env when the harness spawns them, not later.');
+}
+
 export async function runVariablesFlow(opts: VariablesFlowOptions = {}): Promise<void> {
   const mode = opts.mode ?? 'both';
 
@@ -880,8 +889,14 @@ export async function runVariablesFlow(opts: VariablesFlowOptions = {}): Promise
     printResultsTable(localResults, remoteResults, mode);
   }
 
+  // Only after a real local write: a dry run touched nothing, and a
+  // remote-only run never opened `.env` for writing.
+  if (!opts.dryRun && (opts.menu === true || mode !== 'remote')) {
+    noticeMcpRestart();
+  }
+
   process.stdout.write('\n');
   process.stdout.write(`${tui.successBox([
-    'Variables flow complete. Re-run anytime: bun run setup --variables  (idempotent).',
+    'Variables flow complete. Re-run anytime: bun setup --variables  (idempotent).',
   ])}\n`);
 }

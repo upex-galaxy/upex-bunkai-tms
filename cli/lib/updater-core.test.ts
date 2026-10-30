@@ -1,21 +1,25 @@
 import type { Component, SyncStateV6, SyncStateV7 } from './updater-types.ts';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import {
+  advanceSyncStateV7,
   classifyFile,
+  collectContextMapBootstrap,
   componentOwnedPaths,
   computeComponentAdvancement,
   computeDelta,
   detectLocalEdits,
   dirtyTreeExemptions,
+  dropDeprecatedDeletes,
   foreignDirtyPaths,
   isBootstrapOnlyFile,
   isLocalTemplateSource,
+  isProjectLocalSkillPath,
   isWithinWriteSurface,
   LAST_APPLY_FILE,
   parsePorcelainPaths,
@@ -29,6 +33,7 @@ import {
   UPDATER_OWNED_PATHS_ENV,
   UPDATER_SELF_UPDATED_ENV,
   UPDATER_UPSTREAM_DIR_ENV,
+  UPSTREAM_CONTEXT_SUFFIX_SKILLS,
   writeLastApply,
 } from './updater-core.ts';
 
@@ -90,7 +95,7 @@ const CLI: Component = { name: 'cli', type: 'directory', paths: ['cli'] };
 const CFG = { components: [CLI], selfUpdateComponent: 'cli', versionFile: '.template/boilerplate.lock.json' };
 
 describe('dirty-tree guard: self-update re-exec', () => {
-  // Bunkai PR #234: `bun run up --auto` ran the migration preflight, the parent
+  // Bunkai PR #234: `bun sync --auto` ran the migration preflight, the parent
   // refreshed `cli/` and re-exec'd, and the CHILD aborted on the dirty tree the
   // parent had just produced; `--force` was the only way through.
 
@@ -184,6 +189,34 @@ describe('dirty-tree guard: self-update re-exec', () => {
   });
 });
 
+describe('advanceSyncStateV7 with a retired component', () => {
+  // A consumer lock written before a component was retired (the `commands`
+  // alias wrappers) still carries its cursor. Every walk iterates the CURRENT
+  // component list, so the stale key must never hold `templateCommit` back
+  // nor abort the run; it simply stays behind, unread.
+  test('a stale cursor in the lock neither blocks the advance nor gets walked', () => {
+    const prior: SyncStateV7 = {
+      schemaVersion: 7,
+      templateRepo: 'upex-galaxy/agentic-dev-boilerplate',
+      templateCommit: 'old',
+      perComponentCommit: { cli: 'old', docs: 'old', commands: 'old' },
+      syncedComponents: ['cli', 'docs', 'commands'],
+      ignoreFileSync: {},
+      packageJsonSync: {},
+      cliVersion: '8.4',
+      lastSyncedAt: '2026-09-04T10:00:00.000Z',
+      variableSystemVersion: 1,
+    };
+    const current: Component[] = [
+      { name: 'cli', type: 'directory', paths: ['cli'] },
+      { name: 'docs', type: 'directory', paths: ['docs'] },
+    ];
+    const next = advanceSyncStateV7(prior, { applied: [], skipped: [], failed: [], newHeadSha: 'new', componentsAdvanced: ['cli', 'docs'], componentsHeldBack: [] } as never, current, 'new', '8.5');
+    expect(next.templateCommit).toBe('new');
+    expect(next.perComponentCommit).toMatchObject({ cli: 'new', docs: 'new', commands: 'old' });
+  });
+});
+
 describe('syncStateWriteNeeded', () => {
   const state: SyncStateV7 = {
     schemaVersion: 7,
@@ -273,13 +306,13 @@ describe('isLocalTemplateSource', () => {
 
 describe('isBootstrapOnlyFile', () => {
   const agents: Component = { name: 'agents', type: 'file-list', paths: ['.agents'], files: ['README.md', 'project.yaml'] };
-  const compat: Component = { name: 'agent-compatibility', type: 'directory', paths: ['.agents/skills', '.agents/compatibility'] };
-  const paths = ['.agents/project.yaml', '.agents/compatibility/command-aliases.project.json'];
+  const compat: Component = { name: 'agent-compatibility', type: 'directory', paths: ['.agents/skills', '.agents/hooks'] };
+  const paths = ['.agents/project.yaml', '.agents/hooks/project-hook.mjs'];
 
   test('an exact listed path binds for ANY component, not only `agents`', () => {
-    expect(isBootstrapOnlyFile('.agents/compatibility/command-aliases.project.json', compat, paths)).toBe(true);
-    expect(isBootstrapOnlyFile('.agents/compatibility/command-aliases.json', compat, paths)).toBe(false);
-    expect(isBootstrapOnlyFile('.agents\\compatibility\\command-aliases.project.json', compat, paths)).toBe(true);
+    expect(isBootstrapOnlyFile('.agents/hooks/project-hook.mjs', compat, paths)).toBe(true);
+    expect(isBootstrapOnlyFile('.agents/hooks/personality-reinject.mjs', compat, paths)).toBe(false);
+    expect(isBootstrapOnlyFile('.agents\\hooks\\project-hook.mjs', compat, paths)).toBe(true);
   });
 
   test('the legacy agents basename contract and its framework-file override still hold', () => {
@@ -654,5 +687,122 @@ describe('watched files inside a synced component (.husky hooks, updater.protect
     // Once present, a later upstream change never reaches it.
     write(project, '.husky/pre-push', '#!/bin/sh\nbun run repo:check\n');
     expect(classifyFile({ component: 'husky', path: '.husky/pre-push', status: 'M', fromSha: '', toSha: 'y', added: 1, removed: 0, isBinary: false, templateOldSha: 'x', templateNewSha: 'y' }, upstream, project, [husky], protectedPaths)).toBe('unchanged');
+  });
+});
+
+describe('project-local context skills (a project\'s `<aspect>-context/` is never synced)', () => {
+  test('isProjectLocalSkillPath: any `-context` slug under the skills dir, except the ones upstream owns', () => {
+    expect(isProjectLocalSkillPath('.agents/skills/billing-context/SKILL.md')).toBe(true);
+    expect(isProjectLocalSkillPath('.agents/skills/auth-context/references/gotchas.md')).toBe(true);
+    expect(isProjectLocalSkillPath('.agents\\skills\\billing-context\\SKILL.md')).toBe(true);
+    expect(isProjectLocalSkillPath('.agents/skills/project-context/SKILL.md')).toBe(false);
+    expect(isProjectLocalSkillPath('.agents/skills/acli/SKILL.md')).toBe(false);
+    // Segment-aware: the suffix binds the SLUG, not a deeper directory or a sibling store.
+    expect(isProjectLocalSkillPath('.agents/skills/acli/references/billing-context/x.md')).toBe(false);
+    expect(isProjectLocalSkillPath('.agents/skills-context/x.md')).toBe(false);
+    expect(isProjectLocalSkillPath('app/billing-context/page.tsx')).toBe(false);
+  });
+
+  test('the upstream set matches the `-context` slugs scripts/lint-skills.ts grandfathers (cli/ is import-closed, so this is the seam)', () => {
+    const lint = readFileSync(join(import.meta.dir, '..', '..', 'scripts', 'lint-skills.ts'), 'utf8');
+    const m = /const KIND_SUFFIX_EXEMPT = new Set<string>\(\[([^\]]+)\]\)/.exec(lint);
+    expect(m).not.toBeNull();
+    const exempt = [...m![1].matchAll(/'([^']+)'/g)].map(x => x[1]).filter(slug => slug.endsWith('-context'));
+    expect(exempt.length).toBeGreaterThan(0);
+    for (const slug of exempt) { expect(UPSTREAM_CONTEXT_SUFFIX_SKILLS.has(slug)).toBe(true); }
+  });
+
+  test('the upstream walk skips a same-slug context skill, and a delete upstream never reaches the project copy', () => {
+    const SKILLS: Component = { name: 'skills', type: 'directory', paths: ['.agents/skills'] };
+    const template = temporaryRoot();
+    git(template, ['init', '--quiet', '--initial-branch=main']);
+    git(template, ['config', 'user.email', 'test@example.com']);
+    git(template, ['config', 'user.name', 'test']);
+    write(template, '.agents/skills/project-context/SKILL.md', 'project-context v1\n');
+    write(template, '.agents/skills/billing-context/SKILL.md', 'an example upstream should never ship, but might\n');
+    git(template, ['add', '-A']);
+    git(template, ['commit', '--quiet', '-m', 'lock']);
+    const lock = git(template, ['rev-parse', 'HEAD']).trim();
+    git(template, ['rm', '--quiet', '-r', '.agents/skills/billing-context']);
+    write(template, '.agents/skills/project-context/SKILL.md', 'project-context v2\n');
+    git(template, ['add', '-A']);
+    git(template, ['commit', '--quiet', '-m', 'head']);
+
+    const local = temporaryRoot();
+    write(local, '.agents/skills/project-context/SKILL.md', 'project-context v1\n');
+    write(local, '.agents/skills/billing-context/SKILL.md', 'the project\'s own judgment layer\n');
+
+    const reconciled = reconcileComponentsByContent(template, [SKILLS], local, []);
+    expect(reconciled.map(e => e.path)).toEqual(['.agents/skills/project-context/SKILL.md']);
+
+    const state: SyncStateV6 = { schemaVersion: 6, lastSync: '', templateCommit: lock, cliVersion: '8.1', syncedComponents: [], variableSystemVersion: 1, perComponentCommit: { skills: lock } };
+    const delta = computeDelta(template, [SKILLS], state, local, []);
+    expect(delta.map(e => e.path)).toEqual(['.agents/skills/project-context/SKILL.md']);
+    expect(delta.some(e => e.classification === 'deleted-upstream')).toBe(false);
+  });
+
+  test('a project context skill is outside the write surface, so its uncommitted edits never block a sync', () => {
+    const cfg = { components: [{ name: 'skills', type: 'directory' as const, paths: ['.agents/skills'] }], ignoreFiles: [], packageJsonSpecs: [], deprecatedFiles: [], excludePaths: [], repoOnlyPaths: [], bootstrapOnlyPaths: [] };
+    expect(isWithinWriteSurface(cfg, '.agents/skills/billing-context/SKILL.md')).toBe(false);
+    expect(isWithinWriteSurface(cfg, '.agents/skills/project-context/SKILL.md')).toBe(true);
+  });
+});
+
+describe('dropDeprecatedDeletes', () => {
+  test('a deprecated file leaves through the cleanup, not the delete prompt; every other entry stays', () => {
+    const deprecated = [{ path: '.agents/skills/sync-ai-memory/SKILL.md' }];
+    const entries = [
+      { path: '.agents/skills/sync-ai-memory/SKILL.md', classification: 'deleted-upstream' },
+      { path: '.agents/skills/gone/SKILL.md', classification: 'deleted-upstream' },
+      { path: '.agents/skills/sync-ai-memory/SKILL.md', classification: 'locally-diverged' },
+    ];
+    expect(dropDeprecatedDeletes(entries, deprecated)).toEqual(entries.slice(1));
+    expect(dropDeprecatedDeletes(entries, [])).toEqual(entries);
+  });
+});
+
+describe('collectContextMapBootstrap: context map skills delivered once', () => {
+  const skills: Component[] = [{ name: 'skills', type: 'directory', paths: ['.agents/skills'] }];
+
+  function seedTemplate(template: string): void {
+    for (const f of ['SKILL.md', 'references/business-data-map.html', 'references/refresh.md']) {
+      const full = join(template, '.agents/skills/business-data-context', f);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, 'x');
+    }
+  }
+
+  test('an absent folder is delivered whole, as new-upstream bootstrap entries', () => {
+    const template = temporaryRoot();
+    const repo = temporaryRoot();
+    seedTemplate(template);
+    const entries = collectContextMapBootstrap(skills, template, repo);
+    expect(entries.map(e => e.path).sort()).toEqual([
+      '.agents/skills/business-data-context/SKILL.md',
+      '.agents/skills/business-data-context/references/business-data-map.html',
+      '.agents/skills/business-data-context/references/refresh.md',
+    ]);
+    expect(entries.every(e => e.classification === 'new-upstream' && e.component === 'skills')).toBe(true);
+  });
+
+  test('a present folder, even missing files, is the project\'s and gets nothing', () => {
+    const template = temporaryRoot();
+    const repo = temporaryRoot();
+    seedTemplate(template);
+    mkdirSync(join(repo, '.agents/skills/business-data-context'), { recursive: true });
+    expect(collectContextMapBootstrap(skills, template, repo)).toEqual([]);
+    // Still project-local for every overwrite / delete decision.
+    expect(isProjectLocalSkillPath('.agents/skills/business-data-context/references/business-data-map.html')).toBe(true);
+  });
+
+  test('no component owning the skills dir, or a path already in the delta, delivers nothing twice', () => {
+    const template = temporaryRoot();
+    const repo = temporaryRoot();
+    seedTemplate(template);
+    expect(collectContextMapBootstrap([{ name: 'docs', type: 'directory', paths: ['docs'] }], template, repo)).toEqual([]);
+    const narrowed: Component[] = [{ name: 'skills', type: 'directory', paths: ['.agents/skills/business-data-context'] }];
+    const first = collectContextMapBootstrap(narrowed, template, repo);
+    expect(first).toHaveLength(3);
+    expect(collectContextMapBootstrap(narrowed, template, repo, first)).toEqual([]);
   });
 });

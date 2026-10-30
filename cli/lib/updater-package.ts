@@ -6,7 +6,8 @@
  * appends them at the END of each section while preserving the user's existing
  * key order. Same-key/different-value drift is reported as FYI and NEVER
  * overwritten. Top-level keys outside the configured sections (`name`,
- * `version`, `dependencies`, `lint-staged`, etc.) stay byte-identical.
+ * `version`, `engines`, etc.) stay byte-identical. A `lint-staged` value (a
+ * command or an array of commands) travels as JSON text (`getSection`).
  *
  * Contract:
  *  - Compare upstream `package.json` against local section-by-section.
@@ -32,6 +33,8 @@ import type {
 } from './updater-types';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+import { withoutHuskyStep } from './hook-manager';
 
 // ============================================================================
 // PARSE HELPERS
@@ -88,18 +91,41 @@ export function stringifyPackageJson(parsed: ParsedPackageJson): string {
 }
 
 /**
+ * Sections whose values are not plain strings. A `lint-staged` glob maps to a
+ * command string OR an array of commands, so every value of such a section
+ * travels through the delta, the state (`keptKeys`) and the report as its
+ * canonical JSON text, and is decoded back only when written to the file.
+ * Encoding the whole section (strings included) keeps the round trip
+ * unambiguous: a raw command that happens to start with `[` is never mistaken
+ * for an array.
+ */
+const JSON_VALUED_SECTIONS = new Set<string>(['lint-staged']);
+
+/**
+ * The value written to the file for a delta value of `section`: decoded JSON
+ * for a JSON-valued section, the string itself otherwise.
+ */
+export function decodeSectionValue(section: string, value: string): unknown {
+  return JSON_VALUED_SECTIONS.has(section) ? JSON.parse(value) as unknown : value;
+}
+
+/**
  * Extract a string-keyed object section. Returns empty object when section is
- * missing or not an object. Non-string values are skipped (defensive — scripts
- * and devDependencies are always string maps).
+ * missing or not an object. In a plain section non-string values are skipped
+ * (scripts and dependency maps are string maps); in a JSON-valued section
+ * (`lint-staged`) every value is kept as its canonical JSON text, arrays
+ * included, so upstream changes there reach every consumer.
  */
 export function getSection(data: Record<string, unknown>, section: string): Record<string, string> {
   const raw = data[section];
   if (raw === null || raw === undefined || typeof raw !== 'object') {
     return {};
   }
+  const jsonValued = JSON_VALUED_SECTIONS.has(section);
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v === 'string') { out[k] = v; }
+    if (jsonValued) { out[k] = JSON.stringify(v); }
+    else if (typeof v === 'string') { out[k] = v; }
   }
   return out;
 }
@@ -261,7 +287,7 @@ export function applyPackageJsonAppend(
     const writtenForSection: string[] = [];
     for (const key of keys) {
       if (key in localMap) { continue; } // never overwrite (drift is FYI only)
-      localMap[key] = values[key];
+      localMap[key] = decodeSectionValue(section, values[key]);
       writtenForSection.push(key);
     }
 
@@ -327,7 +353,7 @@ export function applyPackageJsonOverride(
     const writtenForSection: string[] = [];
     for (const key of keys) {
       if (!(key in localMap)) { continue; } // append handles brand-new keys
-      localMap[key] = overrides[key];
+      localMap[key] = decodeSectionValue(section, overrides[key]);
       writtenForSection.push(key);
     }
 
@@ -343,4 +369,98 @@ export function applyPackageJsonOverride(
 
   fs.writeFileSync(filePath, stringifyPackageJson(parsed));
   return written;
+}
+
+// ============================================================================
+// ADOPT (`--adopt` first run on an existing app)
+// ============================================================================
+
+/** Every section an app may already declare a package in. */
+const DEPENDENCY_SECTIONS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+
+export interface AdoptPackageJsonFold {
+  delta: PackageJsonDelta
+  /**
+   * Upstream keys this run must remember as handled in their UPSTREAM section
+   * (`appliedKeys`) although nothing is written there: a package the app
+   * already declares in another section, or a `dependencies` key redirected
+   * to `devDependencies`. Without them the next plain `bun sync` would add
+   * the same package to a second section.
+   */
+  satisfied: Record<string, string[]>
+}
+
+/**
+ * Reshape a package.json delta for an app adopting the boilerplate:
+ *
+ *  - a package the app already declares in ANY dependency section is never
+ *    added to another one (no duplicate, no version the app did not choose);
+ *  - the tooling's runtime packages (`dependencies` upstream) go to the app's
+ *    `devDependencies`: they run the agentic tooling, not the app, and must
+ *    not ship in its production install.
+ *
+ *  - with `foreignHookManager` (the app's hooks run on lefthook,
+ *    simple-git-hooks, ...: `./hook-manager.ts`), an upstream `prepare` the
+ *    app lacks arrives WITHOUT its `husky` step: running `husky` rewrites
+ *    `core.hooksPath` and switches the app's own hooks off.
+ *
+ * Same-key drift (`localOverrideKeys`) is left as is: the caller keeps the
+ * app's value. Pure: the input delta is not mutated.
+ */
+export function adoptPackageJsonDelta(delta: PackageJsonDelta, local: Record<string, unknown>, opts: { foreignHookManager?: boolean } = {}): AdoptPackageJsonFold {
+  const declared = new Set<string>();
+  for (const section of DEPENDENCY_SECTIONS) {
+    for (const key of Object.keys(getSection(local, section))) { declared.add(key); }
+  }
+
+  const sections: Record<string, PackageJsonSectionDelta> = {};
+  for (const [name, sec] of Object.entries(delta.sections)) {
+    sections[name] = { ...sec, upstreamOnlyKeys: { ...sec.upstreamOnlyKeys } };
+  }
+  const satisfied: Record<string, string[]> = {};
+  const remember = (section: string, key: string): void => { (satisfied[section] ??= []).push(key); };
+
+  for (const section of DEPENDENCY_SECTIONS) {
+    const sec = sections[section];
+    if (!sec) { continue; }
+    for (const key of Object.keys(sec.upstreamOnlyKeys)) {
+      if (!declared.has(key)) { continue; }
+      delete sec.upstreamOnlyKeys[key];
+      remember(section, key);
+    }
+  }
+
+  const deps = sections.dependencies;
+  const dev = sections.devDependencies;
+  if (deps && dev) {
+    for (const [key, value] of Object.entries(deps.upstreamOnlyKeys)) {
+      delete deps.upstreamOnlyKeys[key];
+      remember('dependencies', key);
+      if (!(key in dev.upstreamOnlyKeys)) { dev.upstreamOnlyKeys[key] = value; }
+    }
+  }
+
+  // The app's formatting is its own (the adopted gates skip format:check for
+  // the same reason): the adoption never adds a lint-staged config, and the
+  // keys are remembered so a later plain run does not add them either.
+  const lintStaged = sections['lint-staged'];
+  if (lintStaged) {
+    for (const key of Object.keys(lintStaged.upstreamOnlyKeys)) {
+      delete lintStaged.upstreamOnlyKeys[key];
+      remember('lint-staged', key);
+    }
+  }
+
+  const scripts = sections.scripts;
+  const prepare = scripts?.upstreamOnlyKeys.prepare;
+  if (opts.foreignHookManager === true && scripts && prepare !== undefined) {
+    const kept = withoutHuskyStep(prepare);
+    if (kept === null) {
+      delete scripts.upstreamOnlyKeys.prepare;
+      remember('scripts', 'prepare');
+    }
+    else { scripts.upstreamOnlyKeys.prepare = kept; }
+  }
+
+  return { delta: { file: delta.file, sections }, satisfied };
 }

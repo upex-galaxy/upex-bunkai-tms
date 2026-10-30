@@ -156,6 +156,7 @@ export {
   multiselect,
   note,
   outro,
+  password,
   select,
   spinner,
   text,

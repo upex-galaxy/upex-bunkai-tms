@@ -1,0 +1,16 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`headless parity (plan §12) the terminal prints the same journal in both modes; only who answers differs 1`] = `
+[
+  "{"t":"run.start","cmd":"setup","repo":"acme-qa","version":"1","mode":"interactive","lang":"es","phases":[{"id":"pre","title":"Chequeo previo","hint":"herramientas, red, disco"},{"id":"team","title":"Tu equipo","hint":"qué agentes de IA usan"},{"id":"install","title":"Instalar","hint":"descargas, memoria, skills"},{"id":"project","title":"Tu proyecto","hint":"nombre, entornos, URLs"},{"id":"creds","title":"Credenciales","hint":"dónde y cuáles"},{"id":"jira","title":"Conectar Jira","hint":"sesión y catálogos"},{"id":"github","title":"GitHub","hint":"repositorio remoto"},{"id":"verify","title":"Verificar","hint":"que todo responda"},{"id":"done","title":"Listo","hint":"resumen y siguientes pasos"}]}",
+  "{"t":"phase.start","id":"team"}",
+  "{"t":"ask","kind":"multi","title":"Agentes","default":["codex"],"phase":"team","id":"agents","spec":{"options":[{"value":"codex","label":"Codex","checked":true}]},"secret":false}",
+  "{"t":"answered","id":"agents","label":"Codex"}",
+  "{"t":"step.start","id":"s1","phase":"install","title":"Chromium","lane":"descargas"}",
+  "{"t":"step.log","id":"s1","line":"Downloading Chromium 140.0","stream":"out"}",
+  "{"t":"step.end","id":"s1","status":"ok","note":"una sola vez por máquina"}",
+  "{"t":"notice","level":"warn","text":"sin <code>acli</code>: Jira se salta","phase":"team"}",
+  "{"t":"phase.end","id":"team","status":"done"}",
+  "{"t":"report","title":"Listo","tone":"good","tiles":[{"n":"3","label":"pasos"}],"next":[{"title":"Abre tu agente","cmd":"claude"}]}",
+]
+`;

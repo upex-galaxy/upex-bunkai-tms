@@ -1,0 +1,32 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the printer headless parity: the same journal prints the same log; a page run adds only the "answer it in the browser" lines and the answers 1`] = `
+"
+◆ Chequeo previo
+  Revisamos todo. Qué es esto?
+  ✔ Bun  1.3.14
+  ▲ Engram  -
+      Opcional: brew install engram
+  Nada bloquea. 1 aviso.
+  ▲ 1 aviso
+
+◆ Instalar
+  … Navegador para los tests (Chromium)  (en segundo plano)
+      Downloading Chromium 140.0
+  ✔ Navegador para los tests (Chromium)  una sola vez por máquina  (3.2 s)
+  … Memoria entre sesiones (Engram)  (en segundo plano)
+  – Memoria entre sesiones (Engram)  Engram no está instalado
+  ▲ sin acli: Jira se salta
+  ✖ Atlassian rechazó las credenciales
+      El sitio respondió 401.
+      - Crea un token nuevo.
+
+◇ acme-qa está listo.
+  12 pasos completos
+  • Abre tu agente
+      $ claude
+
+  Resumen guardado en .session/runs/setup-20261011-1200.html
+Instalación terminada.
+"
+`;
